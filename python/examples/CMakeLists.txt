@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,6 +26,49 @@
 
 cmake_minimum_required (VERSION 3.5)
 
-add_subdirectory(library)
-add_subdirectory(examples)
-add_subdirectory(perf_client)
+if(${TRTIS_ENABLE_HTTP})
+  install(
+    PROGRAMS
+      simple_http_v2_health_metadata.py
+      simple_http_v2_infer_client.py
+      simple_http_v2_string_infer_client.py
+      simple_http_v2_async_infer_client.py
+      simple_http_v2_sequence_sync_infer_client.py
+      simple_http_v2_cudashm_client.py
+      simple_http_v2_shm_client.py
+      simple_http_v2_shm_string_client.py
+      simple_http_v2_model_control.py
+    DESTINATION python
+  )
+endif() # TRTIS_ENABLE_HTTP
+
+if(${TRTIS_ENABLE_GRPC})
+  install(
+    PROGRAMS
+      grpc_v2_client.py
+      grpc_v2_explicit_byte_content_client.py
+      grpc_v2_explicit_int_content_client.py
+      grpc_v2_explicit_int8_content_client.py
+      grpc_v2_image_client.py
+      simple_grpc_v2_cudashm_client.py
+      simple_grpc_v2_health_metadata.py
+      simple_grpc_v2_async_infer_client.py
+      simple_grpc_v2_infer_client.py
+      simple_grpc_v2_sequence_stream_infer_client.py
+      simple_grpc_v2_sequence_sync_infer_client.py
+      simple_grpc_v2_string_infer_client.py
+      simple_grpc_v2_shm_client.py
+      simple_grpc_v2_shm_string_client.py
+      simple_grpc_v2_model_control.py
+    DESTINATION python
+  )
+endif() # TRTIS_ENABLE_GRPC
+
+if(${TRTIS_ENABLE_HTTP} OR ${TRTIS_ENABLE_GRPC})
+  install(
+    PROGRAMS
+      v2_image_client.py
+      v2_ensemble_image_client.py
+    DESTINATION python
+  )
+endif() # TRTIS_ENABLE_HTTP || TRTIS_ENABLE_GRPC
