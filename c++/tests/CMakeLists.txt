@@ -49,4 +49,22 @@ install(
   RUNTIME DESTINATION bin
 )
 
+#
+# memory_leak_test
+#
+add_executable(
+  memory_leak_test
+  memory_leak_test.cc
+)
+
+target_link_libraries(
+  memory_leak_test
+  PRIVATE TRITON::grpcclient_static
+  PRIVATE TRITON::httpclient_static
+)
+install(
+  TARGETS memory_leak_test
+  RUNTIME DESTINATION bin
+)
+
 endif()
