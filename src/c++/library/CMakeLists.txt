@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,19 +45,13 @@ if(${TRITON_ENABLE_CC_GRPC})
       grpc_client.h common.h ipc.h
   )
 
-  set(TRITON_CLIENT_HEADER_FLAT 0)
-  configure_file(grpc_client.h.in grpc_client.h @ONLY)
-
   add_library(
       grpc-client-library EXCLUDE_FROM_ALL OBJECT
       ${REQUEST_SRCS} ${REQUEST_HDRS}
   )
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(grpc-client-library PUBLIC ${CUDA_INCLUDE_DIRS})
-  endif() # TRITON_ENABLE_GPU
   add_dependencies(
       grpc-client-library
-      model-config-library grpc-library proto-library
+      grpc-service-library proto-library
   )
 
   target_link_libraries(
@@ -69,18 +63,14 @@ if(${TRITON_ENABLE_CC_GRPC})
   # libgrpcclient_static.a
   add_library(
       grpcclient_static STATIC
-      $<TARGET_OBJECTS:grpc-library>
-      $<TARGET_OBJECTS:model-config-library>
-      $<TARGET_OBJECTS:proto-library>
       $<TARGET_OBJECTS:grpc-client-library>
+      $<TARGET_OBJECTS:grpc-service-library>
+      $<TARGET_OBJECTS:proto-library>
   )
   add_library(
-      TRITON::grpcclient_static ALIAS grpcclient_static
+      TritonClient::grpcclient_static ALIAS grpcclient_static
   )
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(grpcclient_static PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(grpcclient_static PRIVATE ${CUDA_LIBRARIES})
-  endif() # TRITON_ENABLE_GPU
+
   target_include_directories(
       grpcclient_static
       PUBLIC
@@ -99,33 +89,23 @@ if(${TRITON_ENABLE_CC_GRPC})
   # libgrpcclient.so
   add_library(
       grpcclient SHARED
-      $<TARGET_OBJECTS:grpc-library>
-      $<TARGET_OBJECTS:model-config-library>
+      $<TARGET_OBJECTS:grpc-service-library>
       $<TARGET_OBJECTS:proto-library>
       $<TARGET_OBJECTS:grpc-client-library>
   )
   add_library(
-      TRITON::grpcclient ALIAS grpcclient
+      TritonClient::grpcclient ALIAS grpcclient
   )
 
   if (NOT WIN32)
      set_target_properties(
-         grpcclient
-         PROPERTIES
-           LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
-           LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
+       grpcclient
+       PROPERTIES
+         LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
+         LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
      )
-   endif() # NOT WIN32
+  endif() # NOT WIN32
 
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(grpcclient PUBLIC ${CUDA_INCLUDE_DIRS})
-  endif() # TRITON_ENABLE_GPU
-  target_include_directories(
-      grpcclient
-      PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  )
   target_link_libraries(
       grpcclient
       PRIVATE gRPC::grpc++
@@ -135,84 +115,88 @@ if(${TRITON_ENABLE_CC_GRPC})
       PUBLIC Threads::Threads
   )
 
+  foreach(_client_target grpc-client-library grpcclient_static grpcclient)
+    target_compile_features(${_client_target} PRIVATE cxx_std_11)
+    target_compile_options(
+      ${_client_target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+        -Wall -Wextra -Wno-unused-parameter -Werror>
+      $<$<CXX_COMPILER_ID:MSVC>:/W4 /D_WIN32_WINNT=0x0A00 /EHsc>
+    )
+
+    set_target_properties(
+      ${_client_target}
+      PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    target_include_directories(
+      ${_client_target}
+      PUBLIC
+        $<INSTALL_INTERFACE:include>
+      PRIVATE
+        $<TARGET_PROPERTY:proto-library,INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:grpc-service-library,INCLUDE_DIRECTORIES>
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    if(${TRITON_ENABLE_GPU})
+      target_compile_definitions(
+        ${_client_target}
+          PRIVATE TRITON_ENABLE_GPU=1
+      )
+    endif() # TRITON_ENABLE_GPU
+
+    if(${TRITON_ENABLE_GPU})
+      target_link_libraries(
+        ${_client_target}
+        PRIVATE CUDA::cudart
+      )
+    endif() # TRITON_ENABLE_GPU
+  endforeach()
+
+  if (NOT WIN32)
+    install(
+      DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}/../../absl/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../c-ares/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../grpc/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../protobuf/lib
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      FILES_MATCHING PATTERN "*.a"
+    )
+  else()
+    install(
+      DIRECTORY
+        ${CMAKE_CURRENT_BINARY_DIR}/../../absl/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../c-ares/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../grpc/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../protobuf/lib
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      FILES_MATCHING PATTERN "*.lib"
+    )
+  endif() # NOT WIN32
+
+  install(
+      FILES
+      ${CMAKE_CURRENT_SOURCE_DIR}/grpc_client.h
+      DESTINATION include
+  )
+
   install(
       TARGETS
         grpcclient
         grpcclient_static
       EXPORT triton-export
-      LIBRARY DESTINATION lib
-      ARCHIVE DESTINATION lib
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-
-
-  if (NOT WIN32)
-     install(
-         DIRECTORY
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../absl/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../c-ares/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../grpc/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../protobuf/lib
-         DESTINATION .
-         FILES_MATCHING PATTERN "*.a"
-     )
-  else()
-     install(
-         DIRECTORY
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../absl/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../c-ares/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../grpc/lib
-           ${CMAKE_CURRENT_BINARY_DIR}/../../../../../protobuf/lib
-         DESTINATION .
-         FILES_MATCHING PATTERN "*.lib"
-     )
-  endif() # NOT WIN32
-
-  set(TRITON_CLIENT_HEADER_FLAT 1)
-  configure_file(grpc_client.h.in grpc_client_flat.h @ONLY)
-
-  install(
-      FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/grpc_client_flat.h
-      RENAME grpc_client.h
-      DESTINATION include
-  )
-
-  install(
-      FILES
-      ${CMAKE_CURRENT_SOURCE_DIR}/common.h
-      ${CMAKE_CURRENT_SOURCE_DIR}/ipc.h
-      DESTINATION include
-  )
-
-  install(
-      FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/../../../core/model_config.pb.h
-      ${CMAKE_CURRENT_BINARY_DIR}/../../../core/grpc_service.grpc.pb.h
-      ${CMAKE_CURRENT_BINARY_DIR}/../../../core/grpc_service.pb.h
-      DESTINATION include
-  )
-
-  install(
-      DIRECTORY
-      ${CMAKE_CURRENT_BINARY_DIR}/../../../../../protobuf/include/
-      ${CMAKE_CURRENT_BINARY_DIR}/../../../../../grpc/include/
-      DESTINATION include
-  )
-
 endif() # TRITON_ENABLE_CC_GRPC
 
 if(${TRITON_ENABLE_CC_HTTP})
   #
   # libhttpclient.so and libhttpclient_static.a
   #
-  if(${TRITON_CURL_WITHOUT_CONFIG})
-    find_package(CURL REQUIRED)
-  else()
-    find_package(CURL CONFIG REQUIRED)
-  endif() # TRITON_CURL_WITHOUT_CONFIG
-  message(STATUS "Using curl ${CURL_VERSION}")
-  add_definitions(-DCURL_STATICLIB)
-
   configure_file(libhttpclient.ldscript libhttpclient.ldscript COPYONLY)
 
   # libhttpclient object build
@@ -226,21 +210,15 @@ if(${TRITON_ENABLE_CC_HTTP})
       http_client.h common.h ipc.h cencode.h
   )
 
-  set(TRITON_CLIENT_HEADER_FLAT 0)
-  configure_file(http_client.h.in http_client.h @ONLY)
-
   add_library(
       http-client-library EXCLUDE_FROM_ALL OBJECT
       ${REQUEST_SRCS} ${REQUEST_HDRS}
   )
 
-  target_include_directories(
-      http-client-library
-      PRIVATE $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
+  set_property(
+    SOURCE cencode.c
+    PROPERTY COMPILE_FLAGS -Wno-implicit-fallthrough
   )
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(http-client-library PUBLIC ${CUDA_INCLUDE_DIRS})
-  endif() # TRITON_ENABLE_GPU
 
   target_link_libraries(
     http-client-library
@@ -254,18 +232,9 @@ if(${TRITON_ENABLE_CC_HTTP})
       $<TARGET_OBJECTS:http-client-library>
   )
   add_library(
-      TRITON::httpclient_static ALIAS httpclient_static
+      TritonClient::httpclient_static ALIAS httpclient_static
   )
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(httpclient_static PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(httpclient_static PRIVATE ${CUDA_LIBRARIES})
-  endif() # TRITON_ENABLE_GPU
-  target_include_directories(
-      httpclient_static
-      PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  )
+
   target_link_libraries(
       httpclient_static
       PRIVATE triton-common-json
@@ -279,7 +248,7 @@ if(${TRITON_ENABLE_CC_HTTP})
       $<TARGET_OBJECTS:http-client-library>
   )
   add_library(
-      TRITON::httpclient ALIAS httpclient
+      TritonClient::httpclient ALIAS httpclient
   )
 
   if (NOT WIN32)
@@ -291,15 +260,6 @@ if(${TRITON_ENABLE_CC_HTTP})
      )
   endif() # NOT WIN32
 
-  if(${TRITON_ENABLE_GPU})
-    target_include_directories(httpclient PUBLIC ${CUDA_INCLUDE_DIRS})
-  endif() # TRITON_ENABLE_GPU
-  target_include_directories (
-      httpclient
-      PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  )
   target_link_libraries(
       httpclient
       PRIVATE triton-common-json
@@ -307,33 +267,52 @@ if(${TRITON_ENABLE_CC_HTTP})
       PUBLIC Threads::Threads
   )
 
-  set(TRITON_CLIENT_HEADER_FLAT 1)
-  configure_file(http_client.h.in http_client_flat.h @ONLY)
+  foreach(_client_target http-client-library httpclient_static httpclient)
+    target_compile_features(${_client_target} PRIVATE cxx_std_11)
+    target_compile_options(
+      ${_client_target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+        -Wall -Wextra -Wno-unused-parameter -Werror>
+      $<$<CXX_COMPILER_ID:MSVC>:/W4 /D_WIN32_WINNT=0x0A00 /EHsc>
+    )
 
-  if (NOT WIN32)
-     install(
-         FILES
-         ${CMAKE_CURRENT_BINARY_DIR}/../../../../../curl/install/lib/libcurl.a
-         DESTINATION lib
-     )
-  else()
-     install(
-         FILES
-         ${CMAKE_CURRENT_BINARY_DIR}/../../../../../curl/install/lib/libcurl.lib
-         DESTINATION lib
-     )
-  endif() # NOT WIN32
+    set_target_properties(
+      ${_client_target}
+      PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    target_include_directories(
+      ${_client_target}
+      PUBLIC
+        $<INSTALL_INTERFACE:include>
+      PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
+    )
+
+    target_compile_definitions(
+      ${_client_target}
+        PRIVATE CURL_STATICLIB=1
+    )
+    if(${TRITON_ENABLE_GPU})
+      target_compile_definitions(
+        ${_client_target}
+          PRIVATE TRITON_ENABLE_GPU=1
+      )
+    endif() # TRITON_ENABLE_GPU
+
+    if(${TRITON_ENABLE_GPU})
+      target_link_libraries(
+        ${_client_target}
+        PRIVATE CUDA::cudart
+      )
+    endif() # TRITON_ENABLE_GPU
+  endforeach()
 
   install(
       FILES
-      ${CMAKE_CURRENT_BINARY_DIR}/http_client_flat.h
-      RENAME http_client.h
-      DESTINATION include
-  )
-
-  install(
-      FILES
-      ${CMAKE_CURRENT_SOURCE_DIR}/common.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/http_client.h
       DESTINATION include
   )
 
@@ -342,75 +321,85 @@ if(${TRITON_ENABLE_CC_HTTP})
         httpclient
         httpclient_static
       EXPORT triton-export
-      LIBRARY DESTINATION lib
-      ARCHIVE DESTINATION lib
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
 endif() # TRITON_ENABLE_CC_HTTP
 
-include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/TritonClient)
-
-if(${TRITON_ENABLE_CC_GRPC})
+if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
   install(
-    TARGETS
-      grpcclient
-      grpcclient_static
+      FILES
+      ${CMAKE_CURRENT_SOURCE_DIR}/common.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/ipc.h
+      DESTINATION include
+  )
 
+  include(GNUInstallDirs)
+  set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/TritonClient)
+
+  if(${TRITON_ENABLE_CC_GRPC})
+    install(
+      TARGETS
+        grpcclient
+        grpcclient_static
+
+      EXPORT
+        triton-client-targets
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+  endif() # TRITON_ENABLE_CC_GRPC
+
+  if(${TRITON_ENABLE_CC_HTTP})
+    install(
+      TARGETS
+        httpclient
+        httpclient_static
+
+      EXPORT
+        triton-client-targets
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+  endif() # TRITON_ENABLE_CC_HTTP
+
+  install(
     EXPORT
       triton-client-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-endif() # TRITON_ENABLE_CC_GRPC
+    FILE
+      TritonClientTargets.cmake
+    NAMESPACE
+      TritonClient::
+    DESTINATION
+      ${INSTALL_CONFIGDIR}
+  )
 
-if(${TRITON_ENABLE_CC_HTTP})
-  install(
-    TARGETS
-      httpclient
-      httpclient_static
-
-    EXPORT
-      triton-client-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-endif() # TRITON_ENABLE_CC_HTTP
-
-install(
-  EXPORT
-    triton-client-targets
-  FILE
-    TritonClientTargets.cmake
-  NAMESPACE
-    TritonClient::
-  DESTINATION
-    ${INSTALL_CONFIGDIR}
-)
-
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/TritonClientConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/TritonClientConfig.cmake
-  INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
-)
-
-install(
-  FILES
+  include(CMakePackageConfigHelpers)
+  configure_package_config_file(
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/TritonClientConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/TritonClientConfig.cmake
-  DESTINATION
-    ${INSTALL_CONFIGDIR}
-)
+    INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
+  )
 
-#
-# Export from build tree
-#
-export(
-  EXPORT
-    triton-client-targets
-  FILE
-    ${CMAKE_CURRENT_BINARY_DIR}/TritonClientTargets.cmake
-  NAMESPACE
-    TritonClient::
-)
+  install(
+    FILES
+      ${CMAKE_CURRENT_BINARY_DIR}/TritonClientConfig.cmake
+    DESTINATION
+      ${INSTALL_CONFIGDIR}
+  )
 
-export(PACKAGE TritonClient)
+  #
+  # Export from build tree
+  #
+  export(
+    EXPORT
+      triton-client-targets
+    FILE
+      ${CMAKE_CURRENT_BINARY_DIR}/TritonClientTargets.cmake
+    NAMESPACE
+      TritonClient::
+  )
+
+  export(PACKAGE TritonClient)
+
+endif() # ${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC}

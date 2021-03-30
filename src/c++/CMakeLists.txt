@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,13 +24,89 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required(VERSION 3.17)
 
-add_subdirectory(library)
-if(NOT ${TRITON_CLIENT_SKIP_EXAMPLES})
-  add_subdirectory(examples)
+project(cc-clients LANGUAGES C CXX)
+
+#
+# Options
+#
+option(TRITON_ENABLE_CC_HTTP "Build C++ HTTP client libraries" OFF)
+option(TRITON_ENABLE_CC_GRPC "Build C++ GRPC client libraries" OFF)
+option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
+option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
+option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
+option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
+
+set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+#
+# Dependencies
+#
+include(FetchContent)
+
+FetchContent_Declare(
+  repo-common
+  GIT_REPOSITORY https://github.com/triton-inference-server/common.git
+  GIT_TAG ${TRITON_COMMON_REPO_TAG}
+  GIT_SHALLOW ON
+)
+
+if(TRITON_ENABLE_CC_GRPC)
+  set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+  set(TRITON_COMMON_ENABLE_GRPC ON)
+endif() # TRITON_ENABLE_CC_GRPC
+
+FetchContent_MakeAvailable(repo-common)
+
+#
+# CUDA
+#
+if(${TRITON_ENABLE_GPU})
+  find_package(CUDAToolkit REQUIRED)
+endif() # TRITON_ENABLE_GPU
+
+#
+# libcurl
+#
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
+  find_package(CURL REQUIRED)
+  message(STATUS "Using curl ${CURL_VERSION}")
+endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER
+
+#
+# Protobuf
+#
+if(TRITON_ENABLE_CC_GRPC)
+  set(protobuf_MODULE_COMPATIBLE TRUE CACHE BOOL "protobuf_MODULE_COMPATIBLE" FORCE)
+  find_package(Protobuf CONFIG REQUIRED)
+  message(STATUS "Using protobuf ${Protobuf_VERSION}")
+  include_directories(${Protobuf_INCLUDE_DIRS})
+endif() # TRITON_ENABLE_CC_GRPC
+
+#
+# GRPC
+#
+if(TRITON_ENABLE_CC_GRPC)
+  find_package(gRPC CONFIG REQUIRED)
+  message(STATUS "Using gRPC ${gRPC_VERSION}")
+  include_directories($<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
+endif() # TRITON_ENABLE_CC_GRPC
+
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
+  add_subdirectory(library)
+  if(TRITON_ENABLE_EXAMPLES)
+    add_subdirectory(examples)
+  endif() # TRITON_ENABLE_EXAMPLES
+  if(TRITON_ENABLE_TESTS)
+    add_subdirectory(tests)
+  endif() # TRITON_ENABLE_TESTS
+endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC
+
+if(TRITON_ENABLE_PERF_ANALYZER)
   add_subdirectory(perf_analyzer)
-  # FIXME: Control building the client test with a
-  # separate cmake flag.
-  add_subdirectory(tests)
-endif() # TRITON_CLIENT_SKIP_EXAMPLES
+endif() # TRITON_ENABLE_PERF_ANALYZER

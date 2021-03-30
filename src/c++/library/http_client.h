@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,92 +27,72 @@
 
 /// \file
 
-#cmakedefine TRITON_CLIENT_HEADER_FLAT 1
-
-#include <queue>
-#ifdef TRITON_CLIENT_HEADER_FLAT
+#include <map>
+#include <memory>
 #include "common.h"
 #include "ipc.h"
-#include "grpc_service.grpc.pb.h"
-#include "model_config.pb.h"
-#else
-#include "src/clients/c++/library/common.h"
-#include "src/clients/c++/library/ipc.h"
-#include "src/core/grpc_service.grpc.pb.h"
-#include "src/core/model_config.pb.h"
-#endif
 
 namespace nvidia { namespace inferenceserver { namespace client {
 
-/// The key-value map type to be included in the request
-/// metadata
-typedef std::map<std::string, std::string> Headers;
+class HttpInferRequest;
 
-struct SslOptions {
-  explicit SslOptions() {}
-  // File containing the PEM encoding of the server root certificates.
-  // If this parameter is empty, the default roots will be used. The
-  // default roots can be overridden using the
-  // GRPC_DEFAULT_SSL_ROOTS_FILE_PATH environment variable pointing
-  // to a file on the file system containing the roots.
-  std::string root_certificates;
-  // File containing the PEM encoding of the client's private key.
-  // This parameter can be empty if the client does not have a
-  // private key.
-  std::string private_key;
-  // File containing the PEM encoding of the client's certificate chain.
-  // This parameter can be empty if the client does not have a
-  // certificate chain.
-  std::string certificate_chain;
-};
+/// The key-value map type to be included in the request
+/// as custom headers.
+typedef std::map<std::string, std::string> Headers;
+/// The key-value map type to be included as URL parameters.
+typedef std::map<std::string, std::string> Parameters;
 
 //==============================================================================
-/// An InferenceServerGrpcClient object is used to perform any kind of
-/// communication with the InferenceServer using gRPC protocol.  Most
-/// of the methods are thread-safe except Infer, AsyncInfer, StartStream
-/// StopStream and AsyncStreamInfer. Calling these functions from different
-/// threads will cause undefined behavior.
+/// An InferenceServerHttpClient object is used to perform any kind of
+/// communication with the InferenceServer using HTTP protocol. None
+/// of the methods of InferenceServerHttpClient are thread safe. The
+/// class is intended to be used by a single thread and simultaneously
+/// calling different methods with different threads is not supported
+/// and will cause undefined behavior.
 ///
 /// \code
-///   std::unique_ptr<InferenceServerGrpcClient> client;
-///   InferenceServerGrpcClient::Create(&client, "localhost:8001");
+///   std::unique_ptr<InferenceServerHttpClient> client;
+///   InferenceServerHttpClient::Create(&client, "localhost:8000");
 ///   bool live;
 ///   client->IsServerLive(&live);
 ///   ...
 ///   ...
 /// \endcode
 ///
-class InferenceServerGrpcClient : public InferenceServerClient {
+class InferenceServerHttpClient : public InferenceServerClient {
  public:
-  ~InferenceServerGrpcClient();
+  ~InferenceServerHttpClient();
 
   /// Create a client that can be used to communicate with the server.
-  /// \param client Returns a new InferenceServerGrpcClient object.
-  /// \param server_url The inference server name and port.
+  /// \param client Returns a new InferenceServerHttpClient object.
+  /// \param server_url The inference server name, port and optional
+  /// base path in the following format: host:port/<base-path>.
   /// \param verbose If true generate verbose output when contacting
   /// the inference server.
-  /// \param use_ssl If true use encrypted channel to the server.
-  /// \param ssl_options Specifies the files required for
-  /// SSL encryption and authorization.
   /// \return Error object indicating success or failure.
   static Error Create(
-      std::unique_ptr<InferenceServerGrpcClient>* client,
-      const std::string& server_url, bool verbose = false, bool use_ssl = false,
-      const SslOptions& ssl_options = SslOptions());
+      std::unique_ptr<InferenceServerHttpClient>* client,
+      const std::string& server_url, bool verbose = false);
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
   /// \return Error object indicating success or failure of the request.
-  Error IsServerLive(bool* live, const Headers& headers = Headers());
+  Error IsServerLive(
+      bool* live, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get its readiness.
   /// \param ready Returns whether the server is ready or not.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
-  Error IsServerReady(bool* ready, const Headers& headers = Headers());
+  Error IsServerReady(
+      bool* ready, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the readiness of specified model.
   /// \param ready Returns whether the specified model is ready or not.
@@ -121,84 +101,100 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// The default value is an empty string which means then the server will
   /// choose a version based on the model and internal policy.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error IsModelReady(
       bool* ready, const std::string& model_name,
-      const std::string& model_version = "",
-      const Headers& headers = Headers());
+      const std::string& model_version = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get its metadata.
-  /// \param server_metadata Returns the server metadata as
-  /// SeverMetadataResponse message.
-  /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// \param server_metadata Returns JSON representation of the
+  /// metadata as a string.
+  /// \param headers Optional map specifying additional HTTP headers to
+  /// include in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error ServerMetadata(
-      inference::ServerMetadataResponse* server_metadata,
-      const Headers& headers = Headers());
+      std::string* server_metadata, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the metadata of specified model.
-  /// \param model_metadata Returns model metadata as ModelMetadataResponse
-  /// message.
+  /// \param model_metadata Returns JSON representation of model
+  /// metadata as a string.
   /// \param model_name The name of the model to get metadata.
   /// \param model_version The version of the model to get metadata.
   /// The default value is an empty string which means then the server will
   /// choose a version based on the model and internal policy.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error ModelMetadata(
-      inference::ModelMetadataResponse* model_metadata,
-      const std::string& model_name, const std::string& model_version = "",
-      const Headers& headers = Headers());
+      std::string* model_metadata, const std::string& model_name,
+      const std::string& model_version = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the configuration of specified model.
-  /// \param model_config Returns model config as ModelConfigResponse
-  /// message.
+  /// \param model_config Returns JSON representation of model
+  /// configuration as a string.
   /// \param model_name The name of the model to get configuration.
   /// \param model_version The version of the model to get configuration.
   /// The default value is an empty string which means then the server will
   /// choose a version based on the model and internal policy.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error ModelConfig(
-      inference::ModelConfigResponse* model_config,
-      const std::string& model_name, const std::string& model_version = "",
-      const Headers& headers = Headers());
+      std::string* model_config, const std::string& model_name,
+      const std::string& model_version = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the index of model repository
   /// contents.
-  /// \param repository_index Returns the repository index as
-  /// RepositoryIndexRequestResponse
+  /// \param repository_index Returns JSON representation of the
+  /// repository index as a string.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error ModelRepositoryIndex(
-      inference::RepositoryIndexResponse* repository_index,
-      const Headers& headers = Headers());
+      std::string* repository_index, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the inference server to load or reload specified model.
   /// \param model_name The name of the model to be loaded or reloaded.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
-      const std::string& model_name, const Headers& headers = Headers());
+      const std::string& model_name, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the inference server to unload specified model.
   /// \param model_name The name of the model to be unloaded.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error UnloadModel(
-      const std::string& model_name, const Headers& headers = Headers());
+      const std::string& model_name, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the inference statistics for the
   /// specified model name and version.
-  /// \param infer_stat The inference statistics of requested model name and
-  /// version.
+  /// \param infer_stat Returns the JSON representation of the
+  /// inference statistics as a string.
   /// \param model_name The name of the model to get inference statistics. The
   /// default value is an empty string which means statistics of all models will
   /// be returned in the response.
@@ -206,26 +202,31 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// The default value is an empty string which means then the server will
   /// choose a version based on the model and internal policy.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error ModelInferenceStatistics(
-      inference::ModelStatisticsResponse* infer_stat,
-      const std::string& model_name = "", const std::string& model_version = "",
-      const Headers& headers = Headers());
+      std::string* infer_stat, const std::string& model_name = "",
+      const std::string& model_version = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the status for requested system
   /// shared memory.
-  /// \param status The system shared memory status as
-  /// SystemSharedMemoryStatusResponse
+  /// \param status Returns the JSON representation of the system
+  /// shared memory status as a string.
   /// \param region_name The name of the region to query status. The default
   /// value is an empty string, which means that the status of all active system
   /// shared memory will be returned.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error SystemSharedMemoryStatus(
-      inference::SystemSharedMemoryStatusResponse* status,
-      const std::string& region_name = "", const Headers& headers = Headers());
+      std::string* status, const std::string& region_name = "",
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the server to register a system shared memory with the provided
   /// details.
@@ -236,11 +237,14 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param offset Offset, in bytes, within the underlying memory object to
   /// the start of the system shared memory region. The default value is zero.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request
   Error RegisterSystemSharedMemory(
       const std::string& name, const std::string& key, const size_t byte_size,
-      const size_t offset = 0, const Headers& headers = Headers());
+      const size_t offset = 0, const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the server to unregister a system shared memory with the
   /// specified name.
@@ -248,24 +252,30 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// empty string which means all the system shared memory regions will be
   /// unregistered.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request
   Error UnregisterSystemSharedMemory(
-      const std::string& name = "", const Headers& headers = Headers());
+      const std::string& name = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Contact the inference server and get the status for requested CUDA
   /// shared memory.
-  /// \param status The CUDA shared memory status as
-  /// CudaSharedMemoryStatusResponse
+  /// \param status Returns the JSON representation of the CUDA shared
+  /// memory status as a string.
   /// \param region_name The name of the region to query status. The default
   /// value is an empty string, which means that the status of all active CUDA
   /// shared memory will be returned.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request.
   Error CudaSharedMemoryStatus(
-      inference::CudaSharedMemoryStatusResponse* status,
-      const std::string& region_name = "", const Headers& headers = Headers());
+      std::string* status, const std::string& region_name = "",
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the server to register a CUDA shared memory with the provided
   /// details.
@@ -275,36 +285,42 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// created.
   /// \param byte_size The size of the CUDA shared memory region, in
   /// bytes.
-  /// \param headers Optional map specifying additional HTTP headers to
-  /// include in the metadata of gRPC request.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request
   Error RegisterCudaSharedMemory(
       const std::string& name, const cudaIpcMemHandle_t& cuda_shm_handle,
       const size_t device_id, const size_t byte_size,
-      const Headers& headers = Headers());
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Request the server to unregister a CUDA shared memory with the
   /// specified name.
   /// \param name The name of the region to unregister. The default value is
   /// empty string which means all the CUDA shared memory regions will be
   /// unregistered.
-  /// \param headers Optional map specifying additional HTTP headers to
-  /// include in the metadata of gRPC request.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the request
   Error UnregisterCudaSharedMemory(
-      const std::string& name = "", const Headers& headers = Headers());
+      const std::string& name = "", const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Run synchronous inference on server.
   /// \param result Returns the result of inference.
   /// \param options The options for inference request.
   /// \param inputs The vector of InferInput describing the model inputs.
-  /// \param outputs Optional vector of InferRequestedOutput describing how the
-  /// output must be returned. If not provided then all the outputs in the model
-  /// config will be returned as default settings.
+  /// \param outputs The vector of InferRequestedOutput describing how the
+  /// output must be returned. If not provided then all the outputs in the
+  /// model config will be returned as default settings.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
-  /// \param compression_algorithm The compression algorithm to be used
-  /// by gRPC when sending requests. By default compression is not used.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
   /// \return Error object indicating success or failure of the
   /// request.
   Error Infer(
@@ -312,8 +328,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
-      const Headers& headers = Headers(), 
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
 
   /// Run asynchronous inference on server.
   /// Once the request is completed, the InferResult pointer will be passed to
@@ -323,98 +339,69 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// results inside the callback function or deferring it to a different thread
   /// so that the client is unblocked. In order to prevent memory leak, user
   /// must ensure this object gets deleted.
+  /// Note: InferInput::AppendRaw() or InferInput::SetSharedMemory() calls do
+  /// not copy the data buffers but hold the pointers to the data directly.
+  /// It is advisable to not to disturb the buffer contents until the respective
+  /// callback is invoked.
   /// \param callback The callback function to be invoked on request completion.
   /// \param options The options for inference request.
   /// \param inputs The vector of InferInput describing the model inputs.
-  /// \param outputs Optional vector of InferRequestedOutput describing how the
-  /// output must be returned. If not provided then all the outputs in the model
-  /// config will be returned as default settings.
+  /// \param outputs The vector of InferRequestedOutput describing how the
+  /// output must be returned. If not provided then all the outputs in the
+  /// model config will be returned as default settings.
   /// \param headers Optional map specifying additional HTTP headers to include
-  /// in the metadata of gRPC request.
-  /// \param compression_algorithm The compression algorithm to be used
-  /// by gRPC when sending requests. By default compression is not used.
-  /// \return Error object indicating success or failure of the request.
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
+  /// \return Error object indicating success
+  /// or failure of the request.
   Error AsyncInfer(
       OnCompleteFn callback, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
-
-  /// Starts a grpc bi-directional stream to send streaming inferences.
-  /// \param callback The callback function to be invoked on receiving a
-  /// response at the stream.
-  /// \param enable_stats Indicates whether client library should record the
-  /// the client-side statistics for inference requests on stream or not.
-  /// The library does not support client side statistics for decoupled
-  /// streaming. Set this option false when there is no 1:1 mapping between
-  /// request and response on the stream.
-  /// \param stream_timeout Specifies the end-to-end timeout for the streaming
-  /// connection in microseconds. The default value is 0 which means that
-  /// there is no limitation on deadline. The stream will be closed once
-  /// the specified time elapses.
-  /// \param headers Optional map specifying additional HTTP headers to
-  /// include in the metadata of gRPC request.
-  /// \param compression_algorithm The compression algorithm to be used
-  /// by gRPC when sending requests. By default compression is not used.
-  /// \return Error object indicating success or failure of the request.
-  Error StartStream(
-      OnCompleteFn callback, bool enable_stats = true,
-      uint32_t stream_timeout = 0, const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
-
-  /// Stops an active grpc bi-directional stream, if one available.
-  /// \return Error object indicating success or failure of the request.
-  Error StopStream();
-
-  /// Runs an asynchronous inference over gRPC bi-directional streaming
-  /// API. A stream must be established with a call to StartStream()
-  /// before calling this function. All the results will be provided to the
-  /// callback function provided when starting the stream.
-  /// \param options The options for inference request.
-  /// \param inputs The vector of InferInput describing the model inputs.
-  /// \param outputs Optional vector of InferRequestedOutput describing how the
-  /// output must be returned. If not provided then all the outputs in the model
-  /// config will be returned as default settings.
-  /// \return Error object indicating success or failure of the request.
-  Error AsyncStreamInfer(
-      const InferOptions& options, const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs =
-          std::vector<const InferRequestedOutput*>());
+      const Parameters& query_params = Parameters());
 
  private:
-  InferenceServerGrpcClient(
-      const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options);
+  InferenceServerHttpClient(const std::string& url, bool verbose);
+
   Error PreRunProcessing(
-      const InferOptions& options, const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs);
+      void* curl, std::string& request_uri, const InferOptions& options,
+      const std::vector<InferInput*>& inputs,
+      const std::vector<const InferRequestedOutput*>& outputs,
+      const Headers& headers, const Parameters& query_params,
+      std::shared_ptr<HttpInferRequest>& request);
   void AsyncTransfer();
-  void AsyncStreamTransfer();
+  Error Get(
+      std::string& request_uri, const Headers& headers,
+      const Parameters& query_params, std::string* response,
+      long* http_code = nullptr);
+  Error Post(
+      std::string& request_uri, const std::string& request,
+      const Headers& headers, const Parameters& query_params,
+      std::string* response);
 
-  // The producer-consumer queue used to communicate asynchronously with
-  // the GRPC runtime.
-  grpc::CompletionQueue async_request_completion_queue_;
+  static size_t ResponseHandler(
+      void* contents, size_t size, size_t nmemb, void* userp);
+  static size_t InferRequestProvider(
+      void* contents, size_t size, size_t nmemb, void* userp);
+  static size_t InferResponseHeaderHandler(
+      void* contents, size_t size, size_t nmemb, void* userp);
+  static size_t InferResponseHandler(
+      void* contents, size_t size, size_t nmemb, void* userp);
 
-  // Required to support the grpc bi-directional streaming API.
-  InferenceServerClient::OnCompleteFn stream_callback_;
-  std::thread stream_worker_;
-  std::shared_ptr<grpc::ClientReaderWriter<
-      inference::ModelInferRequest, inference::ModelStreamInferResponse>>
-      grpc_stream_;
-  grpc::ClientContext grpc_context_;
+  // The server url
+  const std::string url_;
 
-  bool enable_stream_stats_;
-  std::queue<std::unique_ptr<RequestTimers>> ongoing_stream_request_timers_;
-  std::mutex stream_mutex_;
-
-  // GRPC end point.
-  std::shared_ptr<inference::GRPCInferenceService::Stub> stub_;
-  // request for GRPC call, one request object can be used for multiple calls
-  // since it can be overwritten as soon as the GRPC send finishes.
-  inference::ModelInferRequest infer_request_;
+  using AsyncReqMap = std::map<uintptr_t, std::shared_ptr<HttpInferRequest>>;
+  // curl easy handle shared for all synchronous requests
+  void* easy_handle_;
+  // curl multi handle for processing asynchronous requests
+  void* multi_handle_;
+  // map to record ongoing asynchronous requests with pointer to easy handle
+  // or tag id as key
+  AsyncReqMap ongoing_async_requests_;
 };
-
 
 }}}  // namespace nvidia::inferenceserver::client

@@ -98,12 +98,12 @@ if (NOT WIN32)
         cshm
         ${WHEEL_DEPENDS}
   )
-  if(NOT ${TRITON_CLIENT_SKIP_EXAMPLES})
+  if(${TRITON_ENABLE_PERF_ANALYZER})
     set(X86LINUX_WHEEL_DEPENDS
         perf_analyzer
         ${X86LINUX_WHEEL_DEPENDS}
     )
-  endif() # TRITON_CLIENT_SKIP_EXAMPLES
+  endif() # TRITON_ENABLE_PERF_ANALYZER
 
   if(${TRITON_ENABLE_GPU})
     set(LINUX_WHEEL_DEPENDS
