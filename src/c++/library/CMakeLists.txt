@@ -28,7 +28,7 @@ cmake_minimum_required (VERSION 3.18)
 
 find_package(Threads REQUIRED)
 
-if(${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_CC_GRPC})
   #
   # libgrpcclient.so and libgrpcclient_static.a
   #
@@ -199,9 +199,9 @@ if(${TRITON_ENABLE_GRPC})
       DESTINATION include
   )
 
-endif() # TRITON_ENABLE_GRPC
+endif() # TRITON_ENABLE_CC_GRPC
 
-if(${TRITON_ENABLE_HTTP})
+if(${TRITON_ENABLE_CC_HTTP})
   #
   # libhttpclient.so and libhttpclient_static.a
   #
@@ -345,30 +345,72 @@ if(${TRITON_ENABLE_HTTP})
       LIBRARY DESTINATION lib
       ARCHIVE DESTINATION lib
   )
-endif() # TRITON_ENABLE_HTTP
+endif() # TRITON_ENABLE_CC_HTTP
 
-# cmake configuration
-include (CMakePackageConfigHelpers)
-set(_LIB_CMAKE_DIR lib/cmake/TRITON)
+include(GNUInstallDirs)
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/TritonClient)
+
+if(${TRITON_ENABLE_CC_GRPC})
+  install(
+    TARGETS
+      grpcclient
+      grpcclient_static
+
+    EXPORT
+      triton-client-targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+endif() # TRITON_ENABLE_CC_GRPC
+
+if(${TRITON_ENABLE_CC_HTTP})
+  install(
+    TARGETS
+      httpclient
+      httpclient_static
+
+    EXPORT
+      triton-client-targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+endif() # TRITON_ENABLE_CC_HTTP
+
 install(
-  EXPORT triton-export
-  FILE TRITONTargets.cmake
-  NAMESPACE TRITON::
-  DESTINATION ${_LIB_CMAKE_DIR}
+  EXPORT
+    triton-client-targets
+  FILE
+    TritonClientTargets.cmake
+  NAMESPACE
+    TritonClient::
+  DESTINATION
+    ${INSTALL_CONFIGDIR}
 )
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/TRITONConfigVersion.cmake
-  VERSION ${TRITON_VERSION}
-  COMPATIBILITY ExactVersion
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  ${CMAKE_CURRENT_LIST_DIR}/cmake/TritonClientConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/TritonClientConfig.cmake
+  INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
 )
-configure_package_config_file (
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/TRITONConfig.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/TRITONConfig.cmake
-  INSTALL_DESTINATION ${_LIB_CMAKE_DIR}
-)
+
 install(
   FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/TRITONConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/TRITONConfigVersion.cmake
-  DESTINATION ${_LIB_CMAKE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/TritonClientConfig.cmake
+  DESTINATION
+    ${INSTALL_CONFIGDIR}
 )
+
+#
+# Export from build tree
+#
+export(
+  EXPORT
+    triton-client-targets
+  FILE
+    ${CMAKE_CURRENT_BINARY_DIR}/TritonClientTargets.cmake
+  NAMESPACE
+    TritonClient::
+)
+
+export(PACKAGE TritonClient)

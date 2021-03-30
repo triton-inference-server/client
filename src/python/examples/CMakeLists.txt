@@ -26,7 +26,7 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-if(${TRITON_ENABLE_HTTP})
+if(${TRITON_ENABLE_CC_HTTP})
   install(
     PROGRAMS
       simple_http_health_metadata.py
@@ -46,7 +46,7 @@ if(${TRITON_ENABLE_HTTP})
       DESTINATION python
     )
   endif() # TRITON_ENABLE_GPU
-endif() # TRITON_ENABLE_HTTP
+endif() # TRITON_ENABLE_CC_HTTP
 
 if(${TRITON_ENABLE_GRPC})
   install(
@@ -77,7 +77,7 @@ if(${TRITON_ENABLE_GRPC})
   endif() # TRITON_ENABLE_GPU
 endif() # TRITON_ENABLE_GRPC
 
-if(${TRITON_ENABLE_HTTP} OR ${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
   install(
     PROGRAMS
       ensemble_image_client.py
@@ -86,4 +86,4 @@ if(${TRITON_ENABLE_HTTP} OR ${TRITON_ENABLE_GRPC})
       memory_growth_test.py
     DESTINATION python
   )
-endif() # TRITON_ENABLE_HTTP || TRITON_ENABLE_GRPC
+endif() # TRITON_ENABLE_CC_HTTP || TRITON_ENABLE_CC_GRPC

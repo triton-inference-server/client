@@ -31,12 +31,12 @@ add_subdirectory(tritonclient)
 # Needed for the backwards-compatibility
 # Remove when moving completely to the
 # new structure.
-if(${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_CC_GRPC})
   file(COPY tritongrpcclient DESTINATION .)
-endif() # TRITON_ENABLE_GRPC
-if(${TRITON_ENABLE_HTTP})
+endif() # TRITON_ENABLE_CC_GRPC
+if(${TRITON_ENABLE_CC_HTTP})
   file(COPY tritonhttpclient DESTINATION .)
-endif() # TRITON_ENABLE_HTTP
+endif() # TRITON_ENABLE_CC_HTTP
 file(COPY tritonclientutils DESTINATION .)
 if (NOT WIN32)
   file(COPY tritonshmutils DESTINATION .)
@@ -63,12 +63,12 @@ if(${TRITON_ENABLE_GRPC})
   )
 endif() # TRITON_ENABLE_GRPC
 
-if(${TRITON_ENABLE_HTTP})
+if(${TRITON_ENABLE_CC_HTTP})
   set(WHEEL_DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/tritonclient/http
         ${WHEEL_DEPENDS}
   )
-endif() # TRITON_ENABLE_HTTP
+endif() # TRITON_ENABLE_CC_HTTP
 
 #
 # Generic Wheel file
