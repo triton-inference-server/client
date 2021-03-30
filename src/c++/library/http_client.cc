@@ -26,17 +26,16 @@
 
 // Include this first to make sure we are a friend of common classes.
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
-#include "src/clients/c++/library/common.h"
-
-#include "src/clients/c++/library/http_client.h"
+#include "common.h"
 
 #include <curl/curl.h>
 #include <cstdint>
 #include <iostream>
 #include <queue>
+#include "http_client.h"
 
 extern "C" {
-#include <src/clients/c++/library/cencode.h>
+#include "cencode.h"
 }
 
 #define TRITONJSON_STATUSTYPE nvidia::inferenceserver::client::Error

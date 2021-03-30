@@ -26,9 +26,7 @@
 
 // Include this first to make sure we are a friend of common classes.
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerGrpcClient
-#include "src/clients/c++/library/common.h"
-
-#include "src/clients/c++/library/grpc_client.h"
+#include "common.h"
 
 #include <grpcpp/grpcpp.h>
 #include <chrono>
@@ -38,6 +36,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include "grpc_client.h"
 
 namespace nvidia { namespace inferenceserver { namespace client {
 namespace {
