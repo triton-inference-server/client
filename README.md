@@ -29,3 +29,5 @@
 [![License](https://img.shields.io/badge/License-BSD3-lightgrey.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # Triton Clients
+
+cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_COMMON_REPO_TAG=davidg-client -DTRITON_THIRD_PARTY_REPO_TAG=davidg-client -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON -DTRITON_ENABLE_PERF_ANALYZER=ON /opt/client
