@@ -28,7 +28,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/rapidjson.h>
 #include <string>
-#include "src/clients/c++/library/common.h"
+#include "common.h"
 
 namespace nvidia { namespace inferenceserver { namespace client {
 

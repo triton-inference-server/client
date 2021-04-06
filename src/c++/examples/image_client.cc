@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -37,9 +37,9 @@
 #include <mutex>
 #include <queue>
 #include <string>
-#include "src/clients/c++/examples/json_utils.h"
-#include "src/clients/c++/library/grpc_client.h"
-#include "src/clients/c++/library/http_client.h"
+#include "grpc_client.h"
+#include "http_client.h"
+#include "json_utils.h"
 
 #include <opencv2/core/version.hpp>
 #if CV_MAJOR_VERSION == 2

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,9 +32,9 @@
 #include <iterator>
 #include <sstream>
 #include <string>
-#include "src/clients/c++/examples/json_utils.h"
-#include "src/clients/c++/library/grpc_client.h"
-#include "src/clients/c++/library/http_client.h"
+#include "grpc_client.h"
+#include "http_client.h"
+#include "json_utils.h"
 
 namespace ni = nvidia::inferenceserver;
 namespace nic = nvidia::inferenceserver::client;

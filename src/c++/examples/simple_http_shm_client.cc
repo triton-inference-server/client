@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
 #include <unistd.h>
 #include <iostream>
 #include <string>
-#include "src/clients/c++/examples/shm_utils.h"
-#include "src/clients/c++/library/http_client.h"
+#include "http_client.h"
+#include "shm_utils.h"
 
 namespace ni = nvidia::inferenceserver;
 namespace nic = nvidia::inferenceserver::client;
