@@ -28,6 +28,16 @@ cmake_minimum_required (VERSION 3.18)
 
 find_package(Threads REQUIRED)
 
+add_library(
+    client-common-library INTERFACE
+)
+
+target_include_directories(
+  client-common-library
+  INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+)
+
 if(${TRITON_ENABLE_CC_GRPC})
   #
   # libgrpcclient.so and libgrpcclient_static.a
@@ -134,9 +144,10 @@ if(${TRITON_ENABLE_CC_GRPC})
       ${_client_target}
       PUBLIC
         $<INSTALL_INTERFACE:include>
-      PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<TARGET_PROPERTY:proto-library,INCLUDE_DIRECTORIES>
         $<TARGET_PROPERTY:grpc-service-library,INCLUDE_DIRECTORIES>
+      PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
@@ -286,6 +297,7 @@ if(${TRITON_ENABLE_CC_HTTP})
       ${_client_target}
       PUBLIC
         $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -24,13 +24,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "shm_utils.h"
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <iostream>
 #include <string>
-
-#include "src/clients/c++/examples/shm_utils.h"
 
 namespace nvidia { namespace inferenceserver { namespace client {
 

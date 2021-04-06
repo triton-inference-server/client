@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,10 +27,11 @@
 cmake_minimum_required (VERSION 3.18)
 
 if(WIN32)
-  message("Currently, CMake will not build perf_analyzer because it uses functionalities that "
-		      "are UNIX specific.")
+  message("C++ tests are not currently supported on Windows because "
+          "they require functionalities that are UNIX specific.")
 else()
 
+if(TRITON_ENABLE_CC_HTTP AND TRITON_ENABLE_CC_GRPC)
 #
 # client_timeout_test
 #
@@ -41,8 +42,9 @@ add_executable(
 
 target_link_libraries(
   client_timeout_test
-  PRIVATE TRITON::grpcclient_static
-  PRIVATE TRITON::httpclient_static
+  PRIVATE
+    grpcclient_static
+    httpclient_static
 )
 install(
   TARGETS client_timeout_test
@@ -59,12 +61,14 @@ add_executable(
 
 target_link_libraries(
   memory_leak_test
-  PRIVATE TRITON::grpcclient_static
-  PRIVATE TRITON::httpclient_static
+  PRIVATE
+    grpcclient_static
+    httpclient_static
 )
 install(
   TARGETS memory_leak_test
   RUNTIME DESTINATION bin
 )
+endif() # TRITON_ENABLE_CC_HTTP AND TRITON_ENABLE_CC_GRPC
 
 endif()
