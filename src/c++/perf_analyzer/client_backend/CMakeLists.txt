@@ -36,13 +36,11 @@ add_subdirectory(torchserve)
 set(
   CLIENT_BACKEND_SRCS
   client_backend.cc
-  ../../examples/shm_utils.cc
 )
 
 set(
   CLIENT_BACKEND_HDRS
   client_backend.h
-  ../../examples/shm_utils.h
 )
 
 add_library(
@@ -52,6 +50,7 @@ add_library(
   $<TARGET_OBJECTS:triton-client-backend-library>
   $<TARGET_OBJECTS:tfs-client-backend-library>
   $<TARGET_OBJECTS:ts-client-backend-library>
+  $<TARGET_OBJECTS:shm-utils-library>
 )
 
 target_link_libraries(

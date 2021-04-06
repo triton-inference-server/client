@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,13 +26,11 @@
 #pragma once
 
 #include <string>
-
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
-
-#include "src/clients/c++/examples/shm_utils.h"
-#include "src/clients/c++/library/grpc_client.h"
-#include "src/clients/c++/library/http_client.h"
+#include "../client_backend.h"
+#include "../../perf_utils.h"
+#include "shm_utils.h"
+#include "grpc_client.h"
+#include "http_client.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \

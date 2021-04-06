@@ -26,10 +26,10 @@
 #pragma once
 
 #include <thread>
-#include "src/clients/c++/perf_analyzer/concurrency_manager.h"
-#include "src/clients/c++/perf_analyzer/custom_load_manager.h"
-#include "src/clients/c++/perf_analyzer/model_parser.h"
-#include "src/clients/c++/perf_analyzer/request_rate_manager.h"
+#include "concurrency_manager.h"
+#include "custom_load_manager.h"
+#include "model_parser.h"
+#include "request_rate_manager.h"
 
 namespace perfanalyzer {
 

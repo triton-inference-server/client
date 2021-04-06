@@ -26,8 +26,8 @@
 #pragma once
 
 #include <fstream>
-#include "src/clients/c++/perf_analyzer/model_parser.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
+#include "model_parser.h"
+#include "perf_utils.h"
 
 namespace perfanalyzer {
 

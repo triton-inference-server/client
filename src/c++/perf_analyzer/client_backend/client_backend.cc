@@ -24,10 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/client_backend/tensorflow_serving/tfserve_client_backend.h"
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/torchserve_client_backend.h"
-#include "src/clients/c++/perf_analyzer/client_backend/triton/triton_client_backend.h"
+#include "client_backend.h"
+
+#include "tensorflow_serving/tfserve_client_backend.h"
+#include "torchserve/torchserve_client_backend.h"
+#include "triton/triton_client_backend.h"
 
 namespace perfanalyzer { namespace clientbackend {
 

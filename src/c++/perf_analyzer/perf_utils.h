@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -37,8 +37,6 @@
 #include <memory>
 #include <random>
 
-#include "src/core/constants.h"
-
 #define RETURN_IF_ERROR(S)           \
   do {                               \
     const cb::Error& status__ = (S); \
@@ -60,6 +58,13 @@ namespace cb = perfanalyzer::clientbackend;
 namespace pa = perfanalyzer;
 
 namespace perfanalyzer {
+
+constexpr uint64_t NANOS_PER_SECOND = 1000000000;
+constexpr uint64_t NANOS_PER_MILLIS = 1000000;
+#define TIMESPEC_TO_NANOS(TS) \
+  ((TS).tv_sec * perfanalyzer::NANOS_PER_SECOND + (TS).tv_nsec)
+#define TIMESPEC_TO_MILLIS(TS) \
+  (TIMESPEC_TO_NANOS(TS) / perfanalyzer::NANOS_PER_MILLIS)
 
 //==============================================================================
 using TimestampVector =

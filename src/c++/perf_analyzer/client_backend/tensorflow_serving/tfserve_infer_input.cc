@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/tensorflow_serving/tfserve_infer_input.h"
+#include "tfserve_infer_input.h"
 
 namespace perfanalyzer { namespace clientbackend {
 

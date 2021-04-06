@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
 cmake_minimum_required (VERSION 3.18)
 
 if(WIN32)
-  message("Currently, CMake will not build perf_analyzer because it uses functionalities that "
-		      "are UNIX specific.")
+  message("perf_analyzer is not currently supported on Windows because "
+          "is requires functionalities that are UNIX specific.")
 else()
 
 add_subdirectory(client_backend)

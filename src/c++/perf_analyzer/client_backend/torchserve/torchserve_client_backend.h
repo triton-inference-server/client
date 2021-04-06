@@ -26,11 +26,9 @@
 #pragma once
 
 #include <string>
-
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
-
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/http_client.h"
+#include "../client_backend.h"
+#include "../../perf_utils.h"
+#include "torchserve_http_client.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \

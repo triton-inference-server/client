@@ -25,13 +25,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "src/clients/c++/library/common.h"
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/torchserve_infer_input.h"
-
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "common.h"
+#include "../client_backend.h"
+#include "torchserve_infer_input.h"
+
 
 namespace nic = nvidia::inferenceserver::client;
 

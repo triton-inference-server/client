@@ -27,13 +27,12 @@
 #include <getopt.h>
 #include <signal.h>
 #include <algorithm>
-
-#include "src/clients/c++/perf_analyzer/concurrency_manager.h"
-#include "src/clients/c++/perf_analyzer/custom_load_manager.h"
-#include "src/clients/c++/perf_analyzer/inference_profiler.h"
-#include "src/clients/c++/perf_analyzer/model_parser.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
-#include "src/clients/c++/perf_analyzer/request_rate_manager.h"
+#include "concurrency_manager.h"
+#include "custom_load_manager.h"
+#include "inference_profiler.h"
+#include "model_parser.h"
+#include "perf_utils.h"
+#include "request_rate_manager.h"
 
 namespace perfanalyzer {
 

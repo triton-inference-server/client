@@ -24,10 +24,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/load_manager.h"
-#include "src/clients/c++/examples/shm_utils.h"
+#include "load_manager.h"
 
 #include <algorithm>
+#include "shm_utils.h"
 
 #ifdef TRITON_ENABLE_GPU
 #include <cuda_runtime_api.h>

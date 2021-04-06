@@ -25,13 +25,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/data_loader.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
-
 #include <atomic>
 #include <condition_variable>
 #include <thread>
+#include "client_backend/client_backend.h"
+#include "data_loader.h"
+#include "perf_utils.h"
+
 
 namespace perfanalyzer {
 

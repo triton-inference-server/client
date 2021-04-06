@@ -25,10 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "src/clients/c++/perf_analyzer/load_manager.h"
-
 #include <condition_variable>
 #include <thread>
+#include "load_manager.h"
 
 namespace perfanalyzer {
 

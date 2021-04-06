@@ -86,7 +86,7 @@ set(
     TFS_CLIENT_BACKEND_SRCS
     tfserve_client_backend.cc
     tfserve_infer_input.cc
-    grpc_client.cc
+    tfserve_grpc_client.cc
     ${PB_SOURCES}
     ${PB_GRPC_SOURCES}
 )
@@ -95,9 +95,9 @@ set(
     TFS_CLIENT_BACKEND_HDRS
     tfserve_client_backend.h
     tfserve_infer_input.h
-    grpc_client.h
-    ${PB_HEADERS} 
-    ${PB_GRPC_HEADERS} 
+    tfserve_grpc_client.h
+    ${PB_HEADERS}
+    ${PB_GRPC_HEADERS}
 )
 
 add_library(
@@ -113,7 +113,7 @@ target_link_libraries(
   PUBLIC gRPC::grpc++
   PUBLIC gRPC::grpc
   PUBLIC protobuf::libprotobuf
-  PUBLIC TRITON::grpcclient_static
+  PUBLIC grpcclient_static
 )
 
 if(${TRITON_ENABLE_GPU})

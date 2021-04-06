@@ -30,24 +30,6 @@ if(WIN32)
   message("C++ examples are not currently supported on Windows because "
           "they require functionalities that are UNIX specific.")
 else()
-  #
-  # json_utils
-  #
-  find_package(RapidJSON CONFIG REQUIRED)
-  add_library(
-      json-utils-library EXCLUDE_FROM_ALL OBJECT
-      json_utils.h json_utils.cc
-  )
-  target_include_directories(
-    json-utils-library
-    PUBLIC ${RapidJSON_INCLUDE_DIRS}
-  )
-  target_link_libraries(
-    json-utils-library
-    PRIVATE:
-      client-common-library
-  )
-
 if(TRITON_ENABLE_CC_HTTP AND TRITON_ENABLE_CC_GRPC)
   #
   # image_client
@@ -96,16 +78,11 @@ if(TRITON_ENABLE_CC_HTTP AND TRITON_ENABLE_CC_GRPC)
   #
   # reuse_infer_objects_client
   #
-  set(
-    REUSE_INFER_OBJECTS_CLIENT_SRCS
+  add_executable(
+    reuse_infer_objects_client
     reuse_infer_objects_client.cc
-    shm_utils.cc
+    $<TARGET_OBJECTS:shm-utils-library>
   )
-  set(
-    REUSE_INFER_OBJECTS_CLIENT_HDRS
-    shm_utils.h
-  )
-  add_executable(reuse_infer_objects_client ${REUSE_INFER_OBJECTS_CLIENT_SRCS} ${REUSE_INFER_OBJECTS_CLIENT_HDRS})
   target_link_libraries(
     reuse_infer_objects_client
     PRIVATE
@@ -220,16 +197,11 @@ if(TRITON_ENABLE_CC_GRPC)
   #
   # simple_grpc_shm_client
   #
-  set(
-    SIMPLE_GRPC_SHM_SRCS
+  add_executable(
+    simple_grpc_shm_client
     simple_grpc_shm_client.cc
-    shm_utils.cc
+    $<TARGET_OBJECTS:shm-utils-library>
   )
-  set(
-    SIMPLE_GRPC_SHM_HDRS
-    shm_utils.h
-  )
-  add_executable(simple_grpc_shm_client ${SIMPLE_GRPC_SHM_SRCS} ${SIMPLE_GRPC_SHM_HDRS})
   target_link_libraries(
     simple_grpc_shm_client
     PRIVATE
@@ -376,16 +348,11 @@ if(TRITON_ENABLE_CC_HTTP)
   #
   # simple_http_shm_client
   #
-  set(
-    SIMPLE_HTTP_SHM_SRCS
+  add_executable(
+    simple_http_shm_client
     simple_http_shm_client.cc
-    shm_utils.cc
+    $<TARGET_OBJECTS:shm-utils-library>
   )
-  set(
-    SIMPLE_HTTP_SHM_HDRS
-    shm_utils.h
-  )
-  add_executable(simple_http_shm_client ${SIMPLE_HTTP_SHM_SRCS} ${SIMPLE_HTTP_SHM_HDRS})
   target_link_libraries(
     simple_http_shm_client
     PRIVATE

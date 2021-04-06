@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/inference_profiler.h"
+#include "inference_profiler.h"
 
 #include <math.h>
 #include <algorithm>
@@ -767,7 +767,7 @@ InferenceProfiler::SummarizeClientStat(
   summary.client_stats.delayed_request_count = delayed_request_count;
   summary.client_stats.duration_ns = duration_ns;
   float client_duration_sec = (float)summary.client_stats.duration_ns /
-                              nvidia::inferenceserver::NANOS_PER_SECOND;
+                              perfanalyzer::NANOS_PER_SECOND;
   summary.client_stats.sequence_per_sec =
       valid_sequence_count / client_duration_sec;
   summary.client_stats.infer_per_sec =
