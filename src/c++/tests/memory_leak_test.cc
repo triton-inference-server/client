@@ -25,14 +25,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
-
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <string>
-
-#include "src/clients/c++/library/grpc_client.h"
-#include "src/clients/c++/library/http_client.h"
+#include "grpc_client.h"
+#include "http_client.h"
 
 namespace ni = nvidia::inferenceserver;
 namespace nic = nvidia::inferenceserver::client;
