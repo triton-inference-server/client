@@ -24,11 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/http_client.h"
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/torchserve_client_backend.h"
+#include "torchserve_http_client.h"
 
 #include <chrono>
 #include <cstdint>
+#include "torchserve_client_backend.h"
 
 namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 

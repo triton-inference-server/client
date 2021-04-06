@@ -28,6 +28,9 @@ cmake_minimum_required (VERSION 3.18)
 
 find_package(Threads REQUIRED)
 
+#
+# common
+#
 add_library(
     client-common-library INTERFACE
 )
@@ -36,6 +39,37 @@ target_include_directories(
   client-common-library
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+)
+
+#
+# json_utils
+#
+find_package(RapidJSON CONFIG REQUIRED)
+add_library(
+    json-utils-library EXCLUDE_FROM_ALL OBJECT
+    json_utils.h json_utils.cc
+)
+target_include_directories(
+  json-utils-library
+  PUBLIC ${RapidJSON_INCLUDE_DIRS}
+)
+target_link_libraries(
+  json-utils-library
+  PRIVATE:
+    client-common-library
+)
+
+#
+# shm_utils
+#
+add_library(
+    shm-utils-library EXCLUDE_FROM_ALL OBJECT
+    shm_utils.h shm_utils.cc
+)
+target_link_libraries(
+  shm-utils-library
+  PRIVATE:
+    client-common-library
 )
 
 if(${TRITON_ENABLE_CC_GRPC})

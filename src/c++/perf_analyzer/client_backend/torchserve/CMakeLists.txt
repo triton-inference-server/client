@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,14 +30,14 @@ set(
     TS_CLIENT_BACKEND_SRCS
     torchserve_client_backend.cc
     torchserve_infer_input.cc
-    http_client.cc
+    torchserve_http_client.cc
 )
 
 set(
     TS_CLIENT_BACKEND_HDRS
     torchserve_client_backend.h
     torchserve_infer_input.h
-    http_client.h
+    torchserve_http_client.h
 )
 
 add_library(
@@ -49,7 +49,7 @@ add_library(
 target_link_libraries(
   ts-client-backend-library
   PUBLIC CURL::libcurl
-  PUBLIC TRITON::httpclient_static
+  PUBLIC httpclient_static
 )
 
 if(${TRITON_ENABLE_GPU})

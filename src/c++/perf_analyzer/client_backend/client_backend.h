@@ -34,8 +34,7 @@
 #include <set>
 #include <string>
 #include <vector>
-
-#include "src/clients/c++/library/ipc.h"
+#include "ipc.h"
 
 #define RETURN_IF_CB_ERROR(S)    \
   do {                           \

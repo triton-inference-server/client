@@ -24,9 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/tensorflow_serving/grpc_client.h"
-#include "src/clients/c++/perf_analyzer/client_backend/tensorflow_serving/tfserve_client_backend.h"
-
+#include "tfserve_grpc_client.h"
 
 #include <chrono>
 #include <cstdint>
@@ -34,6 +32,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include "tfserve_client_backend.h"
 
 /// Type alias for string-TensorProto map.
 typedef google::protobuf::Map<std::string, tensorflow::TensorProto>

@@ -24,8 +24,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/torchserve/torchserve_client_backend.h"
-#include "src/clients/c++/examples/json_utils.h"
+#include "torchserve_client_backend.h"
+
+#include "json_utils.h"
 
 namespace perfanalyzer { namespace clientbackend {
 

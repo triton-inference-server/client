@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,9 +26,8 @@
 #pragma once
 
 #include <string>
-
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
+#include "../client_backend.h"
+#include "../../perf_utils.h"
 
 namespace perfanalyzer { namespace clientbackend {
 

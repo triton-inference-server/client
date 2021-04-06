@@ -25,13 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "src/clients/c++/library/common.h"
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/client_backend/tensorflow_serving/tfserve_infer_input.h"
-
-
 #include <grpc++/grpc++.h>
-
+#include "common.h"
+#include "../client_backend.h"
+#include "tfserve_infer_input.h"
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 
 namespace nic = nvidia::inferenceserver::client;

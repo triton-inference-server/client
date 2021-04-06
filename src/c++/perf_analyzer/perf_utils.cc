@@ -30,9 +30,8 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
-
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
-#include "src/clients/c++/perf_analyzer/perf_utils.h"
+#include "client_backend/client_backend.h"
+#include "perf_utils.h"
 
 namespace perfanalyzer {
 
