@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -70,11 +70,11 @@ function main() {
   if [ -d tritonclient/grpc ]; then
     cp -r tritonclient/grpc \
       "${WHLDIR}/tritonclient/."
-    cp ../../../core/model_config_pb2.py \
+    cp ../_deps/repo-common-build/protobuf/model_config_pb2.py \
       "${WHLDIR}/tritonclient/grpc/."
-    cp ../../../core/grpc_service_pb2.py \
+    cp ../_deps/repo-common-build/protobuf/grpc_service_pb2.py \
       "${WHLDIR}/tritonclient/grpc/service_pb2.py"
-    cp ../../../core/grpc_service_pb2_grpc.py \
+    cp ../_deps/repo-common-build/protobuf/grpc_service_pb2_grpc.py \
       "${WHLDIR}/tritonclient/grpc/service_pb2_grpc.py"
     # Use 'sed' command to fix protoc compiled imports (see
     # https://github.com/google/protobuf/issues/1491).
@@ -126,9 +126,9 @@ function main() {
     else
       PLATFORM_NAME="manylinux1_x86_64"
     fi
-    VERSION=$VERSION python${PYVER} setup.py bdist_wheel --plat-name $PLATFORM_NAME
+    VERSION=$VERSION python3 setup.py bdist_wheel --plat-name $PLATFORM_NAME
   else
-    VERSION=$VERSION python${PYVER} setup.py bdist_wheel
+    VERSION=$VERSION python3 setup.py bdist_wheel
   fi
   mkdir -p "${DEST}"
   cp dist/* "${DEST}"

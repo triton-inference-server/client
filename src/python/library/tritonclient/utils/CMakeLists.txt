@@ -34,9 +34,10 @@ if(NOT WIN32)
   #
   add_library(cshm SHARED shared_memory/shared_memory.cc)
   if(${TRITON_ENABLE_GPU})
-    target_include_directories(cshm PRIVATE ${CUDA_INCLUDE_DIRS})
+    target_compile_definitions(cshm PUBLIC TRITON_ENABLE_GPU=1)
+    target_link_libraries(cshm PUBLIC CUDA::cudart)
   endif() # TRITON_ENABLE_GPU
-  target_link_libraries(cshm rt)
+  target_link_libraries(cshm PRIVATE rt)
 
   #
   # libccudashm.so
@@ -46,13 +47,12 @@ if(NOT WIN32)
     add_library(
         ccudashm SHARED
         cuda_shared_memory/cuda_shared_memory.cc
-        ../../../../c++/library/cencode.c
-        ../../../../c++/library/cencode.h
+        cuda_shared_memory/cencode.c
+        cuda_shared_memory/cencode.h
     )
     target_include_directories(ccudashm PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(
-        ccudashm
-        PRIVATE ${CUDA_LIBRARIES})
+    target_compile_definitions(ccudashm PUBLIC TRITON_ENABLE_GPU=1)
+    target_link_libraries(ccudashm PUBLIC CUDA::cudart)
   endif() # TRITON_ENABLE_GPU
 endif() # WIN32
 

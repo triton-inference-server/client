@@ -49,6 +49,8 @@ target_link_libraries(
 )
 
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(triton-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(triton-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+  target_link_libraries(
+    triton-client-backend-library
+    PRIVATE CUDA::cudart
+  )
 endif() # TRITON_ENABLE_GPU

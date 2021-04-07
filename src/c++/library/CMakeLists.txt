@@ -72,7 +72,7 @@ target_link_libraries(
     client-common-library
 )
 
-if(${TRITON_ENABLE_CC_GRPC})
+if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   #
   # libgrpcclient.so and libgrpcclient_static.a
   #
@@ -185,17 +185,17 @@ if(${TRITON_ENABLE_CC_GRPC})
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    if(${TRITON_ENABLE_GPU})
+    if(TRITON_ENABLE_GPU)
       target_compile_definitions(
         ${_client_target}
-          PRIVATE TRITON_ENABLE_GPU=1
+          PUBLIC TRITON_ENABLE_GPU=1
       )
     endif() # TRITON_ENABLE_GPU
 
-    if(${TRITON_ENABLE_GPU})
+    if(TRITON_ENABLE_GPU)
       target_link_libraries(
         ${_client_target}
-        PRIVATE CUDA::cudart
+        PUBLIC CUDA::cudart
       )
     endif() # TRITON_ENABLE_GPU
   endforeach()
@@ -236,9 +236,9 @@ if(${TRITON_ENABLE_CC_GRPC})
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-endif() # TRITON_ENABLE_CC_GRPC
+endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
-if(${TRITON_ENABLE_CC_HTTP})
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   #
   # libhttpclient.so and libhttpclient_static.a
   #
@@ -341,17 +341,17 @@ if(${TRITON_ENABLE_CC_HTTP})
       ${_client_target}
         PRIVATE CURL_STATICLIB=1
     )
-    if(${TRITON_ENABLE_GPU})
+    if(TRITON_ENABLE_GPU)
       target_compile_definitions(
         ${_client_target}
-          PRIVATE TRITON_ENABLE_GPU=1
+          PUBLIC TRITON_ENABLE_GPU=1
       )
     endif() # TRITON_ENABLE_GPU
 
-    if(${TRITON_ENABLE_GPU})
+    if(TRITON_ENABLE_GPU)
       target_link_libraries(
         ${_client_target}
-        PRIVATE CUDA::cudart
+        PUBLIC CUDA::cudart
       )
     endif() # TRITON_ENABLE_GPU
   endforeach()
@@ -370,9 +370,9 @@ if(${TRITON_ENABLE_CC_HTTP})
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-endif() # TRITON_ENABLE_CC_HTTP
+endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER
 
-if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   install(
       FILES
       ${CMAKE_CURRENT_SOURCE_DIR}/common.h
@@ -383,7 +383,7 @@ if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
   include(GNUInstallDirs)
   set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/TritonClient)
 
-  if(${TRITON_ENABLE_CC_GRPC})
+  if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
     install(
       TARGETS
         grpcclient
@@ -394,9 +394,9 @@ if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-  endif() # TRITON_ENABLE_CC_GRPC
+  endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
-  if(${TRITON_ENABLE_CC_HTTP})
+  if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
     install(
       TARGETS
         httpclient
@@ -407,7 +407,7 @@ if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
       ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-  endif() # TRITON_ENABLE_CC_HTTP
+  endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER
 
   install(
     EXPORT
@@ -448,4 +448,4 @@ if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
 
   export(PACKAGE TritonClient)
 
-endif() # ${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC}
+endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER

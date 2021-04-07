@@ -66,14 +66,22 @@ add_executable(
 )
 target_link_libraries(
   perf_analyzer
-  PRIVATE client-backend-library
-  PRIVATE -lb64
+  PRIVATE
+    client-backend-library
+    -lb64
 )
 
 # If gpu is enabled then compile with CUDA dependencies
-if(${TRITON_ENABLE_GPU})
-  target_include_directories(perf_analyzer PRIVATE ${CUDA_INCLUDE_DIRS})
-  target_link_libraries(perf_analyzer PRIVATE ${CUDA_LIBRARIES})
+if(TRITON_ENABLE_GPU)
+  target_compile_definitions(
+    perf_analyzer
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
+
+  target_link_libraries(
+    perf_analyzer
+    PRIVATE CUDA::cudart
+  )
 endif()
 
 
