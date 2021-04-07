@@ -31,21 +31,21 @@ add_subdirectory(tritonclient)
 # Needed for the backwards-compatibility
 # Remove when moving completely to the
 # new structure.
-if(${TRITON_ENABLE_CC_GRPC})
+if(${TRITON_ENABLE_PYTHON_GRPC})
   file(COPY tritongrpcclient DESTINATION .)
-endif() # TRITON_ENABLE_CC_GRPC
-if(${TRITON_ENABLE_CC_HTTP})
+endif() # TRITON_ENABLE_PYTHON_GRPC
+if(${TRITON_ENABLE_PYTHON_HTTP})
   file(COPY tritonhttpclient DESTINATION .)
-endif() # TRITON_ENABLE_CC_HTTP
+endif() # TRITON_ENABLE_PYTHON_HTTP
 file(COPY tritonclientutils DESTINATION .)
 if (NOT WIN32)
   file(COPY tritonshmutils DESTINATION .)
 endif() # NOT WIN32
 ####################################
 
-configure_file(../../../../TRITON_VERSION TRITON_VERSION COPYONLY)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION ${TRITON_VERSION})
 configure_file(LICENSE.txt LICENSE.txt COPYONLY)
-configure_file(setup.py setup.py COPYONLY)
+configure_file(setup.py setup.py @ONLY)
 file(COPY requirements DESTINATION .)
 
 set(WHEEL_DEPENDS
@@ -54,21 +54,21 @@ set(WHEEL_DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/setup.py
 )
 
-if(${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_PYTHON_GRPC})
   set(WHEEL_DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/tritonclient/grpc
         proto-py-library
-        grpc-py-library
+        grpc-service-py-library
         ${WHEEL_DEPENDS}
   )
-endif() # TRITON_ENABLE_GRPC
+endif() # TRITON_ENABLE_PYTHON_GRPC
 
-if(${TRITON_ENABLE_CC_HTTP})
+if(${TRITON_ENABLE_PYTHON_HTTP})
   set(WHEEL_DEPENDS
         ${CMAKE_CURRENT_BINARY_DIR}/tritonclient/http
         ${WHEEL_DEPENDS}
   )
-endif() # TRITON_ENABLE_CC_HTTP
+endif() # TRITON_ENABLE_PYTHON_HTTP
 
 #
 # Generic Wheel file
@@ -92,19 +92,11 @@ add_custom_target(
 # Linux specific Wheel file. Compatible with x86, x64 and aarch64
 #
 if (NOT WIN32)
-  # Can genereate linux specific wheel file on
-  # linux systems only.
+  # Can generate linux specific wheel file on linux systems only.
   set(LINUX_WHEEL_DEPENDS
         cshm
         ${WHEEL_DEPENDS}
   )
-  if(${TRITON_ENABLE_PERF_ANALYZER})
-    set(X86LINUX_WHEEL_DEPENDS
-        perf_analyzer
-        ${X86LINUX_WHEEL_DEPENDS}
-    )
-  endif() # TRITON_ENABLE_PERF_ANALYZER
-
   if(${TRITON_ENABLE_GPU})
     set(LINUX_WHEEL_DEPENDS
           ccudashm
@@ -119,8 +111,8 @@ if (NOT WIN32)
     ARGS
       "${CMAKE_CURRENT_BINARY_DIR}/linux/"
       "true"
-      ${CMAKE_CURRENT_BINARY_DIR}/../../c++/perf_analyzer/perf_analyzer
-    DEPENDS ${X86LINUX_WHEEL_DEPENDS}
+      ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer
+    DEPENDS ${LINUX_WHEEL_DEPENDS}
   )
 
   add_custom_target(
@@ -130,16 +122,16 @@ if (NOT WIN32)
   )
 endif() # NOT WIN32
 
-if(${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_PYTHON_GRPC})
   add_dependencies(
     generic-client-wheel
-    model-config-library grpc-library proto-library
+    grpc-service-py-library proto-py-library
   )
 
   if (NOT WIN32)
     add_dependencies(
       linux-client-wheel
-      model-config-library grpc-library proto-library
+      grpc-service-py-library proto-py-library
   )
   endif() # NOT WIN32
 
@@ -153,7 +145,7 @@ if(${TRITON_ENABLE_GRPC})
     FILES ${generated-py}
     DESTINATION python
   )
-endif() # TRITON_ENABLE_GRPC
+endif() # TRITON_ENABLE_PYTHON_GRPC
 
 install(
   CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/generic/triton*.whl\")"

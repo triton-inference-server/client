@@ -31,8 +31,11 @@ project(tritonclient LANGUAGES C CXX)
 #
 # Options
 #
+set(TRITON_VERSION "0.0.0" CACHE STRING "Version for the clients")
 option(TRITON_ENABLE_CC_HTTP "Build C++ HTTP client libraries" OFF)
 option(TRITON_ENABLE_CC_GRPC "Build C++ GRPC client libraries" OFF)
+option(TRITON_ENABLE_PYTHON_HTTP "Enable Python HTTP client libraries" OFF)
+option(TRITON_ENABLE_PYTHON_GRPC "Enable Python GRPC client libraries" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
@@ -62,45 +65,45 @@ FetchContent_MakeAvailable(repo-third-party)
 # Need to use ExternalProject for our builds so that we can get the
 # correct dependencies between our components and the ExternalProject
 # dependencies (found in the third_party repo)
+include(ExternalProject)
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(TRITON_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/cc-clients/install)
+else()
+  set(TRITON_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+endif()
+
+set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "")
+if (OPENSSL_ROOT_DIR)
+  set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "-DOPENSSL_ROOT_DIR:PATH=${OPENSSL_ROOT_DIR}")
+endif()
+
+set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "")
+if (CMAKE_TOOLCHAIN_FILE)
+  set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}")
+endif()
+
+set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "")
+if (VCPKG_TARGET_TRIPLET)
+  set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "-DVCPKG_TARGET_TRIPLET:STRING=${VCPKG_TARGET_TRIPLET}")
+endif()
+
+# Location where protobuf-config.cmake will be installed varies by
+# platform
+if (WIN32)
+  set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/cmake")
+else()
+  set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/lib/cmake/protobuf")
+endif()
+
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
-  include(ExternalProject)
-
-  if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(TRITON_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/cc-clients/install)
-  else()
-    set(TRITON_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-  endif()
-
-  set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "")
-  if (OPENSSL_ROOT_DIR)
-    set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "-DOPENSSL_ROOT_DIR:PATH=${OPENSSL_ROOT_DIR}")
-  endif()
-
-  set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "")
-  if (CMAKE_TOOLCHAIN_FILE)
-    set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}")
-  endif()
-
-  set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "")
-  if (VCPKG_TARGET_TRIPLET)
-    set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "-DVCPKG_TARGET_TRIPLET:STRING=${VCPKG_TARGET_TRIPLET}")
-  endif()
-
-  # Location where protobuf-config.cmake will be installed varies by
-  # platform
-  if (WIN32)
-    set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/cmake")
-  else()
-    set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/lib/cmake/protobuf")
-  endif()
-
   set(_cc_client_depends "")
   if(${TRITON_ENABLE_CC_HTTP})
     set(_cc_client_depends ${_cc_client_depends} curl)
   endif() # TRITON_ENABLE_CC_HTTP
-  if(${TRITON_ENABLE_CC_GRPC})
+  if(${TRITON_ENABLE_CC_GRPC} OR ${TRITON_ENABLE_PERF_ANALYZER})
     set(_cc_client_depends ${_cc_client_depends} grpc protobuf)
-  endif() # TRITON_ENABLE_CC_GRPC
+  endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
   ExternalProject_Add(cc-clients
     PREFIX cc-clients
@@ -127,11 +130,36 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
   )
 endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
+if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
+  set(_py_client_depends "")
+  if(${TRITON_ENABLE_PYTHON_GRPC})
+    set(_py_client_depends ${_py_client_depends} grpc protobuf)
+  endif() # TRITON_ENABLE_PYTHON_GRPC
+  if(${TRITON_ENABLE_PERF_ANALYZER})
+    set(_py_client_depends ${_py_client_depends} cc-clients)
+  endif() # TRITON_ENABLE_PERF_ANALYZER
 
-# fixme
-if(TRITON_ENABLE_PYTHON)
-  add_subdirectory(src/python/library)
-  if(TRITON_ENABLE_EXAMPLES)
-    add_subdirectory(src/python/examples)
-  endif() # TRITON_ENABLE_EXAMPLES
-endif() # TRITON_ENABLE_PYTHON
+  ExternalProject_Add(python-clients
+    PREFIX python-clients
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/python"
+    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/python-clients"
+    CMAKE_CACHE_ARGS
+      ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
+      ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
+      ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+      -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
+      -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
+      -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/lib/cmake/c-ares
+      -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
+      -DTRITON_VERSION:STRING=${TRITON_VERSION}
+      -DTRITON_ENABLE_PYTHON_HTTP:BOOL=${TRITON_ENABLE_PYTHON_HTTP}
+      -DTRITON_ENABLE_PYTHON_GRPC:BOOL=${TRITON_ENABLE_PYTHON_GRPC}
+      -DTRITON_ENABLE_PERF_ANALYZER:BOOL=${TRITON_ENABLE_PERF_ANALYZER}
+      -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
+      -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+      -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
+      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
+    DEPENDS ${_py_client_depends}
+  )
+endif() # TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC

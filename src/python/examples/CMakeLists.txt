@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-if(${TRITON_ENABLE_CC_HTTP})
+if(${TRITON_ENABLE_PYTHON_HTTP})
   install(
     PROGRAMS
       simple_http_health_metadata.py
@@ -46,9 +46,9 @@ if(${TRITON_ENABLE_CC_HTTP})
       DESTINATION python
     )
   endif() # TRITON_ENABLE_GPU
-endif() # TRITON_ENABLE_CC_HTTP
+endif() # TRITON_ENABLE_PYTHON_HTTP
 
-if(${TRITON_ENABLE_GRPC})
+if(${TRITON_ENABLE_PYTHON_GRPC})
   install(
     PROGRAMS
       grpc_client.py
@@ -75,9 +75,9 @@ if(${TRITON_ENABLE_GRPC})
       DESTINATION python
     )
   endif() # TRITON_ENABLE_GPU
-endif() # TRITON_ENABLE_GRPC
+endif() # TRITON_ENABLE_PYTHON_GRPC
 
-if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
+if(${TRITON_ENABLE_PYTHON_HTTP} OR ${TRITON_ENABLE_PYTHON_GRPC})
   install(
     PROGRAMS
       ensemble_image_client.py
@@ -86,4 +86,4 @@ if(${TRITON_ENABLE_CC_HTTP} OR ${TRITON_ENABLE_CC_GRPC})
       memory_growth_test.py
     DESTINATION python
   )
-endif() # TRITON_ENABLE_CC_HTTP || TRITON_ENABLE_CC_GRPC
+endif() # TRITON_ENABLE_PYTHON_HTTP || TRITON_ENABLE_PYTHON_GRPC

@@ -26,12 +26,12 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-if(${TRITON_ENABLE_CC_HTTP})
+if(${TRITON_ENABLE_PYTHON_HTTP})
   file(COPY http DESTINATION .)
-endif() # TRITON_ENABLE_CC_HTTP
+endif() # TRITON_ENABLE_PYTHON_HTTP
 
-if(${TRITON_ENABLE_CC_GRPC})
+if(${TRITON_ENABLE_PYTHON_GRPC})
   file(COPY grpc DESTINATION .)
-endif() # TRITON_ENABLE_CC_GRPC
+endif() # TRITON_ENABLE_PYTHON_GRPC
 
 add_subdirectory(utils)
