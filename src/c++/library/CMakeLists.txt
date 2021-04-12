@@ -203,24 +203,43 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   if (NOT WIN32)
     install(
       DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/../../absl/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../c-ares/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../grpc/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../protobuf/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib/
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build/
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build/
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib/
       DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      FILES_MATCHING PATTERN "*.a"
+      FILES_MATCHING
+        PATTERN "*\.a"
+        PATTERN "CMakeFiles" EXCLUDE
+        PATTERN "cmake" EXCLUDE
+        PATTERN "gens" EXCLUDE
+        PATTERN "libs" EXCLUDE
+        PATTERN "third_party" EXCLUDE
     )
   else()
     install(
       DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/../../absl/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../c-ares/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../grpc/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../protobuf/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build
+        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib
       DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      FILES_MATCHING PATTERN "*.lib"
+      FILES_MATCHING
+        PATTERN "*\.lib"
+        PATTERN "CMakeFiles" EXCLUDE
+        PATTERN "cmake" EXCLUDE
+        PATTERN "gens" EXCLUDE
+        PATTERN "libs" EXCLUDE
+        PATTERN "third_party" EXCLUDE
     )
   endif() # NOT WIN32
+
+  install(
+    DIRECTORY
+      ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
+      ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/include/
+      DESTINATION include
+  )
 
   install(
       FILES
