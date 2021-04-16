@@ -1165,8 +1165,8 @@ InferenceServerHttpClient::Infer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
     const Headers& headers, const Parameters& query_params,
-    const CompressionType input_compression_algorithm,
-    const CompressionType output_compression_algorithm)
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
 {
   Error err;
 
@@ -1188,8 +1188,8 @@ InferenceServerHttpClient::Infer(
 
   err = PreRunProcessing(
       easy_handle_, request_uri, options, inputs, outputs, headers,
-      query_params, input_compression_algorithm, output_compression_algorithm,
-      sync_request);
+      query_params, request_compression_algorithm,
+      response_compression_algorithm, sync_request);
   if (!err.IsOk()) {
     return err;
   }
@@ -1237,8 +1237,8 @@ InferenceServerHttpClient::AsyncInfer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
     const Headers& headers, const Parameters& query_params,
-    const CompressionType input_compression_algorithm,
-    const CompressionType output_compression_algorithm)
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
 {
   if (callback == nullptr) {
     return Error(
@@ -1267,8 +1267,8 @@ InferenceServerHttpClient::AsyncInfer(
   CURL* multi_easy_handle = curl_easy_init();
   Error err = PreRunProcessing(
       reinterpret_cast<void*>(multi_easy_handle), request_uri, options, inputs,
-      outputs, headers, query_params, input_compression_algorithm,
-      output_compression_algorithm, async_request);
+      outputs, headers, query_params, request_compression_algorithm,
+      response_compression_algorithm, async_request);
   if (!err.IsOk()) {
     curl_easy_cleanup(multi_easy_handle);
     return err;
@@ -1380,8 +1380,8 @@ InferenceServerHttpClient::PreRunProcessing(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
     const Headers& headers, const Parameters& query_params,
-    const CompressionType input_compression_algorithm,
-    const CompressionType output_compression_algorithm,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm,
     std::shared_ptr<HttpInferRequest>& http_request)
 {
   CURL* curl = reinterpret_cast<CURL*>(vcurl);
@@ -1409,12 +1409,12 @@ InferenceServerHttpClient::PreRunProcessing(
   }
 
   // Compress data if requested
-  switch (input_compression_algorithm) {
+  switch (request_compression_algorithm) {
     case CompressionType::NONE:
       break;
     case CompressionType::DEFLATE:
     case CompressionType::GZIP:
-      http_request->CompressInput(input_compression_algorithm);
+      http_request->CompressInput(request_compression_algorithm);
       break;
   }
 
@@ -1469,7 +1469,7 @@ InferenceServerHttpClient::PreRunProcessing(
   }
 
   // Compress data if requested
-  switch (input_compression_algorithm) {
+  switch (request_compression_algorithm) {
     case CompressionType::NONE:
       break;
     case CompressionType::DEFLATE:
@@ -1479,7 +1479,7 @@ InferenceServerHttpClient::PreRunProcessing(
       list = curl_slist_append(list, "Content-Encoding: gzip");
       break;
   }
-  switch (output_compression_algorithm) {
+  switch (response_compression_algorithm) {
     case CompressionType::NONE:
       break;
     case CompressionType::DEFLATE:

@@ -38,8 +38,8 @@ def test_infer(model_name,
                input0_data,
                input1_data,
                headers=None,
-               input_compression_algorithm=None,
-               output_compression_algorithm=None):
+               request_compression_algorithm=None,
+               response_compression_algorithm=None):
     inputs = []
     outputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
@@ -59,8 +59,8 @@ def test_infer(model_name,
         outputs=outputs,
         query_params=query_params,
         headers=headers,
-        input_compression_algorithm=input_compression_algorithm,
-        output_compression_algorithm=output_compression_algorithm)
+        request_compression_algorithm=request_compression_algorithm,
+        response_compression_algorithm=response_compression_algorithm)
 
     return results
 
@@ -69,8 +69,8 @@ def test_infer_no_outputs(model_name,
                           input0_data,
                           input1_data,
                           headers=None,
-                          input_compression_algorithm=None,
-                          output_compression_algorithm=None):
+                          request_compression_algorithm=None,
+                          response_compression_algorithm=None):
     inputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
     inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
@@ -86,8 +86,8 @@ def test_infer_no_outputs(model_name,
         outputs=None,
         query_params=query_params,
         headers=headers,
-        input_compression_algorithm=input_compression_algorithm,
-        output_compression_algorithm=output_compression_algorithm)
+        request_compression_algorithm=request_compression_algorithm,
+        response_compression_algorithm=response_compression_algorithm)
 
     return results
 
@@ -121,20 +121,20 @@ if __name__ == '__main__':
         help='HTTP headers to add to inference server requests. ' +
         'Format is -H"Header:Value".')
     parser.add_argument(
-        '--input-compression-algorithm',
+        '--request-compression-algorithm',
         type=str,
         required=False,
         default=None,
         help=
-        'The compression algorithm to be used when sending request to server. Default is None.'
+        'The compression algorithm to be used when sending request body to server. Default is None.'
     )
     parser.add_argument(
-        '--output-compression-algorithm',
+        '--response-compression-algorithm',
         type=str,
         required=False,
         default=None,
         help=
-        'The compression algorithm to be used when receiving response from server. Default is None.'
+        'The compression algorithm to be used when receiving response body from server. Default is None.'
     )
 
     FLAGS = parser.parse_args()
@@ -170,8 +170,8 @@ if __name__ == '__main__':
 
     # Infer with requested Outputs
     results = test_infer(model_name, input0_data, input1_data, headers_dict,
-                         FLAGS.input_compression_algorithm,
-                         FLAGS.output_compression_algorithm)
+                         FLAGS.request_compression_algorithm,
+                         FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     statistics = triton_client.get_inference_statistics(model_name=model_name,
@@ -201,8 +201,8 @@ if __name__ == '__main__':
     # Infer without requested Outputs
     results = test_infer_no_outputs(model_name, input0_data, input1_data,
                                     headers_dict,
-                                    FLAGS.input_compression_algorithm,
-                                    FLAGS.output_compression_algorithm)
+                                    FLAGS.request_compression_algorithm,
+                                    FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     # Validate the results by comparing with precomputed values.

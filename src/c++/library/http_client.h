@@ -331,8 +331,9 @@ class InferenceServerHttpClient : public InferenceServerClient {
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
       const Parameters& query_params = Parameters(),
-      const CompressionType input_compression_algorithm = CompressionType::NONE,
-      const CompressionType output_compression_algorithm =
+      const CompressionType request_compression_algorithm =
+          CompressionType::NONE,
+      const CompressionType response_compression_algorithm =
           CompressionType::NONE);
 
   /// Run asynchronous inference on server.
@@ -366,8 +367,9 @@ class InferenceServerHttpClient : public InferenceServerClient {
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
       const Parameters& query_params = Parameters(),
-      const CompressionType input_compression_algorithm = CompressionType::NONE,
-      const CompressionType output_compression_algorithm =
+      const CompressionType request_compression_algorithm =
+          CompressionType::NONE,
+      const CompressionType response_compression_algorithm =
           CompressionType::NONE);
 
  private:
@@ -378,8 +380,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs,
       const Headers& headers, const Parameters& query_params,
-      const CompressionType input_compression_algorithm,
-      const CompressionType output_compression_algorithm,
+      const CompressionType request_compression_algorithm,
+      const CompressionType response_compression_algorithm,
       std::shared_ptr<HttpInferRequest>& request);
   void AsyncTransfer();
   Error Get(

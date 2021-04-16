@@ -1017,8 +1017,8 @@ class InferenceServerClient:
               timeout=None,
               headers=None,
               query_params=None,
-              input_compression_algorithm=None,
-              output_compression_algorithm=None):
+              request_compression_algorithm=None,
+              response_compression_algorithm=None):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1073,12 +1073,12 @@ class InferenceServerClient:
         query_params: dict
             Optional url query parameters to use in network
             transaction.
-        input_compression_algorithm : str
-            Optional HTTP compression algorithm to be used on client side.
+        request_compression_algorithm : str
+            Optional HTTP compression algorithm to use for the request body on client side.
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
-        output_compression_algorithm : str
-            Optional HTTP compression algorithm to request for the response.
+        response_compression_algorithm : str
+            Optional HTTP compression algorithm to request for the response body.
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
@@ -1104,12 +1104,12 @@ class InferenceServerClient:
             priority=priority,
             timeout=timeout)
 
-        if input_compression_algorithm == "gzip":
+        if request_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "gzip"
             request_body = gzip.compress(request_body)
-        elif input_compression_algorithm == 'deflate':
+        elif request_compression_algorithm == 'deflate':
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "deflate"
@@ -1117,11 +1117,11 @@ class InferenceServerClient:
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
             request_body = zlib.compress(request_body)
 
-        if output_compression_algorithm == "gzip":
+        if response_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "gzip"
-        elif output_compression_algorithm == 'deflate':
+        elif response_compression_algorithm == 'deflate':
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "deflate"
@@ -1160,8 +1160,8 @@ class InferenceServerClient:
                     timeout=None,
                     headers=None,
                     query_params=None,
-                    input_compression_algorithm=None,
-                    output_compression_algorithm=None):
+                    request_compression_algorithm=None,
+                    response_compression_algorithm=None):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'. Even though this call is
         non-blocking, however, the actual number of concurrent requests to
@@ -1222,12 +1222,12 @@ class InferenceServerClient:
         query_params: dict
             Optional url query parameters to use in network
             transaction.
-        input_compression_algorithm : str
-            Optional HTTP compression algorithm to be used on client side.
+        request_compression_algorithm : str
+            Optional HTTP compression algorithm to use for the request body on client side.
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
-        output_compression_algorithm : str
-            Optional HTTP compression algorithm to request for the response.
+        response_compression_algorithm : str
+            Optional HTTP compression algorithm to request for the response body.
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
@@ -1256,12 +1256,12 @@ class InferenceServerClient:
             priority=priority,
             timeout=timeout)
 
-        if input_compression_algorithm == "gzip":
+        if request_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "gzip"
             request_body = gzip.compress(request_body)
-        elif input_compression_algorithm == 'deflate':
+        elif request_compression_algorithm == 'deflate':
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "deflate"
@@ -1269,11 +1269,11 @@ class InferenceServerClient:
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
             request_body = zlib.compress(request_body)
 
-        if output_compression_algorithm == "gzip":
+        if response_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "gzip"
-        elif output_compression_algorithm == 'deflate':
+        elif response_compression_algorithm == 'deflate':
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "deflate"
