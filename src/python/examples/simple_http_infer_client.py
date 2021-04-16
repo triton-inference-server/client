@@ -53,18 +53,24 @@ def test_infer(model_name,
     outputs.append(httpclient.InferRequestedOutput('OUTPUT1',
                                                    binary_data=False))
     query_params = {'test_1': 1, 'test_2': 2}
-    results = triton_client.infer(model_name,
-                                  inputs,
-                                  outputs=outputs,
-                                  query_params=query_params,
-                                  headers=headers,
-                                  input_compression_algorithm=input_compression_algorithm,
-                                  output_compression_algorithm=output_compression_algorithm)
+    results = triton_client.infer(
+        model_name,
+        inputs,
+        outputs=outputs,
+        query_params=query_params,
+        headers=headers,
+        input_compression_algorithm=input_compression_algorithm,
+        output_compression_algorithm=output_compression_algorithm)
 
     return results
 
 
-def test_infer_no_outputs(model_name, input0_data, input1_data, headers=None):
+def test_infer_no_outputs(model_name,
+                          input0_data,
+                          input1_data,
+                          headers=None,
+                          input_compression_algorithm=None,
+                          output_compression_algorithm=None):
     inputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
     inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
@@ -74,11 +80,14 @@ def test_infer_no_outputs(model_name, input0_data, input1_data, headers=None):
     inputs[1].set_data_from_numpy(input1_data, binary_data=True)
 
     query_params = {'test_1': 1, 'test_2': 2}
-    results = triton_client.infer(model_name,
-                                  inputs,
-                                  outputs=None,
-                                  query_params=query_params,
-                                  headers=headers)
+    results = triton_client.infer(
+        model_name,
+        inputs,
+        outputs=None,
+        query_params=query_params,
+        headers=headers,
+        input_compression_algorithm=input_compression_algorithm,
+        output_compression_algorithm=output_compression_algorithm)
 
     return results
 

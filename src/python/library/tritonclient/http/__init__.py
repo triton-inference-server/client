@@ -1116,7 +1116,7 @@ class InferenceServerClient:
             # "Content-Encoding: deflate" actually means compressing in zlib structure
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
             request_body = zlib.compress(request_body)
-        
+
         if output_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
@@ -1268,7 +1268,7 @@ class InferenceServerClient:
             # "Content-Encoding: deflate" actually means compressing in zlib structure
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
             request_body = zlib.compress(request_body)
-        
+
         if output_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
@@ -1670,6 +1670,30 @@ class InferResult:
 
     def __init__(self, response, verbose):
         header_length = response.get('Inference-Header-Content-Length')
+
+        # Internal class that simulate the interface of 'response'
+        class DecompressedResponse:
+
+            def __init__(self, decompressed_data):
+                self.decompressed_data_ = decompressed_data
+                self.offset_ = 0
+
+            def read(self, length=-1):
+                if length == -1:
+                    return self.decompressed_data_[self.offset_:]
+                else:
+                    prev_offset = self.offset_
+                    self.offset_ += length
+                    return self.decompressed_data_[prev_offset:self.offset_]
+
+        content_encoding = response.get('Content-Encoding')
+        if content_encoding is not None:
+            if content_encoding == "gzip":
+                response = DecompressedResponse(gzip.decompress(
+                    response.read()))
+            elif content_encoding == 'deflate':
+                response = DecompressedResponse(zlib.decompress(
+                    response.read()))
         if header_length is None:
             content = response.read()
             if verbose:
