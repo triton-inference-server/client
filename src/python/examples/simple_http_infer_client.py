@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,7 +34,12 @@ import tritonclient.http as httpclient
 from tritonclient.utils import InferenceServerException
 
 
-def test_infer(model_name, input0_data, input1_data, headers=None):
+def test_infer(model_name,
+               input0_data,
+               input1_data,
+               headers=None,
+               input_compression_algorithm=None,
+               output_compression_algorithm=None):
     inputs = []
     outputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
@@ -52,7 +57,9 @@ def test_infer(model_name, input0_data, input1_data, headers=None):
                                   inputs,
                                   outputs=outputs,
                                   query_params=query_params,
-                                  headers=headers)
+                                  headers=headers,
+                                  input_compression_algorithm=input_compression_algorithm,
+                                  output_compression_algorithm=output_compression_algorithm)
 
     return results
 
@@ -104,6 +111,22 @@ if __name__ == '__main__':
         action='append',
         help='HTTP headers to add to inference server requests. ' +
         'Format is -H"Header:Value".')
+    parser.add_argument(
+        '--input-compression-algorithm',
+        type=str,
+        required=False,
+        default=None,
+        help=
+        'The compression algorithm to be used when sending request to server. Default is None.'
+    )
+    parser.add_argument(
+        '--output-compression-algorithm',
+        type=str,
+        required=False,
+        default=None,
+        help=
+        'The compression algorithm to be used when receiving response from server. Default is None.'
+    )
 
     FLAGS = parser.parse_args()
     try:
@@ -137,7 +160,9 @@ if __name__ == '__main__':
         headers_dict = None
 
     # Infer with requested Outputs
-    results = test_infer(model_name, input0_data, input1_data, headers_dict)
+    results = test_infer(model_name, input0_data, input1_data, headers_dict,
+                         FLAGS.input_compression_algorithm,
+                         FLAGS.output_compression_algorithm)
     print(results.get_response())
 
     statistics = triton_client.get_inference_statistics(model_name=model_name,
@@ -165,10 +190,10 @@ if __name__ == '__main__':
             sys.exit(1)
 
     # Infer without requested Outputs
-    results = test_infer_no_outputs(model_name,
-                                    input0_data,
-                                    input1_data,
-                                    headers=headers_dict)
+    results = test_infer_no_outputs(model_name, input0_data, input1_data,
+                                    headers_dict,
+                                    FLAGS.input_compression_algorithm,
+                                    FLAGS.output_compression_algorithm)
     print(results.get_response())
 
     # Validate the results by comparing with precomputed values.
