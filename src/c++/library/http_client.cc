@@ -1408,6 +1408,16 @@ InferenceServerHttpClient::PreRunProcessing(
     }
   }
 
+  // Compress data if requested
+  switch (input_compression_algorithm) {
+    case CompressionType::NONE:
+      break;
+    case CompressionType::DEFLATE:
+    case CompressionType::GZIP:
+      http_request->CompressInput(input_compression_algorithm);
+      break;
+  }
+
   // Prepare curl
   if (!query_params.empty()) {
     request_uri = request_uri + "?" + GetQueryString(query_params);
@@ -1463,11 +1473,9 @@ InferenceServerHttpClient::PreRunProcessing(
     case CompressionType::NONE:
       break;
     case CompressionType::DEFLATE:
-      http_request->CompressInput(input_compression_algorithm);
       list = curl_slist_append(list, "Content-Encoding: deflate");
       break;
     case CompressionType::GZIP:
-      http_request->CompressInput(input_compression_algorithm);
       list = curl_slist_append(list, "Content-Encoding: gzip");
       break;
   }
