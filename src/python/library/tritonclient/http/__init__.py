@@ -33,6 +33,7 @@ try:
     import rapidjson as json
     import numpy as np
     import struct
+    import gzip, zlib
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'
@@ -1015,7 +1016,9 @@ class InferenceServerClient:
               priority=0,
               timeout=None,
               headers=None,
-              query_params=None):
+              query_params=None,
+              request_compression_algorithm=None,
+              response_compression_algorithm=None):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1070,6 +1073,15 @@ class InferenceServerClient:
         query_params: dict
             Optional url query parameters to use in network
             transaction.
+        request_compression_algorithm : str
+            Optional HTTP compression algorithm to use for the request body on client side.
+            Currently supports "deflate", "gzip" and None. By default, no
+            compression is used.
+        response_compression_algorithm : str
+            Optional HTTP compression algorithm to request for the response body.
+            Note that the response may not be compressed if the server does not
+            support the specified algorithm. Currently supports "deflate",
+            "gzip" and None. By default, no compression is requested.
 
         Returns
         -------
@@ -1091,6 +1103,28 @@ class InferenceServerClient:
             sequence_end=sequence_end,
             priority=priority,
             timeout=timeout)
+
+        if request_compression_algorithm == "gzip":
+            if headers is None:
+                headers = {}
+            headers["Content-Encoding"] = "gzip"
+            request_body = gzip.compress(request_body)
+        elif request_compression_algorithm == 'deflate':
+            if headers is None:
+                headers = {}
+            headers["Content-Encoding"] = "deflate"
+            # "Content-Encoding: deflate" actually means compressing in zlib structure
+            # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+            request_body = zlib.compress(request_body)
+
+        if response_compression_algorithm == "gzip":
+            if headers is None:
+                headers = {}
+            headers["Accept-Encoding"] = "gzip"
+        elif response_compression_algorithm == 'deflate':
+            if headers is None:
+                headers = {}
+            headers["Accept-Encoding"] = "deflate"
 
         if json_size is not None:
             if headers is None:
@@ -1125,7 +1159,9 @@ class InferenceServerClient:
                     priority=0,
                     timeout=None,
                     headers=None,
-                    query_params=None):
+                    query_params=None,
+                    request_compression_algorithm=None,
+                    response_compression_algorithm=None):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'. Even though this call is
         non-blocking, however, the actual number of concurrent requests to
@@ -1186,6 +1222,15 @@ class InferenceServerClient:
         query_params: dict
             Optional url query parameters to use in network
             transaction.
+        request_compression_algorithm : str
+            Optional HTTP compression algorithm to use for the request body on client side.
+            Currently supports "deflate", "gzip" and None. By default, no
+            compression is used.
+        response_compression_algorithm : str
+            Optional HTTP compression algorithm to request for the response body.
+            Note that the response may not be compressed if the server does not
+            support the specified algorithm. Currently supports "deflate",
+            "gzip" and None. By default, no compression is requested.
 
         Returns
         -------
@@ -1210,6 +1255,28 @@ class InferenceServerClient:
             sequence_end=sequence_end,
             priority=priority,
             timeout=timeout)
+
+        if request_compression_algorithm == "gzip":
+            if headers is None:
+                headers = {}
+            headers["Content-Encoding"] = "gzip"
+            request_body = gzip.compress(request_body)
+        elif request_compression_algorithm == 'deflate':
+            if headers is None:
+                headers = {}
+            headers["Content-Encoding"] = "deflate"
+            # "Content-Encoding: deflate" actually means compressing in zlib structure
+            # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding
+            request_body = zlib.compress(request_body)
+
+        if response_compression_algorithm == "gzip":
+            if headers is None:
+                headers = {}
+            headers["Accept-Encoding"] = "gzip"
+        elif response_compression_algorithm == 'deflate':
+            if headers is None:
+                headers = {}
+            headers["Accept-Encoding"] = "deflate"
 
         if json_size is not None:
             if headers is None:
@@ -1603,6 +1670,30 @@ class InferResult:
 
     def __init__(self, response, verbose):
         header_length = response.get('Inference-Header-Content-Length')
+
+        # Internal class that simulate the interface of 'response'
+        class DecompressedResponse:
+
+            def __init__(self, decompressed_data):
+                self.decompressed_data_ = decompressed_data
+                self.offset_ = 0
+
+            def read(self, length=-1):
+                if length == -1:
+                    return self.decompressed_data_[self.offset_:]
+                else:
+                    prev_offset = self.offset_
+                    self.offset_ += length
+                    return self.decompressed_data_[prev_offset:self.offset_]
+
+        content_encoding = response.get('Content-Encoding')
+        if content_encoding is not None:
+            if content_encoding == "gzip":
+                response = DecompressedResponse(gzip.decompress(
+                    response.read()))
+            elif content_encoding == 'deflate':
+                response = DecompressedResponse(zlib.decompress(
+                    response.read()))
         if header_length is None:
             content = response.read()
             if verbose:

@@ -29,9 +29,10 @@
 #include "common.h"
 
 #include <curl/curl.h>
+#include <zlib.h>
 #include <cstdint>
+#include <deque>
 #include <iostream>
-#include <queue>
 #include "http_client.h"
 
 extern "C" {
@@ -117,6 +118,85 @@ Base64Encode(
   *encoded_size += padding_size;
 }
 
+// libcurl provides automatic decompression, so only implement compression
+Error
+CompressData(
+    const InferenceServerHttpClient::CompressionType type,
+    const std::deque<std::pair<uint8_t*, size_t>>& source,
+    const size_t source_byte_size,
+    std::vector<std::pair<std::unique_ptr<char[]>, size_t>>* compressed_data)
+{
+  // nothing to be compressed
+  if (source_byte_size == 0) {
+    return Error("nothing to be compressed");
+  }
+
+  z_stream stream;
+  stream.zalloc = Z_NULL;
+  stream.zfree = Z_NULL;
+  stream.opaque = Z_NULL;
+  switch (type) {
+    case InferenceServerHttpClient::CompressionType::GZIP:
+      if (deflateInit2(
+              &stream, Z_DEFAULT_COMPRESSION /* level */,
+              Z_DEFLATED /* method */, 15 | 16 /* windowBits */,
+              8 /* memLevel */, Z_DEFAULT_STRATEGY /* strategy */) != Z_OK) {
+        return Error("failed to initialize state for gzip data compression");
+      }
+      break;
+    case InferenceServerHttpClient::CompressionType::DEFLATE: {
+      if (deflateInit(&stream, Z_DEFAULT_COMPRESSION /* level */) != Z_OK) {
+        return Error("failed to initialize state for deflate data compression");
+      }
+      break;
+    }
+    case InferenceServerHttpClient::CompressionType::NONE:
+      return Error("can't compress data with NONE type");
+      break;
+  }
+  // ensure the internal state are cleaned up on function return
+  std::unique_ptr<z_stream, decltype(&deflateEnd)> managed_stream(
+      &stream, deflateEnd);
+
+  // Reserve the same size as source for compressed data, it is less likely
+  // that a negative compression happens.
+  std::unique_ptr<char[]> current_reserved_space(new char[source_byte_size]);
+  stream.next_out =
+      reinterpret_cast<unsigned char*>(current_reserved_space.get());
+  stream.avail_out = source_byte_size;
+
+  // Compress until end of 'source'
+  for (auto it = source.begin(); it != source.end(); ++it) {
+    stream.next_in = reinterpret_cast<unsigned char*>(it->first);
+    stream.avail_in = it->second;
+
+    // run deflate() on input until source has been read in
+    do {
+      // Need additional buffer
+      if (stream.avail_out == 0) {
+        compressed_data->emplace_back(
+            std::move(current_reserved_space), source_byte_size);
+        current_reserved_space.reset(new char[source_byte_size]);
+        stream.next_out =
+            reinterpret_cast<unsigned char*>(current_reserved_space.get());
+        stream.avail_out = source_byte_size;
+      }
+      auto flush = (std::next(it) == source.end()) ? Z_FINISH : Z_NO_FLUSH;
+      auto ret = deflate(&stream, flush);
+      if (ret == Z_STREAM_ERROR) {
+        return Error(
+            "encountered inconsistent stream state during compression");
+      }
+    } while (stream.avail_out == 0);
+  }
+  // Make sure the last buffer is committed
+  if (current_reserved_space != nullptr) {
+    compressed_data->emplace_back(
+        std::move(current_reserved_space), source_byte_size - stream.avail_out);
+  }
+  return Error::Success;
+}
+
 }  // namespace
 
 //==============================================================================
@@ -139,6 +219,8 @@ class HttpInferRequest : public InferRequest {
   // Copy into 'buf' up to 'size' bytes of input data. Return the
   // actual amount copied in 'input_bytes'.
   Error GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes);
+
+  Error CompressInput(const InferenceServerHttpClient::CompressionType type);
 
  private:
   friend class InferenceServerHttpClient;
@@ -164,7 +246,10 @@ class HttpInferRequest : public InferRequest {
   std::unique_ptr<std::string> infer_response_buffer_;
 
   // The pointers to the input data.
-  std::queue<std::pair<uint8_t*, size_t>> data_buffers_;
+  std::deque<std::pair<uint8_t*, size_t>> data_buffers_;
+
+  // Placeholder for the compressed data
+  std::vector<std::pair<std::unique_ptr<char[]>, size_t>> compressed_data_;
 
   size_t response_json_size_;
 };
@@ -351,7 +436,7 @@ HttpInferRequest::PrepareRequestJson(
 Error
 HttpInferRequest::AddInput(uint8_t* buf, size_t byte_size)
 {
-  data_buffers_.push(std::pair<uint8_t*, size_t>(buf, byte_size));
+  data_buffers_.push_back(std::pair<uint8_t*, size_t>(buf, byte_size));
   total_input_byte_size_ += byte_size;
   return Error::Success;
 }
@@ -378,7 +463,7 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
       data_buffers_.front().first += csz;
       data_buffers_.front().second -= csz;
       if (data_buffers_.front().second == 0) {
-        data_buffers_.pop();
+        data_buffers_.pop_front();
       }
     }
   }
@@ -388,6 +473,25 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
     Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
   }
 
+  return Error::Success;
+}
+
+Error
+HttpInferRequest::CompressInput(
+    const InferenceServerHttpClient::CompressionType type)
+{
+  auto err = CompressData(
+      type, data_buffers_, total_input_byte_size_, &compressed_data_);
+  if (!err.IsOk()) {
+    return err;
+  }
+  data_buffers_.clear();
+  total_input_byte_size_ = 0;
+  for (const auto& data : compressed_data_) {
+    data_buffers_.push_back(std::pair<uint8_t*, size_t>(
+        reinterpret_cast<uint8_t*>(data.first.get()), data.second));
+    total_input_byte_size_ += data.second;
+  }
   return Error::Success;
 }
 
@@ -1060,7 +1164,9 @@ InferenceServerHttpClient::Infer(
     InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
-    const Headers& headers, const Parameters& query_params)
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
 {
   Error err;
 
@@ -1082,7 +1188,8 @@ InferenceServerHttpClient::Infer(
 
   err = PreRunProcessing(
       easy_handle_, request_uri, options, inputs, outputs, headers,
-      query_params, sync_request);
+      query_params, request_compression_algorithm,
+      response_compression_algorithm, sync_request);
   if (!err.IsOk()) {
     return err;
   }
@@ -1129,7 +1236,9 @@ InferenceServerHttpClient::AsyncInfer(
     OnCompleteFn callback, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
-    const Headers& headers, const Parameters& query_params)
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
 {
   if (callback == nullptr) {
     return Error(
@@ -1158,7 +1267,8 @@ InferenceServerHttpClient::AsyncInfer(
   CURL* multi_easy_handle = curl_easy_init();
   Error err = PreRunProcessing(
       reinterpret_cast<void*>(multi_easy_handle), request_uri, options, inputs,
-      outputs, headers, query_params, async_request);
+      outputs, headers, query_params, request_compression_algorithm,
+      response_compression_algorithm, async_request);
   if (!err.IsOk()) {
     curl_easy_cleanup(multi_easy_handle);
     return err;
@@ -1270,6 +1380,8 @@ InferenceServerHttpClient::PreRunProcessing(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
     const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm,
     std::shared_ptr<HttpInferRequest>& http_request)
 {
   CURL* curl = reinterpret_cast<CURL*>(vcurl);
@@ -1294,6 +1406,16 @@ InferenceServerHttpClient::PreRunProcessing(
         }
       }
     }
+  }
+
+  // Compress data if requested
+  switch (request_compression_algorithm) {
+    case CompressionType::NONE:
+      break;
+    case CompressionType::DEFLATE:
+    case CompressionType::GZIP:
+      http_request->CompressInput(request_compression_algorithm);
+      break;
   }
 
   // Prepare curl
@@ -1344,6 +1466,28 @@ InferenceServerHttpClient::PreRunProcessing(
   for (const auto& pr : headers) {
     std::string hdr = pr.first + ": " + pr.second;
     list = curl_slist_append(list, hdr.c_str());
+  }
+
+  // Compress data if requested
+  switch (request_compression_algorithm) {
+    case CompressionType::NONE:
+      break;
+    case CompressionType::DEFLATE:
+      list = curl_slist_append(list, "Content-Encoding: deflate");
+      break;
+    case CompressionType::GZIP:
+      list = curl_slist_append(list, "Content-Encoding: gzip");
+      break;
+  }
+  switch (response_compression_algorithm) {
+    case CompressionType::NONE:
+      break;
+    case CompressionType::DEFLATE:
+      curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "deflate");
+      break;
+    case CompressionType::GZIP:
+      curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+      break;
   }
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 

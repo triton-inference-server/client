@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,7 +34,12 @@ import tritonclient.http as httpclient
 from tritonclient.utils import InferenceServerException
 
 
-def test_infer(model_name, input0_data, input1_data, headers=None):
+def test_infer(model_name,
+               input0_data,
+               input1_data,
+               headers=None,
+               request_compression_algorithm=None,
+               response_compression_algorithm=None):
     inputs = []
     outputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
@@ -48,16 +53,24 @@ def test_infer(model_name, input0_data, input1_data, headers=None):
     outputs.append(httpclient.InferRequestedOutput('OUTPUT1',
                                                    binary_data=False))
     query_params = {'test_1': 1, 'test_2': 2}
-    results = triton_client.infer(model_name,
-                                  inputs,
-                                  outputs=outputs,
-                                  query_params=query_params,
-                                  headers=headers)
+    results = triton_client.infer(
+        model_name,
+        inputs,
+        outputs=outputs,
+        query_params=query_params,
+        headers=headers,
+        request_compression_algorithm=request_compression_algorithm,
+        response_compression_algorithm=response_compression_algorithm)
 
     return results
 
 
-def test_infer_no_outputs(model_name, input0_data, input1_data, headers=None):
+def test_infer_no_outputs(model_name,
+                          input0_data,
+                          input1_data,
+                          headers=None,
+                          request_compression_algorithm=None,
+                          response_compression_algorithm=None):
     inputs = []
     inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
     inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
@@ -67,11 +80,14 @@ def test_infer_no_outputs(model_name, input0_data, input1_data, headers=None):
     inputs[1].set_data_from_numpy(input1_data, binary_data=True)
 
     query_params = {'test_1': 1, 'test_2': 2}
-    results = triton_client.infer(model_name,
-                                  inputs,
-                                  outputs=None,
-                                  query_params=query_params,
-                                  headers=headers)
+    results = triton_client.infer(
+        model_name,
+        inputs,
+        outputs=None,
+        query_params=query_params,
+        headers=headers,
+        request_compression_algorithm=request_compression_algorithm,
+        response_compression_algorithm=response_compression_algorithm)
 
     return results
 
@@ -104,6 +120,22 @@ if __name__ == '__main__':
         action='append',
         help='HTTP headers to add to inference server requests. ' +
         'Format is -H"Header:Value".')
+    parser.add_argument(
+        '--request-compression-algorithm',
+        type=str,
+        required=False,
+        default=None,
+        help=
+        'The compression algorithm to be used when sending request body to server. Default is None.'
+    )
+    parser.add_argument(
+        '--response-compression-algorithm',
+        type=str,
+        required=False,
+        default=None,
+        help=
+        'The compression algorithm to be used when receiving response body from server. Default is None.'
+    )
 
     FLAGS = parser.parse_args()
     try:
@@ -137,7 +169,9 @@ if __name__ == '__main__':
         headers_dict = None
 
     # Infer with requested Outputs
-    results = test_infer(model_name, input0_data, input1_data, headers_dict)
+    results = test_infer(model_name, input0_data, input1_data, headers_dict,
+                         FLAGS.request_compression_algorithm,
+                         FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     statistics = triton_client.get_inference_statistics(model_name=model_name,
@@ -165,10 +199,10 @@ if __name__ == '__main__':
             sys.exit(1)
 
     # Infer without requested Outputs
-    results = test_infer_no_outputs(model_name,
-                                    input0_data,
-                                    input1_data,
-                                    headers=headers_dict)
+    results = test_infer_no_outputs(model_name, input0_data, input1_data,
+                                    headers_dict,
+                                    FLAGS.request_compression_algorithm,
+                                    FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     # Validate the results by comparing with precomputed values.

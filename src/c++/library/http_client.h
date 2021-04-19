@@ -61,6 +61,7 @@ typedef std::map<std::string, std::string> Parameters;
 ///
 class InferenceServerHttpClient : public InferenceServerClient {
  public:
+  enum class CompressionType { NONE, DEFLATE, GZIP };
   ~InferenceServerHttpClient();
 
   /// Create a client that can be used to communicate with the server.
@@ -329,7 +330,11 @@ class InferenceServerHttpClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      const Parameters& query_params = Parameters());
+      const Parameters& query_params = Parameters(),
+      const CompressionType request_compression_algorithm =
+          CompressionType::NONE,
+      const CompressionType response_compression_algorithm =
+          CompressionType::NONE);
 
   /// Run asynchronous inference on server.
   /// Once the request is completed, the InferResult pointer will be passed to
@@ -361,7 +366,11 @@ class InferenceServerHttpClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      const Parameters& query_params = Parameters());
+      const Parameters& query_params = Parameters(),
+      const CompressionType request_compression_algorithm =
+          CompressionType::NONE,
+      const CompressionType response_compression_algorithm =
+          CompressionType::NONE);
 
  private:
   InferenceServerHttpClient(const std::string& url, bool verbose);
@@ -371,6 +380,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs,
       const Headers& headers, const Parameters& query_params,
+      const CompressionType request_compression_algorithm,
+      const CompressionType response_compression_algorithm,
       std::shared_ptr<HttpInferRequest>& request);
   void AsyncTransfer();
   Error Get(

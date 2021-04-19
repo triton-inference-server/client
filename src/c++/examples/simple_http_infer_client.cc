@@ -80,9 +80,16 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-t <client timeout in microseconds>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
+  std::cerr << "\t-i <none|gzip|deflate>" << std::endl;
+  std::cerr << "\t-o <none|gzip|deflate>" << std::endl;
   std::cerr << std::endl;
   std::cerr
       << "For -H, header must be 'Header:Value'. May be given multiple times."
+      << std::endl
+      << "For -i, it sets the compression algorithm used for sending request "
+         "body."
+      << "For -o, it sets the compression algorithm used for receiving "
+         "response body."
       << std::endl;
 
   exit(1);
@@ -97,10 +104,14 @@ main(int argc, char** argv)
   std::string url("localhost:8000");
   nic::Headers http_headers;
   uint32_t client_timeout = 0;
+  auto request_compression_algorithm =
+      nic::InferenceServerHttpClient::CompressionType::NONE;
+  auto response_compression_algorithm =
+      nic::InferenceServerHttpClient::CompressionType::NONE;
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt(argc, argv, "vu:t:H:")) != -1) {
+  while ((opt = getopt(argc, argv, "vu:t:H:i:o:")) != -1) {
     switch (opt) {
       case 'v':
         verbose = true;
@@ -115,6 +126,28 @@ main(int argc, char** argv)
         std::string arg = optarg;
         std::string header = arg.substr(0, arg.find(":"));
         http_headers[header] = arg.substr(header.size() + 1);
+        break;
+      }
+      case 'i': {
+        std::string arg = optarg;
+        if (arg == "gzip") {
+          request_compression_algorithm =
+              nic::InferenceServerHttpClient::CompressionType::GZIP;
+        } else if (arg == "deflate") {
+          request_compression_algorithm =
+              nic::InferenceServerHttpClient::CompressionType::DEFLATE;
+        }
+        break;
+      }
+      case 'o': {
+        std::string arg = optarg;
+        if (arg == "gzip") {
+          response_compression_algorithm =
+              nic::InferenceServerHttpClient::CompressionType::GZIP;
+        } else if (arg == "deflate") {
+          response_compression_algorithm =
+              nic::InferenceServerHttpClient::CompressionType::DEFLATE;
+        }
         break;
       }
       case '?':
@@ -186,7 +219,9 @@ main(int argc, char** argv)
 
   nic::InferResult* results;
   FAIL_IF_ERR(
-      client->Infer(&results, options, inputs, outputs, http_headers),
+      client->Infer(
+          &results, options, inputs, outputs, http_headers, nic::Parameters(),
+          request_compression_algorithm, response_compression_algorithm),
       "unable to run model");
   std::shared_ptr<nic::InferResult> results_ptr;
   results_ptr.reset(results);
