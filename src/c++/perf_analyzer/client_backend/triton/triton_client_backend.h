@@ -26,11 +26,11 @@
 #pragma once
 
 #include <string>
-#include "../client_backend.h"
 #include "../../perf_utils.h"
-#include "shm_utils.h"
+#include "../client_backend.h"
 #include "grpc_client.h"
 #include "http_client.h"
+#include "shm_utils.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \

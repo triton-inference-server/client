@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "perf_utils.h"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -31,7 +32,6 @@
 #include <iostream>
 #include <string>
 #include "client_backend/client_backend.h"
-#include "perf_utils.h"
 
 namespace perfanalyzer {
 

@@ -109,15 +109,15 @@ def parse_model(model_metadata, model_config):
     if len(input_metadata.shape) != expected_input_dims:
         raise Exception(
             "expecting input to have {} dimensions, model '{}' input has {}".
-                format(expected_input_dims, model_metadata.name,
-                       len(input_metadata.shape)))
+            format(expected_input_dims, model_metadata.name,
+                   len(input_metadata.shape)))
 
     if type(input_config.format) == str:
         FORMAT_ENUM_TO_INT = dict(mc.ModelInput.Format.items())
         input_config.format = FORMAT_ENUM_TO_INT[input_config.format]
 
     if ((input_config.format != mc.ModelInput.FORMAT_NCHW) and
-            (input_config.format != mc.ModelInput.FORMAT_NHWC)):
+        (input_config.format != mc.ModelInput.FORMAT_NHWC)):
         raise Exception("unexpected input format " +
                         mc.ModelInput.Format.Name(input_config.format) +
                         ", expecting " +
@@ -215,7 +215,9 @@ def requestGenerator(batched_image_data, input_name, output_name, dtype, FLAGS):
     inputs = [client.InferInput(input_name, batched_image_data.shape, dtype)]
     inputs[0].set_data_from_numpy(batched_image_data)
 
-    outputs = [client.InferRequestedOutput(output_name, class_count=FLAGS.classes)]
+    outputs = [
+        client.InferRequestedOutput(output_name, class_count=FLAGS.classes)
+    ]
 
     yield inputs, outputs, FLAGS.model_name, FLAGS.model_version
 
@@ -247,7 +249,7 @@ if __name__ == '__main__':
                         required=False,
                         default=False,
                         help='Use streaming inference API. ' +
-                             'The flag is only available with gRPC protocol.')
+                        'The flag is only available with gRPC protocol.')
     parser.add_argument('-m',
                         '--model-name',
                         type=str,
@@ -292,7 +294,7 @@ if __name__ == '__main__':
                         required=False,
                         default='HTTP',
                         help='Protocol (HTTP/gRPC) used to communicate with ' +
-                             'the inference service. Default is HTTP.')
+                        'the inference service. Default is HTTP.')
     parser.add_argument('image_filename',
                         type=str,
                         nargs='?',
@@ -337,7 +339,8 @@ if __name__ == '__main__':
     if FLAGS.protocol.lower() == "grpc":
         model_config = model_config.config
     else:
-        model_metadata, model_config = convert_http_metadata_config(model_metadata, model_config)
+        model_metadata, model_config = convert_http_metadata_config(
+            model_metadata, model_config)
 
     max_batch_size, input_name, output_name, c, h, w, format, dtype = parse_model(
         model_metadata, model_config)

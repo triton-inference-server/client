@@ -28,8 +28,8 @@
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "common.h"
 #include "../client_backend.h"
+#include "common.h"
 #include "torchserve_infer_input.h"
 
 

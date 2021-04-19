@@ -29,8 +29,8 @@
 
 #include <queue>
 #include "common.h"
-#include "ipc.h"
 #include "grpc_service.grpc.pb.h"
+#include "ipc.h"
 #include "model_config.pb.h"
 
 namespace nvidia { namespace inferenceserver { namespace client {
@@ -304,7 +304,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
   /// Run asynchronous inference on server.
   /// Once the request is completed, the InferResult pointer will be passed to
@@ -331,7 +331,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
   /// Starts a grpc bi-directional stream to send streaming inferences.
   /// \param callback The callback function to be invoked on receiving a
@@ -353,7 +353,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   Error StartStream(
       OnCompleteFn callback, bool enable_stats = true,
       uint32_t stream_timeout = 0, const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm=GRPC_COMPRESS_NONE);
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
   /// Stops an active grpc bi-directional stream, if one available.
   /// \return Error object indicating success or failure of the request.

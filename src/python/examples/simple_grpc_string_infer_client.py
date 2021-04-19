@@ -106,8 +106,7 @@ def identity_inference(triton_client, np_array):
     inputs.append(grpcclient.InferInput('INPUT0', np_array.shape, "BYTES"))
     inputs[0].set_data_from_numpy(np_array)
 
-    outputs.append(
-        grpcclient.InferRequestedOutput('OUTPUT0'))
+    outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
 
     results = triton_client.infer(model_name=model_name,
                                   inputs=inputs,

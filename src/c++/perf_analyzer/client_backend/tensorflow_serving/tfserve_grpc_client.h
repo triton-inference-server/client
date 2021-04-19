@@ -26,10 +26,10 @@
 #pragma once
 
 #include <grpc++/grpc++.h>
-#include "common.h"
 #include "../client_backend.h"
-#include "tfserve_infer_input.h"
+#include "common.h"
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
+#include "tfserve_infer_input.h"
 
 namespace nic = nvidia::inferenceserver::client;
 

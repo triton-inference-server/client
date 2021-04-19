@@ -26,8 +26,8 @@
 #pragma once
 
 #include <string>
-#include "../client_backend.h"
 #include "../../perf_utils.h"
+#include "../client_backend.h"
 #include "tfserve_grpc_client.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
