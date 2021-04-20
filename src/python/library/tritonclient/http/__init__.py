@@ -161,15 +161,22 @@ class InferenceServerClient:
         number of greenlets created.
     ssl : bool
         If True, channels the requests to encrypted https scheme.
-        Default value is False.
+        Some improper settings may cause connection to prematurely
+        terminate with an unsuccessful handshake. See
+        `ssl_context_factory` option for using secure default
+        settings. Default value for this option is False.
     ssl_options : dict
         Any options supported by `ssl.wrap_socket` specified as
         dictionary. The argument is ignored if 'ssl' is specified
         False.
     ssl_context_factory : SSLContext callable
-        It must be a callbable that returns a SSLContext. The default
-        value is None which use `ssl.create_default_context`. The
-        argument is ignored if 'ssl' is specified False.
+        It must be a callbable that returns a SSLContext. Set to
+        `gevent.ssl.create_default_context` to use contexts with
+        secure default settings. This should most likely resolve
+        connection issues in a secure way. The default value for
+        this option is None which directly wraps the socket with
+        the options provided via `ssl_options`. The argument is
+        ignored if 'ssl' is specified False.
     insecure : bool
         If True, then does not match the host name with the certificate.
         Default value is False. The argument is ignored if 'ssl' is
