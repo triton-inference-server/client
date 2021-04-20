@@ -37,6 +37,8 @@
 #include <memory>
 #include <random>
 
+#include "client_backend/client_backend.h"
+
 #define RETURN_IF_ERROR(S)           \
   do {                               \
     const cb::Error& status__ = (S); \
@@ -54,8 +56,8 @@
     }                                                              \
   }
 
-namespace cb = perfanalyzer::clientbackend;
 namespace pa = perfanalyzer;
+namespace cb = perfanalyzer::clientbackend;
 
 namespace perfanalyzer {
 
