@@ -206,7 +206,12 @@ under-development version).
 $ git checkout main
 ```
 
-Then use *cmake* to configure the build.
+Building on Windows vs. non-Windows requires different invocations
+because Triton on Windows does not yet support all the build options.
+
+#### Non-Windows
+
+Use *cmake* to configure the build.
 
 ```
 $ mkdir build
@@ -214,13 +219,26 @@ $ cd build
 $ cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PYTHON_HTTP=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
 ```
 
-Lastly use *make* to build the clients and examples.
+Then use *make* to build the clients and examples.
 
 ```
 $ make cc-clients python-clients
 ```
 
-On Windows use msbuild.exe instead of *make*.
+When the build completes the libraries and examples can be found in
+the install directory.
+
+#### Windows
+
+Use *cmake* to configure the build.
+
+```
+$ mkdir build
+$ cd build
+$ cmake -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
+```
+
+Then use msbuild.exe to build.
 
 ```
 $ msbuild.exe cc-clients.vcxproj -p:Configuration=Release -clp:ErrorsOnly
