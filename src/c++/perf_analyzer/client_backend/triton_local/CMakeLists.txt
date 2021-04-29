@@ -45,12 +45,14 @@ add_library(
 target_link_libraries(
   triton-local-client-backend-library
   PUBLIC model-config-library
-  PUBLIC TRITON::grpcclient_static
-  PUBLIC TRITON::httpclient_static
+  PUBLIC grpcclient_static
+  PUBLIC httpclient_static
   PUBLIC c-api-helpers-library
 )
 
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(triton-local-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(triton-local-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+  target_link_libraries(
+    triton-client-backend-library
+    PRIVATE CUDA::cudart
+  )
 endif() # TRITON_ENABLE_GPU

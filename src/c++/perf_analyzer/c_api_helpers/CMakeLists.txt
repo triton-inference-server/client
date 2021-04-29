@@ -36,7 +36,6 @@ set(
     C_API_HELPERS_HDRS
      shared_library.h
      triton_loader.h
-     common.h
      c_api_infer_results.h
 )
 
@@ -48,12 +47,14 @@ add_library(
 
 target_link_libraries(
   c-api-helpers-library
-  PUBLIC model-config-library
+  grpcclient_static
   triton-core-serverstub  # from repo-core
   triton-core-serverapi   # from repo-core
 )
 
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(c-api-helpers-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(c-api-helpers-library PRIVATE ${CUDA_LIBRARIES})
+  target_link_libraries(
+    triton-client-backend-library
+    PRIVATE CUDA::cudart
+  )
 endif() # TRITON_ENABLE_GPU

@@ -26,7 +26,7 @@
 #pragma once
 
 #include <string>
-#include "src/clients/c++/perf_analyzer/error.h"
+#include "../error.h"
 /// FIXME: Duplication of server/src/core/shared_library.h
 /// Separate shared_library to common library and delete this
 

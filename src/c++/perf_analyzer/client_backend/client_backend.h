@@ -80,7 +80,7 @@ class InferInput;
 class InferRequestedOutput;
 class InferResult;
 class TritonLoader;
-
+enum BackendKind {
   TRITON = 0,
   TENSORFLOW_SERVING = 1,
   TORCHSERVE = 2,

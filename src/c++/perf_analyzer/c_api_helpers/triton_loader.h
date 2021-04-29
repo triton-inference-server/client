@@ -29,9 +29,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include "src/clients/c++/library/common.h"
-#include "src/clients/c++/perf_analyzer/c_api_helpers/shared_library.h"
-#include "src/clients/c++/perf_analyzer/error.h"
+#include "../../library/common.h"
+#include "shared_library.h"
+#include "../error.h"
 #include "triton/core/tritonserver.h"
 
 #include <rapidjson/document.h>

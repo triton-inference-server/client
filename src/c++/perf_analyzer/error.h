@@ -30,7 +30,7 @@
 
 #define RETURN_IF_CB_ERROR(S)           \
   do {                                  \
-    perfanalyzer::Error status__ = (S); \
+    Error status__ = (S); \
     if (!status__.IsOk()) {             \
       return status__;                  \
     }                                   \
@@ -38,7 +38,7 @@
 
 #define RETURN_IF_ERROR(S)              \
   do {                                  \
-    perfanalyzer::Error status__ = (S); \
+    Error status__ = (S); \
     if (!status__.IsOk()) {             \
       return status__;                  \
     }                                   \
@@ -46,7 +46,7 @@
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    perfanalyzer::Error err = (X);                                 \
+    Error err = (X);                                 \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -54,7 +54,7 @@
   }                                                                \
   while (false)
 
-namespace perfanalyzer { namespace clientbackend
+namespace perfanalyzer { namespace clientbackend {
 //==============================================================================
 /// Error status reported by backends
 ///

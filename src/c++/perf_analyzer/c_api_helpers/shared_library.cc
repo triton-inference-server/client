@@ -23,7 +23,7 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#include "src/clients/c++/perf_analyzer/c_api_helpers/shared_library.h"
+#include "shared_library.h"
 #include <dlfcn.h>
 #include <iostream>
 

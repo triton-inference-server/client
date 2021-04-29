@@ -26,7 +26,7 @@
 #define TRITON_INFERENCE_SERVER_CAPI_CLASS \
   perfanalyzer::clientbackend::TritonLoader
 
-#include "src/clients/c++/perf_analyzer/c_api_helpers/triton_loader.h"
+
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <fstream>
@@ -34,8 +34,8 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
-#include "src/clients/c++/perf_analyzer/c_api_helpers/c_api_infer_results.h"
-#include "src/clients/c++/perf_analyzer/c_api_helpers/common.h"
+#include "c_api_infer_results.h"
+#include "triton_loader.h"
 namespace cb = perfanalyzer::clientbackend;
 namespace nvidia { namespace inferenceserver { namespace client {
 class InferResultCApi;
@@ -149,6 +149,35 @@ InferResponseComplete(
   }
 }
 
+Error
+GetModelVersionFromString(const std::string& version_string, int64_t* version)
+{
+  if (version_string.empty()) {
+    *version = 1;
+    return Error::Success;
+  }
+
+  try {
+    *version = std::stol(version_string);
+  }
+  catch (std::exception& e) {
+    return Error(
+        std::string(
+            "failed to get model version from specified version string '" +
+            version_string + "' (details: " + e.what() +
+            "), version should be an integral value > 0")
+            .c_str());
+  }
+
+  if (*version < 0) {
+    return Error(std::string(
+                     "invalid model version specified '" + version_string +
+                     "' , version should be an integral value > 0")
+                     .c_str());
+  }
+
+  return Error::Success;
+}
 }  // namespace
 Error
 TritonLoader::Create(
