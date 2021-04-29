@@ -26,48 +26,34 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-# fixme
-add_definitions(-DCURL_STATICLIB)
-
-add_subdirectory(triton)
-add_subdirectory(tensorflow_serving)
-add_subdirectory(torchserve)
-add_subdirectory(triton_local)
-
 set(
-  CLIENT_BACKEND_SRCS
-  client_backend.cc
+  C_API_HELPERS_SRCS
+  shared_library.cc
+  triton_loader.cc
 )
 
 set(
-  CLIENT_BACKEND_HDRS
-  client_backend.h
+    C_API_HELPERS_HDRS
+     shared_library.h
+     triton_loader.h
+     common.h
+     c_api_infer_results.h
 )
 
 add_library(
-  client-backend-library
-  ${CLIENT_BACKEND_SRCS}
-  ${CLIENT_BACKEND_HDRS}
-  $<TARGET_OBJECTS:triton-client-backend-library>
-  $<TARGET_OBJECTS:tfs-client-backend-library>
-  $<TARGET_OBJECTS:ts-client-backend-library>
-  $<TARGET_OBJECTS:shm-utils-library>
-  $<TARGET_OBJECTS:triton-local-client-backend-library>
+    c-api-helpers-library  EXCLUDE_FROM_ALL OBJECT
+    ${C_API_HELPERS_SRCS}
+    ${C_API_HELPERS_HDRS}
 )
 
 target_link_libraries(
-  client-backend-library
-  PUBLIC triton-common-json        # from repo-common
-  PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:tfs-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:triton-local-client-backend-library,LINK_LIBRARIES>
+  c-api-helpers-library
+  PUBLIC model-config-library
+  triton-core-serverstub  # from repo-core
+  triton-core-serverapi   # from repo-core
 )
 
-target_include_directories(
-    client-backend-library
-    PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:triton-local-client-backend-library,INCLUDE_DIRECTORIES>
-)
+if(${TRITON_ENABLE_GPU})
+    target_include_directories(c-api-helpers-library PUBLIC ${CUDA_INCLUDE_DIRS})
+    target_link_libraries(c-api-helpers-library PRIVATE ${CUDA_LIBRARIES})
+endif() # TRITON_ENABLE_GPU

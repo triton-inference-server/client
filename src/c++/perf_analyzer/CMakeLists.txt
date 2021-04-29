@@ -32,6 +32,7 @@ if(WIN32)
 else()
 
 add_subdirectory(client_backend)
+add_subdirectory(c_api_helpers)
 
 set(
   PERF_ANALYZER_SRCS
@@ -44,6 +45,7 @@ set(
   request_rate_manager.cc
   custom_load_manager.cc
   inference_profiler.cc
+  error.cc
 )
 
 set(
@@ -56,6 +58,7 @@ set(
   request_rate_manager.h
   custom_load_manager.h
   inference_profiler.h
+  error.h
 )
 
 add_executable(
@@ -66,9 +69,15 @@ add_executable(
 )
 target_link_libraries(
   perf_analyzer
+  PUBLIC $<TARGET_PROPERTY:c-api-helpers-library,LINK_LIBRARIES>
   PRIVATE
     client-backend-library
     -lb64
+)
+
+target_include_directories(
+  perf_analyzer
+  PRIVATE $<TARGET_PROPERTY:c-api-helpers-library,INCLUDE_DIRECTORIES>
 )
 
 # If gpu is enabled then compile with CUDA dependencies

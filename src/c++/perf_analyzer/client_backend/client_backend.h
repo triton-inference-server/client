@@ -79,9 +79,14 @@ class ClientBackend;
 class InferInput;
 class InferRequestedOutput;
 class InferResult;
+class TritonLoader;
 
-enum BackendKind { TRITON = 0, TENSORFLOW_SERVING = 1, TORCHSERVE = 2 };
-enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
+  TRITON = 0,
+  TENSORFLOW_SERVING = 1,
+  TORCHSERVE = 2,
+  TRITON_LOCAL = 3
+};
+enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2, LOCAL = 3 };
 enum GrpcCompressionAlgorithm {
   COMPRESS_NONE = 0,
   COMPRESS_DEFLATE = 1,
@@ -189,6 +194,12 @@ class ClientBackendFactory {
   /// \param backend Returns a new Client backend object.
   Error CreateClientBackend(std::unique_ptr<ClientBackend>* backend);
 
+  /// Add library path and model repository path to start the server and load
+  /// the model only used for the TRITON_LOCAL version which uses CAPI
+  Error AddAdditonalInfo(
+      const std::string& server_library_path,
+      const std::string& model_repository_path, const std::string& memory_type);
+ 
  private:
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
@@ -207,6 +218,10 @@ class ClientBackendFactory {
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
   const bool verbose_;
+  std::string server_library_path_;
+  std::string model_repository_path_;
+  std::string memory_type_;
+  std::shared_ptr<TritonLoader> loader_;
 };
 
 //
@@ -219,6 +234,7 @@ class ClientBackend {
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
+      const std::shared_ptr<TritonLoader>& loader,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// Destructor for the client backend object

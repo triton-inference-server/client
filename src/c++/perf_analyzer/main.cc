@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -926,6 +926,8 @@ main(int argc, char** argv)
           kind = cb::TENSORFLOW_SERVING;
         } else if (arg.compare("torchserve") == 0) {
           kind = cb::TORCHSERVE;
+        } else if (arg.compare("triton_local") == 0) {
+          kind = cb::TRITON_LOCAL;
         } else {
           Usage(argv, "unsupported --service-kind specified");
         }
@@ -1200,6 +1202,23 @@ main(int argc, char** argv)
           extra_verbose, &factory),
       "failed to create client factory");
 
+  if (kind == cb::BackendKind::TRITON_LOCAL) {
+    std::string server_library_path = "/opt/tritonserver";
+    std::string memory_type = "system";
+    std::string model_repository_path =
+        "/tmp/host/docker-data/model_unit_test/";
+    FAIL_IF_ERR(
+        factory->AddAdditonalInfo(
+            server_library_path, model_repository_path, memory_type),
+        "cannot add additional info");
+    if (!target_concurrency) {
+      std::cerr << " CAPI does not support target concurrency" << std::endl;
+      return 1;
+    } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
+      std::cerr << " CAPI does not support shared memory types at all"
+                << std::endl;
+    }
+  }
   std::unique_ptr<cb::ClientBackend> backend;
   FAIL_IF_ERR(
       factory->CreateClientBackend(&backend),
@@ -1216,6 +1235,20 @@ main(int argc, char** argv)
     FAIL_IF_ERR(
         backend->ModelConfig(&model_config, model_name, model_version),
         "failed to get model config");
+    FAIL_IF_ERR(
+        parser->InitTriton(
+            model_metadata, model_config, model_version, input_shapes, backend),
+        "failed to create model parser");
+  } else if (kind == cb::BackendKind::TRITON_LOCAL) {
+    rapidjson::Document model_metadata;
+    FAIL_IF_ERR(
+        backend->ModelMetadata(&model_metadata, model_name, model_version),
+        "failed to get model metadata");
+    rapidjson::Document model_config;
+    FAIL_IF_ERR(
+        backend->ModelConfig(&model_config, model_name, model_version),
+        "failed to get model config");
+    std::cout << "initializing parser, using backend" << std::endl;
     FAIL_IF_ERR(
         parser->InitTriton(
             model_metadata, model_config, model_version, input_shapes, backend),
