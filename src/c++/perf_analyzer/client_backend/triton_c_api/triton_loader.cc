@@ -26,6 +26,7 @@
 #define TRITON_INFERENCE_SERVER_CAPI_CLASS \
   perfanalyzer::clientbackend::TritonLoader
 
+#include "triton_loader.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
@@ -35,8 +36,7 @@
 #include <thread>
 #include <unordered_map>
 #include "c_api_infer_results.h"
-#include "triton_loader.h"
-namespace cb = perfanalyzer::clientbackend;
+
 namespace nvidia { namespace inferenceserver { namespace client {
 class InferResultCApi;
 }}}  // namespace nvidia::inferenceserver::client

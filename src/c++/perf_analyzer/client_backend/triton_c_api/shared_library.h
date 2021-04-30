@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -23,25 +23,19 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#pragma once
 
-#include "src/clients/c++/perf_analyzer/error.h"
+#include <string>
+#include "../client_backend.h"
+/// FIXME: Duplication of server/src/core/shared_library.h
+/// Separate shared_library to common library and delete this
 
-namespace perfanalyzer { namespace clientbackend
+namespace perfanalyzer { namespace clientbackend {
+Error OpenLibraryHandle(const std::string& path, void** handle);
 
-//==============================================================================
+Error CloseLibraryHandle(void* handle);
 
-const Error Error::Success("");
+Error GetEntrypoint(
+    void* handle, const std::string& name, const bool optional, void** befn);
 
-Error::Error(const std::string& msg) : msg_(msg) {}
-
-std::ostream&
-operator<<(std::ostream& out, const Error& err)
-{
-  if (!err.msg_.empty()) {
-    out << err.msg_;
-  }
-  return out;
-}
-
-//==============================================================================
 }}  // namespace perfanalyzer::clientbackend

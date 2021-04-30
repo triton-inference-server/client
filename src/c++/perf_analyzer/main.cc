@@ -681,6 +681,11 @@ main(int argc, char** argv)
   bool url_specified = false;
   bool max_threads_specified = false;
 
+  // Capi backend required info
+  std::string server_library_path = "/opt/tritonserver";
+  std::string model_repository_path = "/tmp/host/docker-data/model_unit_test/";
+  std::string memory_type = "system";
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -1199,18 +1204,11 @@ main(int argc, char** argv)
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, compression_algorithm, http_headers,
+          server_library_path, model_repository_path, memory_type,
           extra_verbose, &factory),
       "failed to create client factory");
 
   if (kind == cb::BackendKind::TRITON_LOCAL) {
-    std::string server_library_path = "/opt/tritonserver";
-    std::string memory_type = "system";
-    std::string model_repository_path =
-        "/tmp/host/docker-data/model_unit_test/";
-    FAIL_IF_ERR(
-        factory->AddAdditonalInfo(
-            server_library_path, model_repository_path, memory_type),
-        "cannot add additional info");
     if (!target_concurrency) {
       std::cerr << " CAPI does not support target concurrency" << std::endl;
       return 1;

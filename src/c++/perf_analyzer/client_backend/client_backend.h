@@ -36,16 +36,32 @@
 #include <vector>
 #include "ipc.h"
 
-#define RETURN_IF_CB_ERROR(S)    \
-  do {                           \
-    const Error& status__ = (S); \
-    if (!status__.IsOk()) {      \
-      return status__;           \
-    }                            \
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+#define RETURN_IF_CB_ERROR(S)                                 \
+  do {                                                        \
+    const perfanalyzer::clientbackend::Error& status__ = (S); \
+    if (!status__.IsOk()) {                                   \
+      return status__;                                        \
+    }                                                         \
   } while (false)
 
-namespace triton { namespace perfanalyzer { namespace clientbackend {
+#define RETURN_IF_ERROR(S)                             \
+  do {                                                 \
+    perfanalyzer::clientbackend::Error status__ = (S); \
+    if (!status__.IsOk()) {                            \
+      return status__;                                 \
+    }                                                  \
+  } while (false)
 
+#define FAIL_IF_ERR(X, MSG)                                        \
+  {                                                                \
+    perfanalyzer::clientbackend::Error err = (X);                  \
+    if (!err.IsOk()) {                                             \
+      std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
+      exit(1);                                                     \
+    }                                                              \
+  }                                                                \
+  while (false)
 //==============================================================================
 /// Error status reported by backends
 ///
@@ -86,7 +102,7 @@ enum BackendKind {
   TORCHSERVE = 2,
   TRITON_LOCAL = 3
 };
-enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2, LOCAL = 3 };
+enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {
   COMPRESS_NONE = 0,
   COMPRESS_DEFLATE = 1,
@@ -180,35 +196,39 @@ class ClientBackendFactory {
   /// \param http_headers Map of HTTP headers. The map key/value
   /// indicates the header name/value. The headers will be included
   /// with all the requests made to server using this client.
-  /// \param verbose Enables the verbose mode.
-  /// \param factory Returns a new ClientBackend object.
-  /// \return Error object indicating success or failure.
+  /// \param server_library_path Only for C api backend. Lbrary path to
+  /// libtritonserver.so \param model_repository_path Only for C api backend.
+  /// Path to model \param memory_type Only for C api backend. Type of memory
+  /// used (system is default) \param verbose Enables the verbose mode. \param
+  /// factory Returns a new ClientBackend object. \return Error object
+  /// indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
-      std::shared_ptr<Headers> http_headers, const bool verbose,
-      std::shared_ptr<ClientBackendFactory>* factory);
+      std::shared_ptr<Headers> http_headers,
+      const std::string& server_library_path,
+      const std::string& model_repository_path, const std::string& memory_type,
+      const bool verbose, std::shared_ptr<ClientBackendFactory>* factory);
 
   /// Create a ClientBackend.
   /// \param backend Returns a new Client backend object.
   Error CreateClientBackend(std::unique_ptr<ClientBackend>* backend);
 
-  /// Add library path and model repository path to start the server and load
-  /// the model only used for the TRITON_LOCAL version which uses CAPI
-  Error AddAdditonalInfo(
-      const std::string& server_library_path,
-      const std::string& model_repository_path, const std::string& memory_type);
- 
  private:
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
-      const std::shared_ptr<Headers> http_headers, const bool verbose)
+      const std::shared_ptr<Headers> http_headers,
+      const std::string& server_library_path,
+      const std::string& model_repository_path, const std::string& memory_type,
+      const bool verbose)
       : kind_(kind), url_(url), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers), verbose_(verbose)
+        http_headers_(http_headers), server_library_path_(server_library_path),
+        model_repository_path_(model_repository_path),
+        memory_type_(memory_type), verbose_(verbose)
   {
   }
 
@@ -221,7 +241,6 @@ class ClientBackendFactory {
   std::string server_library_path_;
   std::string model_repository_path_;
   std::string memory_type_;
-  std::shared_ptr<TritonLoader> loader_;
 };
 
 //
@@ -234,7 +253,8 @@ class ClientBackend {
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
-      const std::shared_ptr<TritonLoader>& loader,
+      const std::string& library_directory, const std::string& model_repository,
+      const std::string& memory_type,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// Destructor for the client backend object

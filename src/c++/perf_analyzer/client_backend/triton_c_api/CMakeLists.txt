@@ -27,29 +27,37 @@
 cmake_minimum_required (VERSION 3.18)
 
 set(
-  C_API_HELPERS_SRCS
-  shared_library.cc
-  triton_loader.cc
+    TRITON_LOCAL_CLIENT_BACKEND_SRCS
+    triton_c_api_backend.cc
+    shared_library.cc
+    triton_loader.cc
 )
 
 set(
-    C_API_HELPERS_HDRS
-     shared_library.h
-     triton_loader.h
-     c_api_infer_results.h
+    TRITON_LOCAL_CLIENT_BACKEND_HDRS
+    triton_c_api_backend.h
+    shared_library.h
+    triton_loader.h
+    c_api_infer_results.h
 )
 
 add_library(
-    c-api-helpers-library  EXCLUDE_FROM_ALL OBJECT
-    ${C_API_HELPERS_SRCS}
-    ${C_API_HELPERS_HDRS}
+    triton-c-api-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${TRITON_LOCAL_CLIENT_BACKEND_SRCS}
+    ${TRITON_LOCAL_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-  c-api-helpers-library
-  grpcclient_static
-  triton-core-serverstub  # from repo-core
-  triton-core-serverapi   # from repo-core
+  triton-c-api-backend-library
+  PUBLIC grpcclient_static
+  PUBLIC httpclient_static
+  PUBLIC triton-core-serverstub  # from repo-core
+  PUBLIC triton-core-serverapi   # from repo-core
+)
+
+target_include_directories(
+  triton-c-api-backend-library
+  PUBLIC /workspace/builddir/client/_deps/repo-core-src/include
 )
 
 if(${TRITON_ENABLE_GPU})

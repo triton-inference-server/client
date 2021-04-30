@@ -29,9 +29,9 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include "../../library/common.h"
+#include "../client_backend.h"
+#include "common.h"
 #include "shared_library.h"
-#include "../error.h"
 #include "triton/core/tritonserver.h"
 
 #include <rapidjson/document.h>

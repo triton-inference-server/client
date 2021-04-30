@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
-#include "../../library/common.h"
+#include "common.h"
 namespace nvidia { namespace inferenceserver { namespace client {
 class InferResultCApi : public InferResult {
  public:

@@ -24,9 +24,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "src/clients/c++/perf_analyzer/client_backend/triton_local/triton_local_client_backend.h"
-#include "src/clients/c++/examples/json_utils.h"
-#include "src/clients/c++/perf_analyzer/c_api_helpers/triton_loader.h"
+#include "triton_c_api_backend.h"
+
+#include "json_utils.h"
+#include "triton_loader.h"
 
 namespace perfanalyzer { namespace clientbackend {
 
@@ -36,9 +37,9 @@ Error
 TritonLocalClientBackend::Create(
     const std::string& url, const ProtocolType protocol,
     const grpc_compression_algorithm compression_algorithm,
-    std::shared_ptr<Headers> http_headers, const bool verbose,
-    const std::shared_ptr<TritonLoader>& loader,
-    std::unique_ptr<ClientBackend>* client_backend)
+    std::shared_ptr<Headers> http_headers, const std::string& library_directory,
+    const std::string& model_repository, const std::string& memory_type,
+    const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
 {
   std::cout << "backend creating" << std::endl;
   std::unique_ptr<TritonLocalClientBackend> triton_client_backend(
@@ -52,7 +53,9 @@ TritonLocalClientBackend::Create(
         &(triton_client_backend->client_.grpc_client_), url, verbose));
   }
 
-  triton_client_backend->loader_ = loader;
+  TritonLoader::Create(
+      library_directory, model_repository, memory_type, verbose,
+      &triton_client_backend->loader_);
   *client_backend = std::move(triton_client_backend);
   return Error::Success;
 }
@@ -67,31 +70,27 @@ TritonLocalClientBackend::ServerExtensions(std::set<std::string>* extensions)
   //       client_.http_client_->ServerMetadata(&server_metadata,
   //       *http_headers_), "unable to get server metadata");
 
-  if (auto loader = loader_.lock()) {
-    rapidjson::Document server_metadata_json;
-    RETURN_IF_ERROR(loader->ServerMetaData(&server_metadata_json));
-    // FAIL_IF_TRITON_ERR(
-    //     nic::ParseJson(&server_metadata_json, server_metadata),
-    //     "failed to parse server metadata");
-    for (const auto& extension :
-         server_metadata_json["extensions"].GetArray()) {
-      extensions->insert(
-          std::string(extension.GetString(), extension.GetStringLength()));
-    }
-    // } else {
-    //   inference::ServerMetadataResponse server_metadata;
-    //   FAIL_IF_TRITON_ERR(
-    //       client_.grpc_client_->ServerMetadata(&server_metadata,
-    //       *http_headers_), "unable to get server metadata");
-    //   for (const auto& extension : server_metadata.extensions()) {
-    //     extensions->insert(extension);
-    //   }
-    // }
 
-    return Error::Success;
-  } else {
-    return Error("loaded server does not exist");
+  rapidjson::Document server_metadata_json;
+  RETURN_IF_ERROR(loader_->ServerMetaData(&server_metadata_json));
+  // FAIL_IF_TRITON_ERR(
+  //     nic::ParseJson(&server_metadata_json, server_metadata),
+  //     "failed to parse server metadata");
+  for (const auto& extension : server_metadata_json["extensions"].GetArray()) {
+    extensions->insert(
+        std::string(extension.GetString(), extension.GetStringLength()));
   }
+  // } else {
+  //   inference::ServerMetadataResponse server_metadata;
+  //   FAIL_IF_TRITON_ERR(
+  //       client_.grpc_client_->ServerMetadata(&server_metadata,
+  //       *http_headers_), "unable to get server metadata");
+  //   for (const auto& extension : server_metadata.extensions()) {
+  //     extensions->insert(extension);
+  //   }
+  // }
+
+  return Error::Success;
 }
 
 Error
@@ -99,35 +98,31 @@ TritonLocalClientBackend::ModelMetadata(
     rapidjson::Document* model_metadata, const std::string& model_name,
     const std::string& model_version)
 {
-  if (auto loader = loader_.lock()) {
-    if (!loader->ModelIsLoaded()) {
-      loader->LoadModel(model_name, model_version);
-    }
-
-    // if (protocol_ == ProtocolType::HTTP) {
-    //   std::string metadata;
-    //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelMetadata(
-    //       &metadata, model_name, model_version, *http_headers_));
-    //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
-    // } else {
-    //   inference::ModelMetadataResponse model_metadata_proto;
-    //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelMetadata(
-    //       &model_metadata_proto, model_name, model_version, *http_headers_));
-
-    //   std::string metadata;
-    //   ::google::protobuf::util::JsonPrintOptions options;
-    //   options.preserve_proto_field_names = true;
-    //   options.always_print_primitive_fields = true;
-    //   ::google::protobuf::util::MessageToJsonString(
-    //       model_metadata_proto, &metadata, options);
-
-    //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
-    // }
-    RETURN_IF_ERROR(loader->ModelMetadata(model_metadata));
-    return Error::Success;
-  } else {
-    return Error("loaded server does not exist");
+  if (!loader_->ModelIsLoaded()) {
+    loader_->LoadModel(model_name, model_version);
   }
+
+  // if (protocol_ == ProtocolType::HTTP) {
+  //   std::string metadata;
+  //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelMetadata(
+  //       &metadata, model_name, model_version, *http_headers_));
+  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+  // } else {
+  //   inference::ModelMetadataResponse model_metadata_proto;
+  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelMetadata(
+  //       &model_metadata_proto, model_name, model_version, *http_headers_));
+
+  //   std::string metadata;
+  //   ::google::protobuf::util::JsonPrintOptions options;
+  //   options.preserve_proto_field_names = true;
+  //   options.always_print_primitive_fields = true;
+  //   ::google::protobuf::util::MessageToJsonString(
+  //       model_metadata_proto, &metadata, options);
+
+  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+  // }
+  RETURN_IF_ERROR(loader_->ModelMetadata(model_metadata));
+  return Error::Success;
 }
 
 Error
@@ -135,37 +130,33 @@ TritonLocalClientBackend::ModelConfig(
     rapidjson::Document* model_config, const std::string& model_name,
     const std::string& model_version)
 {
-  if (auto loader = loader_.lock()) {
-    if (!loader->ModelIsLoaded()) {
-      loader->LoadModel(model_name, model_version);
-    }
-    // if (protocol_ == ProtocolType::HTTP) {
-    //   std::string config;
-    //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelConfig(
-    //       &config, model_name, model_version, *http_headers_));
-    //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_config, config));
-    // } else {
-    //   inference::ModelConfigResponse model_config_proto;
-    //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelConfig(
-    //       &model_config_proto, model_name, model_version, *http_headers_));
-
-    //   std::string config;
-    //   ::google::protobuf::util::JsonPrintOptions options;
-    //   options.preserve_proto_field_names = true;
-    //   options.always_print_primitive_fields = true;
-    //   ::google::protobuf::util::MessageToJsonString(
-    //       model_config_proto, &config, options);
-
-    //   rapidjson::Document full_config;
-    //   RETURN_IF_TRITON_ERROR(nic::ParseJson(&full_config, config));
-    //   model_config->CopyFrom(full_config["config"],
-    //   model_config->GetAllocator());
-    // }
-    RETURN_IF_ERROR(loader->ModelConfig(model_config));
-    return Error::Success;
-  } else {
-    return Error("loaded server does not exist");
+  if (!loader_->ModelIsLoaded()) {
+    loader_->LoadModel(model_name, model_version);
   }
+  // if (protocol_ == ProtocolType::HTTP) {
+  //   std::string config;
+  //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelConfig(
+  //       &config, model_name, model_version, *http_headers_));
+  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_config, config));
+  // } else {
+  //   inference::ModelConfigResponse model_config_proto;
+  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelConfig(
+  //       &model_config_proto, model_name, model_version, *http_headers_));
+
+  //   std::string config;
+  //   ::google::protobuf::util::JsonPrintOptions options;
+  //   options.preserve_proto_field_names = true;
+  //   options.always_print_primitive_fields = true;
+  //   ::google::protobuf::util::MessageToJsonString(
+  //       model_config_proto, &config, options);
+
+  //   rapidjson::Document full_config;
+  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(&full_config, config));
+  //   model_config->CopyFrom(full_config["config"],
+  //   model_config->GetAllocator());
+  // }
+  RETURN_IF_ERROR(loader_->ModelConfig(model_config));
+  return Error::Success;
 }
 
 Error
@@ -184,23 +175,19 @@ TritonLocalClientBackend::Infer(
   ParseInferOptionsToTriton(options, &triton_options);
 
   nic::InferResult* triton_result;
-  if (auto loader = loader_.lock()) {
-    RETURN_IF_ERROR(loader->Infer(
-        triton_options, triton_inputs, triton_outputs, &triton_result));
-    // if (protocol_ == ProtocolType::GRPC) {
-    //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->Infer(
-    //       &triton_result, triton_options, triton_inputs, triton_outputs,
-    //       *http_headers_, compression_algorithm_));
-    // } else {
-    //   RETURN_IF_TRITON_ERROR(client_.http_client_->Infer(
-    //       &triton_result, triton_options, triton_inputs, triton_outputs,
-    //       *http_headers_));
-    // }
+  RETURN_IF_ERROR(loader_->Infer(
+      triton_options, triton_inputs, triton_outputs, &triton_result));
+  // if (protocol_ == ProtocolType::GRPC) {
+  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->Infer(
+  //       &triton_result, triton_options, triton_inputs, triton_outputs,
+  //       *http_headers_, compression_algorithm_));
+  // } else {
+  //   RETURN_IF_TRITON_ERROR(client_.http_client_->Infer(
+  //       &triton_result, triton_options, triton_inputs, triton_outputs,
+  //       *http_headers_));
+  // }
 
-    *result = new TritonLocalInferResult(triton_result);
-  } else {
-    return Error("loaded server does not exist");
-  }
+  *result = new TritonLocalInferResult(triton_result);
   return Error::Success;
 }
 
@@ -288,16 +275,9 @@ Error
 TritonLocalClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   nic::InferStat triton_infer_stat;
-  // if (protocol_ == ProtocolType::GRPC) {
-  //   RETURN_IF_TRITON_ERROR(
-  //       client_.grpc_client_->ClientInferStat(&triton_infer_stat));
-  // } else {
-  //   RETURN_IF_TRITON_ERROR(
-  //       client_.http_client_->ClientInferStat(&triton_infer_stat));
-  // }
-  _loader->ClientInferStat(&triton_infer_stat);
-  ParseInferStat(triton_infer_stat, infer_stat);
 
+  loader_->ClientInferStat(&triton_infer_stat);
+  ParseInferStat(triton_infer_stat, infer_stat);
   return Error::Success;
 }
 

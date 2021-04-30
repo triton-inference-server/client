@@ -26,12 +26,11 @@
 #pragma once
 
 #include <string>
-
-#include "src/clients/c++/examples/shm_utils.h"
-#include "src/clients/c++/library/grpc_client.h"
-#include "src/clients/c++/library/http_client.h"
-#include "src/clients/c++/perf_analyzer/c_api_helpers/triton_loader.h"
-#include "src/clients/c++/perf_analyzer/client_backend/client_backend.h"
+#include "../client_backend.h"
+#include "grpc_client.h"
+#include "http_client.h"
+#include "shm_utils.h"
+#include "triton_loader.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
@@ -73,8 +72,9 @@ class TritonLocalClientBackend : public ClientBackend {
   static Error Create(
       const std::string& url, const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<nic::Headers> http_headers, const bool verbose,
-      const std::shared_ptr<TritonLoader>& loader,
+      std::shared_ptr<Headers> http_headers,
+      const std::string& library_directory, const std::string& model_repository,
+      const std::string& memory_type, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -193,7 +193,7 @@ class TritonLocalClientBackend : public ClientBackend {
   const ProtocolType protocol_;
   const grpc_compression_algorithm compression_algorithm_;
   std::shared_ptr<nic::Headers> http_headers_;
-  std::weak_ptr<TritonLoader> loader_;
+  std::shared_ptr<TritonLoader> loader_;
 };
 
 //==============================================================
