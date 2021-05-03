@@ -211,7 +211,7 @@ Usage(char** argv, const std::string& msg = std::string())
 
   std::cerr << "Usage: " << argv[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
-  std::cerr << "\t--service-kind <\"triton\"|\"tfserving\"|\"torchserve\">"
+  std::cerr << "\t--service-kind <\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_local\">"
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
@@ -1199,7 +1199,7 @@ main(int argc, char** argv)
 
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
-
+  std::cout << "starting the factory..." << std::endl;
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
@@ -1209,6 +1209,7 @@ main(int argc, char** argv)
       "failed to create client factory");
 
   if (kind == cb::BackendKind::TRITON_LOCAL) {
+    std::cout << "here?>>??" << std::endl;
     if (!target_concurrency) {
       std::cerr << " CAPI does not support target concurrency" << std::endl;
       return 1;

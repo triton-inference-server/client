@@ -52,11 +52,6 @@ constexpr int MAX_GRPC_MESSAGE_SIZE = INT32_MAX;
 class InferResult;
 class InferRequest;
 class RequestTimers;
-
-#ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
-#endif
-
 //==============================================================================
 /// Error status reported by client API.
 ///
@@ -321,10 +316,7 @@ class InferInput {
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-  friend TRITON_INFERENCE_SERVER_CLIENT_CLASS;
-#endif
-#ifdef TRITON_INFERENCE_SERVER_CAPI_CLASS
-friend class TRITON_INFERENCE_SERVER_CAPI_CLASS;
+  friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
 #endif
   InferInput(
       const std::string& name, const std::vector<int64_t>& dims,
@@ -419,7 +411,7 @@ class InferRequestedOutput {
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-  friend TRITON_INFERENCE_SERVER_CLIENT_CLASS;
+  friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
 #endif
 
   explicit InferRequestedOutput(

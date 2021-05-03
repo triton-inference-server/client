@@ -37,9 +37,9 @@ option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
-option(PERF_ANALYZER_ENABLE_CAPI "Enable CAPI with perf_analyzer" OFF)
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
+set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -60,6 +60,14 @@ FetchContent_Declare(
 if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
   set(TRITON_COMMON_ENABLE_GRPC ON)
+
+  FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+    GIT_SHALLOW ON 
+  ) 
+  FetchContent_MakeAvailable(repo-core)
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
 FetchContent_MakeAvailable(repo-common)

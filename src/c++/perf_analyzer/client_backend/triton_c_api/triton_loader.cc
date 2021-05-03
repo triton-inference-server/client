@@ -23,7 +23,8 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#define TRITON_INFERENCE_SERVER_CAPI_CLASS \
+
+#define TRITON_INFERENCE_SERVER_CLIENT_CLASS \
   perfanalyzer::clientbackend::TritonLoader
 
 #include "triton_loader.h"
@@ -535,6 +536,7 @@ TritonLoader::LoadServerLibrary()
   TritonServerStringToDatatypeFn_t stdtfn;
   TritonServerInferenceResponseOutputFn_t irofn;
   TritonServerRequestIdFn_t ridfn;
+   TritonServerRequestDeleteFn_t rdfn;
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ApiVersion", true /* optional */,
@@ -684,6 +686,10 @@ TritonLoader::LoadServerLibrary()
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestId", true /* optional */,
       reinterpret_cast<void**>(&ridfn)));
+    RETURN_IF_ERROR(GetEntrypoint(
+      dlhandle_, "TRITONSERVER_InferenceRequestDelete", true /* optional */,
+      reinterpret_cast<void**>(&rdfn)));
+      
 
 
   api_version_fn_ = apifn;
@@ -742,6 +748,7 @@ TritonLoader::LoadServerLibrary()
   string_to_datatype_fn_ = stdtfn;
   inference_response_output_fn_ = irofn;
   request_id_fn_ = ridfn;
+  request_delete_fn_ = rdfn;
 
   return Error::Success;
 }
@@ -809,6 +816,7 @@ TritonLoader::ClearHandles()
   response_allocator_delete_fn_ = nullptr;
   inference_response_output_fn_ = nullptr;
   request_id_fn_ = nullptr;
+  request_delete_fn_ = nullptr;
 }
 
 Error
@@ -896,7 +904,7 @@ TritonLoader::Infer(
       inference_response_delete_fn_(completed_response),
       "deleting inference response");
   RETURN_IF_TRITONSERVER_ERROR(
-      TRITONSERVER_InferenceRequestDelete(irequest),
+      request_delete_fn_(irequest),
       "deleting inference request");
   RETURN_IF_TRITONSERVER_ERROR(
       response_allocator_delete_fn_(allocator), "deleting response allocator");

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -49,10 +49,9 @@ add_library(
 
 target_link_libraries(
   triton-c-api-backend-library
-  PUBLIC grpcclient_static
-  PUBLIC httpclient_static
-  PUBLIC triton-core-serverstub  # from repo-core
-  PUBLIC triton-core-serverapi   # from repo-core
+  grpcclient_static
+  httpclient_static
+  triton-core-serverapi   # from repo-core
 )
 
 target_include_directories(

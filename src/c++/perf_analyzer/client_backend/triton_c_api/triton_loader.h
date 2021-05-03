@@ -278,7 +278,9 @@ class TritonLoader : public nic::InferenceServerClient {
   // TRITONSERVER_InferenceRequestId
   typedef TRITONSERVER_Error* (*TritonServerRequestIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char** id);
-
+  // TRITONSERVER_InferenceRequestDelete
+    typedef TRITONSERVER_Error* (*TritonServerRequestDeleteFn_t)(
+    TRITONSERVER_InferenceRequest* inference_request);;
 
  private:
   TritonLoader(
@@ -376,6 +378,7 @@ class TritonLoader : public nic::InferenceServerClient {
   TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
   TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
   TritonServerRequestIdFn_t request_id_fn_;
+  TritonServerRequestDeleteFn_t request_delete_fn_;
 
   TRITONSERVER_ServerOptions* options_;
   TRITONSERVER_Server* server_ptr_;

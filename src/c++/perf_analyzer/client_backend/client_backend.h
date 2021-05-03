@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -197,11 +197,14 @@ class ClientBackendFactory {
   /// indicates the header name/value. The headers will be included
   /// with all the requests made to server using this client.
   /// \param server_library_path Only for C api backend. Lbrary path to
-  /// libtritonserver.so \param model_repository_path Only for C api backend.
-  /// Path to model \param memory_type Only for C api backend. Type of memory
-  /// used (system is default) \param verbose Enables the verbose mode. \param
-  /// factory Returns a new ClientBackend object. \return Error object
-  /// indicating success or failure.
+  /// libtritonserver.so 
+  /// \param model_repository_path Only for C api backend.
+  /// Path to model
+  /// \param memory_type Only for C api backend. Type of memory
+  /// used (system is default)
+  /// \param verbose Enables the verbose mode. 
+  /// \param factory Returns a new ClientBackend object. 
+  /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
