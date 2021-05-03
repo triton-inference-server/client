@@ -54,11 +54,6 @@ target_link_libraries(
   triton-core-serverapi   # from repo-core
 )
 
-target_include_directories(
-  triton-c-api-backend-library
-  PUBLIC /workspace/builddir/client/_deps/repo-core-src/include
-)
-
 if(${TRITON_ENABLE_GPU})
   target_link_libraries(
     triton-client-backend-library

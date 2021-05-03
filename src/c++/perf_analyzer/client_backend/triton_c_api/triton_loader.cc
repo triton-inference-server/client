@@ -536,7 +536,8 @@ TritonLoader::LoadServerLibrary()
   TritonServerStringToDatatypeFn_t stdtfn;
   TritonServerInferenceResponseOutputFn_t irofn;
   TritonServerRequestIdFn_t ridfn;
-   TritonServerRequestDeleteFn_t rdfn;
+  TritonServerRequestDeleteFn_t rdfn;
+  TritonServerModelStatisticsFn_t msfn;
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ApiVersion", true /* optional */,
@@ -680,16 +681,19 @@ TritonLoader::LoadServerLibrary()
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_StringToDataType", true /* optional */,
       reinterpret_cast<void**>(&stdtfn)));
+
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceResponseOutput", true /* optional */,
       reinterpret_cast<void**>(&irofn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestId", true /* optional */,
       reinterpret_cast<void**>(&ridfn)));
-    RETURN_IF_ERROR(GetEntrypoint(
+  RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestDelete", true /* optional */,
       reinterpret_cast<void**>(&rdfn)));
-      
+  RETURN_IF_ERROR(GetEntrypoint(
+      dlhandle_, "TRITONSERVER_ServerModelStatistics", true /* optional */,
+      reinterpret_cast<void**>(&msfn)));
 
 
   api_version_fn_ = apifn;
@@ -746,9 +750,11 @@ TritonLoader::LoadServerLibrary()
   set_priority_fn_ = spfn;
   set_timeout_ms_fn_ = stmsfn;
   string_to_datatype_fn_ = stdtfn;
+
   inference_response_output_fn_ = irofn;
   request_id_fn_ = ridfn;
   request_delete_fn_ = rdfn;
+  model_statistics_fn_ = msfn;
 
   return Error::Success;
 }
@@ -813,10 +819,12 @@ TritonLoader::ClearHandles()
   server_ptr_ = nullptr;
   set_correlation_id_fn_ = nullptr;
   string_to_datatype_fn_ = nullptr;
+
   response_allocator_delete_fn_ = nullptr;
   inference_response_output_fn_ = nullptr;
   request_id_fn_ = nullptr;
   request_delete_fn_ = nullptr;
+  model_statistics_fn_ = nullptr;
 }
 
 Error
@@ -904,8 +912,7 @@ TritonLoader::Infer(
       inference_response_delete_fn_(completed_response),
       "deleting inference response");
   RETURN_IF_TRITONSERVER_ERROR(
-      request_delete_fn_(irequest),
-      "deleting inference request");
+      request_delete_fn_(irequest), "deleting inference request");
   RETURN_IF_TRITONSERVER_ERROR(
       response_allocator_delete_fn_(allocator), "deleting response allocator");
   return Error::Success;
@@ -1043,6 +1050,46 @@ TritonLoader::AddOutputs(
         "setting output for the request");
   }
   return Error::Success;
+}
+
+
+Error
+TritonLoader::ModelInferenceStatistics(
+    const std::string& model_name, const std::string& model_version,
+    rapidjson::Document* infer_stat)
+{
+  TRITONSERVER_Message* model_stats_message = nullptr;
+  int64_t requested_model_version;
+  auto err =
+      GetModelVersionFromString(model_version, &requested_model_version);
+  if (err.IsOk()) {
+    RETURN_IF_TRITONSERVER_ERROR(
+        model_statistics_fn_(
+            server_.get(), model_name.c_str(), requested_model_version,
+            &model_stats_message),
+        "getting model statistics from server");
+
+    const char* buffer;
+    size_t byte_size;
+    RETURN_IF_TRITONSERVER_ERROR(
+        message_serialize_to_json_fn_(model_stats_message, &buffer, &byte_size),
+        "serializing message to json");
+
+    RETURN_IF_TRITONSERVER_ERROR(
+        message_delete_fn_(model_stats_message),
+        "deleting inference statistics message");
+
+   infer_stat->Parse(buffer, byte_size);
+   if (infer_stat->HasParseError()) {
+    return Error(
+        "error: failed to parse server metadata from JSON: " +
+        std::string(GetParseError_En(infer_stat->GetParseError())) +
+        " at " + std::to_string(infer_stat->GetErrorOffset()));
+  }
+  }
+
+
+  return err;
 }
 
 }}  // namespace perfanalyzer::clientbackend

@@ -93,6 +93,9 @@ class TritonLoader : public nic::InferenceServerClient {
       const std::vector<const nic::InferRequestedOutput*>& outputs,
       nic::InferResult** result);
 
+  Error ModelInferenceStatistics(const std::string& model_name, const std::string& model_version,
+    rapidjson::Document* infer_stat);
+
   bool ModelIsLoaded() const { return model_is_loaded_; }
   bool ServerIsReady() const { return server_is_ready_; }
   nic::RequestTimers& Timer() { return timer_; }
@@ -268,6 +271,7 @@ class TritonLoader : public nic::InferenceServerClient {
   // TRITONSERVER_StringToDataType
   typedef TRITONSERVER_DataType (*TritonServerStringToDatatypeFn_t)(
       const char* dtype);
+
   // TRITONSERVER_InferenceResponseOutput
   typedef TRITONSERVER_Error* (*TritonServerInferenceResponseOutputFn_t)(
       TRITONSERVER_InferenceResponse* inference_response, const uint32_t index,
@@ -279,8 +283,13 @@ class TritonLoader : public nic::InferenceServerClient {
   typedef TRITONSERVER_Error* (*TritonServerRequestIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char** id);
   // TRITONSERVER_InferenceRequestDelete
-    typedef TRITONSERVER_Error* (*TritonServerRequestDeleteFn_t)(
-    TRITONSERVER_InferenceRequest* inference_request);;
+  typedef TRITONSERVER_Error* (*TritonServerRequestDeleteFn_t)(
+      TRITONSERVER_InferenceRequest* inference_request);
+  // TRITONSERVER_ServerModelStatistics
+  typedef TRITONSERVER_Error* (*TritonServerModelStatisticsFn_t)(
+      TRITONSERVER_Server* server, const char* model_name,
+      const int64_t model_version, TRITONSERVER_Message** model_stats);
+
 
  private:
   TritonLoader(
@@ -376,9 +385,11 @@ class TritonLoader : public nic::InferenceServerClient {
   TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;
   TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t set_timeout_ms_fn_;
   TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
+
   TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
   TritonServerRequestIdFn_t request_id_fn_;
   TritonServerRequestDeleteFn_t request_delete_fn_;
+  TritonServerModelStatisticsFn_t model_statistics_fn_;
 
   TRITONSERVER_ServerOptions* options_;
   TRITONSERVER_Server* server_ptr_;

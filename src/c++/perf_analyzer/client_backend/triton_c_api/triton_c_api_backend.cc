@@ -286,6 +286,10 @@ TritonLocalClientBackend::ModelInferenceStatistics(
     std::map<ModelIdentifier, ModelStatistics>* model_stats,
     const std::string& model_name, const std::string& model_version)
 {
+  rapidjson::Document infer_stat_json;
+  loader_->ModelInferenceStatistics(model_name, model_version, &infer_stat_json);
+  ParseStatistics(infer_stat_json, model_stats);
+/*
   if (protocol_ == ProtocolType::GRPC) {
     inference::ModelStatisticsResponse infer_stat;
     RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelInferenceStatistics(
@@ -299,6 +303,7 @@ TritonLocalClientBackend::ModelInferenceStatistics(
     RETURN_IF_TRITON_ERROR(nic::ParseJson(&infer_stat_json, infer_stat));
     ParseStatistics(infer_stat_json, model_stats);
   }
+  */
 
   return Error::Success;
 }

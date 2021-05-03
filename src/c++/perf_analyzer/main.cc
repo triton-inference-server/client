@@ -211,7 +211,8 @@ Usage(char** argv, const std::string& msg = std::string())
 
   std::cerr << "Usage: " << argv[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
-  std::cerr << "\t--service-kind <\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_local\">"
+  std::cerr << "\t--service-kind "
+               "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_local\">"
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
@@ -278,13 +279,19 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr
       << FormatMessage(
              " --service-kind: Describes the kind of service perf_analyzer "
-             "to generate load for. The options are \"triton\", \"tfserving\" "
-             "and \"torchserve\". Default value is \"triton\". Note in order "
-             "to use \"torchserve\" backend --input-data option must point to "
-             "a json file holding data in the following format {\"data\" : "
+             "to generate load for. The options are \"triton\", "
+             "\"triton_local\" "
+             ", \"tfserving\" and \"torchserve\". Default value is \"triton\". "
+             "Note in order to use \"torchserve\" backend --input-data option "
+             "must "
+             "point to a json file holding data in the following format "
+             "{\"data\" : "
              "[{\"TORCHSERVE_INPUT\" : [\"<complete path to the content "
              "file>\"]}, {...}...]}. The type of file here will depend on the "
-             "model.",
+             "model. In order to use \"triton_local\" you must specify the "
+             " /lib/libtritonserver.so location and the model repository path "
+             "via the "
+             "--library-name and --model-repo flags",
              18)
       << std::endl;
 
@@ -716,6 +723,8 @@ main(int argc, char** argv)
       {"grpc-compression-algorithm", 1, 0, 25},
       {"measurement-mode", 1, 0, 26},
       {"measurement-request-count", 1, 0, 27},
+      {"library-name", 1, 0, 28},
+      {"model-repo", 1, 0, 29},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -970,6 +979,26 @@ main(int argc, char** argv)
       }
       case 27: {
         measurement_request_count = std::atoi(optarg);
+        break;
+      }
+      case 28: {
+        std::string arg = optarg;
+        if (!arg.empty()) {
+          server_library_path = arg;
+        } else if (kind == cb::TRITON_LOCAL) {
+          std::cerr << "using default server libray path for C API: "
+                    << server_library_path << std::endl;
+        }
+        break;
+      }
+      case 29: {
+        std::string arg = optarg;
+        if (!arg.empty()) {
+          model_repository_path = arg;
+        } else if (kind == cb::TRITON_LOCAL) {
+          std::cerr << "using default model repository path for C API: "
+                    << model_repository_path << std::endl;
+        }
         break;
       }
       case 'v':
