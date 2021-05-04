@@ -62,33 +62,12 @@ TritonLocalClientBackend::Create(
 Error
 TritonLocalClientBackend::ServerExtensions(std::set<std::string>* extensions)
 {
-  // extensions->clear();
-  // if (protocol_ == ProtocolType::HTTP) {
-  //   std::string server_metadata;
-  //   FAIL_IF_TRITON_ERR(
-  //       client_.http_client_->ServerMetadata(&server_metadata,
-  //       *http_headers_), "unable to get server metadata");
-
-
   rapidjson::Document server_metadata_json;
   RETURN_IF_ERROR(TritonLoader::ServerMetaData(&server_metadata_json));
-  // FAIL_IF_TRITON_ERR(
-  //     nic::ParseJson(&server_metadata_json, server_metadata),
-  //     "failed to parse server metadata");
   for (const auto& extension : server_metadata_json["extensions"].GetArray()) {
     extensions->insert(
         std::string(extension.GetString(), extension.GetStringLength()));
   }
-  // } else {
-  //   inference::ServerMetadataResponse server_metadata;
-  //   FAIL_IF_TRITON_ERR(
-  //       client_.grpc_client_->ServerMetadata(&server_metadata,
-  //       *http_headers_), "unable to get server metadata");
-  //   for (const auto& extension : server_metadata.extensions()) {
-  //     extensions->insert(extension);
-  //   }
-  // }
-
   return Error::Success;
 }
 
@@ -100,26 +79,6 @@ TritonLocalClientBackend::ModelMetadata(
   if (!TritonLoader::ModelIsLoaded()) {
     TritonLoader::LoadModel(model_name, model_version);
   }
-
-  // if (protocol_ == ProtocolType::HTTP) {
-  //   std::string metadata;
-  //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelMetadata(
-  //       &metadata, model_name, model_version, *http_headers_));
-  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
-  // } else {
-  //   inference::ModelMetadataResponse model_metadata_proto;
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelMetadata(
-  //       &model_metadata_proto, model_name, model_version, *http_headers_));
-
-  //   std::string metadata;
-  //   ::google::protobuf::util::JsonPrintOptions options;
-  //   options.preserve_proto_field_names = true;
-  //   options.always_print_primitive_fields = true;
-  //   ::google::protobuf::util::MessageToJsonString(
-  //       model_metadata_proto, &metadata, options);
-
-  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
-  // }
   RETURN_IF_ERROR(TritonLoader::ModelMetadata(model_metadata));
   return Error::Success;
 }
@@ -132,28 +91,6 @@ TritonLocalClientBackend::ModelConfig(
   if (!TritonLoader::ModelIsLoaded()) {
     TritonLoader::LoadModel(model_name, model_version);
   }
-  // if (protocol_ == ProtocolType::HTTP) {
-  //   std::string config;
-  //   RETURN_IF_TRITON_ERROR(client_.http_client_->ModelConfig(
-  //       &config, model_name, model_version, *http_headers_));
-  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_config, config));
-  // } else {
-  //   inference::ModelConfigResponse model_config_proto;
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelConfig(
-  //       &model_config_proto, model_name, model_version, *http_headers_));
-
-  //   std::string config;
-  //   ::google::protobuf::util::JsonPrintOptions options;
-  //   options.preserve_proto_field_names = true;
-  //   options.always_print_primitive_fields = true;
-  //   ::google::protobuf::util::MessageToJsonString(
-  //       model_config_proto, &config, options);
-
-  //   rapidjson::Document full_config;
-  //   RETURN_IF_TRITON_ERROR(nic::ParseJson(&full_config, config));
-  //   model_config->CopyFrom(full_config["config"],
-  //   model_config->GetAllocator());
-  // }
   RETURN_IF_ERROR(TritonLoader::ModelConfig(model_config));
   return Error::Success;
 }
@@ -196,54 +133,13 @@ TritonLocalClientBackend::AsyncInfer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  // auto wrapped_callback = [callback](nic::InferResult* client_result) {
-  //   InferResult* result = new TritonLocalInferResult(client_result);
-  //   callback(result);
-  // };
-
-  // std::vector<nic::InferInput*> triton_inputs;
-  // ParseInferInputToTriton(inputs, &triton_inputs);
-
-  // std::vector<const nic::InferRequestedOutput*> triton_outputs;
-  // ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
-
-  // nic::InferOptions triton_options(options.model_name_);
-  // ParseInferOptionsToTriton(options, &triton_options);
-
-  // if (protocol_ == ProtocolType::GRPC) {
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->AsyncInfer(
-  //       wrapped_callback, triton_options, triton_inputs, triton_outputs,
-  //       *http_headers_, compression_algorithm_));
-  // } else {
-  //   RETURN_IF_TRITON_ERROR(client_.http_client_->AsyncInfer(
-  //       wrapped_callback, triton_options, triton_inputs, triton_outputs,
-  //       *http_headers_));
-  // }
-
-  // return Error::Success;
-  return Error("CAPI does not support streaming inferences");
-  ;
+  return Error("Async inference not supported with C API");
 }
 
 Error
 TritonLocalClientBackend::StartStream(OnCompleteFn callback, bool enable_stats)
 {
-  // auto wrapped_callback = [callback](nic::InferResult* client_result) {
-  //   InferResult* result = new TritonLocalInferResult(client_result);
-  //   callback(result);
-  // };
-
-  // if (protocol_ == ProtocolType::GRPC) {
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->StartStream(
-  //       wrapped_callback, enable_stats, 0 /* stream_timeout */,
-  //       *http_headers_, compression_algorithm_));
-  // } else {
-  //   return Error("HTTP does not support starting streams");
-  // }
-
-  // return Error::Success;
-  return Error("CAPI does not support streaming inferences");
-  ;
+  return Error("Streaming inferences not supported with C API");
 }
 
 Error
@@ -251,23 +147,7 @@ TritonLocalClientBackend::AsyncStreamInfer(
     const InferOptions& options, const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  // std::vector<nic::InferInput*> triton_inputs;
-  // ParseInferInputToTriton(inputs, &triton_inputs);
-
-  // std::vector<const nic::InferRequestedOutput*> triton_outputs;
-  // ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
-
-  // nic::InferOptions triton_options(options.model_name_);
-  // ParseInferOptionsToTriton(options, &triton_options);
-
-  // if (protocol_ == ProtocolType::GRPC) {
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->AsyncStreamInfer(
-  //       triton_options, triton_inputs, triton_outputs));
-  // } else {
-  //   return Error("HTTP does not support streaming inferences");
-  // }
-
-  return Error("CAPI does not support streaming inferences");
+  return Error("Async streaming inferences not supported with C API");
 }
 
 Error
@@ -289,21 +169,6 @@ TritonLocalClientBackend::ModelInferenceStatistics(
   TritonLoader::ModelInferenceStatistics(
       model_name, model_version, &infer_stat_json);
   ParseStatistics(infer_stat_json, model_stats);
-  /*
-    if (protocol_ == ProtocolType::GRPC) {
-      inference::ModelStatisticsResponse infer_stat;
-      RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelInferenceStatistics(
-          &infer_stat, model_name, model_version, *http_headers_));
-      ParseStatistics(infer_stat, model_stats);
-    } else {
-      std::string infer_stat;
-      RETURN_IF_TRITON_ERROR(client_.http_client_->ModelInferenceStatistics(
-          &infer_stat, model_name, model_version, *http_headers_));
-      rapidjson::Document infer_stat_json;
-      RETURN_IF_TRITON_ERROR(nic::ParseJson(&infer_stat_json, infer_stat));
-      ParseStatistics(infer_stat_json, model_stats);
-    }
-    */
 
   return Error::Success;
 }

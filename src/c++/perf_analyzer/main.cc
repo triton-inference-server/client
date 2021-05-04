@@ -688,7 +688,7 @@ main(int argc, char** argv)
   bool url_specified = false;
   bool max_threads_specified = false;
 
-  // Capi backend required info
+  // C Api backend required info
   std::string server_library_path = "/opt/tritonserver";
   std::string model_repository_path = "/tmp/host/docker-data/model_unit_test/";
   std::string memory_type = "system";
@@ -1228,7 +1228,6 @@ main(int argc, char** argv)
 
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
-  std::cout << "starting the factory..." << std::endl;
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
@@ -1238,12 +1237,11 @@ main(int argc, char** argv)
       "failed to create client factory");
 
   if (kind == cb::BackendKind::TRITON_LOCAL) {
-    std::cout << "here?>>??" << std::endl;
     if (!target_concurrency) {
-      std::cerr << " CAPI does not support target concurrency" << std::endl;
+      std::cerr << "Target concurrency not yet supported by C API" << std::endl;
       return 1;
     } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
-      std::cerr << " CAPI does not support shared memory types at all"
+      std::cerr << "Shared memory not yet supported by C API"
                 << std::endl;
     }
   }

@@ -38,26 +38,26 @@
 #include <rapidjson/error/en.h>
 
 // If TRITONSERVER error is non-OK, return the corresponding status.
-#define RETURN_IF_TRITONSERVER_ERROR(E, MSG)                \
-  do {                                                      \
-    TRITONSERVER_Error* err__ = (E);                        \
-    if (err__ != nullptr) {                                 \
-      std::cout << "error: " << (MSG) << ": "               \
+#define RETURN_IF_TRITONSERVER_ERROR(E, MSG)                                \
+  do {                                                                      \
+    TRITONSERVER_Error* err__ = (E);                                        \
+    if (err__ != nullptr) {                                                 \
+      std::cout << "error: " << (MSG) << ": "                               \
                 << GetSingleton()->error_code_to_string_fn_(err__) << " - " \
                 << GetSingleton()->error_message_fn_(err__) << std::endl;   \
-      Error newErr = Error(MSG);                            \
+      Error newErr = Error(MSG);                                            \
       GetSingleton()->error_delete_fn_(err__);                              \
-      return newErr;                                        \
-    }                                                       \
+      return newErr;                                                        \
+    }                                                                       \
   } while (false)
 
-#define REPORT_TRITONSERVER_ERROR(E)                      \
-  do {                                                    \
-    TRITONSERVER_Error* err__ = (E);                      \
-    if (err__ != nullptr) {                               \
+#define REPORT_TRITONSERVER_ERROR(E)                                      \
+  do {                                                                    \
+    TRITONSERVER_Error* err__ = (E);                                      \
+    if (err__ != nullptr) {                                               \
       std::cout << GetSingleton()->error_message_fn_(err__) << std::endl; \
       GetSingleton()->error_delete_fn_(err__);                            \
-    }                                                     \
+    }                                                                     \
   } while (false)
 
 namespace nic = nvidia::inferenceserver::client;
@@ -74,11 +74,11 @@ class TritonLoader : public nic::InferenceServerClient {
   static Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
-  static Error ModelMetadata(rapidjson::Document* model_metadata) ;
+  static Error ModelMetadata(rapidjson::Document* model_metadata);
 
-  static Error ModelConfig(rapidjson::Document* model_config) ;
+  static Error ModelConfig(rapidjson::Document* model_config);
 
-  static Error ServerMetaData(rapidjson::Document* server_metadata) ;
+  static Error ServerMetaData(rapidjson::Document* server_metadata);
 
   static Error Infer(
       const nic::InferOptions& options,
@@ -90,12 +90,13 @@ class TritonLoader : public nic::InferenceServerClient {
       const std::string& model_name, const std::string& model_version,
       rapidjson::Document* infer_stat);
 
-  static Error ClientInferStat(nic::InferStat* infer_stat) {
-      return GetSingleton()->ClientInferStat(infer_stat);
+  static Error ClientInferStat(nic::InferStat* infer_stat)
+  {
+    return GetSingleton()->ClientInferStat(infer_stat);
   }
 
-  static bool ModelIsLoaded()  { return GetSingleton()->model_is_loaded_; }
-  static bool ServerIsReady()  { return GetSingleton()->server_is_ready_; }
+  static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
+  static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
   static nic::RequestTimers& Timer() { return GetSingleton()->timer_; }
 
   // TRITONSERVER_ApiVersion
@@ -290,14 +291,14 @@ class TritonLoader : public nic::InferenceServerClient {
 
 
  private:
-  TritonLoader(): InferenceServerClient(true)
-   {
-       verbose_level_ = 0; 
-       enforce_memory_type_ = false;
-        requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
-        model_is_loaded_ = false;
-        server_is_ready_ = false;
-   }
+  TritonLoader() : InferenceServerClient(true)
+  {
+    verbose_level_ = 0;
+    enforce_memory_type_ = false;
+    requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
+    model_is_loaded_ = false;
+    server_is_ready_ = false;
+  }
   ~TritonLoader()
   {
     FAIL_IF_ERR(
@@ -337,85 +338,87 @@ class TritonLoader : public nic::InferenceServerClient {
       const std::vector<const nic::InferRequestedOutput*>& outputs,
       TRITONSERVER_InferenceRequest* irequest);
 
-   void* dlhandle_;
-   TritonServerApiVersionFn_t api_version_fn_;
-   TritonServerOptionsNewFn_t options_new_fn_;
-   TritonServerOptionSetModelRepoPathFn_t options_set_model_repo_path_fn_;
-   TritonServerSetLogVerboseFn_t set_log_verbose_fn_;
+  void* dlhandle_;
+  TritonServerApiVersionFn_t api_version_fn_;
+  TritonServerOptionsNewFn_t options_new_fn_;
+  TritonServerOptionSetModelRepoPathFn_t options_set_model_repo_path_fn_;
+  TritonServerSetLogVerboseFn_t set_log_verbose_fn_;
 
-   TritonServerSetBackendDirFn_t set_backend_directory_fn_;
-   TritonServerSetRepoAgentDirFn_t set_repo_agent_directory_fn_;
-   TritonServerSetStrictModelConfigFn_t set_strict_model_config_fn_;
-   TritonServerSetMinSupportedComputeCapabilityFn_t
-   set_min_supported_compute_capability_fn_;
+  TritonServerSetBackendDirFn_t set_backend_directory_fn_;
+  TritonServerSetRepoAgentDirFn_t set_repo_agent_directory_fn_;
+  TritonServerSetStrictModelConfigFn_t set_strict_model_config_fn_;
+  TritonServerSetMinSupportedComputeCapabilityFn_t
+      set_min_supported_compute_capability_fn_;
 
-   TritonServerNewFn_t server_new_fn_;
-   TritonServerOptionsDeleteFn_t server_options_delete_fn_;
-   TritonServerDeleteFn_t server_delete_fn_;
-   TritonServerIsLiveFn_t server_is_live_fn_;
+  TritonServerNewFn_t server_new_fn_;
+  TritonServerOptionsDeleteFn_t server_options_delete_fn_;
+  TritonServerDeleteFn_t server_delete_fn_;
+  TritonServerIsLiveFn_t server_is_live_fn_;
 
-   TritonServerIsReadyFn_t server_is_ready_fn_;
-   TritonServerMetadataFn_t server_metadata_fn_;
-   TritonServerMessageSerializeToJsonFn_t message_serialize_to_json_fn_;
-   TritonServerMessageDeleteFn_t message_delete_fn_;
+  TritonServerIsReadyFn_t server_is_ready_fn_;
+  TritonServerMetadataFn_t server_metadata_fn_;
+  TritonServerMessageSerializeToJsonFn_t message_serialize_to_json_fn_;
+  TritonServerMessageDeleteFn_t message_delete_fn_;
 
-   TritonServerModelIsReadyFn_t model_is_ready_fn_;
-   TritonServerModelMetadataFn_t model_metadata_fn_;
-   TritonServerResponseAllocatorNewFn_t response_allocator_new_fn_;
-   TritonServerInferenceRequestNewFn_t inference_request_new_fn_;
+  TritonServerModelIsReadyFn_t model_is_ready_fn_;
+  TritonServerModelMetadataFn_t model_metadata_fn_;
+  TritonServerResponseAllocatorNewFn_t response_allocator_new_fn_;
+  TritonServerInferenceRequestNewFn_t inference_request_new_fn_;
 
-   TritonServerInferenceRequestSetIdFn_t inference_request_set_id_fn_;
-   TritonServerInferenceRequestSetReleaseCallbackFn_t
-   inference_request_set_release_callback_fn_;
-   TritonServerInferenceRequestAddInputFn_t inference_request_add_input_fn_;
-   TritonServerInferenceRequestAddRequestedOutputFn_t
-   inference_request_add_requested_output_fn_;
+  TritonServerInferenceRequestSetIdFn_t inference_request_set_id_fn_;
+  TritonServerInferenceRequestSetReleaseCallbackFn_t
+      inference_request_set_release_callback_fn_;
+  TritonServerInferenceRequestAddInputFn_t inference_request_add_input_fn_;
+  TritonServerInferenceRequestAddRequestedOutputFn_t
+      inference_request_add_requested_output_fn_;
 
-   TritonServerInferenceRequestAppendInputDataFn_t
-   inference_request_append_input_data_fn_;
-   TritonServerInferenceRequestSetResponseCallbackFn_t
-     inference_request_set_response_callback_fn_;
-   TritonServerInferAsyncFn_t infer_async_fn_;
-   TritonServerInferenceResponseErrorFn_t inference_response_error_fn_;
- 
-   TritonServerInferenceResponseDeleteFn_t inference_response_delete_fn_;
-   TritonServerInferenceRequestRemoveAllInputDataFn_t  inference_request_remove_all_input_data_fn_; // not used
-   TritonServerResponseAllocatorDeleteFn_t response_allocator_delete_fn_;
-   TritonServerErrorNewFn_t error_new_fn_;
+  TritonServerInferenceRequestAppendInputDataFn_t
+      inference_request_append_input_data_fn_;
+  TritonServerInferenceRequestSetResponseCallbackFn_t
+      inference_request_set_response_callback_fn_;
+  TritonServerInferAsyncFn_t infer_async_fn_;
+  TritonServerInferenceResponseErrorFn_t inference_response_error_fn_;
 
-   TritonServerMemoryTypeStringFn_t memory_type_string_fn_; // not used
-   TritonServerInferenceResponseOutputCountFn_t inference_response_output_count_fn_;
-   TritonServerDataTypeStringFn_t data_type_string_fn_; // not used
-   TritonServerErrorMessageFn_t error_message_fn_; // not used
+  TritonServerInferenceResponseDeleteFn_t inference_response_delete_fn_;
+  TritonServerInferenceRequestRemoveAllInputDataFn_t
+      inference_request_remove_all_input_data_fn_;  // not used
+  TritonServerResponseAllocatorDeleteFn_t response_allocator_delete_fn_;
+  TritonServerErrorNewFn_t error_new_fn_;
 
-   TritonServerErrorDeleteFn_t error_delete_fn_; // not used
-   TritonServerErrorCodeToStringFn_t error_code_to_string_fn_; // not used?
-   TritonServerModelConfigFn_t model_config_fn_;
-   TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
+  TritonServerMemoryTypeStringFn_t memory_type_string_fn_;  // not used
+  TritonServerInferenceResponseOutputCountFn_t
+      inference_response_output_count_fn_;
+  TritonServerDataTypeStringFn_t data_type_string_fn_;  // not used
+  TritonServerErrorMessageFn_t error_message_fn_;       // not used
 
-   TritonServerInferenceRequestSetFlagsFn_t set_flags_fn_;
-   TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;
-   TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t set_timeout_ms_fn_;
-   TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
+  TritonServerErrorDeleteFn_t error_delete_fn_;                // not used
+  TritonServerErrorCodeToStringFn_t error_code_to_string_fn_;  // not used?
+  TritonServerModelConfigFn_t model_config_fn_;
+  TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
 
-   TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
-   TritonServerRequestIdFn_t request_id_fn_;
-   TritonServerRequestDeleteFn_t request_delete_fn_;
-   TritonServerModelStatisticsFn_t model_statistics_fn_;
+  TritonServerInferenceRequestSetFlagsFn_t set_flags_fn_;
+  TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;
+  TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t set_timeout_ms_fn_;
+  TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
 
-   TRITONSERVER_Server* server_ptr_;
-   std::shared_ptr<TRITONSERVER_Server> server_;
-   std::string library_directory_;
+  TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
+  TritonServerRequestIdFn_t request_id_fn_;
+  TritonServerRequestDeleteFn_t request_delete_fn_;
+  TritonServerModelStatisticsFn_t model_statistics_fn_;
+
+  TRITONSERVER_Server* server_ptr_;
+  std::shared_ptr<TRITONSERVER_Server> server_;
+  std::string library_directory_;
   const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
-   int verbose_level_;
-   bool enforce_memory_type_ ;
-   std::string model_repository_path_;
-   std::string model_name_;
-   int64_t model_version_;
-   TRITONSERVER_memorytype_enum requested_memory_type_;
-   bool model_is_loaded_;
-   bool server_is_ready_;
-   nic::RequestTimers timer_;
+  int verbose_level_;
+  bool enforce_memory_type_;
+  std::string model_repository_path_;
+  std::string model_name_;
+  int64_t model_version_;
+  TRITONSERVER_memorytype_enum requested_memory_type_;
+  bool model_is_loaded_;
+  bool server_is_ready_;
+  nic::RequestTimers timer_;
 };
 
 }}  // namespace perfanalyzer::clientbackend
