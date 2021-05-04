@@ -43,10 +43,10 @@
     TRITONSERVER_Error* err__ = (E);                        \
     if (err__ != nullptr) {                                 \
       std::cout << "error: " << (MSG) << ": "               \
-                << error_code_to_string_fn_(err__) << " - " \
-                << error_message_fn_(err__) << std::endl;   \
+                << GetSingleton()->error_code_to_string_fn_(err__) << " - " \
+                << GetSingleton()->error_message_fn_(err__) << std::endl;   \
       Error newErr = Error(MSG);                            \
-      error_delete_fn_(err__);                              \
+      GetSingleton()->error_delete_fn_(err__);                              \
       return newErr;                                        \
     }                                                       \
   } while (false)
@@ -55,8 +55,8 @@
   do {                                                    \
     TRITONSERVER_Error* err__ = (E);                      \
     if (err__ != nullptr) {                               \
-      std::cout << error_message_fn_(err__) << std::endl; \
-      error_delete_fn_(err__);                            \
+      std::cout << GetSingleton()->error_message_fn_(err__) << std::endl; \
+      GetSingleton()->error_delete_fn_(err__);                            \
     }                                                     \
   } while (false)
 
@@ -379,17 +379,17 @@ class TritonLoader : public nic::InferenceServerClient {
    TritonServerInferenceResponseErrorFn_t inference_response_error_fn_;
  
    TritonServerInferenceResponseDeleteFn_t inference_response_delete_fn_;
-   TritonServerInferenceRequestRemoveAllInputDataFn_t  inference_request_remove_all_input_data_fn_;
+   TritonServerInferenceRequestRemoveAllInputDataFn_t  inference_request_remove_all_input_data_fn_; // not used
    TritonServerResponseAllocatorDeleteFn_t response_allocator_delete_fn_;
    TritonServerErrorNewFn_t error_new_fn_;
 
-   TritonServerMemoryTypeStringFn_t memory_type_string_fn_;
+   TritonServerMemoryTypeStringFn_t memory_type_string_fn_; // not used
    TritonServerInferenceResponseOutputCountFn_t inference_response_output_count_fn_;
-   TritonServerDataTypeStringFn_t data_type_string_fn_;
-   TritonServerErrorMessageFn_t error_message_fn_;
+   TritonServerDataTypeStringFn_t data_type_string_fn_; // not used
+   TritonServerErrorMessageFn_t error_message_fn_; // not used
 
-   TritonServerErrorDeleteFn_t error_delete_fn_;
-   TritonServerErrorCodeToStringFn_t error_code_to_string_fn_;
+   TritonServerErrorDeleteFn_t error_delete_fn_; // not used
+   TritonServerErrorCodeToStringFn_t error_code_to_string_fn_; // not used?
    TritonServerModelConfigFn_t model_config_fn_;
    TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
 
@@ -403,20 +403,19 @@ class TritonLoader : public nic::InferenceServerClient {
    TritonServerRequestDeleteFn_t request_delete_fn_;
    TritonServerModelStatisticsFn_t model_statistics_fn_;
 
-  static TRITONSERVER_ServerOptions* options_;
-  static TRITONSERVER_Server* server_ptr_;
-  static std::shared_ptr<TRITONSERVER_Server> server_;
-  static std::string library_directory_;
+   TRITONSERVER_Server* server_ptr_;
+   std::shared_ptr<TRITONSERVER_Server> server_;
+   std::string library_directory_;
   const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
-  static int verbose_level_;
-  static bool enforce_memory_type_ ;
-  static std::string model_repository_path_;
-  static std::string model_name_;
-  static int64_t model_version_;
-  static TRITONSERVER_memorytype_enum requested_memory_type_;
-  static bool model_is_loaded_;
-  static bool server_is_ready_;
-  static nic::RequestTimers timer_;
+   int verbose_level_;
+   bool enforce_memory_type_ ;
+   std::string model_repository_path_;
+   std::string model_name_;
+   int64_t model_version_;
+   TRITONSERVER_memorytype_enum requested_memory_type_;
+   bool model_is_loaded_;
+   bool server_is_ready_;
+   nic::RequestTimers timer_;
 };
 
 }}  // namespace perfanalyzer::clientbackend
