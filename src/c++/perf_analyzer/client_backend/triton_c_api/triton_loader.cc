@@ -183,31 +183,29 @@ GetModelVersionFromString(const std::string& version_string, int64_t* version)
 Error
 TritonLoader::Create(
     const std::string& library_directory, const std::string& model_repository,
-    const std::string& memory_type, bool verbose,
-    std::shared_ptr<TritonLoader>* loader)
+    const std::string& memory_type, bool verbose)
 {
   if (library_directory.empty() || model_repository.empty()) {
     return Error("cannot load server, paths are empty");
   }
-  std::shared_ptr<TritonLoader> triton_loader(new TritonLoader(
-      library_directory, model_repository, memory_type, verbose));
 
-  Error status = triton_loader->LoadServerLibrary();
+  Error status = GetSingleton()->PopulateInternals(library_directory, model_repository, memory_type, verbose);
   assert(status.IsOk());
-  status = triton_loader->StartTriton(memory_type, false);
+  status = GetSingleton()->LoadServerLibrary();
+  assert(status.IsOk());
+  status = GetSingleton()->StartTriton(memory_type, false);
   assert(status.IsOk());
 
-  *loader = std::move(triton_loader);
   return Error::Success;
 }
 
-TritonLoader::TritonLoader(
+Error TritonLoader::PopulateInternals(
     const std::string& library_directory, const std::string& model_repository,
     const std::string& memory_type, bool verbose)
-    : InferenceServerClient(verbose)
 {
-  library_directory_ = library_directory;
+  library_directory_ = library_directory; 
   model_repository_path_ = model_repository;
+  return Error::Success
 }
 
 Error
@@ -313,7 +311,7 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
 }
 
 Error
-TritonLoader::ServerMetaData(rapidjson::Document* server_metadata) const
+TritonLoader::ServerMetaData(rapidjson::Document* server_metadata) 
 {
   if (!ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
@@ -381,7 +379,7 @@ TritonLoader::LoadModel(
 }
 
 Error
-TritonLoader::ModelMetadata(rapidjson::Document* model_metadata) const
+TritonLoader::ModelMetadata(rapidjson::Document* model_metadata) 
 {
   if (!ModelIsLoaded() || !ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
@@ -436,7 +434,7 @@ TritonLoader::ModelMetadata(rapidjson::Document* model_metadata) const
 }
 
 Error
-TritonLoader::ModelConfig(rapidjson::Document* model_config) const
+TritonLoader::ModelConfig(rapidjson::Document* model_config) 
 {
   if (!ModelIsLoaded() || !ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
@@ -849,9 +847,9 @@ TritonLoader::Infer(
   TRITONSERVER_InferenceRequest* irequest = nullptr;
   Timer().Reset();
   Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_START);
-  InitializeRequest(options, outputs, allocator, irequest);
-  AddInputs(options, inputs, irequest);
-  AddOutputs(options, outputs, irequest);
+  GetSingleton()->InitializeRequest(options, outputs, allocator, irequest);
+  GetSingleton()->AddInputs(options, inputs, irequest);
+  GetSingleton()->AddOutputs(options, outputs, irequest);
   Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_START);
   // Perform inference...
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
@@ -898,7 +896,7 @@ TritonLoader::Infer(
     odata.assign(cbase, cbase + byte_size);
   }
   Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
-  nic::Error err = UpdateInferStat(Timer());
+  nic::Error err = GetSingleton()->UpdateInferStat(Timer());
   if (!err.IsOk()) {
     std::cerr << "Failed to update context stat: " << err << std::endl;
   }
@@ -1060,8 +1058,7 @@ TritonLoader::ModelInferenceStatistics(
 {
   TRITONSERVER_Message* model_stats_message = nullptr;
   int64_t requested_model_version;
-  auto err =
-      GetModelVersionFromString(model_version, &requested_model_version);
+  auto err = GetModelVersionFromString(model_version, &requested_model_version);
   if (err.IsOk()) {
     RETURN_IF_TRITONSERVER_ERROR(
         model_statistics_fn_(
@@ -1079,17 +1076,20 @@ TritonLoader::ModelInferenceStatistics(
         message_delete_fn_(model_stats_message),
         "deleting inference statistics message");
 
-   infer_stat->Parse(buffer, byte_size);
-   if (infer_stat->HasParseError()) {
-    return Error(
-        "error: failed to parse server metadata from JSON: " +
-        std::string(GetParseError_En(infer_stat->GetParseError())) +
-        " at " + std::to_string(infer_stat->GetErrorOffset()));
+    infer_stat->Parse(buffer, byte_size);
+    if (infer_stat->HasParseError()) {
+      return Error(
+          "error: failed to parse server metadata from JSON: " +
+          std::string(GetParseError_En(infer_stat->GetParseError())) + " at " +
+          std::to_string(infer_stat->GetErrorOffset()));
+    }
   }
-  }
-
-
   return err;
+}
+
+TritonLoader* TritonLoader::GetSingleton() {
+  static TritonLoader loader;
+  return &loader;
 }
 
 }}  // namespace perfanalyzer::clientbackend

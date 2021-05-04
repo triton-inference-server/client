@@ -67,38 +67,36 @@ class TritonLoader : public nic::InferenceServerClient {
  public:
   static Error Create(
       const std::string& library_directory, const std::string& model_repository,
-      const std::string& memory_type, bool verbose,
-      std::shared_ptr<TritonLoader>* loader);
-  ~TritonLoader()
-  {
-    FAIL_IF_ERR(
-        CloseLibraryHandle(dlhandle_), "error on closing triton loader");
-    ClearHandles();
-  }
+      const std::string& memory_type, bool verbose);
 
-  Error StartTriton(const std::string& memory_type, bool isVerbose);
+  static Error StartTriton(const std::string& memory_type, bool isVerbose);
 
-  Error LoadModel(
+  static Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
-  Error ModelMetadata(rapidjson::Document* model_metadata) const;
+  static Error ModelMetadata(rapidjson::Document* model_metadata) ;
 
-  Error ModelConfig(rapidjson::Document* model_config) const;
+  static Error ModelConfig(rapidjson::Document* model_config) ;
 
-  Error ServerMetaData(rapidjson::Document* server_metadata) const;
+  static Error ServerMetaData(rapidjson::Document* server_metadata) ;
 
-  Error Infer(
+  static Error Infer(
       const nic::InferOptions& options,
       const std::vector<nic::InferInput*>& inputs,
       const std::vector<const nic::InferRequestedOutput*>& outputs,
       nic::InferResult** result);
 
-  Error ModelInferenceStatistics(const std::string& model_name, const std::string& model_version,
-    rapidjson::Document* infer_stat);
+  static Error ModelInferenceStatistics(
+      const std::string& model_name, const std::string& model_version,
+      rapidjson::Document* infer_stat);
 
-  bool ModelIsLoaded() const { return model_is_loaded_; }
-  bool ServerIsReady() const { return server_is_ready_; }
-  nic::RequestTimers& Timer() { return timer_; }
+  static Error ClientInferStat(nic::InferStat* infer_stat) {
+      return GetSingleton()->ClientInferStat(infer_stat);
+  }
+
+  static bool ModelIsLoaded()  { return GetSingleton()->model_is_loaded_; }
+  static bool ServerIsReady()  { return GetSingleton()->server_is_ready_; }
+  static nic::RequestTimers& Timer() { return GetSingleton()->timer_; }
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
@@ -292,9 +290,25 @@ class TritonLoader : public nic::InferenceServerClient {
 
 
  private:
-  TritonLoader(
+  TritonLoader(): InferenceServerClient(true)
+   {
+       verbose_level_ = 0; 
+       enforce_memory_type_ = false;
+        requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
+        model_is_loaded_ = false;
+        server_is_ready_ = false;
+   }
+  ~TritonLoader()
+  {
+    FAIL_IF_ERR(
+        CloseLibraryHandle(dlhandle_), "error on closing triton loader");
+    ClearHandles();
+  }
+  Error PopulateInternals(
       const std::string& library_directory, const std::string& model_repository,
       const std::string& memory_type, bool verbose);
+
+  static TritonLoader* GetSingleton();
 
   /// Load all tritonserver.h functions onto triton_loader
   /// internal handles
@@ -323,88 +337,86 @@ class TritonLoader : public nic::InferenceServerClient {
       const std::vector<const nic::InferRequestedOutput*>& outputs,
       TRITONSERVER_InferenceRequest* irequest);
 
-  void* dlhandle_;
-  TritonServerApiVersionFn_t api_version_fn_;
-  TritonServerOptionsNewFn_t options_new_fn_;
-  TritonServerOptionSetModelRepoPathFn_t options_set_model_repo_path_fn_;
-  TritonServerSetLogVerboseFn_t set_log_verbose_fn_;
+   void* dlhandle_;
+   TritonServerApiVersionFn_t api_version_fn_;
+   TritonServerOptionsNewFn_t options_new_fn_;
+   TritonServerOptionSetModelRepoPathFn_t options_set_model_repo_path_fn_;
+   TritonServerSetLogVerboseFn_t set_log_verbose_fn_;
 
-  TritonServerSetBackendDirFn_t set_backend_directory_fn_;
-  TritonServerSetRepoAgentDirFn_t set_repo_agent_directory_fn_;
-  TritonServerSetStrictModelConfigFn_t set_strict_model_config_fn_;
-  TritonServerSetMinSupportedComputeCapabilityFn_t
-      set_min_supported_compute_capability_fn_;
+   TritonServerSetBackendDirFn_t set_backend_directory_fn_;
+   TritonServerSetRepoAgentDirFn_t set_repo_agent_directory_fn_;
+   TritonServerSetStrictModelConfigFn_t set_strict_model_config_fn_;
+   TritonServerSetMinSupportedComputeCapabilityFn_t
+   set_min_supported_compute_capability_fn_;
 
-  TritonServerNewFn_t server_new_fn_;
-  TritonServerOptionsDeleteFn_t server_options_delete_fn_;
-  TritonServerDeleteFn_t server_delete_fn_;
-  TritonServerIsLiveFn_t server_is_live_fn_;
+   TritonServerNewFn_t server_new_fn_;
+   TritonServerOptionsDeleteFn_t server_options_delete_fn_;
+   TritonServerDeleteFn_t server_delete_fn_;
+   TritonServerIsLiveFn_t server_is_live_fn_;
 
-  TritonServerIsReadyFn_t server_is_ready_fn_;
-  TritonServerMetadataFn_t server_metadata_fn_;
-  TritonServerMessageSerializeToJsonFn_t message_serialize_to_json_fn_;
-  TritonServerMessageDeleteFn_t message_delete_fn_;
+   TritonServerIsReadyFn_t server_is_ready_fn_;
+   TritonServerMetadataFn_t server_metadata_fn_;
+   TritonServerMessageSerializeToJsonFn_t message_serialize_to_json_fn_;
+   TritonServerMessageDeleteFn_t message_delete_fn_;
 
-  TritonServerModelIsReadyFn_t model_is_ready_fn_;
-  TritonServerModelMetadataFn_t model_metadata_fn_;
-  TritonServerResponseAllocatorNewFn_t response_allocator_new_fn_;
-  TritonServerInferenceRequestNewFn_t inference_request_new_fn_;
+   TritonServerModelIsReadyFn_t model_is_ready_fn_;
+   TritonServerModelMetadataFn_t model_metadata_fn_;
+   TritonServerResponseAllocatorNewFn_t response_allocator_new_fn_;
+   TritonServerInferenceRequestNewFn_t inference_request_new_fn_;
 
-  TritonServerInferenceRequestSetIdFn_t inference_request_set_id_fn_;
-  TritonServerInferenceRequestSetReleaseCallbackFn_t
-      inference_request_set_release_callback_fn_;
-  TritonServerInferenceRequestAddInputFn_t inference_request_add_input_fn_;
-  TritonServerInferenceRequestAddRequestedOutputFn_t
-      inference_request_add_requested_output_fn_;
+   TritonServerInferenceRequestSetIdFn_t inference_request_set_id_fn_;
+   TritonServerInferenceRequestSetReleaseCallbackFn_t
+   inference_request_set_release_callback_fn_;
+   TritonServerInferenceRequestAddInputFn_t inference_request_add_input_fn_;
+   TritonServerInferenceRequestAddRequestedOutputFn_t
+   inference_request_add_requested_output_fn_;
 
-  TritonServerInferenceRequestAppendInputDataFn_t
-      inference_request_append_input_data_fn_;
-  TritonServerInferenceRequestSetResponseCallbackFn_t
-      inference_request_set_response_callback_fn_;
-  TritonServerInferAsyncFn_t infer_async_fn_;
-  TritonServerInferenceResponseErrorFn_t inference_response_error_fn_;
+   TritonServerInferenceRequestAppendInputDataFn_t
+   inference_request_append_input_data_fn_;
+   TritonServerInferenceRequestSetResponseCallbackFn_t
+     inference_request_set_response_callback_fn_;
+   TritonServerInferAsyncFn_t infer_async_fn_;
+   TritonServerInferenceResponseErrorFn_t inference_response_error_fn_;
+ 
+   TritonServerInferenceResponseDeleteFn_t inference_response_delete_fn_;
+   TritonServerInferenceRequestRemoveAllInputDataFn_t  inference_request_remove_all_input_data_fn_;
+   TritonServerResponseAllocatorDeleteFn_t response_allocator_delete_fn_;
+   TritonServerErrorNewFn_t error_new_fn_;
 
-  TritonServerInferenceResponseDeleteFn_t inference_response_delete_fn_;
-  TritonServerInferenceRequestRemoveAllInputDataFn_t
-      inference_request_remove_all_input_data_fn_;
-  TritonServerResponseAllocatorDeleteFn_t response_allocator_delete_fn_;
-  TritonServerErrorNewFn_t error_new_fn_;
+   TritonServerMemoryTypeStringFn_t memory_type_string_fn_;
+   TritonServerInferenceResponseOutputCountFn_t inference_response_output_count_fn_;
+   TritonServerDataTypeStringFn_t data_type_string_fn_;
+   TritonServerErrorMessageFn_t error_message_fn_;
 
-  TritonServerMemoryTypeStringFn_t memory_type_string_fn_;
-  TritonServerInferenceResponseOutputCountFn_t
-      inference_response_output_count_fn_;
-  TritonServerDataTypeStringFn_t data_type_string_fn_;
-  TritonServerErrorMessageFn_t error_message_fn_;
+   TritonServerErrorDeleteFn_t error_delete_fn_;
+   TritonServerErrorCodeToStringFn_t error_code_to_string_fn_;
+   TritonServerModelConfigFn_t model_config_fn_;
+   TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
 
-  TritonServerErrorDeleteFn_t error_delete_fn_;
-  TritonServerErrorCodeToStringFn_t error_code_to_string_fn_;
-  TritonServerModelConfigFn_t model_config_fn_;
-  TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
+   TritonServerInferenceRequestSetFlagsFn_t set_flags_fn_;
+   TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;
+   TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t set_timeout_ms_fn_;
+   TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
 
-  TritonServerInferenceRequestSetFlagsFn_t set_flags_fn_;
-  TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;
-  TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t set_timeout_ms_fn_;
-  TritonServerStringToDatatypeFn_t string_to_datatype_fn_;
+   TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
+   TritonServerRequestIdFn_t request_id_fn_;
+   TritonServerRequestDeleteFn_t request_delete_fn_;
+   TritonServerModelStatisticsFn_t model_statistics_fn_;
 
-  TritonServerInferenceResponseOutputFn_t inference_response_output_fn_;
-  TritonServerRequestIdFn_t request_id_fn_;
-  TritonServerRequestDeleteFn_t request_delete_fn_;
-  TritonServerModelStatisticsFn_t model_statistics_fn_;
-
-  TRITONSERVER_ServerOptions* options_;
-  TRITONSERVER_Server* server_ptr_;
-  std::shared_ptr<TRITONSERVER_Server> server_;
-  std::string library_directory_;
+  static TRITONSERVER_ServerOptions* options_;
+  static TRITONSERVER_Server* server_ptr_;
+  static std::shared_ptr<TRITONSERVER_Server> server_;
+  static std::string library_directory_;
   const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
-  int verbose_level_ = 0;
-  bool enforce_memory_type_ = false;
-  std::string model_repository_path_;
-  std::string model_name_;
-  int64_t model_version_;
-  TRITONSERVER_memorytype_enum requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
-  bool model_is_loaded_ = false;
-  bool server_is_ready_ = false;
-  nic::RequestTimers timer_;
+  static int verbose_level_;
+  static bool enforce_memory_type_ ;
+  static std::string model_repository_path_;
+  static std::string model_name_;
+  static int64_t model_version_;
+  static TRITONSERVER_memorytype_enum requested_memory_type_;
+  static bool model_is_loaded_;
+  static bool server_is_ready_;
+  static nic::RequestTimers timer_;
 };
 
 }}  // namespace perfanalyzer::clientbackend

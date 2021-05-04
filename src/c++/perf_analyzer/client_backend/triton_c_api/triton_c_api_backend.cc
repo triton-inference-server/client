@@ -54,8 +54,7 @@ TritonLocalClientBackend::Create(
   }
 
   TritonLoader::Create(
-      library_directory, model_repository, memory_type, verbose,
-      &triton_client_backend->loader_);
+      library_directory, model_repository, memory_type, verbose);
   *client_backend = std::move(triton_client_backend);
   return Error::Success;
 }
@@ -72,7 +71,7 @@ TritonLocalClientBackend::ServerExtensions(std::set<std::string>* extensions)
 
 
   rapidjson::Document server_metadata_json;
-  RETURN_IF_ERROR(loader_->ServerMetaData(&server_metadata_json));
+  RETURN_IF_ERROR(TritonLoader::ServerMetaData(&server_metadata_json));
   // FAIL_IF_TRITON_ERR(
   //     nic::ParseJson(&server_metadata_json, server_metadata),
   //     "failed to parse server metadata");
@@ -98,8 +97,8 @@ TritonLocalClientBackend::ModelMetadata(
     rapidjson::Document* model_metadata, const std::string& model_name,
     const std::string& model_version)
 {
-  if (!loader_->ModelIsLoaded()) {
-    loader_->LoadModel(model_name, model_version);
+  if (!TritonLoader::ModelIsLoaded()) {
+    TritonLoader::LoadModel(model_name, model_version);
   }
 
   // if (protocol_ == ProtocolType::HTTP) {
@@ -121,7 +120,7 @@ TritonLocalClientBackend::ModelMetadata(
 
   //   RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
   // }
-  RETURN_IF_ERROR(loader_->ModelMetadata(model_metadata));
+  RETURN_IF_ERROR(TritonLoader::ModelMetadata(model_metadata));
   return Error::Success;
 }
 
@@ -130,8 +129,8 @@ TritonLocalClientBackend::ModelConfig(
     rapidjson::Document* model_config, const std::string& model_name,
     const std::string& model_version)
 {
-  if (!loader_->ModelIsLoaded()) {
-    loader_->LoadModel(model_name, model_version);
+  if (!TritonLoader::ModelIsLoaded()) {
+    TritonLoader::LoadModel(model_name, model_version);
   }
   // if (protocol_ == ProtocolType::HTTP) {
   //   std::string config;
@@ -155,7 +154,7 @@ TritonLocalClientBackend::ModelConfig(
   //   model_config->CopyFrom(full_config["config"],
   //   model_config->GetAllocator());
   // }
-  RETURN_IF_ERROR(loader_->ModelConfig(model_config));
+  RETURN_IF_ERROR(TritonLoader::ModelConfig(model_config));
   return Error::Success;
 }
 
@@ -175,7 +174,7 @@ TritonLocalClientBackend::Infer(
   ParseInferOptionsToTriton(options, &triton_options);
 
   nic::InferResult* triton_result;
-  RETURN_IF_ERROR(loader_->Infer(
+  RETURN_IF_ERROR(TritonLoader::Infer(
       triton_options, triton_inputs, triton_outputs, &triton_result));
   // if (protocol_ == ProtocolType::GRPC) {
   //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->Infer(
@@ -276,7 +275,7 @@ TritonLocalClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   nic::InferStat triton_infer_stat;
 
-  loader_->ClientInferStat(&triton_infer_stat);
+  TritonLoader::ClientInferStat(&triton_infer_stat);
   ParseInferStat(triton_infer_stat, infer_stat);
   return Error::Success;
 }
@@ -287,23 +286,24 @@ TritonLocalClientBackend::ModelInferenceStatistics(
     const std::string& model_name, const std::string& model_version)
 {
   rapidjson::Document infer_stat_json;
-  loader_->ModelInferenceStatistics(model_name, model_version, &infer_stat_json);
+  TritonLoader::ModelInferenceStatistics(
+      model_name, model_version, &infer_stat_json);
   ParseStatistics(infer_stat_json, model_stats);
-/*
-  if (protocol_ == ProtocolType::GRPC) {
-    inference::ModelStatisticsResponse infer_stat;
-    RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelInferenceStatistics(
-        &infer_stat, model_name, model_version, *http_headers_));
-    ParseStatistics(infer_stat, model_stats);
-  } else {
-    std::string infer_stat;
-    RETURN_IF_TRITON_ERROR(client_.http_client_->ModelInferenceStatistics(
-        &infer_stat, model_name, model_version, *http_headers_));
-    rapidjson::Document infer_stat_json;
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(&infer_stat_json, infer_stat));
-    ParseStatistics(infer_stat_json, model_stats);
-  }
-  */
+  /*
+    if (protocol_ == ProtocolType::GRPC) {
+      inference::ModelStatisticsResponse infer_stat;
+      RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelInferenceStatistics(
+          &infer_stat, model_name, model_version, *http_headers_));
+      ParseStatistics(infer_stat, model_stats);
+    } else {
+      std::string infer_stat;
+      RETURN_IF_TRITON_ERROR(client_.http_client_->ModelInferenceStatistics(
+          &infer_stat, model_name, model_version, *http_headers_));
+      rapidjson::Document infer_stat_json;
+      RETURN_IF_TRITON_ERROR(nic::ParseJson(&infer_stat_json, infer_stat));
+      ParseStatistics(infer_stat_json, model_stats);
+    }
+    */
 
   return Error::Success;
 }
