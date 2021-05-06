@@ -1241,8 +1241,7 @@ main(int argc, char** argv)
       std::cerr << "Target concurrency not yet supported by C API" << std::endl;
       return 1;
     } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
-      std::cerr << "Shared memory not yet supported by C API"
-                << std::endl;
+      std::cerr << "Shared memory not yet supported by C API" << std::endl;
     }
   }
   std::unique_ptr<cb::ClientBackend> backend;

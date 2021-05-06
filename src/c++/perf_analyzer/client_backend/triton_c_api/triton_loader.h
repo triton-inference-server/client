@@ -74,6 +74,8 @@ class TritonLoader : public nic::InferenceServerClient {
   static Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
+  static Error UnloadModel();
+
   static Error ModelMetadata(rapidjson::Document* model_metadata);
 
   static Error ModelConfig(rapidjson::Document* model_config);
@@ -92,7 +94,8 @@ class TritonLoader : public nic::InferenceServerClient {
 
   static Error ClientInferStat(nic::InferStat* infer_stat)
   {
-    return GetSingleton()->ClientInferStat(infer_stat);
+    *infer_stat = GetSingleton()->infer_stat_;
+    return Error::Success;
   }
 
   static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
@@ -288,7 +291,9 @@ class TritonLoader : public nic::InferenceServerClient {
   typedef TRITONSERVER_Error* (*TritonServerModelStatisticsFn_t)(
       TRITONSERVER_Server* server, const char* model_name,
       const int64_t model_version, TRITONSERVER_Message** model_stats);
-
+  // TRITONSERVER_ServerUnloadModel
+  typedef TRITONSERVER_Error* (*TritonSeverUnloadModelFn_t)(
+      TRITONSERVER_Server* server, const char* model_name);
 
  private:
   TritonLoader() : InferenceServerClient(true)
@@ -299,11 +304,15 @@ class TritonLoader : public nic::InferenceServerClient {
     model_is_loaded_ = false;
     server_is_ready_ = false;
   }
-  ~TritonLoader()
+
+  virtual ~TritonLoader()
   {
+    std::cout << "deleting triton ..." << std::endl;
+    (GetSingleton()->server_).reset();
     FAIL_IF_ERR(
         CloseLibraryHandle(dlhandle_), "error on closing triton loader");
     ClearHandles();
+    std::cout << "deleting triton ... done!" << std::endl;
   }
   Error PopulateInternals(
       const std::string& library_directory, const std::string& model_repository,
@@ -325,8 +334,8 @@ class TritonLoader : public nic::InferenceServerClient {
   Error InitializeRequest(
       const nic::InferOptions& options,
       const std::vector<const nic::InferRequestedOutput*>& outputs,
-      TRITONSERVER_ResponseAllocator* allocator,
-      TRITONSERVER_InferenceRequest* irequest);
+      TRITONSERVER_ResponseAllocator** allocator,
+      TRITONSERVER_InferenceRequest** irequest);
 
   Error AddInputs(
       const nic::InferOptions& options,
@@ -405,8 +414,8 @@ class TritonLoader : public nic::InferenceServerClient {
   TritonServerRequestIdFn_t request_id_fn_;
   TritonServerRequestDeleteFn_t request_delete_fn_;
   TritonServerModelStatisticsFn_t model_statistics_fn_;
+  TritonSeverUnloadModelFn_t unload_model_fn_;
 
-  TRITONSERVER_Server* server_ptr_;
   std::shared_ptr<TRITONSERVER_Server> server_;
   std::string library_directory_;
   const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";

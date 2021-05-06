@@ -282,6 +282,7 @@ TritonLocalClientBackend::ParseStatistics(
     const inference::ModelStatisticsResponse& infer_stat,
     std::map<ModelIdentifier, ModelStatistics>* model_stats)
 {
+  std::cout << "parsing statistics...";
   model_stats->clear();
   for (const auto& this_stat : infer_stat.model_stats()) {
     auto it = model_stats
@@ -300,7 +301,10 @@ TritonLocalClientBackend::ParseStatistics(
         this_stat.inference_stats().compute_infer().ns();
     it->second.compute_output_time_ns_ =
         this_stat.inference_stats().compute_output().ns();
+    std::cout << this_stat.name() << " inference count "
+              << this_stat.inference_count() << ", ";
   }
+  std::cout << "... " << std::endl;
 }
 
 void
