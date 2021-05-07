@@ -230,12 +230,28 @@ the install directory.
 
 #### Windows
 
-Use *cmake* to configure the build.
+To build the clients you must install an appropriate C++ compiler and
+other dependencies required for the build. The easiest way to do this
+is to create the [Windows min Docker
+image](https://github.com/triton-inference-server/server/blob/master/docs/build.md#windows-10-min-container)
+and the perform the build within a container launched from that image.
+
+```
+> docker run  -it --rm win10-py3-min powershell
+```
+
+It is not necessary to use Docker or the win10-py3-min container for
+the build, but if you do not you must install the appropriate
+dependencies onto your host system.
+
+Next use *cmake* to configure the build. If you are not building
+within the win10-py3-min container then you will likely need to adjust
+the CMAKE_TOOLCHAIN_FILE location in the following command.
 
 ```
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
+$ cmake -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE='/vcpkg/scripts/buildsystems/vcpkg.cmake' -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
 ```
 
 Then use msbuild.exe to build.
