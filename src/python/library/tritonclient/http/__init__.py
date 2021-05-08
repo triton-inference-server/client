@@ -1086,6 +1086,34 @@ class InferenceServerClient:
                                       priority=priority,
                                       timeout=timeout)
 
+    @staticmethod
+    def make_infer_result(response_body,
+                          verbose=False,
+                          header_length=None,
+                          content_encoding=None):
+        """Generate a InferResult object from the given 'response_body'
+
+        Parameters
+        ----------
+        response_body : bytes
+            The inference response from the server
+        verbose : bool
+            If True generate verbose output. Default value is False.
+        header_length : int
+            The length of the inference header if the header does not occupy
+            the whole response body. Default value is None.
+        content_encoding : string
+            The encoding of the response body if it is compressed.
+            Default value is None.
+        
+        Returns
+        -------
+        InferResult
+            The InferResult object generated from the response body
+        """
+        return InferResult.from_response_body(response_body, verbose,
+                                              header_length, content_encoding)
+
     def infer(self,
               model_name,
               inputs,
@@ -1744,7 +1772,7 @@ class InferResult:
 
     Parameters
     ----------
-    result : dict
+    response : geventhttpclient.response.HTTPSocketPoolResponse
         The inference response from the server
     verbose : bool
         If True generate verbose output. Default value is False.
@@ -1806,6 +1834,59 @@ class InferResult:
                         self._output_name_to_buffer_map[
                             output['name']] = buffer_index
                         buffer_index = buffer_index + this_data_size
+
+    @classmethod
+    def from_response_body(cls,
+                           response_body,
+                           verbose=False,
+                           header_length=None,
+                           content_encoding=None):
+        """A class method to construct InferResult object
+        from a given 'response_body'.
+
+        Parameters
+        ----------
+        response_body : bytes
+            The inference response from the server
+        verbose : bool
+            If True generate verbose output. Default value is False.
+        header_length : int
+            The length of the inference header if the header does not occupy
+            the whole response body. Default value is None.
+        content_encoding : string
+            The encoding of the response body if it is compressed.
+            Default value is None.
+        
+        Returns
+        -------
+        InferResult
+            The InferResult object generated from the response body
+        """
+
+        # Internal class that simulate the interface of 'response'
+        class Response:
+
+            def __init__(self, response_body, header_length, content_encoding):
+                self.response_body_ = response_body
+                self.offset_ = 0
+                self.parameters_ = {
+                    'Inference-Header-Content-Length': header_length,
+                    'Content-Encoding': content_encoding
+                }
+
+            def get(self, key):
+                return self.parameters_.get(key)
+
+            def read(self, length=-1):
+                if length == -1:
+                    return self.response_body_[self.offset_:]
+                else:
+                    prev_offset = self.offset_
+                    self.offset_ += length
+                    return self.response_body_[prev_offset:self.offset_]
+
+        return cls(Response(response_body, header_length, content_encoding),
+                   verbose)
 
     def as_numpy(self, name):
         """Get the tensor data for output associated with this object
