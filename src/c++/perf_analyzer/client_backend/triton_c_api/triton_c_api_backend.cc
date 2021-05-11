@@ -41,7 +41,6 @@ TritonLocalClientBackend::Create(
     const std::string& model_repository, const std::string& memory_type,
     const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
 {
-  std::cout << "backend creating" << std::endl;
   std::unique_ptr<TritonLocalClientBackend> triton_client_backend(
       new TritonLocalClientBackend(
           protocol, compression_algorithm, http_headers));

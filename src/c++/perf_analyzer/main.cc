@@ -1273,7 +1273,6 @@ main(int argc, char** argv)
     FAIL_IF_ERR(
         backend->ModelConfig(&model_config, model_name, model_version),
         "failed to get model config");
-    std::cout << "initializing parser, using backend" << std::endl;
     FAIL_IF_ERR(
         parser->InitTriton(
             model_metadata, model_config, model_version, input_shapes, backend),

@@ -148,8 +148,12 @@ ClientBackend::Create(
 {
   std::unique_ptr<ClientBackend> local_backend;
   if (kind == TRITON) {
+<<<<<<< HEAD
     std::cout << "creating tnormal triton backend "<< std::endl;
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
+=======
+    RETURN_IF_CB_ERROR(TritonClientBackend::Create(
+>>>>>>> removed extra comments
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
   } else if (kind == TENSORFLOW_SERVING) {
@@ -160,7 +164,6 @@ ClientBackend::Create(
     RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
   } else if (kind == TRITON_LOCAL) {
-    std::cout << "creating local triton " << std::endl;
     RETURN_IF_CB_ERROR(TritonLocalClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         server_library_path, model_repository_path, memory_type, verbose,

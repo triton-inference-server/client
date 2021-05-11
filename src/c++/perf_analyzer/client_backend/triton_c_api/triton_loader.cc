@@ -65,8 +65,10 @@ ResponseAlloc(
   if (byte_size == 0) {
     *buffer = nullptr;
     *buffer_userp = nullptr;
-    std::cout << "allocated " << byte_size << " bytes for result tensor "
-              << tensor_name << std::endl;
+    if (verbose) {
+      std::cout << "allocated " << byte_size << " bytes for result tensor "
+                << tensor_name << std::endl;
+    }
   } else {
     void* allocated_ptr = nullptr;
     if (enforce_memory_type) {
@@ -232,7 +234,6 @@ Error
 TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
 {
   GetSingleton()->verbose_level_ = isVerbose ? 1 : 0;
-  std::cout << " verbose level " << GetSingleton()->verbose_level_ << std::endl;
 
   // Check API version.
   uint32_t api_version_major, api_version_minor;
@@ -342,8 +343,6 @@ TritonLoader::ServerMetaData(rapidjson::Document* server_metadata)
   if (!ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
   }
-  std::cout << "ServerMetaData..." << std::endl;
-
   TRITONSERVER_Message* server_metadata_message;
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->server_metadata_fn_(
@@ -372,7 +371,6 @@ Error
 TritonLoader::LoadModel(
     const std::string& model_name, const std::string& model_version)
 {
-  std::cout << "loading model..." << std::endl;
   if (!ServerIsReady()) {
     return Error("server is not ready, abort!");
   }
@@ -402,8 +400,6 @@ TritonLoader::LoadModel(
       continue;
     }
   }
-
-  std::cout << "loaded model " << GetSingleton()->model_name_ << std::endl;
   GetSingleton()->model_is_loaded_ =
       true;  // flag to confirm model is correct and loaded
   return Error::Success;
@@ -1092,7 +1088,6 @@ TritonLoader::ModelInferenceStatistics(
     const std::string& model_name, const std::string& model_version,
     rapidjson::Document* infer_stat)
 {
-  std::cout << "ModelInferenceStatistics..." << std::endl;
   if (ServerIsReady() && ModelIsLoaded()) {
     TRITONSERVER_Message* model_stats_message = nullptr;
     int64_t requested_model_version;
