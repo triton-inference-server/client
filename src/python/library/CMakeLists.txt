@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -77,8 +77,10 @@ set(wheel_stamp_file "stamp.whl")
 
 add_custom_command(
   OUTPUT "${wheel_stamp_file}"
-  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.sh"
-  ARGS "${CMAKE_CURRENT_BINARY_DIR}/generic/" "false"
+  COMMAND python3
+  ARGS
+    "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.py"
+    --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/generic"
   DEPENDS ${WHEEL_DEPENDS}
 )
 
@@ -107,11 +109,12 @@ if (NOT WIN32)
   set(linux_wheel_stamp_file "linux_stamp.whl")
   add_custom_command(
     OUTPUT "${linux_wheel_stamp_file}"
-    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.sh"
+    COMMAND python3
     ARGS
-      "${CMAKE_CURRENT_BINARY_DIR}/linux/"
-      "true"
-      ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer
+      "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.py"
+      --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/linux"
+      --linux
+      --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer
     DEPENDS ${LINUX_WHEEL_DEPENDS}
   )
 
