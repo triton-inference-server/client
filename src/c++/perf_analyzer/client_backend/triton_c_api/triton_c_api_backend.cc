@@ -45,14 +45,6 @@ TritonLocalClientBackend::Create(
   std::unique_ptr<TritonLocalClientBackend> triton_client_backend(
       new TritonLocalClientBackend(
           protocol, compression_algorithm, http_headers));
-  if (protocol == ProtocolType::HTTP) {
-    RETURN_IF_TRITON_ERROR(nic::InferenceServerHttpClient::Create(
-        &(triton_client_backend->client_.http_client_), url, verbose));
-  } else {
-    RETURN_IF_TRITON_ERROR(nic::InferenceServerGrpcClient::Create(
-        &(triton_client_backend->client_.grpc_client_), url, verbose));
-  }
-
   TritonLoader::Create(
       library_directory, model_repository, memory_type, verbose);
   *client_backend = std::move(triton_client_backend);
@@ -113,15 +105,6 @@ TritonLocalClientBackend::Infer(
   nic::InferResult* triton_result;
   RETURN_IF_ERROR(TritonLoader::Infer(
       triton_options, triton_inputs, triton_outputs, &triton_result));
-  // if (protocol_ == ProtocolType::GRPC) {
-  //   RETURN_IF_TRITON_ERROR(client_.grpc_client_->Infer(
-  //       &triton_result, triton_options, triton_inputs, triton_outputs,
-  //       *http_headers_, compression_algorithm_));
-  // } else {
-  //   RETURN_IF_TRITON_ERROR(client_.http_client_->Infer(
-  //       &triton_result, triton_options, triton_inputs, triton_outputs,
-  //       *http_headers_));
-  // }
 
   *result = new TritonLocalInferResult(triton_result);
   return Error::Success;
@@ -173,76 +156,6 @@ TritonLocalClientBackend::ModelInferenceStatistics(
   return Error::Success;
 }
 
-Error
-TritonLocalClientBackend::UnregisterAllSharedMemory()
-{
-  return Error("does not deal with shared memory yet");
-}
-
-Error
-TritonLocalClientBackend::RegisterSystemSharedMemory(
-    const std::string& name, const std::string& key, const size_t byte_size)
-{
-  return Error("does not deal with shared memory yet");
-}
-
-Error
-TritonLocalClientBackend::RegisterCudaSharedMemory(
-    const std::string& name, const cudaIpcMemHandle_t& handle,
-    const size_t byte_size)
-{
-  return Error("does not deal with shared memory yet");
-}
-
-//
-// Shared Memory Utilities
-//
-Error
-TritonLocalClientBackend::CreateSharedMemoryRegion(
-    std::string shm_key, size_t byte_size, int* shm_fd)
-{
-  RETURN_IF_TRITON_ERROR(
-      nic::CreateSharedMemoryRegion(shm_key, byte_size, shm_fd));
-
-  return Error::Success;
-}
-
-
-Error
-TritonLocalClientBackend::MapSharedMemory(
-    int shm_fd, size_t offset, size_t byte_size, void** shm_addr)
-{
-  RETURN_IF_TRITON_ERROR(
-      nic::MapSharedMemory(shm_fd, offset, byte_size, shm_addr));
-
-  return Error::Success;
-}
-
-
-Error
-TritonLocalClientBackend::CloseSharedMemory(int shm_fd)
-{
-  RETURN_IF_TRITON_ERROR(nic::CloseSharedMemory(shm_fd));
-
-  return Error::Success;
-}
-
-Error
-TritonLocalClientBackend::UnlinkSharedMemoryRegion(std::string shm_key)
-{
-  RETURN_IF_TRITON_ERROR(nic::UnlinkSharedMemoryRegion(shm_key));
-
-  return Error::Success;
-}
-
-Error
-TritonLocalClientBackend::UnmapSharedMemory(void* shm_addr, size_t byte_size)
-{
-  RETURN_IF_TRITON_ERROR(nic::UnmapSharedMemory(shm_addr, byte_size));
-
-  return Error::Success;
-}
-
 void
 TritonLocalClientBackend::ParseInferInputToTriton(
     const std::vector<InferInput*>& inputs,
@@ -274,37 +187,6 @@ TritonLocalClientBackend::ParseInferOptionsToTriton(
   triton_options->sequence_id_ = options.sequence_id_;
   triton_options->sequence_start_ = options.sequence_start_;
   triton_options->sequence_end_ = options.sequence_end_;
-}
-
-
-void
-TritonLocalClientBackend::ParseStatistics(
-    const inference::ModelStatisticsResponse& infer_stat,
-    std::map<ModelIdentifier, ModelStatistics>* model_stats)
-{
-  std::cout << "parsing statistics...";
-  model_stats->clear();
-  for (const auto& this_stat : infer_stat.model_stats()) {
-    auto it = model_stats
-                  ->emplace(
-                      std::make_pair(this_stat.name(), this_stat.version()),
-                      ModelStatistics())
-                  .first;
-    it->second.inference_count_ = this_stat.inference_count();
-    it->second.execution_count_ = this_stat.execution_count();
-    it->second.success_count_ = this_stat.inference_stats().success().count();
-    it->second.cumm_time_ns_ = this_stat.inference_stats().success().ns();
-    it->second.queue_time_ns_ = this_stat.inference_stats().queue().ns();
-    it->second.compute_input_time_ns_ =
-        this_stat.inference_stats().compute_input().ns();
-    it->second.compute_infer_time_ns_ =
-        this_stat.inference_stats().compute_infer().ns();
-    it->second.compute_output_time_ns_ =
-        this_stat.inference_stats().compute_output().ns();
-    std::cout << this_stat.name() << " inference count "
-              << this_stat.inference_count() << ", ";
-  }
-  std::cout << "... " << std::endl;
 }
 
 void
@@ -402,8 +284,7 @@ Error
 TritonLocalInferInput::SetSharedMemory(
     const std::string& name, size_t byte_size, size_t offset)
 {
-  RETURN_IF_TRITON_ERROR(input_->SetSharedMemory(name, byte_size, offset));
-  return Error::Success;
+  return Error("Shared memory not supported with C API");
 }
 
 TritonLocalInferInput::TritonLocalInferInput(

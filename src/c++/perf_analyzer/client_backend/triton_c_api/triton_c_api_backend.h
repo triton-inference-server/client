@@ -77,6 +77,8 @@ class TritonLocalClientBackend : public ClientBackend {
       const std::string& memory_type, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);
 
+  ~TritonLocalClientBackend() { TritonLoader::Delete(); }
+
   /// See ClientBackend::ServerExtensions()
   Error ServerExtensions(std::set<std::string>* server_extensions) override;
 
@@ -119,47 +121,14 @@ class TritonLocalClientBackend : public ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "") override;
 
-  /// See ClientBackend::UnregisterAllSharedMemory()
-  Error UnregisterAllSharedMemory() override;
-
-  /// See ClientBackend::RegisterSystemSharedMemory()
-  Error RegisterSystemSharedMemory(
-      const std::string& name, const std::string& key,
-      const size_t byte_size) override;
-
-  /// See ClientBackend::RegisterCudaSharedMemory()
-  Error RegisterCudaSharedMemory(
-      const std::string& name, const cudaIpcMemHandle_t& handle,
-      const size_t byte_size) override;
-
-  /// See ClientBackend::CreateSharedMemoryRegion()
-  Error CreateSharedMemoryRegion(
-      std::string shm_key, size_t byte_size, int* shm_fd) override;
-
-  /// See ClientBackend::MapSharedMemory()
-  Error MapSharedMemory(
-      int shm_fd, size_t offset, size_t byte_size, void** shm_addr) override;
-
-  /// See ClientBackend::CloseSharedMemory()
-  Error CloseSharedMemory(int shm_fd) override;
-
-  /// See ClientBackend::UnlinkSharedMemoryRegion()
-  Error UnlinkSharedMemoryRegion(std::string shm_key) override;
-
-  /// See ClientBackend::UnmapSharedMemory()
-  Error UnmapSharedMemory(void* shm_addr, size_t byte_size) override;
-
  private:
   TritonLocalClientBackend(
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<nic::Headers> http_headers)
-      : ClientBackend(BackendKind::TRITON_LOCAL), protocol_(protocol),
-        compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers)
+      : ClientBackend(BackendKind::TRITON_LOCAL)
   {
   }
-
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
       std::vector<nic::InferInput*>* triton_inputs);
@@ -169,31 +138,10 @@ class TritonLocalClientBackend : public ClientBackend {
   void ParseInferOptionsToTriton(
       const InferOptions& options, nic::InferOptions* triton_options);
   void ParseStatistics(
-      const inference::ModelStatisticsResponse& infer_stat,
-      std::map<ModelIdentifier, ModelStatistics>* model_stats);
-  void ParseStatistics(
       const rapidjson::Document& infer_stat,
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const nic::InferStat& triton_infer_stat, InferStat* infer_stat);
-
-  /// Union to represent the underlying triton client belonging to one of
-  /// the protocols
-  union TritonClient {
-    TritonClient()
-    {
-      new (&http_client_) std::unique_ptr<nic::InferenceServerHttpClient>{};
-    }
-    ~TritonClient() {}
-
-    std::unique_ptr<nic::InferenceServerHttpClient> http_client_;
-    std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client_;
-  } client_;
-
-  const ProtocolType protocol_;
-  const grpc_compression_algorithm compression_algorithm_;
-  std::shared_ptr<nic::Headers> http_headers_;
-  std::shared_ptr<TritonLoader> loader_;
 };
 
 //==============================================================

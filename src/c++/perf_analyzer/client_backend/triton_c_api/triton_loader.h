@@ -51,6 +51,19 @@
     }                                                                       \
   } while (false)
 
+#define FAIL_IF_TRITONSERVER_ERROR(E, MSG)                                  \
+  do {                                                                      \
+    TRITONSERVER_Error* err__ = (E);                                        \
+    if (err__ != nullptr) {                                                 \
+      std::cerr << "error: " << (MSG) << ": "                               \
+                << GetSingleton()->error_code_to_string_fn_(err__) << " - " \
+                << GetSingleton()->error_message_fn_(err__) << std::endl;   \
+      Error newErr = Error(MSG);                                            \
+      GetSingleton()->error_delete_fn_(err__);                              \
+      exit(1);                                                              \
+    }                                                                       \
+  } while (false)
+
 #define REPORT_TRITONSERVER_ERROR(E)                                      \
   do {                                                                    \
     TRITONSERVER_Error* err__ = (E);                                      \
@@ -65,10 +78,13 @@ namespace perfanalyzer { namespace clientbackend {
 
 class TritonLoader : public nic::InferenceServerClient {
  public:
+  ~TritonLoader();
+
   static Error Create(
       const std::string& library_directory, const std::string& model_repository,
       const std::string& memory_type, bool verbose);
 
+  static Error Delete();
   static Error StartTriton(const std::string& memory_type, bool isVerbose);
 
   static Error LoadModel(
@@ -296,7 +312,9 @@ class TritonLoader : public nic::InferenceServerClient {
       TRITONSERVER_Server* server, const char* model_name);
 
  private:
-  TritonLoader() : InferenceServerClient(true)
+  TritonLoader()
+      : InferenceServerClient(
+            false /* verbose flag that is set later during ::Create*/)
   {
     verbose_level_ = 0;
     enforce_memory_type_ = false;
@@ -305,15 +323,6 @@ class TritonLoader : public nic::InferenceServerClient {
     server_is_ready_ = false;
   }
 
-  virtual ~TritonLoader()
-  {
-    std::cout << "deleting triton ..." << std::endl;
-    (GetSingleton()->server_).reset();
-    FAIL_IF_ERR(
-        CloseLibraryHandle(dlhandle_), "error on closing triton loader");
-    ClearHandles();
-    std::cout << "deleting triton ... done!" << std::endl;
-  }
   Error PopulateInternals(
       const std::string& library_directory, const std::string& model_repository,
       const std::string& memory_type, bool verbose);
@@ -329,7 +338,7 @@ class TritonLoader : public nic::InferenceServerClient {
   /// Check if file exists in the current directory
   /// \param filepath Path of library to check
   /// \return perfanalyzer::clientbackend::Error
-  Error FileExists(std::string& filepath);
+  static Error FileExists(std::string& filepath);
 
   Error InitializeRequest(
       const nic::InferOptions& options,

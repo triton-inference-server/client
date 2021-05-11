@@ -193,7 +193,7 @@ TritonLoader::Create(
     if (library_directory.empty() || model_repository.empty()) {
       return Error("cannot load server, paths are empty");
     }
-
+    GetSingleton()->ClearHandles();
     Error status = GetSingleton()->PopulateInternals(
         library_directory, model_repository, memory_type, verbose);
     assert(status.IsOk());
@@ -201,6 +201,18 @@ TritonLoader::Create(
     assert(status.IsOk());
     status = GetSingleton()->StartTriton(memory_type, false);
     assert(status.IsOk());
+  }
+
+  return Error::Success;
+}
+
+Error
+TritonLoader::Delete()
+{
+  if (GetSingleton()->server_ != nullptr) {
+    (GetSingleton()->server_).reset();
+    GetSingleton()->server_is_ready_ = false;
+    GetSingleton()->model_is_loaded_ = false;
   }
   return Error::Success;
 }
@@ -212,22 +224,20 @@ TritonLoader::PopulateInternals(
 {
   GetSingleton()->library_directory_ = library_directory;
   GetSingleton()->model_repository_path_ = model_repository;
+  GetSingleton()->verbose_ = verbose;
   return Error::Success;
 }
 
 Error
 TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
 {
-  if (isVerbose) {
-    GetSingleton()->verbose_level_ = 1;
-  }
+  GetSingleton()->verbose_level_ = isVerbose ? 1 : 0;
+  std::cout << " verbose level " << GetSingleton()->verbose_level_ << std::endl;
 
   // Check API version.
   uint32_t api_version_major, api_version_minor;
   REPORT_TRITONSERVER_ERROR(
       GetSingleton()->api_version_fn_(&api_version_major, &api_version_minor));
-  std::cout << "api version major: " << api_version_major
-            << ", minor: " << api_version_minor << std::endl;
   if ((TRITONSERVER_API_VERSION_MAJOR != api_version_major) ||
       (TRITONSERVER_API_VERSION_MINOR > api_version_minor)) {
     return Error("triton server API version mismatch");
@@ -288,10 +298,9 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
         GetSingleton()->server_is_ready_fn_(
             (GetSingleton()->server_).get(), &ready),
         "unable to get server readiness");
-    std::cout << "Server Health: live " << live << ", ready " << ready
-              << std::endl;
     if (live && ready) {
       std::cout << "server is alive!" << std::endl;
+      GetSingleton()->server_is_ready_ = true;
       break;
     }
 
@@ -314,15 +323,15 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
         GetSingleton()->message_serialize_to_json_fn_(
             server_metadata_message, &buffer, &byte_size),
         "unable to serialize server metadata message");
-
-    std::cout << "Server Status:" << std::endl;
-    std::cout << std::string(buffer, byte_size) << std::endl;
-
+    if (verbose) {
+      std::cout << "Server Status:" << std::endl;
+      std::cout << std::string(buffer, byte_size) << std::endl;
+    }
     RETURN_IF_TRITONSERVER_ERROR(
         GetSingleton()->message_delete_fn_(server_metadata_message),
         "deleting status metadata");
   }
-  GetSingleton()->server_is_ready_ = true;
+
 
   return Error::Success;
 }
@@ -418,7 +427,6 @@ TritonLoader::ModelMetadata(rapidjson::Document* model_metadata)
   if (!ModelIsLoaded() || !ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
   }
-  std::cout << "ModelMetadata..." << std::endl;
   TRITONSERVER_Message* model_metadata_message;
 
   // get model metadata
@@ -478,8 +486,6 @@ TritonLoader::ModelConfig(rapidjson::Document* model_config)
   if (!ModelIsLoaded() || !ServerIsReady()) {
     return Error("Model is not loaded and/or server is not ready");
   }
-  std::cout << "ModelConfig..." << std::endl;
-
   TRITONSERVER_Message* model_config_message;
   uint32_t config_version = 1;
   RETURN_IF_TRITONSERVER_ERROR(
@@ -909,45 +915,15 @@ TritonLoader::Infer(
       GetSingleton()->infer_async_fn_(
           (GetSingleton()->server_).get(), irequest, nullptr /* trace */),
       "running inference");
+  Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
   // Wait for the inference to complete.
   TRITONSERVER_InferenceResponse* completed_response = completed.get();
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->inference_response_error_fn_(completed_response),
       "response status");
-  // get data out
-  std::unordered_map<std::string, std::vector<char>> output_data;
-  uint32_t output_count;
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_response_output_count_fn_(
-          completed_response, &output_count),
-      "getting number of response outputs");
-  for (uint32_t idx = 0; idx < output_count; ++idx) {
-    const char* cname;
-    TRITONSERVER_DataType datatype;
-    const int64_t* shape;
-    uint64_t dim_count;
-    const void* base;
-    size_t byte_size;
-    TRITONSERVER_MemoryType memory_type;
-    int64_t memory_type_id;
-    void* userp;
-    RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->inference_response_output_fn_(
-            completed_response, idx, &cname, &datatype, &shape, &dim_count,
-            &base, &byte_size, &memory_type, &memory_type_id, &userp),
-        "getting output info");
-    if (cname == nullptr) {
-      return Error("unable to get output name");
-    }
-    std::string name(cname);
-    std::vector<char>& odata = output_data[name];
-    const char* cbase = reinterpret_cast<const char*>(base);
-    odata.assign(cbase, cbase + byte_size);
-  }
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
   Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_START);
   Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_END);
+  Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
 
   nic::Error err = GetSingleton()->UpdateInferStat(Timer());
   if (!err.IsOk()) {
@@ -1035,8 +1011,6 @@ TritonLoader::InitializeRequest(
       GetSingleton()->inference_request_set_release_callback_fn_(
           *irequest, InferRequestComplete, nullptr /* request_release_userp */),
       "setting request release callback");
-
-
   return Error::Success;
 }
 
@@ -1118,6 +1092,7 @@ TritonLoader::ModelInferenceStatistics(
     const std::string& model_name, const std::string& model_version,
     rapidjson::Document* infer_stat)
 {
+  std::cout << "ModelInferenceStatistics..." << std::endl;
   if (ServerIsReady() && ModelIsLoaded()) {
     TRITONSERVER_Message* model_stats_message = nullptr;
     int64_t requested_model_version;
@@ -1148,7 +1123,6 @@ TritonLoader::ModelInferenceStatistics(
           GetSingleton()->message_delete_fn_(model_stats_message),
           "deleting inference statistics message");
     }
-    std::cout << "got inference statistics" << std::endl;
     return err;
   } else {
     return Error(
@@ -1162,6 +1136,13 @@ TritonLoader::GetSingleton()
 {
   static TritonLoader loader;
   return &loader;
+}
+
+TritonLoader::~TritonLoader()
+{
+  FAIL_IF_ERR(Delete(), "dereferencing server instance...");
+  FAIL_IF_ERR(CloseLibraryHandle(dlhandle_), "error on closing triton loader");
+  GetSingleton()->ClearHandles();
 }
 
 }}  // namespace perfanalyzer::clientbackend
