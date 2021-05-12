@@ -1343,8 +1343,13 @@ main(int argc, char** argv)
   if (kind == cb::BackendKind::TRITON || using_batch_size) {
     std::cout << "  Batch size: " << batch_size << std::endl;
   }
-  std::cout << "  Measurement window: " << measurement_window_ms << " msec"
-            << std::endl;
+  if (measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
+    std::cout << "  Measurement window: " << measurement_window_ms << " msec"
+              << std::endl;
+  } else if (measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+    std::cout << "  Number of samples in each window: "
+              << measurement_request_count << std::endl;
+  }
   if (concurrency_range[SEARCH_RANGE::kEND] != 1) {
     std::cout << "  Latency limit: " << latency_threshold_ms << " msec"
               << std::endl;

@@ -171,6 +171,7 @@ LoadManager::CountCollectedRequests()
 {
   uint64_t num_of_requests = 0;
   for (auto& thread_stat : threads_stat_) {
+    std::lock_guard<std::mutex> lock(thread_stat->mu_);
     num_of_requests += thread_stat->request_timestamps_.size();
   }
   return num_of_requests;
