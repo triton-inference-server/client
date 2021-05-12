@@ -24,12 +24,13 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "inference_profiler.h"
-
 #include <math.h>
+
 #include <algorithm>
 #include <limits>
 #include <queue>
+
+#include "inference_profiler.h"
 
 
 namespace perfanalyzer {
@@ -247,12 +248,14 @@ InferenceProfiler::Create(
     const cb::ProtocolType protocol, std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager,
-    std::unique_ptr<InferenceProfiler>* profiler)
+    std::unique_ptr<InferenceProfiler>* profiler,
+    uint64_t measurement_request_count, MeasurementMode measurement_mode)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
-      std::move(profile_backend), std::move(manager)));
+      std::move(profile_backend), std::move(manager), measurement_request_count,
+      measurement_mode));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -265,12 +268,16 @@ InferenceProfiler::InferenceProfiler(
     const uint64_t latency_threshold_ms_, const cb::ProtocolType protocol,
     std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<cb::ClientBackend> profile_backend,
-    std::unique_ptr<LoadManager> manager)
+    std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
+    MeasurementMode measurement_mode)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
       protocol_(protocol), parser_(parser),
-      profile_backend_(std::move(profile_backend)), manager_(std::move(manager))
+      profile_backend_(std::move(profile_backend)),
+      manager_(std::move(manager)),
+      measurement_request_count_(measurement_request_count),
+      measurement_mode_(measurement_mode)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -440,7 +447,11 @@ InferenceProfiler::ProfileHelper(
       manager_->ResetWorkers();
     }
 
-    error.push(Measure(status_summary));
+    if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
+      error.push(Measure(status_summary, measurement_window_ms_, false));
+    } else {
+      error.push(Measure(status_summary, measurement_request_count_, true));
+    }
     if (error.size() >= load_parameters_.stability_window) {
       error.pop();
     }
@@ -563,21 +574,38 @@ InferenceProfiler::GetServerSideStatus(
 
 // Used for measurement
 cb::Error
-InferenceProfiler::Measure(PerfStatus& status_summary)
+InferenceProfiler::Measure(
+    PerfStatus& status_summary, uint64_t measurement_window,
+    bool is_count_based)
 {
   std::map<cb::ModelIdentifier, cb::ModelStatistics> start_status;
   std::map<cb::ModelIdentifier, cb::ModelStatistics> end_status;
   cb::InferStat start_stat;
   cb::InferStat end_stat;
+  long long measurement_window_ms;
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(GetServerSideStatus(&start_status));
   }
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
 
-  // Wait for specified time interval in msec
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds((uint64_t)(measurement_window_ms_ * 1.2)));
+  if (!is_count_based) {
+    // Wait for specified time interval in msec
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds((uint64_t)(measurement_window_ms_ * 1.2)));
+    measurement_window_ms = measurement_window_ms_; 
+  } else {
+    std::chrono::milliseconds measurement_window_start = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+    do {
+      // Wait for 1s until enough samples have been collected.
+      std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
+    } while (manager_->CountCollectedRequests() < measurement_window);
+
+    std::chrono::milliseconds measurement_window_end = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch());
+    measurement_window_ms =  (measurement_window_end - measurement_window_start).count();
+  }
 
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
 
@@ -592,7 +620,7 @@ InferenceProfiler::Measure(PerfStatus& status_summary)
 
   RETURN_IF_ERROR(Summarize(
       current_timestamps, start_status, end_status, start_stat, end_stat,
-      status_summary));
+      status_summary, measurement_window_ms));
 
   return cb::Error::Success;
 }
@@ -603,14 +631,14 @@ InferenceProfiler::Summarize(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-    PerfStatus& summary)
+    PerfStatus& summary, long long measurement_window_ms)
 {
   size_t valid_sequence_count = 0;
   size_t delayed_request_count = 0;
 
   // Get measurement from requests that fall within the time interval
   std::pair<uint64_t, uint64_t> valid_range;
-  MeasurementTimestamp(timestamps, &valid_range);
+  MeasurementTimestamp(timestamps, &valid_range, measurement_window_ms);
   std::vector<uint64_t> latencies;
   ValidLatencyMeasurement(
       timestamps, valid_range, valid_sequence_count, delayed_request_count,
@@ -632,7 +660,7 @@ InferenceProfiler::Summarize(
 void
 InferenceProfiler::MeasurementTimestamp(
     const TimestampVector& timestamps,
-    std::pair<uint64_t, uint64_t>* valid_range)
+    std::pair<uint64_t, uint64_t>* valid_range, long long measurement_window_ms)
 {
   // finding the start time of the first request
   // and the end time of the last request in the timestamp queue
@@ -653,7 +681,7 @@ InferenceProfiler::MeasurementTimestamp(
 
   // Define the measurement window [client_start_ns, client_end_ns) to be
   // in the middle of the queue
-  uint64_t measurement_window_ns = measurement_window_ms_ * 1000 * 1000;
+  uint64_t measurement_window_ns = measurement_window_ms * 1000 * 1000;
   uint64_t offset = first_request_start_ns + measurement_window_ns;
   offset =
       (offset > last_request_end_ns) ? 0 : (last_request_end_ns - offset) / 2;

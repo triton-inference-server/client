@@ -28,6 +28,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <thread>
+
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "perf_utils.h"
@@ -64,6 +65,9 @@ class LoadManager {
     return cb::Error(
         "resetting worker threads not supported for this load manager.");
   }
+
+  /// Count the number of requests collected until now.
+  uint64_t CountCollectedRequests();
 
   /// Wraps the information required to send an inference to the
   /// server
@@ -166,6 +170,7 @@ class LoadManager {
 
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
+
 
  private:
   /// Helper function to update the inputs

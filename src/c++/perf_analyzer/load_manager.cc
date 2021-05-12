@@ -166,6 +166,16 @@ LoadManager::SwapTimestamps(TimestampVector& new_timestamps)
   return cb::Error::Success;
 }
 
+uint64_t
+LoadManager::CountCollectedRequests()
+{
+  uint64_t num_of_requests = 0;
+  for (auto& thread_stat : threads_stat_) {
+    num_of_requests += thread_stat->request_timestamps_.size();
+  }
+  return num_of_requests;
+}
+
 cb::Error
 LoadManager::GetAccumulatedClientStat(cb::InferStat* contexts_stat)
 {
