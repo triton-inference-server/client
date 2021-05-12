@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "inference_profiler.h"
+
 #include <math.h>
 #include <algorithm>
 #include <limits>

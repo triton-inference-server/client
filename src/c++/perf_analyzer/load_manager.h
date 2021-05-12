@@ -170,7 +170,6 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
-
  private:
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects
