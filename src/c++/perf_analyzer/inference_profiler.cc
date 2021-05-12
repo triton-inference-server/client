@@ -24,11 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "inference_profiler.h"
 #include <math.h>
 #include <algorithm>
 #include <limits>
 #include <queue>
-#include "inference_profiler.h"
 
 
 namespace perfanalyzer {
