@@ -25,11 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <math.h>
-
 #include <algorithm>
 #include <limits>
 #include <queue>
-
 #include "inference_profiler.h"
 
 
@@ -593,18 +591,21 @@ InferenceProfiler::Measure(
     // Wait for specified time interval in msec
     std::this_thread::sleep_for(
         std::chrono::milliseconds((uint64_t)(measurement_window_ms_ * 1.2)));
-    measurement_window_ms = measurement_window_ms_; 
+    measurement_window_ms = measurement_window_ms_;
   } else {
-    std::chrono::milliseconds measurement_window_start = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch());
+    std::chrono::milliseconds measurement_window_start =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
     do {
       // Wait for 1s until enough samples have been collected.
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
     } while (manager_->CountCollectedRequests() < measurement_window);
 
-    std::chrono::milliseconds measurement_window_end = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch());
-    measurement_window_ms =  (measurement_window_end - measurement_window_start).count();
+    std::chrono::milliseconds measurement_window_end =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch());
+    measurement_window_ms =
+        (measurement_window_end - measurement_window_start).count();
   }
 
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));

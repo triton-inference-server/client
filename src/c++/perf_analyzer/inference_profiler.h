@@ -26,7 +26,6 @@
 #pragma once
 
 #include <thread>
-
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"
@@ -300,7 +299,8 @@ class InferenceProfiler {
   /// \param measurement_window Indicating the number of requests or the
   /// duration in milliseconds to collect requests.
   /// \param is_count_based determines whether measurement_window is indicating
-  /// time or count. \return cb::Error object indicating success or failure.
+  /// time or count.
+  /// \return cb::Error object indicating success or failure.
   cb::Error Measure(
       PerfStatus& status_summary, uint64_t measurement_window,
       bool is_count_based);
@@ -336,7 +336,8 @@ class InferenceProfiler {
   /// window.
   void MeasurementTimestamp(
       const TimestampVector& timestamps,
-      std::pair<uint64_t, uint64_t>* valid_range, long long measurement_window_ms);
+      std::pair<uint64_t, uint64_t>* valid_range,
+      long long measurement_window_ms);
 
   /// \param timestamps The timestamps collected for the measurement.
   /// \param valid_range The start and end timestamp of the measurement window.

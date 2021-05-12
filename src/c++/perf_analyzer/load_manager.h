@@ -28,7 +28,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <thread>
-
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "perf_utils.h"
