@@ -1012,7 +1012,7 @@ class InferenceServerClient:
                 print("Unregistered all cuda shared memory regions")
 
     @staticmethod
-    def make_body(inputs,
+    def generate_request_body(inputs,
                   outputs=None,
                   request_id="",
                   sequence_id=0,
@@ -1087,7 +1087,7 @@ class InferenceServerClient:
                                       timeout=timeout)
 
     @staticmethod
-    def make_infer_result(response_body,
+    def parse_response_body(response_body,
                           verbose=False,
                           header_length=None,
                           content_encoding=None):
