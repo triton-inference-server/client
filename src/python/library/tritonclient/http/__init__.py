@@ -1011,6 +1011,109 @@ class InferenceServerClient:
             else:
                 print("Unregistered all cuda shared memory regions")
 
+    @staticmethod
+    def generate_request_body(inputs,
+                  outputs=None,
+                  request_id="",
+                  sequence_id=0,
+                  sequence_start=False,
+                  sequence_end=False,
+                  priority=0,
+                  timeout=None):
+        """Generate a request body for inference using the supplied 'inputs'
+        requesting the outputs specified by 'outputs'.
+
+        Parameters
+        ----------
+        inputs : list
+            A list of InferInput objects, each describing data for a input
+            tensor required by the model.
+        outputs : list
+            A list of InferRequestedOutput objects, each describing how the output
+            data must be returned. If not specified all outputs produced
+            by the model will be returned using default settings.
+        request_id: str
+            Optional identifier for the request. If specified will be returned
+            in the response. Default value is an empty string which means no
+            request_id will be used.
+        sequence_id : int
+            The unique identifier for the sequence being represented by the
+            object. Default value is 0 which means that the request does not
+            belong to a sequence.
+        sequence_start: bool
+            Indicates whether the request being added marks the start of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        sequence_end: bool
+            Indicates whether the request being added marks the end of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        priority : int
+            Indicates the priority of the request. Priority value zero
+            indicates that the default priority level should be used
+            (i.e. same behavior as not specifying the priority parameter).
+            Lower value priorities indicate higher priority levels. Thus
+            the highest priority level is indicated by setting the parameter
+            to 1, the next highest is 2, etc. If not provided, the server
+            will handle the request using default setting for the model.
+        timeout : int
+            The timeout value for the request, in microseconds. If the request
+            cannot be completed within the time the server can take a
+            model-specific action such as terminating the request. If not
+            provided, the server will handle the request using default setting
+            for the model.
+
+        Returns
+        -------
+        Bytes
+            The request body of the inference.
+        Int
+            The byte size of the inference request header in the request body.
+            Returns None if the whole request body constitutes the request header.
+            
+
+        Raises
+        ------
+        InferenceServerException
+            If server fails to perform inference.
+        """
+        return _get_inference_request(inputs=inputs,
+                                      request_id=request_id,
+                                      outputs=outputs,
+                                      sequence_id=sequence_id,
+                                      sequence_start=sequence_start,
+                                      sequence_end=sequence_end,
+                                      priority=priority,
+                                      timeout=timeout)
+
+    @staticmethod
+    def parse_response_body(response_body,
+                          verbose=False,
+                          header_length=None,
+                          content_encoding=None):
+        """Generate a InferResult object from the given 'response_body'
+
+        Parameters
+        ----------
+        response_body : bytes
+            The inference response from the server
+        verbose : bool
+            If True generate verbose output. Default value is False.
+        header_length : int
+            The length of the inference header if the header does not occupy
+            the whole response body. Default value is None.
+        content_encoding : string
+            The encoding of the response body if it is compressed.
+            Default value is None.
+        
+        Returns
+        -------
+        InferResult
+            The InferResult object generated from the response body
+        """
+        return InferResult.from_response_body(response_body, verbose,
+                                              header_length, content_encoding)
+
     def infer(self,
               model_name,
               inputs,
@@ -1669,7 +1772,7 @@ class InferResult:
 
     Parameters
     ----------
-    result : dict
+    response : geventhttpclient.response.HTTPSocketPoolResponse
         The inference response from the server
     verbose : bool
         If True generate verbose output. Default value is False.
@@ -1731,6 +1834,59 @@ class InferResult:
                         self._output_name_to_buffer_map[
                             output['name']] = buffer_index
                         buffer_index = buffer_index + this_data_size
+
+    @classmethod
+    def from_response_body(cls,
+                           response_body,
+                           verbose=False,
+                           header_length=None,
+                           content_encoding=None):
+        """A class method to construct InferResult object
+        from a given 'response_body'.
+
+        Parameters
+        ----------
+        response_body : bytes
+            The inference response from the server
+        verbose : bool
+            If True generate verbose output. Default value is False.
+        header_length : int
+            The length of the inference header if the header does not occupy
+            the whole response body. Default value is None.
+        content_encoding : string
+            The encoding of the response body if it is compressed.
+            Default value is None.
+        
+        Returns
+        -------
+        InferResult
+            The InferResult object generated from the response body
+        """
+
+        # Internal class that simulate the interface of 'response'
+        class Response:
+
+            def __init__(self, response_body, header_length, content_encoding):
+                self.response_body_ = response_body
+                self.offset_ = 0
+                self.parameters_ = {
+                    'Inference-Header-Content-Length': header_length,
+                    'Content-Encoding': content_encoding
+                }
+
+            def get(self, key):
+                return self.parameters_.get(key)
+
+            def read(self, length=-1):
+                if length == -1:
+                    return self.response_body_[self.offset_:]
+                else:
+                    prev_offset = self.offset_
+                    self.offset_ += length
+                    return self.response_body_[prev_offset:self.offset_]
+
+        return cls(Response(response_body, header_length, content_encoding),
+                   verbose)
 
     def as_numpy(self, name):
         """Get the tensor data for output associated with this object
