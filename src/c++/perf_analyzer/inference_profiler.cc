@@ -329,10 +329,17 @@ InferenceProfiler::Profile(
                 << latency_threshold_ms_ << " msec. " << std::endl;
       *meets_threshold = false;
     } else if (!is_stable) {
-      std::cerr << "Failed to obtain stable measurement within " << max_trials_
-                << " measurement windows for concurrency "
-                << concurrent_request_count << ". Please try to "
-                << "increase the --measurement-interval." << std::endl;
+      if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
+        std::cerr << "Failed to obtain stable measurement within "
+                  << max_trials_ << " measurement windows for concurrency "
+                  << concurrent_request_count << ". Please try to "
+                  << "increase the --measurement-interval." << std::endl;
+      } else if (measurement_mode_ == MeasurementMode::COUNT_WINDOWS) {
+        std::cerr << "Failed to obtain stable measurement within "
+                  << max_trials_ << " measurement windows for concurrency "
+                  << concurrent_request_count << ". Please try to "
+                  << "increase the --measurement-request-count." << std::endl;
+      }
       *meets_threshold = false;
     }
   } else {
