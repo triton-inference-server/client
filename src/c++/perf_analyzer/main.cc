@@ -354,12 +354,15 @@ Usage(char** argv, const std::string& msg = std::string())
                    "--measurement-request-count requests in each window.",
                    18)
             << std::endl;
-  std::cerr << FormatMessage(
-      " --measurement-request-count: "
-      "Indicates the minimum number of requests to be collected in each "
-      "measurement window when \"count_windows\" mode is used. This mode can "
-      "be enabeld using the --measurement-mode flag.",
-      18);
+  std::cerr
+      << FormatMessage(
+             " --measurement-request-count: "
+             "Indicates the minimum number of requests to be collected in each "
+             "measurement window when \"count_windows\" mode is used. This "
+             "mode can "
+             "be enabled using the --measurement-mode flag.",
+             18)
+      << std::endl;
   std::cerr
       << FormatMessage(
              " --concurrency-range <start:end:step>: Determines the range of "
@@ -1344,7 +1347,8 @@ main(int argc, char** argv)
     std::cout << "  Batch size: " << batch_size << std::endl;
   }
   if (measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
-    std::cout << "  Using \"count_windows\" mode for stabilization" << std::endl;
+    std::cout << "  Using \"count_windows\" mode for stabilization"
+              << std::endl;
   } else {
     std::cout << "  Using \"time_windows\" mode for stabilization" << std::endl;
   }
