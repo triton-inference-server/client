@@ -625,7 +625,20 @@ Usage(char** argv, const std::string& msg = std::string())
              18)
       << std::endl;
 
-
+    std::cerr
+      << FormatMessage(
+             " --library-name: The library for libtritonserver.so "
+             " Required when the the C API is used (--service-kind=triton_local)"
+             " exmaple: --library-name=/opt/tritonserver.",
+             18)
+      << std::endl;
+    std::cerr
+      << FormatMessage(
+             " --model-repo: The model repository of which the model is loaded"
+             " Required when the the C API is used (--service-kind=triton_local)"
+             " exmaple: --model-repo=/tmp/host/docker-data/model_unit_test.",
+             18)
+      << std::endl;
   exit(1);
 }
 
@@ -689,9 +702,12 @@ main(int argc, char** argv)
   bool max_threads_specified = false;
 
   // C Api backend required info
-  std::string server_library_path = "/opt/tritonserver";
-  std::string model_repository_path = "/tmp/host/docker-data/model_unit_test/";
-  std::string memory_type = "system";
+  const std::string DEFAULT_SERVER_LIBRARY_PATH = "/opt/tritonserver";
+  const std::string DEFAULT_MODEL_REPO = "/tmp/host/docker-data/model_unit_test/";
+  const std::string DEFAULT_MEMORY_TYPE = "system";
+  std::string server_library_path;
+  std::string model_repository_path;
+  std::string memory_type = DEFAULT_MEMORY_TYPE; // currently not used
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
@@ -1225,6 +1241,29 @@ main(int argc, char** argv)
   if (!max_threads_specified && target_concurrency) {
     max_threads = 16;
   }
+    if (kind == cb::BackendKind::TRITON_LOCAL) {
+    std::cout << " USING C API: only default functionalities supported " << std::endl;
+    if (!target_concurrency) {
+      std::cerr << "Target concurrency not yet supported by C API" << std::endl;
+      return 1;
+    } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
+      std::cerr << "Shared memory not yet supported by C API" << std::endl;
+      return 1;
+    } else if (server_library_path.empty() || model_repository_path.empty() || memory_type.empty()) {
+      std::cerr << 
+        "Not enough information to create C API. /lib/libtritonserver.so "
+        "directory:" <<
+        server_library_path << " model repo:" << model_repository_path <<
+        " memory type:" << memory_type << std::endl;
+        return 1;
+    } else if (async) {
+      std::cerr
+          << "Async API ot yet supported by C API."
+          << std::endl;
+      return 1;
+    } 
+    protocol = cb::ProtocolType::UNKNOWN;
+  }
 
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
@@ -1236,14 +1275,6 @@ main(int argc, char** argv)
           extra_verbose, &factory),
       "failed to create client factory");
 
-  if (kind == cb::BackendKind::TRITON_LOCAL) {
-    if (!target_concurrency) {
-      std::cerr << "Target concurrency not yet supported by C API" << std::endl;
-      return 1;
-    } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
-      std::cerr << "Shared memory not yet supported by C API" << std::endl;
-    }
-  }
   std::unique_ptr<cb::ClientBackend> backend;
   FAIL_IF_ERR(
       factory->CreateClientBackend(&backend),

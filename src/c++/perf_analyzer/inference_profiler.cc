@@ -173,7 +173,7 @@ ReportClientSideStats(
                                  " usec + unmarshal " +
                                  std::to_string(avg_receive_time_us) + " usec)";
       }
-    } else {
+    } else if (protocol == cb::ProtocolType::HTTP) {
       client_library_detail +=
           "Avg HTTP time: " + std::to_string(avg_request_time_us) + " usec (";
       if (!verbose) {

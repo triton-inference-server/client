@@ -81,7 +81,7 @@ class TritonLoader : public nic::InferenceServerClient {
   ~TritonLoader();
 
   static Error Create(
-      const std::string& library_directory, const std::string& model_repository,
+      const std::string& server_library_path, const std::string& model_repository_path,
       const std::string& memory_type, bool verbose);
 
   static Error Delete();
@@ -324,7 +324,7 @@ class TritonLoader : public nic::InferenceServerClient {
   }
 
   Error PopulateInternals(
-      const std::string& library_directory, const std::string& model_repository,
+      const std::string& server_library_path, const std::string& model_repository_path,
       const std::string& memory_type, bool verbose);
 
   static TritonLoader* GetSingleton();
@@ -426,7 +426,7 @@ class TritonLoader : public nic::InferenceServerClient {
   TritonSeverUnloadModelFn_t unload_model_fn_;
 
   std::shared_ptr<TRITONSERVER_Server> server_;
-  std::string library_directory_;
+  std::string server_library_path_;
   const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
   int verbose_level_;
   bool enforce_memory_type_;

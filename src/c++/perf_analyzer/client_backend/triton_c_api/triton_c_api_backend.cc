@@ -35,17 +35,22 @@ namespace perfanalyzer { namespace clientbackend {
 
 Error
 TritonLocalClientBackend::Create(
-    const std::string& url, const ProtocolType protocol,
-    const grpc_compression_algorithm compression_algorithm,
-    std::shared_ptr<Headers> http_headers, const std::string& library_directory,
-    const std::string& model_repository, const std::string& memory_type,
-    const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
+    const std::string& server_library_path, const std::string& model_repository_path,
+    const std::string& memory_type, const bool verbose,
+    std::unique_ptr<ClientBackend>* client_backend)
 {
+  if (server_library_path.empty() || model_repository_path.empty() ||
+      memory_type.empty()) {
+    return Error(std::string(
+        "Not enough information to creat C API. /lib/libtritonserver.so "
+        "directory:" +
+        server_library_path + " model repo:" + model_repository_path +
+        " memory type:" + memory_type));
+  }
   std::unique_ptr<TritonLocalClientBackend> triton_client_backend(
-      new TritonLocalClientBackend(
-          protocol, compression_algorithm, http_headers));
+      new TritonLocalClientBackend());
   TritonLoader::Create(
-      library_directory, model_repository, memory_type, verbose);
+      server_library_path, model_repository_path, memory_type, verbose);
   *client_backend = std::move(triton_client_backend);
   return Error::Success;
 }

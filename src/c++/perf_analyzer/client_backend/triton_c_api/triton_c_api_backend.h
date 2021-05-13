@@ -27,9 +27,6 @@
 
 #include <string>
 #include "../client_backend.h"
-#include "grpc_client.h"
-#include "http_client.h"
-#include "shm_utils.h"
 #include "triton_loader.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
@@ -61,23 +58,24 @@ class TritonLocalClientBackend : public ClientBackend {
  public:
   /// Create a triton client backend which can be used to interact with the
   /// server.
-  /// \param url The inference server url and port.
-  /// \param protocol The protocol type used.
-  /// \param http_headers Map of HTTP headers. The map key/value indicates
-  /// the header name/value.
-  /// \param verbose Enables the verbose mode.
-  /// \param client_backend Returns a new TritonLocalClientBackend
-  /// object.
-  /// \return Error object indicating success or failure.
+  /// \param server_library_path Tritonserver library that contains
+  /// lib/libtritonserver.so.
+  /// \param model_repository_path The model repository.
+  /// \param memory_type Type of memory used in Triton Server. 
+  /// \param verbose Enables the verbose mode of TritonServer.
+  /// \param client_backend Returns a new TritonLocalClientBackend object. 
+  /// \return Error object indicating success
+  /// or failure.
   static Error Create(
-      const std::string& url, const ProtocolType protocol,
-      const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<Headers> http_headers,
-      const std::string& library_directory, const std::string& model_repository,
+      const std::string& server_library_path, const std::string& model_repository_path,
       const std::string& memory_type, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);
 
-  ~TritonLocalClientBackend() { TritonLoader::Delete(); }
+  ~TritonLocalClientBackend()
+  {
+    std::cout << "removing triton backend" << std::endl;
+    TritonLoader::Delete();
+  }
 
   /// See ClientBackend::ServerExtensions()
   Error ServerExtensions(std::set<std::string>* server_extensions) override;
@@ -122,13 +120,7 @@ class TritonLocalClientBackend : public ClientBackend {
       const std::string& model_version = "") override;
 
  private:
-  TritonLocalClientBackend(
-      const ProtocolType protocol,
-      const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<nic::Headers> http_headers)
-      : ClientBackend(BackendKind::TRITON_LOCAL)
-  {
-  }
+  TritonLocalClientBackend() : ClientBackend(BackendKind::TRITON_LOCAL) {}
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
       std::vector<nic::InferInput*>* triton_inputs);

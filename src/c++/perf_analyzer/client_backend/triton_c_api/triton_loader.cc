@@ -188,21 +188,18 @@ GetModelVersionFromString(const std::string& version_string, int64_t* version)
 }  // namespace
 Error
 TritonLoader::Create(
-    const std::string& library_directory, const std::string& model_repository,
+    const std::string& server_library_path, const std::string& model_repository_path,
     const std::string& memory_type, bool verbose)
 {
   if (!GetSingleton()->ServerIsReady()) {
-    if (library_directory.empty() || model_repository.empty()) {
+    if (server_library_path.empty() || model_repository_path.empty()) {
       return Error("cannot load server, paths are empty");
     }
     GetSingleton()->ClearHandles();
-    Error status = GetSingleton()->PopulateInternals(
-        library_directory, model_repository, memory_type, verbose);
-    assert(status.IsOk());
-    status = GetSingleton()->LoadServerLibrary();
-    assert(status.IsOk());
-    status = GetSingleton()->StartTriton(memory_type, false);
-    assert(status.IsOk());
+    FAIL_IF_ERR(GetSingleton()->PopulateInternals(
+        server_library_path, model_repository_path, memory_type, verbose), "Populating internal variables");
+    FAIL_IF_ERR(GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
+    FAIL_IF_ERR(GetSingleton()->StartTriton(memory_type, false), "Starting Triton Server");
   }
 
   return Error::Success;
@@ -221,11 +218,11 @@ TritonLoader::Delete()
 
 Error
 TritonLoader::PopulateInternals(
-    const std::string& library_directory, const std::string& model_repository,
+    const std::string& server_library_path, const std::string& model_repository_path,
     const std::string& memory_type, bool verbose)
 {
-  GetSingleton()->library_directory_ = library_directory;
-  GetSingleton()->model_repository_path_ = model_repository;
+  GetSingleton()->server_library_path_ = server_library_path;
+  GetSingleton()->model_repository_path_ = model_repository_path;
   GetSingleton()->verbose_ = verbose;
   return Error::Success;
 }
@@ -260,12 +257,12 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_backend_directory_fn_(
           server_options,
-          (GetSingleton()->library_directory_ + "/backends").c_str()),
+          (GetSingleton()->server_library_path_ + "/backends").c_str()),
       "setting backend directory");
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_repo_agent_directory_fn_(
           server_options,
-          (GetSingleton()->library_directory_ + "/repoagents").c_str()),
+          (GetSingleton()->server_library_path_ + "/repoagents").c_str()),
       "setting repository agent directory");
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_strict_model_config_fn_(server_options, true),
@@ -516,7 +513,7 @@ Error
 TritonLoader::LoadServerLibrary()
 {
   std::string full_path =
-      GetSingleton()->library_directory_ + SERVER_LIBRARY_PATH;
+      GetSingleton()->server_library_path_ + SERVER_LIBRARY_PATH;
   RETURN_IF_ERROR(FileExists(full_path));
   FAIL_IF_ERR(
       OpenLibraryHandle(full_path, &dlhandle_),
@@ -1135,6 +1132,7 @@ TritonLoader::GetSingleton()
 
 TritonLoader::~TritonLoader()
 {
+  std::cout << "Loader dereference" << std::endl;
   FAIL_IF_ERR(Delete(), "dereferencing server instance...");
   FAIL_IF_ERR(CloseLibraryHandle(dlhandle_), "error on closing triton loader");
   GetSingleton()->ClearHandles();

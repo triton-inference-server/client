@@ -240,10 +240,10 @@ class ClientBackendFactory {
   const ProtocolType protocol_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
-  const bool verbose_;
   std::string server_library_path_;
   std::string model_repository_path_;
   std::string memory_type_;
+  const bool verbose_;
 };
 
 //

@@ -53,10 +53,3 @@ target_link_libraries(
   httpclient_static
   triton-core-serverapi   # from repo-core
 )
-
-if(${TRITON_ENABLE_GPU})
-  target_link_libraries(
-    triton-client-backend-library
-    PRIVATE CUDA::cudart
-  )
-endif() # TRITON_ENABLE_GPU
