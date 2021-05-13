@@ -55,6 +55,9 @@ struct LoadStatus {
   uint64_t avg_latency = 0;
 };
 
+/// Different measurement modes possible.
+enum MeasurementMode { TIME_WINDOWS = 0, COUNT_WINDOWS = 1 };
+
 // Holds the total of the timiming components of composing models of an
 // ensemble.
 struct EnsembleDurations {
@@ -158,7 +161,11 @@ class InferenceProfiler {
   /// \param manager The LoadManager object that will produce load on the
   /// server.
   /// \param profiler Returns a new InferenceProfiler object.
-  /// \return cb::Error object indicating success or failure.
+  /// \param measurement_request_count The number of requests to capture when
+  /// using "count_windows" mode.
+  /// \param measurement_mode The measurement mode to use for windows.
+  /// \return cb::Error object indicating success or
+  /// failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
       const uint64_t measurement_window_ms, const size_t max_trials,
@@ -166,7 +173,8 @@ class InferenceProfiler {
       const cb::ProtocolType protocol, std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager,
-      std::unique_ptr<InferenceProfiler>* profiler);
+      std::unique_ptr<InferenceProfiler>* profiler,
+      uint64_t measurement_request_count, MeasurementMode measurement_mode);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -239,7 +247,8 @@ class InferenceProfiler {
       const uint64_t latency_threshold_ms, const cb::ProtocolType protocol,
       std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<cb::ClientBackend> profile_backend,
-      std::unique_ptr<LoadManager> manager);
+      std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
+      MeasurementMode measurement_mode);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -287,8 +296,14 @@ class InferenceProfiler {
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
+  /// \param measurement_window Indicating the number of requests or the
+  /// duration in milliseconds to collect requests.
+  /// \param is_count_based determines whether measurement_window is indicating
+  /// time or count.
   /// \return cb::Error object indicating success or failure.
-  cb::Error Measure(PerfStatus& status_summary);
+  cb::Error Measure(
+      PerfStatus& status_summary, uint64_t measurement_window,
+      bool is_count_based);
 
   /// Gets the server side statistics
   /// \param model_status Returns the status of the models provided by
@@ -313,7 +328,7 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-      PerfStatus& summary);
+      PerfStatus& summary, long long measurement_window_ms);
 
   /// A helper function to get the start and end of a measurement window.
   /// \param timestamps The timestamps collected for the measurement.
@@ -321,7 +336,8 @@ class InferenceProfiler {
   /// window.
   void MeasurementTimestamp(
       const TimestampVector& timestamps,
-      std::pair<uint64_t, uint64_t>* valid_range);
+      std::pair<uint64_t, uint64_t>* valid_range,
+      long long measurement_window_ms);
 
   /// \param timestamps The timestamps collected for the measurement.
   /// \param valid_range The start and end timestamp of the measurement window.
@@ -397,6 +413,8 @@ class InferenceProfiler {
 
   bool verbose_;
   uint64_t measurement_window_ms_;
+  uint64_t measurement_request_count_;
+  MeasurementMode measurement_mode_;
   size_t max_trials_;
   bool extra_percentile_;
   size_t percentile_;

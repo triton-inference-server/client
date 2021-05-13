@@ -65,6 +65,9 @@ class LoadManager {
         "resetting worker threads not supported for this load manager.");
   }
 
+  /// Count the number of requests collected until now.
+  uint64_t CountCollectedRequests();
+
   /// Wraps the information required to send an inference to the
   /// server
   struct InferContext {

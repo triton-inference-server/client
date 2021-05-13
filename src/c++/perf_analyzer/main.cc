@@ -344,6 +344,22 @@ Usage(char** argv, const std::string& msg = std::string())
              "value is 5000 msec.",
              18)
       << std::endl;
+  std::cerr << FormatMessage(
+                   " --measurement-mode <\"time_windows\"|\"count_windows\">: "
+                   "Indicates the mode used for stabilizing measurements."
+                   " \"time_windows\" will create windows such that the length "
+                   "of each window is equal to --measurement-interval. "
+                   "\"count_windows\" will create "
+                   "windows such that there are at least "
+                   "--measurement-request-count requests in each window.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+      " --measurement-request-count: "
+      "Indicates the minimum number of requests to be collected in each "
+      "measurement window when \"count_windows\" mode is used. This mode can "
+      "be enabeld using the --measurement-mode flag.",
+      18);
   std::cerr
       << FormatMessage(
              " --concurrency-range <start:end:step>: Determines the range of "
@@ -629,6 +645,8 @@ main(int argc, char** argv)
   std::string model_signature_name("serving_default");
   std::string url("localhost:8000");
   std::string filename("");
+  pa::MeasurementMode measurement_mode = pa::MeasurementMode::TIME_WINDOWS;
+  uint64_t measurement_request_count = 50;
   cb::ProtocolType protocol = cb::ProtocolType::HTTP;
   std::shared_ptr<cb::Headers> http_headers(new cb::Headers());
   cb::GrpcCompressionAlgorithm compression_algorithm =
@@ -688,6 +706,8 @@ main(int argc, char** argv)
       {"service-kind", 1, 0, 23},
       {"model-signature-name", 1, 0, 24},
       {"grpc-compression-algorithm", 1, 0, 25},
+      {"measurement-mode", 1, 0, 26},
+      {"measurement-request-count", 1, 0, 27},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -927,6 +947,21 @@ main(int argc, char** argv)
         }
         break;
       }
+      case 26: {
+        std::string arg = optarg;
+        if (arg.compare("time_windows") == 0) {
+          measurement_mode = pa::MeasurementMode::TIME_WINDOWS;
+        } else if (arg.compare("count_windows") == 0) {
+          measurement_mode = pa::MeasurementMode::COUNT_WINDOWS;
+        } else {
+          Usage(argv, "unsupported --measurement-mode specified");
+        }
+        break;
+      }
+      case 27: {
+        measurement_request_count = std::atoi(optarg);
+        break;
+      }
       case 'v':
         extra_verbose = verbose;
         verbose = true;
@@ -1001,6 +1036,9 @@ main(int argc, char** argv)
   }
   if (measurement_window_ms <= 0) {
     Usage(argv, "measurement window must be > 0 in msec");
+  }
+  if (measurement_request_count <= 0) {
+    Usage(argv, "measurement request count must be > 0");
   }
   if (concurrency_range[SEARCH_RANGE::kSTART] <= 0 ||
       concurrent_request_count < 0) {
@@ -1296,7 +1334,8 @@ main(int argc, char** argv)
       pa::InferenceProfiler::Create(
           verbose, stability_threshold, measurement_window_ms, max_trials,
           percentile, latency_threshold_ms, protocol, parser,
-          std::move(backend), std::move(manager), &profiler),
+          std::move(backend), std::move(manager), &profiler,
+          measurement_request_count, measurement_mode),
       "failed to create profiler");
 
   // pre-run report
@@ -1304,8 +1343,13 @@ main(int argc, char** argv)
   if (kind == cb::BackendKind::TRITON || using_batch_size) {
     std::cout << "  Batch size: " << batch_size << std::endl;
   }
-  std::cout << "  Measurement window: " << measurement_window_ms << " msec"
-            << std::endl;
+  if (measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
+    std::cout << "  Measurement window: " << measurement_window_ms << " msec"
+              << std::endl;
+  } else if (measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+    std::cout << "  Number of samples in each window: "
+              << measurement_request_count << std::endl;
+  }
   if (concurrency_range[SEARCH_RANGE::kEND] != 1) {
     std::cout << "  Latency limit: " << latency_threshold_ms << " msec"
               << std::endl;
