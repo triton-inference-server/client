@@ -31,12 +31,11 @@
 #include <string>
 #include "grpc_client.h"
 
- 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -47,7 +46,7 @@ namespace {
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<nic::InferResult> result)
+    const std::string& name, std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -72,7 +71,7 @@ ValidateShapeAndDatatype(
 
 void
 ValidateResult(
-    const std::shared_ptr<nic::InferResult> result,
+    const std::shared_ptr<tc::InferResult> result,
     std::vector<int32_t>& input0_data, std::vector<int32_t>& input1_data)
 {
   // Validate the results...
@@ -151,7 +150,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8001");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
   uint32_t client_timeout = 0;
 
   // Parse commandline...
@@ -188,9 +187,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
-  std::unique_ptr<nic::InferenceServerGrpcClient> client;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerGrpcClient::Create(&client, url, verbose),
+      tc::InferenceServerGrpcClient::Create(&client, url, verbose),
       "unable to create grpc client");
 
   // Create the data for the two input tensors. Initialize the first
@@ -205,18 +204,18 @@ main(int argc, char** argv)
   std::vector<int64_t> shape{1, 16};
 
   // Initialize the inputs with the data.
-  nic::InferInput* input0;
-  nic::InferInput* input1;
+  tc::InferInput* input0;
+  tc::InferInput* input1;
 
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
+      tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
       "unable to get INPUT0");
-  std::shared_ptr<nic::InferInput> input0_ptr;
+  std::shared_ptr<tc::InferInput> input0_ptr;
   input0_ptr.reset(input0);
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
+      tc::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
       "unable to get INPUT1");
-  std::shared_ptr<nic::InferInput> input1_ptr;
+  std::shared_ptr<tc::InferInput> input1_ptr;
   input1_ptr.reset(input1);
 
   FAIL_IF_ERR(
@@ -231,28 +230,28 @@ main(int argc, char** argv)
       "unable to set data for INPUT1");
 
   // Generate the outputs to be requested.
-  nic::InferRequestedOutput* output0;
-  nic::InferRequestedOutput* output1;
+  tc::InferRequestedOutput* output0;
+  tc::InferRequestedOutput* output1;
 
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
       "unable to get 'OUTPUT0'");
-  std::shared_ptr<nic::InferRequestedOutput> output0_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output1, "OUTPUT1"),
+      tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
       "unable to get 'OUTPUT1'");
-  std::shared_ptr<nic::InferRequestedOutput> output1_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
   output1_ptr.reset(output1);
 
 
   // The inference settings. Will be using default for now.
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
   options.model_version_ = model_version;
   options.client_timeout_ = client_timeout;
 
-  std::vector<nic::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const nic::InferRequestedOutput*> outputs = {output0_ptr.get(),
+  std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
                                                            output1_ptr.get()};
 
   // Send inference request to the inference server.
@@ -263,9 +262,9 @@ main(int argc, char** argv)
   for (size_t i = 0; i < repeat_cnt; i++) {
     FAIL_IF_ERR(
         client->AsyncInfer(
-            [&, i](nic::InferResult* result) {
+            [&, i](tc::InferResult* result) {
               {
-                std::shared_ptr<nic::InferResult> result_ptr;
+                std::shared_ptr<tc::InferResult> result_ptr;
                 result_ptr.reset(result);
                 std::lock_guard<std::mutex> lk(mtx);
                 std::cout << "Callback no." << i << " is called" << std::endl;
@@ -306,12 +305,12 @@ main(int argc, char** argv)
   // Send another AsyncInfer whose callback defers the completed request
   // to another thread (main thread) to handle
   bool callback_invoked = false;
-  std::shared_ptr<nic::InferResult> result_placeholder;
+  std::shared_ptr<tc::InferResult> result_placeholder;
   FAIL_IF_ERR(
       client->AsyncInfer(
-          [&](nic::InferResult* result) {
+          [&](tc::InferResult* result) {
             {
-              std::shared_ptr<nic::InferResult> result_ptr;
+              std::shared_ptr<tc::InferResult> result_ptr;
               result_ptr.reset(result);
               // Defer the response retrieval to main thread
               std::lock_guard<std::mutex> lk(mtx);
@@ -339,7 +338,7 @@ main(int argc, char** argv)
     exit(1);
   }
 
-  nic::InferStat infer_stat;
+  tc::InferStat infer_stat;
   client->ClientInferStat(&infer_stat);
   std::cout << "completed_request_count " << infer_stat.completed_request_count
             << std::endl;

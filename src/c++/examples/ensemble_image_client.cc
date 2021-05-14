@@ -36,11 +36,11 @@
 #include "http_client.h"
 #include "json_utils.h"
 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -51,7 +51,7 @@ namespace {
 
 void
 Postprocess(
-    const std::unique_ptr<nic::InferResult> result,
+    const std::unique_ptr<tc::InferResult> result,
     const std::vector<std::string>& filenames, const size_t batch_size,
     const size_t topk)
 {
@@ -69,7 +69,7 @@ Postprocess(
 
   // Get and validate the shape and datatype
   std::vector<int64_t> shape;
-  nic::Error err = result->Shape(output_name, &shape);
+  tc::Error err = result->Shape(output_name, &shape);
   if (!err.IsOk()) {
     std::cerr << "unable to get shape for " << output_name << std::endl;
     exit(1);
@@ -156,12 +156,12 @@ Usage(char** argv, const std::string& msg = std::string())
 union TritonClient {
   TritonClient()
   {
-    new (&http_client_) std::unique_ptr<nic::InferenceServerHttpClient>{};
+    new (&http_client_) std::unique_ptr<tc::InferenceServerHttpClient>{};
   }
   ~TritonClient() {}
 
-  std::unique_ptr<nic::InferenceServerHttpClient> http_client_;
-  std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client_;
+  std::unique_ptr<tc::InferenceServerHttpClient> http_client_;
+  std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_;
 };
 
 }  // namespace
@@ -207,12 +207,12 @@ main(int argc, char** argv)
 
   // Create the inference client for the model.
   TritonClient triton_client;
-  nic::Error err;
+  tc::Error err;
   if (protocol == "http") {
-    err = nic::InferenceServerHttpClient::Create(
+    err = tc::InferenceServerHttpClient::Create(
         &triton_client.http_client_, url, verbose);
   } else {
-    err = nic::InferenceServerGrpcClient::Create(
+    err = tc::InferenceServerGrpcClient::Create(
         &triton_client.grpc_client_, url, verbose);
   }
   if (!err.IsOk()) {
@@ -287,7 +287,7 @@ main(int argc, char** argv)
     }
 
     rapidjson::Document model_config_json;
-    err = nic::ParseJson(&model_config_json, model_config);
+    err = tc::ParseJson(&model_config_json, model_config);
     if (!err.IsOk()) {
       std::cerr << "error: failed to parse model config: " << err << std::endl;
     }
@@ -313,29 +313,29 @@ main(int argc, char** argv)
   batch_size = (images.size() < batch_size) ? images.size() : batch_size;
 
   // Initialize the inputs with the data.
-  nic::InferInput* input;
+  tc::InferInput* input;
   std::vector<int64_t> shape{(int64_t)batch_size, 1};
-  err = nic::InferInput::Create(&input, "INPUT", shape, "BYTES");
+  err = tc::InferInput::Create(&input, "INPUT", shape, "BYTES");
   if (!err.IsOk()) {
     std::cerr << "unable to get input: " << err << std::endl;
     exit(1);
   }
-  std::shared_ptr<nic::InferInput> input_ptr(input);
+  std::shared_ptr<tc::InferInput> input_ptr(input);
 
 
-  nic::InferRequestedOutput* output;
+  tc::InferRequestedOutput* output;
   // Set the number of classification expected
-  err = nic::InferRequestedOutput::Create(&output, "OUTPUT", topk);
+  err = tc::InferRequestedOutput::Create(&output, "OUTPUT", topk);
   if (!err.IsOk()) {
     std::cerr << "unable to get output: " << err << std::endl;
     exit(1);
   }
-  std::shared_ptr<nic::InferRequestedOutput> output_ptr(output);
+  std::shared_ptr<tc::InferRequestedOutput> output_ptr(output);
 
-  std::vector<nic::InferInput*> inputs = {input_ptr.get()};
-  std::vector<const nic::InferRequestedOutput*> outputs = {output_ptr.get()};
+  std::vector<tc::InferInput*> inputs = {input_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {output_ptr.get()};
 
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
 
   FAIL_IF_ERR(input_ptr->Reset(), "unable to reset INPUT");
 
@@ -345,7 +345,7 @@ main(int argc, char** argv)
   }
 
   // Send inference request to the inference server.
-  nic::InferResult* results;
+  tc::InferResult* results;
   if (protocol == "http") {
     FAIL_IF_ERR(
         triton_client.http_client_->Infer(&results, options, inputs, outputs),
@@ -355,7 +355,7 @@ main(int argc, char** argv)
         triton_client.grpc_client_->Infer(&results, options, inputs, outputs),
         "unable to run model");
   }
-  std::unique_ptr<nic::InferResult> results_ptr;
+  std::unique_ptr<tc::InferResult> results_ptr;
   results_ptr.reset(results);
 
   // Print classification results

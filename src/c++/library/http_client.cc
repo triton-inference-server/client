@@ -39,10 +39,10 @@ extern "C" {
 #include "cencode.h"
 }
 
-#define TRITONJSON_STATUSTYPE inferenceserver::client::Error
+#define TRITONJSON_STATUSTYPE triton::client::Error
 #define TRITONJSON_STATUSRETURN(M) \
-  return inferenceserver::client::Error(M)
-#define TRITONJSON_STATUSSUCCESS inferenceserver::client::Error::Success
+  return triton::client::Error(M)
+#define TRITONJSON_STATUSSUCCESS triton::client::Error::Success
 #include "triton/common/triton_json.h"
 
 #ifdef _WIN32

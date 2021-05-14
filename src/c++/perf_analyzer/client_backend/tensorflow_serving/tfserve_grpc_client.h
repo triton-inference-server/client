@@ -31,7 +31,7 @@
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #include "tfserve_infer_input.h"
 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace tfserving {
 
@@ -69,7 +69,7 @@ using TFServeOnCompleteFn = std::function<void(InferResult*)>;
 ///   ...
 /// \endcode
 ///
-class GrpcClient : public nic::InferenceServerClient {
+class GrpcClient : public tc::InferenceServerClient {
  public:
   ~GrpcClient();
 

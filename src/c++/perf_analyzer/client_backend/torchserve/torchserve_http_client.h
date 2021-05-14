@@ -33,7 +33,7 @@
 #include "torchserve_infer_input.h"
 
 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 
@@ -54,7 +54,7 @@ using TorchServeOnCompleteFn = std::function<void(InferResult*)>;
 ///   ...
 /// \endcode
 ///
-class HttpClient : public nic::InferenceServerClient {
+class HttpClient : public tc::InferenceServerClient {
  public:
   ~HttpClient();
 
@@ -129,7 +129,7 @@ class HttpInferRequest {
   Error OpenFileData(std::string& file_path);
   long FileSize();
   Error CloseFileData();
-  nic::RequestTimers& Timer() { return timer_; }
+  tc::RequestTimers& Timer() { return timer_; }
   std::string& DebugString() { return *infer_response_buffer_; }
   FILE* FilePtr() { return file_ptr_.get(); }
   friend HttpClient;
@@ -145,7 +145,7 @@ class HttpInferRequest {
   // Buffer that accumulates the response body.
   std::unique_ptr<std::string> infer_response_buffer_;
   // The timers for infer request.
-  nic::RequestTimers timer_;
+  tc::RequestTimers timer_;
 };
 
 //======================================================================

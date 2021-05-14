@@ -32,13 +32,13 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);   \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
   } while (false)
 
-namespace nic = triton::client;
+namespace tc = triton::client;
 namespace tfs = perfanalyzer::clientbackend::tfserving;
 
 namespace perfanalyzer { namespace clientbackend {
@@ -97,7 +97,7 @@ class TFServeClientBackend : public ClientBackend {
   }
 
   void ParseInferStat(
-      const nic::InferStat& tfserve_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat);
 
   std::unique_ptr<tfs::GrpcClient> grpc_client_;
 
@@ -115,12 +115,12 @@ class TFServeInferRequestedOutput : public InferRequestedOutput {
       InferRequestedOutput** infer_output, const std::string name);
   /// Returns the raw InferRequestedOutput object required by TFserving client
   /// library.
-  nic::InferRequestedOutput* Get() const { return output_.get(); }
+  tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
   explicit TFServeInferRequestedOutput();
 
-  std::unique_ptr<nic::InferRequestedOutput> output_;
+  std::unique_ptr<tc::InferRequestedOutput> output_;
 };
 
 //==============================================================

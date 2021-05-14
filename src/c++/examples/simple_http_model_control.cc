@@ -30,12 +30,11 @@
 #include "http_client.h"
 #include "json_utils.h"
 
- 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -70,7 +69,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8000");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
 
   // Parse commandline...
   int opt;
@@ -98,9 +97,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerHttpClient instance to communicate with the
   // server using http protocol.
-  std::unique_ptr<nic::InferenceServerHttpClient> client;
+  std::unique_ptr<tc::InferenceServerHttpClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerHttpClient::Create(&client, url, verbose),
+      tc::InferenceServerHttpClient::Create(&client, url, verbose),
       "unable to create http client");
 
   {
@@ -110,7 +109,7 @@ main(int argc, char** argv)
         "Failed to get repository index");
     rapidjson::Document repository_index_json;
     FAIL_IF_ERR(
-        nic::ParseJson(&repository_index_json, repository_index),
+        tc::ParseJson(&repository_index_json, repository_index),
         "failed to parse model config");
     if (repository_index_json.Size() != 6) {
       std::cerr << "expected number of models 6, got "
@@ -142,7 +141,7 @@ main(int argc, char** argv)
     exit(1);
   }
 
-  nic::Error err = client->LoadModel("wrong_model_name", http_headers);
+  tc::Error err = client->LoadModel("wrong_model_name", http_headers);
   if (err.IsOk()) {
     std::cerr << "error: wrong model name was successfully loaded" << std::endl;
   }

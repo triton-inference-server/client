@@ -106,8 +106,8 @@ GetChannel(const std::string& url, bool use_ssl, const SslOptions& ssl_options)
     return channel_itr->second;
   } else {
     grpc::ChannelArguments arguments;
-    arguments.SetMaxSendMessageSize(nic::MAX_GRPC_MESSAGE_SIZE);
-    arguments.SetMaxReceiveMessageSize(nic::MAX_GRPC_MESSAGE_SIZE);
+    arguments.SetMaxSendMessageSize(tc::MAX_GRPC_MESSAGE_SIZE);
+    arguments.SetMaxReceiveMessageSize(tc::MAX_GRPC_MESSAGE_SIZE);
     std::shared_ptr<grpc::ChannelCredentials> credentials;
     if (use_ssl) {
       std::string root;
@@ -141,7 +141,7 @@ class GrpcInferRequest {
   {
   }
 
-  nic::RequestTimers& Timer() { return timer_; }
+  tc::RequestTimers& Timer() { return timer_; }
   friend GrpcClient;
 
  private:
@@ -151,7 +151,7 @@ class GrpcInferRequest {
   grpc::Status grpc_status_;
   std::shared_ptr<tensorflow::serving::PredictResponse> grpc_response_;
   // The timers for infer request.
-  nic::RequestTimers timer_;
+  tc::RequestTimers timer_;
 };
 
 //==============================================================================
@@ -215,16 +215,16 @@ GrpcClient::Infer(
 
   sync_request->Timer().Reset();
   sync_request->Timer().CaptureTimestamp(
-      nic::RequestTimers::Kind::REQUEST_START);
+      tc::RequestTimers::Kind::REQUEST_START);
   // Use send timer to measure time for marshalling infer request
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_START);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
   context.set_compression_algorithm(compression_algorithm);
 
   err = PreRunProcessing(options, inputs, outputs);
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
   if (!err.IsOk()) {
     return err;
   }
@@ -236,13 +236,13 @@ GrpcClient::Infer(
     err = Error(sync_request->grpc_status_.error_message());
   }
 
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_START);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
   InferResult::Create(result, sync_request->grpc_response_, err);
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_END);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
 
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
 
-  nic::Error update_err = UpdateInferStat(sync_request->Timer());
+  tc::Error update_err = UpdateInferStat(sync_request->Timer());
   if (!update_err.IsOk()) {
     std::cerr << "Failed to update context stat: " << update_err << std::endl;
   }
@@ -276,8 +276,8 @@ GrpcClient::AsyncInfer(
   async_request = new GrpcInferRequest(std::move(callback));
 
   async_request->Timer().CaptureTimestamp(
-      nic::RequestTimers::Kind::REQUEST_START);
-  async_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_START);
+      tc::RequestTimers::Kind::REQUEST_START);
+  async_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   for (const auto& it : headers) {
     async_request->grpc_context_.AddMetadata(it.first, it.second);
   }
@@ -289,7 +289,7 @@ GrpcClient::AsyncInfer(
     return err;
   }
 
-  async_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
+  async_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
 
   std::unique_ptr<
       grpc::ClientAsyncResponseReader<tensorflow::serving::PredictResponse>>
@@ -341,13 +341,13 @@ GrpcClient::AsyncTransfer()
         err = Error(async_request->grpc_status_.error_message());
       }
       async_request->Timer().CaptureTimestamp(
-          nic::RequestTimers::Kind::RECV_START);
+          tc::RequestTimers::Kind::RECV_START);
       InferResult::Create(&async_result, async_request->grpc_response_, err);
       async_request->Timer().CaptureTimestamp(
-          nic::RequestTimers::Kind::RECV_END);
+          tc::RequestTimers::Kind::RECV_END);
       async_request->Timer().CaptureTimestamp(
-          nic::RequestTimers::Kind::REQUEST_END);
-      nic::Error update_err = UpdateInferStat(async_request->Timer());
+          tc::RequestTimers::Kind::REQUEST_END);
+      tc::Error update_err = UpdateInferStat(async_request->Timer());
       if (!update_err.IsOk()) {
         std::cerr << "Failed to update context stat: " << update_err
                   << std::endl;

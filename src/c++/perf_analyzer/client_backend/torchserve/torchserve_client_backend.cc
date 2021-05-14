@@ -68,7 +68,7 @@ TorchServeClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   // Reusing the common library utilities to collect and report the
   // client side statistics.
-  nic::InferStat client_infer_stat;
+  tc::InferStat client_infer_stat;
   RETURN_IF_TRITON_ERROR(http_client_->ClientInferStat(&client_infer_stat));
   ParseInferStat(client_infer_stat, infer_stat);
   return Error::Success;
@@ -76,7 +76,7 @@ TorchServeClientBackend::ClientInferStat(InferStat* infer_stat)
 
 void
 TorchServeClientBackend::ParseInferStat(
-    const nic::InferStat& torchserve_infer_stat, InferStat* infer_stat)
+    const tc::InferStat& torchserve_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
       torchserve_infer_stat.completed_request_count;

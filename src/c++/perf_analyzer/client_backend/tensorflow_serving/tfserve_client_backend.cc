@@ -70,7 +70,7 @@ TFServeClientBackend::ModelMetadata(
   ::google::protobuf::util::MessageToJsonString(
       metadata_proto, &metadata, options);
 
-  RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+  RETURN_IF_TRITON_ERROR(tc::ParseJson(model_metadata, metadata));
 
   return Error::Success;
 }
@@ -115,7 +115,7 @@ TFServeClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   // Reusing the common library utilities to collect and report the
   // client side statistics.
-  nic::InferStat client_infer_stat;
+  tc::InferStat client_infer_stat;
 
   RETURN_IF_TRITON_ERROR(grpc_client_->ClientInferStat(&client_infer_stat));
 
@@ -126,7 +126,7 @@ TFServeClientBackend::ClientInferStat(InferStat* infer_stat)
 
 void
 TFServeClientBackend::ParseInferStat(
-    const nic::InferStat& tfserve_infer_stat, InferStat* infer_stat)
+    const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
       tfserve_infer_stat.completed_request_count;
@@ -147,9 +147,9 @@ TFServeInferRequestedOutput::Create(
   TFServeInferRequestedOutput* local_infer_output =
       new TFServeInferRequestedOutput();
 
-  nic::InferRequestedOutput* tfserve_infer_output;
+  tc::InferRequestedOutput* tfserve_infer_output;
   RETURN_IF_TRITON_ERROR(
-      nic::InferRequestedOutput::Create(&tfserve_infer_output, name));
+      tc::InferRequestedOutput::Create(&tfserve_infer_output, name));
   local_infer_output->output_.reset(tfserve_infer_output);
 
   *infer_output = local_infer_output;

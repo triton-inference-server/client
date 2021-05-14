@@ -32,13 +32,13 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);   \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
   } while (false)
 
-namespace nic = triton::client;
+namespace tc = triton::client;
 namespace ts = perfanalyzer::clientbackend::torchserve;
 
 namespace perfanalyzer { namespace clientbackend {
@@ -79,7 +79,7 @@ class TorchServeClientBackend : public ClientBackend {
   }
 
   void ParseInferStat(
-      const nic::InferStat& torchserve_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& torchserve_infer_stat, InferStat* infer_stat);
 
   std::unique_ptr<ts::HttpClient> http_client_;
   std::shared_ptr<Headers> http_headers_;

@@ -30,12 +30,11 @@
 #include <string>
 #include "grpc_client.h"
 
- 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -46,7 +45,7 @@ namespace {
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<nic::InferResult> result)
+    const std::string& name, std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -97,7 +96,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8001");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
   uint32_t client_timeout = 0;
   bool use_ssl = false;
   std::string root_certificates;
@@ -179,19 +178,19 @@ main(int argc, char** argv)
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
-  std::unique_ptr<nic::InferenceServerGrpcClient> client;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client;
   if (use_ssl) {
-    nic::SslOptions ssl_options;
+    tc::SslOptions ssl_options;
     ssl_options.root_certificates = root_certificates;
     ssl_options.private_key = private_key;
     ssl_options.certificate_chain = certificate_chain;
     FAIL_IF_ERR(
-        nic::InferenceServerGrpcClient::Create(
+        tc::InferenceServerGrpcClient::Create(
             &client, url, verbose, use_ssl, ssl_options),
         "unable to create secure grpc client");
   } else {
     FAIL_IF_ERR(
-        nic::InferenceServerGrpcClient::Create(&client, url, verbose),
+        tc::InferenceServerGrpcClient::Create(&client, url, verbose),
         "unable to create grpc client");
   }
 
@@ -207,18 +206,18 @@ main(int argc, char** argv)
   std::vector<int64_t> shape{1, 16};
 
   // Initialize the inputs with the data.
-  nic::InferInput* input0;
-  nic::InferInput* input1;
+  tc::InferInput* input0;
+  tc::InferInput* input1;
 
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
+      tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
       "unable to get INPUT0");
-  std::shared_ptr<nic::InferInput> input0_ptr;
+  std::shared_ptr<tc::InferInput> input0_ptr;
   input0_ptr.reset(input0);
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
+      tc::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
       "unable to get INPUT1");
-  std::shared_ptr<nic::InferInput> input1_ptr;
+  std::shared_ptr<tc::InferInput> input1_ptr;
   input1_ptr.reset(input1);
 
   FAIL_IF_ERR(
@@ -233,37 +232,37 @@ main(int argc, char** argv)
       "unable to set data for INPUT1");
 
   // Generate the outputs to be requested.
-  nic::InferRequestedOutput* output0;
-  nic::InferRequestedOutput* output1;
+  tc::InferRequestedOutput* output0;
+  tc::InferRequestedOutput* output1;
 
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
       "unable to get 'OUTPUT0'");
-  std::shared_ptr<nic::InferRequestedOutput> output0_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output1, "OUTPUT1"),
+      tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
       "unable to get 'OUTPUT1'");
-  std::shared_ptr<nic::InferRequestedOutput> output1_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
   output1_ptr.reset(output1);
 
 
   // The inference settings. Will be using default for now.
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
   options.model_version_ = model_version;
   options.client_timeout_ = client_timeout;
 
-  std::vector<nic::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const nic::InferRequestedOutput*> outputs = {output0_ptr.get(),
+  std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
                                                            output1_ptr.get()};
 
-  nic::InferResult* results;
+  tc::InferResult* results;
   FAIL_IF_ERR(
       client->Infer(
           &results, options, inputs, outputs, http_headers,
           compression_algorithm),
       "unable to run model");
-  std::shared_ptr<nic::InferResult> results_ptr;
+  std::shared_ptr<tc::InferResult> results_ptr;
   results_ptr.reset(results);
 
   // Validate the results...
@@ -314,7 +313,7 @@ main(int argc, char** argv)
   // Get full response
   std::cout << results_ptr->DebugString() << std::endl;
 
-  nic::InferStat infer_stat;
+  tc::InferStat infer_stat;
   client->ClientInferStat(&infer_stat);
   std::cout << "======Client Statistics======" << std::endl;
   std::cout << "completed_request_count " << infer_stat.completed_request_count

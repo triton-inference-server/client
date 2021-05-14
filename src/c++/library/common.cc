@@ -324,4 +324,4 @@ InferRequestedOutput::SharedMemoryInfo(
 
 //==============================================================================
 
-}}}  // namespace triton::client
+}}  // namespace triton::client

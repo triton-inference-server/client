@@ -30,12 +30,11 @@
 #include "http_client.h"
 #include "json_utils.h"
 
- 
-namespace nic = triton::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -70,7 +69,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8000");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
 
   // Parse commandline...
   int opt;
@@ -103,9 +102,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerHttpClient instance to communicate with the
   // server using http protocol.
-  std::unique_ptr<nic::InferenceServerHttpClient> client;
+  std::unique_ptr<tc::InferenceServerHttpClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerHttpClient::Create(&client, url, verbose),
+      tc::InferenceServerHttpClient::Create(&client, url, verbose),
       "unable to create http client");
 
   bool live;
@@ -139,7 +138,7 @@ main(int argc, char** argv)
 
     rapidjson::Document server_metadata_json;
     FAIL_IF_ERR(
-        nic::ParseJson(&server_metadata_json, server_metadata),
+        tc::ParseJson(&server_metadata_json, server_metadata),
         "failed to parse server metadata");
     if ((std::string(server_metadata_json["name"].GetString()))
             .compare("triton") != 0) {
@@ -158,7 +157,7 @@ main(int argc, char** argv)
 
     rapidjson::Document model_metadata_json;
     FAIL_IF_ERR(
-        nic::ParseJson(&model_metadata_json, model_metadata),
+        tc::ParseJson(&model_metadata_json, model_metadata),
         "failed to parse model metadata");
     if ((std::string(model_metadata_json["name"].GetString()))
             .compare(model_name) != 0) {
@@ -177,7 +176,7 @@ main(int argc, char** argv)
 
     rapidjson::Document model_config_json;
     FAIL_IF_ERR(
-        nic::ParseJson(&model_config_json, model_config),
+        tc::ParseJson(&model_config_json, model_config),
         "failed to parse model config");
     if ((std::string(model_config_json["name"].GetString()))
             .compare(model_name) != 0) {
@@ -189,7 +188,7 @@ main(int argc, char** argv)
 
   {
     std::string model_metadata;
-    nic::Error err = client->ModelMetadata(
+    tc::Error err = client->ModelMetadata(
         &model_metadata, "wrong_model_name", model_version, http_headers);
     if (err.IsOk()) {
       std::cerr << "error: expected an error but got: " << err << std::endl;
