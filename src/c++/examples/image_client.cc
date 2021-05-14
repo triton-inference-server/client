@@ -58,8 +58,8 @@
 #define GET_TRANSFORMATION_CODE(x) CV_##x
 #endif
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace ni = inferenceserver;
+namespace nic = inferenceserver::client;
 
 namespace {
 

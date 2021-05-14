@@ -32,7 +32,7 @@
 #include "common.h"
 #include "ipc.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace inferenceserver { namespace client {
 
 class HttpInferRequest;
 
@@ -415,4 +415,4 @@ class InferenceServerHttpClient : public InferenceServerClient {
   AsyncReqMap ongoing_async_requests_;
 };
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace inferenceserver::client

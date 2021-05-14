@@ -32,8 +32,8 @@
 #include "grpc_client.h"
 #include "http_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace ni = inferenceserver;
+namespace nic = inferenceserver::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \

@@ -38,7 +38,7 @@
     }                                   \
   } while (false)
 
-namespace nic = nvidia::inferenceserver::client;
+namespace nic = inferenceserver::client;
 namespace ts = perfanalyzer::clientbackend::torchserve;
 
 namespace perfanalyzer { namespace clientbackend {

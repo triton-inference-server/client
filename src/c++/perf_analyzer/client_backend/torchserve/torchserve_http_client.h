@@ -33,7 +33,7 @@
 #include "torchserve_infer_input.h"
 
 
-namespace nic = nvidia::inferenceserver::client;
+namespace nic = inferenceserver::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 

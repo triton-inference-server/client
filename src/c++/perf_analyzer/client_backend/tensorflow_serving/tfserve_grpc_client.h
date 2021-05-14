@@ -31,7 +31,7 @@
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #include "tfserve_infer_input.h"
 
-namespace nic = nvidia::inferenceserver::client;
+namespace nic = inferenceserver::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace tfserving {
 

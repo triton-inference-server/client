@@ -49,7 +49,7 @@
     }                                                              \
   }
 
-namespace nic = nvidia::inferenceserver::client;
+namespace nic = inferenceserver::client;
 
 namespace perfanalyzer { namespace clientbackend {
 

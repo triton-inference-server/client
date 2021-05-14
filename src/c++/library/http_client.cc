@@ -39,17 +39,17 @@ extern "C" {
 #include "cencode.h"
 }
 
-#define TRITONJSON_STATUSTYPE nvidia::inferenceserver::client::Error
+#define TRITONJSON_STATUSTYPE inferenceserver::client::Error
 #define TRITONJSON_STATUSRETURN(M) \
-  return nvidia::inferenceserver::client::Error(M)
-#define TRITONJSON_STATUSSUCCESS nvidia::inferenceserver::client::Error::Success
+  return inferenceserver::client::Error(M)
+#define TRITONJSON_STATUSSUCCESS inferenceserver::client::Error::Success
 #include "triton/common/triton_json.h"
 
 #ifdef _WIN32
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
 #endif  //_WIN32
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace inferenceserver { namespace client {
 
 namespace {
 
@@ -1746,4 +1746,4 @@ InferenceServerHttpClient::Post(
 
 //==============================================================================
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace inferenceserver::client

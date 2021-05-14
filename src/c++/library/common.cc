@@ -26,7 +26,7 @@
 
 #include "common.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace inferenceserver { namespace client {
 
 //==============================================================================
 
@@ -324,4 +324,4 @@ InferRequestedOutput::SharedMemoryInfo(
 
 //==============================================================================
 
-}}}  // namespace nvidia::inferenceserver::client
+}}}  // namespace inferenceserver::client

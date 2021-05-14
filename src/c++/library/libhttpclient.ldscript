@@ -26,7 +26,7 @@
 {
   global:
     extern "C++" {
-      nvidia::inferenceserver*
+      inferenceserver*
     };
   local: *;
 };

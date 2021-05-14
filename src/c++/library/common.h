@@ -40,7 +40,7 @@
 #include <thread>
 #include <vector>
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace inferenceserver { namespace client {
 
 constexpr char kInferHeaderContentLengthHTTPHeader[] =
     "Inference-Header-Content-Length";
@@ -615,4 +615,4 @@ class InferRequest {
 };
 
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace inferenceserver::client

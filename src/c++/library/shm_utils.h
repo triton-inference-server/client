@@ -27,10 +27,10 @@
 
 #include "common.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace ni = inferenceserver;
+namespace nic = inferenceserver::client;
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace inferenceserver { namespace client {
 
 // Create a shared memory region of the size 'byte_size' and return the unique
 // identifier.
@@ -66,4 +66,4 @@ nic::Error UnlinkSharedMemoryRegion(std::string shm_key);
 // \return error Returns an error if unable to unmap shared memory region.
 nic::Error UnmapSharedMemory(void* shm_addr, size_t byte_size);
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace inferenceserver::client

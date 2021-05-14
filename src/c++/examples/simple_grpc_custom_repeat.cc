@@ -33,8 +33,8 @@
 #include <vector>
 #include "grpc_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace ni = inferenceserver;
+namespace nic = inferenceserver::client;
 
 using ResultMap =
     std::map<std::string, std::vector<std::shared_ptr<nic::InferResult>>>;
