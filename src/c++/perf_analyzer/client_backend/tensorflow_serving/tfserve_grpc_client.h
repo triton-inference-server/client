@@ -33,7 +33,8 @@
 
 namespace tc = triton::client;
 
-namespace triton { namespace perfanalyzer { namespace clientbackend { namespace tfserving {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 struct SslOptions {
   explicit SslOptions() {}

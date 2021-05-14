@@ -32,7 +32,7 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const tc::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);    \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \

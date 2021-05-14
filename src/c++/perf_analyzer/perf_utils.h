@@ -64,8 +64,7 @@ constexpr uint64_t NANOS_PER_SECOND = 1000000000;
 constexpr uint64_t NANOS_PER_MILLIS = 1000000;
 #define TIMESPEC_TO_NANOS(TS) \
   ((TS).tv_sec * pa::NANOS_PER_SECOND + (TS).tv_nsec)
-#define TIMESPEC_TO_MILLIS(TS) \
-  (TIMESPEC_TO_NANOS(TS) / pa::NANOS_PER_MILLIS)
+#define TIMESPEC_TO_MILLIS(TS) (TIMESPEC_TO_NANOS(TS) / pa::NANOS_PER_MILLIS)
 
 //==============================================================================
 using TimestampVector =

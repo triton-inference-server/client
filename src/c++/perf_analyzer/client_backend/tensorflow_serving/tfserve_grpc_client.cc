@@ -38,7 +38,8 @@
 typedef google::protobuf::Map<std::string, tensorflow::TensorProto>
     StringKeyedProtos;
 
-namespace triton { namespace perfanalyzer { namespace clientbackend { namespace tfserving {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 namespace {
 
