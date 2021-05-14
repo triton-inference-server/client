@@ -38,7 +38,7 @@
     }                                   \
   } while (false)
 
-namespace nic = inferenceserver::client;
+namespace nic = triton::client;
 namespace ts = perfanalyzer::clientbackend::torchserve;
 
 namespace perfanalyzer { namespace clientbackend {

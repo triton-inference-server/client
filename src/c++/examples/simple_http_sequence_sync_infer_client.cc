@@ -31,8 +31,8 @@
 #include <vector>
 #include "http_client.h"
 
-namespace ni = inferenceserver;
-namespace nic = inferenceserver::client;
+ 
+namespace nic = triton::client;
 
 using ResultList = std::vector<std::shared_ptr<nic::InferResult>>;
 

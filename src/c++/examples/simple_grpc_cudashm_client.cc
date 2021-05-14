@@ -32,8 +32,8 @@
 
 #include <cuda_runtime_api.h>
 
-namespace ni = inferenceserver;
-namespace nic = inferenceserver::client;
+ 
+namespace nic = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \

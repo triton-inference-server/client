@@ -33,8 +33,8 @@
 #include <vector>
 #include "grpc_client.h"
 
-namespace ni = inferenceserver;
-namespace nic = inferenceserver::client;
+ 
+namespace nic = triton::client;
 
 using ResultMap =
     std::map<std::string, std::vector<std::shared_ptr<nic::InferResult>>>;

@@ -49,7 +49,7 @@
     }                                                              \
   }
 
-namespace nic = inferenceserver::client;
+namespace nic = triton::client;
 
 namespace perfanalyzer { namespace clientbackend {
 

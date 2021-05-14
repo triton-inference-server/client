@@ -26,7 +26,7 @@
 
 #include "common.h"
 
-namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 //==============================================================================
 
@@ -324,4 +324,4 @@ InferRequestedOutput::SharedMemoryInfo(
 
 //==============================================================================
 
-}}}  // namespace inferenceserver::client
+}}}  // namespace triton::client

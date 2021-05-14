@@ -49,7 +49,7 @@ extern "C" {
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
 #endif  //_WIN32
 
-namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 namespace {
 
@@ -1746,4 +1746,4 @@ InferenceServerHttpClient::Post(
 
 //==============================================================================
 
-}}  // namespace inferenceserver::client
+}}  // namespace triton::client

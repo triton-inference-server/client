@@ -33,7 +33,7 @@
 #include "torchserve_infer_input.h"
 
 
-namespace nic = inferenceserver::client;
+namespace nic = triton::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 

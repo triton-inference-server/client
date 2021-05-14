@@ -31,7 +31,7 @@
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #include "tfserve_infer_input.h"
 
-namespace nic = inferenceserver::client;
+namespace nic = triton::client;
 
 namespace perfanalyzer { namespace clientbackend { namespace tfserving {
 

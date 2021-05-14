@@ -32,7 +32,7 @@
 #include <iostream>
 #include <string>
 
-  namespace inferenceserver { namespace client {
+  namespace triton { namespace client {
 
 nic::Error
 CreateSharedMemoryRegion(std::string shm_key, size_t byte_size, int* shm_fd)
@@ -105,4 +105,4 @@ UnmapSharedMemory(void* shm_addr, size_t byte_size)
   return nic::Error::Success;
 }
 
-}}  // namespace inferenceserver::client
+}}  // namespace triton::client

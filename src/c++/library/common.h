@@ -40,7 +40,7 @@
 #include <thread>
 #include <vector>
 
-namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 constexpr char kInferHeaderContentLengthHTTPHeader[] =
     "Inference-Header-Content-Length";
@@ -615,4 +615,4 @@ class InferRequest {
 };
 
 
-}}  // namespace inferenceserver::client
+}}  // namespace triton::client
