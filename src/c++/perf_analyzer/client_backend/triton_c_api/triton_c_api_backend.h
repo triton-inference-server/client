@@ -96,20 +96,6 @@ class TritonLocalClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
-  /// See ClientBackend::AsyncInfer()
-  Error AsyncInfer(
-      OnCompleteFn callback, const InferOptions& options,
-      const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs) override;
-
-  /// See ClientBackend::StartStream()
-  Error StartStream(OnCompleteFn callback, bool enable_stats) override;
-
-  /// See ClientBackend::AsyncStreamInfer()
-  Error AsyncStreamInfer(
-      const InferOptions& options, const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs) override;
-
   /// See ClientBackend::ClientInferStat()
   Error ClientInferStat(InferStat* infer_stat) override;
 
@@ -155,9 +141,6 @@ class TritonLocalInferInput : public InferInput {
   Error Reset() override;
   /// See InferInput::AppendRaw()
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override;
-  /// See InferInput::SetSharedMemory()
-  Error SetSharedMemory(
-      const std::string& name, size_t byte_size, size_t offset = 0) override;
 
  private:
   explicit TritonLocalInferInput(
@@ -178,10 +161,6 @@ class TritonLocalInferRequestedOutput : public InferRequestedOutput {
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
   nic::InferRequestedOutput* Get() const { return output_.get(); }
-  // See InferRequestedOutput::SetSharedMemory()
-  Error SetSharedMemory(
-      const std::string& region_name, const size_t byte_size,
-      const size_t offset = 0) override;
 
  private:
   explicit TritonLocalInferRequestedOutput();

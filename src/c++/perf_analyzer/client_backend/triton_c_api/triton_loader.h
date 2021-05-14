@@ -90,8 +90,6 @@ class TritonLoader : public nic::InferenceServerClient {
   static Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
-  static Error UnloadModel();
-
   static Error ModelMetadata(rapidjson::Document* model_metadata);
 
   static Error ModelConfig(rapidjson::Document* model_config);

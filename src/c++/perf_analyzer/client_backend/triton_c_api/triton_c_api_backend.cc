@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -114,28 +114,6 @@ TritonLocalClientBackend::Infer(
   return Error::Success;
 }
 
-Error
-TritonLocalClientBackend::AsyncInfer(
-    OnCompleteFn callback, const InferOptions& options,
-    const std::vector<InferInput*>& inputs,
-    const std::vector<const InferRequestedOutput*>& outputs)
-{
-  return Error("Async inference not supported with C API");
-}
-
-Error
-TritonLocalClientBackend::StartStream(OnCompleteFn callback, bool enable_stats)
-{
-  return Error("Streaming inferences not supported with C API");
-}
-
-Error
-TritonLocalClientBackend::AsyncStreamInfer(
-    const InferOptions& options, const std::vector<InferInput*>& inputs,
-    const std::vector<const InferRequestedOutput*>& outputs)
-{
-  return Error("Async streaming inferences not supported with C API");
-}
 
 Error
 TritonLocalClientBackend::ClientInferStat(InferStat* infer_stat)
@@ -153,8 +131,8 @@ TritonLocalClientBackend::ModelInferenceStatistics(
     const std::string& model_name, const std::string& model_version)
 {
   rapidjson::Document infer_stat_json;
-  TritonLoader::ModelInferenceStatistics(
-      model_name, model_version, &infer_stat_json);
+  RETURN_IF_ERROR(TritonLoader::ModelInferenceStatistics(
+      model_name, model_version, &infer_stat_json));
   ParseStatistics(infer_stat_json, model_stats);
 
   return Error::Success;
@@ -284,13 +262,6 @@ TritonLocalInferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
   return Error::Success;
 }
 
-Error
-TritonLocalInferInput::SetSharedMemory(
-    const std::string& name, size_t byte_size, size_t offset)
-{
-  return Error("Shared memory not supported with C API");
-}
-
 TritonLocalInferInput::TritonLocalInferInput(
     const std::string& name, const std::string& datatype)
     : InferInput(BackendKind::TRITON_LOCAL, name, datatype)
@@ -317,16 +288,6 @@ TritonLocalInferRequestedOutput::Create(
 
   return Error::Success;
 }
-
-Error
-TritonLocalInferRequestedOutput::SetSharedMemory(
-    const std::string& region_name, const size_t byte_size, const size_t offset)
-{
-  RETURN_IF_TRITON_ERROR(
-      output_->SetSharedMemory(region_name, byte_size, offset));
-  return Error::Success;
-}
-
 
 TritonLocalInferRequestedOutput::TritonLocalInferRequestedOutput()
     : InferRequestedOutput(BackendKind::TRITON_LOCAL)

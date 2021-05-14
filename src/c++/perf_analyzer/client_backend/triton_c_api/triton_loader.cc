@@ -102,7 +102,7 @@ ResponseAlloc(
   return nullptr;  // Success
 }
 
-/// Helper function for allocating memory
+/// Helper function for releasing memory
 TRITONSERVER_Error*
 ResponseRelease(
     TRITONSERVER_ResponseAllocator* allocator, void* buffer, void* buffer_userp,
@@ -139,7 +139,7 @@ void
 InferRequestComplete(
     TRITONSERVER_InferenceRequest* request, const uint32_t flags, void* userp)
 {
-  // We reuse the request so we don't delete it here.
+  // request is deleted at the end of the Infer call so don't need to do anything here
 }
 
 
@@ -209,9 +209,9 @@ Error
 TritonLoader::Delete()
 {
   if (GetSingleton()->server_ != nullptr) {
-    (GetSingleton()->server_).reset();
     GetSingleton()->server_is_ready_ = false;
     GetSingleton()->model_is_loaded_ = false;
+    (GetSingleton()->server_).reset();
   }
   return Error::Success;
 }
@@ -309,7 +309,7 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   // Print status of the server.
-  {
+  if (verbose) {
     TRITONSERVER_Message* server_metadata_message;
     RETURN_IF_TRITONSERVER_ERROR(
         GetSingleton()->server_metadata_fn_(
@@ -321,15 +321,14 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
         GetSingleton()->message_serialize_to_json_fn_(
             server_metadata_message, &buffer, &byte_size),
         "unable to serialize server metadata message");
-    if (verbose) {
-      std::cout << "Server Status:" << std::endl;
-      std::cout << std::string(buffer, byte_size) << std::endl;
-    }
+    
+    std::cout << "Server Status:" << std::endl;
+    std::cout << std::string(buffer, byte_size) << std::endl;
+    
     RETURN_IF_TRITONSERVER_ERROR(
         GetSingleton()->message_delete_fn_(server_metadata_message),
         "deleting status metadata");
   }
-
 
   return Error::Success;
 }
@@ -399,18 +398,6 @@ TritonLoader::LoadModel(
   }
   GetSingleton()->model_is_loaded_ =
       true;  // flag to confirm model is correct and loaded
-  return Error::Success;
-}
-
-Error
-TritonLoader::UnloadModel()
-{
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->unload_model_fn_(
-          (GetSingleton()->server_).get(),
-          (GetSingleton()->model_name_).c_str()),
-      "unloading the model");
-  GetSingleton()->model_is_loaded_ = false;
   return Error::Success;
 }
 
