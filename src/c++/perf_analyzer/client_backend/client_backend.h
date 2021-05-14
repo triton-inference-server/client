@@ -44,7 +44,7 @@
     }                            \
   } while (false)
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 /// Error status reported by backends
@@ -453,4 +453,4 @@ class InferResult {
   virtual Error RequestStatus() const = 0;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

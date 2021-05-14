@@ -55,17 +55,17 @@
     }                                                              \
   }
 
-namespace pa = perfanalyzer;
-namespace cb = perfanalyzer::clientbackend;
+namespace pa = triton::perfanalyzer;
+namespace cb = triton::perfanalyzer::clientbackend;
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 constexpr uint64_t NANOS_PER_SECOND = 1000000000;
 constexpr uint64_t NANOS_PER_MILLIS = 1000000;
 #define TIMESPEC_TO_NANOS(TS) \
-  ((TS).tv_sec * perfanalyzer::NANOS_PER_SECOND + (TS).tv_nsec)
+  ((TS).tv_sec * pa::NANOS_PER_SECOND + (TS).tv_nsec)
 #define TIMESPEC_TO_MILLIS(TS) \
-  (TIMESPEC_TO_NANOS(TS) / perfanalyzer::NANOS_PER_MILLIS)
+  (TIMESPEC_TO_NANOS(TS) / pa::NANOS_PER_MILLIS)
 
 //==============================================================================
 using TimestampVector =
@@ -163,4 +163,4 @@ template <Distribution distribution>
 std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
     const double request_rate);
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

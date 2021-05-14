@@ -28,7 +28,7 @@
 
 #include "json_utils.h"
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 
@@ -186,4 +186,4 @@ TFServeInferResult::RequestStatus() const
 //==============================================================================
 
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

@@ -28,7 +28,7 @@
 
 #include <queue>
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 ConcurrencyManager::~ConcurrencyManager()
 {
@@ -424,4 +424,4 @@ ConcurrencyManager::Infer(
   } while (true);
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

@@ -33,7 +33,7 @@
 #include <string>
 #include "client_backend/client_backend.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 cb::ProtocolType
 ParseProtocol(const std::string& str)
@@ -423,4 +423,4 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
   return [period](std::mt19937& /*gen*/) { return period; };
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

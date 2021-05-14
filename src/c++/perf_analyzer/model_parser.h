@@ -29,7 +29,7 @@
 #include "client_backend/client_backend.h"
 #include "perf_utils.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 struct ModelTensor {
   ModelTensor() : is_shape_tensor_(false) {}
   std::string name_;
@@ -167,4 +167,4 @@ class ModelParser {
   bool is_decoupled_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

@@ -26,7 +26,7 @@
 
 #include "request_rate_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 RequestRateManager::~RequestRateManager()
 {
@@ -416,4 +416,4 @@ RequestRateManager::Request(
   }
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

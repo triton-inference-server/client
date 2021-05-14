@@ -30,7 +30,7 @@
 #include <cstdint>
 #include "torchserve_client_backend.h"
 
-namespace perfanalyzer { namespace clientbackend { namespace torchserve {
+namespace triton { namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 
 namespace {
 
@@ -404,4 +404,4 @@ InferResult::InferResult(std::shared_ptr<HttpInferRequest> infer_request)
 
 //======================================================================
 
-}}}  // namespace perfanalyzer::clientbackend::torchserve
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

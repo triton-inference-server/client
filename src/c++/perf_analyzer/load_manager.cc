@@ -44,7 +44,7 @@
 
 #endif  // TRITON_ENABLE_GPU
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 
 namespace {
@@ -741,4 +741,4 @@ LoadManager::StopWorkerThreads()
   }
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

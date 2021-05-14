@@ -39,9 +39,9 @@
   } while (false)
 
 namespace tc = triton::client;
-namespace ts = perfanalyzer::clientbackend::torchserve;
+namespace ts = triton::perfanalyzer::clientbackend::torchserve;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 /// TorchServeClientBackend is used to generate load on the Torchserve isntance
@@ -101,4 +101,4 @@ class TorchServeInferResult : public InferResult {
   std::unique_ptr<ts::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

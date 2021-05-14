@@ -29,7 +29,7 @@
 #include "model_parser.h"
 #include "perf_utils.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 class DataLoader {
  public:
@@ -137,4 +137,4 @@ class DataLoader {
   std::vector<uint8_t> input_buf_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

@@ -32,7 +32,7 @@
 #include <queue>
 
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 namespace {
 
@@ -804,7 +804,7 @@ InferenceProfiler::SummarizeClientStat(
   summary.client_stats.delayed_request_count = delayed_request_count;
   summary.client_stats.duration_ns = duration_ns;
   float client_duration_sec =
-      (float)summary.client_stats.duration_ns / perfanalyzer::NANOS_PER_SECOND;
+      (float)summary.client_stats.duration_ns / NANOS_PER_SECOND;
   summary.client_stats.sequence_per_sec =
       valid_sequence_count / client_duration_sec;
   summary.client_stats.infer_per_sec =
@@ -940,4 +940,4 @@ InferenceProfiler::SummarizeServerStats(
   return cb::Error::Success;
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

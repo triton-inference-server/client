@@ -29,7 +29,7 @@
 #include <thread>
 #include "load_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 //==============================================================================
 /// RequestRateManager is a helper class to send inference requests to
@@ -167,4 +167,4 @@ class RequestRateManager : public LoadManager {
   bool execute_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

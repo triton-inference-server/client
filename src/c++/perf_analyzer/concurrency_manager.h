@@ -27,7 +27,7 @@
 
 #include "load_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 //==============================================================================
 /// ConcurrencyManager is a helper class to send inference requests to inference
@@ -129,4 +129,4 @@ class ConcurrencyManager : public LoadManager {
   std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

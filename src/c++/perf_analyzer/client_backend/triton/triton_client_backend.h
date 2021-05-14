@@ -51,7 +51,7 @@
 
 namespace tc = triton::client;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 /// TritonClientBackend uses triton client C++ library to communicate with
@@ -262,4 +262,4 @@ class TritonInferResult : public InferResult {
   std::unique_ptr<tc::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

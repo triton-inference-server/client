@@ -33,7 +33,7 @@
 #include "perf_utils.h"
 
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 class LoadManager {
  public:
@@ -260,4 +260,4 @@ class LoadManager {
   std::mutex wake_mutex_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

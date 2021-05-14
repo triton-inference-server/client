@@ -39,9 +39,9 @@
   } while (false)
 
 namespace tc = triton::client;
-namespace tfs = perfanalyzer::clientbackend::tfserving;
+namespace tfs = triton::perfanalyzer::clientbackend::tfserving;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 /// TFServeClientBackend is used to generate load on the TF serving isntance
@@ -139,4 +139,4 @@ class TFServeInferResult : public InferResult {
   std::unique_ptr<tfs::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

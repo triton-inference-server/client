@@ -30,7 +30,7 @@
 #include <rapidjson/filereadstream.h>
 #include <fstream>
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 DataLoader::DataLoader(const size_t batch_size)
     : batch_size_(batch_size), data_stream_cnt_(0)
@@ -384,4 +384,4 @@ DataLoader::ReadInputTensorData(
   return cb::Error::Success;
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

@@ -35,7 +35,7 @@
 
 namespace tc = triton::client;
 
-namespace perfanalyzer { namespace clientbackend { namespace torchserve {
+namespace triton { namespace perfanalyzer { namespace clientbackend { namespace torchserve {
 
 class InferResult;
 class HttpInferRequest;
@@ -170,4 +170,4 @@ class InferResult {
 
 //======================================================================
 
-}}}  // namespace perfanalyzer::clientbackend::torchserve
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

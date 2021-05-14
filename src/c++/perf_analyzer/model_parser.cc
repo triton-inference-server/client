@@ -28,7 +28,7 @@
 
 #include "rapidjson/writer.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 namespace {
 // In the json produced by protobuf, int64 and uint64 values are
@@ -351,4 +351,4 @@ ModelParser::GetEnsembleSchedulerType(
   return cb::Error::Success;
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

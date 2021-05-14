@@ -30,7 +30,7 @@
 #include "torchserve/torchserve_client_backend.h"
 #include "triton/triton_client_backend.h"
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //================================================
 
@@ -404,4 +404,4 @@ InferRequestedOutput::InferRequestedOutput(const BackendKind kind) : kind_(kind)
 {
 }
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

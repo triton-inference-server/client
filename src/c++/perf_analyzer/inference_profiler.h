@@ -31,7 +31,7 @@
 #include "model_parser.h"
 #include "request_rate_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 /// Constant parameters that determine the whether stopping criteria has met
 /// for the current phase of testing
@@ -433,4 +433,4 @@ class InferenceProfiler {
   bool include_server_stats_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer
