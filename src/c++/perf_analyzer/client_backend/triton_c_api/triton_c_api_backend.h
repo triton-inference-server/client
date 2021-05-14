@@ -61,15 +61,15 @@ class TritonLocalClientBackend : public ClientBackend {
   /// \param server_library_path Tritonserver library that contains
   /// lib/libtritonserver.so.
   /// \param model_repository_path The model repository.
-  /// \param memory_type Type of memory used in Triton Server. 
+  /// \param memory_type Type of memory used in Triton Server.
   /// \param verbose Enables the verbose mode of TritonServer.
-  /// \param client_backend Returns a new TritonLocalClientBackend object. 
+  /// \param client_backend Returns a new TritonLocalClientBackend object.
   /// \return Error object indicating success
   /// or failure.
   static Error Create(
-      const std::string& server_library_path, const std::string& model_repository_path,
-      const std::string& memory_type, const bool verbose,
-      std::unique_ptr<ClientBackend>* client_backend);
+      const std::string& server_library_path,
+      const std::string& model_repository_path, const std::string& memory_type,
+      const bool verbose, std::unique_ptr<ClientBackend>* client_backend);
 
   ~TritonLocalClientBackend()
   {

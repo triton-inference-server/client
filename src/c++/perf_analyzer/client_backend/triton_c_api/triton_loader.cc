@@ -139,7 +139,8 @@ void
 InferRequestComplete(
     TRITONSERVER_InferenceRequest* request, const uint32_t flags, void* userp)
 {
-  // request is deleted at the end of the Infer call so don't need to do anything here
+  // request is deleted at the end of the Infer call so don't need to do
+  // anything here
 }
 
 
@@ -188,18 +189,24 @@ GetModelVersionFromString(const std::string& version_string, int64_t* version)
 }  // namespace
 Error
 TritonLoader::Create(
-    const std::string& server_library_path, const std::string& model_repository_path,
-    const std::string& memory_type, bool verbose)
+    const std::string& server_library_path,
+    const std::string& model_repository_path, const std::string& memory_type,
+    bool verbose)
 {
   if (!GetSingleton()->ServerIsReady()) {
     if (server_library_path.empty() || model_repository_path.empty()) {
       return Error("cannot load server, paths are empty");
     }
     GetSingleton()->ClearHandles();
-    FAIL_IF_ERR(GetSingleton()->PopulateInternals(
-        server_library_path, model_repository_path, memory_type, verbose), "Populating internal variables");
-    FAIL_IF_ERR(GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
-    FAIL_IF_ERR(GetSingleton()->StartTriton(memory_type, false), "Starting Triton Server");
+    FAIL_IF_ERR(
+        GetSingleton()->PopulateInternals(
+            server_library_path, model_repository_path, memory_type, verbose),
+        "Populating internal variables");
+    FAIL_IF_ERR(
+        GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
+    FAIL_IF_ERR(
+        GetSingleton()->StartTriton(memory_type, false),
+        "Starting Triton Server");
   }
 
   return Error::Success;
@@ -218,8 +225,9 @@ TritonLoader::Delete()
 
 Error
 TritonLoader::PopulateInternals(
-    const std::string& server_library_path, const std::string& model_repository_path,
-    const std::string& memory_type, bool verbose)
+    const std::string& server_library_path,
+    const std::string& model_repository_path, const std::string& memory_type,
+    bool verbose)
 {
   GetSingleton()->server_library_path_ = server_library_path;
   GetSingleton()->model_repository_path_ = model_repository_path;
@@ -321,10 +329,10 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
         GetSingleton()->message_serialize_to_json_fn_(
             server_metadata_message, &buffer, &byte_size),
         "unable to serialize server metadata message");
-    
+
     std::cout << "Server Status:" << std::endl;
     std::cout << std::string(buffer, byte_size) << std::endl;
-    
+
     RETURN_IF_TRITONSERVER_ERROR(
         GetSingleton()->message_delete_fn_(server_metadata_message),
         "deleting status metadata");

@@ -35,9 +35,9 @@ namespace perfanalyzer { namespace clientbackend {
 
 Error
 TritonLocalClientBackend::Create(
-    const std::string& server_library_path, const std::string& model_repository_path,
-    const std::string& memory_type, const bool verbose,
-    std::unique_ptr<ClientBackend>* client_backend)
+    const std::string& server_library_path,
+    const std::string& model_repository_path, const std::string& memory_type,
+    const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
 {
   if (server_library_path.empty() || model_repository_path.empty() ||
       memory_type.empty()) {
