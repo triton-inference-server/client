@@ -354,12 +354,15 @@ Usage(char** argv, const std::string& msg = std::string())
                    "--measurement-request-count requests in each window.",
                    18)
             << std::endl;
-  std::cerr << FormatMessage(
-      " --measurement-request-count: "
-      "Indicates the minimum number of requests to be collected in each "
-      "measurement window when \"count_windows\" mode is used. This mode can "
-      "be enabeld using the --measurement-mode flag.",
-      18);
+  std::cerr
+      << FormatMessage(
+             " --measurement-request-count: "
+             "Indicates the minimum number of requests to be collected in each "
+             "measurement window when \"count_windows\" mode is used. This "
+             "mode can "
+             "be enabled using the --measurement-mode flag.",
+             18)
+      << std::endl;
   std::cerr
       << FormatMessage(
              " --concurrency-range <start:end:step>: Determines the range of "
@@ -1343,11 +1346,17 @@ main(int argc, char** argv)
   if (kind == cb::BackendKind::TRITON || using_batch_size) {
     std::cout << "  Batch size: " << batch_size << std::endl;
   }
+  if (measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+    std::cout << "  Using \"count_windows\" mode for stabilization"
+              << std::endl;
+  } else {
+    std::cout << "  Using \"time_windows\" mode for stabilization" << std::endl;
+  }
   if (measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
     std::cout << "  Measurement window: " << measurement_window_ms << " msec"
               << std::endl;
   } else if (measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
-    std::cout << "  Number of samples in each window: "
+    std::cout << "  Minimum number of samples in each window: "
               << measurement_request_count << std::endl;
   }
   if (concurrency_range[SEARCH_RANGE::kEND] != 1) {
@@ -1395,6 +1404,7 @@ main(int argc, char** argv)
                  "measuring latency"
               << std::endl;
   }
+
   if (percentile == -1) {
     std::cout << "  Stabilizing using average latency" << std::endl;
   } else {
