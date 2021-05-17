@@ -27,6 +27,8 @@
 #include "torchserve_infer_input.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
+
 
 Error
 TorchServeInferInput::Create(
@@ -104,4 +106,4 @@ TorchServeInferInput::TorchServeInferInput(
 {
 }
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

@@ -39,9 +39,12 @@
   } while (false)
 
 namespace tc = triton::client;
+namespace cb = triton::perfanalyzer::clientbackend;
 namespace ts = triton::perfanalyzer::clientbackend::torchserve;
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
+
 
 //==============================================================================
 /// TorchServeClientBackend is used to generate load on the Torchserve isntance
@@ -65,7 +68,7 @@ class TorchServeClientBackend : public ClientBackend {
 
   /// See ClientBackend::Infer()
   Error Infer(
-      InferResult** result, const InferOptions& options,
+      cb::InferResult** result, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
@@ -89,7 +92,7 @@ class TorchServeClientBackend : public ClientBackend {
 /// TorchServeInferResult is a wrapper around InferResult object of
 /// torchserve InferResult object.
 ///
-class TorchServeInferResult : public InferResult {
+class TorchServeInferResult : public cb::InferResult {
  public:
   explicit TorchServeInferResult(ts::InferResult* result);
   /// See InferResult::Id()
@@ -101,4 +104,4 @@ class TorchServeInferResult : public InferResult {
   std::unique_ptr<ts::InferResult> result_;
 };
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

@@ -30,7 +30,8 @@
 #include "../client_backend.h"
 
 
-namespace triton { namespace perfanalyzer { namespace clientbackend { namespace tfserving {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 //==============================================================
 /// TFServeInferInput instance holds the information regarding

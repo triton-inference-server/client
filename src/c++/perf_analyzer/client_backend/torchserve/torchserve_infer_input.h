@@ -30,6 +30,8 @@
 #include "../client_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
+
 
 //==============================================================
 /// TorchServeInferInput instance holds the information regarding
@@ -70,4 +72,4 @@ class TorchServeInferInput : public InferInput {
   std::vector<size_t> buf_byte_sizes_;
 };
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

@@ -28,7 +28,8 @@
 
 #include "json_utils.h"
 
-namespace triton { namespace perfanalyzer { namespace clientbackend { namespace tfserving {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 //==============================================================================
 

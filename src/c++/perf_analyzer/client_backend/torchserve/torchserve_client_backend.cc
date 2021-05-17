@@ -29,6 +29,8 @@
 #include "json_utils.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
+
 
 //==============================================================================
 
@@ -52,7 +54,7 @@ TorchServeClientBackend::Create(
 
 Error
 TorchServeClientBackend::Infer(
-    InferResult** result, const InferOptions& options,
+    cb::InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
@@ -111,4 +113,4 @@ TorchServeInferResult::RequestStatus() const
 
 //==============================================================================
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

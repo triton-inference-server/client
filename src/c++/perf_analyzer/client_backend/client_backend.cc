@@ -121,7 +121,7 @@ ClientBackend::Create(
 {
   std::unique_ptr<ClientBackend> local_backend;
   if (kind == TRITON) {
-    RETURN_IF_CB_ERROR(TritonClientBackend::Create(
+    RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
   } else if (kind == TENSORFLOW_SERVING) {
@@ -129,7 +129,7 @@ ClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
   } else if (kind == TORCHSERVE) {
-    RETURN_IF_CB_ERROR(TorchServeClientBackend::Create(
+    RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
   } else {
     return Error("unsupported client backend requested");
@@ -312,14 +312,14 @@ InferInput::Create(
     const std::vector<int64_t>& dims, const std::string& datatype)
 {
   if (kind == TRITON) {
-    RETURN_IF_CB_ERROR(
-        TritonInferInput::Create(infer_input, name, dims, datatype));
+    RETURN_IF_CB_ERROR(tritonremote::TritonInferInput::Create(
+        infer_input, name, dims, datatype));
   } else if (kind == TENSORFLOW_SERVING) {
-    RETURN_IF_CB_ERROR(
-        tfserving::TFServeInferInput::Create(infer_input, name, dims, datatype));
+    RETURN_IF_CB_ERROR(tfserving::TFServeInferInput::Create(
+        infer_input, name, dims, datatype));
   } else if (kind == TORCHSERVE) {
-    RETURN_IF_CB_ERROR(
-        TorchServeInferInput::Create(infer_input, name, dims, datatype));
+    RETURN_IF_CB_ERROR(torchserve::TorchServeInferInput::Create(
+        infer_input, name, dims, datatype));
   } else {
     return Error(
         "unsupported client backend provided to create InferInput object");
@@ -378,10 +378,11 @@ InferRequestedOutput::Create(
     const std::string& name, const size_t class_count)
 {
   if (kind == TRITON) {
-    RETURN_IF_CB_ERROR(
-        TritonInferRequestedOutput::Create(infer_output, name, class_count));
+    RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
+        infer_output, name, class_count));
   } else if (kind == TENSORFLOW_SERVING) {
-    RETURN_IF_CB_ERROR(tfserving::TFServeInferRequestedOutput::Create(infer_output, name));
+    RETURN_IF_CB_ERROR(
+        tfserving::TFServeInferRequestedOutput::Create(infer_output, name));
   } else {
     return Error(
         "unsupported client backend provided to create InferRequestedOutput "

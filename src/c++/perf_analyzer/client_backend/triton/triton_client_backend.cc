@@ -29,7 +29,7 @@
 #include "json_utils.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
-
+namespace tritonremote {
 //==============================================================================
 
 Error
@@ -612,4 +612,4 @@ TritonInferResult::RequestStatus() const
 
 //==============================================================================
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritonremote
