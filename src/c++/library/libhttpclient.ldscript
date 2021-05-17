@@ -26,7 +26,7 @@
 {
   global:
     extern "C++" {
-      triton*
+      triton::client*
     };
   local: *;
 };

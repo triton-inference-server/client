@@ -125,7 +125,7 @@ ClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
   } else if (kind == TENSORFLOW_SERVING) {
-    RETURN_IF_CB_ERROR(TFServeClientBackend::Create(
+    RETURN_IF_CB_ERROR(tfserving::TFServeClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
   } else if (kind == TORCHSERVE) {
@@ -316,7 +316,7 @@ InferInput::Create(
         TritonInferInput::Create(infer_input, name, dims, datatype));
   } else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(
-        TFServeInferInput::Create(infer_input, name, dims, datatype));
+        tfserving::TFServeInferInput::Create(infer_input, name, dims, datatype));
   } else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(
         TorchServeInferInput::Create(infer_input, name, dims, datatype));
@@ -381,7 +381,7 @@ InferRequestedOutput::Create(
     RETURN_IF_CB_ERROR(
         TritonInferRequestedOutput::Create(infer_output, name, class_count));
   } else if (kind == TENSORFLOW_SERVING) {
-    RETURN_IF_CB_ERROR(TFServeInferRequestedOutput::Create(infer_output, name));
+    RETURN_IF_CB_ERROR(tfserving::TFServeInferRequestedOutput::Create(infer_output, name));
   } else {
     return Error(
         "unsupported client backend provided to create InferRequestedOutput "

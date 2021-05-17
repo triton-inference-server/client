@@ -28,7 +28,7 @@
 
 #include "json_utils.h"
 
-namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend { namespace tfserving {
 
 //==============================================================================
 
@@ -46,7 +46,7 @@ TFServeClientBackend::Create(
   std::unique_ptr<TFServeClientBackend> tfserve_client_backend(
       new TFServeClientBackend(compression_algorithm, http_headers));
 
-  RETURN_IF_CB_ERROR(tfs::GrpcClient::Create(
+  RETURN_IF_CB_ERROR(GrpcClient::Create(
       &(tfserve_client_backend->grpc_client_), url, verbose));
 
   *client_backend = std::move(tfserve_client_backend);
@@ -77,7 +77,7 @@ TFServeClientBackend::ModelMetadata(
 
 Error
 TFServeClientBackend::Infer(
-    InferResult** result, const InferOptions& options,
+    cb::InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
@@ -98,7 +98,7 @@ TFServeClientBackend::AsyncInfer(
     const std::vector<const InferRequestedOutput*>& outputs)
 {
   auto wrapped_callback = [callback](tfs::InferResult* client_result) {
-    InferResult* result = new TFServeInferResult(client_result);
+    cb::InferResult* result = new TFServeInferResult(client_result);
     callback(result);
   };
 
@@ -186,4 +186,4 @@ TFServeInferResult::RequestStatus() const
 //==============================================================================
 
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving

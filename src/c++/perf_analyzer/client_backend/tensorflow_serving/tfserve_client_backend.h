@@ -39,9 +39,12 @@
   } while (false)
 
 namespace tc = triton::client;
+namespace cb = triton::perfanalyzer::clientbackend;
 namespace tfs = triton::perfanalyzer::clientbackend::tfserving;
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
+
 
 //==============================================================================
 /// TFServeClientBackend is used to generate load on the TF serving isntance
@@ -73,7 +76,7 @@ class TFServeClientBackend : public ClientBackend {
 
   /// See ClientBackend::Infer()
   Error Infer(
-      InferResult** result, const InferOptions& options,
+      cb::InferResult** result, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
@@ -99,7 +102,7 @@ class TFServeClientBackend : public ClientBackend {
   void ParseInferStat(
       const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat);
 
-  std::unique_ptr<tfs::GrpcClient> grpc_client_;
+  std::unique_ptr<GrpcClient> grpc_client_;
 
   grpc_compression_algorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
@@ -127,7 +130,7 @@ class TFServeInferRequestedOutput : public InferRequestedOutput {
 /// TFServeInferResult is a wrapper around InferResult object of
 /// TF serving InferResult object.
 ///
-class TFServeInferResult : public InferResult {
+class TFServeInferResult : public cb::InferResult {
  public:
   explicit TFServeInferResult(tfs::InferResult* result);
   /// See InferResult::Id()
@@ -139,4 +142,4 @@ class TFServeInferResult : public InferResult {
   std::unique_ptr<tfs::InferResult> result_;
 };
 
-}}}  // namespace triton::perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving
