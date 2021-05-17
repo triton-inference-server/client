@@ -34,29 +34,29 @@ namespace perfanalyzer { namespace clientbackend {
 //==============================================================================
 
 Error
-TritonLocalClientBackend::Create(
-    const std::string& server_library_path,
+TritonCApiClientBackend::Create(
+    const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& memory_type,
     const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
 {
-  if (server_library_path.empty() || model_repository_path.empty() ||
+  if (triton_server_path.empty() || model_repository_path.empty() ||
       memory_type.empty()) {
     return Error(std::string(
-        "Not enough information to creat C API. /lib/libtritonserver.so "
+        "Unable to create Triton C-API client backend. /lib/libtritonserver.so "
         "directory:" +
-        server_library_path + " model repo:" + model_repository_path +
+        triton_server_path + " model repo:" + model_repository_path +
         " memory type:" + memory_type));
   }
-  std::unique_ptr<TritonLocalClientBackend> triton_client_backend(
-      new TritonLocalClientBackend());
+  std::unique_ptr<TritonCApiClientBackend> triton_client_backend(
+      new TritonCApiClientBackend());
   TritonLoader::Create(
-      server_library_path, model_repository_path, memory_type, verbose);
+      triton_server_path, model_repository_path, memory_type, verbose);
   *client_backend = std::move(triton_client_backend);
   return Error::Success;
 }
 
 Error
-TritonLocalClientBackend::ServerExtensions(std::set<std::string>* extensions)
+TritonCApiClientBackend::ServerExtensions(std::set<std::string>* extensions)
 {
   rapidjson::Document server_metadata_json;
   RETURN_IF_ERROR(TritonLoader::ServerMetaData(&server_metadata_json));
@@ -68,7 +68,7 @@ TritonLocalClientBackend::ServerExtensions(std::set<std::string>* extensions)
 }
 
 Error
-TritonLocalClientBackend::ModelMetadata(
+TritonCApiClientBackend::ModelMetadata(
     rapidjson::Document* model_metadata, const std::string& model_name,
     const std::string& model_version)
 {
@@ -80,7 +80,7 @@ TritonLocalClientBackend::ModelMetadata(
 }
 
 Error
-TritonLocalClientBackend::ModelConfig(
+TritonCApiClientBackend::ModelConfig(
     rapidjson::Document* model_config, const std::string& model_name,
     const std::string& model_version)
 {
@@ -92,7 +92,7 @@ TritonLocalClientBackend::ModelConfig(
 }
 
 Error
-TritonLocalClientBackend::Infer(
+TritonCApiClientBackend::Infer(
     InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
@@ -110,13 +110,13 @@ TritonLocalClientBackend::Infer(
   RETURN_IF_ERROR(TritonLoader::Infer(
       triton_options, triton_inputs, triton_outputs, &triton_result));
 
-  *result = new TritonLocalInferResult(triton_result);
+  *result = new TritonCApiInferResult(triton_result);
   return Error::Success;
 }
 
 
 Error
-TritonLocalClientBackend::ClientInferStat(InferStat* infer_stat)
+TritonCApiClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   nic::InferStat triton_infer_stat;
 
@@ -126,7 +126,7 @@ TritonLocalClientBackend::ClientInferStat(InferStat* infer_stat)
 }
 
 Error
-TritonLocalClientBackend::ModelInferenceStatistics(
+TritonCApiClientBackend::ModelInferenceStatistics(
     std::map<ModelIdentifier, ModelStatistics>* model_stats,
     const std::string& model_name, const std::string& model_version)
 {
@@ -139,29 +139,29 @@ TritonLocalClientBackend::ModelInferenceStatistics(
 }
 
 void
-TritonLocalClientBackend::ParseInferInputToTriton(
+TritonCApiClientBackend::ParseInferInputToTriton(
     const std::vector<InferInput*>& inputs,
     std::vector<nic::InferInput*>* triton_inputs)
 {
   for (const auto input : inputs) {
     triton_inputs->push_back(
-        (dynamic_cast<TritonLocalInferInput*>(input))->Get());
+        (dynamic_cast<TritonCApiInferInput*>(input))->Get());
   }
 }
 
 void
-TritonLocalClientBackend::ParseInferRequestedOutputToTriton(
+TritonCApiClientBackend::ParseInferRequestedOutputToTriton(
     const std::vector<const InferRequestedOutput*>& outputs,
     std::vector<const nic::InferRequestedOutput*>* triton_outputs)
 {
   for (const auto output : outputs) {
     triton_outputs->push_back(
-        (dynamic_cast<const TritonLocalInferRequestedOutput*>(output))->Get());
+        (dynamic_cast<const TritonCApiInferRequestedOutput*>(output))->Get());
   }
 }
 
 void
-TritonLocalClientBackend::ParseInferOptionsToTriton(
+TritonCApiClientBackend::ParseInferOptionsToTriton(
     const InferOptions& options, nic::InferOptions* triton_options)
 {
   triton_options->model_version_ = options.model_version_;
@@ -172,7 +172,7 @@ TritonLocalClientBackend::ParseInferOptionsToTriton(
 }
 
 void
-TritonLocalClientBackend::ParseStatistics(
+TritonCApiClientBackend::ParseStatistics(
     const rapidjson::Document& infer_stat,
     std::map<ModelIdentifier, ModelStatistics>* model_stats)
 {
@@ -203,7 +203,7 @@ TritonLocalClientBackend::ParseStatistics(
 }
 
 void
-TritonLocalClientBackend::ParseInferStat(
+TritonCApiClientBackend::ParseInferStat(
     const nic::InferStat& triton_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
@@ -219,12 +219,12 @@ TritonLocalClientBackend::ParseInferStat(
 //==============================================================================
 
 Error
-TritonLocalInferInput::Create(
+TritonCApiInferInput::Create(
     InferInput** infer_input, const std::string& name,
     const std::vector<int64_t>& dims, const std::string& datatype)
 {
-  TritonLocalInferInput* local_infer_input =
-      new TritonLocalInferInput(name, datatype);
+  TritonCApiInferInput* local_infer_input =
+      new TritonCApiInferInput(name, datatype);
 
   nic::InferInput* triton_infer_input;
   RETURN_IF_TRITON_ERROR(
@@ -236,35 +236,35 @@ TritonLocalInferInput::Create(
 }
 
 const std::vector<int64_t>&
-TritonLocalInferInput::Shape() const
+TritonCApiInferInput::Shape() const
 {
   return input_->Shape();
 }
 
 Error
-TritonLocalInferInput::SetShape(const std::vector<int64_t>& shape)
+TritonCApiInferInput::SetShape(const std::vector<int64_t>& shape)
 {
   RETURN_IF_TRITON_ERROR(input_->SetShape(shape));
   return Error::Success;
 }
 
 Error
-TritonLocalInferInput::Reset()
+TritonCApiInferInput::Reset()
 {
   RETURN_IF_TRITON_ERROR(input_->Reset());
   return Error::Success;
 }
 
 Error
-TritonLocalInferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
+TritonCApiInferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
 {
   RETURN_IF_TRITON_ERROR(input_->AppendRaw(input, input_byte_size));
   return Error::Success;
 }
 
-TritonLocalInferInput::TritonLocalInferInput(
+TritonCApiInferInput::TritonCApiInferInput(
     const std::string& name, const std::string& datatype)
-    : InferInput(BackendKind::TRITON_LOCAL, name, datatype)
+    : InferInput(BackendKind::TRITON_C_API, name, datatype)
 {
 }
 
@@ -272,12 +272,12 @@ TritonLocalInferInput::TritonLocalInferInput(
 //==============================================================================
 
 Error
-TritonLocalInferRequestedOutput::Create(
+TritonCApiInferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const std::string name,
     const size_t class_count)
 {
-  TritonLocalInferRequestedOutput* local_infer_output =
-      new TritonLocalInferRequestedOutput();
+  TritonCApiInferRequestedOutput* local_infer_output =
+      new TritonCApiInferRequestedOutput();
 
   nic::InferRequestedOutput* triton_infer_output;
   RETURN_IF_TRITON_ERROR(nic::InferRequestedOutput::Create(
@@ -289,27 +289,27 @@ TritonLocalInferRequestedOutput::Create(
   return Error::Success;
 }
 
-TritonLocalInferRequestedOutput::TritonLocalInferRequestedOutput()
-    : InferRequestedOutput(BackendKind::TRITON_LOCAL)
+TritonCApiInferRequestedOutput::TritonCApiInferRequestedOutput()
+    : InferRequestedOutput(BackendKind::TRITON_C_API)
 {
 }
 
 //==============================================================================
 
-TritonLocalInferResult::TritonLocalInferResult(nic::InferResult* result)
+TritonCApiInferResult::TritonCApiInferResult(nic::InferResult* result)
 {
   result_.reset(result);
 }
 
 Error
-TritonLocalInferResult::Id(std::string* id) const
+TritonCApiInferResult::Id(std::string* id) const
 {
   RETURN_IF_TRITON_ERROR(result_->Id(id));
   return Error::Success;
 }
 
 Error
-TritonLocalInferResult::RequestStatus() const
+TritonCApiInferResult::RequestStatus() const
 {
   RETURN_IF_TRITON_ERROR(result_->RequestStatus());
   return Error::Success;

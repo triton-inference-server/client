@@ -31,7 +31,7 @@
 
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
-#include <fstream>
+#include <sys/stat.h>
 #include <future>
 #include <string>
 #include <thread>
@@ -45,7 +45,7 @@ namespace perfanalyzer { namespace clientbackend {
 namespace {
 bool enforce_memory_type = false;
 TRITONSERVER_MemoryType requested_memory_type;
-bool verbose = false;
+bool helper_verbose = false;
 /// Helper function for allocating memory
 TRITONSERVER_Error*
 ResponseAlloc(
@@ -65,7 +65,7 @@ ResponseAlloc(
   if (byte_size == 0) {
     *buffer = nullptr;
     *buffer_userp = nullptr;
-    if (verbose) {
+    if (helper_verbose) {
       std::cout << "allocated " << byte_size << " bytes for result tensor "
                 << tensor_name << std::endl;
     }
@@ -91,7 +91,7 @@ ResponseAlloc(
     if (allocated_ptr != nullptr) {
       *buffer = allocated_ptr;
       *buffer_userp = new std::string(tensor_name);
-      if (verbose) {
+      if (helper_verbose) {
         std::cout << "allocated " << byte_size << " bytes in "
                   << size_t(*actual_memory_type) << " for result tensor "
                   << tensor_name << std::endl;
@@ -115,7 +115,7 @@ ResponseRelease(
   } else {
     name = new std::string("<unknown>");
   }
-  if (verbose) {
+  if (helper_verbose) {
     std::cout << "Releasing buffer " << buffer << " of size " << byte_size
               << " in " << size_t(memory_type) << " for result '" << *name
               << "'" << std::endl;
@@ -186,27 +186,37 @@ GetModelVersionFromString(const std::string& version_string, int64_t* version)
 
   return Error::Success;
 }
+
+Error
+FolderExists(const std::string& path)
+{
+  struct stat buffer;
+  if (!stat(path.c_str(), &buffer)) {
+    return Error::Success;
+  } else {
+    return Error("Unable to find filepath: " + path);
+  }
+}
 }  // namespace
 Error
 TritonLoader::Create(
-    const std::string& server_library_path,
+    const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& memory_type,
     bool verbose)
 {
   if (!GetSingleton()->ServerIsReady()) {
-    if (server_library_path.empty() || model_repository_path.empty()) {
+    if (triton_server_path.empty() || model_repository_path.empty()) {
       return Error("cannot load server, paths are empty");
     }
     GetSingleton()->ClearHandles();
     FAIL_IF_ERR(
         GetSingleton()->PopulateInternals(
-            server_library_path, model_repository_path, memory_type, verbose),
+            triton_server_path, model_repository_path, memory_type, verbose),
         "Populating internal variables");
     FAIL_IF_ERR(
         GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
     FAIL_IF_ERR(
-        GetSingleton()->StartTriton(memory_type, false),
-        "Starting Triton Server");
+        GetSingleton()->StartTriton(memory_type), "Starting Triton Server");
   }
 
   return Error::Success;
@@ -225,21 +235,22 @@ TritonLoader::Delete()
 
 Error
 TritonLoader::PopulateInternals(
-    const std::string& server_library_path,
+    const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& memory_type,
     bool verbose)
 {
-  GetSingleton()->server_library_path_ = server_library_path;
+  RETURN_IF_ERROR(FolderExists(triton_server_path));
+  RETURN_IF_ERROR(FolderExists(model_repository_path));
+  GetSingleton()->triton_server_path_ = triton_server_path;
   GetSingleton()->model_repository_path_ = model_repository_path;
   GetSingleton()->verbose_ = verbose;
+  GetSingleton()->verbose_level_ = GetSingleton()->verbose_ ? 1 : 0;
   return Error::Success;
 }
 
 Error
-TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
+TritonLoader::StartTriton(const std::string& memory_type)
 {
-  GetSingleton()->verbose_level_ = isVerbose ? 1 : 0;
-
   // Check API version.
   uint32_t api_version_major, api_version_minor;
   REPORT_TRITONSERVER_ERROR(
@@ -248,7 +259,6 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
       (TRITONSERVER_API_VERSION_MINOR > api_version_minor)) {
     return Error("triton server API version mismatch");
   }
-
   // Create the server...
   TRITONSERVER_ServerOptions* server_options = nullptr;
   RETURN_IF_TRITONSERVER_ERROR(
@@ -263,14 +273,18 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
           server_options, GetSingleton()->verbose_level_),
       "setting verbose logging level");
   RETURN_IF_TRITONSERVER_ERROR(
+      GetSingleton()->set_log_info_fn_(
+          server_options, GetSingleton()->verbose_),
+      "setting if log verbose level is true");
+  RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_backend_directory_fn_(
           server_options,
-          (GetSingleton()->server_library_path_ + "/backends").c_str()),
+          (GetSingleton()->triton_server_path_ + "/backends").c_str()),
       "setting backend directory");
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_repo_agent_directory_fn_(
           server_options,
-          (GetSingleton()->server_library_path_ + "/repoagents").c_str()),
+          (GetSingleton()->triton_server_path_ + "/repoagents").c_str()),
       "setting repository agent directory");
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->set_strict_model_config_fn_(server_options, true),
@@ -317,7 +331,7 @@ TritonLoader::StartTriton(const std::string& memory_type, bool isVerbose)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   // Print status of the server.
-  if (verbose) {
+  if (GetSingleton()->verbose_) {
     TRITONSERVER_Message* server_metadata_message;
     RETURN_IF_TRITONSERVER_ERROR(
         GetSingleton()->server_metadata_fn_(
@@ -508,8 +522,8 @@ Error
 TritonLoader::LoadServerLibrary()
 {
   std::string full_path =
-      GetSingleton()->server_library_path_ + SERVER_LIBRARY_PATH;
-  RETURN_IF_ERROR(FileExists(full_path));
+      GetSingleton()->triton_server_path_ + SERVER_LIBRARY_PATH;
+  RETURN_IF_ERROR(FolderExists(full_path));
   FAIL_IF_ERR(
       OpenLibraryHandle(full_path, &dlhandle_),
       "shared library loading library:" + full_path);
@@ -550,14 +564,12 @@ TritonLoader::LoadServerLibrary()
   TritonServerInferenceResponseErrorFn_t irefn;
 
   TritonServerInferenceResponseDeleteFn_t irdfn;
-  TritonServerInferenceRequestRemoveAllInputDataFn_t irraidfn;
   TritonServerResponseAllocatorDeleteFn_t radfn;
   TritonServerErrorNewFn_t enfn;
 
   TritonServerMemoryTypeStringFn_t mtsfn;
   TritonServerInferenceResponseOutputCountFn_t irocfn;
   TritonServerDataTypeStringFn_t dtsfn;
-  TritonServerErrorMessageFn_t emfn;
 
   TritonServerErrorDeleteFn_t edfn;
   TritonServerErrorCodeToStringFn_t ectsfn;
@@ -568,170 +580,171 @@ TritonLoader::LoadServerLibrary()
   TritonServerInferenceRequestSetPriorityFn_t spfn;
   TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t stmsfn;
   TritonServerStringToDatatypeFn_t stdtfn;
+
   TritonServerInferenceResponseOutputFn_t irofn;
   TritonServerRequestIdFn_t ridfn;
   TritonServerRequestDeleteFn_t rdfn;
   TritonServerModelStatisticsFn_t msfn;
+
   TritonSeverUnloadModelFn_t umfn;
+  TritonSeverSetLogInfoFn_t slifn;
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ApiVersion", true /* optional */,
+      dlhandle_, "TRITONSERVER_ApiVersion", false /* optional */,
       reinterpret_cast<void**>(&apifn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerOptionsNew", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerOptionsNew", false /* optional */,
       reinterpret_cast<void**>(&onfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetModelRepositoryPath",
-      true /* optional */, reinterpret_cast<void**>(&rpfn)));
+      false /* optional */, reinterpret_cast<void**>(&rpfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerOptionsSetLogVerbose", true /* optional */,
-      reinterpret_cast<void**>(&slvfn)));
+      dlhandle_, "TRITONSERVER_ServerOptionsSetLogVerbose",
+      false /* optional */, reinterpret_cast<void**>(&slvfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetBackendDirectory",
-      true /* optional */, reinterpret_cast<void**>(&sbdfn)));
+      false /* optional */, reinterpret_cast<void**>(&sbdfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetRepoAgentDirectory",
-      true /* optional */, reinterpret_cast<void**>(&srdfn)));
+      false /* optional */, reinterpret_cast<void**>(&srdfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetStrictModelConfig",
-      true /* optional */, reinterpret_cast<void**>(&ssmcfn)));
+      false /* optional */, reinterpret_cast<void**>(&ssmcfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetMinSupportedComputeCapability",
-      true /* optional */, reinterpret_cast<void**>(&smsccfn)));
+      false /* optional */, reinterpret_cast<void**>(&smsccfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerNew", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerNew", false /* optional */,
       reinterpret_cast<void**>(&snfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerOptionsDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerOptionsDelete", false /* optional */,
       reinterpret_cast<void**>(&odfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerDelete", false /* optional */,
       reinterpret_cast<void**>(&sdfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerIsLive", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerIsLive", false /* optional */,
       reinterpret_cast<void**>(&ilfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerIsReady", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerIsReady", false /* optional */,
       reinterpret_cast<void**>(&irfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerMetadata", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerMetadata", false /* optional */,
       reinterpret_cast<void**>(&smfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_MessageSerializeToJson", true /* optional */,
+      dlhandle_, "TRITONSERVER_MessageSerializeToJson", false /* optional */,
       reinterpret_cast<void**>(&stjfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_MessageDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_MessageDelete", false /* optional */,
       reinterpret_cast<void**>(&mdfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerModelIsReady", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerModelIsReady", false /* optional */,
       reinterpret_cast<void**>(&mirfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerModelMetadata", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerModelMetadata", false /* optional */,
       reinterpret_cast<void**>(&mmfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ResponseAllocatorNew", true /* optional */,
+      dlhandle_, "TRITONSERVER_ResponseAllocatorNew", false /* optional */,
       reinterpret_cast<void**>(&ranfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestNew", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestNew", false /* optional */,
       reinterpret_cast<void**>(&irnfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestSetId", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestSetId", false /* optional */,
       reinterpret_cast<void**>(&irsifn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetReleaseCallback",
-      true /* optional */, reinterpret_cast<void**>(&irsrcfn)));
+      false /* optional */, reinterpret_cast<void**>(&irsrcfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestAddInput", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestAddInput", false /* optional */,
       reinterpret_cast<void**>(&iraifn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestAddRequestedOutput",
-      true /* optional */, reinterpret_cast<void**>(&irarofn)));
+      false /* optional */, reinterpret_cast<void**>(&irarofn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestAppendInputData",
-      true /* optional */, reinterpret_cast<void**>(&iraidfn)));
+      false /* optional */, reinterpret_cast<void**>(&iraidfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetResponseCallback",
-      true /* optional */, reinterpret_cast<void**>(&irsrescfn)));
+      false /* optional */, reinterpret_cast<void**>(&irsrescfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerInferAsync", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerInferAsync", false /* optional */,
       reinterpret_cast<void**>(&iafn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceResponseError", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceResponseError", false /* optional */,
       reinterpret_cast<void**>(&irefn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceResponseDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceResponseDelete", false /* optional */,
       reinterpret_cast<void**>(&irdfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestRemoveAllInputData",
-      true /* optional */, reinterpret_cast<void**>(&irraidfn)));
-  RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ResponseAllocatorDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_ResponseAllocatorDelete", false /* optional */,
       reinterpret_cast<void**>(&radfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ErrorNew", true /* optional */,
+      dlhandle_, "TRITONSERVER_ErrorNew", false /* optional */,
       reinterpret_cast<void**>(&enfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_MemoryTypeString", true /* optional */,
+      dlhandle_, "TRITONSERVER_MemoryTypeString", false /* optional */,
       reinterpret_cast<void**>(&mtsfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceResponseOutputCount",
-      true /* optional */, reinterpret_cast<void**>(&irocfn)));
+      false /* optional */, reinterpret_cast<void**>(&irocfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_DataTypeString", true /* optional */,
+      dlhandle_, "TRITONSERVER_DataTypeString", false /* optional */,
       reinterpret_cast<void**>(&dtsfn)));
-  RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ErrorMessage", true /* optional */,
-      reinterpret_cast<void**>(&emfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ErrorDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_ErrorDelete", false /* optional */,
       reinterpret_cast<void**>(&edfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ErrorCodeString", true /* optional */,
+      dlhandle_, "TRITONSERVER_ErrorCodeString", false /* optional */,
       reinterpret_cast<void**>(&ectsfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerModelConfig", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerModelConfig", false /* optional */,
       reinterpret_cast<void**>(&mcfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetCorrelationId",
-      true /* optional */, reinterpret_cast<void**>(&scidfn)));
+      false /* optional */, reinterpret_cast<void**>(&scidfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestSetFlags", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestSetFlags", false /* optional */,
       reinterpret_cast<void**>(&sffn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetPriority",
-      true /* optional */, reinterpret_cast<void**>(&spfn)));
+      false /* optional */, reinterpret_cast<void**>(&spfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetTimeoutMicroseconds",
-      true /* optional */, reinterpret_cast<void**>(&stmsfn)));
+      false /* optional */, reinterpret_cast<void**>(&stmsfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_StringToDataType", true /* optional */,
+      dlhandle_, "TRITONSERVER_StringToDataType", false /* optional */,
       reinterpret_cast<void**>(&stdtfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceResponseOutput", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceResponseOutput", false /* optional */,
       reinterpret_cast<void**>(&irofn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestId", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestId", false /* optional */,
       reinterpret_cast<void**>(&ridfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestDelete", true /* optional */,
+      dlhandle_, "TRITONSERVER_InferenceRequestDelete", false /* optional */,
       reinterpret_cast<void**>(&rdfn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerModelStatistics", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerModelStatistics", false /* optional */,
       reinterpret_cast<void**>(&msfn)));
+
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_ServerUnloadModel", true /* optional */,
+      dlhandle_, "TRITONSERVER_ServerUnloadModel", false /* optional */,
       reinterpret_cast<void**>(&umfn)));
+  RETURN_IF_ERROR(GetEntrypoint(
+      dlhandle_, "TRITONSERVER_ServerOptionsSetLogInfo", false /* optional */,
+      reinterpret_cast<void**>(&slifn)));
 
 
   api_version_fn_ = apifn;
@@ -770,14 +783,12 @@ TritonLoader::LoadServerLibrary()
   inference_response_error_fn_ = irefn;
 
   inference_response_delete_fn_ = irdfn;
-  inference_request_remove_all_input_data_fn_ = irraidfn;
   response_allocator_delete_fn_ = radfn;
   error_new_fn_ = enfn;
 
   memory_type_string_fn_ = mtsfn;
   inference_response_output_count_fn_ = irocfn;
   data_type_string_fn_ = dtsfn;
-  error_message_fn_ = emfn;
 
   error_delete_fn_ = edfn;
   error_code_to_string_fn_ = ectsfn;
@@ -793,7 +804,9 @@ TritonLoader::LoadServerLibrary()
   request_id_fn_ = ridfn;
   request_delete_fn_ = rdfn;
   model_statistics_fn_ = msfn;
+
   unload_model_fn_ = umfn;
+  set_log_info_fn_ = slifn;
 
   return Error::Success;
 }
@@ -839,7 +852,6 @@ TritonLoader::ClearHandles()
   inference_response_error_fn_ = nullptr;
 
   inference_response_delete_fn_ = nullptr;
-  inference_request_remove_all_input_data_fn_ = nullptr;
   response_allocator_delete_fn_ = nullptr;
   error_new_fn_ = nullptr;
 
@@ -863,6 +875,7 @@ TritonLoader::ClearHandles()
   request_delete_fn_ = nullptr;
   model_statistics_fn_ = nullptr;
   unload_model_fn_ = nullptr;
+  set_log_info_fn_ = nullptr;
 }
 
 Error
@@ -876,6 +889,7 @@ TritonLoader::FileExists(std::string& filepath)
     return Error::Success;
   }
 }
+
 Error
 TritonLoader::Infer(
     const nic::InferOptions& options,
@@ -1127,7 +1141,6 @@ TritonLoader::GetSingleton()
 
 TritonLoader::~TritonLoader()
 {
-  std::cout << "Loader dereference" << std::endl;
   FAIL_IF_ERR(Delete(), "dereferencing server instance...");
   FAIL_IF_ERR(CloseLibraryHandle(dlhandle_), "error on closing triton loader");
   GetSingleton()->ClearHandles();

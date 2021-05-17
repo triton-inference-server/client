@@ -51,31 +51,27 @@ namespace nic = nvidia::inferenceserver::client;
 namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
-/// TritonLocalClientBackend uses triton client C++ library to communicate with
+/// TritonCApiClientBackend uses triton client C++ library to communicate with
 /// triton inference service. This uses the local C++ library
 ///
-class TritonLocalClientBackend : public ClientBackend {
+class TritonCApiClientBackend : public ClientBackend {
  public:
   /// Create a triton client backend which can be used to interact with the
   /// server.
-  /// \param server_library_path Tritonserver library that contains
+  /// \param triton_server_path Tritonserver library that contains
   /// lib/libtritonserver.so.
   /// \param model_repository_path The model repository.
   /// \param memory_type Type of memory used in Triton Server.
   /// \param verbose Enables the verbose mode of TritonServer.
-  /// \param client_backend Returns a new TritonLocalClientBackend object.
+  /// \param client_backend Returns a new TritonCApiClientBackend object.
   /// \return Error object indicating success
   /// or failure.
   static Error Create(
-      const std::string& server_library_path,
+      const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
       const bool verbose, std::unique_ptr<ClientBackend>* client_backend);
 
-  ~TritonLocalClientBackend()
-  {
-    std::cout << "removing triton backend" << std::endl;
-    TritonLoader::Delete();
-  }
+  ~TritonCApiClientBackend() { TritonLoader::Delete(); }
 
   /// See ClientBackend::ServerExtensions()
   Error ServerExtensions(std::set<std::string>* server_extensions) override;
@@ -106,7 +102,7 @@ class TritonLocalClientBackend : public ClientBackend {
       const std::string& model_version = "") override;
 
  private:
-  TritonLocalClientBackend() : ClientBackend(BackendKind::TRITON_LOCAL) {}
+  TritonCApiClientBackend() : ClientBackend(BackendKind::TRITON_C_API) {}
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
       std::vector<nic::InferInput*>* triton_inputs);
@@ -123,10 +119,10 @@ class TritonLocalClientBackend : public ClientBackend {
 };
 
 //==============================================================
-/// TritonLocalInferInput is a wrapper around InferInput object of
+/// TritonCApiInferInput is a wrapper around InferInput object of
 /// triton client library.
 ///
-class TritonLocalInferInput : public InferInput {
+class TritonCApiInferInput : public InferInput {
  public:
   static Error Create(
       InferInput** infer_input, const std::string& name,
@@ -143,17 +139,17 @@ class TritonLocalInferInput : public InferInput {
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override;
 
  private:
-  explicit TritonLocalInferInput(
+  explicit TritonCApiInferInput(
       const std::string& name, const std::string& datatype);
 
   std::unique_ptr<nic::InferInput> input_;
 };
 
 //==============================================================
-/// TritonLocalInferRequestedOutput is a wrapper around
+/// TritonCApiInferRequestedOutput is a wrapper around
 /// InferRequestedOutput object of triton client library.
 ///
-class TritonLocalInferRequestedOutput : public InferRequestedOutput {
+class TritonCApiInferRequestedOutput : public InferRequestedOutput {
  public:
   static Error Create(
       InferRequestedOutput** infer_output, const std::string name,
@@ -163,18 +159,18 @@ class TritonLocalInferRequestedOutput : public InferRequestedOutput {
   nic::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
-  explicit TritonLocalInferRequestedOutput();
+  explicit TritonCApiInferRequestedOutput();
 
   std::unique_ptr<nic::InferRequestedOutput> output_;
 };
 
 //==============================================================
-/// TritonLocalInferResult is a wrapper around InferResult object of
+/// TritonCApiInferResult is a wrapper around InferResult object of
 /// triton client library.
 ///
-class TritonLocalInferResult : public InferResult {
+class TritonCApiInferResult : public InferResult {
  public:
-  explicit TritonLocalInferResult(nic::InferResult* result);
+  explicit TritonCApiInferResult(nic::InferResult* result);
   /// See InferResult::Id()
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()

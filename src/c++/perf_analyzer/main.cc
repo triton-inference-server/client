@@ -278,20 +278,16 @@ Usage(char** argv, const std::string& msg = std::string())
 
   std::cerr
       << FormatMessage(
-             " --service-kind: Describes the kind of service perf_analyzer "
-             "to generate load for. The options are \"triton\", "
-             "\"triton_local\" "
-             ", \"tfserving\" and \"torchserve\". Default value is \"triton\". "
+             " --service-kind: Describes the kind of service perf_analyzer to "
+             "generate load for. The options are \"triton\", \"triton_c_api\", "
+             "\"tfserving\" and \"torchserve\". Default value is \"triton\". "
              "Note in order to use \"torchserve\" backend --input-data option "
-             "must "
-             "point to a json file holding data in the following format "
-             "{\"data\" : "
-             "[{\"TORCHSERVE_INPUT\" : [\"<complete path to the content "
-             "file>\"]}, {...}...]}. The type of file here will depend on the "
-             "model. In order to use \"triton_local\" you must specify the "
-             " /lib/libtritonserver.so location and the model repository path "
-             "via the "
-             "--library-name and --model-repo flags",
+             "must point to a json file holding data in the following format "
+             "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
+             "content file>\"]}, {...}...]}. The type of file here will depend "
+             "on the model. In order to use \"triton_c_api\" you must specify "
+             "the /lib/libtritonserver.so location and the model repository "
+             "path via the --library-name and --model-repo flags",
              18)
       << std::endl;
 
@@ -626,18 +622,18 @@ Usage(char** argv, const std::string& msg = std::string())
       << std::endl;
 
   std::cerr << FormatMessage(
-                   " --library-name: The library for libtritonserver.so "
-                   " Required when the the C API is used "
-                   "(--service-kind=triton_local)"
-                   " exmaple: --library-name=/opt/tritonserver.",
+                   " --triton-server-directory: The library for "
+                   "libtritonserver.so. Required by and only used when C API "
+                   "is used (--service-kind=triton_c_api). "
+                   "eg:--triton-server-directory=/opt/tritonserver.",
                    18)
             << std::endl;
   std::cerr
       << FormatMessage(
-             " --model-repo: The model repository of which the model is loaded"
-             " Required when the the C API is used "
-             "(--service-kind=triton_local)"
-             " exmaple: --model-repo=/tmp/host/docker-data/model_unit_test.",
+             " --model-repository: The model repository of which the model is "
+             "loaded. Required by and only used when C API is used "
+             "(--service-kind=triton_c_api). "
+             "eg:--model-repository=/tmp/host/docker-data/model_unit_test.",
              18)
       << std::endl;
   exit(1);
@@ -703,11 +699,11 @@ main(int argc, char** argv)
   bool max_threads_specified = false;
 
   // C Api backend required info
-  const std::string DEFAULT_SERVER_LIBRARY_PATH = "/opt/tritonserver";
+  const std::string DEFAULT_TRITON_SERVER_PATH = "/opt/tritonserver";
   const std::string DEFAULT_MODEL_REPO =
       "/tmp/host/docker-data/model_unit_test/";
   const std::string DEFAULT_MEMORY_TYPE = "system";
-  std::string server_library_path;
+  std::string triton_server_path;
   std::string model_repository_path;
   std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
 
@@ -741,8 +737,8 @@ main(int argc, char** argv)
       {"grpc-compression-algorithm", 1, 0, 25},
       {"measurement-mode", 1, 0, 26},
       {"measurement-request-count", 1, 0, 27},
-      {"library-name", 1, 0, 28},
-      {"model-repo", 1, 0, 29},
+      {"triton-server-directory", 1, 0, 28},
+      {"model-repository", 1, 0, 29},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -958,8 +954,8 @@ main(int argc, char** argv)
           kind = cb::TENSORFLOW_SERVING;
         } else if (arg.compare("torchserve") == 0) {
           kind = cb::TORCHSERVE;
-        } else if (arg.compare("triton_local") == 0) {
-          kind = cb::TRITON_LOCAL;
+        } else if (arg.compare("triton_c_api") == 0) {
+          kind = cb::TRITON_C_API;
         } else {
           Usage(argv, "unsupported --service-kind specified");
         }
@@ -1002,10 +998,11 @@ main(int argc, char** argv)
       case 28: {
         std::string arg = optarg;
         if (!arg.empty()) {
-          server_library_path = arg;
-        } else if (kind == cb::TRITON_LOCAL) {
-          std::cerr << "using default server libray path for C API: "
-                    << server_library_path << std::endl;
+          triton_server_path = arg;
+        } else if (kind == cb::TRITON_C_API) {
+          triton_server_path = DEFAULT_TRITON_SERVER_PATH;
+          std::cerr << "Using default server libray path for C API: "
+                    << triton_server_path << std::endl;
         }
         break;
       }
@@ -1013,8 +1010,9 @@ main(int argc, char** argv)
         std::string arg = optarg;
         if (!arg.empty()) {
           model_repository_path = arg;
-        } else if (kind == cb::TRITON_LOCAL) {
-          std::cerr << "using default model repository path for C API: "
+        } else if (kind == cb::TRITON_C_API) {
+          model_repository_path = DEFAULT_MODEL_REPO;
+          std::cerr << "Using default model repository path for C API: "
                     << model_repository_path << std::endl;
         }
         break;
@@ -1243,7 +1241,7 @@ main(int argc, char** argv)
   if (!max_threads_specified && target_concurrency) {
     max_threads = 16;
   }
-  if (kind == cb::BackendKind::TRITON_LOCAL) {
+  if (kind == cb::BackendKind::TRITON_C_API) {
     std::cout << " USING C API: only default functionalities supported "
               << std::endl;
     if (!target_concurrency) {
@@ -1253,12 +1251,12 @@ main(int argc, char** argv)
       std::cerr << "Shared memory not yet supported by C API" << std::endl;
       return 1;
     } else if (
-        server_library_path.empty() || model_repository_path.empty() ||
+        triton_server_path.empty() || model_repository_path.empty() ||
         memory_type.empty()) {
       std::cerr
           << "Not enough information to create C API. /lib/libtritonserver.so "
              "directory:"
-          << server_library_path << " model repo:" << model_repository_path
+          << triton_server_path << " model repo:" << model_repository_path
           << " memory type:" << memory_type << std::endl;
       return 1;
     } else if (async) {
@@ -1274,8 +1272,8 @@ main(int argc, char** argv)
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, compression_algorithm, http_headers,
-          server_library_path, model_repository_path, memory_type,
-          extra_verbose, &factory),
+          triton_server_path, model_repository_path, memory_type, extra_verbose,
+          &factory),
       "failed to create client factory");
 
   std::unique_ptr<cb::ClientBackend> backend;
@@ -1285,20 +1283,8 @@ main(int argc, char** argv)
 
   std::shared_ptr<pa::ModelParser> parser =
       std::make_shared<pa::ModelParser>(kind);
-  if (kind == cb::BackendKind::TRITON) {
-    rapidjson::Document model_metadata;
-    FAIL_IF_ERR(
-        backend->ModelMetadata(&model_metadata, model_name, model_version),
-        "failed to get model metadata");
-    rapidjson::Document model_config;
-    FAIL_IF_ERR(
-        backend->ModelConfig(&model_config, model_name, model_version),
-        "failed to get model config");
-    FAIL_IF_ERR(
-        parser->InitTriton(
-            model_metadata, model_config, model_version, input_shapes, backend),
-        "failed to create model parser");
-  } else if (kind == cb::BackendKind::TRITON_LOCAL) {
+  if (kind == cb::BackendKind::TRITON ||
+      kind == cb::BackendKind::TRITON_C_API) {
     rapidjson::Document model_metadata;
     FAIL_IF_ERR(
         backend->ModelMetadata(&model_metadata, model_name, model_version),

@@ -37,6 +37,7 @@
 #include "ipc.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
+
 #define RETURN_IF_CB_ERROR(S)                                 \
   do {                                                        \
     const perfanalyzer::clientbackend::Error& status__ = (S); \
@@ -96,11 +97,12 @@ class InferInput;
 class InferRequestedOutput;
 class InferResult;
 class TritonLoader;
+
 enum BackendKind {
   TRITON = 0,
   TENSORFLOW_SERVING = 1,
   TORCHSERVE = 2,
-  TRITON_LOCAL = 3
+  TRITON_C_API = 3
 };
 enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {
@@ -196,21 +198,20 @@ class ClientBackendFactory {
   /// \param http_headers Map of HTTP headers. The map key/value
   /// indicates the header name/value. The headers will be included
   /// with all the requests made to server using this client.
-  /// \param server_library_path Only for C api backend. Lbrary path to
-  /// ModelIdentifier
-  /// \param model_repository_path Only for C api backend.
-  /// Path to model
-  /// \param memory_type Only for C api backend. Type of memory
-  /// used (system is default)
-  /// \param verbose Enables the verbose mode.
-  /// \param factory Returns a new ClientBackend object.
+  /// \param triton_server_path Only for C api backend. Lbrary path to
+  /// path to the top-level Triton directory (which is typically
+  /// /opt/tritonserver) Must contain libtritonserver.so. \param
+  /// model_repository_path Only for C api backend. Path to model repository
+  /// which contains the desired model. \param memory_type Only for C api
+  /// backend. Type of memory used (system is default) \param verbose Enables
+  /// the verbose mode. \param factory Returns a new ClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
-      const std::string& server_library_path,
+      const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
       const bool verbose, std::shared_ptr<ClientBackendFactory>* factory);
 
@@ -224,12 +225,12 @@ class ClientBackendFactory {
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
-      const std::string& server_library_path,
+      const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
       const bool verbose)
       : kind_(kind), url_(url), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers), server_library_path_(server_library_path),
+        http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path),
         memory_type_(memory_type), verbose_(verbose)
   {
@@ -240,7 +241,7 @@ class ClientBackendFactory {
   const ProtocolType protocol_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
-  std::string server_library_path_;
+  std::string triton_server_path;
   std::string model_repository_path_;
   std::string memory_type_;
   const bool verbose_;
