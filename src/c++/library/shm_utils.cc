@@ -62,7 +62,7 @@ MapSharedMemory(int shm_fd, size_t offset, size_t byte_size, void** shm_addr)
   *shm_addr =
       mmap(NULL, byte_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, offset);
   if (*shm_addr == MAP_FAILED) {
-    return  Error(
+    return Error(
         "unable to process address space or shared-memory descriptor: " +
         std::to_string(shm_fd));
   }
@@ -75,7 +75,7 @@ CloseSharedMemory(int shm_fd)
 {
   // close shared memory descriptor
   if (close(shm_fd) == -1) {
-    return  Error(
+    return Error(
         "unable to close shared-memory descriptor: " + std::to_string(shm_fd));
   }
 
