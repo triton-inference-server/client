@@ -33,12 +33,11 @@
 #include <vector>
 #include "grpc_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
 using ResultMap =
-    std::map<std::string, std::vector<std::shared_ptr<nic::InferResult>>>;
-using ResultList = std::vector<std::shared_ptr<nic::InferResult>>;
+    std::map<std::string, std::vector<std::shared_ptr<tc::InferResult>>>;
+using ResultList = std::vector<std::shared_ptr<tc::InferResult>>;
 
 // Global mutex to synchronize the threads
 std::mutex mutex_;
@@ -46,7 +45,7 @@ std::condition_variable cv_;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -85,7 +84,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8001");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
   int request_count = 1;
   int repeat_count = 1;
   int data_offset = 100;
@@ -129,7 +128,7 @@ main(int argc, char** argv)
     }
   }
 
-  nic::Error err;
+  tc::Error err;
 
   // We use the custom "repeat_int32" model which takes 3 inputs and
   // 1 output. For a single request the model will generate 'repeat_count'
@@ -139,9 +138,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
-  std::unique_ptr<nic::InferenceServerGrpcClient> client;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerGrpcClient::Create(&client, url, verbose),
+      tc::InferenceServerGrpcClient::Create(&client, url, verbose),
       "unable to create grpc client");
 
   ResultMap result_map;
@@ -150,9 +149,9 @@ main(int argc, char** argv)
   // of decoupled model.
   FAIL_IF_ERR(
       client->StartStream(
-          [&](nic::InferResult* result) {
+          [&](tc::InferResult* result) {
             {
-              std::shared_ptr<nic::InferResult> result_ptr(result);
+              std::shared_ptr<tc::InferResult> result_ptr(result);
               std::lock_guard<std::mutex> lk(mutex_);
               std::string request_id;
               result->Id(&request_id);
@@ -179,12 +178,12 @@ main(int argc, char** argv)
   wait_data.push_back(wait_time);
 
   // Initialize the inputs with the data.
-  nic::InferInput* in;
+  tc::InferInput* in;
   std::vector<int64_t> shape{repeat_count};
   FAIL_IF_ERR(
-      nic::InferInput::Create(&in, "IN", shape, "INT32"),
+      tc::InferInput::Create(&in, "IN", shape, "INT32"),
       "unable to create 'IN'");
-  std::shared_ptr<nic::InferInput> in_ptr(in);
+  std::shared_ptr<tc::InferInput> in_ptr(in);
   FAIL_IF_ERR(in_ptr->Reset(), "unable to reset 'IN'");
   FAIL_IF_ERR(
       in_ptr->AppendRaw(
@@ -192,11 +191,11 @@ main(int argc, char** argv)
           sizeof(int32_t) * repeat_count),
       "unable to set data for 'IN'");
 
-  nic::InferInput* delay;
+  tc::InferInput* delay;
   FAIL_IF_ERR(
-      nic::InferInput::Create(&delay, "DELAY", shape, "UINT32"),
+      tc::InferInput::Create(&delay, "DELAY", shape, "UINT32"),
       "unable to create 'DELAY'");
-  std::shared_ptr<nic::InferInput> delay_ptr(delay);
+  std::shared_ptr<tc::InferInput> delay_ptr(delay);
   FAIL_IF_ERR(delay_ptr->Reset(), "unable to reset 'DELAY'");
   FAIL_IF_ERR(
       delay_ptr->AppendRaw(
@@ -204,22 +203,22 @@ main(int argc, char** argv)
           sizeof(uint32_t) * repeat_count),
       "unable to set data for 'DELAY'");
 
-  nic::InferInput* wait;
+  tc::InferInput* wait;
   shape[0] = 1;
   FAIL_IF_ERR(
-      nic::InferInput::Create(&wait, "WAIT", shape, "UINT32"),
+      tc::InferInput::Create(&wait, "WAIT", shape, "UINT32"),
       "unable to create 'WAIT'");
-  std::shared_ptr<nic::InferInput> wait_ptr(wait);
+  std::shared_ptr<tc::InferInput> wait_ptr(wait);
   FAIL_IF_ERR(wait_ptr->Reset(), "unable to reset 'WAIT'");
   FAIL_IF_ERR(
       wait_ptr->AppendRaw(
           reinterpret_cast<uint8_t*>(&wait_data[0]), sizeof(uint32_t)),
       "unable to set data for 'WAIT'");
 
-  std::vector<nic::InferInput*> inputs = {in_ptr.get(), delay_ptr.get(),
+  std::vector<tc::InferInput*> inputs = {in_ptr.get(), delay_ptr.get(),
                                           wait_ptr.get()};
 
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
 
   for (int id = 0; id < request_count; id++) {
     options.request_id_ = std::to_string(id);

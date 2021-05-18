@@ -29,12 +29,11 @@
 #include <string>
 #include "grpc_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -69,7 +68,7 @@ main(int argc, char** argv)
 {
   bool verbose = false;
   std::string url("localhost:8001");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
 
   // Parse commandline...
   int opt;
@@ -97,9 +96,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
-  std::unique_ptr<nic::InferenceServerGrpcClient> client;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerGrpcClient::Create(&client, url, verbose),
+      tc::InferenceServerGrpcClient::Create(&client, url, verbose),
       "unable to create grpc client");
 
   inference::RepositoryIndexResponse repository_index;
@@ -134,7 +133,7 @@ main(int argc, char** argv)
     exit(1);
   }
 
-  nic::Error err = client->LoadModel("wrong_model_name", http_headers);
+  tc::Error err = client->LoadModel("wrong_model_name", http_headers);
   if (err.IsOk()) {
     std::cerr << "error: wrong model name was successfully loaded" << std::endl;
   }

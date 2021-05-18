@@ -34,7 +34,7 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);    \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
@@ -42,16 +42,17 @@
 
 #define FAIL_IF_TRITON_ERR(X, MSG)                                 \
   {                                                                \
-    const nic::Error err = (X);                                    \
+    const tc::Error err = (X);                                     \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
     }                                                              \
   }
 
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritonremote {
 
 //==============================================================================
 /// TritonClientBackend uses triton client C++ library to communicate with
@@ -72,7 +73,7 @@ class TritonClientBackend : public ClientBackend {
   static Error Create(
       const std::string& url, const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<nic::Headers> http_headers, const bool verbose,
+      std::shared_ptr<tc::Headers> http_headers, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -151,7 +152,7 @@ class TritonClientBackend : public ClientBackend {
   TritonClientBackend(
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<nic::Headers> http_headers)
+      std::shared_ptr<tc::Headers> http_headers)
       : ClientBackend(BackendKind::TRITON), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers)
@@ -160,12 +161,12 @@ class TritonClientBackend : public ClientBackend {
 
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
-      std::vector<nic::InferInput*>* triton_inputs);
+      std::vector<tc::InferInput*>* triton_inputs);
   void ParseInferRequestedOutputToTriton(
       const std::vector<const InferRequestedOutput*>& outputs,
-      std::vector<const nic::InferRequestedOutput*>* triton_outputs);
+      std::vector<const tc::InferRequestedOutput*>* triton_outputs);
   void ParseInferOptionsToTriton(
-      const InferOptions& options, nic::InferOptions* triton_options);
+      const InferOptions& options, tc::InferOptions* triton_options);
   void ParseStatistics(
       const inference::ModelStatisticsResponse& infer_stat,
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
@@ -173,24 +174,24 @@ class TritonClientBackend : public ClientBackend {
       const rapidjson::Document& infer_stat,
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
-      const nic::InferStat& triton_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
 
   /// Union to represent the underlying triton client belonging to one of
   /// the protocols
   union TritonClient {
     TritonClient()
     {
-      new (&http_client_) std::unique_ptr<nic::InferenceServerHttpClient>{};
+      new (&http_client_) std::unique_ptr<tc::InferenceServerHttpClient>{};
     }
     ~TritonClient() {}
 
-    std::unique_ptr<nic::InferenceServerHttpClient> http_client_;
-    std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client_;
+    std::unique_ptr<tc::InferenceServerHttpClient> http_client_;
+    std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_;
   } client_;
 
   const ProtocolType protocol_;
   const grpc_compression_algorithm compression_algorithm_;
-  std::shared_ptr<nic::Headers> http_headers_;
+  std::shared_ptr<tc::Headers> http_headers_;
 };
 
 //==============================================================
@@ -203,7 +204,7 @@ class TritonInferInput : public InferInput {
       InferInput** infer_input, const std::string& name,
       const std::vector<int64_t>& dims, const std::string& datatype);
   /// Returns the raw InferInput object required by triton client library.
-  nic::InferInput* Get() const { return input_.get(); }
+  tc::InferInput* Get() const { return input_.get(); }
   /// See InferInput::Shape()
   const std::vector<int64_t>& Shape() const override;
   /// See InferInput::SetShape()
@@ -220,7 +221,7 @@ class TritonInferInput : public InferInput {
   explicit TritonInferInput(
       const std::string& name, const std::string& datatype);
 
-  std::unique_ptr<nic::InferInput> input_;
+  std::unique_ptr<tc::InferInput> input_;
 };
 
 //==============================================================
@@ -234,7 +235,7 @@ class TritonInferRequestedOutput : public InferRequestedOutput {
       const size_t class_count = 0);
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
-  nic::InferRequestedOutput* Get() const { return output_.get(); }
+  tc::InferRequestedOutput* Get() const { return output_.get(); }
   // See InferRequestedOutput::SetSharedMemory()
   Error SetSharedMemory(
       const std::string& region_name, const size_t byte_size,
@@ -243,7 +244,7 @@ class TritonInferRequestedOutput : public InferRequestedOutput {
  private:
   explicit TritonInferRequestedOutput();
 
-  std::unique_ptr<nic::InferRequestedOutput> output_;
+  std::unique_ptr<tc::InferRequestedOutput> output_;
 };
 
 //==============================================================
@@ -252,14 +253,14 @@ class TritonInferRequestedOutput : public InferRequestedOutput {
 ///
 class TritonInferResult : public InferResult {
  public:
-  explicit TritonInferResult(nic::InferResult* result);
+  explicit TritonInferResult(tc::InferResult* result);
   /// See InferResult::Id()
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()
   Error RequestStatus() const override;
 
  private:
-  std::unique_ptr<nic::InferResult> result_;
+  std::unique_ptr<tc::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritonremote

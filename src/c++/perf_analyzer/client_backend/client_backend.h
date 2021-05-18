@@ -44,7 +44,7 @@
     }                            \
   } while (false)
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //==============================================================================
 /// Error status reported by backends
@@ -287,7 +287,7 @@ class ClientBackend {
   // Shared Memory Utilities
   //
   // FIXME: These should probably move to a common area with shm_utils not tied
-  // specifically to nvidia::inferenceserver.
+  // specifically to inferenceserver.
   // Create a shared memory region of the size 'byte_size' and return the unique
   // identifier.
   virtual Error CreateSharedMemoryRegion(
@@ -453,4 +453,4 @@ class InferResult {
   virtual Error RequestStatus() const = 0;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}  // namespace triton::perfanalyzer::clientbackend

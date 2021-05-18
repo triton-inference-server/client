@@ -38,7 +38,7 @@
 #include <sstream>
 #include "grpc_client.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 namespace {
 
 //==============================================================================
@@ -1340,4 +1340,4 @@ InferenceServerGrpcClient::~InferenceServerGrpcClient()
 
 //==============================================================================
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

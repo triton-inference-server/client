@@ -32,16 +32,19 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);    \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
   } while (false)
 
-namespace nic = nvidia::inferenceserver::client;
-namespace ts = perfanalyzer::clientbackend::torchserve;
+namespace tc = triton::client;
+namespace cb = triton::perfanalyzer::clientbackend;
+namespace ts = triton::perfanalyzer::clientbackend::torchserve;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
+
 
 //==============================================================================
 /// TorchServeClientBackend is used to generate load on the Torchserve isntance
@@ -65,7 +68,7 @@ class TorchServeClientBackend : public ClientBackend {
 
   /// See ClientBackend::Infer()
   Error Infer(
-      InferResult** result, const InferOptions& options,
+      cb::InferResult** result, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
@@ -79,7 +82,7 @@ class TorchServeClientBackend : public ClientBackend {
   }
 
   void ParseInferStat(
-      const nic::InferStat& torchserve_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& torchserve_infer_stat, InferStat* infer_stat);
 
   std::unique_ptr<ts::HttpClient> http_client_;
   std::shared_ptr<Headers> http_headers_;
@@ -89,7 +92,7 @@ class TorchServeClientBackend : public ClientBackend {
 /// TorchServeInferResult is a wrapper around InferResult object of
 /// torchserve InferResult object.
 ///
-class TorchServeInferResult : public InferResult {
+class TorchServeInferResult : public cb::InferResult {
  public:
   explicit TorchServeInferResult(ts::InferResult* result);
   /// See InferResult::Id()
@@ -101,4 +104,4 @@ class TorchServeInferResult : public InferResult {
   std::unique_ptr<ts::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

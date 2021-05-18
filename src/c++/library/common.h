@@ -40,7 +40,7 @@
 #include <thread>
 #include <vector>
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 constexpr char kInferHeaderContentLengthHTTPHeader[] =
     "Inference-Header-Content-Length";
@@ -367,7 +367,7 @@ class InferRequestedOutput {
   /// default value is 0 which means the classification results are not
   /// requested.
   /// \return Error object indicating success or failure.
-  static Error Create(
+ static Error Create(
       InferRequestedOutput** infer_output, const std::string& name,
       const size_t class_count = 0);
 
@@ -615,4 +615,4 @@ class InferRequest {
 };
 
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

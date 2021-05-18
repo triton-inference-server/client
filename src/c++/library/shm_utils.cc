@@ -32,77 +32,77 @@
 #include <iostream>
 #include <string>
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
-nic::Error
+Error
 CreateSharedMemoryRegion(std::string shm_key, size_t byte_size, int* shm_fd)
 {
   // get shared memory region descriptor
   *shm_fd = shm_open(shm_key.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   if (*shm_fd == -1) {
-    return nic::Error(
+    return Error(
         "unable to get shared memory descriptor for shared-memory key '" +
         shm_key + "'");
   }
   // extend shared memory object as by default it's initialized with size 0
   int res = ftruncate(*shm_fd, byte_size);
   if (res == -1) {
-    return nic::Error(
+    return Error(
         "unable to initialize shared-memory key '" + shm_key +
         "' to requested size: " + std::to_string(byte_size) + " bytes");
   }
 
-  return nic::Error::Success;
+  return Error::Success;
 }
 
-nic::Error
+Error
 MapSharedMemory(int shm_fd, size_t offset, size_t byte_size, void** shm_addr)
 {
   // map shared memory to process address space
   *shm_addr =
       mmap(NULL, byte_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, offset);
   if (*shm_addr == MAP_FAILED) {
-    return nic::Error(
+    return Error(
         "unable to process address space or shared-memory descriptor: " +
         std::to_string(shm_fd));
   }
 
-  return nic::Error::Success;
+  return Error::Success;
 }
 
-nic::Error
+Error
 CloseSharedMemory(int shm_fd)
 {
   // close shared memory descriptor
   if (close(shm_fd) == -1) {
-    return nic::Error(
+    return Error(
         "unable to close shared-memory descriptor: " + std::to_string(shm_fd));
   }
 
-  return nic::Error::Success;
+  return Error::Success;
 }
 
-nic::Error
+Error
 UnlinkSharedMemoryRegion(std::string shm_key)
 {
   int shm_fd = shm_unlink(shm_key.c_str());
   if (shm_fd == -1) {
-    return nic::Error(
+    return Error(
         "unable to unlink shared memory for key '" + shm_key + "'");
   }
 
-  return nic::Error::Success;
+  return Error::Success;
 }
 
-nic::Error
+Error
 UnmapSharedMemory(void* shm_addr, size_t byte_size)
 {
   int tmp_fd = munmap(shm_addr, byte_size);
   if (tmp_fd == -1) {
-    return nic::Error("unable to munmap shared memory region");
+    return Error("unable to munmap shared memory region");
   }
 
-  return nic::Error::Success;
+  return Error::Success;
 }
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

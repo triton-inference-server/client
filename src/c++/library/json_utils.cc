@@ -28,7 +28,7 @@
 
 #include <rapidjson/error/en.h>
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 Error
 ParseJson(rapidjson::Document* document, const std::string& json_str)
@@ -43,4 +43,4 @@ ParseJson(rapidjson::Document* document, const std::string& json_str)
   return Error::Success;
 }
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

@@ -30,7 +30,8 @@
 #include <cstdint>
 #include "torchserve_client_backend.h"
 
-namespace perfanalyzer { namespace clientbackend { namespace torchserve {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace torchserve {
 
 namespace {
 
@@ -153,7 +154,7 @@ HttpClient::Infer(
 
   sync_request->Timer().Reset();
   sync_request->Timer().CaptureTimestamp(
-      nic::RequestTimers::Kind::REQUEST_START);
+      tc::RequestTimers::Kind::REQUEST_START);
 
   if (!curl_global.Status().IsOk()) {
     return curl_global.Status();
@@ -166,7 +167,7 @@ HttpClient::Infer(
     return err;
   }
 
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_START);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
 
   // During this call SEND_END (except in above case), RECV_START, and
   // RECV_END will be set.
@@ -183,9 +184,9 @@ HttpClient::Infer(
 
   InferResult::Create(result, sync_request);
 
-  sync_request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
+  sync_request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
 
-  nic::Error nic_err = UpdateInferStat(sync_request->Timer());
+  tc::Error nic_err = UpdateInferStat(sync_request->Timer());
   if (!nic_err.IsOk()) {
     std::cerr << "Failed to update context stat: " << nic_err << std::endl;
   }
@@ -203,7 +204,7 @@ HttpClient::ReadCallback(char* buffer, size_t size, size_t nitems, void* userp)
   if (retcode == 0) {
     ((HttpInferRequest*)userp)
         ->Timer()
-        .CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
+        .CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
   }
   return retcode;
 }
@@ -247,8 +248,8 @@ HttpClient::InferResponseHandler(
 {
   HttpInferRequest* request = reinterpret_cast<HttpInferRequest*>(userp);
 
-  if (request->Timer().Timestamp(nic::RequestTimers::Kind::RECV_START) == 0) {
-    request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_START);
+  if (request->Timer().Timestamp(tc::RequestTimers::Kind::RECV_START) == 0) {
+    request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
   }
 
   char* buf = reinterpret_cast<char*>(contents);
@@ -257,7 +258,7 @@ HttpClient::InferResponseHandler(
 
   // InferResponseHandler may be called multiple times so we overwrite
   // RECV_END so that we always have the time of the last.
-  request->Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_END);
+  request->Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
 
   return result_bytes;
 }
@@ -404,4 +405,4 @@ InferResult::InferResult(std::shared_ptr<HttpInferRequest> infer_request)
 
 //======================================================================
 
-}}}  // namespace perfanalyzer::clientbackend::torchserve
+}}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

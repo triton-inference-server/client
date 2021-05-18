@@ -34,7 +34,7 @@
 #include "perf_utils.h"
 #include "request_rate_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 volatile bool early_exit = false;
 
@@ -53,7 +53,7 @@ SignalHandler(int signum)
     exit(0);
   }
 }
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer
 
 //==============================================================================
 // Perf Analyzer

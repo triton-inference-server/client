@@ -30,8 +30,8 @@
 #include <string>
 #include "common.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 Error ParseJson(rapidjson::Document* document, const std::string& json_str);
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

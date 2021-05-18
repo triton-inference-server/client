@@ -30,7 +30,8 @@
 #include "../client_backend.h"
 
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 //==============================================================
 /// TFServeInferInput instance holds the information regarding
@@ -71,4 +72,4 @@ class TFServeInferInput : public InferInput {
   std::vector<size_t> buf_byte_sizes_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving

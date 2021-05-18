@@ -26,7 +26,8 @@
 
 #include "tfserve_infer_input.h"
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 Error
 TFServeInferInput::Create(
@@ -108,4 +109,4 @@ TFServeInferInput::TFServeInferInput(
 {
 }
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving

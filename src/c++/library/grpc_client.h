@@ -33,7 +33,7 @@
 #include "ipc.h"
 #include "model_config.pb.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
+namespace triton { namespace client {
 
 /// The key-value map type to be included in the request
 /// metadata
@@ -408,4 +408,4 @@ class InferenceServerGrpcClient : public InferenceServerClient {
 };
 
 
-}}}  // namespace nvidia::inferenceserver::client
+}}  // namespace triton::client

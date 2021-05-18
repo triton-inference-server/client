@@ -31,9 +31,10 @@
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"
 #include "tfserve_infer_input.h"
 
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
-namespace perfanalyzer { namespace clientbackend { namespace tfserving {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 struct SslOptions {
   explicit SslOptions() {}
@@ -69,7 +70,7 @@ using TFServeOnCompleteFn = std::function<void(InferResult*)>;
 ///   ...
 /// \endcode
 ///
-class GrpcClient : public nic::InferenceServerClient {
+class GrpcClient : public tc::InferenceServerClient {
  public:
   ~GrpcClient();
 
@@ -215,4 +216,4 @@ class InferResult {
 
 //======================================================================
 
-}}}  // namespace perfanalyzer::clientbackend::tfserving
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving

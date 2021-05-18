@@ -32,16 +32,19 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);    \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
   } while (false)
 
-namespace nic = nvidia::inferenceserver::client;
-namespace tfs = perfanalyzer::clientbackend::tfserving;
+namespace tc = triton::client;
+namespace cb = triton::perfanalyzer::clientbackend;
+namespace tfs = triton::perfanalyzer::clientbackend::tfserving;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
+
 
 //==============================================================================
 /// TFServeClientBackend is used to generate load on the TF serving isntance
@@ -73,7 +76,7 @@ class TFServeClientBackend : public ClientBackend {
 
   /// See ClientBackend::Infer()
   Error Infer(
-      InferResult** result, const InferOptions& options,
+      cb::InferResult** result, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
@@ -97,9 +100,9 @@ class TFServeClientBackend : public ClientBackend {
   }
 
   void ParseInferStat(
-      const nic::InferStat& tfserve_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat);
 
-  std::unique_ptr<tfs::GrpcClient> grpc_client_;
+  std::unique_ptr<GrpcClient> grpc_client_;
 
   grpc_compression_algorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
@@ -115,19 +118,19 @@ class TFServeInferRequestedOutput : public InferRequestedOutput {
       InferRequestedOutput** infer_output, const std::string name);
   /// Returns the raw InferRequestedOutput object required by TFserving client
   /// library.
-  nic::InferRequestedOutput* Get() const { return output_.get(); }
+  tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
   explicit TFServeInferRequestedOutput();
 
-  std::unique_ptr<nic::InferRequestedOutput> output_;
+  std::unique_ptr<tc::InferRequestedOutput> output_;
 };
 
 //==============================================================
 /// TFServeInferResult is a wrapper around InferResult object of
 /// TF serving InferResult object.
 ///
-class TFServeInferResult : public InferResult {
+class TFServeInferResult : public cb::InferResult {
  public:
   explicit TFServeInferResult(tfs::InferResult* result);
   /// See InferResult::Id()
@@ -139,4 +142,4 @@ class TFServeInferResult : public InferResult {
   std::unique_ptr<tfs::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving

@@ -32,12 +32,11 @@
 #include "grpc_client.h"
 #include "http_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -51,7 +50,7 @@ namespace {
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<nic::InferResult> result)
+    const std::string& name, std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -76,7 +75,7 @@ ValidateShapeAndDatatype(
 
 void
 ValidateResult(
-    const std::shared_ptr<nic::InferResult> result,
+    const std::shared_ptr<tc::InferResult> result,
     std::vector<int32_t>& input0_data)
 {
   // Validate the results...
@@ -109,31 +108,31 @@ ValidateResult(
 
 void
 RunSynchronousInference(
-    std::vector<nic::InferInput*>& inputs,
-    std::vector<const nic::InferRequestedOutput*>& outputs,
-    nic::InferOptions& options, std::vector<int32_t>& input0_data, bool reuse,
+    std::vector<tc::InferInput*>& inputs,
+    std::vector<const tc::InferRequestedOutput*>& outputs,
+    tc::InferOptions& options, std::vector<int32_t>& input0_data, bool reuse,
     std::string url, bool verbose, std::string protocol, uint32_t repetitions)
 {
   // If re-use is enabled then use these client objects else use new objects for
   // each inference request.
-  std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client_reuse;
-  std::unique_ptr<nic::InferenceServerHttpClient> http_client_reuse;
+  std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_reuse;
+  std::unique_ptr<tc::InferenceServerHttpClient> http_client_reuse;
 
   for (size_t i = 0; i < repetitions; ++i) {
-    nic::InferResult* results;
+    tc::InferResult* results;
     if (!reuse) {
       if (protocol == "grpc") {
-        std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client;
+        std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client;
         FAIL_IF_ERR(
-            nic::InferenceServerGrpcClient::Create(&grpc_client, url, verbose),
+            tc::InferenceServerGrpcClient::Create(&grpc_client, url, verbose),
             "unable to create grpc client");
         FAIL_IF_ERR(
             grpc_client->Infer(&results, options, inputs, outputs),
             "unable to run model");
       } else {
-        std::unique_ptr<nic::InferenceServerHttpClient> http_client;
+        std::unique_ptr<tc::InferenceServerHttpClient> http_client;
         FAIL_IF_ERR(
-            nic::InferenceServerHttpClient::Create(&http_client, url, verbose),
+            tc::InferenceServerHttpClient::Create(&http_client, url, verbose),
             "unable to create http client");
         FAIL_IF_ERR(
             http_client->Infer(&results, options, inputs, outputs),
@@ -142,7 +141,7 @@ RunSynchronousInference(
     } else {
       if (protocol == "grpc") {
         FAIL_IF_ERR(
-            nic::InferenceServerGrpcClient::Create(
+            tc::InferenceServerGrpcClient::Create(
                 &grpc_client_reuse, url, verbose),
             "unable to create grpc client");
         FAIL_IF_ERR(
@@ -150,7 +149,7 @@ RunSynchronousInference(
             "unable to run model");
       } else {
         FAIL_IF_ERR(
-            nic::InferenceServerHttpClient::Create(
+            tc::InferenceServerHttpClient::Create(
                 &http_client_reuse, url, verbose),
             "unable to create http client");
         FAIL_IF_ERR(
@@ -159,7 +158,7 @@ RunSynchronousInference(
       }
     }
 
-    std::shared_ptr<nic::InferResult> results_ptr;
+    std::shared_ptr<tc::InferResult> results_ptr;
     results_ptr.reset(results);
 
     // Validate results
@@ -264,12 +263,12 @@ main(int argc, char** argv)
   std::vector<int64_t> shape{1, INPUT_DIM};
 
   // Initialize the inputs with the data.
-  nic::InferInput* input0;
+  tc::InferInput* input0;
 
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
+      tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
       "unable to get INPUT0");
-  std::shared_ptr<nic::InferInput> input0_ptr;
+  std::shared_ptr<tc::InferInput> input0_ptr;
   input0_ptr.reset(input0);
 
   FAIL_IF_ERR(
@@ -279,19 +278,19 @@ main(int argc, char** argv)
       "unable to set data for INPUT0");
 
   // Generate the outputs to be requested.
-  nic::InferRequestedOutput* output0;
+  tc::InferRequestedOutput* output0;
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
       "unable to get 'OUTPUT0'");
-  std::shared_ptr<nic::InferRequestedOutput> output0_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);
 
   // The inference settings. Will be using default for now.
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
   options.model_version_ = model_version;
 
-  std::vector<nic::InferInput*> inputs = {input0_ptr.get()};
-  std::vector<const nic::InferRequestedOutput*> outputs = {output0_ptr.get()};
+  std::vector<tc::InferInput*> inputs = {input0_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get()};
 
   // Send 'repetitions' number of inference requests to the inference server.
   RunSynchronousInference(

@@ -27,7 +27,7 @@
 
 #include "request_rate_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 //==============================================================================
 /// CustomLoadManager is a helper class to send inference requests to
@@ -102,4 +102,4 @@ class CustomLoadManager : public RequestRateManager {
   std::vector<std::chrono::nanoseconds> custom_intervals_;
 };
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

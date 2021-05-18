@@ -26,7 +26,7 @@
 
 #include "custom_load_manager.h"
 
-namespace perfanalyzer {
+namespace triton { namespace perfanalyzer {
 
 cb::Error
 CustomLoadManager::Create(
@@ -115,4 +115,4 @@ CustomLoadManager::GetCustomRequestRate(double* request_rate)
   return cb::Error::Success;
 }
 
-}  // namespace perfanalyzer
+}}  // namespace triton::perfanalyzer

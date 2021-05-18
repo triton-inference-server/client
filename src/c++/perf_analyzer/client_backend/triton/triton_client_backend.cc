@@ -28,8 +28,8 @@
 
 #include "json_utils.h"
 
-namespace perfanalyzer { namespace clientbackend {
-
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritonremote {
 //==============================================================================
 
 Error
@@ -42,10 +42,10 @@ TritonClientBackend::Create(
   std::unique_ptr<TritonClientBackend> triton_client_backend(
       new TritonClientBackend(protocol, compression_algorithm, http_headers));
   if (protocol == ProtocolType::HTTP) {
-    RETURN_IF_TRITON_ERROR(nic::InferenceServerHttpClient::Create(
+    RETURN_IF_TRITON_ERROR(tc::InferenceServerHttpClient::Create(
         &(triton_client_backend->client_.http_client_), url, verbose));
   } else {
-    RETURN_IF_TRITON_ERROR(nic::InferenceServerGrpcClient::Create(
+    RETURN_IF_TRITON_ERROR(tc::InferenceServerGrpcClient::Create(
         &(triton_client_backend->client_.grpc_client_), url, verbose));
   }
 
@@ -66,7 +66,7 @@ TritonClientBackend::ServerExtensions(std::set<std::string>* extensions)
 
     rapidjson::Document server_metadata_json;
     FAIL_IF_TRITON_ERR(
-        nic::ParseJson(&server_metadata_json, server_metadata),
+        tc::ParseJson(&server_metadata_json, server_metadata),
         "failed to parse server metadata");
     for (const auto& extension :
          server_metadata_json["extensions"].GetArray()) {
@@ -95,7 +95,7 @@ TritonClientBackend::ModelMetadata(
     std::string metadata;
     RETURN_IF_TRITON_ERROR(client_.http_client_->ModelMetadata(
         &metadata, model_name, model_version, *http_headers_));
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+    RETURN_IF_TRITON_ERROR(tc::ParseJson(model_metadata, metadata));
   } else {
     inference::ModelMetadataResponse model_metadata_proto;
     RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelMetadata(
@@ -108,7 +108,7 @@ TritonClientBackend::ModelMetadata(
     ::google::protobuf::util::MessageToJsonString(
         model_metadata_proto, &metadata, options);
 
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+    RETURN_IF_TRITON_ERROR(tc::ParseJson(model_metadata, metadata));
   }
 
   return Error::Success;
@@ -123,7 +123,7 @@ TritonClientBackend::ModelConfig(
     std::string config;
     RETURN_IF_TRITON_ERROR(client_.http_client_->ModelConfig(
         &config, model_name, model_version, *http_headers_));
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(model_config, config));
+    RETURN_IF_TRITON_ERROR(tc::ParseJson(model_config, config));
   } else {
     inference::ModelConfigResponse model_config_proto;
     RETURN_IF_TRITON_ERROR(client_.grpc_client_->ModelConfig(
@@ -137,7 +137,7 @@ TritonClientBackend::ModelConfig(
         model_config_proto, &config, options);
 
     rapidjson::Document full_config;
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(&full_config, config));
+    RETURN_IF_TRITON_ERROR(tc::ParseJson(&full_config, config));
     model_config->CopyFrom(full_config["config"], model_config->GetAllocator());
   }
   return Error::Success;
@@ -149,16 +149,16 @@ TritonClientBackend::Infer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  std::vector<nic::InferInput*> triton_inputs;
+  std::vector<tc::InferInput*> triton_inputs;
   ParseInferInputToTriton(inputs, &triton_inputs);
 
-  std::vector<const nic::InferRequestedOutput*> triton_outputs;
+  std::vector<const tc::InferRequestedOutput*> triton_outputs;
   ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
 
-  nic::InferOptions triton_options(options.model_name_);
+  tc::InferOptions triton_options(options.model_name_);
   ParseInferOptionsToTriton(options, &triton_options);
 
-  nic::InferResult* triton_result;
+  tc::InferResult* triton_result;
 
   if (protocol_ == ProtocolType::GRPC) {
     RETURN_IF_TRITON_ERROR(client_.grpc_client_->Infer(
@@ -181,18 +181,18 @@ TritonClientBackend::AsyncInfer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  auto wrapped_callback = [callback](nic::InferResult* client_result) {
+  auto wrapped_callback = [callback](tc::InferResult* client_result) {
     InferResult* result = new TritonInferResult(client_result);
     callback(result);
   };
 
-  std::vector<nic::InferInput*> triton_inputs;
+  std::vector<tc::InferInput*> triton_inputs;
   ParseInferInputToTriton(inputs, &triton_inputs);
 
-  std::vector<const nic::InferRequestedOutput*> triton_outputs;
+  std::vector<const tc::InferRequestedOutput*> triton_outputs;
   ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
 
-  nic::InferOptions triton_options(options.model_name_);
+  tc::InferOptions triton_options(options.model_name_);
   ParseInferOptionsToTriton(options, &triton_options);
 
   if (protocol_ == ProtocolType::GRPC) {
@@ -211,7 +211,7 @@ TritonClientBackend::AsyncInfer(
 Error
 TritonClientBackend::StartStream(OnCompleteFn callback, bool enable_stats)
 {
-  auto wrapped_callback = [callback](nic::InferResult* client_result) {
+  auto wrapped_callback = [callback](tc::InferResult* client_result) {
     InferResult* result = new TritonInferResult(client_result);
     callback(result);
   };
@@ -232,13 +232,13 @@ TritonClientBackend::AsyncStreamInfer(
     const InferOptions& options, const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  std::vector<nic::InferInput*> triton_inputs;
+  std::vector<tc::InferInput*> triton_inputs;
   ParseInferInputToTriton(inputs, &triton_inputs);
 
-  std::vector<const nic::InferRequestedOutput*> triton_outputs;
+  std::vector<const tc::InferRequestedOutput*> triton_outputs;
   ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
 
-  nic::InferOptions triton_options(options.model_name_);
+  tc::InferOptions triton_options(options.model_name_);
   ParseInferOptionsToTriton(options, &triton_options);
 
   if (protocol_ == ProtocolType::GRPC) {
@@ -254,7 +254,7 @@ TritonClientBackend::AsyncStreamInfer(
 Error
 TritonClientBackend::ClientInferStat(InferStat* infer_stat)
 {
-  nic::InferStat triton_infer_stat;
+  tc::InferStat triton_infer_stat;
   if (protocol_ == ProtocolType::GRPC) {
     RETURN_IF_TRITON_ERROR(
         client_.grpc_client_->ClientInferStat(&triton_infer_stat));
@@ -283,7 +283,7 @@ TritonClientBackend::ModelInferenceStatistics(
     RETURN_IF_TRITON_ERROR(client_.http_client_->ModelInferenceStatistics(
         &infer_stat, model_name, model_version, *http_headers_));
     rapidjson::Document infer_stat_json;
-    RETURN_IF_TRITON_ERROR(nic::ParseJson(&infer_stat_json, infer_stat));
+    RETURN_IF_TRITON_ERROR(tc::ParseJson(&infer_stat_json, infer_stat));
     ParseStatistics(infer_stat_json, model_stats);
   }
 
@@ -349,7 +349,7 @@ TritonClientBackend::CreateSharedMemoryRegion(
     std::string shm_key, size_t byte_size, int* shm_fd)
 {
   RETURN_IF_TRITON_ERROR(
-      nic::CreateSharedMemoryRegion(shm_key, byte_size, shm_fd));
+      tc::CreateSharedMemoryRegion(shm_key, byte_size, shm_fd));
 
   return Error::Success;
 }
@@ -360,7 +360,7 @@ TritonClientBackend::MapSharedMemory(
     int shm_fd, size_t offset, size_t byte_size, void** shm_addr)
 {
   RETURN_IF_TRITON_ERROR(
-      nic::MapSharedMemory(shm_fd, offset, byte_size, shm_addr));
+      tc::MapSharedMemory(shm_fd, offset, byte_size, shm_addr));
 
   return Error::Success;
 }
@@ -369,7 +369,7 @@ TritonClientBackend::MapSharedMemory(
 Error
 TritonClientBackend::CloseSharedMemory(int shm_fd)
 {
-  RETURN_IF_TRITON_ERROR(nic::CloseSharedMemory(shm_fd));
+  RETURN_IF_TRITON_ERROR(tc::CloseSharedMemory(shm_fd));
 
   return Error::Success;
 }
@@ -377,7 +377,7 @@ TritonClientBackend::CloseSharedMemory(int shm_fd)
 Error
 TritonClientBackend::UnlinkSharedMemoryRegion(std::string shm_key)
 {
-  RETURN_IF_TRITON_ERROR(nic::UnlinkSharedMemoryRegion(shm_key));
+  RETURN_IF_TRITON_ERROR(tc::UnlinkSharedMemoryRegion(shm_key));
 
   return Error::Success;
 }
@@ -385,7 +385,7 @@ TritonClientBackend::UnlinkSharedMemoryRegion(std::string shm_key)
 Error
 TritonClientBackend::UnmapSharedMemory(void* shm_addr, size_t byte_size)
 {
-  RETURN_IF_TRITON_ERROR(nic::UnmapSharedMemory(shm_addr, byte_size));
+  RETURN_IF_TRITON_ERROR(tc::UnmapSharedMemory(shm_addr, byte_size));
 
   return Error::Success;
 }
@@ -393,7 +393,7 @@ TritonClientBackend::UnmapSharedMemory(void* shm_addr, size_t byte_size)
 void
 TritonClientBackend::ParseInferInputToTriton(
     const std::vector<InferInput*>& inputs,
-    std::vector<nic::InferInput*>* triton_inputs)
+    std::vector<tc::InferInput*>* triton_inputs)
 {
   for (const auto input : inputs) {
     triton_inputs->push_back((dynamic_cast<TritonInferInput*>(input))->Get());
@@ -403,7 +403,7 @@ TritonClientBackend::ParseInferInputToTriton(
 void
 TritonClientBackend::ParseInferRequestedOutputToTriton(
     const std::vector<const InferRequestedOutput*>& outputs,
-    std::vector<const nic::InferRequestedOutput*>* triton_outputs)
+    std::vector<const tc::InferRequestedOutput*>* triton_outputs)
 {
   for (const auto output : outputs) {
     triton_outputs->push_back(
@@ -413,7 +413,7 @@ TritonClientBackend::ParseInferRequestedOutputToTriton(
 
 void
 TritonClientBackend::ParseInferOptionsToTriton(
-    const InferOptions& options, nic::InferOptions* triton_options)
+    const InferOptions& options, tc::InferOptions* triton_options)
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
@@ -482,7 +482,7 @@ TritonClientBackend::ParseStatistics(
 
 void
 TritonClientBackend::ParseInferStat(
-    const nic::InferStat& triton_infer_stat, InferStat* infer_stat)
+    const tc::InferStat& triton_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
       triton_infer_stat.completed_request_count;
@@ -503,9 +503,9 @@ TritonInferInput::Create(
 {
   TritonInferInput* local_infer_input = new TritonInferInput(name, datatype);
 
-  nic::InferInput* triton_infer_input;
+  tc::InferInput* triton_infer_input;
   RETURN_IF_TRITON_ERROR(
-      nic::InferInput::Create(&triton_infer_input, name, dims, datatype));
+      tc::InferInput::Create(&triton_infer_input, name, dims, datatype));
   local_infer_input->input_.reset(triton_infer_input);
 
   *infer_input = local_infer_input;
@@ -564,8 +564,8 @@ TritonInferRequestedOutput::Create(
   TritonInferRequestedOutput* local_infer_output =
       new TritonInferRequestedOutput();
 
-  nic::InferRequestedOutput* triton_infer_output;
-  RETURN_IF_TRITON_ERROR(nic::InferRequestedOutput::Create(
+  tc::InferRequestedOutput* triton_infer_output;
+  RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
       &triton_infer_output, name, class_count));
   local_infer_output->output_.reset(triton_infer_output);
 
@@ -591,7 +591,7 @@ TritonInferRequestedOutput::TritonInferRequestedOutput()
 
 //==============================================================================
 
-TritonInferResult::TritonInferResult(nic::InferResult* result)
+TritonInferResult::TritonInferResult(tc::InferResult* result)
 {
   result_.reset(result);
 }
@@ -612,4 +612,4 @@ TritonInferResult::RequestStatus() const
 
 //==============================================================================
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritonremote

@@ -31,10 +31,9 @@
 #include <vector>
 #include "grpc_client.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
-using ResultList = std::vector<std::shared_ptr<nic::InferResult>>;
+using ResultList = std::vector<std::shared_ptr<tc::InferResult>>;
 
 // Global mutex to synchronize the threads
 std::mutex mutex_;
@@ -42,7 +41,7 @@ std::condition_variable cv_;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -76,11 +75,11 @@ Usage(char** argv, const std::string& msg = std::string())
 
 void
 StreamSend(
-    const std::unique_ptr<nic::InferenceServerGrpcClient>& client,
+    const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
     const std::string& model_name, int32_t value, const uint64_t sequence_id,
     bool start_of_sequence, bool end_of_sequence, const int32_t index)
 {
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
   options.sequence_id_ = sequence_id;
   options.sequence_start_ = start_of_sequence;
   options.sequence_end_ = end_of_sequence;
@@ -88,18 +87,18 @@ StreamSend(
       std::to_string(sequence_id) + "_" + std::to_string(index);
 
   // Initialize the inputs with the data.
-  nic::InferInput* input;
+  tc::InferInput* input;
   std::vector<int64_t> shape{1, 1};
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input, "INPUT", shape, "INT32"),
+      tc::InferInput::Create(&input, "INPUT", shape, "INT32"),
       "unable to create 'INPUT'");
-  std::shared_ptr<nic::InferInput> ivalue(input);
+  std::shared_ptr<tc::InferInput> ivalue(input);
   FAIL_IF_ERR(ivalue->Reset(), "unable to reset 'INPUT'");
   FAIL_IF_ERR(
       ivalue->AppendRaw(reinterpret_cast<uint8_t*>(&value), sizeof(int32_t)),
       "unable to set data for 'INPUT'");
 
-  std::vector<nic::InferInput*> inputs = {ivalue.get()};
+  std::vector<tc::InferInput*> inputs = {ivalue.get()};
 
   // Send inference request to the inference server.
   FAIL_IF_ERR(client->AsyncStreamInfer(options, inputs), "unable to run model");
@@ -113,7 +112,7 @@ main(int argc, char** argv)
   bool verbose = false;
   bool dyna_sequence = false;
   std::string url("localhost:8001");
-  nic::Headers http_headers;
+  tc::Headers http_headers;
   int sequence_id_offset = 0;
   uint32_t stream_timeout = 0;
 
@@ -148,7 +147,7 @@ main(int argc, char** argv)
     }
   }
 
-  nic::Error err;
+  tc::Error err;
 
   // We use the custom "sequence" model which takes 1 input value. The
   // output is the accumulated value of the inputs. See
@@ -164,9 +163,9 @@ main(int argc, char** argv)
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
-  std::unique_ptr<nic::InferenceServerGrpcClient> client;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client;
   FAIL_IF_ERR(
-      nic::InferenceServerGrpcClient::Create(&client, url, verbose),
+      tc::InferenceServerGrpcClient::Create(&client, url, verbose),
       "unable to create grpc client");
 
   // Now send the inference sequences..
@@ -176,9 +175,9 @@ main(int argc, char** argv)
 
   FAIL_IF_ERR(
       client->StartStream(
-          [&](nic::InferResult* result) {
+          [&](tc::InferResult* result) {
             {
-              std::shared_ptr<nic::InferResult> result_ptr(result);
+              std::shared_ptr<tc::InferResult> result_ptr(result);
               std::lock_guard<std::mutex> lk(mutex_);
               result_list.push_back(result_ptr);
             }

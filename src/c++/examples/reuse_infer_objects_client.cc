@@ -31,12 +31,11 @@
 #include "http_client.h"
 #include "shm_utils.h"
 
-namespace ni = nvidia::inferenceserver;
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    nic::Error err = (X);                                          \
+    tc::Error err = (X);                                          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -48,17 +47,17 @@ namespace {
 union TritonClient {
   TritonClient()
   {
-    new (&http_client_) std::unique_ptr<nic::InferenceServerHttpClient>{};
+    new (&http_client_) std::unique_ptr<tc::InferenceServerHttpClient>{};
   }
   ~TritonClient() {}
 
-  std::unique_ptr<nic::InferenceServerHttpClient> http_client_;
-  std::unique_ptr<nic::InferenceServerGrpcClient> grpc_client_;
+  std::unique_ptr<tc::InferenceServerHttpClient> http_client_;
+  std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_;
 };
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<nic::InferResult> result)
+    const std::string& name, std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -84,10 +83,10 @@ ValidateShapeAndDatatype(
 void
 InferAndValidate(
     const bool use_shared_memory, TritonClient& triton_client,
-    const std::string& protocol, const nic::InferOptions& options,
-    const nic::Headers& http_headers, std::vector<nic::InferInput*>& inputs,
+    const std::string& protocol, const tc::InferOptions& options,
+    const tc::Headers& http_headers, std::vector<tc::InferInput*>& inputs,
     const size_t input_byte_size,
-    std::vector<nic::InferRequestedOutput*>& outputs,
+    std::vector<tc::InferRequestedOutput*>& outputs,
     const size_t output_byte_size, std::vector<int*>& shm_ptrs)
 {
   std::vector<int32_t> input0_data(16);
@@ -153,10 +152,10 @@ InferAndValidate(
         "unable to unset shared memory for 'OUTPUT1'");
   }
 
-  std::vector<const nic::InferRequestedOutput*> routputs = {outputs[0],
+  std::vector<const tc::InferRequestedOutput*> routputs = {outputs[0],
                                                             outputs[1]};
 
-  nic::InferResult* results;
+  tc::InferResult* results;
   if (protocol == "http") {
     FAIL_IF_ERR(
         triton_client.http_client_->Infer(
@@ -168,7 +167,7 @@ InferAndValidate(
             &results, options, inputs, routputs, http_headers),
         "unable to run model");
   }
-  std::shared_ptr<nic::InferResult> results_ptr;
+  std::shared_ptr<tc::InferResult> results_ptr;
   results_ptr.reset(results);
 
   // Validate the results...
@@ -255,7 +254,7 @@ main(int argc, char** argv)
   bool verbose = false;
   std::string url("localhost:8000");
   bool url_specified = false;
-  nic::Headers http_headers;
+  tc::Headers http_headers;
   std::string protocol("http");
 
   // Parse commandline...
@@ -297,15 +296,15 @@ main(int argc, char** argv)
   // extract and validate that the model meets the requirements for
   // image classification.
   TritonClient triton_client;
-  nic::Error err;
+  tc::Error err;
   if (protocol == "http") {
-    err = nic::InferenceServerHttpClient::Create(
+    err = tc::InferenceServerHttpClient::Create(
         &triton_client.http_client_, url, verbose);
   } else if (protocol == "grpc") {
     if (!url_specified) {
       url = "localhost:8001";
     }
-    err = nic::InferenceServerGrpcClient::Create(
+    err = tc::InferenceServerGrpcClient::Create(
         &triton_client.grpc_client_, url, verbose);
   } else {
     std::cerr
@@ -342,18 +341,18 @@ main(int argc, char** argv)
   size_t output_byte_size = 64;
 
   // Initialize the inputs with the data.
-  nic::InferInput* input0;
-  nic::InferInput* input1;
+  tc::InferInput* input0;
+  tc::InferInput* input1;
 
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
+      tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
       "unable to get INPUT0");
-  std::shared_ptr<nic::InferInput> input0_ptr;
+  std::shared_ptr<tc::InferInput> input0_ptr;
   input0_ptr.reset(input0);
   FAIL_IF_ERR(
-      nic::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
+      tc::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
       "unable to get INPUT1");
-  std::shared_ptr<nic::InferInput> input1_ptr;
+  std::shared_ptr<tc::InferInput> input1_ptr;
   input1_ptr.reset(input1);
 
   // Create Input0 and Input1 in Shared Memory. Initialize Input0 to unique
@@ -361,13 +360,13 @@ main(int argc, char** argv)
   std::string shm_key = "/input_simple";
   int shm_fd_ip, *input0_shm;
   FAIL_IF_ERR(
-      nic::CreateSharedMemoryRegion(shm_key, input_byte_size * 2, &shm_fd_ip),
+      tc::CreateSharedMemoryRegion(shm_key, input_byte_size * 2, &shm_fd_ip),
       "");
   FAIL_IF_ERR(
-      nic::MapSharedMemory(
+      tc::MapSharedMemory(
           shm_fd_ip, 0, input_byte_size * 2, (void**)&input0_shm),
       "");
-  FAIL_IF_ERR(nic::CloseSharedMemory(shm_fd_ip), "");
+  FAIL_IF_ERR(tc::CloseSharedMemory(shm_fd_ip), "");
   int* input1_shm = (int*)(input0_shm + 16);
   for (size_t i = 0; i < 16; ++i) {
     *(input0_shm + i) = i;
@@ -387,18 +386,18 @@ main(int argc, char** argv)
   }
 
   // Generate the outputs to be requested.
-  nic::InferRequestedOutput* output0;
-  nic::InferRequestedOutput* output1;
+  tc::InferRequestedOutput* output0;
+  tc::InferRequestedOutput* output1;
 
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
       "unable to get 'OUTPUT0'");
-  std::shared_ptr<nic::InferRequestedOutput> output0_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);
   FAIL_IF_ERR(
-      nic::InferRequestedOutput::Create(&output1, "OUTPUT1"),
+      tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
       "unable to get 'OUTPUT1'");
-  std::shared_ptr<nic::InferRequestedOutput> output1_ptr;
+  std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
   output1_ptr.reset(output1);
 
   // Create Output0 and Output1 in Shared Memory
@@ -406,13 +405,13 @@ main(int argc, char** argv)
   int shm_fd_op;
   int* output0_shm;
   FAIL_IF_ERR(
-      nic::CreateSharedMemoryRegion(shm_key, output_byte_size * 2, &shm_fd_op),
+      tc::CreateSharedMemoryRegion(shm_key, output_byte_size * 2, &shm_fd_op),
       "");
   FAIL_IF_ERR(
-      nic::MapSharedMemory(
+      tc::MapSharedMemory(
           shm_fd_op, 0, output_byte_size * 2, (void**)&output0_shm),
       "");
-  FAIL_IF_ERR(nic::CloseSharedMemory(shm_fd_op), "");
+  FAIL_IF_ERR(tc::CloseSharedMemory(shm_fd_op), "");
   int* output1_shm = (int*)(output0_shm + 16);
 
   if (protocol == "http") {
@@ -427,15 +426,15 @@ main(int argc, char** argv)
         "failed to register output shared memory region");
   }
 
-  std::vector<nic::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<nic::InferRequestedOutput*> outputs = {output0_ptr.get(),
+  std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
+  std::vector<tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
                                                      output1_ptr.get()};
 
   std::vector<int*> shm_ptrs = {input0_shm, input1_shm, output0_shm,
                                 output1_shm};
 
   // The inference settings. Will be using default for now.
-  nic::InferOptions options(model_name);
+  tc::InferOptions options(model_name);
   options.model_version_ = model_version;
 
   // Issue inference using shared memory
@@ -474,10 +473,10 @@ main(int argc, char** argv)
   }
 
   // Cleanup shared memory
-  FAIL_IF_ERR(nic::UnmapSharedMemory(input0_shm, input_byte_size * 2), "");
-  FAIL_IF_ERR(nic::UnlinkSharedMemoryRegion("/input_simple"), "");
-  FAIL_IF_ERR(nic::UnmapSharedMemory(output0_shm, output_byte_size * 2), "");
-  FAIL_IF_ERR(nic::UnlinkSharedMemoryRegion("/output_simple"), "");
+  FAIL_IF_ERR(tc::UnmapSharedMemory(input0_shm, input_byte_size * 2), "");
+  FAIL_IF_ERR(tc::UnlinkSharedMemoryRegion("/input_simple"), "");
+  FAIL_IF_ERR(tc::UnmapSharedMemory(output0_shm, output_byte_size * 2), "");
+  FAIL_IF_ERR(tc::UnlinkSharedMemoryRegion("/output_simple"), "");
 
   return 0;
 }

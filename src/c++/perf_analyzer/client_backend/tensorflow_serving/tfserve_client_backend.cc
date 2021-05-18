@@ -28,7 +28,8 @@
 
 #include "json_utils.h"
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tfserving {
 
 //==============================================================================
 
@@ -46,7 +47,7 @@ TFServeClientBackend::Create(
   std::unique_ptr<TFServeClientBackend> tfserve_client_backend(
       new TFServeClientBackend(compression_algorithm, http_headers));
 
-  RETURN_IF_CB_ERROR(tfs::GrpcClient::Create(
+  RETURN_IF_CB_ERROR(GrpcClient::Create(
       &(tfserve_client_backend->grpc_client_), url, verbose));
 
   *client_backend = std::move(tfserve_client_backend);
@@ -70,14 +71,14 @@ TFServeClientBackend::ModelMetadata(
   ::google::protobuf::util::MessageToJsonString(
       metadata_proto, &metadata, options);
 
-  RETURN_IF_TRITON_ERROR(nic::ParseJson(model_metadata, metadata));
+  RETURN_IF_TRITON_ERROR(tc::ParseJson(model_metadata, metadata));
 
   return Error::Success;
 }
 
 Error
 TFServeClientBackend::Infer(
-    InferResult** result, const InferOptions& options,
+    cb::InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
@@ -98,7 +99,7 @@ TFServeClientBackend::AsyncInfer(
     const std::vector<const InferRequestedOutput*>& outputs)
 {
   auto wrapped_callback = [callback](tfs::InferResult* client_result) {
-    InferResult* result = new TFServeInferResult(client_result);
+    cb::InferResult* result = new TFServeInferResult(client_result);
     callback(result);
   };
 
@@ -115,7 +116,7 @@ TFServeClientBackend::ClientInferStat(InferStat* infer_stat)
 {
   // Reusing the common library utilities to collect and report the
   // client side statistics.
-  nic::InferStat client_infer_stat;
+  tc::InferStat client_infer_stat;
 
   RETURN_IF_TRITON_ERROR(grpc_client_->ClientInferStat(&client_infer_stat));
 
@@ -126,7 +127,7 @@ TFServeClientBackend::ClientInferStat(InferStat* infer_stat)
 
 void
 TFServeClientBackend::ParseInferStat(
-    const nic::InferStat& tfserve_infer_stat, InferStat* infer_stat)
+    const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
       tfserve_infer_stat.completed_request_count;
@@ -147,9 +148,9 @@ TFServeInferRequestedOutput::Create(
   TFServeInferRequestedOutput* local_infer_output =
       new TFServeInferRequestedOutput();
 
-  nic::InferRequestedOutput* tfserve_infer_output;
+  tc::InferRequestedOutput* tfserve_infer_output;
   RETURN_IF_TRITON_ERROR(
-      nic::InferRequestedOutput::Create(&tfserve_infer_output, name));
+      tc::InferRequestedOutput::Create(&tfserve_infer_output, name));
   local_infer_output->output_.reset(tfserve_infer_output);
 
   *infer_output = local_infer_output;
@@ -186,4 +187,4 @@ TFServeInferResult::RequestStatus() const
 //==============================================================================
 
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tfserving
