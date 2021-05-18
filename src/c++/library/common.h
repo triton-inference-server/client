@@ -367,7 +367,7 @@ class InferRequestedOutput {
   /// default value is 0 which means the classification results are not
   /// requested.
   /// \return Error object indicating success or failure.
-  static Error Create(
+ static Error Create(
       InferRequestedOutput** infer_output, const std::string& name,
       const size_t class_count = 0);
 

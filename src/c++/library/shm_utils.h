@@ -35,7 +35,7 @@ namespace triton { namespace client {
 // \param byte_size The size in bytes of the shared memory region
 // \param shm_fd Returns an int descriptor of the created shared memory region
 // \return error Returns an error if unable to open shared memory region.
- Error CreateSharedMemoryRegion(
+Error CreateSharedMemoryRegion(
     std::string shm_key, size_t byte_size, int* shm_fd);
 
 // Mmap the shared memory region with the given 'offset' and 'byte_size' and
@@ -46,21 +46,21 @@ namespace triton { namespace client {
 // \param byte_size The size in bytes of the shared memory region
 // \param shm_addr Returns the base address of the shared memory region
 // \return error Returns an error if unable to mmap shared memory region.
- Error MapSharedMemory(
+Error MapSharedMemory(
     int shm_fd, size_t offset, size_t byte_size, void** shm_addr);
 
 // Close the shared memory descriptor.
 // \param shm_fd The int descriptor of the created shared memory region
 // \return error Returns an error if unable to close shared memory descriptor.
- Error CloseSharedMemory(int shm_fd);
+Error CloseSharedMemory(int shm_fd);
 
 // Destory the shared memory region with the given name.
 // \return error Returns an error if unable to unlink shared memory region.
- Error UnlinkSharedMemoryRegion(std::string shm_key);
+Error UnlinkSharedMemoryRegion(std::string shm_key);
 
 // Munmap the shared memory region from the base address with the given
 // byte_size.
 // \return error Returns an error if unable to unmap shared memory region.
- Error UnmapSharedMemory(void* shm_addr, size_t byte_size);
+Error UnmapSharedMemory(void* shm_addr, size_t byte_size);
 
 }}  // namespace triton::client

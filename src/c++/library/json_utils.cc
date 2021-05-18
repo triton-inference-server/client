@@ -28,7 +28,7 @@
 
 #include <rapidjson/error/en.h>
 
-  namespace triton { namespace client {
+namespace triton { namespace client {
 
 Error
 ParseJson(rapidjson::Document* document, const std::string& json_str)
