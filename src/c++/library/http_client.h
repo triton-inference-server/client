@@ -64,6 +64,35 @@ class InferenceServerHttpClient : public InferenceServerClient {
   enum class CompressionType { NONE, DEFLATE, GZIP };
   ~InferenceServerHttpClient();
 
+  /// Generate a request body for inference using the supplied 'inputs' and
+  /// requesting the outputs specified by 'outputs'.
+  /// \param request_body Returns the generated inference request body
+  /// \param header_length Returns the length of the inference header.
+  /// \param options The options for inference request.
+  /// \param inputs The vector of InferInput describing the model inputs.
+  /// \param outputs The vector of InferRequestedOutput describing how the
+  /// output must be returned. If not provided then all the outputs in the
+  /// model config will be returned as default settings.
+  /// \return Error object indicating success or failure of the
+  /// request.
+  static Error GenerateRequestBody(
+      std::vector<char>* request_body, size_t* header_length,
+      const InferOptions& options, const std::vector<InferInput*>& inputs,
+      const std::vector<const InferRequestedOutput*>& outputs =
+          std::vector<const InferRequestedOutput*>());
+
+  /// Generate a InferResult object from the given 'response_body'.
+  /// \param result Returns the generated InferResult object.
+  /// \param response_body The inference response from the server
+  /// \param header_length The length of the inference header if the header
+  /// does not occupy the whole response body. 0 indicates that
+  /// the whole response body is the inference response header.
+  /// \return Error object indicating success or failure of the
+  /// request.
+  static Error ParseResponseBody(
+      InferResult** result, const std::vector<char>& response_body,
+      const size_t header_length = 0);
+
   /// Create a client that can be used to communicate with the server.
   /// \param client Returns a new InferenceServerHttpClient object.
   /// \param server_url The inference server name, port and optional

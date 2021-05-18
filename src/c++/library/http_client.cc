@@ -834,6 +834,74 @@ InferResultHttp::InferResultHttp(
 //==============================================================================
 
 Error
+InferenceServerHttpClient::GenerateRequestBody(
+    std::vector<char>* request_body, size_t* header_length,
+    const InferOptions& options, const std::vector<InferInput*>& inputs,
+    const std::vector<const InferRequestedOutput*>& outputs)
+{
+  auto infer_request = std::unique_ptr<HttpInferRequest>(
+      new HttpInferRequest(nullptr /* callback */, false));
+  // Prepare the request object to provide the data for inference.
+  Error err = infer_request->InitializeRequest(options, inputs, outputs);
+  if (!err.IsOk()) {
+    return err;
+  }
+
+  // Add the buffers holding input tensor data
+  for (const auto this_input : inputs) {
+    if (!this_input->IsSharedMemory()) {
+      this_input->PrepareForRequest();
+      bool end_of_input = false;
+      while (!end_of_input) {
+        const uint8_t* buf;
+        size_t buf_size;
+        this_input->GetNext(&buf, &buf_size, &end_of_input);
+        if (buf != nullptr) {
+          infer_request->AddInput(const_cast<uint8_t*>(buf), buf_size);
+        }
+      }
+    }
+  }
+
+  *header_length = infer_request->request_json_.Size();
+  *request_body = std::vector<char>(infer_request->total_input_byte_size_);
+  size_t remaining_bytes = infer_request->total_input_byte_size_;
+  size_t actual_copied_bytes = 0;
+  char* current_pos = request_body->data();
+  while (true) {
+    err = infer_request->GetNextInput(
+        reinterpret_cast<uint8_t*>(current_pos), remaining_bytes,
+        &actual_copied_bytes);
+    if (!err.IsOk()) {
+      return err;
+    }
+    if (actual_copied_bytes == remaining_bytes) {
+      break;
+    } else {
+      current_pos += actual_copied_bytes;
+      remaining_bytes -= actual_copied_bytes;
+    }
+  }
+  return Error::Success;
+}
+
+Error
+InferenceServerHttpClient::ParseResponseBody(
+    InferResult** result, const std::vector<char>& response_body,
+    const size_t header_length)
+{
+  // Result data is actually stored in request object
+  auto infer_request = std::shared_ptr<HttpInferRequest>(
+      new HttpInferRequest(nullptr /* callback */, false));
+  infer_request->http_code_ = 200;
+  infer_request->response_json_size_ = header_length;
+  infer_request->infer_response_buffer_.reset(
+      new std::string(response_body.data(), response_body.size()));
+  InferResultHttp::Create(result, infer_request);
+  return Error::Success;
+}
+
+Error
 InferenceServerHttpClient::Create(
     std::unique_ptr<InferenceServerHttpClient>* client,
     const std::string& server_url, bool verbose)
