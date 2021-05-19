@@ -40,7 +40,7 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 #define RETURN_IF_CB_ERROR(S)                                 \
   do {                                                        \
-    const perfanalyzer::clientbackend::Error& status__ = (S); \
+    const triton::perfanalyzer::clientbackend::Error& status__ = (S); \
     if (!status__.IsOk()) {                                   \
       return status__;                                        \
     }                                                         \
@@ -48,7 +48,7 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 #define RETURN_IF_ERROR(S)                             \
   do {                                                 \
-    perfanalyzer::clientbackend::Error status__ = (S); \
+    triton::perfanalyzer::clientbackend::Error status__ = (S); \
     if (!status__.IsOk()) {                            \
       return status__;                                 \
     }                                                  \
@@ -56,13 +56,14 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    perfanalyzer::clientbackend::Error err = (X);                  \
+    triton::perfanalyzer::clientbackend::Error err = (X);                  \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
     }                                                              \
   }                                                                \
   while (false)
+  
 //==============================================================================
 /// Error status reported by backends
 ///

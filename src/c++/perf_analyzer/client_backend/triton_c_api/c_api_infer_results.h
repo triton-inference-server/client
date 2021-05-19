@@ -24,105 +24,35 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
+
 #include "common.h"
-namespace nvidia { namespace inferenceserver { namespace client {
-class InferResultCApi : public InferResult {
+
+namespace tc = triton::client;
+
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
+ 
+/// This class is used to pass inference status and id to upstream backend.
+/// Created so that the API is similar to `triton, torchserver, tensorflow_serving` APIs 
+class InferResult {
  public:
   static void Create(
-      InferResult** infer_result, const Error& err, const std::string& id);
-  Error ModelName(std::string* name) const override;
-  Error ModelVersion(std::string* version) const override;
-  Error Id(std::string* id) const override;
-  Error Shape(const std::string& output_name, std::vector<int64_t>* shape)
-      const override;
-  Error Datatype(
-      const std::string& output_name, std::string* datatype) const override;
-  Error RawData(
-      const std::string& output_name, const uint8_t** buf,
-      size_t* byte_size) const override;
-  Error StringData(
-      const std::string& output_name,
-      std::vector<std::string>* string_result) const override;
-  std::string DebugString() const override;
-  Error RequestStatus() const override;
+      InferResult** infer_result, const tc::Error& err, const std::string& id) {
+        *infer_result = reinterpret_cast<InferResult*>(new InferResult(err, id));
+      }
+
+  tc::Error Id(std::string* id) const {
+    *id = request_id_;
+    return tc::Error::Success;
+  }
+  tc::Error RequestStatus() const {
+    return status_;
+  }
 
  private:
-  InferResultCApi(const Error& err, const std::string& id);
+  InferResult(const tc::Error& err, const std::string& id) : status_(err), request_id_(id) {}
 
   std::string request_id_;
-  Error status_;
+  tc::Error status_;
 };
-
-void
-InferResultCApi::Create(
-    InferResult** infer_result, const Error& err, const std::string& id)
-{
-  *infer_result = reinterpret_cast<InferResult*>(new InferResultCApi(err, id));
-}
-
-Error
-InferResultCApi::ModelName(std::string* name) const
-{
-  return Error("Do not know model name");
-}
-
-Error
-InferResultCApi::ModelVersion(std::string* version) const
-{
-  return Error("Do not know model version");
-}
-
-Error
-InferResultCApi::Id(std::string* id) const
-{
-  *id = request_id_;
-  return Error::Success;
-}
-
-Error
-InferResultCApi::Shape(
-    const std::string& output_name, std::vector<int64_t>* shape) const
-{
-  return Error("Do not know shape");
-}
-
-Error
-InferResultCApi::Datatype(
-    const std::string& output_name, std::string* datatype) const
-{
-  return Error("Do not know datatype");
-}
-
-Error
-InferResultCApi::RawData(
-    const std::string& output_name, const uint8_t** buf,
-    size_t* byte_size) const
-{
-  return Error("Do not have raw data");
-}
-
-Error
-InferResultCApi::StringData(
-    const std::string& output_name,
-    std::vector<std::string>* string_result) const
-{
-  return Error("Do not have string data");
-}
-std::string
-InferResultCApi::DebugString() const
-{
-  std::string err = "Does not have debug info";
-  return err;
-}
-Error
-InferResultCApi::RequestStatus() const
-{
-  return status_;
-}
-
-InferResultCApi::InferResultCApi(const Error& err, const std::string& id)
-{
-  status_ = err;
-  request_id_ = id;
-}
-}}}  // namespace nvidia::inferenceserver::client
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

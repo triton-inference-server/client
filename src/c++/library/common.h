@@ -40,9 +40,11 @@
 #include <thread>
 #include <vector>
 
-#ifdef TRITON_INFERENCE_SERVER_CAPI_CLASS
-namespace perfanalyzer { namespace clientbackend {class TritonLoader;}}
+#ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {class TritonLoader;}}}}
 #endif
+
 namespace triton { namespace client {
 
 constexpr char kInferHeaderContentLengthHTTPHeader[] =

@@ -50,21 +50,6 @@ operator<<(std::ostream& out, const Error& err)
 
 //================================================
 
-const Error Error::Success("");
-
-Error::Error(const std::string& msg) : msg_(msg) {}
-
-std::ostream&
-operator<<(std::ostream& out, const Error& err)
-{
-  if (!err.msg_.empty()) {
-    out << err.msg_;
-  }
-  return out;
-}
-
-//================================================
-
 std::string
 BackendKindToString(const BackendKind kind)
 {
@@ -157,7 +142,7 @@ ClientBackend::Create(
     RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
   } else if (kind == TRITON_C_API) {
-    RETURN_IF_CB_ERROR(TritonCApiClientBackend::Create(
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiClientBackend::Create(
         triton_server_path, model_repository_path, memory_type, verbose,
         &local_backend));
   } else {
@@ -351,7 +336,7 @@ InferInput::Create(
         infer_input, name, dims, datatype));
   } else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(
-        TritonCApiInferInput::Create(infer_input, name, dims, datatype));
+        tritoncapi::TritonCApiInferInput::Create(infer_input, name, dims, datatype));
   } else {
     return Error(
         "unsupported client backend provided to create InferInput object");
@@ -410,10 +395,9 @@ InferRequestedOutput::Create(
     const std::string& name, const size_t class_count)
 {
   if (kind == TRITON) {
-    RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
-      (infer_output, name, class_count));
-  } else if (kind == TRITON_LOCAL) {
-    RETURN_IF_CB_ERROR(TritonCApiInferRequestedOutput::Create(
+    RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(infer_output, name, class_count));
+  } else if (kind == TRITON_C_API) {
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
         infer_output, name, class_count));
   } else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(

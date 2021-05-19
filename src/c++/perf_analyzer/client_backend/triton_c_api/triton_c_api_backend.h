@@ -31,7 +31,7 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const nic::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);   \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
@@ -39,16 +39,21 @@
 
 #define FAIL_IF_TRITON_ERR(X, MSG)                                 \
   {                                                                \
-    const nic::Error err = (X);                                    \
+    const tc::Error err = (X);                                    \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
     }                                                              \
   }
 
-namespace nic = nvidia::inferenceserver::client;
+namespace tc = triton::client;
+namespace cb = triton::perfanalyzer::clientbackend;
+namespace capi = triton::perfanalyzer::clientbackend::tritoncapi;
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
+
+class InferResult;
 
 //==============================================================================
 /// TritonCApiClientBackend uses triton client C++ library to communicate with
@@ -88,7 +93,7 @@ class TritonCApiClientBackend : public ClientBackend {
 
   /// See ClientBackend::Infer()
   Error Infer(
-      InferResult** result, const InferOptions& options,
+      cb::InferResult** result, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override;
 
@@ -105,17 +110,17 @@ class TritonCApiClientBackend : public ClientBackend {
   TritonCApiClientBackend() : ClientBackend(BackendKind::TRITON_C_API) {}
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
-      std::vector<nic::InferInput*>* triton_inputs);
+      std::vector<tc::InferInput*>* triton_inputs);
   void ParseInferRequestedOutputToTriton(
       const std::vector<const InferRequestedOutput*>& outputs,
-      std::vector<const nic::InferRequestedOutput*>* triton_outputs);
+      std::vector<const tc::InferRequestedOutput*>* triton_outputs);
   void ParseInferOptionsToTriton(
-      const InferOptions& options, nic::InferOptions* triton_options);
+      const InferOptions& options, tc::InferOptions* triton_options);
   void ParseStatistics(
       const rapidjson::Document& infer_stat,
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
-      const nic::InferStat& triton_infer_stat, InferStat* infer_stat);
+      const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
 };
 
 //==============================================================
@@ -128,7 +133,7 @@ class TritonCApiInferInput : public InferInput {
       InferInput** infer_input, const std::string& name,
       const std::vector<int64_t>& dims, const std::string& datatype);
   /// Returns the raw InferInput object required by triton client library.
-  nic::InferInput* Get() const { return input_.get(); }
+  tc::InferInput* Get() const { return input_.get(); }
   /// See InferInput::Shape()
   const std::vector<int64_t>& Shape() const override;
   /// See InferInput::SetShape()
@@ -142,7 +147,7 @@ class TritonCApiInferInput : public InferInput {
   explicit TritonCApiInferInput(
       const std::string& name, const std::string& datatype);
 
-  std::unique_ptr<nic::InferInput> input_;
+  std::unique_ptr<tc::InferInput> input_;
 };
 
 //==============================================================
@@ -156,28 +161,28 @@ class TritonCApiInferRequestedOutput : public InferRequestedOutput {
       const size_t class_count = 0);
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
-  nic::InferRequestedOutput* Get() const { return output_.get(); }
+  tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
   explicit TritonCApiInferRequestedOutput();
 
-  std::unique_ptr<nic::InferRequestedOutput> output_;
+  std::unique_ptr<tc::InferRequestedOutput> output_;
 };
 
 //==============================================================
 /// TritonCApiInferResult is a wrapper around InferResult object of
-/// triton client library.
+/// the C API library.
 ///
-class TritonCApiInferResult : public InferResult {
+class TritonCApiInferResult : public cb::InferResult {
  public:
-  explicit TritonCApiInferResult(nic::InferResult* result);
+  explicit TritonCApiInferResult(capi::InferResult* result);
   /// See InferResult::Id()
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()
   Error RequestStatus() const override;
 
  private:
-  std::unique_ptr<nic::InferResult> result_;
+  std::unique_ptr<capi::InferResult> result_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

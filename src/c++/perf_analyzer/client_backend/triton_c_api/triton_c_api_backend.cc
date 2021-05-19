@@ -28,8 +28,10 @@
 
 #include "json_utils.h"
 #include "triton_loader.h"
+#include "c_api_infer_results.h"
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
 
 //==============================================================================
 
@@ -93,20 +95,20 @@ TritonCApiClientBackend::ModelConfig(
 
 Error
 TritonCApiClientBackend::Infer(
-    InferResult** result, const InferOptions& options,
+    cb::InferResult** result, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  std::vector<nic::InferInput*> triton_inputs;
+  std::vector<tc::InferInput*> triton_inputs;
   ParseInferInputToTriton(inputs, &triton_inputs);
 
-  std::vector<const nic::InferRequestedOutput*> triton_outputs;
+  std::vector<const tc::InferRequestedOutput*> triton_outputs;
   ParseInferRequestedOutputToTriton(outputs, &triton_outputs);
 
-  nic::InferOptions triton_options(options.model_name_);
+  tc::InferOptions triton_options(options.model_name_);
   ParseInferOptionsToTriton(options, &triton_options);
 
-  nic::InferResult* triton_result;
+  capi::InferResult* triton_result;
   RETURN_IF_ERROR(TritonLoader::Infer(
       triton_options, triton_inputs, triton_outputs, &triton_result));
 
@@ -118,7 +120,7 @@ TritonCApiClientBackend::Infer(
 Error
 TritonCApiClientBackend::ClientInferStat(InferStat* infer_stat)
 {
-  nic::InferStat triton_infer_stat;
+  tc::InferStat triton_infer_stat;
 
   TritonLoader::ClientInferStat(&triton_infer_stat);
   ParseInferStat(triton_infer_stat, infer_stat);
@@ -141,7 +143,7 @@ TritonCApiClientBackend::ModelInferenceStatistics(
 void
 TritonCApiClientBackend::ParseInferInputToTriton(
     const std::vector<InferInput*>& inputs,
-    std::vector<nic::InferInput*>* triton_inputs)
+    std::vector<tc::InferInput*>* triton_inputs)
 {
   for (const auto input : inputs) {
     triton_inputs->push_back(
@@ -152,7 +154,7 @@ TritonCApiClientBackend::ParseInferInputToTriton(
 void
 TritonCApiClientBackend::ParseInferRequestedOutputToTriton(
     const std::vector<const InferRequestedOutput*>& outputs,
-    std::vector<const nic::InferRequestedOutput*>* triton_outputs)
+    std::vector<const tc::InferRequestedOutput*>* triton_outputs)
 {
   for (const auto output : outputs) {
     triton_outputs->push_back(
@@ -162,7 +164,7 @@ TritonCApiClientBackend::ParseInferRequestedOutputToTriton(
 
 void
 TritonCApiClientBackend::ParseInferOptionsToTriton(
-    const InferOptions& options, nic::InferOptions* triton_options)
+    const InferOptions& options, tc::InferOptions* triton_options)
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
@@ -204,7 +206,7 @@ TritonCApiClientBackend::ParseStatistics(
 
 void
 TritonCApiClientBackend::ParseInferStat(
-    const nic::InferStat& triton_infer_stat, InferStat* infer_stat)
+    const tc::InferStat& triton_infer_stat, InferStat* infer_stat)
 {
   infer_stat->completed_request_count =
       triton_infer_stat.completed_request_count;
@@ -226,9 +228,9 @@ TritonCApiInferInput::Create(
   TritonCApiInferInput* local_infer_input =
       new TritonCApiInferInput(name, datatype);
 
-  nic::InferInput* triton_infer_input;
+  tc::InferInput* triton_infer_input;
   RETURN_IF_TRITON_ERROR(
-      nic::InferInput::Create(&triton_infer_input, name, dims, datatype));
+      tc::InferInput::Create(&triton_infer_input, name, dims, datatype));
   local_infer_input->input_.reset(triton_infer_input);
 
   *infer_input = local_infer_input;
@@ -279,8 +281,8 @@ TritonCApiInferRequestedOutput::Create(
   TritonCApiInferRequestedOutput* local_infer_output =
       new TritonCApiInferRequestedOutput();
 
-  nic::InferRequestedOutput* triton_infer_output;
-  RETURN_IF_TRITON_ERROR(nic::InferRequestedOutput::Create(
+  tc::InferRequestedOutput* triton_infer_output;
+  RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
       &triton_infer_output, name, class_count));
   local_infer_output->output_.reset(triton_infer_output);
 
@@ -296,7 +298,7 @@ TritonCApiInferRequestedOutput::TritonCApiInferRequestedOutput()
 
 //==============================================================================
 
-TritonCApiInferResult::TritonCApiInferResult(nic::InferResult* result)
+TritonCApiInferResult::TritonCApiInferResult(capi::InferResult* result)
 {
   result_.reset(result);
 }
@@ -317,4 +319,4 @@ TritonCApiInferResult::RequestStatus() const
 
 //==============================================================================
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

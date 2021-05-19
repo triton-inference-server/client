@@ -73,10 +73,14 @@
     }                                                                     \
   } while (false)
 
-namespace nic = nvidia::inferenceserver::client;
-namespace perfanalyzer { namespace clientbackend {
+namespace tc = triton::client;
 
-class TritonLoader : public nic::InferenceServerClient {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
+
+class InferResult;
+
+class TritonLoader : public tc::InferenceServerClient {
  public:
   ~TritonLoader();
 
@@ -98,16 +102,16 @@ class TritonLoader : public nic::InferenceServerClient {
   static Error ServerMetaData(rapidjson::Document* server_metadata);
 
   static Error Infer(
-      const nic::InferOptions& options,
-      const std::vector<nic::InferInput*>& inputs,
-      const std::vector<const nic::InferRequestedOutput*>& outputs,
-      nic::InferResult** result);
+      const tc::InferOptions& options,
+      const std::vector<tc::InferInput*>& inputs,
+      const std::vector<const tc::InferRequestedOutput*>& outputs,
+      InferResult** result);
 
   static Error ModelInferenceStatistics(
       const std::string& model_name, const std::string& model_version,
       rapidjson::Document* infer_stat);
 
-  static Error ClientInferStat(nic::InferStat* infer_stat)
+  static Error ClientInferStat(tc::InferStat* infer_stat)
   {
     *infer_stat = GetSingleton()->infer_stat_;
     return Error::Success;
@@ -115,7 +119,7 @@ class TritonLoader : public nic::InferenceServerClient {
 
   static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
   static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
-  static nic::RequestTimers& Timer() { return GetSingleton()->timer_; }
+  static tc::RequestTimers& Timer() { return GetSingleton()->timer_; }
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
@@ -344,19 +348,17 @@ class TritonLoader : public nic::InferenceServerClient {
   static Error FileExists(std::string& filepath);
 
   Error InitializeRequest(
-      const nic::InferOptions& options,
-      const std::vector<const nic::InferRequestedOutput*>& outputs,
+      const tc::InferOptions& options,
+      const std::vector<const tc::InferRequestedOutput*>& outputs,
       TRITONSERVER_ResponseAllocator** allocator,
       TRITONSERVER_InferenceRequest** irequest);
 
   Error AddInputs(
-      const nic::InferOptions& options,
-      const std::vector<nic::InferInput*>& inputs,
+      const std::vector<tc::InferInput*>& inputs,
       TRITONSERVER_InferenceRequest* irequest);
 
   Error AddOutputs(
-      const nic::InferOptions& options,
-      const std::vector<const nic::InferRequestedOutput*>& outputs,
+      const std::vector<const tc::InferRequestedOutput*>& outputs,
       TRITONSERVER_InferenceRequest* irequest);
 
   void* dlhandle_;
@@ -439,7 +441,7 @@ class TritonLoader : public nic::InferenceServerClient {
   TRITONSERVER_memorytype_enum requested_memory_type_;
   bool model_is_loaded_;
   bool server_is_ready_;
-  nic::RequestTimers timer_;
+  tc::RequestTimers timer_;
 };
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

@@ -30,7 +30,9 @@
 /// FIXME: Duplication of server/src/core/shared_library.h
 /// Separate shared_library to common library and delete this
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
+
 Error OpenLibraryHandle(const std::string& path, void** handle);
 
 Error CloseLibraryHandle(void* handle);
@@ -38,4 +40,4 @@ Error CloseLibraryHandle(void* handle);
 Error GetEntrypoint(
     void* handle, const std::string& name, const bool optional, void** befn);
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

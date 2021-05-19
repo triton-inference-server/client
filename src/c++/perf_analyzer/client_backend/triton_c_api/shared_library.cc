@@ -30,7 +30,8 @@
 /// FIXME: Duplication of server/src/core/shared_library.cc
 /// Separate shared_library to common library and delete this
 
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
 
 Error
 OpenLibraryHandle(const std::string& path, void** handle)
@@ -86,4 +87,4 @@ GetEntrypoint(
   *befn = fn;
   return Error::Success;
 }
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

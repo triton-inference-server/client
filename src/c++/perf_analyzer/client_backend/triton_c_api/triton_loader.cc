@@ -25,7 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS \
-  perfanalyzer::clientbackend::TritonLoader
+  triton::perfanalyzer::clientbackend::tritoncapi::TritonLoader
 
 #include "triton_loader.h"
 
@@ -38,10 +38,8 @@
 #include <unordered_map>
 #include "c_api_infer_results.h"
 
-namespace nvidia { namespace inferenceserver { namespace client {
-class InferResultCApi;
-}}}  // namespace nvidia::inferenceserver::client
-namespace perfanalyzer { namespace clientbackend {
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {
 namespace {
 bool enforce_memory_type = false;
 TRITONSERVER_MemoryType requested_memory_type;
@@ -892,19 +890,19 @@ TritonLoader::FileExists(std::string& filepath)
 
 Error
 TritonLoader::Infer(
-    const nic::InferOptions& options,
-    const std::vector<nic::InferInput*>& inputs,
-    const std::vector<const nic::InferRequestedOutput*>& outputs,
-    nic::InferResult** result)
+    const tc::InferOptions& options,
+    const std::vector<tc::InferInput*>& inputs,
+    const std::vector<const tc::InferRequestedOutput*>& outputs,
+    InferResult** result)
 {
   TRITONSERVER_ResponseAllocator* allocator = nullptr;
   TRITONSERVER_InferenceRequest* irequest = nullptr;
   Timer().Reset();
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_START);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_START);
   GetSingleton()->InitializeRequest(options, outputs, &allocator, &irequest);
-  GetSingleton()->AddInputs(options, inputs, irequest);
-  GetSingleton()->AddOutputs(options, outputs, irequest);
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_START);
+  GetSingleton()->AddInputs(inputs, irequest);
+  GetSingleton()->AddOutputs(outputs, irequest);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   // Perform inference...
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
   std::future<TRITONSERVER_InferenceResponse*> completed = p->get_future();
@@ -917,17 +915,17 @@ TritonLoader::Infer(
       GetSingleton()->infer_async_fn_(
           (GetSingleton()->server_).get(), irequest, nullptr /* trace */),
       "running inference");
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::SEND_END);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
   // Wait for the inference to complete.
   TRITONSERVER_InferenceResponse* completed_response = completed.get();
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->inference_response_error_fn_(completed_response),
       "response status");
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_START);
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::RECV_END);
-  Timer().CaptureTimestamp(nic::RequestTimers::Kind::REQUEST_END);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
+  Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
 
-  nic::Error err = GetSingleton()->UpdateInferStat(Timer());
+  tc::Error err = GetSingleton()->UpdateInferStat(Timer());
   if (!err.IsOk()) {
     std::cerr << "Failed to update context stat: " << err << std::endl;
   }
@@ -936,7 +934,7 @@ TritonLoader::Infer(
       GetSingleton()->request_id_fn_(irequest, &cid),
       "Failed to get request id");
   std::string id(cid);
-  nic::InferResultCApi::Create(result, err, id);
+  InferResult::Create(result, err, id);
   // clean up
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->inference_response_delete_fn_(completed_response),
@@ -952,8 +950,8 @@ TritonLoader::Infer(
 
 Error
 TritonLoader::InitializeRequest(
-    const nic::InferOptions& options,
-    const std::vector<const nic::InferRequestedOutput*>& outputs,
+    const tc::InferOptions& options,
+    const std::vector<const tc::InferRequestedOutput*>& outputs,
     TRITONSERVER_ResponseAllocator** allocator,
     TRITONSERVER_InferenceRequest** irequest)
 {
@@ -1018,8 +1016,7 @@ TritonLoader::InitializeRequest(
 
 Error
 TritonLoader::AddInputs(
-    const nic::InferOptions& options,
-    const std::vector<nic::InferInput*>& inputs,
+    const std::vector<tc::InferInput*>& inputs,
     TRITONSERVER_InferenceRequest* irequest)
 {
   for (auto io : inputs) {
@@ -1039,7 +1036,7 @@ TritonLoader::AddInputs(
       return Error("shared library not supported for C API");
     }
     size_t byte_size;
-    nic::Error err = io->ByteSize(&byte_size);
+    tc::Error err = io->ByteSize(&byte_size);
     if (!err.IsOk()) {
       return Error(err.Message());
     }
@@ -1074,8 +1071,7 @@ TritonLoader::AddInputs(
 
 Error
 TritonLoader::AddOutputs(
-    const nic::InferOptions& options,
-    const std::vector<const nic::InferRequestedOutput*>& outputs,
+    const std::vector<const tc::InferRequestedOutput*>& outputs,
     TRITONSERVER_InferenceRequest* irequest)
 {
   for (auto io : outputs) {
@@ -1146,4 +1142,4 @@ TritonLoader::~TritonLoader()
   GetSingleton()->ClearHandles();
 }
 
-}}  // namespace perfanalyzer::clientbackend
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
