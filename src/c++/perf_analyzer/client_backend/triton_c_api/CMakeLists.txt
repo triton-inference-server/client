@@ -27,14 +27,14 @@
 cmake_minimum_required (VERSION 3.18)
 
 set(
-    TRITON_LOCAL_CLIENT_BACKEND_SRCS
+    TRITON_C_API_CLIENT_BACKEND_SRCS
     triton_c_api_backend.cc
     shared_library.cc
     triton_loader.cc
 )
 
 set(
-    TRITON_LOCAL_CLIENT_BACKEND_HDRS
+    TRITON_C_API_CLIENT_BACKEND_HDRS
     triton_c_api_backend.h
     shared_library.h
     triton_loader.h
@@ -43,8 +43,8 @@ set(
 
 add_library(
     triton-c-api-backend-library  EXCLUDE_FROM_ALL OBJECT
-    ${TRITON_LOCAL_CLIENT_BACKEND_SRCS}
-    ${TRITON_LOCAL_CLIENT_BACKEND_HDRS}
+    ${TRITON_C_API_CLIENT_BACKEND_SRCS}
+    ${TRITON_C_API_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(

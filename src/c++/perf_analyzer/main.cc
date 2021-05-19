@@ -212,7 +212,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "Usage: " << argv[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
   std::cerr << "\t--service-kind "
-               "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_local\">"
+               "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
@@ -1260,7 +1260,7 @@ main(int argc, char** argv)
           << " memory type:" << memory_type << std::endl;
       return 1;
     } else if (async) {
-      std::cerr << "Async API ot yet supported by C API." << std::endl;
+      std::cerr << "Async API not yet supported by C API" << std::endl;
       return 1;
     }
     protocol = cb::ProtocolType::UNKNOWN;
