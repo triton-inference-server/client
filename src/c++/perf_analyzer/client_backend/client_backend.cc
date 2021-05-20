@@ -335,8 +335,8 @@ InferInput::Create(
     RETURN_IF_CB_ERROR(torchserve::TorchServeInferInput::Create(
         infer_input, name, dims, datatype));
   } else if (kind == TRITON_C_API) {
-    RETURN_IF_CB_ERROR(
-        tritoncapi::TritonCApiInferInput::Create(infer_input, name, dims, datatype));
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferInput::Create(
+        infer_input, name, dims, datatype));
   } else {
     return Error(
         "unsupported client backend provided to create InferInput object");
@@ -395,7 +395,8 @@ InferRequestedOutput::Create(
     const std::string& name, const size_t class_count)
 {
   if (kind == TRITON) {
-    RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(infer_output, name, class_count));
+    RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
+        infer_output, name, class_count));
   } else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
         infer_output, name, class_count));

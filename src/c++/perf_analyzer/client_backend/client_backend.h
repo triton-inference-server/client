@@ -38,32 +38,32 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
-#define RETURN_IF_CB_ERROR(S)                                 \
-  do {                                                        \
+#define RETURN_IF_CB_ERROR(S)                                         \
+  do {                                                                \
     const triton::perfanalyzer::clientbackend::Error& status__ = (S); \
-    if (!status__.IsOk()) {                                   \
-      return status__;                                        \
-    }                                                         \
+    if (!status__.IsOk()) {                                           \
+      return status__;                                                \
+    }                                                                 \
   } while (false)
 
-#define RETURN_IF_ERROR(S)                             \
-  do {                                                 \
+#define RETURN_IF_ERROR(S)                                     \
+  do {                                                         \
     triton::perfanalyzer::clientbackend::Error status__ = (S); \
-    if (!status__.IsOk()) {                            \
-      return status__;                                 \
-    }                                                  \
+    if (!status__.IsOk()) {                                    \
+      return status__;                                         \
+    }                                                          \
   } while (false)
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    triton::perfanalyzer::clientbackend::Error err = (X);                  \
+    triton::perfanalyzer::clientbackend::Error err = (X);          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
     }                                                              \
   }                                                                \
   while (false)
-  
+
 //==============================================================================
 /// Error status reported by backends
 ///
@@ -97,7 +97,6 @@ class ClientBackend;
 class InferInput;
 class InferRequestedOutput;
 class InferResult;
-class TritonLoader;
 
 enum BackendKind {
   TRITON = 0,
@@ -201,11 +200,13 @@ class ClientBackendFactory {
   /// with all the requests made to server using this client.
   /// \param triton_server_path Only for C api backend. Lbrary path to
   /// path to the top-level Triton directory (which is typically
-  /// /opt/tritonserver) Must contain libtritonserver.so. \param
-  /// model_repository_path Only for C api backend. Path to model repository
-  /// which contains the desired model. \param memory_type Only for C api
-  /// backend. Type of memory used (system is default) \param verbose Enables
-  /// the verbose mode. \param factory Returns a new ClientBackend object.
+  /// /opt/tritonserver) Must contain libtritonserver.so.
+  /// \param model_repository_path Only for C api backend. Path to model
+  /// repository which contains the desired model.
+  /// \param memory_type Only for C api backend. Type of memory used
+  /// (system is default)
+  /// \param verbose Enables the verbose mode.
+  /// \param factory Returns a new ClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,

@@ -286,7 +286,7 @@ Usage(char** argv, const std::string& msg = std::string())
              "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
              "content file>\"]}, {...}...]}. The type of file here will depend "
              "on the model. In order to use \"triton_c_api\" you must specify "
-             "the /lib/libtritonserver.so location and the model repository "
+             "the Triton server install path and the model repository "
              "path via the --library-name and --model-repo flags",
              18)
       << std::endl;
@@ -622,8 +622,8 @@ Usage(char** argv, const std::string& msg = std::string())
       << std::endl;
 
   std::cerr << FormatMessage(
-                   " --triton-server-directory: The library for "
-                   "libtritonserver.so. Required by and only used when C API "
+                   " --triton-server-directory: The Triton server install "
+                   "path. Required by and only used when C API "
                    "is used (--service-kind=triton_c_api). "
                    "eg:--triton-server-directory=/opt/tritonserver.",
                    18)
@@ -699,9 +699,6 @@ main(int argc, char** argv)
   bool max_threads_specified = false;
 
   // C Api backend required info
-  const std::string DEFAULT_TRITON_SERVER_PATH = "/opt/tritonserver";
-  const std::string DEFAULT_MODEL_REPO =
-      "/tmp/host/docker-data/model_unit_test/";
   const std::string DEFAULT_MEMORY_TYPE = "system";
   std::string triton_server_path;
   std::string model_repository_path;
@@ -996,25 +993,11 @@ main(int argc, char** argv)
         break;
       }
       case 28: {
-        std::string arg = optarg;
-        if (!arg.empty()) {
-          triton_server_path = arg;
-        } else if (kind == cb::TRITON_C_API) {
-          triton_server_path = DEFAULT_TRITON_SERVER_PATH;
-          std::cerr << "Using default server libray path for C API: "
-                    << triton_server_path << std::endl;
-        }
+        triton_server_path = optarg;
         break;
       }
       case 29: {
-        std::string arg = optarg;
-        if (!arg.empty()) {
-          model_repository_path = arg;
-        } else if (kind == cb::TRITON_C_API) {
-          model_repository_path = DEFAULT_MODEL_REPO;
-          std::cerr << "Using default model repository path for C API: "
-                    << model_repository_path << std::endl;
-        }
+        model_repository_path = optarg;
         break;
       }
       case 'v':
@@ -1245,7 +1228,7 @@ main(int argc, char** argv)
     std::cout << " USING C API: only default functionalities supported "
               << std::endl;
     if (!target_concurrency) {
-      std::cerr << "Target concurrency not yet supported by C API" << std::endl;
+      std::cerr << "Only target concurrency is supported by C API" << std::endl;
       return 1;
     } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
       std::cerr << "Shared memory not yet supported by C API" << std::endl;

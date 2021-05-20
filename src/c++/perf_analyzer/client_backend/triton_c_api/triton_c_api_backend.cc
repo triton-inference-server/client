@@ -26,9 +26,9 @@
 
 #include "triton_c_api_backend.h"
 
+#include "c_api_infer_results.h"
 #include "json_utils.h"
 #include "triton_loader.h"
-#include "c_api_infer_results.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {

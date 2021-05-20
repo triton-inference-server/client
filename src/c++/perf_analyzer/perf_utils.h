@@ -38,23 +38,6 @@
 #include <random>
 #include "client_backend/client_backend.h"
 
-#define RETURN_IF_ERROR(S)           \
-  do {                               \
-    const cb::Error& status__ = (S); \
-    if (!status__.IsOk()) {          \
-      return status__;               \
-    }                                \
-  } while (false)
-
-#define FAIL_IF_ERR(X, MSG)                                        \
-  {                                                                \
-    cb::Error err = (X);                                           \
-    if (!err.IsOk()) {                                             \
-      std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(1);                                                     \
-    }                                                              \
-  }
-
 namespace pa = triton::perfanalyzer;
 namespace cb = triton::perfanalyzer::clientbackend;
 

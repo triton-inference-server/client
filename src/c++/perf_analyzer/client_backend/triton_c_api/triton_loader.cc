@@ -890,8 +890,7 @@ TritonLoader::FileExists(std::string& filepath)
 
 Error
 TritonLoader::Infer(
-    const tc::InferOptions& options,
-    const std::vector<tc::InferInput*>& inputs,
+    const tc::InferOptions& options, const std::vector<tc::InferInput*>& inputs,
     const std::vector<const tc::InferRequestedOutput*>& outputs,
     InferResult** result)
 {

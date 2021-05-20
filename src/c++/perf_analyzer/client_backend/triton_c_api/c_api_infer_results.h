@@ -31,26 +31,30 @@ namespace tc = triton::client;
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
- 
+
 /// This class is used to pass inference status and id to upstream backend.
-/// Created so that the API is similar to `triton, torchserver, tensorflow_serving` APIs 
+/// Created so that the API is similar to `triton, torchserver,
+/// tensorflow_serving` APIs
 class InferResult {
  public:
   static void Create(
-      InferResult** infer_result, const tc::Error& err, const std::string& id) {
-        *infer_result = reinterpret_cast<InferResult*>(new InferResult(err, id));
-      }
+      InferResult** infer_result, const tc::Error& err, const std::string& id)
+  {
+    *infer_result = reinterpret_cast<InferResult*>(new InferResult(err, id));
+  }
 
-  tc::Error Id(std::string* id) const {
+  tc::Error Id(std::string* id) const
+  {
     *id = request_id_;
     return tc::Error::Success;
   }
-  tc::Error RequestStatus() const {
-    return status_;
-  }
+  tc::Error RequestStatus() const { return status_; }
 
  private:
-  InferResult(const tc::Error& err, const std::string& id) : status_(err), request_id_(id) {}
+  InferResult(const tc::Error& err, const std::string& id)
+      : status_(err), request_id_(id)
+  {
+  }
 
   std::string request_id_;
   tc::Error status_;

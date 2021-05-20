@@ -31,7 +31,7 @@
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
-    const tc::Error& status__ = (S);   \
+    const tc::Error& status__ = (S);    \
     if (!status__.IsOk()) {             \
       return Error(status__.Message()); \
     }                                   \
@@ -39,7 +39,7 @@
 
 #define FAIL_IF_TRITON_ERR(X, MSG)                                 \
   {                                                                \
-    const tc::Error err = (X);                                    \
+    const tc::Error err = (X);                                     \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
