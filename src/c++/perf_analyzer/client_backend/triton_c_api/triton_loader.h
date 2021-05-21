@@ -119,7 +119,6 @@ class TritonLoader : public tc::InferenceServerClient {
 
   static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
   static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
-  static tc::RequestTimers& Timer() { return GetSingleton()->timer_; }
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
@@ -441,7 +440,6 @@ class TritonLoader : public tc::InferenceServerClient {
   TRITONSERVER_memorytype_enum requested_memory_type_;
   bool model_is_loaded_;
   bool server_is_ready_;
-  tc::RequestTimers timer_;
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

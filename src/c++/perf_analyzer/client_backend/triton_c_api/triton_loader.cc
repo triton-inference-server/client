@@ -894,14 +894,18 @@ TritonLoader::Infer(
     const std::vector<const tc::InferRequestedOutput*>& outputs,
     InferResult** result)
 {
+  if (!ServerIsReady() || !ModelIsLoaded()) {
+    return Error("Server is not ready and/or requested model is not loaded");
+  }
   TRITONSERVER_ResponseAllocator* allocator = nullptr;
   TRITONSERVER_InferenceRequest* irequest = nullptr;
-  Timer().Reset();
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_START);
+  tc::RequestTimers timer;
+  timer.Reset();
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_START);
   GetSingleton()->InitializeRequest(options, outputs, &allocator, &irequest);
   GetSingleton()->AddInputs(inputs, irequest);
   GetSingleton()->AddOutputs(outputs, irequest);
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   // Perform inference...
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
   std::future<TRITONSERVER_InferenceResponse*> completed = p->get_future();
@@ -914,17 +918,17 @@ TritonLoader::Infer(
       GetSingleton()->infer_async_fn_(
           (GetSingleton()->server_).get(), irequest, nullptr /* trace */),
       "running inference");
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
   // Wait for the inference to complete.
   TRITONSERVER_InferenceResponse* completed_response = completed.get();
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->inference_response_error_fn_(completed_response),
       "response status");
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
-  Timer().CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
+  timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
 
-  tc::Error err = GetSingleton()->UpdateInferStat(Timer());
+  tc::Error err = GetSingleton()->UpdateInferStat(timer);
   if (!err.IsOk()) {
     std::cerr << "Failed to update context stat: " << err << std::endl;
   }
