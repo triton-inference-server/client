@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -36,15 +36,33 @@
 #include <vector>
 #include "ipc.h"
 
-#define RETURN_IF_CB_ERROR(S)    \
-  do {                           \
-    const Error& status__ = (S); \
-    if (!status__.IsOk()) {      \
-      return status__;           \
-    }                            \
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+
+#define RETURN_IF_CB_ERROR(S)                                         \
+  do {                                                                \
+    const triton::perfanalyzer::clientbackend::Error& status__ = (S); \
+    if (!status__.IsOk()) {                                           \
+      return status__;                                                \
+    }                                                                 \
   } while (false)
 
-namespace triton { namespace perfanalyzer { namespace clientbackend {
+#define RETURN_IF_ERROR(S)                                     \
+  do {                                                         \
+    triton::perfanalyzer::clientbackend::Error status__ = (S); \
+    if (!status__.IsOk()) {                                    \
+      return status__;                                         \
+    }                                                          \
+  } while (false)
+
+#define FAIL_IF_ERR(X, MSG)                                        \
+  {                                                                \
+    triton::perfanalyzer::clientbackend::Error err = (X);          \
+    if (!err.IsOk()) {                                             \
+      std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
+      exit(1);                                                     \
+    }                                                              \
+  }                                                                \
+  while (false)
 
 //==============================================================================
 /// Error status reported by backends
@@ -80,7 +98,12 @@ class InferInput;
 class InferRequestedOutput;
 class InferResult;
 
-enum BackendKind { TRITON = 0, TENSORFLOW_SERVING = 1, TORCHSERVE = 2 };
+enum BackendKind {
+  TRITON = 0,
+  TENSORFLOW_SERVING = 1,
+  TORCHSERVE = 2,
+  TRITON_C_API = 3
+};
 enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {
   COMPRESS_NONE = 0,
@@ -175,6 +198,13 @@ class ClientBackendFactory {
   /// \param http_headers Map of HTTP headers. The map key/value
   /// indicates the header name/value. The headers will be included
   /// with all the requests made to server using this client.
+  /// \param triton_server_path Only for C api backend. Lbrary path to
+  /// path to the top-level Triton directory (which is typically
+  /// /opt/tritonserver) Must contain libtritonserver.so.
+  /// \param model_repository_path Only for C api backend. Path to model
+  /// repository which contains the desired model.
+  /// \param memory_type Only for C api backend. Type of memory used
+  /// (system is default)
   /// \param verbose Enables the verbose mode.
   /// \param factory Returns a new ClientBackend object.
   /// \return Error object indicating success or failure.
@@ -182,8 +212,10 @@ class ClientBackendFactory {
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
-      std::shared_ptr<Headers> http_headers, const bool verbose,
-      std::shared_ptr<ClientBackendFactory>* factory);
+      std::shared_ptr<Headers> http_headers,
+      const std::string& triton_server_path,
+      const std::string& model_repository_path, const std::string& memory_type,
+      const bool verbose, std::shared_ptr<ClientBackendFactory>* factory);
 
   /// Create a ClientBackend.
   /// \param backend Returns a new Client backend object.
@@ -194,10 +226,15 @@ class ClientBackendFactory {
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
-      const std::shared_ptr<Headers> http_headers, const bool verbose)
+      const std::shared_ptr<Headers> http_headers,
+      const std::string& triton_server_path,
+      const std::string& model_repository_path, const std::string& memory_type,
+      const bool verbose)
       : kind_(kind), url_(url), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers), verbose_(verbose)
+        http_headers_(http_headers), triton_server_path(triton_server_path),
+        model_repository_path_(model_repository_path),
+        memory_type_(memory_type), verbose_(verbose)
   {
   }
 
@@ -206,6 +243,9 @@ class ClientBackendFactory {
   const ProtocolType protocol_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
+  std::string triton_server_path;
+  std::string model_repository_path_;
+  std::string memory_type_;
   const bool verbose_;
 };
 
@@ -219,6 +259,8 @@ class ClientBackend {
       const ProtocolType protocol,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
+      const std::string& library_directory, const std::string& model_repository,
+      const std::string& memory_type,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// Destructor for the client backend object

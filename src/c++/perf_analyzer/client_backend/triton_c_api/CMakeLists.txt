@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,48 +26,30 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-# fixme
-add_definitions(-DCURL_STATICLIB)
-
-add_subdirectory(triton)
-add_subdirectory(triton_c_api)
-add_subdirectory(tensorflow_serving)
-add_subdirectory(torchserve)
-
 set(
-  CLIENT_BACKEND_SRCS
-  client_backend.cc
+    TRITON_C_API_CLIENT_BACKEND_SRCS
+    triton_c_api_backend.cc
+    shared_library.cc
+    triton_loader.cc
 )
 
 set(
-  CLIENT_BACKEND_HDRS
-  client_backend.h
+    TRITON_C_API_CLIENT_BACKEND_HDRS
+    triton_c_api_backend.h
+    shared_library.h
+    triton_loader.h
+    c_api_infer_results.h
 )
 
 add_library(
-  client-backend-library
-  ${CLIENT_BACKEND_SRCS}
-  ${CLIENT_BACKEND_HDRS}
-  $<TARGET_OBJECTS:triton-client-backend-library>
-  $<TARGET_OBJECTS:triton-c-api-backend-library>
-  $<TARGET_OBJECTS:tfs-client-backend-library>
-  $<TARGET_OBJECTS:ts-client-backend-library>
-  $<TARGET_OBJECTS:shm-utils-library>
+    triton-c-api-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${TRITON_C_API_CLIENT_BACKEND_SRCS}
+    ${TRITON_C_API_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-  client-backend-library
-  PUBLIC triton-common-json        # from repo-common
-  PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:triton-c-api-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:tfs-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>
-)
-
-target_include_directories(
-    client-backend-library
-    PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:triton-c-api-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>
-    PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>
+  triton-c-api-backend-library
+  grpcclient_static
+  httpclient_static
+  triton-core-serverapi   # from repo-core
 )

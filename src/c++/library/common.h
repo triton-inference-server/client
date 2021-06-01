@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -40,6 +40,11 @@
 #include <thread>
 #include <vector>
 
+#ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
+namespace triton { namespace perfanalyzer { namespace clientbackend {
+namespace tritoncapi {class TritonLoader;}}}}
+#endif
+
 namespace triton { namespace client {
 
 constexpr char kInferHeaderContentLengthHTTPHeader[] =
@@ -49,11 +54,6 @@ constexpr int MAX_GRPC_MESSAGE_SIZE = INT32_MAX;
 class InferResult;
 class InferRequest;
 class RequestTimers;
-
-#ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
-#endif
-
 //==============================================================================
 /// Error status reported by client API.
 ///
@@ -318,9 +318,8 @@ class InferInput {
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-  friend TRITON_INFERENCE_SERVER_CLIENT_CLASS;
+  friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
 #endif
-
   InferInput(
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype);
@@ -414,7 +413,7 @@ class InferRequestedOutput {
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
-  friend TRITON_INFERENCE_SERVER_CLIENT_CLASS;
+  friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
 #endif
 
   explicit InferRequestedOutput(

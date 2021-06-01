@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -211,7 +211,8 @@ Usage(char** argv, const std::string& msg = std::string())
 
   std::cerr << "Usage: " << argv[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
-  std::cerr << "\t--service-kind <\"triton\"|\"tfserving\"|\"torchserve\">"
+  std::cerr << "\t--service-kind "
+               "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
@@ -277,14 +278,16 @@ Usage(char** argv, const std::string& msg = std::string())
 
   std::cerr
       << FormatMessage(
-             " --service-kind: Describes the kind of service perf_analyzer "
-             "to generate load for. The options are \"triton\", \"tfserving\" "
-             "and \"torchserve\". Default value is \"triton\". Note in order "
-             "to use \"torchserve\" backend --input-data option must point to "
-             "a json file holding data in the following format {\"data\" : "
-             "[{\"TORCHSERVE_INPUT\" : [\"<complete path to the content "
-             "file>\"]}, {...}...]}. The type of file here will depend on the "
-             "model.",
+             " --service-kind: Describes the kind of service perf_analyzer to "
+             "generate load for. The options are \"triton\", \"triton_c_api\", "
+             "\"tfserving\" and \"torchserve\". Default value is \"triton\". "
+             "Note in order to use \"torchserve\" backend --input-data option "
+             "must point to a json file holding data in the following format "
+             "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
+             "content file>\"]}, {...}...]}. The type of file here will depend "
+             "on the model. In order to use \"triton_c_api\" you must specify "
+             "the Triton server install path and the model repository "
+             "path via the --library-name and --model-repo flags",
              18)
       << std::endl;
 
@@ -618,7 +621,21 @@ Usage(char** argv, const std::string& msg = std::string())
              18)
       << std::endl;
 
-
+  std::cerr << FormatMessage(
+                   " --triton-server-directory: The Triton server install "
+                   "path. Required by and only used when C API "
+                   "is used (--service-kind=triton_c_api). "
+                   "eg:--triton-server-directory=/opt/tritonserver.",
+                   18)
+            << std::endl;
+  std::cerr
+      << FormatMessage(
+             " --model-repository: The model repository of which the model is "
+             "loaded. Required by and only used when C API is used "
+             "(--service-kind=triton_c_api). "
+             "eg:--model-repository=/tmp/host/docker-data/model_unit_test.",
+             18)
+      << std::endl;
   exit(1);
 }
 
@@ -681,6 +698,12 @@ main(int argc, char** argv)
   bool url_specified = false;
   bool max_threads_specified = false;
 
+  // C Api backend required info
+  const std::string DEFAULT_MEMORY_TYPE = "system";
+  std::string triton_server_path;
+  std::string model_repository_path;
+  std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -711,6 +734,8 @@ main(int argc, char** argv)
       {"grpc-compression-algorithm", 1, 0, 25},
       {"measurement-mode", 1, 0, 26},
       {"measurement-request-count", 1, 0, 27},
+      {"triton-server-directory", 1, 0, 28},
+      {"model-repository", 1, 0, 29},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -926,6 +951,8 @@ main(int argc, char** argv)
           kind = cb::TENSORFLOW_SERVING;
         } else if (arg.compare("torchserve") == 0) {
           kind = cb::TORCHSERVE;
+        } else if (arg.compare("triton_c_api") == 0) {
+          kind = cb::TRITON_C_API;
         } else {
           Usage(argv, "unsupported --service-kind specified");
         }
@@ -963,6 +990,14 @@ main(int argc, char** argv)
       }
       case 27: {
         measurement_request_count = std::atoi(optarg);
+        break;
+      }
+      case 28: {
+        triton_server_path = optarg;
+        break;
+      }
+      case 29: {
+        model_repository_path = optarg;
         break;
       }
       case 'v':
@@ -1189,15 +1224,39 @@ main(int argc, char** argv)
   if (!max_threads_specified && target_concurrency) {
     max_threads = 16;
   }
+  if (kind == cb::BackendKind::TRITON_C_API) {
+    std::cout << " USING C API: only default functionalities supported "
+              << std::endl;
+    if (!target_concurrency) {
+      std::cerr << "Only target concurrency is supported by C API" << std::endl;
+      return 1;
+    } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
+      std::cerr << "Shared memory not yet supported by C API" << std::endl;
+      return 1;
+    } else if (
+        triton_server_path.empty() || model_repository_path.empty() ||
+        memory_type.empty()) {
+      std::cerr
+          << "Not enough information to create C API. /lib/libtritonserver.so "
+             "directory:"
+          << triton_server_path << " model repo:" << model_repository_path
+          << " memory type:" << memory_type << std::endl;
+      return 1;
+    } else if (async) {
+      std::cerr << "Async API not yet supported by C API" << std::endl;
+      return 1;
+    }
+    protocol = cb::ProtocolType::UNKNOWN;
+  }
 
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
-
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, compression_algorithm, http_headers,
-          extra_verbose, &factory),
+          triton_server_path, model_repository_path, memory_type, extra_verbose,
+          &factory),
       "failed to create client factory");
 
   std::unique_ptr<cb::ClientBackend> backend;
@@ -1207,7 +1266,8 @@ main(int argc, char** argv)
 
   std::shared_ptr<pa::ModelParser> parser =
       std::make_shared<pa::ModelParser>(kind);
-  if (kind == cb::BackendKind::TRITON) {
+  if (kind == cb::BackendKind::TRITON ||
+      kind == cb::BackendKind::TRITON_C_API) {
     rapidjson::Document model_metadata;
     FAIL_IF_ERR(
         backend->ModelMetadata(&model_metadata, model_name, model_version),

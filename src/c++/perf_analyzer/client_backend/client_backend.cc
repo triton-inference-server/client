@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "tensorflow_serving/tfserve_client_backend.h"
 #include "torchserve/torchserve_client_backend.h"
 #include "triton/triton_client_backend.h"
+#include "triton_c_api/triton_c_api_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
@@ -62,6 +63,9 @@ BackendKindToString(const BackendKind kind)
     case TORCHSERVE:
       return std::string("TORCHSERVE");
       break;
+    case TRITON_C_API:
+      return std::string("TRITON_C_API");
+      break;
     default:
       return std::string("UNKNOWN");
       break;
@@ -91,11 +95,14 @@ Error
 ClientBackendFactory::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
     const GrpcCompressionAlgorithm compression_algorithm,
-    std::shared_ptr<Headers> http_headers, const bool verbose,
-    std::shared_ptr<ClientBackendFactory>* factory)
+    std::shared_ptr<Headers> http_headers,
+    const std::string& triton_server_path,
+    const std::string& model_repository_path, const std::string& memory_type,
+    const bool verbose, std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
-      kind, url, protocol, compression_algorithm, http_headers, verbose));
+      kind, url, protocol, compression_algorithm, http_headers,
+      triton_server_path, model_repository_path, memory_type, verbose));
   return Error::Success;
 }
 
@@ -105,6 +112,7 @@ ClientBackendFactory::CreateClientBackend(
 {
   RETURN_IF_CB_ERROR(ClientBackend::Create(
       kind_, url_, protocol_, compression_algorithm_, http_headers_, verbose_,
+      triton_server_path, model_repository_path_, memory_type_,
       client_backend));
   return Error::Success;
 }
@@ -117,6 +125,8 @@ ClientBackend::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
+    const std::string& triton_server_path,
+    const std::string& model_repository_path, const std::string& memory_type,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<ClientBackend> local_backend;
@@ -131,6 +141,10 @@ ClientBackend::Create(
   } else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
+  } else if (kind == TRITON_C_API) {
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiClientBackend::Create(
+        triton_server_path, model_repository_path, memory_type, verbose,
+        &local_backend));
   } else {
     return Error("unsupported client backend requested");
   }
@@ -320,6 +334,9 @@ InferInput::Create(
   } else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeInferInput::Create(
         infer_input, name, dims, datatype));
+  } else if (kind == TRITON_C_API) {
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferInput::Create(
+        infer_input, name, dims, datatype));
   } else {
     return Error(
         "unsupported client backend provided to create InferInput object");
@@ -379,6 +396,9 @@ InferRequestedOutput::Create(
 {
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
+        infer_output, name, class_count));
+  } else if (kind == TRITON_C_API) {
+    RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
         infer_output, name, class_count));
   } else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(

@@ -173,7 +173,7 @@ ReportClientSideStats(
                                  " usec + unmarshal " +
                                  std::to_string(avg_receive_time_us) + " usec)";
       }
-    } else {
+    } else if (protocol == cb::ProtocolType::HTTP) {
       client_library_detail +=
           "Avg HTTP time: " + std::to_string(avg_request_time_us) + " usec (";
       if (!verbose) {
@@ -280,7 +280,8 @@ InferenceProfiler::InferenceProfiler(
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
-  if (profile_backend_->Kind() == cb::BackendKind::TRITON) {
+  if (profile_backend_->Kind() == cb::BackendKind::TRITON ||
+      profile_backend_->Kind() == cb::BackendKind::TRITON_C_API) {
     // Measure and report client library stats only when the model
     // is not decoupled.
     include_lib_stats_ = (!parser_->IsDecoupled());
