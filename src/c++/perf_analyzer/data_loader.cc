@@ -162,7 +162,13 @@ DataLoader::GenerateData(
     } else {
       // Generate string input and store it into map
       std::vector<std::string> input_string_data;
-      size_t batch1_num_strings = ElementCount(input.second.shape_);
+      int64_t batch1_num_strings = ElementCount(input.second.shape_);
+      if (batch1_num_strings == -1) {
+        return cb::Error(
+            "input " + input.second.name_ +
+            " contains dynamic shape, provide shapes to send along with the "
+            "request");
+      }
       input_string_data.resize(batch1_num_strings);
       if (!string_data.empty()) {
         for (size_t i = 0; i < batch1_num_strings; i++) {
