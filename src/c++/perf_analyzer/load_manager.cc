@@ -677,13 +677,13 @@ LoadManager::SetInferSequenceOptions(
     const uint32_t seq_id, std::unique_ptr<cb::InferOptions>& options)
 {
   options->sequence_start_ = (sequence_stat_[seq_id]->remaining_queries_ == 0);
-  options->sequence_end_ = (sequence_stat_[seq_id]->remaining_queries_ == 1);
 
   // New sequence must be intialized before setting the id.
   if (options->sequence_start_) {
     InitNewSequence(seq_id);
   }
   options->sequence_id_ = sequence_stat_[seq_id]->seq_id_;
+  options->sequence_end_ = (sequence_stat_[seq_id]->remaining_queries_ == 1);
 }
 
 void
