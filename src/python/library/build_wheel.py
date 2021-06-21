@@ -156,7 +156,8 @@ if __name__ == '__main__':
 
         # Copy the pre-compiled perf_analyzer binary
         if FLAGS.perf_analyzer is not None:
-            shutil.copyfile(FLAGS.perf_analyzer, os.path.join(FLAGS.whl_dir, 'perf_analyzer'))
+            # The permission bits need to be copied to along with the executable
+            shutil.copy(FLAGS.perf_analyzer, os.path.join(FLAGS.whl_dir, 'perf_analyzer'))
 
             # Create a symbolic link for backwards compatibility
             if not os.path.exists(os.path.join(FLAGS.whl_dir, 'perf_client')):
