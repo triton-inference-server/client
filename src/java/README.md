@@ -23,7 +23,7 @@ $ cd library
 $ cp ../common-repo/protobuf/*.proto src/main/proto/
 ```
 
-After copying, the __libray__ dir should look as below.
+After copying the protobuf files, the __library__ dir should look as below.
 
 
 <img src="images/proto-files.png" width="220" />
