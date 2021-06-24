@@ -5,14 +5,25 @@
 Maven 3.3+ and JDK 1.8+
 
 ## Generating java GRPC client stub
-Copy __*.proto__ files to Library src/main/proto
+
+Clone the [triton-inference-server/common](https://github.com/triton-inference-server/common/)
+repository:
+
 ```
-$ cd library
-$ cp ../../../core/*.proto src/main/proto/
+git clone https://github.com/triton-inference-server/common/ -b <common-repo-branch> common-repo
 ```
 
-__Note__ the *.proto files are copied from [triton-inference-server
-/server/src/core/](https://github.com/triton-inference-server/server/tree/master/src/core). After copying the __libray__ dir should look as below.
+\<common-repo-branch\> should be the version of the Triton server that you
+intend to use (e.g. r21.05).
+
+Copy __*.proto__ files to Library src/main/proto
+
+```
+$ cd library
+$ cp ../common-repo/protobuf/*.proto src/main/proto/
+```
+
+After copying, the __libray__ dir should look as below.
 
 
 <img src="images/proto-files.png" width="220" />
