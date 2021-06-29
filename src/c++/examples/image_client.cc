@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -135,7 +135,7 @@ Preprocess(
     if (img_channels == 1) {
       sample_final = sample_type - cv::Scalar(128);
     } else {
-      sample_final = sample_type - cv::Scalar(104, 117, 123);
+      sample_final = sample_type - cv::Scalar(123, 117, 104);
     }
   } else {
     sample_final = sample_type;
@@ -318,7 +318,7 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl
             << "    INCEPTION: scale each pixel RGB value to [-1.0, 1.0)."
             << std::endl
-            << "    VGG: subtract mean BGR value (104, 117, 123) from"
+            << "    VGG: subtract mean BGR value (123, 117, 104) from"
             << std::endl
             << "         each pixel." << std::endl;
   std::cerr
