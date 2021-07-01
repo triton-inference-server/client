@@ -338,8 +338,14 @@ DataLoader::ReadInputTensorData(
                 D.decode(encoded.c_str(), encoded.length(), &it->second[0]);
             it->second.resize(size);
 
-            int64_t batch1_byte =
-                ByteSize(input.second.shape_, input.second.datatype_);
+            int64_t batch1_byte;
+            auto shape_it = input_shapes_.find(key_name);
+            if (shape_it == input_shapes_.end()) {
+              batch1_byte =
+                  ByteSize(input.second.shape_, input.second.datatype_);
+            } else {
+              batch1_byte = ByteSize(shape_it->second, input.second.datatype_);
+            }
             if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
               return cb::Error(
                   "mismatch in the data provided. "
