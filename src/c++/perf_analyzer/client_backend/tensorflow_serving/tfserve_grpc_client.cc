@@ -597,7 +597,7 @@ GrpcClient::PopulateStrVal(tensorflow::TensorProto* input_tensor_proto)
     int32_t string_length = *((int*)(temp_buffer_.c_str() + copied_byte_size));
     input_tensor_proto->add_string_val(std::string(
         (temp_buffer_.c_str() + copied_byte_size + 4), string_length));
-    copied_byte_size += string_length;
+    copied_byte_size += (string_length + 4);
   }
 
   return Error::Success;
