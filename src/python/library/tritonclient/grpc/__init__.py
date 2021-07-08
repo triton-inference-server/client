@@ -148,12 +148,25 @@ class InferenceServerClient:
                  ssl=False,
                  root_certificates=None,
                  private_key=None,
-                 certificate_chain=None):
+                 certificate_chain=None,
+                 grpc_arg_keepalive_time_ms=2**31-1,
+                 grpc_arg_keepalive_timeout_ms=20000,
+                 grpc_arg_keepalive_permit_without_calls=0,
+                 grpc_arg_http2_max_pings_without_data=2
+                ):
         # FixMe: Are any of the channel options worth exposing?
         # https://grpc.io/grpc/core/group__grpc__arg__keys.html
-        channel_opt = [('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
-                       ('grpc.max_receive_message_length',
-                        MAX_GRPC_MESSAGE_SIZE)]
+        channel_opt = [
+            ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
+            ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
+            ('grpc.keepalive_time_ms', grpc_arg_keepalive_time_ms),
+            ('grpc.keepalive_timeout_ms', grpc_arg_keepalive_timeout_ms),
+            ('grpc.keepalive_permit_without_calls',
+                grpc_arg_keepalive_permit_without_calls),
+            ('grpc.http2.max_pings_without_data', 
+                grpc_arg_http2_max_pings_without_data),
+        ]
+
         if ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:

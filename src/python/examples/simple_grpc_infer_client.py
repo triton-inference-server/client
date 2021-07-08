@@ -96,7 +96,12 @@ if __name__ == '__main__':
             ssl=FLAGS.ssl,
             root_certificates=FLAGS.root_certificates,
             private_key=FLAGS.private_key,
-            certificate_chain=FLAGS.certificate_chain)
+            certificate_chain=FLAGS.certificate_chain,
+            grpc_arg_keepalive_time_ms=2**31-1,
+            grpc_arg_keepalive_timeout_ms=20000,
+            grpc_arg_keepalive_permit_without_calls=0,
+            grpc_arg_http2_max_pings_without_data=2
+        )
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit()
