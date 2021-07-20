@@ -57,6 +57,19 @@ struct SslOptions {
   std::string certificate_chain;
 };
 
+// GRPC KeepAlive: https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
+struct KeepAliveOptions {
+  explicit KeepAliveOptions()
+      : keepalive_time_ms(INT_MAX), keepalive_timeout_ms(20000),
+        keepalive_permit_without_calls(false), http2_max_pings_without_data(2)
+  {
+  }
+  int keepalive_time_ms;
+  int keepalive_timeout_ms;
+  bool keepalive_permit_without_calls;
+  int http2_max_pings_without_data;
+};
+
 //==============================================================================
 /// An InferenceServerGrpcClient object is used to perform any kind of
 /// communication with the InferenceServer using gRPC protocol.  Most
@@ -89,7 +102,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
-      const SslOptions& ssl_options = SslOptions());
+      const SslOptions& ssl_options = SslOptions(),
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions());
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -377,7 +391,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options);
+      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);

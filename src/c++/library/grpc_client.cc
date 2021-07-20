@@ -71,7 +71,8 @@ std::pair<
     std::shared_ptr<grpc::Channel>,
     std::shared_ptr<inference::GRPCInferenceService::Stub>>
 GetChannelStub(
-    const std::string& url, bool use_ssl, const SslOptions& ssl_options)
+    const std::string& url, bool use_ssl, const SslOptions& ssl_options,
+    const KeepAliveOptions& keepalive_options)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
@@ -82,6 +83,17 @@ GetChannelStub(
     grpc::ChannelArguments arguments;
     arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
     arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
+    // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+    arguments.SetInt(
+        GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
+    arguments.SetInt(
+        GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
+    arguments.SetInt(
+        GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
+        keepalive_options.keepalive_permit_without_calls);
+    arguments.SetInt(
+        GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
+        keepalive_options.http2_max_pings_without_data);
     std::shared_ptr<grpc::ChannelCredentials> credentials;
     if (use_ssl) {
       std::string root;
@@ -356,10 +368,10 @@ Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
 {
-  client->reset(
-      new InferenceServerGrpcClient(server_url, verbose, use_ssl, ssl_options));
+  client->reset(new InferenceServerGrpcClient(
+      server_url, verbose, use_ssl, ssl_options, keepalive_options));
   return Error::Success;
 }
 
@@ -1308,7 +1320,8 @@ InferenceServerGrpcClient::InferenceServerGrpcClient(
     const SslOptions& ssl_options)
     : InferenceServerClient(verbose)
 {
-  auto channel_stub = GetChannelStub(url, use_ssl, ssl_options);
+  auto channel_stub =
+      GetChannelStub(url, use_ssl, ssl_options, keepalive_options);
   stub_ = channel_stub.second;
 }
 
