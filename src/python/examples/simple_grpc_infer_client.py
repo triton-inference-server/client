@@ -85,11 +85,59 @@ if __name__ == '__main__':
         required=False,
         default=None,
         help=
-        'The compression algorithm to be used when sending request to server. Default is None.'
+        'The compression algorithm to be used when sending request to server. '
+        'Default is None.'
+    )
+    # GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+    parser.add_argument(
+        '--grpc-keepalive-time',
+        type=int,
+        required=False,
+        default=2**31-1,
+        help=
+        'The period (in milliseconds) after which a keepalive ping is sent on '
+        'the transport. Default is 2**31-1 (INT_MAX: disabled).'
+    )
+    parser.add_argument(
+        '--grpc-keepalive-timeout',
+        type=int,
+        required=False,
+        default=20000,
+        help=
+        'The period (in milliseconds) the sender of the keepalive ping waits '
+        'for an acknowledgement. If it does not receive an acknowledgment '
+        'within this time, it will close the connection. '
+        'Default is 20000 (20 seconds).'
+    )
+    parser.add_argument(
+        '--grpc-keepalive-permit-without-calls',
+        action="store_true",
+        required=False,
+        default=False,
+        help=
+        'Allows keepalive pings to be sent even if there are no calls in '
+        'flight. Default is False.'
+    )
+    parser.add_argument(
+        '--grpc-http2-max-pings-without-data',
+        type=int,
+        required=False,
+        default=2,
+        help=
+        'The maximum number of pings that can be sent when there is no '
+        'data/header frame to be sent. gRPC Core will not continue sending '
+        'pings if we run over the limit. Setting it to 0 allows sending pings '
+        'without such a restriction. Default is 2.'
     )
 
     FLAGS = parser.parse_args()
     try:
+        keepalive_options = grpcclient.KeepAliveOptions(
+            keepalive_time_ms=FLAGS.grpc_keepalive_time,
+            keepalive_timeout_ms=FLAGS.grpc_keepalive_timeout,
+            keepalive_permit_without_calls=FLAGS.grpc_keepalive_permit_without_calls,
+            http2_max_pings_without_data=FLAGS.grpc_http2_max_pings_without_data
+        )
         triton_client = grpcclient.InferenceServerClient(
             url=FLAGS.url,
             verbose=FLAGS.verbose,
@@ -97,10 +145,7 @@ if __name__ == '__main__':
             root_certificates=FLAGS.root_certificates,
             private_key=FLAGS.private_key,
             certificate_chain=FLAGS.certificate_chain,
-            grpc_arg_keepalive_time_ms=2**31-1,
-            grpc_arg_keepalive_timeout_ms=20000,
-            grpc_arg_keepalive_permit_without_calls=0,
-            grpc_arg_http2_max_pings_without_data=2
+            keepalive_options=keepalive_options
         )
     except Exception as e:
         print("channel creation failed: " + str(e))
