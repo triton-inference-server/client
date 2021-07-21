@@ -1317,7 +1317,7 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
     : InferenceServerClient(verbose)
 {
   auto channel_stub =
