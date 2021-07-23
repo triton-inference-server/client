@@ -289,8 +289,9 @@ parameters in both the [C++](src/c%2B%2B/library/grpc_client.h) and
 
 There is also a [C++](src/c%2B%2B/examples/simple_grpc_keepalive_client.cc) and
 [Python](src/python/examples/simple_grpc_keepalive_client.py) example
-demonstrating how to setup these parameters on the client side. For a server
-side example, refer to [main.cc](https://github.com/triton-inference-server/server/blob/main/src/servers/main.cc).
+demonstrating how to setup these parameters on the client side. For information
+on the corresponding server side parameters, refer to the 
+[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#grpc-keepalive-options).
 
 ### GRPC SSL/TLS Options
 
