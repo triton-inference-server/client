@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,58 +45,61 @@ if __name__ == '__main__':
                         required=False,
                         default='localhost:8001',
                         help='Inference server URL. Default is localhost:8001.')
-    parser.add_argument('-s',
-                        '--ssl',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable SSL encrypted channel to the server')
-    parser.add_argument('-t',
-                        '--client-timeout',
-                        type=float,
-                        required=False,
-                        default=None,
-                        help='Client timeout in seconds. Default is None.')
+    # GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
     parser.add_argument(
-        '-r',
-        '--root-certificates',
-        type=str,
+        '--grpc-keepalive-time',
+        type=int,
         required=False,
-        default=None,
-        help='File holding PEM-encoded root certificates. Default is None.')
-    parser.add_argument(
-        '-p',
-        '--private-key',
-        type=str,
-        required=False,
-        default=None,
-        help='File holding PEM-encoded private key. Default is None.')
-    parser.add_argument(
-        '-x',
-        '--certificate-chain',
-        type=str,
-        required=False,
-        default=None,
-        help='File holding PEM-encoded certicate chain. Default is None.')
-    parser.add_argument(
-        '-C',
-        '--grpc-compression-algorithm',
-        type=str,
-        required=False,
-        default=None,
+        default=2**31-1,
         help=
-        'The compression algorithm to be used when sending request to server. Default is None.'
+        'The period (in milliseconds) after which a keepalive ping is sent on '
+        'the transport. Default is 2**31-1 (INT_MAX: disabled).'
+    )
+    parser.add_argument(
+        '--grpc-keepalive-timeout',
+        type=int,
+        required=False,
+        default=20000,
+        help=
+        'The period (in milliseconds) the sender of the keepalive ping waits '
+        'for an acknowledgement. If it does not receive an acknowledgment '
+        'within this time, it will close the connection. '
+        'Default is 20000 (20 seconds).'
+    )
+    parser.add_argument(
+        '--grpc-keepalive-permit-without-calls',
+        action="store_true",
+        required=False,
+        default=False,
+        help=
+        'Allows keepalive pings to be sent even if there are no calls in '
+        'flight. Default is False.'
+    )
+    parser.add_argument(
+        '--grpc-http2-max-pings-without-data',
+        type=int,
+        required=False,
+        default=2,
+        help=
+        'The maximum number of pings that can be sent when there is no '
+        'data/header frame to be sent. gRPC Core will not continue sending '
+        'pings if we run over the limit. Setting it to 0 allows sending pings '
+        'without such a restriction. Default is 2.'
     )
 
     FLAGS = parser.parse_args()
     try:
+        keepalive_options = grpcclient.KeepAliveOptions(
+            keepalive_time_ms=FLAGS.grpc_keepalive_time,
+            keepalive_timeout_ms=FLAGS.grpc_keepalive_timeout,
+            keepalive_permit_without_calls=FLAGS.grpc_keepalive_permit_without_calls,
+            http2_max_pings_without_data=FLAGS.grpc_http2_max_pings_without_data
+        )
         triton_client = grpcclient.InferenceServerClient(
             url=FLAGS.url,
             verbose=FLAGS.verbose,
-            ssl=FLAGS.ssl,
-            root_certificates=FLAGS.root_certificates,
-            private_key=FLAGS.private_key,
-            certificate_chain=FLAGS.certificate_chain)
+            keepalive_options=keepalive_options
+        )
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit()
@@ -127,40 +130,13 @@ if __name__ == '__main__':
         model_name=model_name,
         inputs=inputs,
         outputs=outputs,
-        client_timeout=FLAGS.client_timeout,
-        headers={'test': '1'},
-        compression_algorithm=FLAGS.grpc_compression_algorithm)
+        headers={'test': '1'})
 
     statistics = triton_client.get_inference_statistics(model_name=model_name)
     print(statistics)
     if len(statistics.model_stats) != 1:
         print("FAILED: Inference Statistics")
         sys.exit(1)
-
-    # Get the output arrays from the results
-    output0_data = results.as_numpy('OUTPUT0')
-    output1_data = results.as_numpy('OUTPUT1')
-
-    for i in range(16):
-        print(
-            str(input0_data[0][i]) + " + " + str(input1_data[0][i]) + " = " +
-            str(output0_data[0][i]))
-        print(
-            str(input0_data[0][i]) + " - " + str(input1_data[0][i]) + " = " +
-            str(output1_data[0][i]))
-        if (input0_data[0][i] + input1_data[0][i]) != output0_data[0][i]:
-            print("sync infer error: incorrect sum")
-            sys.exit(1)
-        if (input0_data[0][i] - input1_data[0][i]) != output1_data[0][i]:
-            print("sync infer error: incorrect difference")
-            sys.exit(1)
-
-    # Test with no outputs
-    results = triton_client.infer(
-        model_name=model_name,
-        inputs=inputs,
-        outputs=None,
-        compression_algorithm=FLAGS.grpc_compression_algorithm)
 
     # Get the output arrays from the results
     output0_data = results.as_numpy('OUTPUT0')
