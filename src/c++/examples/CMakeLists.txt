@@ -139,6 +139,20 @@ if(TRITON_ENABLE_CC_GRPC)
   )
 
   #
+  # simple_grpc_keepalive_client
+  #
+  add_executable(simple_grpc_keepalive_client simple_grpc_keepalive_client.cc)
+  target_link_libraries(
+    simple_grpc_keepalive_client
+    PRIVATE
+      grpcclient_static
+  )
+  install(
+    TARGETS simple_grpc_keepalive_client
+    RUNTIME DESTINATION bin
+  )
+
+  #
   # simple_grpc_string_infer_client
   #
   add_executable(simple_grpc_string_infer_client simple_grpc_string_infer_client.cc)
