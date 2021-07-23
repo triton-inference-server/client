@@ -65,7 +65,7 @@ ConvertDTypeFromTFS(const std::string& tf_dtype, std::string* datatype)
     *datatype = "UINT16";
   } else if (tf_dtype == "DT_INT8") {
     *datatype = "INT8";
-  } else if (tf_dtype == "DT_UNIT8") {
+  } else if (tf_dtype == "DT_UINT8") {
     *datatype = "UINT8";
   } else if (tf_dtype == "DT_STRING") {
     *datatype = "BYTES";
