@@ -132,12 +132,6 @@ if __name__ == '__main__':
         outputs=outputs,
         headers={'test': '1'})
 
-    statistics = triton_client.get_inference_statistics(model_name=model_name)
-    print(statistics)
-    if len(statistics.model_stats) != 1:
-        print("FAILED: Inference Statistics")
-        sys.exit(1)
-
     # Get the output arrays from the results
     output0_data = results.as_numpy('OUTPUT0')
     output1_data = results.as_numpy('OUTPUT1')
@@ -156,4 +150,4 @@ if __name__ == '__main__':
             print("sync infer error: incorrect difference")
             sys.exit(1)
 
-    print('PASS: infer')
+    print('PASS: KeepAlive')

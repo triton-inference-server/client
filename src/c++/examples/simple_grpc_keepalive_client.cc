@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -288,26 +288,7 @@ main(int argc, char** argv)
 
   // Get full response
   std::cout << results_ptr->DebugString() << std::endl;
-
-  tc::InferStat infer_stat;
-  client->ClientInferStat(&infer_stat);
-  std::cout << "======Client Statistics======" << std::endl;
-  std::cout << "completed_request_count " << infer_stat.completed_request_count
-            << std::endl;
-  std::cout << "cumulative_total_request_time_ns "
-            << infer_stat.cumulative_total_request_time_ns << std::endl;
-  std::cout << "cumulative_send_time_ns " << infer_stat.cumulative_send_time_ns
-            << std::endl;
-  std::cout << "cumulative_receive_time_ns "
-            << infer_stat.cumulative_receive_time_ns << std::endl;
-
-  inference::ModelStatisticsResponse model_stat;
-  client->ModelInferenceStatistics(&model_stat, model_name);
-  std::cout << "======Model Statistics======" << std::endl;
-  std::cout << model_stat.DebugString() << std::endl;
-
-
-  std::cout << "PASS : Infer" << std::endl;
+  std::cout << "PASS : KeepAlive" << std::endl;
 
   return 0;
 }
