@@ -1,5 +1,5 @@
 <!--
-# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -277,6 +277,24 @@ API. The commented interface is available in
 [grpc](src/python/library/tritonclient/grpc/__init__.py)
 and
 [http](src/python/library/tritonclient/http/__init__.py).
+
+### GRPC KeepAlive Options
+
+Triton exposes GRPC KeepAlive parameters with the default values for both
+client and server described [here](https://github.com/grpc/grpc/blob/master/doc/keepalive.md).
+
+You can find a `KeepAliveOptions` struct/class that encapsulates these
+parameters in both the [C++](src/c%2B%2B/library/grpc_client.h) and
+[Python](src/python/library/tritonclient/grpc/__init__.py) client libraries.
+
+There is also a [C++](src/c%2B%2B/examples/simple_grpc_keepalive_client.cc) and
+[Python](src/python/examples/simple_grpc_keepalive_client.py) example
+demonstrating how to setup these parameters on the client side. For a server
+side example, refer to [main.cc](https://github.com/triton-inference-server/server/blob/main/src/servers/main.cc).
+
+### GRPC SSL/TLS Options
+
+TODO: Tanmay to help here
 
 ## Simple Example Applications
 
