@@ -293,7 +293,7 @@ For Python client, look for the following options in [grpc/__init__.py](src/pyth
 
 The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples
 demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the 
-[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md##ssltls)
+[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#ssltls)
 
 ### GRPC Compression Options
 
@@ -303,7 +303,7 @@ For C++ client, see `compression_algorithm` parameter in the `Infer`, `AsyncInfe
 
 Similarly, for Python client, see `compression_algorithm` parameter in `infer`, `async_infer` and `start_stream` functions in [grpc/__init__.py](src/python/library/tritonclient/grpc/__init__.py):
 
-The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md###compression)
+The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#compression)
 
 ### GRPC KeepAlive Options
 
@@ -316,9 +316,9 @@ parameters in both the [C++](src/c%2B%2B/library/grpc_client.h) and
 
 There is also a [C++](src/c%2B%2B/examples/simple_grpc_keepalive_client.cc) and
 [Python](src/python/examples/simple_grpc_keepalive_client.py) example
-demonstrating how to setup these parameters on the client side. For information
-on the corresponding server side parameters, refer to the 
-[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#grpc-keepalive-options).
+demonstrating how to setup these parameters on the client-side. For information
+on the corresponding server-side parameters, refer to the 
+[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#grpc-keepalive)
 
 ## Simple Example Applications
 
