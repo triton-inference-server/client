@@ -282,7 +282,7 @@ and
 
 #### SSL/TLS
 
-The client library allows a secured channel using gRPC protocol.
+The client library allows communication across a secured channel using gRPC protocol.
 
 For C++ client, see `SslOptions` struct that encapsulates these options in [grpc_client.h](src/c%2B%2B/library/grpc_client.h).
 
