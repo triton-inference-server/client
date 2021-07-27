@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -57,6 +57,29 @@ struct SslOptions {
   std::string certificate_chain;
 };
 
+// GRPC KeepAlive: https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
+struct KeepAliveOptions {
+  explicit KeepAliveOptions()
+      : keepalive_time_ms(INT_MAX), keepalive_timeout_ms(20000),
+        keepalive_permit_without_calls(false), http2_max_pings_without_data(2)
+  {
+  }
+  // The period (in milliseconds) after which a keepalive ping is sent on the
+  // transport
+  int keepalive_time_ms;
+  // The amount of time (in milliseconds) the sender of the keepalive ping waits
+  // for an acknowledgement. If it does not receive an acknowledgment within
+  // this time, it will close the connection.
+  int keepalive_timeout_ms;
+  // If true, allow keepalive pings to be sent even if there are no calls in
+  // flight.
+  bool keepalive_permit_without_calls;
+  // The maximum number of pings that can be sent when there is no data/header
+  // frame to be sent. gRPC Core will not continue sending pings if we run over
+  // the limit. Setting it to 0 allows sending pings without such a restriction.
+  int http2_max_pings_without_data;
+};
+
 //==============================================================================
 /// An InferenceServerGrpcClient object is used to perform any kind of
 /// communication with the InferenceServer using gRPC protocol.  Most
@@ -85,11 +108,14 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param use_ssl If true use encrypted channel to the server.
   /// \param ssl_options Specifies the files required for
   /// SSL encryption and authorization.
+  /// \param keepalive_options Specifies the GRPC KeepAlive options described
+  /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
-      const SslOptions& ssl_options = SslOptions());
+      const SslOptions& ssl_options = SslOptions(),
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions());
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -377,7 +403,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options);
+      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);

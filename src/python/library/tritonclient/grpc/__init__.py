@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -47,7 +47,8 @@ from tritonclient.utils import *
 # Should be kept consistent with the value specified in
 # src/core/constants.h, which specifies MAX_GRPC_MESSAGE_SIZE
 # as INT32_MAX.
-MAX_GRPC_MESSAGE_SIZE = 2**(struct.Struct('i').size * 8 - 1) - 1
+INT32_MAX = 2**(struct.Struct('i').size * 8 - 1) - 1
+MAX_GRPC_MESSAGE_SIZE = INT32_MAX
 
 
 def get_error_grpc(rpc_error):
@@ -100,6 +101,47 @@ def _grpc_compression_type(algorithm_str):
     )
     return grpc.Compression.NoCompression
 
+class KeepAliveOptions:
+    """A KeepAliveOptions object is used to encapsulate GRPC KeepAlive
+    related parameters for initiating an InferenceServerclient object.
+
+    See the https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+    documentation for more information.
+
+    Parameters
+    ----------
+    keepalive_time_ms: int 
+        The period (in milliseconds) after which a keepalive ping is sent on
+        the transport. Default is INT32_MAX.
+
+    keepalive_timeout_ms: int 
+        The period (in milliseconds) the sender of the keepalive ping waits
+        for an acknowledgement. If it does not receive an acknowledgment
+        within this time, it will close the connection. Default is 20000
+        (20 seconds).
+
+    keepalive_permit_without_calls: bool 
+        Allows keepalive pings to be sent even if there are no calls in flight.
+        Default is False.
+
+    http2_max_pings_without_data: int 
+        The maximum number of pings that can be sent when there is no
+        data/header frame to be sent. gRPC Core will not continue sending
+        pings if we run over the limit. Setting it to 0 allows sending pings
+        without such a restriction. Default is 2.
+
+    """
+
+    def __init__(self,
+                 keepalive_time_ms=INT32_MAX,
+                 keepalive_timeout_ms=20000,
+                 keepalive_permit_without_calls=False,
+                 http2_max_pings_without_data=2):
+        self.keepalive_time_ms = keepalive_time_ms
+        self.keepalive_timeout_ms = keepalive_timeout_ms
+        self.keepalive_permit_without_calls = keepalive_permit_without_calls 
+        self.http2_max_pings_without_data = http2_max_pings_without_data
+
 
 class InferenceServerClient:
     """An InferenceServerClient object is used to perform any kind of
@@ -135,6 +177,10 @@ class InferenceServerClient:
         to use or None if no certificate chain should be used. The
         option is ignored if `ssl` is False. Default is None.
 
+    keepalive_options: KeepAliveOptions 
+        Object encapsulating various GRPC KeepAlive options. See
+        the class definition for more information. Default is None.
+
     Raises
     ------
     Exception
@@ -148,12 +194,26 @@ class InferenceServerClient:
                  ssl=False,
                  root_certificates=None,
                  private_key=None,
-                 certificate_chain=None):
+                 certificate_chain=None,
+                 keepalive_options=None):
+        # Use GRPC KeepAlive client defaults if unspecified
+        if not keepalive_options:
+            keepalive_options = KeepAliveOptions()
+
         # FixMe: Are any of the channel options worth exposing?
         # https://grpc.io/grpc/core/group__grpc__arg__keys.html
-        channel_opt = [('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
-                       ('grpc.max_receive_message_length',
-                        MAX_GRPC_MESSAGE_SIZE)]
+        channel_opt = [
+            ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
+            ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
+            ('grpc.keepalive_time_ms', keepalive_options.keepalive_time_ms),
+            ('grpc.keepalive_timeout_ms',
+                keepalive_options.keepalive_timeout_ms),
+            ('grpc.keepalive_permit_without_calls',
+                keepalive_options.keepalive_permit_without_calls),
+            ('grpc.http2.max_pings_without_data', 
+                keepalive_options.http2_max_pings_without_data),
+        ]
+
         if ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
