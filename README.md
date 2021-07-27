@@ -278,7 +278,9 @@ API. The commented interface is available in
 and
 [http](src/python/library/tritonclient/http/__init__.py).
 
-### GRPC SSL/TLS Options
+### GRPC Options
+
+#### SSL/TLS
 
 The client library allows a secured channel using gRPC protocol.
 
@@ -295,7 +297,7 @@ The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/pyt
 demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the 
 [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#ssltls)
 
-### GRPC Compression Options
+### Compression
 
 The client library also exposes options to use on-wire compression for gRPC transactions. 
 
@@ -305,7 +307,7 @@ Similarly, for Python client, see `compression_algorithm` parameter in `infer`, 
 
 The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#compression)
 
-### GRPC KeepAlive Options
+#### GRPC KeepAlive
 
 Triton exposes GRPC KeepAlive parameters with the default values for both
 client and server described [here](https://github.com/grpc/grpc/blob/master/doc/keepalive.md).
