@@ -33,6 +33,7 @@
 #include <rapidjson/error/en.h>
 #include <sys/stat.h>
 #include <future>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -255,7 +256,13 @@ TritonLoader::StartTriton(const std::string& memory_type)
       GetSingleton()->api_version_fn_(&api_version_major, &api_version_minor));
   if ((TRITONSERVER_API_VERSION_MAJOR != api_version_major) ||
       (TRITONSERVER_API_VERSION_MINOR > api_version_minor)) {
-    return Error("triton server API version mismatch");
+    std::stringstream sstream;
+    sstream << "triton server API version mismatch. \n"
+            << "Expected version major:" << TRITONSERVER_API_VERSION_MAJOR
+            << ", minor:" << TRITONSERVER_API_VERSION_MINOR << "\n"
+            << "  Actual version major:" << api_version_major
+            << ", minor:" << api_version_minor;
+    return Error(sstream.str());
   }
   // Create the server...
   TRITONSERVER_ServerOptions* server_options = nullptr;
