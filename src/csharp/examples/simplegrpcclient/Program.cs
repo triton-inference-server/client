@@ -38,82 +38,82 @@ namespace simplegrpcclient
     {
         static async Task Main(string[] args)
         {
-			var host = args.Length > 0 ? args[0] : "localhost";
-			int port = args.Length > 1 ? int.Parse(args[1]) : 8001;
+            var host = args.Length > 0 ? args[0] : "localhost";
+            int port = args.Length > 1 ? int.Parse(args[1]) : 8001;
 
             var model_name = "simple";
-			var model_version = "";
+            var model_version = "";
 
-			// # Create gRPC stub for communicating with the server
-			using var channel = GrpcChannel.ForAddress($"http://{host}:{port}");
-			var grpcClient = new GRPCInferenceService.GRPCInferenceServiceClient(channel);
+            // # Create gRPC stub for communicating with the server
+            using var channel = GrpcChannel.ForAddress($"http://{host}:{port}");
+            var grpcClient = new GRPCInferenceService.GRPCInferenceServiceClient(channel);
 
-			// check server is live
-			var serverLiveRequest = new ServerLiveRequest();
-			var r = await grpcClient.ServerLiveAsync(serverLiveRequest);
-			Console.WriteLine(r.Live);
+            // check server is live
+            var serverLiveRequest = new ServerLiveRequest();
+            var r = await grpcClient.ServerLiveAsync(serverLiveRequest);
+            Console.WriteLine(r);
 
-			// # Generate the request
-			var request = new ModelInferRequest();
-			request.ModelName = model_name;
-			request.ModelVersion = model_version;
+            // # Generate the request
+            var request = new ModelInferRequest();
+            request.ModelName = model_name;
+            request.ModelVersion = model_version;
 
-			// # Input data
-			var lst_0 = Enumerable.Range(1, 16).ToArray();
-			var lst_1 = Enumerable.Range(1, 16).ToArray();
-			var input0_data = new InferTensorContents();
-			var input1_data = new InferTensorContents();
-			input0_data.IntContents.AddRange(lst_0);
-			input1_data.IntContents.AddRange(lst_1);
+            // # Input data
+            var lst_0 = Enumerable.Range(1, 16).ToArray();
+            var lst_1 = Enumerable.Range(1, 16).ToArray();
+            var input0_data = new InferTensorContents();
+            var input1_data = new InferTensorContents();
+            input0_data.IntContents.AddRange(lst_0);
+            input1_data.IntContents.AddRange(lst_1);
 
-			// # Populate the inputs in inference request
-			var input0 = new ModelInferRequest.Types.InferInputTensor();
-			input0.Name = "INPUT0";
-			input0.Datatype = "INT32";
-			input0.Shape.Add(1);
-			input0.Shape.Add(16);
-			input0.Contents = input0_data;
+            // # Populate the inputs in inference request
+            var input0 = new ModelInferRequest.Types.InferInputTensor();
+            input0.Name = "INPUT0";
+            input0.Datatype = "INT32";
+            input0.Shape.Add(1);
+            input0.Shape.Add(16);
+            input0.Contents = input0_data;
 
-			var input1 = new ModelInferRequest.Types.InferInputTensor();
-			input1.Name = "INPUT1";
-			input1.Datatype = "INT32";
-			input1.Shape.Add(1);
-			input1.Shape.Add(16);
-			input1.Contents = input1_data;
+            var input1 = new ModelInferRequest.Types.InferInputTensor();
+            input1.Name = "INPUT1";
+            input1.Datatype = "INT32";
+            input1.Shape.Add(1);
+            input1.Shape.Add(16);
+            input1.Contents = input1_data;
 
-			// request.inputs.extend([input0, input1])
-			request.Inputs.Add(input0);
-			request.Inputs.Add(input1);
+            // request.inputs.extend([input0, input1])
+            request.Inputs.Add(input0);
+            request.Inputs.Add(input1);
 
-			// # Populate the outputs in the inference request
-			var output0 = new ModelInferRequest.Types.InferRequestedOutputTensor();
-			output0.Name = "OUTPUT0";
+            // # Populate the outputs in the inference request
+            var output0 = new ModelInferRequest.Types.InferRequestedOutputTensor();
+            output0.Name = "OUTPUT0";
 
-			var output1 = new ModelInferRequest.Types.InferRequestedOutputTensor();
-			output1.Name = "OUTPUT1";
+            var output1 = new ModelInferRequest.Types.InferRequestedOutputTensor();
+            output1.Name = "OUTPUT1";
 
-			// request.outputs.extend([output0, output1])
-			request.Outputs.Add(output0);
-			request.Outputs.Add(output1);
+            // request.outputs.extend([output0, output1])
+            request.Outputs.Add(output0);
+            request.Outputs.Add(output1);
 
-			var response = await grpcClient.ModelInferAsync(request);
-			Console.WriteLine(response);
+            var response = await grpcClient.ModelInferAsync(request);
+            Console.WriteLine(response);
 
-			// Get the response outputs
-			int[] op0 = ConvertToIntArray(response.RawOutputContents[0].Span);
-			int[] op1 = ConvertToIntArray(response.RawOutputContents[1].Span);
+            // Get the response outputs
+            int[] op0 = ConvertToIntArray(response.RawOutputContents[0].Span);
+            int[] op1 = ConvertToIntArray(response.RawOutputContents[1].Span);
 
-			// Validate response outputs
-			for (int i = 0; i < op0.Length; i++)
-			{
-				Console.WriteLine($"{lst_0[i]} + {lst_1[i]} = {op0[i]}");
-				Console.WriteLine($"{lst_0[i]} - {lst_1[i]} = {op1[i]}");
+            // Validate response outputs
+            for (int i = 0; i < op0.Length; i++)
+            {
+                Console.WriteLine($"{lst_0[i]} + {lst_1[i]} = {op0[i]}");
+                Console.WriteLine($"{lst_0[i]} - {lst_1[i]} = {op1[i]}");
 
-				if (op0[i] != (lst_0[i] + lst_1[i]))
-				{
-					Console.WriteLine("OUTPUT0 contains incorrect sum");
-					Environment.Exit(-1);
-				}
+                if (op0[i] != (lst_0[i] + lst_1[i]))
+                {
+                    Console.WriteLine("OUTPUT0 contains incorrect sum");
+                    Environment.Exit(-1);
+                }
 
                 if (op1[i] != (lst_0[i] - lst_1[i]))
                 {
@@ -121,17 +121,17 @@ namespace simplegrpcclient
                     Environment.Exit(-1);
                 }
             }
-		}
+        }
 
         private static int[] ConvertToIntArray(ReadOnlySpan<byte> span)
         {
-			var res = new int[span.Length / 4];
-			for (int i = 0; i < res.Length; i++)
-			{ 
-				res[i] = BitConverter.ToInt32(span.Slice(4 * i, 4));
+            var res = new int[span.Length / 4];
+            for (int i = 0; i < res.Length; i++)
+            {
+                res[i] = BitConverter.ToInt32(span.Slice(4 * i, 4));
             }
 
-			return res;
+            return res;
         }
     }
 }
