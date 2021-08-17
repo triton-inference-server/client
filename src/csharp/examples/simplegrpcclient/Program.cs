@@ -75,11 +75,11 @@ namespace simplegrpcclient
 			input0.Contents = input0_data;
 
 			var input1 = new ModelInferRequest.Types.InferInputTensor();
-			input0.Name = "INPUT1";
-			input0.Datatype = "INT32";
-			input0.Shape.Add(1);
-			input0.Shape.Add(16);
-			input0.Contents = input1_data;
+			input1.Name = "INPUT1";
+			input1.Datatype = "INT32";
+			input1.Shape.Add(1);
+			input1.Shape.Add(16);
+			input1.Contents = input1_data;
 
 			// request.inputs.extend([input0, input1])
 			request.Inputs.Add(input0);
@@ -100,14 +100,14 @@ namespace simplegrpcclient
 			Console.WriteLine(response);
 
 			// Get the response outputs
-			int[] op0 = response.Outputs[0].Contents.IntContents.ToArray();
-			int[] op1 = response.Outputs[1].Contents.IntContents.ToArray();
+			int[] op0 = ConvertToIntArray(response.RawOutputContents[0].Span);
+			int[] op1 = ConvertToIntArray(response.RawOutputContents[1].Span);
 
 			// Validate response outputs
 			for (int i = 0; i < op0.Length; i++)
 			{
 				Console.WriteLine($"{lst_0[i]} + {lst_1[i]} = {op0[i]}");
-				Console.WriteLine($"{lst_0[i]} + {lst_1[i]} = {op1[i]}");
+				Console.WriteLine($"{lst_0[i]} - {lst_1[i]} = {op1[i]}");
 
 				if (op0[i] != (lst_0[i] + lst_1[i]))
 				{
@@ -115,12 +115,23 @@ namespace simplegrpcclient
 					Environment.Exit(-1);
 				}
 
-				if (op1[i] != (lst_0[i] - lst_1[i]))
-				{
-					Console.WriteLine("OUTPUT1 contains incorrect difference");
-					Environment.Exit(-1);
-				}
-			}
+                if (op1[i] != (lst_0[i] - lst_1[i]))
+                {
+                    Console.WriteLine("OUTPUT1 contains incorrect difference");
+                    Environment.Exit(-1);
+                }
+            }
 		}
+
+        private static int[] ConvertToIntArray(ReadOnlySpan<byte> span)
+        {
+			var res = new int[span.Length / 4];
+			for (int i = 0; i < res.Length; i++)
+			{ 
+				res[i] = BitConverter.ToInt32(span.Slice(4 * i, 4));
+            }
+
+			return res;
+        }
     }
 }
