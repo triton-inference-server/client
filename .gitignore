@@ -1,3 +1,5 @@
 /build
 /.vscode
 *.so
+/src/csharp/examples/simplegrpcclient/obj/Debug/net5.0
+/src/csharp/examples/simplegrpcclient/obj
