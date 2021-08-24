@@ -1,5 +1,5 @@
 ..
-  # Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+  # Copyright (c) 2019-2021, NVIDIA CORPORATION. All rights reserved.
   #
   # Redistribution and use in source and binary forms, with or without
   # modification, are permitted provided that the following conditions
@@ -38,8 +38,9 @@ global instead.
 
 Usage::
 
-  # Clone repo
+  # Clone repos
   git clone https://github.com/triton-inference-server/server.git
+  git clone https://github.com/triton-inference-server/common.git
 
   # Setup "simple" model from example model_repository
   cd server/docs/examples
@@ -48,7 +49,7 @@ Usage::
   # Launch (detached) Triton
   docker run -d -p8000:8000 -p8001:8001 -p8002:8002 -it -v $(pwd)/model_repository:/models nvcr.io/nvidia/tritonserver:20.11-py3 tritonserver --model-store=/models
   # Use client
-  cd ../../src/clients/go
+  cd ../../../
   # Compiles *.proto to *.pb.go
   ./gen_go_stubs.sh
   go run grpc_simple_client.go
