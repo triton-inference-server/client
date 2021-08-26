@@ -48,8 +48,8 @@ The provided client libaries are:
 * The [protoc
   compiler](https://developers.google.com/protocol-buffers/docs/tutorials)
   can generate a GRPC API in a large number of programming
-  languages. See [src/go](src/go) for an example for the [Go
-  programming language](https://golang.org/). See [src/java](src/java)
+  languages. See [src/grpc_generated/go](src/grpc_generated/go) for an example for the [Go
+  programming language](https://golang.org/). See [src/grpc_generated/java](src/grpc_generated/java)
   for an example for the Java and Scala programming languages.
 
 There are also many example applications that show how to use these

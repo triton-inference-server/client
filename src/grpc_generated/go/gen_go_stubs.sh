@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,5 +31,8 @@ PACKAGE_PATH="nvidia_inferenceserver"
 #PACKAGE_PATH="${GOPATH}/src/nvidia_inferenceserver"
 
 mkdir -p ${PACKAGE_PATH}
+
+# Get the proto files from the common repo
+mkdir core && cp common/protobuf/*.proto core/.
 # Requires protoc and protoc-gen-go plugin: https://github.com/golang/protobuf#installation
-protoc -I ../../core --go_out=plugins=grpc:${PACKAGE_PATH} ../../core/*.proto
+protoc -I core --go_out=plugins=grpc:${PACKAGE_PATH} core/*.proto
