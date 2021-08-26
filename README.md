@@ -37,8 +37,8 @@ page](https://github.com/triton-inference-server/server/issues).
 
 The provided client libaries are:
 
-* [C++ and Python APIs](#client-library-apis) that make it easy to
-  communicate with Triton from your C++ or Python application. Using
+* [C++, Python and Java APIs](#client-library-apis) that make it easy to
+  communicate with Triton from your C++, Python or Java application. Using
   these libraries you can send either HTTP/REST or GRPC requests to
   Triton to access all its capabilities: inferencing, status and
   health, statistics and metrics, model repository management,
@@ -85,12 +85,16 @@ repository](https://github.com/triton-inference-server/server/blob/master/docs/q
   *image_client* but that uses a generated GRPC client stub to
   communicate with Triton.
 
+* Several simple [Java examples](src/java/examples)
+  show how to use the Java SDK to communicate with Triton to
+  perform inferencing and other task.
+
 ## Getting the Client Libraries And Examples
 
 The easiest way to get the Python client library is to [use pip to
 install the tritonclient
 module](#download-using-python-package-installer-pip). You can also
-download both C++ and Python client libraries from [Triton GitHub
+download both C++, Python and Java client libraries from [Triton GitHub
 release](#download-from-github), or [download a pre-built Docker image
 containing the client libraries](#download-docker-image-from-ngc) from
 [NVIDIA GPU Cloud (NGC)](https://ngc.nvidia.com).
@@ -277,6 +281,9 @@ API. The commented interface is available in
 [grpc](src/python/library/tritonclient/grpc/__init__.py)
 and
 [http](src/python/library/tritonclient/http/__init__.py).
+
+The Java client SDK provides alike capabilities as the Python SDK with similar classes and methods.
+For more information please refer to the [Java client directory](src/java).
 
 ### GRPC Options
 

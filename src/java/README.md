@@ -51,4 +51,4 @@ public class MinExample {
 }
 ```
 
-See more examples in `src/main/java/com/nvidia/triton/contrib/example/`.
+See more examples in [examples](main/java/com/nvidia/triton/contrib/example/).
