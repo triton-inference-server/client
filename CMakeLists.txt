@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@ option(TRITON_ENABLE_CC_HTTP "Build C++ HTTP client libraries" OFF)
 option(TRITON_ENABLE_CC_GRPC "Build C++ GRPC client libraries" OFF)
 option(TRITON_ENABLE_PYTHON_HTTP "Enable Python HTTP client libraries" OFF)
 option(TRITON_ENABLE_PYTHON_GRPC "Enable Python GRPC client libraries" OFF)
+option(TRITON_ENABLE_JAVA_HTTP "Enable JAVA HTTP client libraries" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
@@ -169,3 +170,37 @@ if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
     DEPENDS ${_py_client_depends}
   )
 endif() # TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC
+
+if(TRITON_ENABLE_JAVA_HTTP)
+  set(_java_client_depends "")
+  if(${TRITON_ENABLE_JAVA_HTTP})
+    set(_java_client_depends ${_java_client_depends} curl)
+  endif() # TRITON_ENABLE_JAVA_HTTP  
+
+  ExternalProject_Add(java-clients
+    PREFIX java-clients
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/java"
+    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/java-clients"
+    CMAKE_CACHE_ARGS
+      ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
+      ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
+      ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+      -DCURL_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib/cmake/CURL
+      -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
+      -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
+      -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/lib/cmake/c-ares
+      -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
+      -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG}
+      -DTRITON_BACKEND_REPO_TAG:STRING=${TRITON_BACKEND_REPO_TAG}
+      -DTRITON_VERSION:STRING=${TRITON_VERSION}
+      -DTRITON_ENABLE_JAVA_HTTP:BOOL=${TRITON_ENABLE_JAVA_HTTP}
+      -DTRITON_ENABLE_PERF_ANALYZER:BOOL=${TRITON_ENABLE_PERF_ANALYZER}
+      -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
+      -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+      -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
+      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
+    DEPENDS ${_java_client_depends}
+  )
+
+endif() # TRITON_ENABLE_JAVA_HTTP
