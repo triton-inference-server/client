@@ -46,8 +46,8 @@ The provided client libaries are:
   memory for passing inputs to and receiving outputs from Triton.
 
 * [Java SDK](#client-library-apis)(contributed by Alibaba Cloud PAI Team)
-  that makes it easy to communicate with Triton from your Java application.
-  For now, only a limited feature subset is supported.
+  that makes it easy to communicate with Triton from your Java application
+  using HTTP/REST requests. For now, only a limited feature subset is supported.
 
 * The [protoc
   compiler](https://developers.google.com/protocol-buffers/docs/tutorials)
@@ -224,8 +224,7 @@ Use *cmake* to configure the build.
 ```
 $ mkdir build
 $ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PYTHON_HTTP=ON -DTRITON_ENABLE_PYTHON_GRPC=ON 
--DTRITON_ENABLE_JAVA_HTTP=ON -DTRITON_ENABLE_GPU=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
+$ cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PYTHON_HTTP=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_JAVA_HTTP=ON -DTRITON_ENABLE_GPU=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
 ```
 
 Then use *make* to build the clients and examples.
