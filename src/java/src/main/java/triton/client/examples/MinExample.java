@@ -24,17 +24,17 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.examples;
+package triton.client.examples;
 
 import java.util.Arrays;
 import java.util.List;
 
 import com.google.common.collect.Lists;
-import com.nvidia.triton.contrib.InferInput;
-import com.nvidia.triton.contrib.InferRequestedOutput;
-import com.nvidia.triton.contrib.InferResult;
-import com.nvidia.triton.contrib.InferenceServerClient;
-import com.nvidia.triton.contrib.pojo.DataType;
+import triton.client.InferInput;
+import triton.client.InferRequestedOutput;
+import triton.client.InferResult;
+import triton.client.InferenceServerClient;
+import triton.client.pojo.DataType;
 
 /**
  * @author xiafei.qiuxf

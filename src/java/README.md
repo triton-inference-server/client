@@ -34,24 +34,24 @@ This is a Triton Java API contributed by Alibaba Cloud PAI Team.
 It's based on Triton's HTTP/REST Protocols and for both easy of use and performance.
 
 This Java API mimics Triton's official Python API. It has similar classes and methods.
-- `com.nvidia.triton.contrib.InferInput` describes each input to model. 
-- `com.nvidia.triton.contrib.InferRequestedOutput` describes each output from model.
-- `com.nvidia.triton.contrib.InferenceServerClient` is the main inference class.
+- `triton.client.InferInput` describes each input to model. 
+- `triton.client.InferRequestedOutput` describes each output from model.
+- `triton.client.InferenceServerClient` is the main inference class.
 
 A minimal example would be like:
 
 ```java
-package com.nvidia.triton.contrib.example;
+package triton.client.example;
 
 import java.util.Arrays;
 import java.util.List;
 
 import com.google.common.collect.Lists;
-import com.nvidia.triton.contrib.InferInput;
-import com.nvidia.triton.contrib.InferRequestedOutput;
-import com.nvidia.triton.contrib.InferResult;
-import com.nvidia.triton.contrib.InferenceServerClient;
-import com.nvidia.triton.contrib.pojo.DataType;
+import triton.client.InferInput;
+import triton.client.InferRequestedOutput;
+import triton.client.InferResult;
+import triton.client.InferenceServerClient;
+import triton.client.pojo.DataType;
 
 public class MinExample {
     public static void main(String[] args) throws Exception {
@@ -81,4 +81,4 @@ public class MinExample {
 }
 ```
 
-See more examples in [examples](main/java/com/nvidia/triton/contrib/examples/).
+See more examples in [examples](main/java/triton/client/examples/).

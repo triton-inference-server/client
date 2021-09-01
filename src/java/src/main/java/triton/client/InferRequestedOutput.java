@@ -24,10 +24,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib;
+package triton.client;
 
-import com.nvidia.triton.contrib.pojo.Parameters;
-import com.nvidia.triton.contrib.pojo.IOTensor;
+import triton.client.pojo.Parameters;
+import triton.client.pojo.IOTensor;
 
 /**
  * @author xiafei.qiuxf

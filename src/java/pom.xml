@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.nvidia.triton.contrib</groupId>
+    <groupId>triton.client</groupId>
     <artifactId>java-api</artifactId>
     <version>0.0.1</version>
     <name>triton_java_api</name>

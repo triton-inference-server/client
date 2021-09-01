@@ -24,37 +24,42 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.endpoint;
+package triton.client.endpoint;
 
-import com.nvidia.triton.contrib.Util;
+import java.util.Objects;
+
+import triton.client.InferenceServerClient;
+import triton.client.Util;
 import com.google.common.base.Preconditions;
 
 /**
- * Endpoint that connect to single address.
+ * Endpoint is an abstraction that allow different kinds of strategy to provide ip and port for
+ * {@link InferenceServerClient} to send requests.
  */
-public class FixedEndpoint extends AbstractEndpoint {
+public abstract class AbstractEndpoint {
 
-    private final String addr;
+    private static final int RETRY_COUNT = 10;
+    private String lastResult = "";
+
+    abstract String getEndpointImpl() throws Exception;
+
+    abstract int getEndpointNum() throws Exception;
 
     /**
-     * Create a endpoint connecting to a fixed address.
+     * Get string in ip:port[/path] format.
      *
-     * @param endpoint Endpoint in host:port[/path] format without schema part.
+     * @return
+     * @throws Exception
      */
-    public FixedEndpoint(String endpoint) {
-        Preconditions.checkArgument(!Util.isEmpty(endpoint), "endpoint should not be null or empty.");
-        Preconditions.checkArgument(!endpoint.contains("://"),
-            "endpoint should be in host:port[/path] format without scheme.");
-        this.addr = endpoint;
-    }
-
-    @Override
-    String getEndpointImpl() {
-        return this.addr;
-    }
-
-    @Override
-    int getEndpointNum() {
-        return 1;
+    public String getEndpoint() throws Exception {
+        for (int i = 0; i < RETRY_COUNT; i++) {
+            String url = this.getEndpointImpl();
+            Preconditions.checkState(!Util.isEmpty(url), "getEndpointImpl should not return null or empty string!");
+            if (!Objects.equals(this.lastResult, url) || this.getEndpointNum() < 2) {
+                this.lastResult = url;
+                return url;
+            }
+        }
+        throw new RuntimeException(String.format("Failed to get endpoint address after trying %d times.", RETRY_COUNT));
     }
 }

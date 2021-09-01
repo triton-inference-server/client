@@ -24,42 +24,67 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.endpoint;
+package triton.client.pojo;
 
-import java.util.Objects;
-
-import com.nvidia.triton.contrib.InferenceServerClient;
-import com.nvidia.triton.contrib.Util;
-import com.google.common.base.Preconditions;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * Endpoint is an abstraction that allow different kinds of strategy to provide ip and port for
- * {@link InferenceServerClient} to send requests.
+ * This class represent
+ * <a href="https://github.com/kubeflow/kfserving/blob/master/docs/predict-api/v2/rest_predict_v2.yaml#L258">request_input</a>
+ * and
+ * <a href="https://github.com/kubeflow/kfserving/blob/master/docs/predict-api/v2/rest_predict_v2.yaml#L299">response_output</a>
+ * in kfserving's v2 rest schema. The two objects share the same definitions.
  */
-public abstract class AbstractEndpoint {
 
-    private static final int RETRY_COUNT = 10;
-    private String lastResult = "";
+@JsonInclude(Include.NON_NULL)
+public class IOTensor {
+    private String name;
+    private long[] shape;
+    private DataType datatype;
+    private Parameters parameters;
+    private Object[] data;
 
-    abstract String getEndpointImpl() throws Exception;
+    public IOTensor() {
+    }
 
-    abstract int getEndpointNum() throws Exception;
+    public String getName() {
+        return name;
+    }
 
-    /**
-     * Get string in ip:port[/path] format.
-     *
-     * @return
-     * @throws Exception
-     */
-    public String getEndpoint() throws Exception {
-        for (int i = 0; i < RETRY_COUNT; i++) {
-            String url = this.getEndpointImpl();
-            Preconditions.checkState(!Util.isEmpty(url), "getEndpointImpl should not return null or empty string!");
-            if (!Objects.equals(this.lastResult, url) || this.getEndpointNum() < 2) {
-                this.lastResult = url;
-                return url;
-            }
-        }
-        throw new RuntimeException(String.format("Failed to get endpoint address after trying %d times.", RETRY_COUNT));
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public long[] getShape() {
+        return shape;
+    }
+
+    public void setShape(long[] shape) {
+        this.shape = shape;
+    }
+
+    public DataType getDatatype() {
+        return datatype;
+    }
+
+    public void setDatatype(DataType datatype) {
+        this.datatype = datatype;
+    }
+
+    public Parameters getParameters() {
+        return parameters;
+    }
+
+    public void setParameters(Parameters parameters) {
+        this.parameters = parameters;
+    }
+
+    public Object[] getData() {
+        return data;
+    }
+
+    public void setData(Object[] data) {
+        this.data = data;
     }
 }

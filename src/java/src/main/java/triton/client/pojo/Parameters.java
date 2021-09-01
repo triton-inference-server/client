@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.pojo;
+package triton.client.pojo;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -39,8 +39,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.nvidia.triton.contrib.pojo.Parameters.ParamDeserializer;
-import com.nvidia.triton.contrib.pojo.Parameters.ParamSerializer;
+import triton.client.pojo.Parameters.ParamDeserializer;
+import triton.client.pojo.Parameters.ParamSerializer;
 
 /**
  * This class represent

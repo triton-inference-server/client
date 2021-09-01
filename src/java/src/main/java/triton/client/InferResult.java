@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib;
+package triton.client;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,11 +41,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
-import com.nvidia.triton.contrib.pojo.DataType;
-import com.nvidia.triton.contrib.pojo.IOTensor;
-import com.nvidia.triton.contrib.pojo.InferenceResponse;
-import com.nvidia.triton.contrib.pojo.Parameters;
-import com.nvidia.triton.contrib.pojo.ResponseError;
+import triton.client.pojo.DataType;
+import triton.client.pojo.IOTensor;
+import triton.client.pojo.InferenceResponse;
+import triton.client.pojo.Parameters;
+import triton.client.pojo.ResponseError;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;

@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib;
+package triton.client;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -32,9 +32,9 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import com.nvidia.triton.contrib.pojo.DataType;
-import com.nvidia.triton.contrib.pojo.IOTensor;
-import com.nvidia.triton.contrib.pojo.Parameters;
+import triton.client.pojo.DataType;
+import triton.client.pojo.IOTensor;
+import triton.client.pojo.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Booleans;
 import com.google.common.primitives.Bytes;

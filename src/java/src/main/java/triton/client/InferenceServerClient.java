@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib;
+package triton.client;
 
 /**
  * @author xiafei.qiuxf
@@ -43,10 +43,10 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import com.nvidia.triton.contrib.endpoint.AbstractEndpoint;
-import com.nvidia.triton.contrib.endpoint.FixedEndpoint;
-import com.nvidia.triton.contrib.pojo.IOTensor;
-import com.nvidia.triton.contrib.pojo.Parameters;
+import triton.client.endpoint.AbstractEndpoint;
+import triton.client.endpoint.FixedEndpoint;
+import triton.client.pojo.IOTensor;
+import triton.client.pojo.Parameters;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;

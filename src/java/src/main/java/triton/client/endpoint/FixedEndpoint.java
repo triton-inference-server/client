@@ -24,23 +24,37 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib;
+package triton.client.endpoint;
 
-import com.nvidia.triton.contrib.pojo.ResponseError;
+import triton.client.Util;
+import com.google.common.base.Preconditions;
 
 /**
- * Universal exceptions of triton client.
+ * Endpoint that connect to single address.
  */
-public class InferenceException extends Exception {
-    public InferenceException(ResponseError err) {
-        super(err.getError());
+public class FixedEndpoint extends AbstractEndpoint {
+
+    private final String addr;
+
+    /**
+     * Create a endpoint connecting to a fixed address.
+     *
+     * @param endpoint Endpoint in host:port[/path] format without schema part.
+     */
+    public FixedEndpoint(String endpoint) {
+        Preconditions.checkArgument(!Util.isEmpty(endpoint), "endpoint should not be null or empty.");
+        Preconditions.checkArgument(!endpoint.contains("://"),
+            "endpoint should be in host:port[/path] format without scheme.");
+        this.addr = endpoint;
     }
 
-    public InferenceException(String message) {
-        super(message);
+    @Override
+    String getEndpointImpl() {
+        return this.addr;
     }
 
-    public InferenceException(Throwable cause) {
-        super(cause);
+    @Override
+    int getEndpointNum() {
+        return 1;
     }
 }

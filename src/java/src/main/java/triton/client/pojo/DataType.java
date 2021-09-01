@@ -24,19 +24,44 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.pojo;
+package triton.client.pojo;
 
 /**
- * This is a JSON object representing error response body of triton server.
+ * Data types from
  */
-public class ResponseError {
-    private String error;
+public enum DataType {
 
-    public String getError() {
-        return error;
-    }
+    BOOL(1, false),
+    INT8(1, true),
+    INT16(2, true),
+    INT32(4, true),
+    INT64(8, true),
+    UINT8(1, false),
+    UINT16(2, false),
+    UINT32(4, false),
+    UINT64(8, false),
+    FP16(2, false),
+    FP32(4, false),
+    FP64(8, false),
+    BYTES(-1, false);
 
-    public void setError(String error) {
-        this.error = error;
+    public final int numByte;
+    public final boolean singed;
+
+    DataType(int numByte, boolean singed) {
+        this.numByte = numByte;
+        this.singed = singed;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
