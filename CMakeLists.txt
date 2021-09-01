@@ -173,9 +173,7 @@ endif() # TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC
 
 if(TRITON_ENABLE_JAVA_HTTP)
   set(_java_client_depends "")
-  if(${TRITON_ENABLE_JAVA_HTTP})
-    set(_java_client_depends ${_java_client_depends} curl)
-  endif() # TRITON_ENABLE_JAVA_HTTP  
+  set(_java_client_depends ${_java_client_depends} curl)
 
   ExternalProject_Add(java-clients
     PREFIX java-clients

@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package com.nvidia.triton.contrib.example;
+package com.nvidia.triton.contrib.examples;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +45,7 @@ import com.google.common.util.concurrent.AtomicDouble;
  * @author xiafei.qiuxf
  * @date 2021/5/7
  */
-public class StandaloneTritonExample {
+public class TritonPerf {
      private static List<InferInput> getInputs(String name, boolean isBinary) {
          switch (name) {
              case "roberta": {

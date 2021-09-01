@@ -78,13 +78,13 @@ if(TRITON_ENABLE_JAVA_HTTP)
   include(UseJava)
   set(PROJECT_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/target")
   set(PROJECT_JAR "java-sdk.jar")
-  set(EXAMPLES_PATH "src/main/java/com/nvidia/triton/contrib/examples")
+  set(EXAMPLES_PATH "src/main/java/com/nvidia/triton/contrib")
   add_custom_command(
     OUTPUT "${PROJECT_TARGET_DIR}/${PROJECT_JAR}"
     COMMAND mkdir -p ${CMAKE_INSTALL_PREFIX}/java/${EXAMPLES_PATH}
     COMMAND mvn clean install
     COMMAND cp -r ${PROJECT_TARGET_DIR} ${CMAKE_INSTALL_PREFIX}/java
-    COMMAND cp -r ${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLES_PATH} ${CMAKE_INSTALL_PREFIX}/java/${EXAMPLES_PATH}
+    COMMAND cp -r ${CMAKE_CURRENT_SOURCE_DIR}/${EXAMPLES_PATH}/examples ${CMAKE_INSTALL_PREFIX}/java/${EXAMPLES_PATH}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     VERBATIM
 )
