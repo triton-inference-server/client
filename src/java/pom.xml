@@ -5,11 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.nvidia.triton.contrib</groupId>
-    <artifactId>java-sdk</artifactId>
+    <artifactId>java-api</artifactId>
     <version>0.0.1</version>
-    <name>triton_java_sdk</name>
+    <name>triton_java_api</name>
     <packaging>jar</packaging>
-    <description>Java SDK for Triton Inference server.</description>
+    <description>Java API for Triton Inference server.</description>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>

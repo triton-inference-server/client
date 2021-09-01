@@ -28,12 +28,12 @@
 
 [![License](https://img.shields.io/badge/License-BSD3-lightgrey.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-# Triton Java SDK
+# Triton Java API
 
-This is a Triton Java SDK contributed by Alibaba Cloud PAI Team.
+This is a Triton Java API contributed by Alibaba Cloud PAI Team.
 It's based on Triton's HTTP/REST Protocols and for both easy of use and performance.
 
-This Java SDK mimics Triton's official Python SDK. It has similar classes and methods.
+This Java API mimics Triton's official Python API. It has similar classes and methods.
 - `com.nvidia.triton.contrib.InferInput` describes each input to model. 
 - `com.nvidia.triton.contrib.InferRequestedOutput` describes each output from model.
 - `com.nvidia.triton.contrib.InferenceServerClient` is the main inference class.
