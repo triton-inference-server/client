@@ -81,4 +81,4 @@ public class MinExample {
 }
 ```
 
-See more examples in [examples](main/java/triton/client/examples/).
+See more examples in [examples](src/main/java/triton/client/examples/).

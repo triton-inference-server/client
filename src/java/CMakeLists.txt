@@ -45,7 +45,7 @@ if(TRITON_ENABLE_JAVA_HTTP)
   find_package(Java REQUIRED)
   include(UseJava)
   set(PROJECT_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/target")
-  set(PROJECT_JAR "java-sdk.jar")
+  set(PROJECT_JAR "java-api-0.0.1.jar")
   set(EXAMPLES_PATH "src/main/java/triton/client")
   add_custom_command(
     OUTPUT "${PROJECT_TARGET_DIR}/${PROJECT_JAR}"

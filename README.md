@@ -81,7 +81,7 @@ repository](https://github.com/triton-inference-server/server/blob/master/docs/q
   a *simple_grpc_* prefix. See [Simple Example
   Applications](#simple-example-applications).
 
-* Several simple [Java examples](src/java/main/java/com/nvidia/triton/contrib/examples)
+* Several simple [Java examples](src/java/src/main/java/triton/client/examples)
   show how to use the Java API to communicate with Triton to
   perform inferencing and other task.
 
