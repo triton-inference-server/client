@@ -33,45 +33,13 @@ project(java-clients LANGUAGES C CXX)
 #
 set(TRITON_VERSION "0.0.0" CACHE STRING "Version for the clients")
 option(TRITON_ENABLE_JAVA_HTTP "Enable JAVA HTTP client libraries" OFF)
-option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
 
-set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-
-#
-# Dependencies
-#
-include(FetchContent)
-
-FetchContent_Declare(
-  repo-common
-  GIT_REPOSITORY https://github.com/triton-inference-server/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
-  GIT_SHALLOW ON
-)
-
-FetchContent_MakeAvailable(repo-common)
-
-#
-# CUDA
-#
-if(${TRITON_ENABLE_GPU})
-  find_package(CUDAToolkit REQUIRED)
-endif() # TRITON_ENABLE_GPU
-
-#
-# libcurl
-#
-if(TRITON_ENABLE_JAVA_HTTP)
-  find_package(CURL REQUIRED)
-  message(STATUS "Using curl ${CURL_VERSION}")
-endif() # TRITON_ENABLE_JAVA_HTTP
 
 if(TRITON_ENABLE_JAVA_HTTP)
   find_package(Java REQUIRED)
