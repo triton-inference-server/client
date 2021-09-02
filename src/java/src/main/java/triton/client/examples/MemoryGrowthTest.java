@@ -28,6 +28,8 @@ package triton.client.examples;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.google.common.collect.Lists;
 import triton.client.InferInput;
@@ -36,32 +38,33 @@ import triton.client.InferResult;
 import triton.client.InferenceServerClient;
 import triton.client.pojo.DataType;
 
-/**
- * @author xiafei.qiuxf
- * @date 2021/7/28
- */
-public class MinExample {
-    public static void main(String[] args) throws Exception {
-        boolean isBinary = true;
-        InferInput inputIds = new InferInput("input_ids", new long[] {1L, 32}, DataType.INT32);
-        int[] inputIdsData = new int[32];
-        Arrays.fill(inputIdsData, 1); // fill with some data.
-        inputIds.setData(inputIdsData, isBinary);
+public class MemoryGrowthTest {
+  public static void main(String[] args) throws Exception
+  {
+    // Number of inferences to run.
+    int repetitions = 100;
+    for (int i = 0; i < repetitions; i++) {
+      // Create the data for the input tensor.
+      boolean isBinary = true;
+      InferInput input0 = new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
+      List<Integer> lst_0 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+      int[] input0_data = lst_0.stream().mapToInt(j -> j).toArray();
+      input0.setData(input0_data, isBinary);
 
-        InferInput inputMask = new InferInput("input_mask", new long[] {1, 32}, DataType.INT32);
-        int[] inputMaskData = new int[32];
-        Arrays.fill(inputMaskData, 1);
-        inputMask.setData(inputMaskData, isBinary);
+      List<InferInput> inputs = Lists.newArrayList(input0);
+      List<InferRequestedOutput> outputs =
+          Lists.newArrayList(new InferRequestedOutput("OUTPUT0", isBinary));
 
-        InferInput segmentIds = new InferInput("segment_ids", new long[] {1, 32}, DataType.INT32);
-        int[] segmentIdsData = new int[32];
-        Arrays.fill(segmentIdsData, 0);
-        segmentIds.setData(segmentIdsData, isBinary);
-        List<InferInput> inputs = Lists.newArrayList(inputIds, inputMask, segmentIds);
-        List<InferRequestedOutput> outputs = Lists.newArrayList(new InferRequestedOutput("logits", isBinary));
+      InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
+      InferResult result = client.infer("custom_identity_int32", inputs, outputs);
 
-        InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
-        InferResult result = client.infer("roberta", inputs, outputs);
-        float[] logits = result.getOutputAsFloat("logits");
+      // Get the output arrays from the results and verify
+      int[] output0 = result.getOutputAsInt("OUTPUT0");
+
+      if (!Arrays.equals(input0_data, output0)) {
+        System.out.println("incorrect output");
+        System.exit(1);
+      }
     }
+  }
 }
