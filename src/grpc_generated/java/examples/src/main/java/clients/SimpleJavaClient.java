@@ -1,6 +1,4 @@
-
-/**
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,7 +23,6 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
- */
 
 
 package clients;
@@ -67,12 +64,12 @@ public class SimpleJavaClient {
 		ServerLiveResponse r = grpc_stub.serverLive(serverLiveRequest);
 		System.out.println(r);
 
-		// # Generate the request
+		// Generate the request
 		ModelInferRequest.Builder request = ModelInferRequest.newBuilder();
 		request.setModelName(model_name);
 		request.setModelVersion(model_version);
 
-		// # Input data
+		// Input data
 		List<Integer> lst_0 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
 		List<Integer> lst_1 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
 		InferTensorContents.Builder input0_data = InferTensorContents.newBuilder();
@@ -80,7 +77,7 @@ public class SimpleJavaClient {
 		input0_data.addAllIntContents(lst_0);
 		input1_data.addAllIntContents(lst_1);
 
-		// # Populate the inputs in inference request
+		// Populate the inputs in inference request
 		ModelInferRequest.InferInputTensor.Builder input0 = ModelInferRequest.InferInputTensor
 				.newBuilder();
 		input0.setName("INPUT0");
@@ -101,7 +98,7 @@ public class SimpleJavaClient {
 		request.addInputs(0, input0);
 		request.addInputs(1, input1);
 
-		// # Populate the outputs in the inference request
+		// Populate the outputs in the inference request
 		ModelInferRequest.InferRequestedOutputTensor.Builder output0 = ModelInferRequest.InferRequestedOutputTensor
 				.newBuilder();
 		output0.setName("OUTPUT0");
