@@ -89,5 +89,6 @@ public class SimpleInferClient {
         System.exit(1);
       }
     }
+    System.exit(0);
   }
 }

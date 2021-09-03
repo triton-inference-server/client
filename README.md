@@ -167,9 +167,8 @@ $ tar xzf <tarfile_name>
 ```
 
 After installing, the libraries can be found in lib/, the headers in
-include/, and the Python wheel files in python/. The bin/ and python/
-directories contain the built examples that you can learn more about
-below.
+include/, the Python wheel files in python/, and the jar files in java/.
+The bin/ and python/ directories contain the built examples that you can learn more about below.
 
 The perf_analyzer binary is built on Ubuntu 20.04 and may not run on
 other Linux distributions. To use the C++ libraries or perf_analyzer
