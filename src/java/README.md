@@ -38,6 +38,15 @@ This Java API mimics Triton's official Python API. It has similar classes and me
 - `triton.client.InferRequestedOutput` describes each output from model.
 - `triton.client.InferenceServerClient` is the main inference class.
 
+Currently the Java API supports only a subset of the entire Triton
+protocol. Specifically:
+- Only the HTTP protocol is supported, GRPC is not supported.
+- Only synchronous inference requests are supported, asynchronous
+  and streaming inference requests are not supported.
+- Health, metadata, statistics, model-management, and [other
+  extensions](https://github.com/triton-inference-server/server/tree/main/docs/protocol)
+  are not supported.
+
 A minimal example would be like:
 
 ```java
