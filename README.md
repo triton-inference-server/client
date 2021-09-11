@@ -115,7 +115,6 @@ that can be installed using a recent version of pip. **Currently pip
 install is only available on Linux**.
 
 ```
-$ pip install nvidia-pyindex
 $ pip install tritonclient[all]
 ```
 
@@ -126,7 +125,6 @@ protocol. For example, to install only the HTTP/REST client library
 use,
 
 ```
-$ pip install nvidia-pyindex
 $ pip install tritonclient[http]
 ```
 
