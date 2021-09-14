@@ -292,6 +292,18 @@ The Java client API provides similar capabilities as the Python API
 with similar classes and methods.  For more information please refer
 to the [Java client directory](src/java).
 
+### HTTP Options
+
+#### Compression
+
+The client library enables on-wire compression for HTTP transactions.
+
+For C++ client, see `request_compression_algorithm` and `response_compression_algorithm` parameters in the `Infer` and `AsyncInfer` functions in [http_client.h](src/c%2B%2B/library/http_client.h). By default, the parameter is set as `CompressionType::NONE`.
+
+Similarly, for Python client, see `request_compression_algorithm` and `response_compression_algorithm` parameters in `infer`and `async_infer` functions in [http/__init__.py](src/python/library/tritonclient/http/__init__.py).
+
+The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples demonstrates how to use compression options.
+
 ### GRPC Options
 
 #### SSL/TLS
@@ -311,15 +323,15 @@ The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/pyt
 demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the 
 [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#ssltls)
 
-### Compression
+#### Compression
 
 The client library also exposes options to use on-wire compression for gRPC transactions. 
 
 For C++ client, see `compression_algorithm` parameter in the `Infer`, `AsyncInfer` and `StartStream` functions in [grpc_client.h](src/c%2B%2B/library/grpc_client.h). By default, the parameter is set as `GRPC_COMPRESS_NONE`.
 
-Similarly, for Python client, see `compression_algorithm` parameter in `infer`, `async_infer` and `start_stream` functions in [grpc/__init__.py](src/python/library/tritonclient/grpc/__init__.py):
+Similarly, for Python client, see `compression_algorithm` parameter in `infer`, `async_infer` and `start_stream` functions in [grpc/__init__.py](src/python/library/tritonclient/grpc/__init__.py).
 
-The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#compression)
+The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#compression).
 
 #### GRPC KeepAlive
 

@@ -351,6 +351,14 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// in request.
   /// \param query_params Optional map specifying parameters that must be
   /// included with URL query.
+  /// \param request_compression_algorithm Optional HTTP compression algorithm
+  /// to use for the request body on client side. Currently supports DEFLATE,
+  /// GZIP and NONE. By default, no compression is used.
+  /// \param response_compression_algorithm Optional HTTP compression algorithm
+  /// to request for the response body. Note that the response may not be
+  /// compressed if the server does not support the specified algorithm.
+  /// Currently supports DEFLATE, GZIP and NONE. By default, no compression
+  /// is used.
   /// \return Error object indicating success or failure of the
   /// request.
   Error Infer(
@@ -387,6 +395,14 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// in request.
   /// \param query_params Optional map specifying parameters that must be
   /// included with URL query.
+  /// \param request_compression_algorithm Optional HTTP compression algorithm
+  /// to use for the request body on client side. Currently supports DEFLATE,
+  /// GZIP and NONE. By default, no compression is used.
+  /// \param response_compression_algorithm Optional HTTP compression algorithm
+  /// to request for the response body. Note that the response may not be
+  /// compressed if the server does not support the specified algorithm.
+  /// Currently supports DEFLATE, GZIP and NONE. By default, no compression
+  /// is used.
   /// \return Error object indicating success
   /// or failure of the request.
   Error AsyncInfer(
