@@ -92,6 +92,11 @@ setup(
     author_email='sw-dl-triton@nvidia.com',
     description=
     "Python client library and utilities for communicating with Triton Inference Server",
+    long_description=
+    """See [download-using-python-package-installer-pip](https://github.com/triton-inference-server/client/tree/main#download-using-python-package-installer-pip) """
+    """for package details.\n\nThe [client examples](https://github.com/triton-inference-server/client/tree/main/src/python/examples) demonstrate how to use the """
+    """package to issue request to [triton inference server](https://github.com/triton-inference-server/server).""",
+    long_description_content_type='text/markdown',
     license='BSD',
     url='https://developer.nvidia.com/nvidia-triton-inference-server',
     keywords=[

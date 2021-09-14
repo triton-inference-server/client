@@ -111,11 +111,9 @@ It is also possible to build build the client libraries with
 ### Download Using Python Package Installer (pip)
 
 The GRPC and HTTP client libraries are available as a Python package
-that can be installed using a recent version of pip. **Currently pip
-install is only available on Linux**.
+that can be installed using a recent version of pip.
 
 ```
-$ pip install nvidia-pyindex
 $ pip install tritonclient[all]
 ```
 
@@ -126,7 +124,6 @@ protocol. For example, to install only the HTTP/REST client library
 use,
 
 ```
-$ pip install nvidia-pyindex
 $ pip install tritonclient[http]
 ```
 
@@ -146,6 +143,9 @@ following dependency must be installed:
 sudo apt update
 sudo apt install libb64-dev
 ```
+
+To reiterate, the installation on windows will not include perf_analyzer
+nor shared_memory/cuda_shared_memory components.
 
 ### Download From GitHub
 
