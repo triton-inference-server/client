@@ -32,7 +32,7 @@ FetchContent_Declare(tensorflow-serving-repo
 FetchContent_GetProperties(tensorflow-serving-repo)
 if(NOT tensorflow-serving-repo_POPULATED)
   FetchContent_Populate(tensorflow-serving-repo
-  GIT_REPOSITORY "https://gitlab-master.nvidia.com/oss/serving.git"
+  GIT_REPOSITORY "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/oss/serving.git"
   GIT_TAG "2.3.0"
  SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-serving-repo/src/tensorflow_serving"
 )
@@ -45,7 +45,7 @@ FetchContent_Declare(tensorflow-repo
 FetchContent_GetProperties(tensorflow-repo)
 if(NOT tensorflow-repo_POPULATED)
   FetchContent_Populate(tensorflow-repo
-  GIT_REPOSITORY "https://gitlab-master.nvidia.com/oss/tensorflow.git"
+  GIT_REPOSITORY "https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/oss/tensorflow.git"
   GIT_TAG "v2.3.0"
  SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-repo/src/tensorflow"
 )
