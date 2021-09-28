@@ -41,6 +41,9 @@ option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 
+# Repos directory path
+set(TRITON_REPOS_DIRECTORY "" CACHE PATH "Path to directory with local copies of repos")
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -52,9 +55,7 @@ include(FetchContent)
 
 FetchContent_Declare(
   repo-common
-  GIT_REPOSITORY https://github.com/triton-inference-server/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
-  GIT_SHALLOW ON
+  URL ${TRITON_REPOS_DIRECTORY}/common
 )
 
 if(TRITON_ENABLE_PYTHON_GRPC)

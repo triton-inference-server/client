@@ -26,34 +26,18 @@
 
 cmake_minimum_required (VERSION 3.18)
 
-FetchContent_Declare(tensorflow-serving-repo
-  PREFIX tensorflow-serving-rep
+FetchContent_Declare(
+  tensorflow-serving-repo
+  URL ${TRITON_REPOS_DIRECTORY}/serving
 )
-FetchContent_GetProperties(tensorflow-serving-repo)
-if(NOT tensorflow-serving-repo_POPULATED)
-  FetchContent_Populate(tensorflow-serving-repo
-  GIT_REPOSITORY "https://github.com/tensorflow/serving.git"
-  GIT_TAG "2.3.0"
- SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-serving-repo/src/tensorflow_serving"
+FetchContent_Declare(
+  tensorflow-repo
+  URL ${TRITON_REPOS_DIRECTORY}/tensorflow
 )
-endif()
-
-FetchContent_Declare(tensorflow-repo
-  PREFIX tensorflow-repo
-  SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-repo/src/tensorflow"
-)
-FetchContent_GetProperties(tensorflow-repo)
-if(NOT tensorflow-repo_POPULATED)
-  FetchContent_Populate(tensorflow-repo
-  GIT_REPOSITORY "https://github.com/tensorflow/tensorflow.git"
-  GIT_TAG "v2.3.0"
- SOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/tensorflow-repo/src/tensorflow"
-)
-endif()
 
 
-set(TENSORFLOW_PATH ${CMAKE_CURRENT_BINARY_DIR}/tensorflow-repo/src/tensorflow)
-set(TFSERVE_PATH ${CMAKE_CURRENT_BINARY_DIR}/tensorflow-serving-repo/src/tensorflow_serving)
+set(TENSORFLOW_PATH ${TRITON_REPOS_DIRECTORY}/tensorflow)
+set(TFSERVE_PATH ${TRITON_REPOS_DIRECTORY}/serving)
 
 # Copy the repos to a proto staging area.
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/protos)
