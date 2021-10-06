@@ -171,7 +171,7 @@ if __name__ == '__main__':
     print("=== Building wheel")
     if FLAGS.linux:
         if os.uname().machine == "aarch64":
-            platform_name = "linux_aarch64"
+            platform_name = "manylinux2014_aarch64"
         else:
             platform_name = "manylinux1_x86_64"
         args = ['python3', 'setup.py', 'bdist_wheel', '--plat-name', platform_name]
