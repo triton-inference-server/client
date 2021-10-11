@@ -84,7 +84,7 @@ def _get_inference_request(inputs, request_id, outputs, sequence_id,
     parameters = {}
     if request_id != "":
         infer_request['id'] = request_id
-    if sequence_id != 0:
+    if sequence_id != 0 and sequence_id != "":
         parameters['sequence_id'] = sequence_id
         parameters['sequence_start'] = sequence_start
         parameters['sequence_end'] = sequence_end
@@ -1036,10 +1036,10 @@ class InferenceServerClient:
             Optional identifier for the request. If specified will be returned
             in the response. Default value is an empty string which means no
             request_id will be used.
-        sequence_id : int
+        sequence_id : int or str
             The unique identifier for the sequence being represented by the
-            object. Default value is 0 which means that the request does not
-            belong to a sequence.
+            object. A value of 0 or "" means that the request does not
+            belong to a sequence. Default is 0.
         sequence_start: bool
             Indicates whether the request being added marks the start of the
             sequence. Default value is False. This argument is ignored if
