@@ -77,8 +77,11 @@ def _get_inference_request(model_name, inputs, model_version, request_id,
     if outputs is not None:
         for infer_output in outputs:
             request.outputs.extend([infer_output._get_tensor()])
-    if sequence_id != 0:
-        request.parameters['sequence_id'].int64_param = sequence_id
+    if sequence_id != 0 and sequence_id != "":
+        if isinstance(sequence_id, str):
+            request.parameters['sequence_id'].string_param = sequence_id
+        else:
+            request.parameters['sequence_id'].int64_param = sequence_id
         request.parameters['sequence_start'].bool_param = sequence_start
         request.parameters['sequence_end'].bool_param = sequence_end
     if priority != 0:
@@ -1384,18 +1387,18 @@ class InferenceServerClient:
             Optional identifier for the request. If specified will be returned
             in the response. Default value is an empty string which means no
             request_id will be used.
-        sequence_id : int
+        sequence_id : int or str
             The unique identifier for the sequence being represented by the
-            object. Default value is 0 which means that the request does not
-            belong to a sequence.
+            object.  A value of 0 or "" means that the request does not
+            belong to a sequence. Default is 0.
         sequence_start: bool
             Indicates whether the request being added marks the start of the
             sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
+            'sequence_id' is 0 or "".
         sequence_end: bool
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
+            'sequence_id' is 0 or "".
         priority : int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
