@@ -1091,9 +1091,17 @@ InferenceServerGrpcClient::PreRunProcessing(
   infer_request_.set_id(options.request_id_);
 
   infer_request_.mutable_parameters()->clear();
-  if (options.sequence_id_ != 0) {
-    (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
-        options.sequence_id_);
+  if (options.sequence_id_.InSequence()) {
+    switch (options.sequence_id_.Type()) {
+      case SequenceId::DataType::STRING:
+        (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
+            options.sequence_id_.StringValue());
+        break;
+      default:
+        (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
+            options.sequence_id_.UnsignedIntValue());
+        break;
+    }
     (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
         options.sequence_start_);
     (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(

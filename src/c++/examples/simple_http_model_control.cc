@@ -34,7 +34,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -111,8 +111,8 @@ main(int argc, char** argv)
     FAIL_IF_ERR(
         tc::ParseJson(&repository_index_json, repository_index),
         "failed to parse model config");
-    if (repository_index_json.Size() != 6) {
-      std::cerr << "expected number of models 6, got "
+    if (repository_index_json.Size() != 7) {
+      std::cerr << "expected number of models 7, got "
                 << repository_index_json.Size() << std::endl;
       exit(1);
     }

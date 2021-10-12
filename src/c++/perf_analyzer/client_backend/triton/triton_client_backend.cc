@@ -417,7 +417,14 @@ TritonClientBackend::ParseInferOptionsToTriton(
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
-  triton_options->sequence_id_ = options.sequence_id_;
+  switch (options.sequence_id_.Type()) {
+    case cb::SequenceId::DataType::STRING:
+      triton_options->sequence_id_ = options.sequence_id_.StringValue();
+      break;
+    default:
+      triton_options->sequence_id_ = options.sequence_id_.UnsignedIntValue();
+      break;
+  }
   triton_options->sequence_start_ = options.sequence_start_;
   triton_options->sequence_end_ = options.sequence_end_;
 }

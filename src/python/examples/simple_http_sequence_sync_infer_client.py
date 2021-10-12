@@ -29,6 +29,7 @@ import argparse
 import numpy as np
 import sys
 import queue
+import uuid
 
 import tritonclient.http as httpclient
 from tritonclient.utils import InferenceServerException
@@ -106,10 +107,11 @@ if __name__ == '__main__':
         print("context creation failed: " + str(e))
         sys.exit()
 
-    # We use the custom "sequence" model which takes 1 input
+    # We use custom "sequence" models which take 1 input
     # value. The output is the accumulated value of the inputs. See
     # src/custom/sequence.
-    model_name = "simple_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    int_sequence_model_name = "simple_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    string_sequence_model_name = "simple_string_dyna_sequence" if FLAGS.dyna else "simple_sequence"
     model_version = ""
     batch_size = 1
 
@@ -118,40 +120,67 @@ if __name__ == '__main__':
     # Will use two sequences and send them synchronously. Note the
     # sequence IDs should be non-zero because zero is reserved for
     # non-sequence requests.
-    sequence_id0 = 1000 + FLAGS.offset * 2
-    sequence_id1 = 1001 + FLAGS.offset * 2
+    int_sequence_id0 = 1000 + FLAGS.offset * 2
+    int_sequence_id1 = 1001 + FLAGS.offset * 2
 
-    result0_list = []
-    result1_list = []
+    # For string sequence IDs, the dyna backend requires that the
+    # sequence id be decodable into an integer, otherwise we'll use
+    # a UUID4 sequence id and a model that doesn't require corrid
+    # control.
+    string_sequence_id0 = str(1002) if FLAGS.dyna else str(uuid.uuid4())
+
+    int_result0_list = []
+    int_result1_list = []
+
+    string_result0_list = []
 
     user_data = UserData()
 
     try:
-        sync_send(triton_client, result0_list, [0] + values, batch_size,
-                  sequence_id0, model_name, model_version)
-        sync_send(triton_client, result1_list,
+        sync_send(triton_client, int_result0_list, [0] + values, batch_size,
+                  int_sequence_id0, int_sequence_model_name, model_version)
+        sync_send(triton_client, int_result1_list,
                   [100] + [-1 * val for val in values], batch_size,
-                  sequence_id1, model_name, model_version)
+                  int_sequence_id1, int_sequence_model_name, model_version)
+        sync_send(triton_client, string_result0_list,
+                  [20] + [-1 * val for val in values], batch_size,
+                  string_sequence_id0, string_sequence_model_name,
+                  model_version)
     except InferenceServerException as error:
         print(error)
         sys.exit(1)
 
-    for i in range(len(result0_list)):
-        seq0_expected = 1 if (i == 0) else values[i - 1]
-        seq1_expected = 101 if (i == 0) else values[i - 1] * -1
+    for i in range(len(int_result0_list)):
+        int_seq0_expected = 1 if (i == 0) else values[i - 1]
+        int_seq1_expected = 101 if (i == 0) else values[i - 1] * -1
+
+        # For string sequence ID we are testing two different backends
+        if i == 0 and FLAGS.dyna:
+            string_seq0_expected = 20
+        elif i == 0 and not FLAGS.dyna:
+            string_seq0_expected = 21
+        elif i != 0 and FLAGS.dyna:
+            string_seq0_expected = values[i - 1] * -1 + int(
+                string_result0_list[i - 1][0][0])
+        else:
+            string_seq0_expected = values[i - 1] * -1
+
         # The dyna_sequence custom backend adds the correlation ID
         # to the last request in a sequence.
         if FLAGS.dyna and (i != 0) and (values[i - 1] == 1):
-            seq0_expected += sequence_id0
-            seq1_expected += sequence_id1
+            int_seq0_expected += int_sequence_id0
+            int_seq1_expected += int_sequence_id1
+            string_seq0_expected += int(string_sequence_id0)
 
-        print("[" + str(i) + "] " + str(result0_list[i][0][0]) + " : " +
-              str(result1_list[i][0][0]))
+        print("[" + str(i) + "] " + str(int_result0_list[i][0][0]) + " : " +
+              str(int_result1_list[i][0][0]) + " : " +
+              str(string_result0_list[i][0][0]))
 
-        if ((seq0_expected != result0_list[i][0][0]) or
-            (seq1_expected != result1_list[i][0][0])):
-            print("[ expected ] " + str(seq0_expected) + " : " +
-                  str(seq1_expected))
+        if ((int_seq0_expected != int_result0_list[i][0][0]) or
+            (int_seq1_expected != int_result1_list[i][0][0]) or
+            (string_seq0_expected != string_result0_list[i][0][0])):
+            print("[ expected ] " + str(int_seq0_expected) + " : " +
+                  str(int_seq1_expected) + " : " + str(string_seq0_expected))
             sys.exit(1)
 
     print("PASS: Sequence")

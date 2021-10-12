@@ -425,4 +425,43 @@ InferRequestedOutput::InferRequestedOutput(const BackendKind kind) : kind_(kind)
 {
 }
 
+//
+// SequenceId
+//
+SequenceId&
+SequenceId::operator=(const std::string& rhs)
+{
+  sequence_label_ = rhs;
+  sequence_index_ = 0;
+  id_type_ = SequenceId::DataType::STRING;
+  return *this;
+}
+
+SequenceId&
+SequenceId::operator=(const uint64_t rhs)
+{
+  sequence_label_ = "";
+  sequence_index_ = rhs;
+  id_type_ = SequenceId::DataType::UINT64;
+  return *this;
+}
+
+std::ostream&
+operator<<(std::ostream& out, const SequenceId& sequence_id)
+{
+  switch (sequence_id.Type()) {
+    case SequenceId::DataType::STRING:
+      out << sequence_id.StringValue();
+      break;
+    case SequenceId::DataType::UINT64:
+      out << sequence_id.UnsignedIntValue();
+      break;
+    default:
+      out << sequence_id.UnsignedIntValue();
+      break;
+  }
+  return out;
+}
+
+
 }}}  // namespace triton::perfanalyzer::clientbackend

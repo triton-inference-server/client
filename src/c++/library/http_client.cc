@@ -40,8 +40,7 @@ extern "C" {
 }
 
 #define TRITONJSON_STATUSTYPE triton::client::Error
-#define TRITONJSON_STATUSRETURN(M) \
-  return triton::client::Error(M)
+#define TRITONJSON_STATUSRETURN(M) return triton::client::Error(M)
 #define TRITONJSON_STATUSSUCCESS triton::client::Error::Success
 #include "triton/common/triton_json.h"
 
@@ -309,13 +308,23 @@ HttpInferRequest::PrepareRequestJson(
   request_json->AddStringRef(
       "id", options.request_id_.c_str(), options.request_id_.size());
 
-  if ((options.sequence_id_ != 0) || (options.priority_ != 0) ||
+  if ((options.sequence_id_.InSequence()) || (options.priority_ != 0) ||
       (options.server_timeout_ != 0) || outputs.empty()) {
     triton::common::TritonJson::Value parameters_json(
         *request_json, triton::common::TritonJson::ValueType::OBJECT);
     {
-      if (options.sequence_id_ != 0) {
-        parameters_json.AddUInt("sequence_id", options.sequence_id_);
+      if (options.sequence_id_.InSequence()) {
+        switch (options.sequence_id_.Type()) {
+          case SequenceId::DataType::STRING:
+            parameters_json.AddString(
+                "sequence_id", options.sequence_id_.StringValue().c_str(),
+                options.sequence_id_.StringValue().size());
+            break;
+          default:
+            parameters_json.AddUInt(
+                "sequence_id", options.sequence_id_.UnsignedIntValue());
+            break;
+        }
         parameters_json.AddBool("sequence_start", options.sequence_start_);
         parameters_json.AddBool("sequence_end", options.sequence_end_);
       }

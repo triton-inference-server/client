@@ -41,7 +41,7 @@ std::condition_variable cv_;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -76,15 +76,25 @@ Usage(char** argv, const std::string& msg = std::string())
 void
 StreamSend(
     const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
-    const std::string& model_name, int32_t value, const uint64_t sequence_id,
-    bool start_of_sequence, bool end_of_sequence, const int32_t index)
+    const std::string& model_name, int32_t value,
+    const tc::SequenceId& sequence_id, bool start_of_sequence,
+    bool end_of_sequence, const int32_t index)
 {
   tc::InferOptions options(model_name);
   options.sequence_id_ = sequence_id;
   options.sequence_start_ = start_of_sequence;
   options.sequence_end_ = end_of_sequence;
-  options.request_id_ =
-      std::to_string(sequence_id) + "_" + std::to_string(index);
+  switch (sequence_id.Type()) {
+    case tc::SequenceId::DataType::STRING:
+      options.request_id_ =
+          sequence_id.StringValue() + "_" + std::to_string(index);
+      break;
+    default:
+      options.request_id_ = std::to_string(sequence_id.UnsignedIntValue()) +
+                            "_" + std::to_string(index);
+      break;
+  }
+
 
   // Initialize the inputs with the data.
   tc::InferInput* input;
@@ -152,14 +162,24 @@ main(int argc, char** argv)
   // We use the custom "sequence" model which takes 1 input value. The
   // output is the accumulated value of the inputs. See
   // src/custom/sequence.
-  std::string model_name =
+  std::string int_model_name =
       dyna_sequence ? "simple_dyna_sequence" : "simple_sequence";
+  std::string string_model_name =
+      dyna_sequence ? "simple_string_dyna_sequence" : "simple_sequence";
 
+  const uint64_t int_sequence_id0 = 1 + sequence_id_offset * 2;
+  const uint64_t int_sequence_id1 = 2 + sequence_id_offset * 2;
 
-  const uint64_t sequence_id0 = 1 + sequence_id_offset * 2;
-  const uint64_t sequence_id1 = 2 + sequence_id_offset * 2;
-  std::cout << "sequence ID " << sequence_id0 << " : "
-            << "sequence ID " << sequence_id1 << std::endl;
+  // For string sequence IDs, the dyna backend requires that the
+  // sequence id be decodable into an integer, otherwise we'll use
+  // a test string sequence id and a model that doesn't require corrid
+  // control.
+  const std::string string_sequence_id0 =
+      dyna_sequence ? std::to_string(3 + sequence_id_offset * 2) : "SEQ-3";
+
+  std::cout << "sequence ID " << int_sequence_id0 << " : "
+            << "sequence ID " << int_sequence_id1 << " : "
+            << "sequence ID " << string_sequence_id0 << std::endl;
 
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
@@ -189,20 +209,26 @@ main(int argc, char** argv)
   // Send requests, first reset accumulator for the sequence.
   int32_t index = 0;
   StreamSend(
-      client, model_name, 0, sequence_id0, true /* start-of-sequence */,
-      false /* end-of-sequence */, index++);
+      client, int_model_name, 0, tc::SequenceId(int_sequence_id0),
+      true /* start-of-sequence */, false /* end-of-sequence */, index++);
   StreamSend(
-      client, model_name, 100, sequence_id1, true /* start-of-sequence */,
-      false /* end-of-sequence */, index++);
+      client, int_model_name, 100, tc::SequenceId(int_sequence_id1),
+      true /* start-of-sequence */, false /* end-of-sequence */, index++);
+  StreamSend(
+      client, string_model_name, 20, tc::SequenceId(string_sequence_id0),
+      true /* start-of-sequence */, false /* end-of-sequence */, index++);
 
   // Now send a sequence of values...
   for (int32_t v : values) {
     StreamSend(
-        client, model_name, v, sequence_id0, false /* start-of-sequence */,
-        (v == 1) /* end-of-sequence */, index++);
+        client, int_model_name, v, tc::SequenceId(int_sequence_id0),
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
     StreamSend(
-        client, model_name, -v, sequence_id1, false /* start-of-sequence */,
-        (v == 1) /* end-of-sequence */, index++);
+        client, int_model_name, -v, tc::SequenceId(int_sequence_id1),
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
+    StreamSend(
+        client, string_model_name, -v, tc::SequenceId(string_sequence_id0),
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
   }
 
   if (stream_timeout == 0) {
@@ -210,7 +236,7 @@ main(int argc, char** argv)
     {
       std::unique_lock<std::mutex> lk(mutex_);
       cv_.wait(lk, [&]() {
-        if (result_list.size() > (2 * values.size() + 1)) {
+        if (result_list.size() > (3 * values.size() + 1)) {
           return true;
         } else {
           return false;
@@ -223,7 +249,7 @@ main(int argc, char** argv)
     {
       std::unique_lock<std::mutex> lk(mutex_);
       if (!cv_.wait_for(lk, timeout, [&]() {
-            return (result_list.size() > (2 * values.size() + 1));
+            return (result_list.size() > (3 * values.size() + 1));
           })) {
         std::cerr << "Stream has been closed" << std::endl;
         exit(1);
@@ -232,8 +258,9 @@ main(int argc, char** argv)
   }
 
   // Extract data from the result
-  std::vector<int32_t> result0_data;
-  std::vector<int32_t> result1_data;
+  std::vector<int32_t> int_result0_data;
+  std::vector<int32_t> int_result1_data;
+  std::vector<int32_t> string_result0_data;
   for (const auto& this_result : result_list) {
     auto err = this_result->RequestStatus();
     if (!err.IsOk()) {
@@ -256,36 +283,62 @@ main(int argc, char** argv)
     std::string request_id;
     FAIL_IF_ERR(
         this_result->Id(&request_id), "unable to get request id for response");
-    uint64_t this_sequence_id =
-        std::stoi(std::string(request_id, 0, request_id.find("_")));
-    if (this_sequence_id == sequence_id0) {
-      result0_data.push_back(*output_data);
-    } else if (this_sequence_id == sequence_id1) {
-      result1_data.push_back(*output_data);
-    } else {
-      std::cerr << "error: received incorrect sequence id in response: "
-                << this_sequence_id << std::endl;
-      exit(1);
+    try {
+      std::string this_sequence_id =
+          std::string(request_id, 0, request_id.find("_"));
+
+      if (std::stoi(this_sequence_id) == int_sequence_id0) {
+        int_result0_data.push_back(*output_data);
+      } else if (std::stoi(this_sequence_id) == int_sequence_id1) {
+        int_result1_data.push_back(*output_data);
+      } else if (this_sequence_id == string_sequence_id0) {
+        string_result0_data.push_back(*output_data);
+      } else {
+        std::cerr << "error: received incorrect sequence id in response: "
+                  << this_sequence_id << std::endl;
+        exit(1);
+      }
+    }
+    catch (std::invalid_argument& e) {
+      // stoi will throw this when called with the test sequence SEQ3
+      string_result0_data.push_back(*output_data);
     }
   }
 
 
-  for (size_t i = 0; i < result0_data.size(); i++) {
-    int32_t seq0_expected = (i == 0) ? 1 : values[i - 1];
-    int32_t seq1_expected = (i == 0) ? 101 : values[i - 1] * -1;
+  for (size_t i = 0; i < int_result0_data.size(); i++) {
+    int32_t int_seq0_expected = (i == 0) ? 1 : values[i - 1];
+    int32_t int_seq1_expected = (i == 0) ? 101 : values[i - 1] * -1;
+    int32_t string_seq0_expected;
+
+    // For string sequence ID case we are testing two different backends
+    if ((i == 0) && dyna_sequence) {
+      string_seq0_expected = 20;
+    } else if ((i == 0) && !dyna_sequence) {
+      string_seq0_expected = 21;
+    } else if ((i != 0) && dyna_sequence) {
+      string_seq0_expected = values[i - 1] * -1 + string_result0_data[i - 1];
+    } else {
+      string_seq0_expected = values[i - 1] * -1;
+    }
+
     // The dyna_sequence custom backend adds the sequence ID to
     // the last request in a sequence.
     if (dyna_sequence && (i != 0) && (values[i - 1] == 1)) {
-      seq0_expected += sequence_id0;
-      seq1_expected += sequence_id1;
+      int_seq0_expected += int_sequence_id0;
+      int_seq1_expected += int_sequence_id1;
+      string_seq0_expected += std::stoi(string_sequence_id0);
     }
 
-    std::cout << "[" << i << "] " << result0_data[i] << " : " << result1_data[i]
+    std::cout << "[" << i << "] " << int_result0_data[i] << " : "
+              << int_result1_data[i] << " : " << string_result0_data[i]
               << std::endl;
 
-    if ((seq0_expected != result0_data[i]) ||
-        (seq1_expected != result1_data[i])) {
-      std::cout << "[ expected ] " << seq0_expected << " : " << seq1_expected
+    if ((int_seq0_expected != int_result0_data[i]) ||
+        (int_seq1_expected != int_result1_data[i]) ||
+        (string_seq0_expected != string_result0_data[i])) {
+      std::cout << "[ expected ] " << int_seq0_expected << " : "
+                << int_seq1_expected << " : " << string_seq0_expected
                 << std::endl;
       return 1;
     }
