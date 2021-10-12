@@ -1403,7 +1403,7 @@ class InferenceServerClient:
                 print(response)
             result = InferResult(response)
             return result
-        except grpc.RpcError as rpc_error:
+        except grpc.aio.AioRpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     def start_stream(self,
