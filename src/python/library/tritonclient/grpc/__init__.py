@@ -1315,13 +1315,6 @@ class InferenceServerClient:
         inputs : list
             A list of InferInput objects, each describing data for a input
             tensor required by the model.
-        callback : function
-            Python function that is invoked once the request is completed.
-            The function must reserve the last two arguments (result, error)
-            to hold InferResult and InferenceServerException objects
-            respectively which will be provided to the function when executing
-            the callback. The ownership of these objects will be given to the
-            user. The 'error' would be None for a successful inference.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
