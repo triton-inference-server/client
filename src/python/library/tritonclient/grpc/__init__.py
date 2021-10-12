@@ -232,10 +232,14 @@ class InferenceServerClient:
                                                  private_key=pk_bytes,
                                                  certificate_chain=cc_bytes)
             self._channel = grpc.secure_channel(url, creds, options=channel_opt)
+            self._aio_channel = grpc.aio.secure_channel(url, creds, options=channel_opt)
         else:
             self._channel = grpc.insecure_channel(url, options=channel_opt)
+            self._aio_channel = grpc.aio.insecure_channel(url, options=channel_opt)
         self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
             self._channel)
+        self._aio_client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
+            self._aio_channel)
         self._verbose = verbose
         self._stream = None
 
@@ -255,6 +259,7 @@ class InferenceServerClient:
         """
         self.stop_stream()
         self._channel.close()
+        self._aio_channel.close()
 
     def is_server_live(self, headers=None):
         """Contact the inference server and get liveness.
@@ -1283,6 +1288,128 @@ class InferenceServerClient:
                     verbose_message = verbose_message + " '{}'".format(
                         request_id)
                 print(verbose_message)
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
+    async def async_infer_v2(self,
+                    model_name,
+                    inputs,
+                    model_version="",
+                    outputs=None,
+                    request_id="",
+                    sequence_id=0,
+                    sequence_start=False,
+                    sequence_end=False,
+                    priority=0,
+                    timeout=None,
+                    client_timeout=None,
+                    headers=None,
+                    compression_algorithm=None):
+        """Run asynchronous inference using the supplied 'inputs' requesting
+        the outputs specified by 'outputs'.
+
+        Parameters
+        ----------
+        model_name: str
+            The name of the model to run inference.
+        inputs : list
+            A list of InferInput objects, each describing data for a input
+            tensor required by the model.
+        callback : function
+            Python function that is invoked once the request is completed.
+            The function must reserve the last two arguments (result, error)
+            to hold InferResult and InferenceServerException objects
+            respectively which will be provided to the function when executing
+            the callback. The ownership of these objects will be given to the
+            user. The 'error' would be None for a successful inference.
+        model_version: str
+            The version of the model to run inference. The default value
+            is an empty string which means then the server will choose
+            a version based on the model and internal policy.
+        outputs : list
+            A list of InferRequestedOutput objects, each describing how the output
+            data must be returned. If not specified all outputs produced
+            by the model will be returned using default settings.
+        request_id : str
+            Optional identifier for the request. If specified will be returned
+            in the response. Default value is an empty string which means no
+            request_id will be used.
+        sequence_id : int
+            The unique identifier for the sequence being represented by the
+            object. Default value is 0 which means that the request does not
+            belong to a sequence.
+        sequence_start: bool
+            Indicates whether the request being added marks the start of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        sequence_end: bool
+            Indicates whether the request being added marks the end of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        priority : int
+            Indicates the priority of the request. Priority value zero
+            indicates that the default priority level should be used
+            (i.e. same behavior as not specifying the priority parameter).
+            Lower value priorities indicate higher priority levels. Thus
+            the highest priority level is indicated by setting the parameter
+            to 1, the next highest is 2, etc. If not provided, the server
+            will handle the request using default setting for the model.
+        timeout : int
+            The timeout value for the request, in microseconds. If the request
+            cannot be completed within the time the server can take a
+            model-specific action such as terminating the request. If not
+            provided, the server will handle the request using default setting
+            for the model.
+        client_timeout : float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and provide
+            error with message "Deadline Exceeded" in the callback when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        compression_algorithm : str
+            Optional grpc compression algorithm to be used on client side.
+            Currently supports "deflate", "gzip" and None. By default, no
+            compression is used.
+
+        Raises
+        ------
+        InferenceServerException
+            If server fails to issue inference.
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+
+        if type(model_version) != str:
+            raise_error("model version must be a string")
+
+        request = _get_inference_request(model_name=model_name,
+                                         inputs=inputs,
+                                         model_version=model_version,
+                                         request_id=request_id,
+                                         outputs=outputs,
+                                         sequence_id=sequence_id,
+                                         sequence_start=sequence_start,
+                                         sequence_end=sequence_end,
+                                         priority=priority,
+                                         timeout=timeout)
+        if self._verbose:
+            print("async_infer, metadata {}\n{}".format(metadata, request))
+
+        try:
+            response = await self._aio_client_stub.ModelInfer(
+                request=request,
+                metadata=metadata,
+                timeout=client_timeout,
+                compression=_grpc_compression_type(compression_algorithm))
+            if self._verbose:
+                print(response)
+            result = InferResult(response)
+            return result
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
