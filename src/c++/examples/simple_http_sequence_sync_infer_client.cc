@@ -73,7 +73,7 @@ Usage(char** argv, const std::string& msg = std::string())
 }
 
 void
-SyncSend_(
+SyncSend(
     const std::unique_ptr<tc::InferenceServerHttpClient>& client,
     tc::InferOptions& options, int32_t value, std::vector<int32_t>& result_data,
     tc::Headers& http_headers)
@@ -136,7 +136,7 @@ SyncSend(
   options.sequence_start_ = start_of_sequence;
   options.sequence_end_ = end_of_sequence;
 
-  SyncSend_(client, options, value, result_data, http_headers);
+  SyncSend(client, options, value, result_data, http_headers);
 }
 
 void
@@ -152,7 +152,7 @@ SyncSend(
   options.sequence_start_ = start_of_sequence;
   options.sequence_end_ = end_of_sequence;
 
-  SyncSend_(client, options, value, result_data, http_headers);
+  SyncSend(client, options, value, result_data, http_headers);
 }
 
 }  // namespace

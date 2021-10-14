@@ -1091,22 +1091,20 @@ InferenceServerGrpcClient::PreRunProcessing(
   infer_request_.set_id(options.request_id_);
 
   infer_request_.mutable_parameters()->clear();
-  if ((options.sequence_id_ != 0)) {
-    (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
-        options.sequence_id_);
-    (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
-        options.sequence_start_);
-    (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
-        options.sequence_end_);
-  } else if (options.sequence_id_str_ != "") {
-    (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
-        options.sequence_id_str_);
-    (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
-        options.sequence_start_);
-    (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
-        options.sequence_end_);
-  }
-
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
+    {
+      if (options.sequence_id_ != 0) {
+        (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
+            options.sequence_id_);
+      } else {
+        (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
+            options.sequence_id_str_);
+      }
+      (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
+          options.sequence_start_);
+      (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
+          options.sequence_end_);
+    }
   if (options.priority_ != 0) {
     (*infer_request_.mutable_parameters())["priority"].set_int64_param(
         options.priority_);

@@ -74,7 +74,7 @@ Usage(char** argv, const std::string& msg = std::string())
 }
 
 void
-StreamSend_(
+StreamSend(
     const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
     tc::InferOptions& options, int32_t value, const int32_t index)
 {
@@ -110,7 +110,7 @@ StreamSend(
   options.request_id_ =
       std::to_string(sequence_id) + "_" + std::to_string(index);
 
-  StreamSend_(client, options, value, index);
+  StreamSend(client, options, value, index);
 }
 
 void
@@ -127,7 +127,7 @@ StreamSend(
   options.sequence_end_ = end_of_sequence;
   options.request_id_ = sequence_id + "_" + std::to_string(index);
 
-  StreamSend_(client, options, value, index);
+  StreamSend(client, options, value, index);
 }
 
 }  // namespace
@@ -252,7 +252,7 @@ main(int argc, char** argv)
     {
       std::unique_lock<std::mutex> lk(mutex_);
       cv_.wait(lk, [&]() {
-        if (result_list.size() > (3 * values.size() + 1)) {
+        if (result_list.size() > (3 * values.size() + 2)) {
           return true;
         } else {
           return false;
@@ -265,7 +265,7 @@ main(int argc, char** argv)
     {
       std::unique_lock<std::mutex> lk(mutex_);
       if (!cv_.wait_for(lk, timeout, [&]() {
-            return (result_list.size() > (3 * values.size() + 1));
+            return (result_list.size() > (3 * values.size() + 2));
           })) {
         std::cerr << "Stream has been closed" << std::endl;
         exit(1);
@@ -320,7 +320,6 @@ main(int argc, char** argv)
       string_result0_data.push_back(*output_data);
     }
   }
-
 
   for (size_t i = 0; i < int_result0_data.size(); i++) {
     int32_t int_seq0_expected = (i == 0) ? 1 : values[i - 1];

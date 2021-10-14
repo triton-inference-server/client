@@ -417,15 +417,16 @@ TritonClientBackend::ParseInferOptionsToTriton(
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
-  if (options.sequence_id_ != 0) {
-    triton_options->sequence_id_ = options.sequence_id_;
-    triton_options->sequence_start_ = options.sequence_start_;
-    triton_options->sequence_end_ = options.sequence_end_;
-  } else if (options.sequence_id_str_ != "") {
-    triton_options->sequence_id_str_ = options.sequence_id_str_;
-    triton_options->sequence_start_ = options.sequence_start_;
-    triton_options->sequence_end_ = options.sequence_end_;
-  }
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
+    {
+      if (options.sequence_id_ != 0) {
+        triton_options->sequence_id_ = options.sequence_id_;
+      } else {
+        triton_options->sequence_id_str_ = options.sequence_id_str_;
+      }
+      triton_options->sequence_start_ = options.sequence_start_;
+      triton_options->sequence_end_ = options.sequence_end_;
+    }
 }
 
 

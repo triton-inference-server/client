@@ -175,13 +175,13 @@ struct InferOptions {
   std::string request_id_;
   /// The unique identifier for the sequence being represented by the
   /// object. Default value is 0 which means that the request does not
-  /// belong to a sequence. If this value is set, then sequence_id_str_
+  /// belong to a sequence. If this value is non-zero, then sequence_id_str_
   /// MUST be set to "".
   uint64_t sequence_id_;
   /// The unique identifier for the sequence being represented by the
   /// object. Default value is "" which means that the request does not
-  /// belong to a sequence. If this value is set, then sequence_id_ MUST
-  /// be set to 0.
+  /// belong to a sequence. If this value is non-empty, then sequence_id_
+  /// MUST be set to 0.
   std::string sequence_id_str_;
   /// Indicates whether the request being added marks the start of the
   /// sequence. Default value is False. This argument is ignored if
