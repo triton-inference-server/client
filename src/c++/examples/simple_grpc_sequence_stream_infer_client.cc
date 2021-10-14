@@ -74,28 +74,10 @@ Usage(char** argv, const std::string& msg = std::string())
 }
 
 void
-StreamSend(
+StreamSend_(
     const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
-    const std::string& model_name, int32_t value,
-    const tc::SequenceId& sequence_id, bool start_of_sequence,
-    bool end_of_sequence, const int32_t index)
+    tc::InferOptions& options, int32_t value, const int32_t index)
 {
-  tc::InferOptions options(model_name);
-  options.sequence_id_ = sequence_id;
-  options.sequence_start_ = start_of_sequence;
-  options.sequence_end_ = end_of_sequence;
-  switch (sequence_id.Type()) {
-    case tc::SequenceId::DataType::STRING:
-      options.request_id_ =
-          sequence_id.StringValue() + "_" + std::to_string(index);
-      break;
-    default:
-      options.request_id_ = std::to_string(sequence_id.UnsignedIntValue()) +
-                            "_" + std::to_string(index);
-      break;
-  }
-
-
   // Initialize the inputs with the data.
   tc::InferInput* input;
   std::vector<int64_t> shape{1, 1};
@@ -112,6 +94,40 @@ StreamSend(
 
   // Send inference request to the inference server.
   FAIL_IF_ERR(client->AsyncStreamInfer(options, inputs), "unable to run model");
+}
+
+void
+StreamSend(
+    const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
+    const std::string& model_name, int32_t value, const uint64_t sequence_id,
+    bool start_of_sequence, bool end_of_sequence, const int32_t index)
+{
+  // Stream send for unsigned int sequence IDs
+  tc::InferOptions options(model_name);
+  options.sequence_id_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+  options.request_id_ =
+      std::to_string(sequence_id) + "_" + std::to_string(index);
+
+  StreamSend_(client, options, value, index);
+}
+
+void
+StreamSend(
+    const std::unique_ptr<tc::InferenceServerGrpcClient>& client,
+    const std::string& model_name, int32_t value,
+    const std::string& sequence_id, bool start_of_sequence,
+    bool end_of_sequence, const int32_t index)
+{
+  // Stream send for string sequence IDs
+  tc::InferOptions options(model_name);
+  options.sequence_id_str_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+  options.request_id_ = sequence_id + "_" + std::to_string(index);
+
+  StreamSend_(client, options, value, index);
 }
 
 }  // namespace
@@ -209,25 +225,25 @@ main(int argc, char** argv)
   // Send requests, first reset accumulator for the sequence.
   int32_t index = 0;
   StreamSend(
-      client, int_model_name, 0, tc::SequenceId(int_sequence_id0),
+      client, int_model_name, 0, int_sequence_id0, true /* start-of-sequence */,
+      false /* end-of-sequence */, index++);
+  StreamSend(
+      client, int_model_name, 100, int_sequence_id1,
       true /* start-of-sequence */, false /* end-of-sequence */, index++);
   StreamSend(
-      client, int_model_name, 100, tc::SequenceId(int_sequence_id1),
-      true /* start-of-sequence */, false /* end-of-sequence */, index++);
-  StreamSend(
-      client, string_model_name, 20, tc::SequenceId(string_sequence_id0),
+      client, string_model_name, 20, string_sequence_id0,
       true /* start-of-sequence */, false /* end-of-sequence */, index++);
 
   // Now send a sequence of values...
   for (int32_t v : values) {
     StreamSend(
-        client, int_model_name, v, tc::SequenceId(int_sequence_id0),
+        client, int_model_name, v, int_sequence_id0,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
     StreamSend(
-        client, int_model_name, -v, tc::SequenceId(int_sequence_id1),
+        client, int_model_name, -v, int_sequence_id1,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
     StreamSend(
-        client, string_model_name, -v, tc::SequenceId(string_sequence_id0),
+        client, string_model_name, -v, string_sequence_id0,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */, index++);
   }
 

@@ -996,20 +996,19 @@ TritonLoader::InitializeRequest(
       GetSingleton()->inference_request_set_id_fn_(
           *irequest, options.request_id_.c_str()),
       "setting ID for the request");
-  if ((options.sequence_id_.InSequence()) || (options.priority_ != 0) ||
-      (options.server_timeout_ != 0) || outputs.empty()) {
-    switch (options.sequence_id_.Type()) {
-      case tc::SequenceId::DataType::STRING:
-        RETURN_IF_TRITONSERVER_ERROR(
-            GetSingleton()->set_string_correlation_id_fn_(
-                *irequest, options.sequence_id_.StringValue().c_str()),
-            "setting sequence ID for the request");
-        break;
-      default:
-        RETURN_IF_TRITONSERVER_ERROR(
-            GetSingleton()->set_correlation_id_fn_(
-                *irequest, options.sequence_id_.UnsignedIntValue()),
-            "setting sequence ID for the request");
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "") ||
+      (options.priority_ != 0) || (options.server_timeout_ != 0) ||
+      outputs.empty()) {
+    if (options.sequence_id_ != 0) {
+      RETURN_IF_TRITONSERVER_ERROR(
+          GetSingleton()->set_correlation_id_fn_(
+              *irequest, options.sequence_id_),
+          "setting sequence ID for the request");
+    } else if (options.sequence_id_str_ != "") {
+      RETURN_IF_TRITONSERVER_ERROR(
+          GetSingleton()->set_string_correlation_id_fn_(
+              *irequest, options.sequence_id_str_.c_str()),
+          "setting sequence ID for the request");
     }
     uint32_t flags = 0;
     if (options.sequence_start_) {

@@ -73,18 +73,11 @@ Usage(char** argv, const std::string& msg = std::string())
 }
 
 void
-SyncSend(
+SyncSend_(
     const std::unique_ptr<tc::InferenceServerHttpClient>& client,
-    const std::string& model_name, int32_t value,
-    const tc::SequenceId& sequence_id, bool start_of_sequence,
-    bool end_of_sequence, std::vector<int32_t>& result_data,
+    tc::InferOptions& options, int32_t value, std::vector<int32_t>& result_data,
     tc::Headers& http_headers)
 {
-  tc::InferOptions options(model_name);
-  options.sequence_id_ = sequence_id;
-  options.sequence_start_ = start_of_sequence;
-  options.sequence_end_ = end_of_sequence;
-
   // Initialize the inputs with the data.
   tc::InferInput* input;
   std::vector<int64_t> shape{1, 1};
@@ -129,6 +122,37 @@ SyncSend(
   }
 
   result_data.push_back(*output_data);
+}
+
+void
+SyncSend(
+    const std::unique_ptr<tc::InferenceServerHttpClient>& client,
+    const std::string& model_name, int32_t value, const uint64_t sequence_id,
+    bool start_of_sequence, bool end_of_sequence,
+    std::vector<int32_t>& result_data, tc::Headers& http_headers)
+{
+  tc::InferOptions options(model_name);
+  options.sequence_id_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+
+  SyncSend_(client, options, value, result_data, http_headers);
+}
+
+void
+SyncSend(
+    const std::unique_ptr<tc::InferenceServerHttpClient>& client,
+    const std::string& model_name, int32_t value,
+    const std::string& sequence_id, bool start_of_sequence,
+    bool end_of_sequence, std::vector<int32_t>& result_data,
+    tc::Headers& http_headers)
+{
+  tc::InferOptions options(model_name);
+  options.sequence_id_str_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+
+  SyncSend_(client, options, value, result_data, http_headers);
 }
 
 }  // namespace
@@ -210,30 +234,29 @@ main(int argc, char** argv)
 
   // Send requests, first reset accumulator for the sequence.
   SyncSend(
-      client, int_model_name, 0, tc::SequenceId(int_sequence_id0),
-      true /* start-of-sequence */, false /* end-of-sequence */,
-      int_result0_data, http_headers);
+      client, int_model_name, 0, int_sequence_id0, true /* start-of-sequence */,
+      false /* end-of-sequence */, int_result0_data, http_headers);
   SyncSend(
-      client, int_model_name, 100, tc::SequenceId(int_sequence_id1),
+      client, int_model_name, 100, int_sequence_id1,
       true /* start-of-sequence */, false /* end-of-sequence */,
       int_result1_data, http_headers);
   SyncSend(
-      client, string_model_name, 20, tc::SequenceId(string_sequence_id0),
+      client, string_model_name, 20, string_sequence_id0,
       true /* start-of-sequence */, false /* end-of-sequence */,
       string_result0_data, http_headers);
 
   // Now send a sequence of values...
   for (int32_t v : values) {
     SyncSend(
-        client, int_model_name, v, tc::SequenceId(int_sequence_id0),
+        client, int_model_name, v, int_sequence_id0,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
         int_result0_data, http_headers);
     SyncSend(
-        client, int_model_name, -v, tc::SequenceId(int_sequence_id1),
+        client, int_model_name, -v, int_sequence_id1,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
         int_result1_data, http_headers);
     SyncSend(
-        client, string_model_name, -v, tc::SequenceId(string_sequence_id0),
+        client, string_model_name, -v, string_sequence_id0,
         false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
         string_result0_data, http_headers);
   }

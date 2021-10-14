@@ -168,16 +168,15 @@ TritonCApiClientBackend::ParseInferOptionsToTriton(
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
-  switch (options.sequence_id_.Type()) {
-    case cb::SequenceId::DataType::STRING:
-      triton_options->sequence_id_ = options.sequence_id_.StringValue();
-      break;
-    default:
-      triton_options->sequence_id_ = options.sequence_id_.UnsignedIntValue();
-      break;
+  if (options.sequence_id_ != 0) {
+    triton_options->sequence_id_ = options.sequence_id_;
+    triton_options->sequence_start_ = options.sequence_start_;
+    triton_options->sequence_end_ = options.sequence_end_;
+  } else if (options.sequence_id_str_ != "") {
+    triton_options->sequence_id_str_ = options.sequence_id_str_;
+    triton_options->sequence_start_ = options.sequence_start_;
+    triton_options->sequence_end_ = options.sequence_end_;
   }
-  triton_options->sequence_start_ = options.sequence_start_;
-  triton_options->sequence_end_ = options.sequence_end_;
 }
 
 void

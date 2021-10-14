@@ -152,82 +152,13 @@ struct ModelStatistics {
 };
 
 //==============================================================================
-// Class encapsulating SequenceId in Inference Request
-//
-class SequenceId {
- public:
-  enum class DataType { UINT64, STRING };
-
-  // Default constructor for sequence IDs
-  explicit SequenceId()
-      : sequence_label_(""), sequence_index_(0), id_type_(DataType::UINT64)
-  {
-  }
-
-  // Construct from a string
-  explicit SequenceId(const std::string& sequence_label)
-      : sequence_label_(sequence_label), sequence_index_(0),
-        id_type_(DataType::STRING)
-  {
-  }
-
-  // Construct from an unsigned int
-  SequenceId(uint64_t sequence_index)
-      : sequence_label_(""), sequence_index_(sequence_index),
-        id_type_(DataType::UINT64)
-  {
-  }
-
-  /// Copy constructor from another SequenceId
-  /// \param rhs the operand for the operator=
-  /// \return this sequence Id object
-  SequenceId& operator=(const SequenceId& rhs) = default;
-
-  /// Copy constructor from another SequenceId
-  /// \param rhs the string value to which to set this sequence id
-  /// \return this sequence Id object
-  SequenceId& operator=(const std::string& rhs);
-
-  /// Copy constructor from another SequenceId
-  /// \param rhs the unsigned integer value to which to set this sequence id
-  /// \return this sequence Id object
-  SequenceId& operator=(const uint64_t rhs);
-
-  /// Type of the contained sequence id
-  /// \return DataType enum instance
-  DataType Type() const { return id_type_; }
-
-  /// Function to determine if this sequence ID corresponds to a sequence
-  /// \return True if SequenceId is non-empty or non-zero else False
-  bool InSequence() const
-  {
-    return ((sequence_label_ != "") || (sequence_index_ != 0));
-  }
-
-  /// Get the value of the SequenceId knowing its a string
-  /// \return the string sequence_label_
-  const std::string& StringValue() const { return sequence_label_; }
-
-  /// Get the value of the SequenceId knowing its an unsigned integer
-  /// \return the string sequence_index_
-  uint64_t UnsignedIntValue() const { return sequence_index_; }
-
- private:
-  friend std::ostream& operator<<(
-      std::ostream& out, const SequenceId& correlation_id);
-
-  std::string sequence_label_;
-  uint64_t sequence_index_;
-  DataType id_type_;
-};
-
-//==============================================================================
 /// Structure to hold options for Inference Request.
 ///
 struct InferOptions {
   explicit InferOptions(const std::string& model_name)
       : model_name_(model_name), model_version_(""), request_id_(""),
-        sequence_id_(0), sequence_start_(false), sequence_end_(false)
+        sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
+        sequence_end_(false)
   {
   }
   /// The name of the model to run inference.
@@ -240,8 +171,14 @@ struct InferOptions {
   std::string request_id_;
   /// The unique identifier for the sequence being represented by the
   /// object. Default value is 0 which means that the request does not
-  /// belong to a sequence.
-  SequenceId sequence_id_;
+  /// belong to a sequence. If this value is set, then sequence_id_str_ 
+  /// MUST be set to "".
+  uint64_t sequence_id_;
+  /// The unique identifier for the sequence being represented by the
+  /// object. Default value is "" which means that the request does not
+  /// belong to a sequence. If this value is set, then sequence_id_ MUST
+  /// be set to 0.
+  std::string sequence_id_str_;
   /// Indicates whether the request being added marks the start of the
   /// sequence. Default value is False. This argument is ignored if
   /// 'sequence_id' is 0.
