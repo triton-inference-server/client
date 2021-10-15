@@ -1291,7 +1291,7 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def async_infer_v2(self,
+    async def asyncio_infer(self,
                     model_name,
                     inputs,
                     model_version="",
@@ -1305,7 +1305,7 @@ class InferenceServerClient:
                     client_timeout=None,
                     headers=None,
                     compression_algorithm=None):
-        """Run asynchronous inference using the supplied 'inputs' requesting
+        """Run inference with Python's asyncio using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
         Parameters
@@ -1391,7 +1391,7 @@ class InferenceServerClient:
                                          priority=priority,
                                          timeout=timeout)
         if self._verbose:
-            print("async_infer, metadata {}\n{}".format(metadata, request))
+            print("asyncio_infer, metadata {}\n{}".format(metadata, request))
 
         try:
             response = await self._aio_client_stub.ModelInfer(
