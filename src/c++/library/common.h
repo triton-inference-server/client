@@ -42,7 +42,9 @@
 
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
 namespace triton { namespace perfanalyzer { namespace clientbackend {
-namespace tritoncapi {class TritonLoader;}}}}
+namespace tritoncapi {
+class TritonLoader;
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
 #endif
 
 namespace triton { namespace client {
@@ -156,8 +158,9 @@ class InferenceServerClient {
 struct InferOptions {
   explicit InferOptions(const std::string& model_name)
       : model_name_(model_name), model_version_(""), request_id_(""),
-        sequence_id_(0), sequence_start_(false), sequence_end_(false),
-        priority_(0), server_timeout_(0), client_timeout_(0)
+        sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
+        sequence_end_(false), priority_(0), server_timeout_(0),
+        client_timeout_(0)
   {
   }
   /// The name of the model to run inference.
@@ -172,8 +175,14 @@ struct InferOptions {
   std::string request_id_;
   /// The unique identifier for the sequence being represented by the
   /// object. Default value is 0 which means that the request does not
-  /// belong to a sequence.
+  /// belong to a sequence. If this value is non-zero, then sequence_id_str_
+  /// MUST be set to "".
   uint64_t sequence_id_;
+  /// The unique identifier for the sequence being represented by the
+  /// object. Default value is "" which means that the request does not
+  /// belong to a sequence. If this value is non-empty, then sequence_id_
+  /// MUST be set to 0.
+  std::string sequence_id_str_;
   /// Indicates whether the request being added marks the start of the
   /// sequence. Default value is False. This argument is ignored if
   /// 'sequence_id' is 0.
@@ -366,7 +375,7 @@ class InferRequestedOutput {
   /// default value is 0 which means the classification results are not
   /// requested.
   /// \return Error object indicating success or failure.
- static Error Create(
+  static Error Create(
       InferRequestedOutput** infer_output, const std::string& name,
       const size_t class_count = 0);
 

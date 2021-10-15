@@ -580,6 +580,7 @@ TritonLoader::LoadServerLibrary()
   TritonServerErrorCodeToStringFn_t ectsfn;
   TritonServerModelConfigFn_t mcfn;
   TritonServerInferenceRequestSetCorrelationIdFn_t scidfn;
+  TritonServerInferenceRequestSetStringCorrelationIdFn_t sscidfn;
 
   TritonServerInferenceRequestSetFlagsFn_t sffn;
   TritonServerInferenceRequestSetPriorityFn_t spfn;
@@ -717,6 +718,9 @@ TritonLoader::LoadServerLibrary()
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetCorrelationId",
       false /* optional */, reinterpret_cast<void**>(&scidfn)));
+  RETURN_IF_ERROR(GetEntrypoint(
+      dlhandle_, "TRITONSERVER_InferenceRequestSetCorrelationIdString",
+      false /* optional */, reinterpret_cast<void**>(&sscidfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetFlags", false /* optional */,
@@ -799,6 +803,7 @@ TritonLoader::LoadServerLibrary()
   error_code_to_string_fn_ = ectsfn;
   model_config_fn_ = mcfn;
   set_correlation_id_fn_ = scidfn;
+  set_string_correlation_id_fn_ = sscidfn;
 
   set_flags_fn_ = sffn;
   set_priority_fn_ = spfn;
@@ -869,6 +874,7 @@ TritonLoader::ClearHandles()
   error_code_to_string_fn_ = nullptr;
   model_config_fn_ = nullptr;
   set_correlation_id_fn_ = nullptr;
+  set_string_correlation_id_fn_ = nullptr;
 
   set_flags_fn_ = nullptr;
   set_priority_fn_ = nullptr;
@@ -990,12 +996,20 @@ TritonLoader::InitializeRequest(
       GetSingleton()->inference_request_set_id_fn_(
           *irequest, options.request_id_.c_str()),
       "setting ID for the request");
-  if ((options.sequence_id_ != 0) || (options.priority_ != 0) ||
-      (options.server_timeout_ != 0) || outputs.empty()) {
-    RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->set_correlation_id_fn_(*irequest, options.sequence_id_),
-        "setting sequence ID for the request");
-
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "") ||
+      (options.priority_ != 0) || (options.server_timeout_ != 0) ||
+      outputs.empty()) {
+    if (options.sequence_id_ != 0) {
+      RETURN_IF_TRITONSERVER_ERROR(
+          GetSingleton()->set_correlation_id_fn_(
+              *irequest, options.sequence_id_),
+          "setting sequence ID for the request");
+    } else if (options.sequence_id_str_ != "") {
+      RETURN_IF_TRITONSERVER_ERROR(
+          GetSingleton()->set_string_correlation_id_fn_(
+              *irequest, options.sequence_id_str_.c_str()),
+          "setting sequence ID for the request");
+    }
     uint32_t flags = 0;
     if (options.sequence_start_) {
       flags |= TRITONSERVER_REQUEST_FLAG_SEQUENCE_START;

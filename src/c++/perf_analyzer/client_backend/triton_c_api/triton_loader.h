@@ -277,7 +277,11 @@ class TritonLoader : public tc::InferenceServerClient {
       *TritonServerInferenceRequestSetCorrelationIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request,
       uint64_t correlation_id);
-
+  // TRITONSERVER_InferenceRequestSetCorrelationId
+  typedef TRITONSERVER_Error* (
+      *TritonServerInferenceRequestSetStringCorrelationIdFn_t)(
+      TRITONSERVER_InferenceRequest* inference_request,
+      const char* correlation_id);
   // TRITONSERVER_InferenceRequestSetFlags
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetFlagsFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, uint32_t flags);
@@ -415,6 +419,8 @@ class TritonLoader : public tc::InferenceServerClient {
   TritonServerErrorCodeToStringFn_t error_code_to_string_fn_;
   TritonServerModelConfigFn_t model_config_fn_;
   TritonServerInferenceRequestSetCorrelationIdFn_t set_correlation_id_fn_;
+  TritonServerInferenceRequestSetStringCorrelationIdFn_t
+      set_string_correlation_id_fn_;
 
   TritonServerInferenceRequestSetFlagsFn_t set_flags_fn_;
   TritonServerInferenceRequestSetPriorityFn_t set_priority_fn_;

@@ -33,7 +33,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -105,8 +105,8 @@ main(int argc, char** argv)
   FAIL_IF_ERR(
       client->ModelRepositoryIndex(&repository_index, http_headers),
       "Failed to get repository index");
-  if (repository_index.models().size() != 7) {
-    std::cerr << "expected number of models 7, got "
+  if (repository_index.models().size() != 8) {
+    std::cerr << "expected number of models 8, got "
               << repository_index.models().size() << std::endl;
     exit(1);
   }

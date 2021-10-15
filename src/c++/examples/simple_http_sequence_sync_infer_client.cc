@@ -41,7 +41,7 @@ std::condition_variable cv_;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -75,15 +75,9 @@ Usage(char** argv, const std::string& msg = std::string())
 void
 SyncSend(
     const std::unique_ptr<tc::InferenceServerHttpClient>& client,
-    const std::string& model_name, int32_t value, const uint64_t sequence_id,
-    bool start_of_sequence, bool end_of_sequence,
-    std::vector<int32_t>& result_data, tc::Headers& http_headers)
+    tc::InferOptions& options, int32_t value, std::vector<int32_t>& result_data,
+    tc::Headers& http_headers)
 {
-  tc::InferOptions options(model_name);
-  options.sequence_id_ = sequence_id;
-  options.sequence_start_ = start_of_sequence;
-  options.sequence_end_ = end_of_sequence;
-
   // Initialize the inputs with the data.
   tc::InferInput* input;
   std::vector<int64_t> shape{1, 1};
@@ -130,6 +124,37 @@ SyncSend(
   result_data.push_back(*output_data);
 }
 
+void
+SyncSend(
+    const std::unique_ptr<tc::InferenceServerHttpClient>& client,
+    const std::string& model_name, int32_t value, const uint64_t sequence_id,
+    bool start_of_sequence, bool end_of_sequence,
+    std::vector<int32_t>& result_data, tc::Headers& http_headers)
+{
+  tc::InferOptions options(model_name);
+  options.sequence_id_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+
+  SyncSend(client, options, value, result_data, http_headers);
+}
+
+void
+SyncSend(
+    const std::unique_ptr<tc::InferenceServerHttpClient>& client,
+    const std::string& model_name, int32_t value,
+    const std::string& sequence_id, bool start_of_sequence,
+    bool end_of_sequence, std::vector<int32_t>& result_data,
+    tc::Headers& http_headers)
+{
+  tc::InferOptions options(model_name);
+  options.sequence_id_str_ = sequence_id;
+  options.sequence_start_ = start_of_sequence;
+  options.sequence_end_ = end_of_sequence;
+
+  SyncSend(client, options, value, result_data, http_headers);
+}
+
 }  // namespace
 
 int
@@ -174,14 +199,24 @@ main(int argc, char** argv)
   // We use the custom "sequence" model which takes 1 input value. The
   // output is the accumulated value of the inputs. See
   // src/custom/sequence.
-  std::string model_name =
+  std::string int_model_name =
       dyna_sequence ? "simple_dyna_sequence" : "simple_sequence";
+  std::string string_model_name =
+      dyna_sequence ? "simple_string_dyna_sequence" : "simple_sequence";
 
+  const uint64_t int_sequence_id0 = 1 + sequence_id_offset * 2;
+  const uint64_t int_sequence_id1 = 2 + sequence_id_offset * 2;
 
-  const uint64_t sequence_id0 = 1 + sequence_id_offset * 2;
-  const uint64_t sequence_id1 = 2 + sequence_id_offset * 2;
-  std::cout << "sequence ID " << sequence_id0 << " : "
-            << "sequence ID " << sequence_id1 << std::endl;
+  // For string sequence IDs, the dyna backend requires that the
+  // sequence id be decodable into an integer, otherwise we'll use
+  // a test string sequence id and a model that doesn't require corrid
+  // control.
+  const std::string string_sequence_id0 =
+      dyna_sequence ? std::to_string(3 + sequence_id_offset * 2) : "SEQ-3";
+
+  std::cout << "sequence ID " << int_sequence_id0 << " : "
+            << "sequence ID " << int_sequence_id1 << " : "
+            << "sequence ID " << string_sequence_id0 << std::endl;
 
   // Create a InferenceServerHttpClient instance to communicate with the
   // server using http protocol.
@@ -193,43 +228,72 @@ main(int argc, char** argv)
   // Now send the inference sequences..
   //
   std::vector<int32_t> values{11, 7, 5, 3, 2, 0, 1};
-  std::vector<int32_t> result0_data;
-  std::vector<int32_t> result1_data;
+  std::vector<int32_t> int_result0_data;
+  std::vector<int32_t> int_result1_data;
+  std::vector<int32_t> string_result0_data;
 
   // Send requests, first reset accumulator for the sequence.
   SyncSend(
-      client, model_name, 0, sequence_id0, true /* start-of-sequence */,
-      false /* end-of-sequence */, result0_data, http_headers);
+      client, int_model_name, 0, int_sequence_id0, true /* start-of-sequence */,
+      false /* end-of-sequence */, int_result0_data, http_headers);
   SyncSend(
-      client, model_name, 100, sequence_id1, true /* start-of-sequence */,
-      false /* end-of-sequence */, result1_data, http_headers);
+      client, int_model_name, 100, int_sequence_id1,
+      true /* start-of-sequence */, false /* end-of-sequence */,
+      int_result1_data, http_headers);
+  SyncSend(
+      client, string_model_name, 20, string_sequence_id0,
+      true /* start-of-sequence */, false /* end-of-sequence */,
+      string_result0_data, http_headers);
 
   // Now send a sequence of values...
   for (int32_t v : values) {
     SyncSend(
-        client, model_name, v, sequence_id0, false /* start-of-sequence */,
-        (v == 1) /* end-of-sequence */, result0_data, http_headers);
+        client, int_model_name, v, int_sequence_id0,
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
+        int_result0_data, http_headers);
     SyncSend(
-        client, model_name, -v, sequence_id1, false /* start-of-sequence */,
-        (v == 1) /* end-of-sequence */, result1_data, http_headers);
+        client, int_model_name, -v, int_sequence_id1,
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
+        int_result1_data, http_headers);
+    SyncSend(
+        client, string_model_name, -v, string_sequence_id0,
+        false /* start-of-sequence */, (v == 1) /* end-of-sequence */,
+        string_result0_data, http_headers);
   }
 
-  for (size_t i = 0; i < result0_data.size(); i++) {
-    int32_t seq0_expected = (i == 0) ? 1 : values[i - 1];
-    int32_t seq1_expected = (i == 0) ? 101 : values[i - 1] * -1;
+  for (size_t i = 0; i < int_result0_data.size(); i++) {
+    int32_t int_seq0_expected = (i == 0) ? 1 : values[i - 1];
+    int32_t int_seq1_expected = (i == 0) ? 101 : values[i - 1] * -1;
+    int32_t string_seq0_expected;
+
+    // For string sequence ID case we are testing two different backends
+    if ((i == 0) && dyna_sequence) {
+      string_seq0_expected = 20;
+    } else if ((i == 0) && !dyna_sequence) {
+      string_seq0_expected = 21;
+    } else if ((i != 0) && dyna_sequence) {
+      string_seq0_expected = values[i - 1] * -1 + string_result0_data[i - 1];
+    } else {
+      string_seq0_expected = values[i - 1] * -1;
+    }
+
     // The dyna_sequence custom backend adds the sequence ID to
     // the last request in a sequence.
     if (dyna_sequence && (i != 0) && (values[i - 1] == 1)) {
-      seq0_expected += sequence_id0;
-      seq1_expected += sequence_id1;
+      int_seq0_expected += int_sequence_id0;
+      int_seq1_expected += int_sequence_id1;
+      string_seq0_expected += std::stoi(string_sequence_id0);
     }
 
-    std::cout << "[" << i << "] " << result0_data[i] << " : " << result1_data[i]
+    std::cout << "[" << i << "] " << int_result0_data[i] << " : "
+              << int_result1_data[i] << " : " << string_result0_data[i]
               << std::endl;
 
-    if ((seq0_expected != result0_data[i]) ||
-        (seq1_expected != result1_data[i])) {
-      std::cout << "[ expected ] " << seq0_expected << " : " << seq1_expected
+    if ((int_seq0_expected != int_result0_data[i]) ||
+        (int_seq1_expected != int_result1_data[i]) ||
+        (string_seq0_expected != string_result0_data[i])) {
+      std::cout << "[ expected ] " << int_seq0_expected << " : "
+                << int_seq1_expected << " : " << string_seq0_expected
                 << std::endl;
       return 1;
     }
