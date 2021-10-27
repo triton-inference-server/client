@@ -689,7 +689,6 @@ LoadManager::SetInferSequenceOptions(
 void
 LoadManager::InitNewSequence(int sequence_id)
 {
-  sequence_stat_[sequence_id]->seq_id_ = next_seq_id_++;
   if (!using_json_data_) {
     size_t new_length = GetRandomLength(0.2);
     sequence_stat_[sequence_id]->remaining_queries_ =
