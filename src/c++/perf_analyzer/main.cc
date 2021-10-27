@@ -696,7 +696,7 @@ main(int argc, char** argv)
   int32_t concurrent_request_count = 1;
   size_t max_concurrency = 0;
   uint32_t num_of_sequences = 4;
-  uint64_t start_sequence_id = 0;
+  uint64_t start_sequence_id = 1;
   uint64_t sequence_id_range = 0;
   bool dynamic_concurrency_mode = false;
   bool async = false;
@@ -1154,6 +1154,12 @@ main(int argc, char** argv)
     sequence_length = 20;
     std::cerr << "WARNING: using an invalid sequence length. Perf Analyzer will"
               << " use default value if it is measuring on sequence model."
+              << std::endl;
+  }
+  if (start_sequence_id == 0) {
+    start_sequence_id = 1;
+    std::cerr << "WARNING: using an invalid start sequence id. Perf Analyzer"
+              << " will use default value if it is measuring on sequence model."
               << std::endl;
   }
   if (percentile != -1 && (percentile > 99 || percentile < 1)) {

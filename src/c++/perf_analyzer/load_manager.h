@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <random>
 #include <thread>
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
@@ -204,6 +205,9 @@ class LoadManager {
 
   bool using_json_data_;
   bool using_shared_memory_;
+
+  std::default_random_engine rng_generator_;
+  std::uniform_int_distribution<uint64_t> distribution_;
 
   std::unique_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;

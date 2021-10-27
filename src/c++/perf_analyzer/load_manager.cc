@@ -233,6 +233,8 @@ LoadManager::InitManagerInputs(
         RETURN_IF_ERROR(
             data_loader_->ReadDataFromJSON(parser_->Inputs(), json_file));
       }
+      distribution_ = std::uniform_int_distribution<uint64_t>(
+          0, data_loader_->GetDataStreamsCount());
       std::cout << " Successfully read data for "
                 << data_loader_->GetDataStreamsCount() << " stream/streams";
       if (data_loader_->GetDataStreamsCount() == 1) {
@@ -694,11 +696,9 @@ LoadManager::InitNewSequence(int sequence_id)
     sequence_stat_[sequence_id]->remaining_queries_ =
         new_length == 0 ? 1 : new_length;
   } else {
-    // Selecting next available data stream in a round-robin fashion.
-    // TODO: A mode to randomly pick data stream for new sequences.
+    // Selecting next available data stream based on uniform distribution.
     sequence_stat_[sequence_id]->data_stream_id_ =
-        sequence_stat_[sequence_id]->seq_id_ %
-        data_loader_->GetDataStreamsCount();
+        distribution_(rng_generator_);
     sequence_stat_[sequence_id]->remaining_queries_ =
         data_loader_->GetTotalSteps(
             sequence_stat_[sequence_id]->data_stream_id_);
