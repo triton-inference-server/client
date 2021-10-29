@@ -232,6 +232,8 @@ RequestRateManager::Infer(
               it->second.delayed_));
           ctx->infer_backend_->ClientInferStat(
               &(thread_stat->contexts_stat_[0]));
+          thread_stat->cb_status_ = ValidateOutputs(*ctx, result);
+          async_req_map->erase(request_id);
         } else {
           return;
         }
@@ -294,6 +296,10 @@ RequestRateManager::Infer(
                     batch_size_;
       thread_config->non_sequence_data_step_id_ += max_threads_;
       thread_stat->status_ = UpdateInputs(ctx->inputs_, 0, step_id);
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = UpdateValidationOutputs(
+            ctx->outputs_, 0, step_id, ctx->expected_outputs_);
+      }
       if (!thread_stat->status_.IsOk()) {
         return;
       }
@@ -315,6 +321,11 @@ RequestRateManager::Infer(
                         sequence_stat_[seq_id]->remaining_queries_;
           thread_stat->status_ = UpdateInputs(
               ctx->inputs_, sequence_stat_[seq_id]->data_stream_id_, step_id);
+          if (thread_stat->status_.IsOk()) {
+            thread_stat->status_ = UpdateValidationOutputs(
+                ctx->outputs_, sequence_stat_[seq_id]->data_stream_id_, step_id,
+                ctx->expected_outputs_);
+          }
           if (!thread_stat->status_.IsOk()) {
             return;
           }
@@ -400,6 +411,9 @@ RequestRateManager::Request(
     thread_stat->status_ = context->infer_backend_->Infer(
         &results, *(context->options_), context->inputs_, context->outputs_);
     if (results != nullptr) {
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(*context, results);
+      }
       delete results;
     }
     if (!thread_stat->status_.IsOk()) {

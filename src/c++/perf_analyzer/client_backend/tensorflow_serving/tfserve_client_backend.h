@@ -115,13 +115,13 @@ class TFServeClientBackend : public ClientBackend {
 class TFServeInferRequestedOutput : public InferRequestedOutput {
  public:
   static Error Create(
-      InferRequestedOutput** infer_output, const std::string name);
+      InferRequestedOutput** infer_output, const std::string& name);
   /// Returns the raw InferRequestedOutput object required by TFserving client
   /// library.
   tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
-  explicit TFServeInferRequestedOutput();
+  explicit TFServeInferRequestedOutput(const std::string& name);
 
   std::unique_ptr<tc::InferRequestedOutput> output_;
 };
@@ -137,6 +137,10 @@ class TFServeInferResult : public cb::InferResult {
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()
   Error RequestStatus() const override;
+  /// See InferResult::RawData()
+  Error RawData(
+      const std::string& output_name, const uint8_t** buf,
+      size_t* byte_size) const override;
 
  private:
   std::unique_ptr<tfs::InferResult> result_;

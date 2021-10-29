@@ -417,16 +417,15 @@ TritonClientBackend::ParseInferOptionsToTriton(
 {
   triton_options->model_version_ = options.model_version_;
   triton_options->request_id_ = options.request_id_;
-  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
-    {
-      if (options.sequence_id_ != 0) {
-        triton_options->sequence_id_ = options.sequence_id_;
-      } else {
-        triton_options->sequence_id_str_ = options.sequence_id_str_;
-      }
-      triton_options->sequence_start_ = options.sequence_start_;
-      triton_options->sequence_end_ = options.sequence_end_;
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
+    if (options.sequence_id_ != 0) {
+      triton_options->sequence_id_ = options.sequence_id_;
+    } else {
+      triton_options->sequence_id_str_ = options.sequence_id_str_;
     }
+    triton_options->sequence_start_ = options.sequence_start_;
+    triton_options->sequence_end_ = options.sequence_end_;
+  }
 }
 
 
@@ -565,11 +564,11 @@ TritonInferInput::TritonInferInput(
 
 Error
 TritonInferRequestedOutput::Create(
-    InferRequestedOutput** infer_output, const std::string name,
+    InferRequestedOutput** infer_output, const std::string& name,
     const size_t class_count)
 {
   TritonInferRequestedOutput* local_infer_output =
-      new TritonInferRequestedOutput();
+      new TritonInferRequestedOutput(name);
 
   tc::InferRequestedOutput* triton_infer_output;
   RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
@@ -591,8 +590,8 @@ TritonInferRequestedOutput::SetSharedMemory(
 }
 
 
-TritonInferRequestedOutput::TritonInferRequestedOutput()
-    : InferRequestedOutput(BackendKind::TRITON)
+TritonInferRequestedOutput::TritonInferRequestedOutput(const std::string& name)
+    : InferRequestedOutput(BackendKind::TRITON, name)
 {
 }
 
@@ -614,6 +613,15 @@ Error
 TritonInferResult::RequestStatus() const
 {
   RETURN_IF_TRITON_ERROR(result_->RequestStatus());
+  return Error::Success;
+}
+
+Error
+TritonInferResult::RawData(
+    const std::string& output_name, const uint8_t** buf,
+    size_t* byte_size) const
+{
+  RETURN_IF_TRITON_ERROR(result_->RawData(output_name, buf, byte_size));
   return Error::Success;
 }
 

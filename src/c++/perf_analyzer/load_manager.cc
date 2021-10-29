@@ -225,13 +225,13 @@ LoadManager::InitManagerInputs(
   // Read provided data
   if (!user_data.empty()) {
     if (IsDirectory(user_data[0])) {
-      RETURN_IF_ERROR(
-          data_loader_->ReadDataFromDir(parser_->Inputs(), user_data[0]));
+      RETURN_IF_ERROR(data_loader_->ReadDataFromDir(
+          parser_->Inputs(), parser_->Outputs(), user_data[0]));
     } else {
       using_json_data_ = true;
       for (const auto& json_file : user_data) {
-        RETURN_IF_ERROR(
-            data_loader_->ReadDataFromJSON(parser_->Inputs(), json_file));
+        RETURN_IF_ERROR(data_loader_->ReadDataFromJSON(
+            parser_->Inputs(), parser_->Outputs(), json_file));
       }
       distribution_ = std::uniform_int_distribution<uint64_t>(
           0, data_loader_->GetDataStreamsCount());
@@ -566,6 +566,79 @@ LoadManager::UpdateInputs(
 }
 
 cb::Error
+LoadManager::UpdateValidationOutputs(
+    const std::vector<const cb::InferRequestedOutput*>& outputs,
+    int stream_index, int step_index,
+    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
+{
+  data.clear();
+  // Validate update parameters here
+  size_t data_stream_count = data_loader_->GetDataStreamsCount();
+  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
+    return cb::Error(
+        "stream_index for retrieving the data should be less than " +
+        std::to_string(data_stream_count) + ", got " +
+        std::to_string(stream_index));
+  }
+  size_t step_count = data_loader_->GetTotalSteps(stream_index);
+  if (step_index < 0 || step_index >= (int)step_count) {
+    return cb::Error(
+        "step_id for retrieving the data should be less than " +
+        std::to_string(step_count) + ", got " + std::to_string(step_index));
+  }
+
+  for (const auto& output : outputs) {
+    const auto& model_output = (*(parser_->Outputs()))[output->Name()];
+    const uint8_t* data_ptr;
+    size_t batch1_bytesize;
+    const int* set_shape_values = nullptr;
+    int set_shape_value_cnt = 0;
+
+    std::vector<std::pair<const uint8_t*, size_t>> output_data;
+    for (size_t i = 0; i < batch_size_; ++i) {
+      RETURN_IF_ERROR(data_loader_->GetOutputData(
+          output->Name(), 0, (step_index + i) % data_loader_->GetTotalSteps(0),
+          &data_ptr, &batch1_bytesize));
+      output_data.emplace_back(data_ptr, batch1_bytesize);
+      // Shape tensor only need the first batch element
+      if (!model_output.is_shape_tensor_) {
+        break;
+      }
+      data.emplace_back(std::move(output_data));
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+LoadManager::ValidateOutputs(
+    const InferContext& ctx, const cb::InferResult* result_ptr)
+{
+  // Validate output if set
+  if (!ctx.expected_outputs_.empty()) {
+    for (size_t i = 0; i < ctx.outputs_.size(); ++i) {
+      const uint8_t* buf = nullptr;
+      size_t byte_size = 0;
+      result_ptr->RawData(ctx.outputs_[i]->Name(), &buf, &byte_size);
+      for (const auto& expected : ctx.expected_outputs_[i]) {
+        if (byte_size < expected.second) {
+          return cb::Error("Output size doesn't match expected size");
+        } else if (memcmp(buf, expected.first, expected.second) != 0) {
+          return cb::Error("Output doesn't match expected output");
+        } else {
+          buf += expected.second;
+          byte_size -= expected.second;
+        }
+      }
+      if (byte_size != 0) {
+        return cb::Error("Output size doesn't match expected size");
+      }
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
 LoadManager::SetInputs(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
     const int step_index)
@@ -605,8 +678,9 @@ LoadManager::SetInputs(
         }
       }
       RETURN_IF_ERROR(data_loader_->GetInputData(
-          model_input, 0, (step_index + i) % data_loader_->GetTotalSteps(0),
-          &data_ptr, &batch1_bytesize));
+          model_input, stream_index,
+          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
+          &batch1_bytesize));
       if (!model_input.is_shape_tensor_) {
         RETURN_IF_ERROR(input->AppendRaw(data_ptr, batch1_bytesize));
       } else {

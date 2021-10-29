@@ -421,7 +421,9 @@ InferRequestedOutput::SetSharedMemory(
       " does not support SetSharedMemory() for InferRequestedOutput");
 }
 
-InferRequestedOutput::InferRequestedOutput(const BackendKind kind) : kind_(kind)
+InferRequestedOutput::InferRequestedOutput(
+    const BackendKind kind, const std::string& name)
+    : kind_(kind), name_(name)
 {
 }
 

@@ -92,6 +92,9 @@ class LoadManager {
     // The vector of pointers to InferRequestedOutput objects
     // to be used with the inference request.
     std::vector<const cb::InferRequestedOutput*> outputs_;
+    // If not empty, the expected output data in the same order as 'outputs_'
+    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>
+        expected_outputs_;
     // The InferOptions object holding the details of the
     // inference.
     std::unique_ptr<cb::InferOptions> options_;
@@ -157,6 +160,22 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error UpdateInputs(
       std::vector<cb::InferInput*>& inputs, int stream_index, int step_index);
+
+  /// Updates the expected output data to use for inference request. Empty
+  /// vector will be returned if there is no expected output associated to the
+  /// step.
+  /// \param outputs The vector of outputs to get the expected data
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \param data The vector of pointer and size of the expected outputs
+  /// \return cb::Error object indicating success or failure.
+  cb::Error UpdateValidationOutputs(
+      const std::vector<const cb::InferRequestedOutput*>& outputs,
+      int stream_index, int step_index,
+      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
+
+  cb::Error ValidateOutputs(
+      const InferContext& ctx, const cb::InferResult* result_ptr);
 
   void SetInferSequenceOptions(
       const uint32_t seq_id, std::unique_ptr<cb::InferOptions>& options);

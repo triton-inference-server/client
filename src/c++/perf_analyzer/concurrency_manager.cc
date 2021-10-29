@@ -207,6 +207,7 @@ ConcurrencyManager::Infer(
           ctx_id = it->second.ctx_id_;
           ctxs[ctx_id]->infer_backend_->ClientInferStat(
               &(thread_stat->contexts_stat_[ctx_id]));
+          thread_stat->cb_status_ = ValidateOutputs(*ctxs[ctx_id], result);
           async_req_map.erase(request_id);
         } else {
           return;
@@ -301,6 +302,11 @@ ConcurrencyManager::Infer(
         thread_config->non_sequence_data_step_id_ += active_threads_;
         // There will be only one ctx in non-sequence case
         thread_stat->status_ = UpdateInputs(ctxs[ctx_id]->inputs_, 0, step_id);
+        if (thread_stat->status_.IsOk()) {
+          thread_stat->status_ = UpdateValidationOutputs(
+              ctxs[ctx_id]->outputs_, 0, step_id,
+              ctxs[ctx_id]->expected_outputs_);
+        }
         if (!thread_stat->status_.IsOk()) {
           return;
         }
@@ -333,6 +339,12 @@ ConcurrencyManager::Infer(
             thread_stat->status_ = UpdateInputs(
                 ctxs[ctx_id]->inputs_, sequence_stat_[seq_id]->data_stream_id_,
                 step_id);
+            if (thread_stat->status_.IsOk()) {
+              thread_stat->status_ = UpdateValidationOutputs(
+                  ctxs[ctx_id]->outputs_,
+                  sequence_stat_[seq_id]->data_stream_id_, step_id,
+                  ctxs[ctx_id]->expected_outputs_);
+            }
             if (!thread_stat->status_.IsOk()) {
               return;
             }
@@ -373,6 +385,9 @@ ConcurrencyManager::Infer(
             &results, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
             ctxs[ctx_id]->outputs_);
         if (results != nullptr) {
+          if (thread_stat->status_.IsOk()) {
+            thread_stat->status_ = ValidateOutputs(*ctxs[ctx_id], results);
+          }
           delete results;
         }
         if (!thread_stat->status_.IsOk()) {
