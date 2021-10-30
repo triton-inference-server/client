@@ -80,15 +80,13 @@ ConcurrencyManager::ConcurrencyManager(
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, sequence_length,
-          shared_memory_type, output_shm_size, parser, factory),
+          shared_memory_type, output_shm_size, start_sequence_id,
+          sequence_id_range, parser, factory),
       execute_(true), max_concurrency_(max_concurrency)
 {
-  uint64_t adjusted_range =
-      (sequence_id_range == 0) ? max_concurrency_ : sequence_id_range;
   if (on_sequence_model_) {
     for (uint64_t i = 0; i < max_concurrency_; i++) {
-      sequence_stat_.emplace_back(
-          new SequenceStat(start_sequence_id + (i % adjusted_range)));
+      sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
 }

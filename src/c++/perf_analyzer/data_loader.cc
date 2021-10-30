@@ -74,11 +74,15 @@ DataLoader::ReadDataFromDir(
           output.second.name_ + "_" + std::to_string(0) + "_" +
           std::to_string(0));
       auto it = output_data_.emplace(key_name, std::vector<char>()).first;
-      RETURN_IF_ERROR(ReadFile(file_path, &it->second));
+      if (!ReadFile(file_path, &it->second).IsOk()) {
+        output_data_.erase(it);
+      }
     } else {
       const auto file_path = data_directory + "/" + output.second.name_;
       std::vector<std::string> output_string_data;
-      RETURN_IF_ERROR(ReadTextFile(file_path, &output_string_data));
+      if (!ReadTextFile(file_path, &output_string_data).IsOk()) {
+        continue;
+      }
       std::string key_name(
           output.second.name_ + "_" + std::to_string(0) + "_" +
           std::to_string(0));

@@ -697,7 +697,7 @@ main(int argc, char** argv)
   size_t max_concurrency = 0;
   uint32_t num_of_sequences = 4;
   uint64_t start_sequence_id = 1;
-  uint64_t sequence_id_range = 0;
+  uint64_t sequence_id_range = UINT32_MAX;
   bool dynamic_concurrency_mode = false;
   bool async = false;
   bool forced_sync = false;

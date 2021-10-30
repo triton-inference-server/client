@@ -80,15 +80,13 @@ RequestRateManager::RequestRateManager(
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, sequence_length,
-          shared_memory_type, output_shm_size, parser, factory),
+          shared_memory_type, output_shm_size, start_sequence_id,
+          sequence_id_range, parser, factory),
       request_distribution_(request_distribution), execute_(false)
 {
-  uint64_t adjusted_range =
-      (sequence_id_range == 0) ? num_of_sequences : sequence_id_range;
   if (on_sequence_model_) {
     for (uint64_t i = 0; i < num_of_sequences; i++) {
-      sequence_stat_.emplace_back(
-          new SequenceStat(start_sequence_id + (i % adjusted_range)));
+      sequence_stat_.emplace_back(new SequenceStat(next_seq_id_++));
     }
   }
   gen_duration_.reset(

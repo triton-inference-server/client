@@ -200,12 +200,14 @@ LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
       max_threads_(max_threads), sequence_length_(sequence_length),
       shared_memory_type_(shared_memory_type),
-      output_shm_size_(output_shm_size), parser_(parser), factory_(factory),
+      output_shm_size_(output_shm_size), start_sequence_id_(start_sequence_id),
+      sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
       using_json_data_(false), using_shared_memory_(false), next_seq_id_(1)
 {
   on_sequence_model_ =
@@ -234,7 +236,7 @@ LoadManager::InitManagerInputs(
             parser_->Inputs(), parser_->Outputs(), json_file));
       }
       distribution_ = std::uniform_int_distribution<uint64_t>(
-          0, data_loader_->GetDataStreamsCount());
+          0, data_loader_->GetDataStreamsCount() - 1);
       std::cout << " Successfully read data for "
                 << data_loader_->GetDataStreamsCount() << " stream/streams";
       if (data_loader_->GetDataStreamsCount() == 1) {
@@ -597,8 +599,12 @@ LoadManager::UpdateValidationOutputs(
     std::vector<std::pair<const uint8_t*, size_t>> output_data;
     for (size_t i = 0; i < batch_size_; ++i) {
       RETURN_IF_ERROR(data_loader_->GetOutputData(
-          output->Name(), 0, (step_index + i) % data_loader_->GetTotalSteps(0),
-          &data_ptr, &batch1_bytesize));
+          output->Name(), stream_index,
+          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
+          &batch1_bytesize));
+      if (data_ptr == nullptr) {
+        break;
+      }
       output_data.emplace_back(data_ptr, batch1_bytesize);
       // Shape tensor only need the first batch element
       if (!model_output.is_shape_tensor_) {
@@ -765,6 +771,8 @@ LoadManager::SetInferSequenceOptions(
 void
 LoadManager::InitNewSequence(int sequence_id)
 {
+  sequence_stat_[sequence_id]->seq_id_ =
+      next_seq_id_++ % sequence_id_range_ + start_sequence_id_;
   if (!using_json_data_) {
     size_t new_length = GetRandomLength(0.2);
     sequence_stat_[sequence_id]->remaining_queries_ =
