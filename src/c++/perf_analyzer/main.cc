@@ -564,12 +564,12 @@ Usage(char** argv, const std::string& msg = std::string())
              "sequence id used by the perf_analyzer. The perf_analyzer "
              "will start from the sequence id of 'start' and go till "
              "'end' (excluded). If 'end' is not specified then perf_analyzer "
-             "will "
-             "use new sequence id without bounds. If 'end' is specified and "
-             "the "
-             "concurrency setting may result in maintaining a number of "
-             "sequences more than the range of available sequence id, a "
-             "warning will be logged to inform possible sequence id collision",
+             "will use new sequence id without bounds. If 'end' is specified "
+             "and the concurrency setting may result in maintaining a number "
+             "of sequences more than the range of available sequence id, "
+             "perf analyzer will exit with error due to possible sequence id "
+             "collision. The default setting is start from sequence id 1 and "
+             "without bounds",
              18)
       << std::endl;
   std::cerr << FormatMessage(
@@ -1426,9 +1426,10 @@ main(int argc, char** argv)
       }
     }
     if ((sequence_id_range != 0) && (sequence_id_range < max_concurrency)) {
-      std::cerr << "WARNING: sequence id range specified is smallar than the "
+      std::cerr << "sequence id range specified is smallar than the "
                 << "maximum possible concurrency, sequence id collision may "
                 << "occur." << std::endl;
+      return 1;
     }
     FAIL_IF_ERR(
         pa::ConcurrencyManager::Create(
@@ -1441,9 +1442,10 @@ main(int argc, char** argv)
   } else if (using_request_rate_range) {
     if ((sequence_id_range != 0) && (sequence_id_range < num_of_sequences)) {
       std::cerr
-          << "WARNING: sequence id range specified is smallar than the "
+          << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
+      return 1;
     }
     FAIL_IF_ERR(
         pa::RequestRateManager::Create(
@@ -1457,9 +1459,10 @@ main(int argc, char** argv)
   } else {
     if ((sequence_id_range != 0) && (sequence_id_range < num_of_sequences)) {
       std::cerr
-          << "WARNING: sequence id range specified is smallar than the "
+          << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
+      return 1;
     }
     FAIL_IF_ERR(
         pa::CustomLoadManager::Create(
