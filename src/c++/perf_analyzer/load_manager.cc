@@ -611,7 +611,9 @@ LoadManager::UpdateValidationOutputs(
         break;
       }
     }
-    data.emplace_back(std::move(output_data));
+    if (!output_data.empty()) {
+      data.emplace_back(std::move(output_data));
+    }
   }
   return cb::Error::Success;
 }
