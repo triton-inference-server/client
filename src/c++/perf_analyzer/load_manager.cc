@@ -492,6 +492,8 @@ LoadManager::PrepareInfer(InferContext* ctx)
         &requested_output, backend_->Kind(), output.first));
     ctx->outputs_.push_back(requested_output);
   }
+  RETURN_IF_ERROR(
+      UpdateValidationOutputs(ctx->outputs_, 0, 0, ctx->expected_outputs_));
 
   return cb::Error::Success;
 }
