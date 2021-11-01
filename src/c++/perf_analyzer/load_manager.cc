@@ -607,11 +607,11 @@ LoadManager::UpdateValidationOutputs(
       }
       output_data.emplace_back(data_ptr, batch1_bytesize);
       // Shape tensor only need the first batch element
-      if (!model_output.is_shape_tensor_) {
+      if (model_output.is_shape_tensor_) {
         break;
       }
-      data.emplace_back(std::move(output_data));
     }
+    data.emplace_back(std::move(output_data));
   }
   return cb::Error::Success;
 }

@@ -179,7 +179,7 @@ DataLoader::ReadDataFromJSON(
       if (out_streams != nullptr) {
         for (size_t k = offset; k < step_num_[0]; k++) {
           RETURN_IF_ERROR(
-              ReadTensorData((*out_streams)[k - offset], outputs, 0, k, true));
+              ReadTensorData((*out_streams)[k - offset], outputs, 0, k, false));
         }
       }
       break;
