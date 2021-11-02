@@ -228,6 +228,9 @@ ConcurrencyManager::Infer(
   // this function doesn't utilize 'free_ctx_ids' in the same way as in main
   // loop
   const auto complete_onging_sequence_func = [&]() {
+    if (!on_sequence_model_) {
+      return cb::Error::Success;
+    }
     size_t offset = 0;
     for (size_t i = 0; i < thread_config->thread_id_; i++) {
       offset += threads_config_[i]->concurrency_;
