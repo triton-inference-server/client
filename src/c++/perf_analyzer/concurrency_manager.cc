@@ -207,8 +207,6 @@ ConcurrencyManager::Infer(
               &(thread_stat->contexts_stat_[ctx_id]));
           thread_stat->cb_status_ = ValidateOutputs(*ctxs[ctx_id], result);
           async_req_map.erase(request_id);
-        } else {
-          return;
         }
       }
     }
@@ -224,13 +222,84 @@ ConcurrencyManager::Infer(
     cb_cv.notify_all();
   };
 
+  // Specify the function as lambda here to work around the possible callback
+  // lifecycle issue when making this a class member function.
+  // Note that 'free_ctx_ids' must be reconstruct after the call because
+  // this function doesn't utilize 'free_ctx_ids' in the same way as in main
+  // loop
+  const auto complete_onging_sequence_func = [&]() {
+    size_t offset = 0;
+    for (size_t i = 0; i < thread_config->thread_id_; i++) {
+      offset += threads_config_[i]->concurrency_;
+    }
+
+    for (size_t ctx_id = 0; ctx_id < ctxs.size(); ++ctx_id) {
+      size_t seq_id = offset + ctx_id;
+
+      std::lock_guard<std::mutex> guard(sequence_stat_[seq_id]->mtx_);
+      // Complete the sequence if there are remaining queries
+      while (sequence_stat_[seq_id]->remaining_queries_ != 0) {
+        SetInferSequenceOptions(seq_id, ctxs[ctx_id]->options_);
+
+        // Update the inputs if required
+        if (using_json_data_) {
+          int step_id = data_loader_->GetTotalSteps(
+                            sequence_stat_[seq_id]->data_stream_id_) -
+                        sequence_stat_[seq_id]->remaining_queries_;
+
+          RETURN_IF_ERROR(UpdateInputs(
+              ctxs[ctx_id]->inputs_, sequence_stat_[seq_id]->data_stream_id_,
+              step_id));
+          RETURN_IF_ERROR(UpdateValidationOutputs(
+              ctxs[ctx_id]->outputs_, sequence_stat_[seq_id]->data_stream_id_,
+              step_id, ctxs[ctx_id]->expected_outputs_));
+        }
+        sequence_stat_[seq_id]->remaining_queries_--;
+
+        if (async_) {
+          ctxs[ctx_id]->options_->request_id_ = "0";
+          if (streaming_) {
+            RETURN_IF_ERROR(ctxs[ctx_id]->infer_backend_->AsyncStreamInfer(
+                *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
+                ctxs[ctx_id]->outputs_));
+          } else {
+            RETURN_IF_ERROR(ctxs[ctx_id]->infer_backend_->AsyncInfer(
+                callback_func, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
+                ctxs[ctx_id]->outputs_));
+          }
+          total_ongoing_requests++;
+        } else {
+          cb::InferResult* results = nullptr;
+          auto err = ctxs[ctx_id]->infer_backend_->Infer(
+              &results, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
+              ctxs[ctx_id]->outputs_);
+          if (results != nullptr) {
+            delete results;
+          }
+          RETURN_IF_ERROR(err);
+        }
+      }
+    }
+    return cb::Error::Success;
+  };
+
   // run inferencing until receiving exit signal to maintain server load.
   do {
     if (on_sequence_model_ && async_) {
       if (!execute_) {
         // Ensures the clean exit of the sequences
+        auto status = complete_onging_sequence_func();
+        if (thread_stat->status_.IsOk()) {
+          thread_stat->status_ = status;
+        }
         while (total_ongoing_requests != 0) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        // Reconstruct 'free_ctx_ids' because complete_onging_sequence_func()
+        // has destructive side affects
+        free_ctx_ids = std::queue<int>();
+        for (size_t i = 0; i < ctxs.size(); ++i) {
+          free_ctx_ids.push(i);
         }
         // Wait if no request should be sent and it is not exiting
         thread_config->is_paused_ = true;
@@ -434,6 +503,10 @@ ConcurrencyManager::Infer(
       if (async_) {
         // Wait for all callbacks to complete.
         // Loop to ensure all the inflight requests have been completed.
+        auto status = complete_onging_sequence_func();
+        if (thread_stat->status_.IsOk()) {
+          thread_stat->status_ = status;
+        }
         while (total_ongoing_requests != 0) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
