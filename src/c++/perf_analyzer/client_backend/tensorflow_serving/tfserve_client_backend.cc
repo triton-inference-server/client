@@ -143,10 +143,10 @@ TFServeClientBackend::ParseInferStat(
 
 Error
 TFServeInferRequestedOutput::Create(
-    InferRequestedOutput** infer_output, const std::string name)
+    InferRequestedOutput** infer_output, const std::string& name)
 {
   TFServeInferRequestedOutput* local_infer_output =
-      new TFServeInferRequestedOutput();
+      new TFServeInferRequestedOutput(name);
 
   tc::InferRequestedOutput* tfserve_infer_output;
   RETURN_IF_TRITON_ERROR(
@@ -158,8 +158,9 @@ TFServeInferRequestedOutput::Create(
   return Error::Success;
 }
 
-TFServeInferRequestedOutput::TFServeInferRequestedOutput()
-    : InferRequestedOutput(BackendKind::TENSORFLOW_SERVING)
+TFServeInferRequestedOutput::TFServeInferRequestedOutput(
+    const std::string& name)
+    : InferRequestedOutput(BackendKind::TENSORFLOW_SERVING, name)
 {
 }
 
@@ -182,6 +183,15 @@ TFServeInferResult::RequestStatus() const
 {
   RETURN_IF_CB_ERROR(result_->RequestStatus());
   return Error::Success;
+}
+
+Error
+TFServeInferResult::RawData(
+    const std::string& output_name, const uint8_t** buf,
+    size_t* byte_size) const
+{
+  return Error(
+      "Output retrieval is not currently supported for TFS client backend");
 }
 
 //==============================================================================

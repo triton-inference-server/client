@@ -39,7 +39,9 @@ DataLoader::DataLoader(const size_t batch_size)
 
 cb::Error
 DataLoader::ReadDataFromDir(
-    std::shared_ptr<ModelTensorMap> inputs, const std::string& data_directory)
+    const std::shared_ptr<ModelTensorMap>& inputs,
+    const std::shared_ptr<ModelTensorMap>& outputs,
+    const std::string& data_directory)
 {
   // Directory structure supports only a single data stream and step
   data_stream_cnt_ = 1;
@@ -64,16 +66,42 @@ DataLoader::ReadDataFromDir(
       SerializeStringTensor(input_string_data, &it->second);
     }
   }
+
+  for (const auto& output : *outputs) {
+    if (output.second.datatype_.compare("BYTES") != 0) {
+      const auto file_path = data_directory + "/" + output.second.name_;
+      std::string key_name(
+          output.second.name_ + "_" + std::to_string(0) + "_" +
+          std::to_string(0));
+      auto it = output_data_.emplace(key_name, std::vector<char>()).first;
+      if (!ReadFile(file_path, &it->second).IsOk()) {
+        output_data_.erase(it);
+      }
+    } else {
+      const auto file_path = data_directory + "/" + output.second.name_;
+      std::vector<std::string> output_string_data;
+      if (!ReadTextFile(file_path, &output_string_data).IsOk()) {
+        continue;
+      }
+      std::string key_name(
+          output.second.name_ + "_" + std::to_string(0) + "_" +
+          std::to_string(0));
+      auto it = output_data_.emplace(key_name, std::vector<char>()).first;
+      SerializeStringTensor(output_string_data, &it->second);
+    }
+  }
   return cb::Error::Success;
 }
 
 cb::Error
 DataLoader::ReadDataFromJSON(
-    std::shared_ptr<ModelTensorMap> inputs, const std::string& json_file)
+    const std::shared_ptr<ModelTensorMap>& inputs,
+    const std::shared_ptr<ModelTensorMap>& outputs,
+    const std::string& json_file)
 {
   FILE* data_file = fopen(json_file.c_str(), "r");
   if (data_file == nullptr) {
-    return cb::Error("failed to open file for reading input data");
+    return cb::Error("failed to open file for reading provided data");
   }
 
   char readBuffer[65536];
@@ -86,7 +114,7 @@ DataLoader::ReadDataFromJSON(
     std::cerr << "cb::Error  : " << d.GetParseError() << '\n'
               << "Offset : " << d.GetErrorOffset() << '\n';
     return cb::Error(
-        "failed to parse the specified json file for reading inputs");
+        "failed to parse the specified json file for reading provided data");
   }
 
   if (!d.HasMember("data")) {
@@ -94,16 +122,43 @@ DataLoader::ReadDataFromJSON(
   }
 
   const rapidjson::Value& streams = d["data"];
+
+  // Validation data is optional, once provided, it must align with 'data'
+  const rapidjson::Value* out_streams = nullptr;
+  if (d.HasMember("validation_data")) {
+    out_streams = &d["validation_data"];
+    if (out_streams->Size() != streams.Size()) {
+      return cb::Error(
+          "The 'validation_data' field doesn't align with 'data' field in the "
+          "json file");
+    }
+  }
+
   int count = streams.Size();
 
   data_stream_cnt_ += count;
   int offset = step_num_.size();
   for (size_t i = offset; i < data_stream_cnt_; i++) {
     const rapidjson::Value& steps = streams[i - offset];
+    const rapidjson::Value* output_steps =
+        (out_streams == nullptr) ? nullptr : &(*out_streams)[i - offset];
     if (steps.IsArray()) {
       step_num_.push_back(steps.Size());
       for (size_t k = 0; k < step_num_[i]; k++) {
-        RETURN_IF_ERROR(ReadInputTensorData(steps[k], inputs, i, k));
+        RETURN_IF_ERROR(ReadTensorData(steps[k], inputs, i, k, true));
+      }
+
+      if (output_steps != nullptr) {
+        if (!output_steps->IsArray() ||
+            (output_steps->Size() != steps.Size())) {
+          return cb::Error(
+              "The 'validation_data' field doesn't align with 'data' field in "
+              "the json file");
+        }
+        for (size_t k = 0; k < step_num_[i]; k++) {
+          RETURN_IF_ERROR(
+              ReadTensorData((*output_steps)[k], outputs, i, k, false));
+        }
       }
     } else {
       // There is no nesting of tensors, hence, will interpret streams as steps
@@ -117,7 +172,15 @@ DataLoader::ReadDataFromJSON(
       }
       data_stream_cnt_ = 1;
       for (size_t k = offset; k < step_num_[0]; k++) {
-        RETURN_IF_ERROR(ReadInputTensorData(streams[k - offset], inputs, 0, k));
+        RETURN_IF_ERROR(
+            ReadTensorData(streams[k - offset], inputs, 0, k, true));
+      }
+
+      if (out_streams != nullptr) {
+        for (size_t k = offset; k < step_num_[0]; k++) {
+          RETURN_IF_ERROR(
+              ReadTensorData((*out_streams)[k - offset], outputs, 0, k, false));
+        }
       }
       break;
     }
@@ -260,6 +323,41 @@ DataLoader::GetInputData(
 }
 
 cb::Error
+DataLoader::GetOutputData(
+    const std::string& output_name, const int stream_id, const int step_id,
+    const uint8_t** data_ptr, size_t* batch1_size)
+{
+  *data_ptr = nullptr;
+  *batch1_size = 0;
+  // If json data is available then try to retrieve the data from there
+  if (!output_data_.empty()) {
+    // validate if the indices conform to the vector sizes
+    if (stream_id < 0 || stream_id >= (int)data_stream_cnt_) {
+      return cb::Error(
+          "stream_id for retrieving the data should be less than " +
+          std::to_string(data_stream_cnt_) + ", got " +
+          std::to_string(stream_id));
+    }
+    if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
+      return cb::Error(
+          "step_id for retrieving the data should be less than " +
+          std::to_string(step_num_[stream_id]) + ", got " +
+          std::to_string(step_id));
+    }
+    std::string key_name(
+        output_name + "_" + std::to_string(stream_id) + "_" +
+        std::to_string(step_id));
+    // Get the data and the corresponding byte-size
+    auto it = output_data_.find(key_name);
+    if (it != output_data_.end()) {
+      *batch1_size = it->second.size();
+      *data_ptr = (const uint8_t*)&((it->second)[0]);
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
 DataLoader::GetInputShape(
     const ModelTensor& input, const int stream_id, const int step_id,
     std::vector<int64_t>* provided_shape)
@@ -282,19 +380,22 @@ DataLoader::GetInputShape(
 }
 
 cb::Error
-DataLoader::ReadInputTensorData(
-    const rapidjson::Value& step, std::shared_ptr<ModelTensorMap> inputs,
-    int stream_index, int step_index)
+DataLoader::ReadTensorData(
+    const rapidjson::Value& step,
+    const std::shared_ptr<ModelTensorMap>& tensors, const int stream_index,
+    const int step_index, const bool is_input)
 {
-  for (const auto& input : *inputs) {
-    if (step.HasMember(input.first.c_str())) {
+  auto& tensor_data = is_input ? input_data_ : output_data_;
+  auto& tensor_shape = is_input ? input_shapes_ : output_shapes_;
+  for (const auto& io : *tensors) {
+    if (step.HasMember(io.first.c_str())) {
       std::string key_name(
-          input.first + "_" + std::to_string(stream_index) + "_" +
+          io.first + "_" + std::to_string(stream_index) + "_" +
           std::to_string(step_index));
 
-      auto it = input_data_.emplace(key_name, std::vector<char>()).first;
+      auto it = tensor_data.emplace(key_name, std::vector<char>()).first;
 
-      const rapidjson::Value& tensor = step[(input.first).c_str()];
+      const rapidjson::Value& tensor = step[(io.first).c_str()];
 
       const rapidjson::Value* content;
 
@@ -306,7 +407,7 @@ DataLoader::ReadInputTensorData(
         // Populate the shape values first if available
         if (tensor.HasMember("shape")) {
           auto shape_it =
-              input_shapes_.emplace(key_name, std::vector<int64_t>()).first;
+              tensor_shape.emplace(key_name, std::vector<int64_t>()).first;
           for (const auto& value : tensor["shape"].GetArray()) {
             if (!value.IsInt()) {
               return cb::Error("shape values must be integers.");
@@ -327,7 +428,7 @@ DataLoader::ReadInputTensorData(
 
       if (content->IsArray()) {
         RETURN_IF_ERROR(SerializeExplicitTensor(
-            *content, input.second.datatype_, &it->second));
+            *content, io.second.datatype_, &it->second));
       } else {
         if (content->HasMember("b64")) {
           if ((*content)["b64"].IsString()) {
@@ -339,12 +440,11 @@ DataLoader::ReadInputTensorData(
             it->second.resize(size);
 
             int64_t batch1_byte;
-            auto shape_it = input_shapes_.find(key_name);
-            if (shape_it == input_shapes_.end()) {
-              batch1_byte =
-                  ByteSize(input.second.shape_, input.second.datatype_);
+            auto shape_it = tensor_shape.find(key_name);
+            if (shape_it == tensor_shape.end()) {
+              batch1_byte = ByteSize(io.second.shape_, io.second.datatype_);
             } else {
-              batch1_byte = ByteSize(shape_it->second, input.second.datatype_);
+              batch1_byte = ByteSize(shape_it->second, io.second.datatype_);
             }
             if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
               return cb::Error(
@@ -365,29 +465,29 @@ DataLoader::ReadInputTensorData(
           }
         } else {
           return cb::Error(
-              "The input values are not supported. Expected an array or "
+              "The tensor values are not supported. Expected an array or "
               "b64 string ( Location stream id: " +
               std::to_string(stream_index) +
               ", step id: " + std::to_string(step_index) + ")");
         }
       }
 
-      // Validate if a fixed shape is available for the input tensor.
+      // Validate if a fixed shape is available for the tensor.
       int element_count;
-      auto shape_it = input_shapes_.find(key_name);
-      if (shape_it != input_shapes_.end()) {
+      auto shape_it = tensor_shape.find(key_name);
+      if (shape_it != tensor_shape.end()) {
         element_count = ElementCount(shape_it->second);
       } else {
-        element_count = ElementCount(input.second.shape_);
+        element_count = ElementCount(io.second.shape_);
       }
       if (element_count < 0) {
         return cb::Error(
-            "The variable-sized input tensor \"" + input.second.name_ +
+            "The variable-sized tensor \"" + io.second.name_ +
             "\" is missing shape, see --shape option.");
       }
     } else {
       return cb::Error(
-          "missing input " + input.first +
+          "missing tensor " + io.first +
           " ( Location stream id: " + std::to_string(stream_index) +
           ", step id: " + std::to_string(step_index) + ")");
     }

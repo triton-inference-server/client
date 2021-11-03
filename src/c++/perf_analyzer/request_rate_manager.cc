@@ -44,6 +44,7 @@ RequestRateManager::Create(
     const size_t string_length, const std::string& string_data,
     const bool zero_input, std::vector<std::string>& user_data,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
@@ -51,7 +52,7 @@ RequestRateManager::Create(
   std::unique_ptr<RequestRateManager> local_manager(new RequestRateManager(
       async, streaming, request_distribution, batch_size, measurement_window_ms,
       max_threads, num_of_sequences, sequence_length, shared_memory_type,
-      output_shm_size, parser, factory));
+      output_shm_size, start_sequence_id, sequence_id_range, parser, factory));
 
   local_manager->threads_config_.reserve(max_threads);
 
@@ -73,11 +74,14 @@ RequestRateManager::RequestRateManager(
     int32_t batch_size, const uint64_t measurement_window_ms,
     const size_t max_threads, const uint32_t num_of_sequences,
     const size_t sequence_length, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+    const size_t output_shm_size, const uint64_t start_sequence_id,
+    const uint64_t sequence_id_range,
+    const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, sequence_length,
-          shared_memory_type, output_shm_size, parser, factory),
+          shared_memory_type, output_shm_size, start_sequence_id,
+          sequence_id_range, parser, factory),
       request_distribution_(request_distribution), execute_(false)
 {
   if (on_sequence_model_) {
@@ -226,6 +230,8 @@ RequestRateManager::Infer(
               it->second.delayed_));
           ctx->infer_backend_->ClientInferStat(
               &(thread_stat->contexts_stat_[0]));
+          thread_stat->cb_status_ = ValidateOutputs(*ctx, result);
+          async_req_map->erase(request_id);
         } else {
           return;
         }
@@ -288,6 +294,10 @@ RequestRateManager::Infer(
                     batch_size_;
       thread_config->non_sequence_data_step_id_ += max_threads_;
       thread_stat->status_ = UpdateInputs(ctx->inputs_, 0, step_id);
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = UpdateValidationOutputs(
+            ctx->outputs_, 0, step_id, ctx->expected_outputs_);
+      }
       if (!thread_stat->status_.IsOk()) {
         return;
       }
@@ -309,6 +319,11 @@ RequestRateManager::Infer(
                         sequence_stat_[seq_id]->remaining_queries_;
           thread_stat->status_ = UpdateInputs(
               ctx->inputs_, sequence_stat_[seq_id]->data_stream_id_, step_id);
+          if (thread_stat->status_.IsOk()) {
+            thread_stat->status_ = UpdateValidationOutputs(
+                ctx->outputs_, sequence_stat_[seq_id]->data_stream_id_, step_id,
+                ctx->expected_outputs_);
+          }
           if (!thread_stat->status_.IsOk()) {
             return;
           }
@@ -394,6 +409,9 @@ RequestRateManager::Request(
     thread_stat->status_ = context->infer_backend_->Infer(
         &results, *(context->options_), context->inputs_, context->outputs_);
     if (results != nullptr) {
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(*context, results);
+      }
       delete results;
     }
     if (!thread_stat->status_.IsOk()) {

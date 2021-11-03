@@ -99,6 +99,10 @@ class TorchServeInferResult : public cb::InferResult {
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()
   Error RequestStatus() const override;
+  /// See InferResult::RawData()
+  Error RawData(
+      const std::string& output_name, const uint8_t** buf,
+      size_t* byte_size) const override;
 
  private:
   std::unique_ptr<ts::InferResult> result_;

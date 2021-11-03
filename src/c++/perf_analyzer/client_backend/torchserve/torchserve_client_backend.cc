@@ -111,6 +111,16 @@ TorchServeInferResult::RequestStatus() const
   return Error::Success;
 }
 
+Error
+TorchServeInferResult::RawData(
+    const std::string& output_name, const uint8_t** buf,
+    size_t* byte_size) const
+{
+  return Error(
+      "Output retrieval is not currently supported for TorchServe client "
+      "backend");
+}
+
 //==============================================================================
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::torchserve

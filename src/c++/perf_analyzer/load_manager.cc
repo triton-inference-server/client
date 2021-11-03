@@ -200,12 +200,14 @@ LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
       max_threads_(max_threads), sequence_length_(sequence_length),
       shared_memory_type_(shared_memory_type),
-      output_shm_size_(output_shm_size), parser_(parser), factory_(factory),
+      output_shm_size_(output_shm_size), start_sequence_id_(start_sequence_id),
+      sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
       using_json_data_(false), using_shared_memory_(false), next_seq_id_(1)
 {
   on_sequence_model_ =
@@ -225,14 +227,16 @@ LoadManager::InitManagerInputs(
   // Read provided data
   if (!user_data.empty()) {
     if (IsDirectory(user_data[0])) {
-      RETURN_IF_ERROR(
-          data_loader_->ReadDataFromDir(parser_->Inputs(), user_data[0]));
+      RETURN_IF_ERROR(data_loader_->ReadDataFromDir(
+          parser_->Inputs(), parser_->Outputs(), user_data[0]));
     } else {
       using_json_data_ = true;
       for (const auto& json_file : user_data) {
-        RETURN_IF_ERROR(
-            data_loader_->ReadDataFromJSON(parser_->Inputs(), json_file));
+        RETURN_IF_ERROR(data_loader_->ReadDataFromJSON(
+            parser_->Inputs(), parser_->Outputs(), json_file));
       }
+      distribution_ = std::uniform_int_distribution<uint64_t>(
+          0, data_loader_->GetDataStreamsCount() - 1);
       std::cout << " Successfully read data for "
                 << data_loader_->GetDataStreamsCount() << " stream/streams";
       if (data_loader_->GetDataStreamsCount() == 1) {
@@ -488,6 +492,8 @@ LoadManager::PrepareInfer(InferContext* ctx)
         &requested_output, backend_->Kind(), output.first));
     ctx->outputs_.push_back(requested_output);
   }
+  RETURN_IF_ERROR(
+      UpdateValidationOutputs(ctx->outputs_, 0, 0, ctx->expected_outputs_));
 
   return cb::Error::Success;
 }
@@ -564,6 +570,85 @@ LoadManager::UpdateInputs(
 }
 
 cb::Error
+LoadManager::UpdateValidationOutputs(
+    const std::vector<const cb::InferRequestedOutput*>& outputs,
+    int stream_index, int step_index,
+    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
+{
+  data.clear();
+  // Validate update parameters here
+  size_t data_stream_count = data_loader_->GetDataStreamsCount();
+  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
+    return cb::Error(
+        "stream_index for retrieving the data should be less than " +
+        std::to_string(data_stream_count) + ", got " +
+        std::to_string(stream_index));
+  }
+  size_t step_count = data_loader_->GetTotalSteps(stream_index);
+  if (step_index < 0 || step_index >= (int)step_count) {
+    return cb::Error(
+        "step_id for retrieving the data should be less than " +
+        std::to_string(step_count) + ", got " + std::to_string(step_index));
+  }
+
+  for (const auto& output : outputs) {
+    const auto& model_output = (*(parser_->Outputs()))[output->Name()];
+    const uint8_t* data_ptr;
+    size_t batch1_bytesize;
+    const int* set_shape_values = nullptr;
+    int set_shape_value_cnt = 0;
+
+    std::vector<std::pair<const uint8_t*, size_t>> output_data;
+    for (size_t i = 0; i < batch_size_; ++i) {
+      RETURN_IF_ERROR(data_loader_->GetOutputData(
+          output->Name(), stream_index,
+          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
+          &batch1_bytesize));
+      if (data_ptr == nullptr) {
+        break;
+      }
+      output_data.emplace_back(data_ptr, batch1_bytesize);
+      // Shape tensor only need the first batch element
+      if (model_output.is_shape_tensor_) {
+        break;
+      }
+    }
+    if (!output_data.empty()) {
+      data.emplace_back(std::move(output_data));
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+LoadManager::ValidateOutputs(
+    const InferContext& ctx, const cb::InferResult* result_ptr)
+{
+  // Validate output if set
+  if (!ctx.expected_outputs_.empty()) {
+    for (size_t i = 0; i < ctx.outputs_.size(); ++i) {
+      const uint8_t* buf = nullptr;
+      size_t byte_size = 0;
+      result_ptr->RawData(ctx.outputs_[i]->Name(), &buf, &byte_size);
+      for (const auto& expected : ctx.expected_outputs_[i]) {
+        if (byte_size < expected.second) {
+          return cb::Error("Output size doesn't match expected size");
+        } else if (memcmp(buf, expected.first, expected.second) != 0) {
+          return cb::Error("Output doesn't match expected output");
+        } else {
+          buf += expected.second;
+          byte_size -= expected.second;
+        }
+      }
+      if (byte_size != 0) {
+        return cb::Error("Output size doesn't match expected size");
+      }
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
 LoadManager::SetInputs(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
     const int step_index)
@@ -603,8 +688,9 @@ LoadManager::SetInputs(
         }
       }
       RETURN_IF_ERROR(data_loader_->GetInputData(
-          model_input, 0, (step_index + i) % data_loader_->GetTotalSteps(0),
-          &data_ptr, &batch1_bytesize));
+          model_input, stream_index,
+          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
+          &batch1_bytesize));
       if (!model_input.is_shape_tensor_) {
         RETURN_IF_ERROR(input->AppendRaw(data_ptr, batch1_bytesize));
       } else {
@@ -689,17 +775,16 @@ LoadManager::SetInferSequenceOptions(
 void
 LoadManager::InitNewSequence(int sequence_id)
 {
-  sequence_stat_[sequence_id]->seq_id_ = next_seq_id_++;
+  sequence_stat_[sequence_id]->seq_id_ =
+      next_seq_id_++ % sequence_id_range_ + start_sequence_id_;
   if (!using_json_data_) {
     size_t new_length = GetRandomLength(0.2);
     sequence_stat_[sequence_id]->remaining_queries_ =
         new_length == 0 ? 1 : new_length;
   } else {
-    // Selecting next available data stream in a round-robin fashion.
-    // TODO: A mode to randomly pick data stream for new sequences.
+    // Selecting next available data stream based on uniform distribution.
     sequence_stat_[sequence_id]->data_stream_id_ =
-        sequence_stat_[sequence_id]->seq_id_ %
-        data_loader_->GetDataStreamsCount();
+        distribution_(rng_generator_);
     sequence_stat_[sequence_id]->remaining_queries_ =
         data_loader_->GetTotalSteps(
             sequence_stat_[sequence_id]->data_stream_id_);

@@ -157,14 +157,14 @@ class TritonCApiInferInput : public InferInput {
 class TritonCApiInferRequestedOutput : public InferRequestedOutput {
  public:
   static Error Create(
-      InferRequestedOutput** infer_output, const std::string name,
+      InferRequestedOutput** infer_output, const std::string& name,
       const size_t class_count = 0);
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
   tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
-  explicit TritonCApiInferRequestedOutput();
+  explicit TritonCApiInferRequestedOutput(const std::string& name);
 
   std::unique_ptr<tc::InferRequestedOutput> output_;
 };
@@ -180,6 +180,10 @@ class TritonCApiInferResult : public cb::InferResult {
   Error Id(std::string* id) const override;
   /// See InferResult::RequestStatus()
   Error RequestStatus() const override;
+  /// See InferResult::RawData()
+  Error RawData(
+      const std::string& output_name, const uint8_t** buf,
+      size_t* byte_size) const override;
 
  private:
   std::unique_ptr<capi::InferResult> result_;

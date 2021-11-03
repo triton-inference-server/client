@@ -171,7 +171,7 @@ struct InferOptions {
   std::string request_id_;
   /// The unique identifier for the sequence being represented by the
   /// object. Default value is 0 which means that the request does not
-  /// belong to a sequence. If this value is set, then sequence_id_str_ 
+  /// belong to a sequence. If this value is set, then sequence_id_str_
   /// MUST be set to "".
   uint64_t sequence_id_;
   /// The unique identifier for the sequence being represented by the
@@ -467,6 +467,10 @@ class InferRequestedOutput {
       InferRequestedOutput** infer_output, const BackendKind kind,
       const std::string& name, const size_t class_count = 0);
 
+  /// Gets name of the associated output tensor.
+  /// \return The name of the tensor.
+  const std::string& Name() const { return name_; }
+
   /// Set the output tensor data to be written to specified shared
   /// memory region.
   /// \param region_name The name of the shared memory region.
@@ -479,8 +483,9 @@ class InferRequestedOutput {
       const size_t offset = 0);
 
  protected:
-  InferRequestedOutput(const BackendKind kind);
+  InferRequestedOutput(const BackendKind kind, const std::string& name);
   const BackendKind kind_;
+  const std::string name_;
 };
 
 //
@@ -500,6 +505,13 @@ class InferResult {
   /// \return Error object indicating the success or failure of the
   /// request.
   virtual Error RequestStatus() const = 0;
+
+  /// Returns the raw data of the output.
+  /// \return Error object indicating the success or failure of the
+  /// request.
+  virtual Error RawData(
+      const std::string& output_name, const uint8_t** buf,
+      size_t* byte_size) const = 0;
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

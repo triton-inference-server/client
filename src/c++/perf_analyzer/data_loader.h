@@ -58,7 +58,8 @@ class DataLoader {
   /// input tensors of a model
   /// \param data_directory The path to the directory containing the data
   cb::Error ReadDataFromDir(
-      std::shared_ptr<ModelTensorMap> inputs,
+      const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs,
       const std::string& data_directory);
 
   /// Reads the input data from the specified json file.
@@ -68,7 +69,9 @@ class DataLoader {
   /// data.
   /// Returns error object indicating status
   cb::Error ReadDataFromJSON(
-      std::shared_ptr<ModelTensorMap> inputs, const std::string& json_file);
+      const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs,
+      const std::string& json_file);
 
   /// Generates the input data to use with the inference requests
   /// \param inputs The pointer to the map holding the information about
@@ -106,6 +109,18 @@ class DataLoader {
       const ModelTensor& input, const int stream_id, const int step_id,
       std::vector<int64_t>* shape);
 
+  /// Helper function to access data for the specified output. nullptr will be
+  /// returned if there is no data specified.
+  /// \param output_name The name of the output tensor
+  /// \param stream_id The data stream_id to use for retrieving output data.
+  /// \param step_id The data step_id to use for retrieving output data.
+  /// \param data Returns the pointer to the data for the requested output.
+  /// \param batch1_size Returns the size of the output data in bytes.
+  /// Returns error object indicating status
+  cb::Error GetOutputData(
+      const std::string& output_name, const int stream_id, const int step_id,
+      const uint8_t** data_ptr, size_t* batch1_size);
+
  private:
   /// Helper function to read data for the specified input from json
   /// \param step the DOM for current step
@@ -114,9 +129,10 @@ class DataLoader {
   /// \param stream_index the stream index the data should be exported to.
   /// \param step_index the step index the data should be exported to.
   /// Returns error object indicating status
-  cb::Error ReadInputTensorData(
-      const rapidjson::Value& step, std::shared_ptr<ModelTensorMap> inputs,
-      int stream_index, int step_index);
+  cb::Error ReadTensorData(
+      const rapidjson::Value& step,
+      const std::shared_ptr<ModelTensorMap>& tensors, const int stream_index,
+      const int step_index, const bool is_input);
 
   // The batch_size_ for the data
   size_t batch_size_;
@@ -131,6 +147,10 @@ class DataLoader {
   // User provided input data, it will be preferred over synthetic data
   std::unordered_map<std::string, std::vector<char>> input_data_;
   std::unordered_map<std::string, std::vector<int64_t>> input_shapes_;
+
+  // User provided output data for validation
+  std::unordered_map<std::string, std::vector<char>> output_data_;
+  std::unordered_map<std::string, std::vector<int64_t>> output_shapes_;
 
   // Placeholder for generated input data, which will be used for all inputs
   // except string

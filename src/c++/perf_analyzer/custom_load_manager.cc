@@ -38,6 +38,7 @@ CustomLoadManager::Create(
     const std::string& string_data, const bool zero_input,
     std::vector<std::string>& user_data,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
@@ -45,7 +46,8 @@ CustomLoadManager::Create(
   std::unique_ptr<CustomLoadManager> local_manager(new CustomLoadManager(
       async, streaming, request_intervals_file, batch_size,
       measurement_window_ms, max_threads, num_of_sequences, sequence_length,
-      shared_memory_type, output_shm_size, parser, factory));
+      shared_memory_type, output_shm_size, start_sequence_id, sequence_id_range,
+      parser, factory));
 
   local_manager->threads_config_.reserve(max_threads);
 
@@ -68,12 +70,14 @@ CustomLoadManager::CustomLoadManager(
     const uint64_t measurement_window_ms, const size_t max_threads,
     const uint32_t num_of_sequences, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : RequestRateManager(
           async, streaming, Distribution::CUSTOM, batch_size,
           measurement_window_ms, max_threads, num_of_sequences, sequence_length,
-          shared_memory_type, output_shm_size, parser, factory),
+          shared_memory_type, output_shm_size, start_sequence_id,
+          sequence_id_range, parser, factory),
       request_intervals_file_(request_intervals_file)
 {
 }

@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <random>
 #include <thread>
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
@@ -91,6 +92,9 @@ class LoadManager {
     // The vector of pointers to InferRequestedOutput objects
     // to be used with the inference request.
     std::vector<const cb::InferRequestedOutput*> outputs_;
+    // If not empty, the expected output data in the same order as 'outputs_'
+    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>
+        expected_outputs_;
     // The InferOptions object holding the details of the
     // inference.
     std::unique_ptr<cb::InferOptions> options_;
@@ -118,6 +122,7 @@ class LoadManager {
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t sequence_length,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
@@ -156,6 +161,22 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error UpdateInputs(
       std::vector<cb::InferInput*>& inputs, int stream_index, int step_index);
+
+  /// Updates the expected output data to use for inference request. Empty
+  /// vector will be returned if there is no expected output associated to the
+  /// step.
+  /// \param outputs The vector of outputs to get the expected data
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \param data The vector of pointer and size of the expected outputs
+  /// \return cb::Error object indicating success or failure.
+  cb::Error UpdateValidationOutputs(
+      const std::vector<const cb::InferRequestedOutput*>& outputs,
+      int stream_index, int step_index,
+      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
+
+  cb::Error ValidateOutputs(
+      const InferContext& ctx, const cb::InferResult* result_ptr);
 
   void SetInferSequenceOptions(
       const uint32_t seq_id, std::unique_ptr<cb::InferOptions>& options);
@@ -199,11 +220,17 @@ class LoadManager {
   size_t output_shm_size_;
   bool on_sequence_model_;
 
+  const uint64_t start_sequence_id_;
+  const uint64_t sequence_id_range_;
+
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
   bool using_json_data_;
   bool using_shared_memory_;
+
+  std::default_random_engine rng_generator_;
+  std::uniform_int_distribution<uint64_t> distribution_;
 
   std::unique_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
