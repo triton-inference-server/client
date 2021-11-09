@@ -73,14 +73,14 @@ if __name__ == '__main__':
     input0.datatype = "BYTES"
     input0.shape.extend([1, 16])
     for i in range(16):
-        input0.contents.byte_contents.append(('{}'.format(i)).encode('utf-8'))
+        input0.contents.bytes_contents.append(('{}'.format(i)).encode('utf-8'))
 
     input1 = service_pb2.ModelInferRequest().InferInputTensor()
     input1.name = "INPUT1"
     input1.datatype = "BYTES"
     input1.shape.extend([1, 16])
     for i in range(16):
-        input1.contents.byte_contents.append('1'.encode('utf-8'))
+        input1.contents.bytes_contents.append('1'.encode('utf-8'))
 
     request.inputs.extend([input0, input1])
 

@@ -113,21 +113,21 @@ class KeepAliveOptions:
 
     Parameters
     ----------
-    keepalive_time_ms: int 
+    keepalive_time_ms: int
         The period (in milliseconds) after which a keepalive ping is sent on
         the transport. Default is INT32_MAX.
 
-    keepalive_timeout_ms: int 
+    keepalive_timeout_ms: int
         The period (in milliseconds) the sender of the keepalive ping waits
         for an acknowledgement. If it does not receive an acknowledgment
         within this time, it will close the connection. Default is 20000
         (20 seconds).
 
-    keepalive_permit_without_calls: bool 
+    keepalive_permit_without_calls: bool
         Allows keepalive pings to be sent even if there are no calls in flight.
         Default is False.
 
-    http2_max_pings_without_data: int 
+    http2_max_pings_without_data: int
         The maximum number of pings that can be sent when there is no
         data/header frame to be sent. gRPC Core will not continue sending
         pings if we run over the limit. Setting it to 0 allows sending pings
@@ -142,7 +142,7 @@ class KeepAliveOptions:
                  http2_max_pings_without_data=2):
         self.keepalive_time_ms = keepalive_time_ms
         self.keepalive_timeout_ms = keepalive_timeout_ms
-        self.keepalive_permit_without_calls = keepalive_permit_without_calls 
+        self.keepalive_permit_without_calls = keepalive_permit_without_calls
         self.http2_max_pings_without_data = http2_max_pings_without_data
 
 
@@ -180,7 +180,7 @@ class InferenceServerClient:
         to use or None if no certificate chain should be used. The
         option is ignored if `ssl` is False. Default is None.
 
-    keepalive_options: KeepAliveOptions 
+    keepalive_options: KeepAliveOptions
         Object encapsulating various GRPC KeepAlive options. See
         the class definition for more information. Default is None.
 
@@ -213,7 +213,7 @@ class InferenceServerClient:
                 keepalive_options.keepalive_timeout_ms),
             ('grpc.keepalive_permit_without_calls',
                 keepalive_options.keepalive_permit_without_calls),
-            ('grpc.http2.max_pings_without_data', 
+            ('grpc.http2.max_pings_without_data',
                 keepalive_options.http2_max_pings_without_data),
         ]
 
@@ -1729,8 +1729,8 @@ class InferResult:
                         np_array = np.frombuffer(
                             self._result.raw_output_contents[index],
                             dtype=triton_to_np_dtype(datatype))
-                elif len(output.contents.byte_contents) != 0:
-                    np_array = np.array(output.contents.byte_contents,
+                elif len(output.contents.bytes_contents) != 0:
+                    np_array = np.array(output.contents.bytes_contents,
                                         copy=False)
                 else:
                     np_array = np.empty(0)

@@ -317,7 +317,7 @@ InferResultGrpc::StringData(
     }
   } else {
     auto it = output_name_to_tensor_map_.find(output_name);
-    for (const auto& element : it->second->contents().byte_contents()) {
+    for (const auto& element : it->second->contents().bytes_contents()) {
       string_result->push_back(element);
     }
   }
