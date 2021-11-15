@@ -184,6 +184,8 @@ class InferenceServerClient:
         Object encapsulating various GRPC KeepAlive options. See
         the class definition for more information. Default is None.
 
+    creds: grpc.ChannelCredentials
+        A grpc.ChannelCredentials object to use for the connection.
     Raises
     ------
     Exception
@@ -198,7 +200,8 @@ class InferenceServerClient:
                  root_certificates=None,
                  private_key=None,
                  certificate_chain=None,
-                 keepalive_options=None):
+                 keepalive_options=None,
+                 creds=None,):
         # Use GRPC KeepAlive client defaults if unspecified
         if not keepalive_options:
             keepalive_options = KeepAliveOptions()
@@ -216,8 +219,9 @@ class InferenceServerClient:
             ('grpc.http2.max_pings_without_data',
                 keepalive_options.http2_max_pings_without_data),
         ]
-
-        if ssl:
+        if creds:
+            grpc.secure_channel(url, creds, options=channel_opt)
+        elif ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
                 with open(root_certificates, 'rb') as rc_fs:
