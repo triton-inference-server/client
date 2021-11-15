@@ -140,8 +140,8 @@ run on other Linux distributions. To run the perf_analyzer the
 following dependency must be installed:
 
 ```bash
-sudo apt update
-sudo apt install libb64-dev
+$ sudo apt update
+$ sudo apt install libb64-dev
 ```
 
 To reiterate, the installation on windows will not include perf_analyzer
@@ -214,6 +214,14 @@ under-development version).
 
 ```bash
 $ git checkout main
+```
+
+If building the Java client you must first install Maven and a JDK
+appropriate for your OS. For example, for Ubuntu you should install
+the `default-jdk` package:
+
+```
+$ apt-get install default-jdk maven
 ```
 
 Building on Windows vs. non-Windows requires different invocations
