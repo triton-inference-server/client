@@ -229,6 +229,20 @@ $ cd build
 $ cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PYTHON_HTTP=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_JAVA_HTTP=ON -DTRITON_ENABLE_GPU=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
 ```
 
+If you are building on a release branch (or on a development branch
+that is based off of a release branch), then you must also use
+additional cmake arguments to point to that release branch for repos
+that the client build depends on. For example, if you are building the
+r21.10 client branch then you need to use the following additional
+cmake flags:
+
+```
+-DTRITON_COMMON_REPO_TAG=r21.10
+-DTRITON_THIRD_PARTY_REPO_TAG=r21.10
+-DTRITON_CORE_REPO_TAG=r21.10
+-DTRITON_BACKEND_REPO_TAG=r21.10
+```
+
 Then use *make* to build the clients and examples.
 
 ```
@@ -262,6 +276,20 @@ the CMAKE_TOOLCHAIN_FILE location in the following command.
 $ mkdir build
 $ cd build
 $ cmake -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE='/vcpkg/scripts/buildsystems/vcpkg.cmake' -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
+```
+
+If you are building on a release branch (or on a development branch
+that is based off of a release branch), then you must also use
+additional cmake arguments to point to that release branch for repos
+that the client build depends on. For example, if you are building the
+r21.10 client branch then you need to use the following additional
+cmake flags:
+
+```
+-DTRITON_COMMON_REPO_TAG=r21.10
+-DTRITON_THIRD_PARTY_REPO_TAG=r21.10
+-DTRITON_CORE_REPO_TAG=r21.10
+-DTRITON_BACKEND_REPO_TAG=r21.10
 ```
 
 Then use msbuild.exe to build.
