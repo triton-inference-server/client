@@ -180,12 +180,15 @@ class InferenceServerClient:
         to use or None if no certificate chain should be used. The
         option is ignored if `ssl` is False. Default is None.
 
+    creds: grpc.ChannelCredentials
+        A grpc.ChannelCredentials object to use for the connection.
+        The ssl, root_certificates, private_key and certificate_chain
+        options will be ignored when using this option. Default is None.
+
     keepalive_options: KeepAliveOptions
         Object encapsulating various GRPC KeepAlive options. See
         the class definition for more information. Default is None.
 
-    creds: grpc.ChannelCredentials
-        A grpc.ChannelCredentials object to use for the connection.
     Raises
     ------
     Exception
@@ -220,7 +223,7 @@ class InferenceServerClient:
                 keepalive_options.http2_max_pings_without_data),
         ]
         if creds:
-            grpc.secure_channel(url, creds, options=channel_opt)
+            self._channel = grpc.secure_channel(url, creds, options=channel_opt)
         elif ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
