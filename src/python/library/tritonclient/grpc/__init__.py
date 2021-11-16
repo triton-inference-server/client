@@ -203,8 +203,8 @@ class InferenceServerClient:
                  root_certificates=None,
                  private_key=None,
                  certificate_chain=None,
-                 keepalive_options=None,
-                 creds=None,):
+                 creds=None,
+                 keepalive_options=None):
         # Use GRPC KeepAlive client defaults if unspecified
         if not keepalive_options:
             keepalive_options = KeepAliveOptions()
