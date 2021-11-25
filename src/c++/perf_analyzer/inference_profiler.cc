@@ -606,6 +606,9 @@ InferenceProfiler::Measure(
         std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch());
     do {
+      // Check the health of the worker threads.
+      RETURN_IF_ERROR(manager_->CheckHealth());
+
       // Wait for 1s until enough samples have been collected.
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
     } while (manager_->CountCollectedRequests() < measurement_window);
