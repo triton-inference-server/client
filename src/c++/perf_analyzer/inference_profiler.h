@@ -71,12 +71,14 @@ struct EnsembleDurations {
 struct ServerSideStats {
   uint64_t inference_count;
   uint64_t execution_count;
+  uint64_t cache_hit_count;
   uint64_t success_count;
   uint64_t cumm_time_ns;
   uint64_t queue_time_ns;
   uint64_t compute_input_time_ns;
   uint64_t compute_infer_time_ns;
   uint64_t compute_output_time_ns;
+  uint64_t cache_hit_time_ns;
 
   std::map<cb::ModelIdentifier, ServerSideStats> composing_models_stat;
 };

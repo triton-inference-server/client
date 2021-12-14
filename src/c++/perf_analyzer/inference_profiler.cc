@@ -84,6 +84,7 @@ ReportServerSideStats(const ServerSideStats& stats, const int iteration)
 
   const uint64_t exec_cnt = stats.execution_count;
   const uint64_t infer_cnt = stats.inference_count;
+  const uint64_t cache_hit_cnt = stats.cache_hit_count;
 
   const uint64_t cnt = stats.success_count;
   if (cnt == 0) {
@@ -95,7 +96,8 @@ ReportServerSideStats(const ServerSideStats& stats, const int iteration)
 
   std::cout << ident << "  Inference count: " << infer_cnt << std::endl
             << ident << "  Execution count: " << exec_cnt << std::endl
-            << ident << "  Successful request count: " << exec_cnt << std::endl
+            << ident << "  Cache hit count: " << cache_hit_cnt << std::endl
+            << ident << "  Successful request count: " << cnt << std::endl
             << ident << "  Avg request latency: " << cumm_avg_us << " usec";
   if (stats.composing_models_stat.empty()) {
     const uint64_t queue_avg_us = AverageDurationInUs(stats.queue_time_ns, cnt);
@@ -876,6 +878,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
     uint64_t start_compute_input_time_ns = 0;
     uint64_t start_compute_infer_time_ns = 0;
     uint64_t start_compute_output_time_ns = 0;
+    uint64_t start_cache_hit_cnt = 0;
+    uint64_t start_cache_hit_time_ns = 0;
 
     const auto& start_itr = start_status.find(this_id);
     if (start_itr != start_status.end()) {
@@ -887,6 +891,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
       start_compute_input_time_ns = start_itr->second.compute_input_time_ns_;
       start_compute_infer_time_ns = start_itr->second.compute_infer_time_ns_;
       start_compute_output_time_ns = start_itr->second.compute_output_time_ns_;
+      start_cache_hit_cnt = start_itr->second.cache_hit_count_;
+      start_cache_hit_time_ns = start_itr->second.cache_hit_time_ns_;
     }
 
     server_stats->inference_count =
@@ -904,6 +910,10 @@ InferenceProfiler::SummarizeServerStatsHelper(
         end_itr->second.compute_infer_time_ns_ - start_compute_infer_time_ns;
     server_stats->compute_output_time_ns =
         end_itr->second.compute_output_time_ns_ - start_compute_output_time_ns;
+    server_stats->cache_hit_count =
+        end_itr->second.cache_hit_count_ - start_cache_hit_cnt;
+    server_stats->cache_hit_time_ns =
+        end_itr->second.cache_hit_time_ns_ - start_cache_hit_time_ns;
   }
 
   return cb::Error::Success;
