@@ -109,13 +109,15 @@ ReportServerSideStats(const ServerSideStats& stats, const int iteration)
         AverageDurationInUs(stats.compute_output_time_ns, cnt);
     const uint64_t compute_avg_us =
         compute_input_avg_us + compute_infer_avg_us + compute_output_avg_us;
+    const uint64_t cache_hit_avg_us = AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
     std::cout << " (overhead "
               << GetOverheadDuration(cumm_avg_us, queue_avg_us, compute_avg_us)
               << " usec + "
               << "queue " << queue_avg_us << " usec + "
               << "compute input " << compute_input_avg_us << " usec + "
               << "compute infer " << compute_infer_avg_us << " usec + "
-              << "compute output " << compute_output_avg_us << " usec)"
+              << "compute output " << compute_output_avg_us << " usec + "
+              << "cache hit " << cache_hit_avg_us << " usec)"
               << std::endl
               << std::endl;
   } else {
