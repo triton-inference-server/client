@@ -55,6 +55,19 @@ DataLoader::ReadDataFromDir(
           std::to_string(0));
       auto it = input_data_.emplace(key_name, std::vector<char>()).first;
       RETURN_IF_ERROR(ReadFile(file_path, &it->second));
+      int64_t byte_size = ByteSize(input.second.shape_, input.second.datatype_);
+      if (byte_size < 0) {
+        return cb::Error(
+            "input " + input.second.name_ +
+            " contains dynamic shape, provide shapes to send along with the "
+            "request");
+      }
+      if (it->second.size() != byte_size) {
+        return cb::Error(
+            "provided data for input " + input.second.name_ +
+            " has byte size " + std::to_string(it->second.size()) +
+            ", expect " + std::to_string(byte_size));
+      }
     } else {
       const auto file_path = data_directory + "/" + input.second.name_;
       std::vector<std::string> input_string_data;
@@ -64,6 +77,19 @@ DataLoader::ReadDataFromDir(
           std::to_string(0));
       auto it = input_data_.emplace(key_name, std::vector<char>()).first;
       SerializeStringTensor(input_string_data, &it->second);
+      int64_t batch1_num_strings = ElementCount(input.second.shape_);
+      if (batch1_num_strings == -1) {
+        return cb::Error(
+            "input " + input.second.name_ +
+            " contains dynamic shape, provide shapes to send along with the "
+            "request");
+      }
+      if (input_string_data.size() != batch1_num_strings) {
+        return cb::Error(
+            "provided data for input " + input.second.name_ + " has " +
+            std::to_string(it->second.size()) + " byte elements, expect " +
+            std::to_string(batch1_num_strings));
+      }
     }
   }
 
