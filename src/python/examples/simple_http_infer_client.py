@@ -106,6 +106,12 @@ if __name__ == '__main__':
                         required=False,
                         default='localhost:8000',
                         help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument('-p',
+                        '--proxy',
+                        type=str,
+                        required=False,
+                        default=None,
+                        help='Proxy URL and port (example www.proxy.com:80). Default is None.')
     parser.add_argument('-s',
                         '--ssl',
                         action="store_true",
@@ -138,6 +144,16 @@ if __name__ == '__main__':
     )
 
     FLAGS = parser.parse_args()
+
+    if FLAGS.proxy:
+        try:
+            proxy_host, proxy_port = FLAGS.proxy.split(':')
+        except ValueError:
+            print('Error in defining proxy address. It must be formatted as URL:port, example www.proxy.com:80')
+            exit(1)
+    else:
+        proxy_host, proxy_port = None, None
+
     try:
         if FLAGS.ssl:
             triton_client = httpclient.InferenceServerClient(
@@ -145,10 +161,12 @@ if __name__ == '__main__':
                 verbose=FLAGS.verbose,
                 ssl=True,
                 ssl_context_factory=gevent.ssl._create_unverified_context,
+                proxy_host=proxy_host, proxy_port=proxy_port,
                 insecure=True)
         else:
             triton_client = httpclient.InferenceServerClient(
-                url=FLAGS.url, verbose=FLAGS.verbose)
+                url=FLAGS.url, verbose=FLAGS.verbose,
+                proxy_host=proxy_host, proxy_port=proxy_port)
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit(1)

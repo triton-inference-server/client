@@ -177,6 +177,12 @@ class InferenceServerClient:
         this option is None which directly wraps the socket with
         the options provided via `ssl_options`. The argument is
         ignored if 'ssl' is specified False.
+    proxy_host : str
+        Address of the http proxy. If this is set, also proxy_port
+        must be set as well, or an exception will be raised. Default
+        None, which means no proxy.
+    proxy_port : int
+        If set, port of the http proxy. Default None.
     insecure : bool
         If True, then does not match the host name with the certificate.
         Default value is False. The argument is ignored if 'ssl' is
@@ -199,6 +205,8 @@ class InferenceServerClient:
                  ssl=False,
                  ssl_options=None,
                  ssl_context_factory=None,
+                 proxy_host=None,
+                 proxy_port=None,
                  insecure=False):
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
@@ -212,6 +220,8 @@ class InferenceServerClient:
             network_timeout=network_timeout,
             ssl_options=ssl_options,
             ssl_context_factory=ssl_context_factory,
+            proxy_host=proxy_host,
+            proxy_port=proxy_port,
             insecure=insecure)
         self._pool = gevent.pool.Pool(max_greenlets)
         self._verbose = verbose
