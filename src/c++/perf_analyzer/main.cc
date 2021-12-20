@@ -1616,6 +1616,11 @@ main(int argc, char** argv)
         ofs << "Network+Server Send/Recv,Server Queue,"
             << "Server Compute Input,Server Compute Infer,"
             << "Server Compute Output,";
+        // Only include cache hit if enabled, keep out for backwards
+        // compatibility if disabled
+        if (parser->ResponseCacheEnabled()) {
+          ofs << "Server Cache Hit,";
+        }
       }
       ofs << "Client Recv";
       for (const auto& percentile :
@@ -1656,6 +1661,11 @@ main(int argc, char** argv)
           uint64_t avg_compute_ns = avg_compute_input_ns +
                                     avg_compute_infer_ns +
                                     avg_compute_output_ns;
+          uint64_t avg_cache_hit_ns = 0;
+          if (status.server_stats.cache_hit_count > 0) {
+            avg_cache_hit_ns = status.server_stats.cache_hit_time_ns /
+                               status.server_stats.cache_hit_count;
+          }
 
           uint64_t avg_client_wait_ns = status.client_stats.avg_latency_ns -
                                         status.client_stats.avg_send_time_ns -
@@ -1664,14 +1674,20 @@ main(int argc, char** argv)
           // measurements (server v.s. client), so the result needs to be capped
           // at 0
           uint64_t avg_network_misc_ns =
-              avg_client_wait_ns > (avg_queue_ns + avg_compute_ns)
-                  ? avg_client_wait_ns - (avg_queue_ns + avg_compute_ns)
+              avg_client_wait_ns >
+                      (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns)
+                  ? avg_client_wait_ns -
+                        (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns)
                   : 0;
 
           ofs << (avg_network_misc_ns / 1000) << "," << (avg_queue_ns / 1000)
               << "," << (avg_compute_input_ns / 1000) << ","
               << (avg_compute_infer_ns / 1000) << ","
               << (avg_compute_output_ns / 1000) << ",";
+
+          if (parser->ResponseCacheEnabled()) {
+            ofs << (avg_cache_hit_ns / 1000) << ",";
+          }
         }
         ofs << (status.client_stats.avg_receive_time_ns / 1000);
         for (const auto& percentile :
@@ -1702,7 +1718,14 @@ main(int argc, char** argv)
             ofs << "Inferences/Second,Client Send,"
                 << "Network+Server Send/Recv,Server Queue,"
                 << "Server Compute Input,Server Compute Infer,"
-                << "Server Compute Output,Client Recv";
+                << "Server Compute Output,";
+
+            // Only include cache hit if enabled, keep out for backwards
+            // compatibility if disabled
+            if (parser->ResponseCacheEnabled()) {
+              ofs << "Server Cache Hit,";
+            }
+            ofs << "Client Recv";
 
             for (pa::PerfStatus& status : summary) {
               auto it = status.server_stats.composing_models_stat.find(
@@ -1718,11 +1741,19 @@ main(int argc, char** argv)
               uint64_t avg_compute_ns = avg_compute_input_ns +
                                         avg_compute_infer_ns +
                                         avg_compute_output_ns;
+              uint64_t avg_cache_hit_ns = 0;
+              if (stats.cache_hit_count > 0) {
+                avg_cache_hit_ns =
+                    stats.cache_hit_time_ns / stats.cache_hit_count;
+              }
+
               uint64_t avg_overhead_ns =
                   stats.cumm_time_ns / stats.success_count;
               avg_overhead_ns =
-                  (avg_overhead_ns > (avg_queue_ns + avg_compute_ns))
-                      ? (avg_overhead_ns - avg_queue_ns - avg_compute_ns)
+                  (avg_overhead_ns >
+                   (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns))
+                      ? (avg_overhead_ns - avg_queue_ns - avg_compute_ns -
+                         avg_cache_hit_ns)
                       : 0;
               // infer / sec of the composing model is calculated using the
               // request count ratio between the composing model and the
@@ -1740,7 +1771,15 @@ main(int argc, char** argv)
                   << (avg_queue_ns / 1000) << ","
                   << (avg_compute_input_ns / 1000) << ","
                   << (avg_compute_infer_ns / 1000) << ","
-                  << (avg_compute_output_ns / 1000) << ",0" << std::endl;
+                  << (avg_compute_output_ns / 1000) << ",";
+
+              // Only include cache hit if enabled, keep out for backwards
+              // compatibility if disabled
+              if (parser->ResponseCacheEnabled()) {
+                ofs << (avg_cache_hit_ns / 1000) << ",";
+              }
+              // Client recv
+              ofs << "0" << std::endl;
             }
           }
         }
