@@ -201,6 +201,13 @@ ModelParser::InitTriton(
       }
     }
   }
+
+  // Check if model has response caching enabled
+  const auto cache_itr = config.FindMember("response_cache");
+  if (cache_itr != config.MemberEnd()) {
+    response_cache_enabled_ = cache_itr->value["enable"].GetBool();
+  }
+
   return cb::Error::Success;
 }
 

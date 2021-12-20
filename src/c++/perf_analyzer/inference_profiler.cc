@@ -39,6 +39,9 @@ namespace {
 inline uint64_t
 AverageDurationInUs(const uint64_t total_time_in_ns, const uint64_t cnt)
 {
+  if (cnt == 0) {
+    return 0;
+  }
   return total_time_in_ns / (cnt * 1000);
 }
 
@@ -56,6 +59,8 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
             AverageDurationInUs(model_stats.second.compute_input_time_ns, cnt) +
             AverageDurationInUs(model_stats.second.compute_infer_time_ns, cnt) +
             AverageDurationInUs(model_stats.second.compute_output_time_ns, cnt);
+        result.total_cache_hit_time_us +=
+            AverageDurationInUs(model_stats.second.cache_hit_time_ns, cnt);
       }
     } else {
       const auto this_ensemble_duration =
@@ -63,6 +68,8 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
       result.total_queue_time_us += this_ensemble_duration.total_queue_time_us;
       result.total_compute_time_us +=
           this_ensemble_duration.total_compute_time_us;
+      result.total_queue_time_us +=
+          this_ensemble_duration.total_cache_hit_time_us;
     }
   }
   return result;
@@ -70,15 +77,19 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
 
 
 size_t
-GetOverheadDuration(size_t total_time, size_t queue_time, size_t compute_time)
+GetOverheadDuration(
+    size_t total_time, size_t queue_time, size_t compute_time,
+    size_t cache_hit_time)
 {
-  return (total_time > queue_time + compute_time)
-             ? (total_time - queue_time - compute_time)
+  return (total_time > queue_time + compute_time + cache_hit_time)
+             ? (total_time - queue_time - compute_time - cache_hit_time)
              : 0;
 }
 
 cb::Error
-ReportServerSideStats(const ServerSideStats& stats, const int iteration)
+ReportServerSideStats(
+    const ServerSideStats& stats, const int iteration,
+    const std::shared_ptr<ModelParser>& parser)
 {
   const std::string ident = std::string(2 * iteration, ' ');
 
@@ -95,9 +106,11 @@ ReportServerSideStats(const ServerSideStats& stats, const int iteration)
   const uint64_t cumm_avg_us = AverageDurationInUs(stats.cumm_time_ns, cnt);
 
   std::cout << ident << "  Inference count: " << infer_cnt << std::endl
-            << ident << "  Execution count: " << exec_cnt << std::endl
-            << ident << "  Cache hit count: " << cache_hit_cnt << std::endl
-            << ident << "  Successful request count: " << cnt << std::endl
+            << ident << "  Execution count: " << exec_cnt << std::endl;
+  if (parser->ResponseCacheEnabled()) {
+    std::cout << ident << "  Cache hit count: " << cache_hit_cnt << std::endl;
+  }
+  std::cout << ident << "  Successful request count: " << cnt << std::endl
             << ident << "  Avg request latency: " << cumm_avg_us << " usec";
   if (stats.composing_models_stat.empty()) {
     const uint64_t queue_avg_us = AverageDurationInUs(stats.queue_time_ns, cnt);
@@ -109,35 +122,43 @@ ReportServerSideStats(const ServerSideStats& stats, const int iteration)
         AverageDurationInUs(stats.compute_output_time_ns, cnt);
     const uint64_t compute_avg_us =
         compute_input_avg_us + compute_infer_avg_us + compute_output_avg_us;
-    const uint64_t cache_hit_avg_us = AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
+    const uint64_t cache_hit_avg_us =
+        AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
     std::cout << " (overhead "
-              << GetOverheadDuration(cumm_avg_us, queue_avg_us, compute_avg_us)
+              << GetOverheadDuration(
+                     cumm_avg_us, queue_avg_us, compute_avg_us,
+                     cache_hit_avg_us)
               << " usec + "
               << "queue " << queue_avg_us << " usec + "
               << "compute input " << compute_input_avg_us << " usec + "
               << "compute infer " << compute_infer_avg_us << " usec + "
-              << "compute output " << compute_output_avg_us << " usec + "
-              << "cache hit " << cache_hit_avg_us << " usec)"
-              << std::endl
-              << std::endl;
+              << "compute output " << compute_output_avg_us << " usec";
+    if (parser->ResponseCacheEnabled()) {
+      std::cout << " + cache hit " << cache_hit_avg_us << " usec";
+    }
+    std::cout << ")" << std::endl << std::endl;
   } else {
     const auto ensemble_times = GetTotalEnsembleDurations(stats);
     std::cout << " (overhead "
               << GetOverheadDuration(
                      cumm_avg_us, ensemble_times.total_queue_time_us,
-                     ensemble_times.total_compute_time_us)
+                     ensemble_times.total_compute_time_us,
+                     ensemble_times.total_cache_hit_time_us)
               << " usec + "
               << "queue " << ensemble_times.total_queue_time_us << " usec + "
-              << "compute " << ensemble_times.total_compute_time_us << " usec)"
-              << std::endl
-              << std::endl;
+              << "compute " << ensemble_times.total_compute_time_us << " usec";
+    if (parser->ResponseCacheEnabled()) {
+      std::cout << " + cache hit " << ensemble_times.total_cache_hit_time_us
+                << " usec";
+    }
+    std::cout << ")" << std::endl << std::endl;
 
     std::cout << ident << "Composing models: " << std::endl;
     for (const auto& model_stats : stats.composing_models_stat) {
       const auto& model_identifier = model_stats.first;
       std::cout << ident << model_identifier.first
                 << ", version: " << model_identifier.second << std::endl;
-      ReportServerSideStats(model_stats.second, iteration + 1);
+      ReportServerSideStats(model_stats.second, iteration + 1, parser);
     }
   }
 
@@ -226,7 +247,8 @@ cb::Error
 Report(
     const PerfStatus& summary, const int64_t percentile,
     const cb::ProtocolType protocol, const bool verbose,
-    const bool include_lib_stats, const bool include_server_stats)
+    const bool include_lib_stats, const bool include_server_stats,
+    const std::shared_ptr<ModelParser>& parser)
 {
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
@@ -235,7 +257,7 @@ Report(
 
   if (include_server_stats) {
     std::cout << "  Server: " << std::endl;
-    ReportServerSideStats(summary.server_stats, 1);
+    ReportServerSideStats(summary.server_stats, 1, parser);
   }
 
   return cb::Error::Success;
@@ -320,7 +342,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     err = Report(
         status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-        include_server_stats_);
+        include_server_stats_, parser_);
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
         status_summary.stabilizing_latency_ns / (1000 * 1000);
@@ -374,7 +396,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     err = Report(
         status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-        include_server_stats_);
+        include_server_stats_, parser_);
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
         status_summary.stabilizing_latency_ns / (1000 * 1000);
@@ -417,7 +439,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     err = Report(
         status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-        include_server_stats_);
+        include_server_stats_, parser_);
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
         status_summary.stabilizing_latency_ns / (1000 * 1000);
