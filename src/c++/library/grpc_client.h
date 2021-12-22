@@ -82,10 +82,8 @@ struct KeepAliveOptions {
 
 //==============================================================================
 /// An InferenceServerGrpcClient object is used to perform any kind of
-/// communication with the InferenceServer using gRPC protocol.  Most
-/// of the methods are thread-safe except Infer, AsyncInfer, StartStream
-/// StopStream and AsyncStreamInfer. Calling these functions from different
-/// threads will cause undefined behavior.
+/// communication with the InferenceServer using gRPC protocol. It is
+/// thread-safe.
 ///
 /// \code
 ///   std::unique_ptr<InferenceServerGrpcClient> client;
@@ -406,7 +404,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs);
+      const std::vector<const InferRequestedOutput*>& outputs,
+      inference::ModelInferRequest* infer_request);
+
   void AsyncTransfer();
   void AsyncStreamTransfer();
 
@@ -428,9 +428,6 @@ class InferenceServerGrpcClient : public InferenceServerClient {
 
   // GRPC end point.
   std::shared_ptr<inference::GRPCInferenceService::Stub> stub_;
-  // request for GRPC call, one request object can be used for multiple calls
-  // since it can be overwritten as soon as the GRPC send finishes.
-  inference::ModelInferRequest infer_request_;
 };
 
 

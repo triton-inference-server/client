@@ -870,6 +870,9 @@ InferenceServerGrpcClient::Infer(
 
   grpc::ClientContext context;
 
+  // Request for GRPC call. Creating it every time to make thread safe.
+  inference::ModelInferRequest infer_request;
+
   std::shared_ptr<GrpcInferRequest> sync_request(new GrpcInferRequest());
 
   sync_request->Timer().Reset();
@@ -887,14 +890,14 @@ InferenceServerGrpcClient::Infer(
   }
   context.set_compression_algorithm(compression_algorithm);
 
-  err = PreRunProcessing(options, inputs, outputs);
+  err = PreRunProcessing(options, inputs, outputs, &infer_request);
   sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
   if (!err.IsOk()) {
     return err;
   }
   sync_request->grpc_response_->Clear();
   sync_request->grpc_status_ = stub_->ModelInfer(
-      &context, infer_request_, sync_request->grpc_response_.get());
+      &context, infer_request, sync_request->grpc_response_.get());
 
   if (!sync_request->grpc_status_.ok()) {
     err = Error(sync_request->grpc_status_.error_message());
@@ -951,7 +954,10 @@ InferenceServerGrpcClient::AsyncInfer(
   }
   async_request->grpc_context_.set_compression_algorithm(compression_algorithm);
 
-  Error err = PreRunProcessing(options, inputs, outputs);
+  // Request for GRPC call. Creating it every time to make thread safe.
+  inference::ModelInferRequest infer_request;
+
+  Error err = PreRunProcessing(options, inputs, outputs, &infer_request);
   if (!err.IsOk()) {
     delete async_request;
     return err;
@@ -962,7 +968,7 @@ InferenceServerGrpcClient::AsyncInfer(
   std::unique_ptr<
       grpc::ClientAsyncResponseReader<inference::ModelInferResponse>>
       rpc(stub_->PrepareAsyncModelInfer(
-          &async_request->grpc_context_, infer_request_,
+          &async_request->grpc_context_, infer_request,
           &async_request_completion_queue_));
 
   rpc->StartCall();
@@ -1051,7 +1057,10 @@ InferenceServerGrpcClient::AsyncStreamInfer(
     timer->CaptureTimestamp(RequestTimers::Kind::SEND_START);
   }
 
-  Error err = PreRunProcessing(options, inputs, outputs);
+
+  // Request for GRPC call. Creating it every time to make thread safe.
+  inference::ModelInferRequest infer_request;
+  Error err = PreRunProcessing(options, inputs, outputs, &infer_request);
   if (!err.IsOk()) {
     return err;
   }
@@ -1064,7 +1073,7 @@ InferenceServerGrpcClient::AsyncStreamInfer(
     std::lock_guard<std::mutex> lock(stream_mutex_);
     ongoing_stream_request_timers_.push(std::move(timer));
   }
-  bool ok = grpc_stream_->Write(infer_request_);
+  bool ok = grpc_stream_->Write(infer_request);
 
   if (ok) {
     if (verbose_) {
@@ -1083,46 +1092,46 @@ InferenceServerGrpcClient::AsyncStreamInfer(
 Error
 InferenceServerGrpcClient::PreRunProcessing(
     const InferOptions& options, const std::vector<InferInput*>& inputs,
-    const std::vector<const InferRequestedOutput*>& outputs)
+    const std::vector<const InferRequestedOutput*>& outputs,
+    inference::ModelInferRequest* infer_request)
 {
   // Populate the request protobuf
-  infer_request_.set_model_name(options.model_name_);
-  infer_request_.set_model_version(options.model_version_);
-  infer_request_.set_id(options.request_id_);
+  infer_request->set_model_name(options.model_name_);
+  infer_request->set_model_version(options.model_version_);
+  infer_request->set_id(options.request_id_);
 
-  infer_request_.mutable_parameters()->clear();
-  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
-    {
-      if (options.sequence_id_ != 0) {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
-            options.sequence_id_);
-      } else {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
-            options.sequence_id_str_);
-      }
-      (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
-          options.sequence_start_);
-      (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
-          options.sequence_end_);
+  infer_request->mutable_parameters()->clear();
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
+    if (options.sequence_id_ != 0) {
+      (*infer_request->mutable_parameters())["sequence_id"].set_int64_param(
+          options.sequence_id_);
+    } else {
+      (*infer_request->mutable_parameters())["sequence_id"].set_string_param(
+          options.sequence_id_str_);
     }
+    (*infer_request->mutable_parameters())["sequence_start"].set_bool_param(
+        options.sequence_start_);
+    (*infer_request->mutable_parameters())["sequence_end"].set_bool_param(
+        options.sequence_end_);
+  }
   if (options.priority_ != 0) {
-    (*infer_request_.mutable_parameters())["priority"].set_int64_param(
+    (*infer_request->mutable_parameters())["priority"].set_int64_param(
         options.priority_);
   }
 
   if (options.server_timeout_ != 0) {
-    (*infer_request_.mutable_parameters())["timeout"].set_int64_param(
+    (*infer_request->mutable_parameters())["timeout"].set_int64_param(
         options.server_timeout_);
   }
 
   int index = 0;
-  infer_request_.mutable_raw_input_contents()->Clear();
+  infer_request->mutable_raw_input_contents()->Clear();
   for (const auto input : inputs) {
     // Add new InferInputTensor submessages only if required, otherwise
     // reuse the submessages already available.
-    auto grpc_input = (infer_request_.inputs().size() <= index)
-                          ? infer_request_.add_inputs()
-                          : infer_request_.mutable_inputs()->Mutable(index);
+    auto grpc_input = (infer_request->inputs().size() <= index)
+                          ? infer_request->add_inputs()
+                          : infer_request->mutable_inputs()->Mutable(index);
 
     if (input->IsSharedMemory()) {
       // The input contents must be cleared when using shared memory.
@@ -1154,7 +1163,7 @@ InferenceServerGrpcClient::PreRunProcessing(
       }
     } else {
       bool end_of_input = false;
-      std::string* raw_contents = infer_request_.add_raw_input_contents();
+      std::string* raw_contents = infer_request->add_raw_input_contents();
       size_t content_size;
       input->ByteSize(&content_size);
       raw_contents->reserve(content_size);
@@ -1173,17 +1182,17 @@ InferenceServerGrpcClient::PreRunProcessing(
 
   // Remove extra InferInputTensor submessages, that are not required for
   // this request.
-  while (index < infer_request_.inputs().size()) {
-    infer_request_.mutable_inputs()->RemoveLast();
+  while (index < infer_request->inputs().size()) {
+    infer_request->mutable_inputs()->RemoveLast();
   }
 
   index = 0;
   for (const auto routput : outputs) {
     // Add new InferRequestedOutputTensor submessage only if required, otherwise
     // reuse the submessages already available.
-    auto grpc_output = (infer_request_.outputs().size() <= index)
-                           ? infer_request_.add_outputs()
-                           : infer_request_.mutable_outputs()->Mutable(index);
+    auto grpc_output = (infer_request->outputs().size() <= index)
+                           ? infer_request->add_outputs()
+                           : infer_request->mutable_outputs()->Mutable(index);
     grpc_output->Clear();
     grpc_output->set_name(routput->Name());
     size_t class_count = routput->ClassificationCount();
@@ -1210,13 +1219,13 @@ InferenceServerGrpcClient::PreRunProcessing(
 
   // Remove extra InferRequestedOutputTensor submessages, that are not required
   // for this request.
-  while (index < infer_request_.outputs().size()) {
-    infer_request_.mutable_outputs()->RemoveLast();
+  while (index < infer_request->outputs().size()) {
+    infer_request->mutable_outputs()->RemoveLast();
   }
 
-  if (infer_request_.ByteSizeLong() > INT_MAX) {
-    size_t request_size = infer_request_.ByteSizeLong();
-    infer_request_.Clear();
+  if (infer_request->ByteSizeLong() > INT_MAX) {
+    size_t request_size = infer_request->ByteSizeLong();
+    infer_request->Clear();
     return Error(
         "Request has byte size " + std::to_string(request_size) +
         " which exceed gRPC's byte size limit " + std::to_string(INT_MAX) +
