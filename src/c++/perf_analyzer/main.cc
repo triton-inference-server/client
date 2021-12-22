@@ -1646,26 +1646,34 @@ main(int argc, char** argv)
         ofs << status.client_stats.infer_per_sec << ","
             << (status.client_stats.avg_send_time_ns / 1000) << ",";
         if (profiler->IncludeServerStats()) {
-          uint64_t avg_queue_ns = status.server_stats.queue_time_ns /
-                                  status.server_stats.success_count;
+          uint64_t avg_queue_ns = status.server_stats.success_count > 0
+                                      ? (status.server_stats.queue_time_ns /
+                                         status.server_stats.success_count)
+                                      : 0;
           uint64_t avg_compute_input_ns =
-              status.server_stats.compute_input_time_ns /
-              status.server_stats.success_count;
+              status.server_stats.inference_count > 0
+                  ? (status.server_stats.compute_input_time_ns /
+                     status.server_stats.inference_count)
+                  : 0;
           uint64_t avg_compute_infer_ns =
-              status.server_stats.compute_infer_time_ns /
-              status.server_stats.success_count;
+              status.server_stats.inference_count > 0
+                  ? (status.server_stats.compute_infer_time_ns /
+                     status.server_stats.inference_count)
+                  : 0;
           uint64_t avg_compute_output_ns =
-              status.server_stats.compute_output_time_ns /
-              status.server_stats.success_count;
+              status.server_stats.inference_count > 0
+                  ? (status.server_stats.compute_output_time_ns /
+                     status.server_stats.inference_count)
+                  : 0;
 
           uint64_t avg_compute_ns = avg_compute_input_ns +
                                     avg_compute_infer_ns +
                                     avg_compute_output_ns;
-          uint64_t avg_cache_hit_ns = 0;
-          if (status.server_stats.cache_hit_count > 0) {
-            avg_cache_hit_ns = status.server_stats.cache_hit_time_ns /
-                               status.server_stats.cache_hit_count;
-          }
+          uint64_t avg_cache_hit_ns =
+              status.server_stats.cache_hit_count > 0
+                  ? (status.server_stats.cache_hit_time_ns /
+                     status.server_stats.cache_hit_count)
+                  : 0;
 
           uint64_t avg_client_wait_ns = status.client_stats.avg_latency_ns -
                                         status.client_stats.avg_send_time_ns -
@@ -1731,24 +1739,34 @@ main(int argc, char** argv)
               auto it = status.server_stats.composing_models_stat.find(
                   model_identifier.first);
               const auto& stats = it->second;
-              uint64_t avg_queue_ns = stats.queue_time_ns / stats.success_count;
+              uint64_t avg_queue_ns =
+                  stats.success_count > 0
+                      ? stats.queue_time_ns / stats.success_count
+                      : 0;
               uint64_t avg_compute_input_ns =
-                  stats.compute_input_time_ns / stats.success_count;
+                  stats.inference_count > 0
+                      ? stats.compute_input_time_ns / stats.inference_count
+                      : 0;
               uint64_t avg_compute_infer_ns =
-                  stats.compute_infer_time_ns / stats.success_count;
+                  stats.inference_count > 0
+                      ? stats.compute_infer_time_ns / stats.inference_count
+                      : 0;
               uint64_t avg_compute_output_ns =
-                  stats.compute_output_time_ns / stats.success_count;
+                  stats.inference_count > 0
+                      ? stats.compute_output_time_ns / stats.inference_count
+                      : 0;
               uint64_t avg_compute_ns = avg_compute_input_ns +
                                         avg_compute_infer_ns +
                                         avg_compute_output_ns;
-              uint64_t avg_cache_hit_ns = 0;
-              if (stats.cache_hit_count > 0) {
-                avg_cache_hit_ns =
-                    stats.cache_hit_time_ns / stats.cache_hit_count;
-              }
+              uint64_t avg_cache_hit_ns =
+                  stats.cache_hit_count > 0
+                      ? stats.cache_hit_time_ns / stats.cache_hit_count
+                      : 0;
 
               uint64_t avg_overhead_ns =
-                  stats.cumm_time_ns / stats.success_count;
+                  stats.success_count > 0
+                      ? stats.cumm_time_ns / stats.success_count
+                      : 0;
               avg_overhead_ns =
                   (avg_overhead_ns >
                    (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns))
@@ -1758,10 +1776,16 @@ main(int argc, char** argv)
               // infer / sec of the composing model is calculated using the
               // request count ratio between the composing model and the
               // ensemble
-              double infer_ratio =
-                  1.0 * stats.success_count / status.server_stats.success_count;
+              double infer_ratio = status.server_stats.success_count > 0
+                                       ? (1.0 * stats.success_count /
+                                          status.server_stats.success_count)
+                                       : 0.0;
               double infer_per_sec =
                   infer_ratio * status.client_stats.infer_per_sec;
+              // TODO: Inferences/second seems misleading if cache hits don't
+              //       count towards inference count.
+              //       Should it be called requests/sec instead? Don't want to
+              //       break scripts that parse this output if possible
               if (target_concurrency) {
                 ofs << status.concurrency << ",";
               } else {
