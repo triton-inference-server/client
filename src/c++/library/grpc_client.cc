@@ -52,6 +52,14 @@ std::map<
     grpc_channel_stub_map_;
 std::mutex grpc_channel_stub_map_mtx_;
 
+std::string
+GetEnvironmentVariableOrDefault(
+    const std::string& variable_name, const std::string& default_value)
+{
+  const char* value = getenv(variable_name.c_str());
+  return value ? value : default_value;
+}
+
 void
 ReadFile(const std::string& filename, std::string& data)
 {
@@ -76,11 +84,13 @@ GetChannelStub(
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
-  // Specify the number of channels that connect to the url, distribute
-  // clients to different channels relieve the pressure of reaching
-  // max connection concurrency
-  // https://docs.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-6.0#connection-concurrency
-  size_t max_share_count = 6;
+  // Limit the number of sharing for each channel connects to the url,
+  // distributing clients to different channels relieves
+  // the pressure of reaching max connection concurrency
+  // https://grpc.io/docs/guides/performance/ (4th point)
+  static const size_t max_share_count =
+      std::stoul(GetEnvironmentVariableOrDefault(
+          "TRITON_CLIENT_GRPC_CHANNEL_MAX_SHARE_COUNT", "6"));
   static std::atomic<int> channel_count{0};
   auto current_idx = channel_count.fetch_add(1);
   const auto& channel_itr = grpc_channel_stub_map_.find(
