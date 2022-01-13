@@ -46,9 +46,9 @@ namespace {
 // Use map to keep track of GRPC channels. <key, value> : <url, Channel*>
 // If context is created on url that has established Channel, then reuse it.
 std::map<
-    std::string, std::pair<
+    std::string, std::vector<std::pair<
                      std::shared_ptr<grpc::Channel>,
-                     std::shared_ptr<inference::GRPCInferenceService::Stub>>>
+                     std::shared_ptr<inference::GRPCInferenceService::Stub>>>>
     grpc_channel_stub_map_;
 std::mutex grpc_channel_stub_map_mtx_;
 
@@ -76,45 +76,64 @@ GetChannelStub(
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
+  // Specify the number of channels that connect to the url, distribute
+  // clients to different channels relieve the pressure of reaching
+  // max connection concurrency
+  // https://docs.microsoft.com/en-us/aspnet/core/grpc/performance?view=aspnetcore-6.0#connection-concurrency
+  size_t registered_channel_count = 2;
+
+  static std::atomic<int> client_count{0};
   const auto& channel_itr = grpc_channel_stub_map_.find(url);
   if (channel_itr != grpc_channel_stub_map_.end()) {
-    return channel_itr->second;
+    return channel_itr
+        ->second[client_count.fetch_add(1) % registered_channel_count];
   } else {
-    grpc::ChannelArguments arguments;
-    arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
-    arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
-    // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
-    arguments.SetInt(
-        GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
-    arguments.SetInt(
-        GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
-    arguments.SetInt(
-        GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
-        keepalive_options.keepalive_permit_without_calls);
-    arguments.SetInt(
-        GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
-        keepalive_options.http2_max_pings_without_data);
-    std::shared_ptr<grpc::ChannelCredentials> credentials;
-    if (use_ssl) {
-      std::string root;
-      std::string key;
-      std::string cert;
-      ReadFile(ssl_options.root_certificates, root);
-      ReadFile(ssl_options.private_key, key);
-      ReadFile(ssl_options.certificate_chain, cert);
-      grpc::SslCredentialsOptions opts = {root, key, cert};
-      credentials = grpc::SslCredentials(opts);
-    } else {
-      credentials = grpc::InsecureChannelCredentials();
+    std::vector<std::pair<
+        std::shared_ptr<grpc::Channel>,
+        std::shared_ptr<inference::GRPCInferenceService::Stub>>>
+        channels;
+    for (size_t channel_idx = 0; channel_idx < registered_channel_count;
+         ++channel_idx) {
+      grpc::ChannelArguments arguments;
+      arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
+      arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
+      // GRPC KeepAlive:
+      // https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+      arguments.SetInt(
+          GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
+      arguments.SetInt(
+          GRPC_ARG_KEEPALIVE_TIMEOUT_MS,
+          keepalive_options.keepalive_timeout_ms);
+      arguments.SetInt(
+          GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
+          keepalive_options.keepalive_permit_without_calls);
+      arguments.SetInt(
+          GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
+          keepalive_options.http2_max_pings_without_data);
+      arguments.SetInt("client_channel_idx", channel_idx);
+      std::shared_ptr<grpc::ChannelCredentials> credentials;
+      if (use_ssl) {
+        std::string root;
+        std::string key;
+        std::string cert;
+        ReadFile(ssl_options.root_certificates, root);
+        ReadFile(ssl_options.private_key, key);
+        ReadFile(ssl_options.certificate_chain, cert);
+        grpc::SslCredentialsOptions opts = {root, key, cert};
+        credentials = grpc::SslCredentials(opts);
+      } else {
+        credentials = grpc::InsecureChannelCredentials();
+      }
+      std::shared_ptr<grpc::Channel> channel =
+          grpc::CreateCustomChannel(url, credentials, arguments);
+      std::shared_ptr<inference::GRPCInferenceService::Stub> stub =
+          inference::GRPCInferenceService::NewStub(channel);
+      channels.emplace_back(std::make_pair(channel, stub));
     }
-    std::shared_ptr<grpc::Channel> channel =
-        grpc::CreateCustomChannel(url, credentials, arguments);
-    std::shared_ptr<inference::GRPCInferenceService::Stub> stub =
-        inference::GRPCInferenceService::NewStub(channel);
-    grpc_channel_stub_map_.insert(
-        std::make_pair(url, std::make_pair(channel, stub)));
 
-    return std::make_pair(channel, stub);
+    return grpc_channel_stub_map_
+        .insert(std::make_pair(url, std::move(channels)))
+        .first->second[0];
   }
 }
 }  // namespace
@@ -1091,20 +1110,19 @@ InferenceServerGrpcClient::PreRunProcessing(
   infer_request_.set_id(options.request_id_);
 
   infer_request_.mutable_parameters()->clear();
-  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
-    {
-      if (options.sequence_id_ != 0) {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
-            options.sequence_id_);
-      } else {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
-            options.sequence_id_str_);
-      }
-      (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
-          options.sequence_start_);
-      (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
-          options.sequence_end_);
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
+    if (options.sequence_id_ != 0) {
+      (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
+          options.sequence_id_);
+    } else {
+      (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
+          options.sequence_id_str_);
     }
+    (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
+        options.sequence_start_);
+    (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
+        options.sequence_end_);
+  }
   if (options.priority_ != 0) {
     (*infer_request_.mutable_parameters())["priority"].set_int64_param(
         options.priority_);
