@@ -52,6 +52,14 @@ std::map<
     grpc_channel_stub_map_;
 std::mutex grpc_channel_stub_map_mtx_;
 
+std::string
+GetEnvironmentVariableOrDefault(
+    const std::string& variable_name, const std::string& default_value)
+{
+  const char* value = getenv(variable_name.c_str());
+  return value ? value : default_value;
+}
+
 void
 ReadFile(const std::string& filename, std::string& data)
 {
@@ -76,7 +84,17 @@ GetChannelStub(
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
-  const auto& channel_itr = grpc_channel_stub_map_.find(url);
+  // Limit the number of sharing for each channel connects to the url,
+  // distributing clients to different channels relieves
+  // the pressure of reaching max connection concurrency
+  // https://grpc.io/docs/guides/performance/ (4th point)
+  static const size_t max_share_count =
+      std::stoul(GetEnvironmentVariableOrDefault(
+          "TRITON_CLIENT_GRPC_CHANNEL_MAX_SHARE_COUNT", "6"));
+  static std::atomic<int> channel_count{0};
+  auto current_idx = channel_count.fetch_add(1);
+  const auto& channel_itr = grpc_channel_stub_map_.find(
+      url + std::to_string(current_idx / max_share_count));
   if (channel_itr != grpc_channel_stub_map_.end()) {
     return channel_itr->second;
   } else {
@@ -94,6 +112,7 @@ GetChannelStub(
     arguments.SetInt(
         GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
         keepalive_options.http2_max_pings_without_data);
+    arguments.SetInt("client_channel_idx", current_idx);
     std::shared_ptr<grpc::ChannelCredentials> credentials;
     if (use_ssl) {
       std::string root;
@@ -111,8 +130,9 @@ GetChannelStub(
         grpc::CreateCustomChannel(url, credentials, arguments);
     std::shared_ptr<inference::GRPCInferenceService::Stub> stub =
         inference::GRPCInferenceService::NewStub(channel);
-    grpc_channel_stub_map_.insert(
-        std::make_pair(url, std::make_pair(channel, stub)));
+    grpc_channel_stub_map_.insert(std::make_pair(
+        url + std::to_string(current_idx / max_share_count),
+        std::make_pair(channel, stub)));
 
     return std::make_pair(channel, stub);
   }
@@ -1091,20 +1111,19 @@ InferenceServerGrpcClient::PreRunProcessing(
   infer_request_.set_id(options.request_id_);
 
   infer_request_.mutable_parameters()->clear();
-  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
-    {
-      if (options.sequence_id_ != 0) {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
-            options.sequence_id_);
-      } else {
-        (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
-            options.sequence_id_str_);
-      }
-      (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
-          options.sequence_start_);
-      (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
-          options.sequence_end_);
+  if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
+    if (options.sequence_id_ != 0) {
+      (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(
+          options.sequence_id_);
+    } else {
+      (*infer_request_.mutable_parameters())["sequence_id"].set_string_param(
+          options.sequence_id_str_);
     }
+    (*infer_request_.mutable_parameters())["sequence_start"].set_bool_param(
+        options.sequence_start_);
+    (*infer_request_.mutable_parameters())["sequence_end"].set_bool_param(
+        options.sequence_end_);
+  }
   if (options.priority_ != 0) {
     (*infer_request_.mutable_parameters())["priority"].set_int64_param(
         options.priority_);
