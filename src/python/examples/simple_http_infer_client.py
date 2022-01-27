@@ -113,6 +113,31 @@ if __name__ == '__main__':
                         default=False,
                         help='Enable encrypted link to the server using HTTPS')
     parser.add_argument(
+        '--keyfile',
+        type=str,
+        required=False,
+        default=None,
+        help='File holding client private key. Default is None.')
+    parser.add_argument(
+        '--certfile',
+        type=str,
+        required=False,
+        default=None,
+        help='File holding client certificate. Default is None.')
+    parser.add_argument('--cacerts',
+                        type=str,
+                        required=False,
+                        default=None,
+                        help='File holding ca certificate. Default is None.')
+    parser.add_argument(
+        '--insecure',
+        action="store_true",
+        required=False,
+        default=False,
+        help=
+        'Use no peer verification in SSL communications. Use with caution. Default is False.'
+    )
+    parser.add_argument(
         '-H',
         dest='http_headers',
         metavar="HTTP_HEADER",
@@ -140,12 +165,23 @@ if __name__ == '__main__':
     FLAGS = parser.parse_args()
     try:
         if FLAGS.ssl:
+            ssl_options = {}
+            if FLAGS.keyfile is not None:
+                ssl_options['keyfile'] = FLAGS.keyfile
+            if FLAGS.certfile is not None:
+                ssl_options['certfile'] = FLAGS.certfile
+            if FLAGS.cacerts is not None:
+                ssl_options['ca_certs'] = FLAGS.cacerts
+            ssl_context_factory = None
+            if FLAGS.insecure:
+                ssl_context_factory = gevent.ssl._create_unverified_context
             triton_client = httpclient.InferenceServerClient(
                 url=FLAGS.url,
                 verbose=FLAGS.verbose,
                 ssl=True,
-                ssl_context_factory=gevent.ssl._create_unverified_context,
-                insecure=True)
+                ssl_options=ssl_options,
+                insecure=FLAGS.insecure,
+                ssl_context_factory=ssl_context_factory)
         else:
             triton_client = httpclient.InferenceServerClient(
                 url=FLAGS.url, verbose=FLAGS.verbose)
