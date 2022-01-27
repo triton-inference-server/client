@@ -42,6 +42,50 @@ typedef std::map<std::string, std::string> Headers;
 /// The key-value map type to be included as URL parameters.
 typedef std::map<std::string, std::string> Parameters;
 
+// The options for authorizing and authenticating SSL/TLS connections
+struct HttpSslOptions {
+  enum CERTTYPE { CERT_PEM = 0, CERT_DER = 1 };
+  enum KEYTYPE {
+    KEY_PEM = 0,
+    KEY_DER = 1
+    // TODO: Support loading private key from crypto engine
+    // KEY_ENG = 2
+  };
+  explicit HttpSslOptions()
+      : verify_peer(1), verify_host(2), cert_type(CERTTYPE::CERT_PEM),
+        key_type(KEYTYPE::KEY_PEM)
+  {
+  }
+  // This option determines whether curl verifies the authenticity of the peer's
+  // certificate. A value of 1 means curl verifies; 0 (zero) means it does not.
+  // Default value is 1. See here for more details:
+  // https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html
+  long verify_peer;
+  // This option determines whether libcurl verifies that the server cert is for
+  // the server it is known as. The default value for this option is 2 which
+  // means that certificate must indicate that the server is the server to which
+  // you meant to connect, or the connection fails. See here for more details:
+  // https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html
+  long verify_host;
+  // File holding one or more certificates to verify the peer with. If not
+  // specified, client will look for the system path where cacert bundle is
+  // assumed to be stored, as established at build time. See here for more
+  // information: https://curl.se/libcurl/c/CURLOPT_CAINFO.html
+  std::string ca_info;
+  // The format of client certificate. By default it is CERT_PEM. See here for
+  // more details: https://curl.se/libcurl/c/CURLOPT_SSLCERTTYPE.html
+  CERTTYPE cert_type;
+  // The file name of your client certificate. See here for more details:
+  // https://curl.se/libcurl/c/CURLOPT_SSLCERT.html
+  std::string cert;
+  // The format of the private key. By default it is KEY_PEM. See here for more
+  // details: https://curl.se/libcurl/c/CURLOPT_SSLKEYTYPE.html.
+  KEYTYPE key_type;
+  // The private key. See here for more details:
+  // https://curl.se/libcurl/c/CURLOPT_SSLKEY.html.
+  std::string key;
+};
+
 //==============================================================================
 /// An InferenceServerHttpClient object is used to perform any kind of
 /// communication with the InferenceServer using HTTP protocol. None
@@ -99,10 +143,13 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// base path in the following format: host:port/<base-path>.
   /// \param verbose If true generate verbose output when contacting
   /// the inference server.
+  /// \param ssl_options Specifies the settings for configuring
+  /// SSL encryption and authorization.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerHttpClient>* client,
-      const std::string& server_url, bool verbose = false);
+      const std::string& server_url, bool verbose = false,
+      const HttpSslOptions& ssl_options = HttpSslOptions());
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -418,7 +465,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
           CompressionType::NONE);
 
  private:
-  InferenceServerHttpClient(const std::string& url, bool verbose);
+  InferenceServerHttpClient(
+      const std::string& url, bool verbose, const HttpSslOptions& ssl_options);
 
   Error PreRunProcessing(
       void* curl, std::string& request_uri, const InferOptions& options,
@@ -449,6 +497,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
 
   // The server url
   const std::string url_;
+  // The options for authorizing and authenticating SSL/TLS connections
+  HttpSslOptions ssl_options_;
 
   using AsyncReqMap = std::map<uintptr_t, std::shared_ptr<HttpInferRequest>>;
   // curl easy handle shared for all synchronous requests
