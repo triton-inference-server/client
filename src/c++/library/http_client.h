@@ -42,7 +42,7 @@ typedef std::map<std::string, std::string> Headers;
 /// The key-value map type to be included as URL parameters.
 typedef std::map<std::string, std::string> Parameters;
 
-// The options for authorizing and authenticating SSL/TLS connections
+// The options for authorizing and authenticating SSL/TLS connections.
 struct HttpSslOptions {
   enum CERTTYPE { CERT_PEM = 0, CERT_DER = 1 };
   enum KEYTYPE {
@@ -139,12 +139,17 @@ class InferenceServerHttpClient : public InferenceServerClient {
 
   /// Create a client that can be used to communicate with the server.
   /// \param client Returns a new InferenceServerHttpClient object.
-  /// \param server_url The inference server name, port and optional
-  /// base path in the following format: host:port/<base-path>.
+  /// \param server_url The inference server name, port, optional
+  /// scheme and optional base path in the following format:
+  /// <scheme://>host:port/<base-path>.
   /// \param verbose If true generate verbose output when contacting
   /// the inference server.
   /// \param ssl_options Specifies the settings for configuring
-  /// SSL encryption and authorization.
+  /// SSL encryption and authorization. Providing these options
+  /// do not ensure that SSL/TLS will be used in communication.
+  /// The use of SSL/TLS depends entirely on the server endpoint.
+  /// These options will be ignored if the server_url does not
+  /// expose `https://` scheme.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerHttpClient>* client,
