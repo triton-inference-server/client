@@ -44,9 +44,17 @@ async function main() {
 
     serverLiveResponse = await serverLive({});
     console.log("Triton Health - Live:", serverLiveResponse.live);
+    if(!serverLiveResponse.live) {
+        console.error("Triton is not Live")
+        process.exit(1);
+    }
 
     serverReadyResponse = await serverReady({});
     console.log("Triton Health - Ready:", serverReadyResponse.ready);
+    if(!serverReadyResponse.ready) {
+        console.error("Triton is not Ready")
+        process.exit(1);
+    }
 
     modelMetadataResponse = await modelMetadata({ name: model_name, version: model_version });
     console.log("\nModel Info:", modelMetadataResponse)
@@ -94,6 +102,11 @@ async function main() {
     for (let i = 0; i < dimension; i++) {
         console.log(input0_data[i] + " + " + input1_data[i] + " = " + output_data[0][i])
         console.log(input0_data[i] + " - " + input1_data[i] + " = " + output_data[1][i])
+        if (((input0_data[i] + input1_data[i]) != output_data[0][i]) ||
+                ((input0_data[i] - input1_data[i]) != output_data[1][i])) {
+            console.error("Unexpected results encountered")
+            process.exit(1);
+        }
     }
 
 }
