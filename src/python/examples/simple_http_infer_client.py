@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -113,6 +113,31 @@ if __name__ == '__main__':
                         default=False,
                         help='Enable encrypted link to the server using HTTPS')
     parser.add_argument(
+        '--key-file',
+        type=str,
+        required=False,
+        default=None,
+        help='File holding client private key. Default is None.')
+    parser.add_argument(
+        '--cert-file',
+        type=str,
+        required=False,
+        default=None,
+        help='File holding client certificate. Default is None.')
+    parser.add_argument('--ca-certs',
+                        type=str,
+                        required=False,
+                        default=None,
+                        help='File holding ca certificate. Default is None.')
+    parser.add_argument(
+        '--insecure',
+        action="store_true",
+        required=False,
+        default=False,
+        help=
+        'Use no peer verification in SSL communications. Use with caution. Default is False.'
+    )
+    parser.add_argument(
         '-H',
         dest='http_headers',
         metavar="HTTP_HEADER",
@@ -140,12 +165,23 @@ if __name__ == '__main__':
     FLAGS = parser.parse_args()
     try:
         if FLAGS.ssl:
+            ssl_options = {}
+            if FLAGS.key_file is not None:
+                ssl_options['keyfile'] = FLAGS.key_file
+            if FLAGS.cert_file is not None:
+                ssl_options['certfile'] = FLAGS.cert_file
+            if FLAGS.ca_certs is not None:
+                ssl_options['ca_certs'] = FLAGS.ca_certs
+            ssl_context_factory = None
+            if FLAGS.insecure:
+                ssl_context_factory = gevent.ssl._create_unverified_context
             triton_client = httpclient.InferenceServerClient(
                 url=FLAGS.url,
                 verbose=FLAGS.verbose,
                 ssl=True,
-                ssl_context_factory=gevent.ssl._create_unverified_context,
-                insecure=True)
+                ssl_options=ssl_options,
+                insecure=FLAGS.insecure,
+                ssl_context_factory=ssl_context_factory)
         else:
             triton_client = httpclient.InferenceServerClient(
                 url=FLAGS.url, verbose=FLAGS.verbose)

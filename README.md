@@ -1,5 +1,5 @@
 <!--
-# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -329,6 +329,23 @@ with similar classes and methods.  For more information please refer
 to the [Java client directory](src/java).
 
 ### HTTP Options
+
+#### SSL/TLS
+
+The client library allows communication across a secured channel using HTTPS protocol. Just setting these SSL options do not ensure the secure communication. Triton server should be running behind `https://` proxy such as nginx. The client can then establish a secure channel to the proxy. The [`qa/L0_https`](https://github.com/triton-inference-server/server/blob/main/qa/L0_https/test.sh) in the server repository demostrates how this can be acheived. 
+
+For C++ client, see `HttpSslOptions` struct that encapsulates these options in [http_client.h](src/c%2B%2B/library/http_client.h).
+
+For Python client, look for the following options in [http/\_\_init\_\_.py](src/python/library/tritonclient/http/__init__.py):
+
+* ssl
+* ssl_options
+* ssl_context_factory
+* insecure
+
+The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples
+demonstrates how to use SSL/TLS settings on client side.
+
 
 #### Compression
 
