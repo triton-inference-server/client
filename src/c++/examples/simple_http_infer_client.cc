@@ -83,11 +83,11 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-i <none|gzip|deflate>" << std::endl;
   std::cerr << "\t-o <none|gzip|deflate>" << std::endl;
   std::cerr << std::endl;
-  std::cerr << "\t--verifypeer" << std::endl;
-  std::cerr << "\t--verifyhost" << std::endl;
-  std::cerr << "\t--cacerts" << std::endl;
-  std::cerr << "\t--certfile" << std::endl;
-  std::cerr << "\t--keyfile" << std::endl;
+  std::cerr << "\t--verify-peer" << std::endl;
+  std::cerr << "\t--verify-host" << std::endl;
+  std::cerr << "\t--ca-certs" << std::endl;
+  std::cerr << "\t--cert-file" << std::endl;
+  std::cerr << "\t--key-file" << std::endl;
   std::cerr
       << "For -H, header must be 'Header:Value'. May be given multiple times."
       << std::endl
@@ -121,8 +121,8 @@ main(int argc, char** argv)
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
-      {"verifypeer", 1, 0, 0}, {"verifyhost", 1, 0, 1}, {"cacerts", 1, 0, 2},
-      {"certfile", 1, 0, 3},   {"keyfile", 1, 0, 4},    {0, 0, 0, 0}};
+      {"verify-peer", 1, 0, 0}, {"verify-host", 1, 0, 1}, {"ca-certs", 1, 0, 2},
+      {"cert-file", 1, 0, 3},   {"key-file", 1, 0, 4},    {0, 0, 0, 0}};
 
   // Parse commandline...
   int opt;

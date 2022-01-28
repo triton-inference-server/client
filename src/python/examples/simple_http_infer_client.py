@@ -113,18 +113,18 @@ if __name__ == '__main__':
                         default=False,
                         help='Enable encrypted link to the server using HTTPS')
     parser.add_argument(
-        '--keyfile',
+        '--key-file',
         type=str,
         required=False,
         default=None,
         help='File holding client private key. Default is None.')
     parser.add_argument(
-        '--certfile',
+        '--cert-file',
         type=str,
         required=False,
         default=None,
         help='File holding client certificate. Default is None.')
-    parser.add_argument('--cacerts',
+    parser.add_argument('--ca-certs',
                         type=str,
                         required=False,
                         default=None,
@@ -166,12 +166,12 @@ if __name__ == '__main__':
     try:
         if FLAGS.ssl:
             ssl_options = {}
-            if FLAGS.keyfile is not None:
-                ssl_options['keyfile'] = FLAGS.keyfile
-            if FLAGS.certfile is not None:
-                ssl_options['certfile'] = FLAGS.certfile
-            if FLAGS.cacerts is not None:
-                ssl_options['ca_certs'] = FLAGS.cacerts
+            if FLAGS.key_file is not None:
+                ssl_options['keyfile'] = FLAGS.key_file
+            if FLAGS.cert_file is not None:
+                ssl_options['certfile'] = FLAGS.cert_file
+            if FLAGS.ca_certs is not None:
+                ssl_options['ca_certs'] = FLAGS.ca_certs
             ssl_context_factory = None
             if FLAGS.insecure:
                 ssl_context_factory = gevent.ssl._create_unverified_context
