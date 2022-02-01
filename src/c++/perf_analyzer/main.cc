@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,9 +27,13 @@
 
 #include <getopt.h>
 #include <signal.h>
+
 #include <algorithm>
+
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
+#include "grpc_client.h"
+#include "http_client.h"
 #include "inference_profiler.h"
 #include "model_parser.h"
 #include "perf_utils.h"
@@ -267,6 +272,16 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-i <Protocol used to communicate with inference service>"
             << std::endl;
+  std::cerr << "\t--ssl-grpc-root-certifications-file <path>" << std::endl;
+  std::cerr << "\t--ssl-grpc-private-key-file <path>" << std::endl;
+  std::cerr << "\t--ssl-grpc-certificate-chain-file <path>" << std::endl;
+  std::cerr << "\t--ssl-http-verify-peer <number>" << std::endl;
+  std::cerr << "\t--ssl-http-verify-host <number>" << std::endl;
+  std::cerr << "\t--ssl-http-ca-certificates-file <path>" << std::endl;
+  std::cerr << "\t--ssl-http-client-certificate-file <path>" << std::endl;
+  std::cerr << "\t--ssl-http-client-certificate-type <string>" << std::endl;
+  std::cerr << "\t--ssl-http-private-key-file <path>" << std::endl;
+  std::cerr << "\t--ssl-http-private-key-type <string>" << std::endl;
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
   std::cerr << "\t-f <filename for storing report in csv format>" << std::endl;
@@ -589,19 +604,78 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl;
   std::cerr << std::endl;
   std::cerr << "III. SERVER DETAILS: " << std::endl;
-  std::cerr << std::setw(9) << std::left << " -u: "
+  std::cerr << std::setw(38) << std::left << " -u: "
             << FormatMessage(
                    "Specify URL to the server. When using triton default is "
                    "\"localhost:8000\" if using HTTP and \"localhost:8001\" "
                    "if using gRPC. When using tfserving default is "
                    "\"localhost:8500\". ",
-                   9)
+                   38)
             << std::endl;
-  std::cerr << std::setw(9) << std::left << " -i: "
+  std::cerr << std::setw(38) << std::left << " -i: "
             << FormatMessage(
                    "The communication protocol to use. The available protocols "
                    "are gRPC and HTTP. Default is HTTP.",
-                   9)
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-grpc-root-certifications-file: "
+            << FormatMessage(
+                   "Path to file containing the PEM encoding of the server "
+                   "root certificates.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-grpc-private-key-file: "
+            << FormatMessage(
+                   "Path to file containing the PEM encoding of the client's "
+                   "private key.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-grpc-certificate-chain-file: "
+            << FormatMessage(
+                   "Path to file containing the PEM encoding of the client's "
+                   "certificate chain.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-http-verify-peer: "
+            << FormatMessage(
+                   "Number (0|1) to verify the peer's SSL certificate. See "
+                   "https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html for "
+                   "the meaning of each value. Default is 1.",
+                   38)
+            << std::endl;
+  std::cerr
+      << std::setw(38) << std::left << " --ssl-http-verify-host: "
+      << FormatMessage(
+             "Number (0|1|2) to verify the certificate's name against host. "
+             "See https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html for "
+             "the meaning of each value. Default is 2.",
+             38)
+      << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-http-ca-certificates-file: "
+            << FormatMessage("Path to Certificate Authority (CA) bundle.", 38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-http-client-certificate-file: "
+            << FormatMessage("Path to the SSL client certificate.", 38)
+            << std::endl;
+  std::cerr
+      << std::setw(38) << std::left << " --ssl-http-client-certificate-type: "
+      << FormatMessage(
+             "Type (PEM|DER) of the client SSL certificate. Default is PEM.",
+             38)
+      << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-http-private-key-file: "
+            << FormatMessage(
+                   "Path to the private keyfile for TLS and SSL client cert.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-http-private-key-type: "
+            << FormatMessage(
+                   "Type (PEM|DER) of the private key file. Default is PEM.",
+                   38)
             << std::endl;
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
@@ -721,6 +795,20 @@ main(int argc, char** argv)
   std::string model_repository_path;
   std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
 
+  // gRPC and HTTP SSL options
+  std::string ssl_grpc_root_certifications_file = "";
+  std::string ssl_grpc_private_key_file = "";
+  std::string ssl_grpc_certificate_chain_file = "";
+  long ssl_http_verify_peer = 1L;
+  long ssl_http_verify_host = 2L;
+  std::string ssl_http_ca_certificates_file = "";
+  std::string ssl_http_client_certificate_file = "";
+  triton::client::HttpSslOptions::CERTTYPE ssl_http_client_certificate_type =
+      triton::client::HttpSslOptions::CERTTYPE::CERT_PEM;
+  std::string ssl_http_private_key_file = "";
+  triton::client::HttpSslOptions::KEYTYPE ssl_http_private_key_type =
+      triton::client::HttpSslOptions::KEYTYPE::KEY_PEM;
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -754,6 +842,16 @@ main(int argc, char** argv)
       {"triton-server-directory", 1, 0, 28},
       {"model-repository", 1, 0, 29},
       {"sequence-id-range", 1, 0, 30},
+      {"ssl-grpc-root-certifications-file", 1, 0, 31},
+      {"ssl-grpc-private-key-file", 1, 0, 32},
+      {"ssl-grpc-certificate-chain-file", 1, 0, 33},
+      {"ssl-http-verify-peer", 1, 0, 34},
+      {"ssl-http-verify-host", 1, 0, 35},
+      {"ssl-http-ca-certificates-file", 1, 0, 36},
+      {"ssl-http-client-certificate-file", 1, 0, 37},
+      {"ssl-http-client-certificate-type", 1, 0, 38},
+      {"ssl-http-private-key-file", 1, 0, 39},
+      {"ssl-http-private-key-type", 1, 0, 40},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1050,6 +1148,105 @@ main(int argc, char** argv)
           Usage(
               argv,
               "failed to parse concurrency range: " + std::string(optarg));
+        }
+        break;
+      }
+      case 31: {
+        if (pa::IsFile(optarg)) {
+          ssl_grpc_root_certifications_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-grpc-root-certifications-file must be a valid file path");
+        }
+        break;
+      }
+      case 32: {
+        if (pa::IsFile(optarg)) {
+          ssl_grpc_private_key_file = optarg;
+        } else {
+          Usage(argv, "--ssl-grpc-private-key-file must be a valid file path");
+        }
+        break;
+      }
+      case 33: {
+        if (pa::IsFile(optarg)) {
+          ssl_grpc_certificate_chain_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-grpc-certificate-chain-file must be a valid file path");
+        }
+        break;
+      }
+      case 34: {
+        if (std::atol(optarg) == 0 || std::atol(optarg) == 1) {
+          ssl_http_verify_peer = std::atol(optarg);
+        } else {
+          Usage(argv, "--ssl-http-verify-peer must be 0 or 1");
+        }
+        break;
+      }
+      case 35: {
+        if (std::atol(optarg) == 0 || std::atol(optarg) == 1 ||
+            std::atol(optarg) == 2) {
+          ssl_http_verify_host = std::atol(optarg);
+        } else {
+          Usage(argv, "--ssl-http-verify-host must be 0, 1, or 2");
+        }
+        break;
+      }
+      case 36: {
+        if (pa::IsFile(optarg)) {
+          ssl_http_ca_certificates_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-http-ca-certificates-file must be a valid file path");
+        }
+        break;
+      }
+      case 37: {
+        if (pa::IsFile(optarg)) {
+          ssl_http_client_certificate_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-http-client-certificate-file must be a valid file path");
+        }
+        break;
+      }
+      case 38: {
+        if (std::string(optarg) == "PEM") {
+          ssl_http_client_certificate_type =
+              triton::client::HttpSslOptions::CERTTYPE::CERT_PEM;
+        } else if (std::string(optarg) == "DER") {
+          ssl_http_client_certificate_type =
+              triton::client::HttpSslOptions::CERTTYPE::CERT_DER;
+        } else {
+          Usage(
+              argv,
+              "--ssl-http-client-certificate-type must be 'PEM' or 'DER'");
+        }
+        break;
+      }
+      case 39: {
+        if (pa::IsFile(optarg)) {
+          ssl_http_private_key_file = optarg;
+        } else {
+          Usage(argv, "--ssl-http-private-key-file must be a valid file path");
+        }
+        break;
+      }
+      case 40: {
+        if (std::string(optarg) == "PEM") {
+          ssl_http_private_key_type =
+              triton::client::HttpSslOptions::KEYTYPE::KEY_PEM;
+        } else if (std::string(optarg) == "DER") {
+          ssl_http_private_key_type =
+              triton::client::HttpSslOptions::KEYTYPE::KEY_DER;
+        } else {
+          Usage(argv, "--ssl-http-private-key-type must be 'PEM' or 'DER'");
         }
         break;
       }
