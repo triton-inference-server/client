@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -134,7 +134,8 @@ DataLoader::ReadDataFromJSON(
   rapidjson::FileReadStream fs(data_file, readBuffer, sizeof(readBuffer));
 
   rapidjson::Document d{};
-  d.ParseStream(fs);
+  const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
+  d.ParseStream<parseFlags>(fs);
 
   if (d.HasParseError()) {
     std::cerr << "cb::Error  : " << d.GetParseError() << '\n'
