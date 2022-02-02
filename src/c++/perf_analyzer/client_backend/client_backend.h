@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -512,6 +513,20 @@ class InferResult {
   virtual Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
+};
+
+struct SslOptionsBase {
+  bool ssl_grpc_use_ssl = false;
+  std::string ssl_grpc_root_certifications_file = "";
+  std::string ssl_grpc_private_key_file = "";
+  std::string ssl_grpc_certificate_chain_file = "";
+  long ssl_https_verify_peer = 1L;
+  long ssl_https_verify_host = 2L;
+  std::string ssl_https_ca_certificates_file = "";
+  std::string ssl_https_client_certificate_file = "";
+  std::string ssl_https_client_certificate_type = "";
+  std::string ssl_https_private_key_file = "";
+  std::string ssl_https_private_key_type = "";
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

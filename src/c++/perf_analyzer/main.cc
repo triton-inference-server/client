@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -267,6 +268,17 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-i <Protocol used to communicate with inference service>"
             << std::endl;
+  std::cerr << "\t--ssl-grpc-use-ssl <bool>" << std::endl;
+  std::cerr << "\t--ssl-grpc-root-certifications-file <path>" << std::endl;
+  std::cerr << "\t--ssl-grpc-private-key-file <path>" << std::endl;
+  std::cerr << "\t--ssl-grpc-certificate-chain-file <path>" << std::endl;
+  std::cerr << "\t--ssl-https-verify-peer <number>" << std::endl;
+  std::cerr << "\t--ssl-https-verify-host <number>" << std::endl;
+  std::cerr << "\t--ssl-https-ca-certificates-file <path>" << std::endl;
+  std::cerr << "\t--ssl-https-client-certificate-file <path>" << std::endl;
+  std::cerr << "\t--ssl-https-client-certificate-type <string>" << std::endl;
+  std::cerr << "\t--ssl-https-private-key-file <path>" << std::endl;
+  std::cerr << "\t--ssl-https-private-key-type <string>" << std::endl;
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
   std::cerr << "\t-f <filename for storing report in csv format>" << std::endl;
@@ -589,19 +601,94 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl;
   std::cerr << std::endl;
   std::cerr << "III. SERVER DETAILS: " << std::endl;
-  std::cerr << std::setw(9) << std::left << " -u: "
+  std::cerr << std::setw(38) << std::left << " -u: "
             << FormatMessage(
                    "Specify URL to the server. When using triton default is "
                    "\"localhost:8000\" if using HTTP and \"localhost:8001\" "
                    "if using gRPC. When using tfserving default is "
                    "\"localhost:8500\". ",
-                   9)
+                   38)
             << std::endl;
-  std::cerr << std::setw(9) << std::left << " -i: "
+  std::cerr << std::setw(38) << std::left << " -i: "
             << FormatMessage(
                    "The communication protocol to use. The available protocols "
                    "are gRPC and HTTP. Default is HTTP.",
-                   9)
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-grpc-use-ssl: "
+            << FormatMessage(
+                   "WIP feature, does not work. Bool (true|false) for whether "
+                   "to use encrypted channel to the server. Default false.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-grpc-root-certifications-file: "
+            << FormatMessage(
+                   "WIP feature, does not work. Path to file containing the "
+                   "PEM encoding of the server root certificates.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-grpc-private-key-file: "
+            << FormatMessage(
+                   "WIP feature, does not work. Path to file containing the "
+                   "PEM encoding of the client's private key.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-grpc-certificate-chain-file: "
+            << FormatMessage(
+                   "WIP feature, does not work. Path to file containing the "
+                   "PEM encoding of the client's certificate chain.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-https-verify-peer: "
+            << FormatMessage(
+                   "WIP feature, does not work. Number (0|1) to verify the "
+                   "peer's SSL certificate. See "
+                   "https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html for "
+                   "the meaning of each value. Default is 1.",
+                   38)
+            << std::endl;
+  std::cerr
+      << std::setw(38) << std::left << " --ssl-https-verify-host: "
+      << FormatMessage(
+             "WIP feature, does not work. Number (0|1|2) to verify the "
+             "certificate's name against host. "
+             "See https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html for "
+             "the meaning of each value. Default is 2.",
+             38)
+      << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-https-ca-certificates-file: "
+            << FormatMessage(
+                   "WIP feature, does not work. Path to Certificate Authority "
+                   "(CA) bundle.",
+                   38)
+            << std::endl;
+  std::cerr
+      << std::setw(38) << std::left << " --ssl-https-client-certificate-file: "
+      << FormatMessage(
+             "WIP feature, does not work. Path to the SSL client certificate.",
+             38)
+      << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-https-client-certificate-type: "
+            << FormatMessage(
+                   "WIP feature, does not work. Type (PEM|DER) of the client "
+                   "SSL certificate. Default is PEM.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-file: "
+            << FormatMessage(
+                   "WIP feature, does not work. Path to the private keyfile "
+                   "for TLS and SSL client cert.",
+                   38)
+            << std::endl;
+  std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-type: "
+            << FormatMessage(
+                   "WIP feature, does not work. Type (PEM|DER) of the private "
+                   "key file. Default is PEM.",
+                   38)
             << std::endl;
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
@@ -721,6 +808,9 @@ main(int argc, char** argv)
   std::string model_repository_path;
   std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
 
+  // gRPC and HTTP SSL options
+  struct cb::SslOptionsBase ssl_options;
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -754,6 +844,17 @@ main(int argc, char** argv)
       {"triton-server-directory", 1, 0, 28},
       {"model-repository", 1, 0, 29},
       {"sequence-id-range", 1, 0, 30},
+      {"ssl-grpc-use-ssl", 1, 0, 31},
+      {"ssl-grpc-root-certifications-file", 1, 0, 32},
+      {"ssl-grpc-private-key-file", 1, 0, 33},
+      {"ssl-grpc-certificate-chain-file", 1, 0, 34},
+      {"ssl-https-verify-peer", 1, 0, 35},
+      {"ssl-https-verify-host", 1, 0, 36},
+      {"ssl-https-ca-certificates-file", 1, 0, 37},
+      {"ssl-https-client-certificate-file", 1, 0, 38},
+      {"ssl-https-client-certificate-type", 1, 0, 39},
+      {"ssl-https-private-key-file", 1, 0, 40},
+      {"ssl-https-private-key-type", 1, 0, 41},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1050,6 +1151,111 @@ main(int argc, char** argv)
           Usage(
               argv,
               "failed to parse concurrency range: " + std::string(optarg));
+        }
+        break;
+      }
+      case 31: {
+        std::string arg = optarg;
+        std::transform(
+            arg.begin(), arg.end(), arg.begin(),
+            [](unsigned char c) { return std::tolower(c); });
+        if (arg == "true") {
+          ssl_options.ssl_grpc_use_ssl = true;
+        } else if (arg == "false") {
+          ssl_options.ssl_grpc_use_ssl = false;
+        } else {
+          Usage(argv, "--ssl-grpc-use-ssl must be 'true' or 'false'");
+        }
+        break;
+      }
+      case 32: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_grpc_root_certifications_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-grpc-root-certifications-file must be a valid file path");
+        }
+        break;
+      }
+      case 33: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_grpc_private_key_file = optarg;
+        } else {
+          Usage(argv, "--ssl-grpc-private-key-file must be a valid file path");
+        }
+        break;
+      }
+      case 34: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_grpc_certificate_chain_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-grpc-certificate-chain-file must be a valid file path");
+        }
+        break;
+      }
+      case 35: {
+        if (std::atol(optarg) == 0 || std::atol(optarg) == 1) {
+          ssl_options.ssl_https_verify_peer = std::atol(optarg);
+        } else {
+          Usage(argv, "--ssl-https-verify-peer must be 0 or 1");
+        }
+        break;
+      }
+      case 36: {
+        if (std::atol(optarg) == 0 || std::atol(optarg) == 1 ||
+            std::atol(optarg) == 2) {
+          ssl_options.ssl_https_verify_host = std::atol(optarg);
+        } else {
+          Usage(argv, "--ssl-https-verify-host must be 0, 1, or 2");
+        }
+        break;
+      }
+      case 37: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_https_ca_certificates_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-https-ca-certificates-file must be a valid file path");
+        }
+        break;
+      }
+      case 38: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_https_client_certificate_file = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-https-client-certificate-file must be a valid file path");
+        }
+        break;
+      }
+      case 39: {
+        if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
+          ssl_options.ssl_https_client_certificate_type = optarg;
+        } else {
+          Usage(
+              argv,
+              "--ssl-https-client-certificate-type must be 'PEM' or 'DER'");
+        }
+        break;
+      }
+      case 40: {
+        if (pa::IsFile(optarg)) {
+          ssl_options.ssl_https_private_key_file = optarg;
+        } else {
+          Usage(argv, "--ssl-https-private-key-file must be a valid file path");
+        }
+        break;
+      }
+      case 41: {
+        if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
+          ssl_options.ssl_https_private_key_type = optarg;
+        } else {
+          Usage(argv, "--ssl-https-private-key-type must be 'PEM' or 'DER'");
         }
         break;
       }
