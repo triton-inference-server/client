@@ -95,7 +95,7 @@ BackendToGrpcType(const GrpcCompressionAlgorithm compression_algorithm)
 Error
 ClientBackendFactory::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
-    const struct SslOptionsBase ssl_options,
+    const SslOptionsBase& ssl_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
@@ -125,7 +125,7 @@ ClientBackendFactory::CreateClientBackend(
 Error
 ClientBackend::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
-    const struct SslOptionsBase ssl_options,
+    const SslOptionsBase& ssl_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,

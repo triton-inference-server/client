@@ -617,33 +617,33 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-grpc-use-ssl: "
             << FormatMessage(
-                   "WIP feature, does not work. Bool (true|false) for whether "
+                   "Bool (true|false) for whether "
                    "to use encrypted channel to the server. Default false.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-grpc-root-certifications-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the server root certificates.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-grpc-private-key-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the client's private key.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-grpc-certificate-chain-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the client's certificate chain.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-verify-peer: "
             << FormatMessage(
-                   "WIP feature, does not work. Number (0|1) to verify the "
+                   "Number (0|1) to verify the "
                    "peer's SSL certificate. See "
                    "https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html for "
                    "the meaning of each value. Default is 1.",
@@ -652,7 +652,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr
       << std::setw(38) << std::left << " --ssl-https-verify-host: "
       << FormatMessage(
-             "WIP feature, does not work. Number (0|1|2) to verify the "
+             "Number (0|1|2) to verify the "
              "certificate's name against host. "
              "See https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html for "
              "the meaning of each value. Default is 2.",
@@ -661,32 +661,30 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << std::setw(38) << std::left
             << " --ssl-https-ca-certificates-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to Certificate Authority "
+                   "Path to Certificate Authority "
                    "(CA) bundle.",
                    38)
             << std::endl;
-  std::cerr
-      << std::setw(38) << std::left << " --ssl-https-client-certificate-file: "
-      << FormatMessage(
-             "WIP feature, does not work. Path to the SSL client certificate.",
-             38)
-      << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-https-client-certificate-file: "
+            << FormatMessage("Path to the SSL client certificate.", 38)
+            << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-https-client-certificate-type: "
             << FormatMessage(
-                   "WIP feature, does not work. Type (PEM|DER) of the client "
+                   "Type (PEM|DER) of the client "
                    "SSL certificate. Default is PEM.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to the private keyfile "
+                   "Path to the private keyfile "
                    "for TLS and SSL client cert.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-type: "
             << FormatMessage(
-                   "WIP feature, does not work. Type (PEM|DER) of the private "
+                   "Type (PEM|DER) of the private "
                    "key file. Default is PEM.",
                    38)
             << std::endl;
@@ -809,7 +807,7 @@ main(int argc, char** argv)
   std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
 
   // gRPC and HTTP SSL options
-  struct cb::SslOptionsBase ssl_options;
+  cb::SslOptionsBase ssl_options;
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {

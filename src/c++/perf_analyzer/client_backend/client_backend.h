@@ -232,7 +232,7 @@ class ClientBackendFactory {
   /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const struct SslOptionsBase ssl_options,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -246,7 +246,7 @@ class ClientBackendFactory {
  private:
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const struct SslOptionsBase ssl_options,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -263,7 +263,7 @@ class ClientBackendFactory {
   const BackendKind kind_;
   const std::string url_;
   const ProtocolType protocol_;
-  const struct SslOptionsBase ssl_options_;
+  const SslOptionsBase& ssl_options_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
   std::string triton_server_path;
@@ -279,7 +279,7 @@ class ClientBackend {
  public:
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const struct SslOptionsBase ssl_options,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,
