@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -64,6 +65,7 @@ class TritonClientBackend : public ClientBackend {
   /// server.
   /// \param url The inference server url and port.
   /// \param protocol The protocol type used.
+  /// \param ssl_options The SSL options used with client backend.
   /// \param http_headers Map of HTTP headers. The map key/value indicates
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
@@ -72,6 +74,7 @@ class TritonClientBackend : public ClientBackend {
   /// \return Error object indicating success or failure.
   static Error Create(
       const std::string& url, const ProtocolType protocol,
+      const struct SslOptionsBase ssl_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);
@@ -175,6 +178,10 @@ class TritonClientBackend : public ClientBackend {
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
+  static struct triton::client::HttpSslOptions ParseHttpSslOptions(
+      const struct triton::perfanalyzer::clientbackend::SslOptionsBase);
+  static std::pair<bool, struct triton::client::SslOptions> ParseGrpcSslOptions(
+      const struct triton::perfanalyzer::clientbackend::SslOptionsBase);
 
   /// Union to represent the underlying triton client belonging to one of
   /// the protocols

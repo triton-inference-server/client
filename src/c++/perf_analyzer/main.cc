@@ -1519,7 +1519,7 @@ main(int argc, char** argv)
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
-          kind, url, protocol, compression_algorithm, http_headers,
+          kind, url, protocol, ssl_options, compression_algorithm, http_headers,
           triton_server_path, model_repository_path, memory_type, extra_verbose,
           &factory),
       "failed to create client factory");

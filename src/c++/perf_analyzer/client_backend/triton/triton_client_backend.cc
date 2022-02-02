@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -35,6 +36,7 @@ namespace tritonremote {
 Error
 TritonClientBackend::Create(
     const std::string& url, const ProtocolType protocol,
+    const struct SslOptionsBase ssl_options,
     const grpc_compression_algorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     std::unique_ptr<ClientBackend>* client_backend)
@@ -42,11 +44,20 @@ TritonClientBackend::Create(
   std::unique_ptr<TritonClientBackend> triton_client_backend(
       new TritonClientBackend(protocol, compression_algorithm, http_headers));
   if (protocol == ProtocolType::HTTP) {
+    struct triton::client::HttpSslOptions http_ssl_options =
+        ParseHttpSslOptions(ssl_options);
     RETURN_IF_TRITON_ERROR(tc::InferenceServerHttpClient::Create(
-        &(triton_client_backend->client_.http_client_), url, verbose));
+        &(triton_client_backend->client_.http_client_), url, verbose,
+        http_ssl_options));
   } else {
+    std::pair<bool, struct triton::client::SslOptions> grpc_ssl_options_pair =
+        ParseGrpcSslOptions(ssl_options);
+    bool use_ssl = grpc_ssl_options_pair.first;
+    struct triton::client::SslOptions grpc_ssl_options =
+        grpc_ssl_options_pair.second;
     RETURN_IF_TRITON_ERROR(tc::InferenceServerGrpcClient::Create(
-        &(triton_client_backend->client_.grpc_client_), url, verbose));
+        &(triton_client_backend->client_.grpc_client_), url, verbose, use_ssl,
+        grpc_ssl_options));
   }
 
   *client_backend = std::move(triton_client_backend);
@@ -498,6 +509,54 @@ TritonClientBackend::ParseInferStat(
       triton_infer_stat.cumulative_send_time_ns;
   infer_stat->cumulative_receive_time_ns =
       triton_infer_stat.cumulative_receive_time_ns;
+}
+
+struct triton::client::HttpSslOptions
+TritonClientBackend::ParseHttpSslOptions(
+    const struct triton::perfanalyzer::clientbackend::SslOptionsBase
+        ssl_options)
+{
+  struct triton::client::HttpSslOptions http_ssl_options;
+
+  http_ssl_options.verify_peer = ssl_options.ssl_https_verify_peer;
+  http_ssl_options.verify_host = ssl_options.ssl_https_verify_host;
+  http_ssl_options.ca_info = ssl_options.ssl_https_ca_certificates_file;
+  if (ssl_options.ssl_https_client_certificate_type == "PEM") {
+    http_ssl_options.cert_type =
+        triton::client::HttpSslOptions::CERTTYPE::CERT_PEM;
+  } else if (ssl_options.ssl_https_client_certificate_type == "DER") {
+    http_ssl_options.cert_type =
+        triton::client::HttpSslOptions::CERTTYPE::CERT_DER;
+  }
+  http_ssl_options.cert = ssl_options.ssl_https_client_certificate_file;
+  if (ssl_options.ssl_https_private_key_type == "PEM") {
+    http_ssl_options.key_type =
+        triton::client::HttpSslOptions::KEYTYPE::KEY_PEM;
+  } else if (ssl_options.ssl_https_private_key_type == "DER") {
+    http_ssl_options.key_type =
+        triton::client::HttpSslOptions::KEYTYPE::KEY_DER;
+  }
+  http_ssl_options.key = ssl_options.ssl_https_private_key_file;
+
+  return http_ssl_options;
+}
+
+std::pair<bool, struct triton::client::SslOptions>
+TritonClientBackend::ParseGrpcSslOptions(
+    const struct triton::perfanalyzer::clientbackend::SslOptionsBase
+        ssl_options)
+{
+  bool use_ssl = ssl_options.ssl_grpc_use_ssl;
+
+  struct triton::client::SslOptions grpc_ssl_options;
+  grpc_ssl_options.root_certificates =
+      ssl_options.ssl_grpc_root_certifications_file;
+  grpc_ssl_options.private_key = ssl_options.ssl_grpc_private_key_file;
+  grpc_ssl_options.certificate_chain =
+      ssl_options.ssl_grpc_certificate_chain_file;
+
+  return std::pair<bool, struct triton::client::SslOptions>{
+      use_ssl, grpc_ssl_options};
 }
 
 //==============================================================================

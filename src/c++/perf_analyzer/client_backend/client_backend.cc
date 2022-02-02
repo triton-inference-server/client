@@ -1,4 +1,5 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
+// reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -94,6 +95,7 @@ BackendToGrpcType(const GrpcCompressionAlgorithm compression_algorithm)
 Error
 ClientBackendFactory::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
+    const struct SslOptionsBase ssl_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
@@ -101,7 +103,7 @@ ClientBackendFactory::Create(
     const bool verbose, std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
-      kind, url, protocol, compression_algorithm, http_headers,
+      kind, url, protocol, ssl_options, compression_algorithm, http_headers,
       triton_server_path, model_repository_path, memory_type, verbose));
   return Error::Success;
 }
@@ -111,9 +113,9 @@ ClientBackendFactory::CreateClientBackend(
     std::unique_ptr<ClientBackend>* client_backend)
 {
   RETURN_IF_CB_ERROR(ClientBackend::Create(
-      kind_, url_, protocol_, compression_algorithm_, http_headers_, verbose_,
-      triton_server_path, model_repository_path_, memory_type_,
-      client_backend));
+      kind_, url_, protocol_, ssl_options_, compression_algorithm_,
+      http_headers_, verbose_, triton_server_path, model_repository_path_,
+      memory_type_, client_backend));
   return Error::Success;
 }
 
@@ -123,6 +125,7 @@ ClientBackendFactory::CreateClientBackend(
 Error
 ClientBackend::Create(
     const BackendKind kind, const std::string& url, const ProtocolType protocol,
+    const struct SslOptionsBase ssl_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,
@@ -132,8 +135,8 @@ ClientBackend::Create(
   std::unique_ptr<ClientBackend> local_backend;
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
-        url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
-        verbose, &local_backend));
+        url, protocol, ssl_options, BackendToGrpcType(compression_algorithm),
+        http_headers, verbose, &local_backend));
   } else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
