@@ -1,5 +1,4 @@
-// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
-// reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -190,6 +189,19 @@ struct InferOptions {
   bool sequence_end_;
 };
 
+struct SslOptionsBase {
+  bool ssl_grpc_use_ssl = false;
+  std::string ssl_grpc_root_certifications_file = "";
+  std::string ssl_grpc_private_key_file = "";
+  std::string ssl_grpc_certificate_chain_file = "";
+  long ssl_https_verify_peer = 1L;
+  long ssl_https_verify_host = 2L;
+  std::string ssl_https_ca_certificates_file = "";
+  std::string ssl_https_client_certificate_file = "";
+  std::string ssl_https_client_certificate_type = "";
+  std::string ssl_https_private_key_file = "";
+  std::string ssl_https_private_key_type = "";
+};
 
 //
 // The object factory to create client backends to communicate with the
@@ -201,6 +213,7 @@ class ClientBackendFactory {
   /// \param kind The kind of client backend to create.
   /// \param url The inference server url and port.
   /// \param protocol The protocol type used.
+  /// \param ssl_options The SSL options used with client backend.
   /// \param compression_algorithm The compression algorithm to be used
   /// on the grpc requests.
   /// \param http_headers Map of HTTP headers. The map key/value
@@ -218,7 +231,7 @@ class ClientBackendFactory {
   /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -232,13 +245,13 @@ class ClientBackendFactory {
  private:
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
       const bool verbose)
-      : kind_(kind), url_(url), protocol_(protocol),
+      : kind_(kind), url_(url), protocol_(protocol), ssl_options_(ssl_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path),
@@ -249,6 +262,7 @@ class ClientBackendFactory {
   const BackendKind kind_;
   const std::string url_;
   const ProtocolType protocol_;
+  const SslOptionsBase& ssl_options_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
   std::string triton_server_path;
@@ -264,7 +278,7 @@ class ClientBackend {
  public:
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol,
+      const ProtocolType protocol, const SslOptionsBase& ssl_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,
@@ -513,20 +527,6 @@ class InferResult {
   virtual Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
-};
-
-struct SslOptionsBase {
-  bool ssl_grpc_use_ssl = false;
-  std::string ssl_grpc_root_certifications_file = "";
-  std::string ssl_grpc_private_key_file = "";
-  std::string ssl_grpc_certificate_chain_file = "";
-  long ssl_https_verify_peer = 1L;
-  long ssl_https_verify_host = 2L;
-  std::string ssl_https_ca_certificates_file = "";
-  std::string ssl_https_client_certificate_file = "";
-  std::string ssl_https_client_certificate_type = "";
-  std::string ssl_https_private_key_file = "";
-  std::string ssl_https_private_key_type = "";
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

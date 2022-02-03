@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -64,6 +64,7 @@ class TritonClientBackend : public ClientBackend {
   /// server.
   /// \param url The inference server url and port.
   /// \param protocol The protocol type used.
+  /// \param ssl_options The SSL options used with client backend.
   /// \param http_headers Map of HTTP headers. The map key/value indicates
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
@@ -72,6 +73,7 @@ class TritonClientBackend : public ClientBackend {
   /// \return Error object indicating success or failure.
   static Error Create(
       const std::string& url, const ProtocolType protocol,
+      const SslOptionsBase& ssl_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
       std::unique_ptr<ClientBackend>* client_backend);

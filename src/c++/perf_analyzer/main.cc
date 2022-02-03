@@ -1,5 +1,4 @@
-// Copyright (c) 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights
-// reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -617,33 +616,33 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-grpc-use-ssl: "
             << FormatMessage(
-                   "WIP feature, does not work. Bool (true|false) for whether "
+                   "Bool (true|false) for whether "
                    "to use encrypted channel to the server. Default false.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-grpc-root-certifications-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the server root certificates.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-grpc-private-key-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the client's private key.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-grpc-certificate-chain-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to file containing the "
+                   "Path to file containing the "
                    "PEM encoding of the client's certificate chain.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-verify-peer: "
             << FormatMessage(
-                   "WIP feature, does not work. Number (0|1) to verify the "
+                   "Number (0|1) to verify the "
                    "peer's SSL certificate. See "
                    "https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYPEER.html for "
                    "the meaning of each value. Default is 1.",
@@ -652,7 +651,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr
       << std::setw(38) << std::left << " --ssl-https-verify-host: "
       << FormatMessage(
-             "WIP feature, does not work. Number (0|1|2) to verify the "
+             "Number (0|1|2) to verify the "
              "certificate's name against host. "
              "See https://curl.se/libcurl/c/CURLOPT_SSL_VERIFYHOST.html for "
              "the meaning of each value. Default is 2.",
@@ -661,32 +660,30 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << std::setw(38) << std::left
             << " --ssl-https-ca-certificates-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to Certificate Authority "
+                   "Path to Certificate Authority "
                    "(CA) bundle.",
                    38)
             << std::endl;
-  std::cerr
-      << std::setw(38) << std::left << " --ssl-https-client-certificate-file: "
-      << FormatMessage(
-             "WIP feature, does not work. Path to the SSL client certificate.",
-             38)
-      << std::endl;
+  std::cerr << std::setw(38) << std::left
+            << " --ssl-https-client-certificate-file: "
+            << FormatMessage("Path to the SSL client certificate.", 38)
+            << std::endl;
   std::cerr << std::setw(38) << std::left
             << " --ssl-https-client-certificate-type: "
             << FormatMessage(
-                   "WIP feature, does not work. Type (PEM|DER) of the client "
+                   "Type (PEM|DER) of the client "
                    "SSL certificate. Default is PEM.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-file: "
             << FormatMessage(
-                   "WIP feature, does not work. Path to the private keyfile "
+                   "Path to the private keyfile "
                    "for TLS and SSL client cert.",
                    38)
             << std::endl;
   std::cerr << std::setw(38) << std::left << " --ssl-https-private-key-type: "
             << FormatMessage(
-                   "WIP feature, does not work. Type (PEM|DER) of the private "
+                   "Type (PEM|DER) of the private "
                    "key file. Default is PEM.",
                    38)
             << std::endl;
@@ -809,7 +806,7 @@ main(int argc, char** argv)
   std::string memory_type = DEFAULT_MEMORY_TYPE;  // currently not used
 
   // gRPC and HTTP SSL options
-  struct cb::SslOptionsBase ssl_options;
+  cb::SslOptionsBase ssl_options;
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
@@ -844,7 +841,7 @@ main(int argc, char** argv)
       {"triton-server-directory", 1, 0, 28},
       {"model-repository", 1, 0, 29},
       {"sequence-id-range", 1, 0, 30},
-      {"ssl-grpc-use-ssl", 1, 0, 31},
+      {"ssl-grpc-use-ssl", 0, 0, 31},
       {"ssl-grpc-root-certifications-file", 1, 0, 32},
       {"ssl-grpc-private-key-file", 1, 0, 33},
       {"ssl-grpc-certificate-chain-file", 1, 0, 34},
@@ -1155,17 +1152,7 @@ main(int argc, char** argv)
         break;
       }
       case 31: {
-        std::string arg = optarg;
-        std::transform(
-            arg.begin(), arg.end(), arg.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        if (arg == "true") {
-          ssl_options.ssl_grpc_use_ssl = true;
-        } else if (arg == "false") {
-          ssl_options.ssl_grpc_use_ssl = false;
-        } else {
-          Usage(argv, "--ssl-grpc-use-ssl must be 'true' or 'false'");
-        }
+        ssl_options.ssl_grpc_use_ssl = true;
         break;
       }
       case 32: {
@@ -1519,7 +1506,7 @@ main(int argc, char** argv)
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
-          kind, url, protocol, compression_algorithm, http_headers,
+          kind, url, protocol, ssl_options, compression_algorithm, http_headers,
           triton_server_path, model_repository_path, memory_type, extra_verbose,
           &factory),
       "failed to create client factory");
