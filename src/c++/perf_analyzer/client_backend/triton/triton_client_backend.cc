@@ -29,14 +29,58 @@
 
 #include "json_utils.h"
 
+namespace {
+
+triton::client::HttpSslOptions
+ParseHttpSslOptions(
+    const triton::perfanalyzer::clientbackend::SslOptionsBase& ssl_options)
+{
+  triton::client::HttpSslOptions http_ssl_options;
+
+  http_ssl_options.verify_peer = ssl_options.ssl_https_verify_peer;
+  http_ssl_options.verify_host = ssl_options.ssl_https_verify_host;
+  http_ssl_options.ca_info = ssl_options.ssl_https_ca_certificates_file;
+  if (ssl_options.ssl_https_client_certificate_type == "PEM") {
+    http_ssl_options.cert_type =
+        triton::client::HttpSslOptions::CERTTYPE::CERT_PEM;
+  } else if (ssl_options.ssl_https_client_certificate_type == "DER") {
+    http_ssl_options.cert_type =
+        triton::client::HttpSslOptions::CERTTYPE::CERT_DER;
+  }
+  http_ssl_options.cert = ssl_options.ssl_https_client_certificate_file;
+  if (ssl_options.ssl_https_private_key_type == "PEM") {
+    http_ssl_options.key_type =
+        triton::client::HttpSslOptions::KEYTYPE::KEY_PEM;
+  } else if (ssl_options.ssl_https_private_key_type == "DER") {
+    http_ssl_options.key_type =
+        triton::client::HttpSslOptions::KEYTYPE::KEY_DER;
+  }
+  http_ssl_options.key = ssl_options.ssl_https_private_key_file;
+
+  return http_ssl_options;
+}
+
+std::pair<bool, triton::client::SslOptions>
+ParseGrpcSslOptions(
+    const triton::perfanalyzer::clientbackend::SslOptionsBase& ssl_options)
+{
+  bool use_ssl = ssl_options.ssl_grpc_use_ssl;
+
+  triton::client::SslOptions grpc_ssl_options;
+  grpc_ssl_options.root_certificates =
+      ssl_options.ssl_grpc_root_certifications_file;
+  grpc_ssl_options.private_key = ssl_options.ssl_grpc_private_key_file;
+  grpc_ssl_options.certificate_chain =
+      ssl_options.ssl_grpc_certificate_chain_file;
+
+  return std::pair<bool, triton::client::SslOptions>{use_ssl, grpc_ssl_options};
+}
+
+}  // namespace
+
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritonremote {
 //==============================================================================
-
-struct triton::client::HttpSslOptions ParseHttpSslOptions(
-    const struct triton::perfanalyzer::clientbackend::SslOptionsBase&);
-std::pair<bool, struct triton::client::SslOptions> ParseGrpcSslOptions(
-    const struct triton::perfanalyzer::clientbackend::SslOptionsBase&);
 
 Error
 TritonClientBackend::Create(
@@ -49,17 +93,16 @@ TritonClientBackend::Create(
   std::unique_ptr<TritonClientBackend> triton_client_backend(
       new TritonClientBackend(protocol, compression_algorithm, http_headers));
   if (protocol == ProtocolType::HTTP) {
-    struct triton::client::HttpSslOptions http_ssl_options =
+    triton::client::HttpSslOptions http_ssl_options =
         ParseHttpSslOptions(ssl_options);
     RETURN_IF_TRITON_ERROR(tc::InferenceServerHttpClient::Create(
         &(triton_client_backend->client_.http_client_), url, verbose,
         http_ssl_options));
   } else {
-    std::pair<bool, struct triton::client::SslOptions> grpc_ssl_options_pair =
+    std::pair<bool, triton::client::SslOptions> grpc_ssl_options_pair =
         ParseGrpcSslOptions(ssl_options);
     bool use_ssl = grpc_ssl_options_pair.first;
-    struct triton::client::SslOptions grpc_ssl_options =
-        grpc_ssl_options_pair.second;
+    triton::client::SslOptions grpc_ssl_options = grpc_ssl_options_pair.second;
     RETURN_IF_TRITON_ERROR(tc::InferenceServerGrpcClient::Create(
         &(triton_client_backend->client_.grpc_client_), url, verbose, use_ssl,
         grpc_ssl_options));
@@ -639,54 +682,6 @@ TritonInferResult::RawData(
 {
   RETURN_IF_TRITON_ERROR(result_->RawData(output_name, buf, byte_size));
   return Error::Success;
-}
-
-struct triton::client::HttpSslOptions
-ParseHttpSslOptions(
-    const struct triton::perfanalyzer::clientbackend::SslOptionsBase&
-        ssl_options)
-{
-  struct triton::client::HttpSslOptions http_ssl_options;
-
-  http_ssl_options.verify_peer = ssl_options.ssl_https_verify_peer;
-  http_ssl_options.verify_host = ssl_options.ssl_https_verify_host;
-  http_ssl_options.ca_info = ssl_options.ssl_https_ca_certificates_file;
-  if (ssl_options.ssl_https_client_certificate_type == "PEM") {
-    http_ssl_options.cert_type =
-        triton::client::HttpSslOptions::CERTTYPE::CERT_PEM;
-  } else if (ssl_options.ssl_https_client_certificate_type == "DER") {
-    http_ssl_options.cert_type =
-        triton::client::HttpSslOptions::CERTTYPE::CERT_DER;
-  }
-  http_ssl_options.cert = ssl_options.ssl_https_client_certificate_file;
-  if (ssl_options.ssl_https_private_key_type == "PEM") {
-    http_ssl_options.key_type =
-        triton::client::HttpSslOptions::KEYTYPE::KEY_PEM;
-  } else if (ssl_options.ssl_https_private_key_type == "DER") {
-    http_ssl_options.key_type =
-        triton::client::HttpSslOptions::KEYTYPE::KEY_DER;
-  }
-  http_ssl_options.key = ssl_options.ssl_https_private_key_file;
-
-  return http_ssl_options;
-}
-
-std::pair<bool, struct triton::client::SslOptions>
-ParseGrpcSslOptions(
-    const struct triton::perfanalyzer::clientbackend::SslOptionsBase&
-        ssl_options)
-{
-  bool use_ssl = ssl_options.ssl_grpc_use_ssl;
-
-  struct triton::client::SslOptions grpc_ssl_options;
-  grpc_ssl_options.root_certificates =
-      ssl_options.ssl_grpc_root_certifications_file;
-  grpc_ssl_options.private_key = ssl_options.ssl_grpc_private_key_file;
-  grpc_ssl_options.certificate_chain =
-      ssl_options.ssl_grpc_certificate_chain_file;
-
-  return std::pair<bool, struct triton::client::SslOptions>{
-      use_ssl, grpc_ssl_options};
 }
 
 //==============================================================================
