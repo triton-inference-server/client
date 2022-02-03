@@ -841,7 +841,7 @@ main(int argc, char** argv)
       {"triton-server-directory", 1, 0, 28},
       {"model-repository", 1, 0, 29},
       {"sequence-id-range", 1, 0, 30},
-      {"ssl-grpc-use-ssl", 1, 0, 31},
+      {"ssl-grpc-use-ssl", 0, 0, 31},
       {"ssl-grpc-root-certifications-file", 1, 0, 32},
       {"ssl-grpc-private-key-file", 1, 0, 33},
       {"ssl-grpc-certificate-chain-file", 1, 0, 34},
@@ -1152,17 +1152,7 @@ main(int argc, char** argv)
         break;
       }
       case 31: {
-        std::string arg = optarg;
-        std::transform(
-            arg.begin(), arg.end(), arg.begin(),
-            [](unsigned char c) { return std::tolower(c); });
-        if (arg == "true") {
-          ssl_options.ssl_grpc_use_ssl = true;
-        } else if (arg == "false") {
-          ssl_options.ssl_grpc_use_ssl = false;
-        } else {
-          Usage(argv, "--ssl-grpc-use-ssl must be 'true' or 'false'");
-        }
+        ssl_options.ssl_grpc_use_ssl = true;
         break;
       }
       case 32: {
