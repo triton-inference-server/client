@@ -1,4 +1,5 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+<!--
+# Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,11 +24,49 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
 
-protobuf>=3.5.0
-# There is memory leak in later Python GRPC (1.43.0 to be specific),
-# use known working version until the memory leak is resolved in the future
-# (see https://github.com/grpc/grpc/issues/28513)
-grpcio==1.41.0
-numpy>=1.19.1
-python-rapidjson>=0.9.1
+[![License](https://img.shields.io/badge/License-BSD3-lightgrey.svg)](https://opensource.org/licenses/BSD-3-Clause)
+
+# Example Javascript Client Using Generated GRPC API
+
+This sample script utilizes `@grpc/proto-loader` to dynamically load `.proto`
+files at runtime, and `@grpc/grpc-js` to implement gRPC functionality for Node.js.
+
+## Prerequisites
+
+Node 12+ is recommended
+
+## Usage
+Clone the [triton-inference-server/common](https://github.com/triton-inference-server/common/)
+repository:
+
+```
+git clone https://github.com/triton-inference-server/common/ -b <common-repo-branch> common-repo
+```
+
+\<common-repo-branch\> should be the version of the Triton server that you
+intend to use (e.g. r21.05).
+
+Copy __*.proto__ files to `./proto`
+
+```
+mkdir proto
+cp common-repo/protobuf/*.proto ./proto/
+```
+
+Install dependencies with
+
+```
+npm install
+```
+
+Finally, run with
+
+```
+node client.js <host> <port>
+```
+
+- `host` is the server where triton inference server is running. Default is `localhost`.
+- `port` is the grpc port of triton inference server. Default is `8001`.
+

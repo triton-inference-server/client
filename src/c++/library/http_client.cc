@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -196,6 +196,73 @@ CompressData(
   return Error::Success;
 }
 
+Error
+ParseSslCertType(
+    HttpSslOptions::CERTTYPE cert_type, std::string* curl_cert_type)
+{
+  switch (cert_type) {
+    case HttpSslOptions::CERTTYPE::CERT_PEM:
+      *curl_cert_type = "PEM";
+      break;
+    case HttpSslOptions::CERTTYPE::CERT_DER:
+      *curl_cert_type = "DER";
+      break;
+    default:
+      return Error(
+          "unsupported ssl certificate type encountered. Only PEM and DER are "
+          "supported.");
+  }
+  return Error::Success;
+}
+
+Error
+ParseSslKeyType(HttpSslOptions::KEYTYPE key_type, std::string* curl_key_type)
+{
+  switch (key_type) {
+    case HttpSslOptions::KEYTYPE::KEY_PEM:
+      *curl_key_type = "PEM";
+      break;
+    case HttpSslOptions::KEYTYPE::KEY_DER:
+      *curl_key_type = "DER";
+      break;
+    default:
+      return Error(
+          "unsupported ssl key type encountered. Only PEM and DER are "
+          "supported.");
+  }
+  return Error::Success;
+}
+
+Error
+SetSSLCurlOptions(CURL** curl, const HttpSslOptions& ssl_options)
+{
+  curl_easy_setopt(*curl, CURLOPT_SSL_VERIFYPEER, ssl_options.verify_peer);
+  curl_easy_setopt(*curl, CURLOPT_SSL_VERIFYHOST, ssl_options.verify_host);
+  if (!ssl_options.ca_info.empty()) {
+    curl_easy_setopt(*curl, CURLOPT_CAINFO, ssl_options.ca_info.c_str());
+  }
+  std::string curl_cert_type;
+  Error err = ParseSslCertType(ssl_options.cert_type, &curl_cert_type);
+  if (!err.IsOk()) {
+    return err;
+  }
+  curl_easy_setopt(*curl, CURLOPT_SSLCERTTYPE, curl_cert_type.c_str());
+  if (!ssl_options.cert.empty()) {
+    curl_easy_setopt(*curl, CURLOPT_SSLCERT, ssl_options.cert.c_str());
+  }
+  std::string curl_key_type;
+  err = ParseSslKeyType(ssl_options.key_type, &curl_key_type);
+  if (!err.IsOk()) {
+    return err;
+  }
+  curl_easy_setopt(*curl, CURLOPT_SSLKEYTYPE, curl_key_type.c_str());
+  if (!ssl_options.key.empty()) {
+    curl_easy_setopt(*curl, CURLOPT_SSLKEY, ssl_options.key.c_str());
+  }
+
+  return Error::Success;
+}
+
 }  // namespace
 
 //==============================================================================
@@ -314,18 +381,17 @@ HttpInferRequest::PrepareRequestJson(
     triton::common::TritonJson::Value parameters_json(
         *request_json, triton::common::TritonJson::ValueType::OBJECT);
     {
-      if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != ""))
-        {
-          if (options.sequence_id_ != 0) {
-            parameters_json.AddUInt("sequence_id", options.sequence_id_);
-          } else {
-            parameters_json.AddString(
-                "sequence_id", options.sequence_id_str_.c_str(),
-                options.sequence_id_str_.size());
-          }
-          parameters_json.AddBool("sequence_start", options.sequence_start_);
-          parameters_json.AddBool("sequence_end", options.sequence_end_);
+      if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
+        if (options.sequence_id_ != 0) {
+          parameters_json.AddUInt("sequence_id", options.sequence_id_);
+        } else {
+          parameters_json.AddString(
+              "sequence_id", options.sequence_id_str_.c_str(),
+              options.sequence_id_str_.size());
         }
+        parameters_json.AddBool("sequence_start", options.sequence_start_);
+        parameters_json.AddBool("sequence_end", options.sequence_end_);
+      }
       if (options.priority_ != 0) {
         parameters_json.AddUInt("priority", options.priority_);
       }
@@ -910,15 +976,17 @@ InferenceServerHttpClient::ParseResponseBody(
 Error
 InferenceServerHttpClient::Create(
     std::unique_ptr<InferenceServerHttpClient>* client,
-    const std::string& server_url, bool verbose)
+    const std::string& server_url, bool verbose,
+    const HttpSslOptions& ssl_options)
 {
-  client->reset(new InferenceServerHttpClient(server_url, verbose));
+  client->reset(
+      new InferenceServerHttpClient(server_url, verbose, ssl_options));
   return Error::Success;
 }
 
 InferenceServerHttpClient::InferenceServerHttpClient(
-    const std::string& url, bool verbose)
-    : InferenceServerClient(verbose), url_(url),
+    const std::string& url, bool verbose, const HttpSslOptions& ssl_options)
+    : InferenceServerClient(verbose), url_(url), ssl_options_(ssl_options),
       easy_handle_(reinterpret_cast<void*>(curl_easy_init())),
       multi_handle_(curl_multi_init())
 {
@@ -1529,6 +1597,11 @@ InferenceServerHttpClient::PreRunProcessing(
   const curl_off_t post_byte_size = http_request->total_input_byte_size_;
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, post_byte_size);
 
+  err = SetSSLCurlOptions(&curl, ssl_options_);
+  if (!err.IsOk()) {
+    return err;
+  }
+
   struct curl_slist* list = nullptr;
 
   std::string infer_hdr{std::string(kInferHeaderContentLengthHTTPHeader) +
@@ -1710,6 +1783,11 @@ InferenceServerHttpClient::Get(
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ResponseHandler);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
 
+  Error err = SetSSLCurlOptions(&curl, ssl_options_);
+  if (!err.IsOk()) {
+    return err;
+  }
+
   // Add user provided headers...
   struct curl_slist* header_list = nullptr;
   for (const auto& pr : headers) {
@@ -1782,6 +1860,11 @@ InferenceServerHttpClient::Post(
   response->reserve(1024);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ResponseHandler);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+
+  Error err = SetSSLCurlOptions(&curl, ssl_options_);
+  if (!err.IsOk()) {
+    return err;
+  }
 
   // Add user provided headers...
   struct curl_slist* header_list = nullptr;

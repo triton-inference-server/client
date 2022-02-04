@@ -1,0 +1,9 @@
+{
+  "name": "simple-grpc-tritonclient",
+  "version": "1.0.0",
+  "description": "Simple gRPC client for NVIDIA Triton in Node.js",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.4.4",
+    "@grpc/proto-loader": "^0.6.7"
+  }
+}

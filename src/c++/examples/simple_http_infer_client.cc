@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <getopt.h>
 #include <unistd.h>
 #include <iostream>
 #include <string>
@@ -33,7 +34,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -82,6 +83,11 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-i <none|gzip|deflate>" << std::endl;
   std::cerr << "\t-o <none|gzip|deflate>" << std::endl;
   std::cerr << std::endl;
+  std::cerr << "\t--verify-peer" << std::endl;
+  std::cerr << "\t--verify-host" << std::endl;
+  std::cerr << "\t--ca-certs" << std::endl;
+  std::cerr << "\t--cert-file" << std::endl;
+  std::cerr << "\t--key-file" << std::endl;
   std::cerr
       << "For -H, header must be 'Header:Value'. May be given multiple times."
       << std::endl
@@ -107,11 +113,37 @@ main(int argc, char** argv)
       tc::InferenceServerHttpClient::CompressionType::NONE;
   auto response_compression_algorithm =
       tc::InferenceServerHttpClient::CompressionType::NONE;
+  long verify_peer = 1;
+  long verify_host = 2;
+  std::string cacerts;
+  std::string certfile;
+  std::string keyfile;
+
+  // {name, has_arg, *flag, val}
+  static struct option long_options[] = {
+      {"verify-peer", 1, 0, 0}, {"verify-host", 1, 0, 1}, {"ca-certs", 1, 0, 2},
+      {"cert-file", 1, 0, 3},   {"key-file", 1, 0, 4},    {0, 0, 0, 0}};
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt(argc, argv, "vu:t:H:i:o:")) != -1) {
+  while ((opt = getopt_long(argc, argv, "vu:t:H:i:o:", long_options, NULL)) !=
+         -1) {
     switch (opt) {
+      case 0:
+        verify_peer = std::atoi(optarg);
+        break;
+      case 1:
+        verify_host = std::atoi(optarg);
+        break;
+      case 2:
+        cacerts = optarg;
+        break;
+      case 3:
+        certfile = optarg;
+        break;
+      case 4:
+        keyfile = optarg;
+        break;
       case 'v':
         verbose = true;
         break;
@@ -162,11 +194,17 @@ main(int argc, char** argv)
   std::string model_name = "simple";
   std::string model_version = "";
 
+  tc::HttpSslOptions ssl_options;
+  ssl_options.verify_peer = verify_peer;
+  ssl_options.verify_host = verify_host;
+  ssl_options.ca_info = cacerts;
+  ssl_options.cert = certfile;
+  ssl_options.key = keyfile;
   // Create a InferenceServerHttpClient instance to communicate with the
   // server using HTTP protocol.
   std::unique_ptr<tc::InferenceServerHttpClient> client;
   FAIL_IF_ERR(
-      tc::InferenceServerHttpClient::Create(&client, url, verbose),
+      tc::InferenceServerHttpClient::Create(&client, url, verbose, ssl_options),
       "unable to create http client");
 
   // Create the data for the two input tensors. Initialize the first

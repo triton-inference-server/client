@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -33,7 +33,8 @@ namespace triton { namespace client {
 Error
 ParseJson(rapidjson::Document* document, const std::string& json_str)
 {
-  document->Parse(json_str.c_str(), json_str.size());
+  const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
+  document->Parse<parseFlags>(json_str.c_str(), json_str.size());
   if (document->HasParseError()) {
     return Error(
         "failed to parse JSON at" + std::to_string(document->GetErrorOffset()) +
