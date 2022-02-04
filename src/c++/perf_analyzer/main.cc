@@ -1975,10 +1975,6 @@ main(int argc, char** argv)
                                        : 0.0;
               double infer_per_sec =
                   infer_ratio * status.client_stats.infer_per_sec;
-              // TODO: Inferences/second seems misleading if cache hits don't
-              //       count towards inference count.
-              //       Should it be called requests/sec instead? Don't want to
-              //       break scripts that parse this output if possible
               if (target_concurrency) {
                 ofs << status.concurrency << ",";
               } else {
