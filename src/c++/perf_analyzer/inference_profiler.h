@@ -62,14 +62,16 @@ enum MeasurementMode { TIME_WINDOWS = 0, COUNT_WINDOWS = 1 };
 // ensemble.
 struct EnsembleDurations {
   EnsembleDurations()
-      : total_queue_time_us(0), total_compute_time_us(0),
-        total_cache_hit_time_us(0)
+      : total_queue_time_avg_us(0), total_compute_time_avg_us(0),
+        total_cache_hit_time_avg_us(0), total_combined_cache_compute_time_avg_us(0)
   {
   }
-  uint64_t total_queue_time_us;
-  uint64_t total_compute_time_us;
+  uint64_t total_queue_time_avg_us;
+  uint64_t total_compute_time_avg_us;
   // Time spent on cache lookups/copies for cache hits
-  uint64_t total_cache_hit_time_us;
+  uint64_t total_cache_hit_time_avg_us;
+  // Combined average of cache and compute times
+  uint64_t total_combined_cache_compute_time_avg_us;
 };
 
 /// Holds the server-side inference statisitcs of the target model and its

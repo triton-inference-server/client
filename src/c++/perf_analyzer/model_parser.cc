@@ -204,7 +204,9 @@ ModelParser::InitTriton(
 
   // Check if model has response caching enabled
   const auto cache_itr = config.FindMember("response_cache");
-  if (cache_itr != config.MemberEnd()) {
+  // response_cache_enabled_ set globally for reporting purposes if any
+  // composing model has it enabled, so don't overwrite it if already set
+  if (cache_itr != config.MemberEnd() && !response_cache_enabled_) {
     response_cache_enabled_ = cache_itr->value["enable"].GetBool();
   }
 
@@ -352,6 +354,14 @@ ModelParser::GetEnsembleSchedulerType(
           &model_config, step["model_name"].GetString(), step_model_version));
       RETURN_IF_ERROR(GetEnsembleSchedulerType(
           model_config, step_model_version, backend, is_sequential));
+
+      // Check if composing model has response caching enabled.
+      const auto cache_itr = model_config.FindMember("response_cache");
+      // response_cache_enabled_ set globally for reporting purposes if any
+      // composing model has it enabled, so don't overwrite it if already set
+      if (cache_itr != model_config.MemberEnd() && !response_cache_enabled_) {
+        response_cache_enabled_ = cache_itr->value["enable"].GetBool();
+      }
     }
   }
 

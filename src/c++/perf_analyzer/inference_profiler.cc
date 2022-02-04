@@ -59,27 +59,30 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
       // Cache hit count covers cache hits, not related to compute times
       const uint64_t cache_hit_cnt = model_stats.second.cache_hit_count;
 
-      if (cnt != 0) {
-        result.total_queue_time_us +=
-            AverageDurationInUs(model_stats.second.queue_time_ns, cnt);
-        result.total_compute_time_us +=
-            AverageDurationInUs(
-                model_stats.second.compute_input_time_ns, infer_cnt) +
-            AverageDurationInUs(
-                model_stats.second.compute_infer_time_ns, infer_cnt) +
-            AverageDurationInUs(
-                model_stats.second.compute_output_time_ns, infer_cnt);
-        result.total_cache_hit_time_us += AverageDurationInUs(
-            model_stats.second.cache_hit_time_ns, cache_hit_cnt);
-      }
+      result.total_queue_time_avg_us +=
+          AverageDurationInUs(model_stats.second.queue_time_ns, cnt);
+      const uint64_t compute_time = model_stats.second.compute_input_time_ns +
+                                    model_stats.second.compute_infer_time_ns +
+                                    model_stats.second.compute_output_time_ns;
+      result.total_compute_time_avg_us +=
+          AverageDurationInUs(compute_time, infer_cnt);
+      result.total_cache_hit_time_avg_us += AverageDurationInUs(
+          model_stats.second.cache_hit_time_ns, cache_hit_cnt);
+      // Track combined cache/compute total avg for reporting latency with cache
+      // enabled
+      result.total_combined_cache_compute_time_avg_us += AverageDurationInUs(
+          compute_time + model_stats.second.cache_hit_time_ns,
+          infer_cnt + cache_hit_cnt);
     } else {
       const auto this_ensemble_duration =
           GetTotalEnsembleDurations(model_stats.second);
-      result.total_queue_time_us += this_ensemble_duration.total_queue_time_us;
-      result.total_compute_time_us +=
-          this_ensemble_duration.total_compute_time_us;
-      result.total_queue_time_us +=
-          this_ensemble_duration.total_cache_hit_time_us;
+      result.total_queue_time_avg_us += this_ensemble_duration.total_queue_time_avg_us;
+      result.total_compute_time_avg_us +=
+          this_ensemble_duration.total_compute_time_avg_us;
+      result.total_cache_hit_time_avg_us +=
+          this_ensemble_duration.total_cache_hit_time_avg_us;
+      result.total_combined_cache_compute_time_avg_us +=
+          this_ensemble_duration.total_combined_cache_compute_time_avg_us;
     }
   }
   return result;
@@ -125,6 +128,8 @@ ReportServerSideStats(
   }
   std::cout << ident << "  Successful request count: " << cnt << std::endl
             << ident << "  Avg request latency: " << cumm_avg_us << " usec";
+
+  // Non-ensemble model
   if (stats.composing_models_stat.empty()) {
     const uint64_t queue_avg_us = AverageDurationInUs(stats.queue_time_ns, cnt);
     const uint64_t compute_input_avg_us =
@@ -154,29 +159,20 @@ ReportServerSideStats(
                 << "queue " << queue_avg_us << " usec + "
                 << "cache hit/miss " << combined_cache_compute_avg_us
                 << " usec)" << std::endl;
-      const double cache_hit_ratio =
-          cnt > 0 ? (double)cache_hit_cnt / cnt : 0.0;
-      const double cache_miss_ratio = cnt > 0 ? (double)infer_cnt / cnt : 0.0;
-      std::cout << ident << ident << "  Average Cache Hit Latency: "
-                << cache_hit_ratio * (overhead_avg_us + queue_avg_us) +
-                       cache_hit_avg_us
-                << " usec (overhead " << cache_hit_ratio * overhead_avg_us
-                << " usec + "
-                << "queue " << cache_hit_ratio * queue_avg_us << " usec + "
-                << "cache hit " << cache_hit_avg_us << " usec)" << std::endl;
-      std::cout << ident << ident << "  Average Cache Miss Latency: "
-                << cache_miss_ratio * (overhead_avg_us + queue_avg_us) +
-                       compute_avg_us
-                << " usec (overhead " << cache_miss_ratio * overhead_avg_us
-                << " usec + "
-                << "queue " << cache_miss_ratio * queue_avg_us << " usec + "
-                << "compute " << compute_avg_us << " usec)" << std::endl;
-    } else {
-      if (cache_hit_avg_us > 0) {
-        std::cerr << "Response Cache is disabled for model ["
-                  << parser->ModelName()
-                  << "] but cache hit latency is non-zero." << std::endl;
-      }
+      std::cout << ident << ident
+                << "  Average Cache Hit Latency: " << cache_hit_avg_us
+                << " usec" << std::endl;
+      std::cout << ident << ident
+                << "  Average Compute Latency (cache miss only): "
+                << compute_avg_us << " usec "
+                << "(compute input " << compute_input_avg_us << " usec + "
+                << "compute infer " << compute_infer_avg_us << " usec + "
+                << "compute output " << compute_output_avg_us << " usec)"
+                << std::endl
+                << std::endl;
+    }
+    // Response Cache Disabled
+    else {
       std::cout << " (overhead "
                 << GetOverheadDuration(
                        cumm_avg_us, queue_avg_us, compute_avg_us)
@@ -187,23 +183,49 @@ ReportServerSideStats(
                 << "compute output " << compute_output_avg_us << " usec)"
                 << std::endl
                 << std::endl;
-    }
-  } else {
-    const auto ensemble_times = GetTotalEnsembleDurations(stats);
-    // TODO: Split for caching
-    std::cout << " (overhead "
-              << GetOverheadDuration(
-                     cumm_avg_us, ensemble_times.total_queue_time_us,
-                     ensemble_times.total_compute_time_us)
-              << " usec + "
-              << "queue " << ensemble_times.total_queue_time_us << " usec + "
-              << "compute " << ensemble_times.total_compute_time_us << " usec";
-    if (parser->ResponseCacheEnabled()) {
-      std::cout << " + cache hit " << ensemble_times.total_cache_hit_time_us
-                << " usec";
-    }
-    std::cout << ")" << std::endl << std::endl;
 
+      if (cache_hit_avg_us > 0) {
+        std::cerr << "Response Cache is disabled for model ["
+                  << parser->ModelName()
+                  << "] but cache hit latency is non-zero." << std::endl;
+      }
+    }
+  }
+  // Ensemble Model
+  else {
+    const auto ensemble_times = GetTotalEnsembleDurations(stats);
+    // Response Cache Enabled
+    if (parser->ResponseCacheEnabled()) {
+      const uint64_t overhead_avg_us = GetOverheadDuration(
+          cumm_avg_us, ensemble_times.total_queue_time_avg_us,
+          ensemble_times.total_combined_cache_compute_time_avg_us);
+      std::cout << " (overhead " << overhead_avg_us << " usec + "
+                << "queue " << ensemble_times.total_queue_time_avg_us << " usec + "
+                << "cache hit/miss "
+                << ensemble_times.total_combined_cache_compute_time_avg_us
+                << " usec)" << std::endl;
+      std::cout << ident << ident << "  Average Cache Hit Latency: "
+                << ensemble_times.total_cache_hit_time_avg_us << " usec"
+                << std::endl;
+      std::cout << ident << ident
+                << "  Average Compute Latency (cache miss only): "
+                << ensemble_times.total_compute_time_avg_us << " usec " << std::endl
+                << std::endl;
+    }
+    // Response Cache Disabled
+    else {
+      std::cout << " (overhead "
+                << GetOverheadDuration(
+                       cumm_avg_us, ensemble_times.total_queue_time_avg_us,
+                       ensemble_times.total_compute_time_avg_us)
+                << " usec + "
+                << "queue " << ensemble_times.total_queue_time_avg_us << " usec + "
+                << "compute " << ensemble_times.total_compute_time_avg_us
+                << " usec)" << std::endl
+                << std::endl;
+    }
+
+    // List out composing models of ensemble model
     std::cout << ident << "Composing models: " << std::endl;
     for (const auto& model_stats : stats.composing_models_stat) {
       const auto& model_identifier = model_stats.first;
