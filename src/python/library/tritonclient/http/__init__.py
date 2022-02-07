@@ -722,25 +722,25 @@ class InferenceServerClient:
 
         return json.loads(content)
 
-    def update_trace_setting(self,
-                             model_name="",
-                             setting={},
-                             headers=None,
-                             query_params=None):
-        """Update the trace setting for the specified model name, or global trace
-        setting if model name is not given. Returns the trace setting after
-        the update.
+    def update_trace_settings(self,
+                              model_name=None,
+                              settings={},
+                              headers=None,
+                              query_params=None):
+        """Update the trace settings for the specified model name, or
+        global trace settings if model name is not given.
+        Returns the trace settings after the update.
 
         Parameters
         ----------
         model_name : str
-            The name of the model to get trace setting. The default value is
-            an empty string, which means global trace setting will
-            be returned.
-        setting: dict
-            The new trace setting values. Only the setting listed will be
-            updated, and the value of None will clear the previously specified
-            setting value.
+            The name of the model to update trace settings. Specifying None or
+            empty string will update the global trace settings.
+            The default value is None.
+        settings: dict
+            The new trace setting values. Only the settings listed will be
+            updated. If a trace setting is listed in the dictionary with
+            a value of 'None', that setting will be cleared.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
@@ -751,22 +751,22 @@ class InferenceServerClient:
         Returns
         -------
         dict
-            The JSON dict holding the trace setting.
+            The JSON dict holding the updated trace settings.
 
         Raises
         ------
         InferenceServerException
-            If unable to get the trace setting.
+            If unable to update the trace settings.
 
         """
 
-        if model_name != "":
+        if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
             request_uri = "v2/trace/setting"
 
         response = self._post(request_uri=request_uri,
-                              request_body=json.dumps(setting),
+                              request_body=json.dumps(settings),
                               headers=headers,
                               query_params=query_params)
         _raise_if_error(response)
@@ -777,16 +777,19 @@ class InferenceServerClient:
 
         return json.loads(content)
 
-    def get_trace_setting(self, model_name="", headers=None, query_params=None):
-        """Get the trace setting for the specified model name, or global trace
-        setting if model name is not given
+    def get_trace_settings(self,
+                           model_name=None,
+                           headers=None,
+                           query_params=None):
+        """Get the trace settings for the specified model name, or global trace
+        settings if model name is not given
 
         Parameters
         ----------
         model_name : str
-            The name of the model to get trace setting. The default value is
-            an empty string, which means global trace setting will
-            be returned.
+            The name of the model to get trace settings. Specifying None or
+            empty string will return the global trace settings.
+            The default value is None.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
@@ -797,16 +800,16 @@ class InferenceServerClient:
         Returns
         -------
         dict
-            The JSON dict holding the trace setting.
+            The JSON dict holding the trace settings.
 
         Raises
         ------
         InferenceServerException
-            If unable to get the trace setting.
+            If unable to get the trace settings.
 
         """
 
-        if model_name != "":
+        if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
             request_uri = "v2/trace/setting"

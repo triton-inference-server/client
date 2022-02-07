@@ -737,30 +737,30 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def update_trace_setting(self,
-                             model_name="",
-                             setting={},
-                             headers=None,
-                             as_json=False):
-        """Update the trace setting for the specified model name, or global trace
-        setting if model name is not given. Returns the trace setting after
-        the update.
+    def update_trace_settings(self,
+                              model_name=None,
+                              settings={},
+                              headers=None,
+                              as_json=False):
+        """Update the trace settings for the specified model name, or
+        global trace settings if model name is not given.
+        Returns the trace settings after the update.
 
         Parameters
         ----------
         model_name : str
-            The name of the model to get trace setting. The default value is
-            an empty string, which means global trace setting will
-            be returned.
-        setting: dict
-            The new trace setting values. Only the setting listed will be
-            updated, and the value of None will clear the previously specified
-            setting value.
+            The name of the model to update trace settings. Specifying None or
+            empty string will update the global trace settings.
+            The default value is None.
+        settings: dict
+            The new trace setting values. Only the settings listed will be
+            updated. If a trace setting is listed in the dictionary with
+            a value of 'None', that setting will be cleared.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
         as_json : bool
-            If True then returns trace setting
+            If True then returns trace settings
             as a json dict, otherwise as a protobuf message.
             Default value is False.
             The returned json is generated from the protobuf message
@@ -769,10 +769,16 @@ class InferenceServerClient:
             to convert these strings back to int64 values as
             necessary.
 
+        Returns
+        -------
+        dict or protobuf message
+            The JSON dict or TraceSettingResponse message holding
+            the updated trace settings.
+
         Raises
         ------
         InferenceServerException
-            If unable to get the trace setting.
+            If unable to update the trace settings.
 
         """
         if headers is not None:
@@ -780,8 +786,10 @@ class InferenceServerClient:
         else:
             metadata = ()
         try:
-            request = service_pb2.TraceSettingRequest(model_name=model_name)
-            for key, value in setting.items():
+            request = service_pb2.TraceSettingRequest()
+            if (model_name is not None) and (model_name != ""):
+                request.model_name = model_name
+            for key, value in settings.items():
                 if value is None:
                     request.settings[key]
                 else:
@@ -789,7 +797,7 @@ class InferenceServerClient:
                         value if isinstance(value, list) else [value])
 
             if self._verbose:
-                print("update_trace_setting, metadata {}\n{}".format(
+                print("update_trace_settings, metadata {}\n{}".format(
                     metadata, request))
             response = self._client_stub.TraceSetting(request=request,
                                                       metadata=metadata)
@@ -803,21 +811,21 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def get_trace_setting(self, model_name="", headers=None, as_json=False):
-        """Get the trace setting for the specified model name, or global trace
-        setting if model name is not given
+    def get_trace_settings(self, model_name=None, headers=None, as_json=False):
+        """Get the trace settings for the specified model name, or global trace
+        settings if model name is not given
 
         Parameters
         ----------
         model_name : str
-            The name of the model to get trace setting. The default value is
-            an empty string, which means global trace setting will
-            be returned.
+            The name of the model to get trace settings. Specifying None or
+            empty string will return the global trace settings.
+            The default value is None.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
         as_json : bool
-            If True then returns trace setting
+            If True then returns trace settings
             as a json dict, otherwise as a protobuf message.
             Default value is False.
             The returned json is generated from the protobuf message
@@ -826,10 +834,16 @@ class InferenceServerClient:
             to convert these strings back to int64 values as
             necessary.
 
+        Returns
+        -------
+        dict or protobuf message
+            The JSON dict or TraceSettingResponse message holding
+            the trace settings.
+
         Raises
         ------
         InferenceServerException
-            If unable to get the trace setting.
+            If unable to get the trace settings.
 
         """
         if headers is not None:
@@ -837,9 +851,11 @@ class InferenceServerClient:
         else:
             metadata = ()
         try:
-            request = service_pb2.TraceSettingRequest(model_name=model_name)
+            request = service_pb2.TraceSettingRequest()
+            if (model_name is not None) and (model_name != ""):
+                request.model_name = model_name
             if self._verbose:
-                print("get_trace_setting, metadata {}\n{}".format(
+                print("get_trace_settings, metadata {}\n{}".format(
                     metadata, request))
             response = self._client_stub.TraceSetting(request=request,
                                                       metadata=metadata)
