@@ -108,7 +108,7 @@ release](#download-from-github), or [download a pre-built Docker image
 containing the client libraries](#download-docker-image-from-ngc) from
 [NVIDIA GPU Cloud (NGC)](https://ngc.nvidia.com).
 
-It is also possible to build build the client libraries with
+It is also possible to build the client libraries with
 [cmake](#build-using-cmake).
 
 ### Download Using Python Package Installer (pip)
