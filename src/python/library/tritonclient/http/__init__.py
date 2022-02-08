@@ -722,6 +722,109 @@ class InferenceServerClient:
 
         return json.loads(content)
 
+    def update_trace_settings(self,
+                              model_name=None,
+                              settings={},
+                              headers=None,
+                              query_params=None):
+        """Update the trace settings for the specified model name, or
+        global trace settings if model name is not given.
+        Returns the trace settings after the update.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to update trace settings. Specifying None or
+            empty string will update the global trace settings.
+            The default value is None.
+        settings: dict
+            The new trace setting values. Only the settings listed will be
+            updated. If a trace setting is listed in the dictionary with
+            a value of 'None', that setting will be cleared.
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        query_params: dict
+            Optional url query parameters to use in network
+            transaction
+
+        Returns
+        -------
+        dict
+            The JSON dict holding the updated trace settings.
+
+        Raises
+        ------
+        InferenceServerException
+            If unable to update the trace settings.
+
+        """
+
+        if (model_name is not None) and (model_name != ""):
+            request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
+        else:
+            request_uri = "v2/trace/setting"
+
+        response = self._post(request_uri=request_uri,
+                              request_body=json.dumps(settings),
+                              headers=headers,
+                              query_params=query_params)
+        _raise_if_error(response)
+
+        content = response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
+    def get_trace_settings(self,
+                           model_name=None,
+                           headers=None,
+                           query_params=None):
+        """Get the trace settings for the specified model name, or global trace
+        settings if model name is not given
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to get trace settings. Specifying None or
+            empty string will return the global trace settings.
+            The default value is None.
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        query_params: dict
+            Optional url query parameters to use in network
+            transaction
+
+        Returns
+        -------
+        dict
+            The JSON dict holding the trace settings.
+
+        Raises
+        ------
+        InferenceServerException
+            If unable to get the trace settings.
+
+        """
+
+        if (model_name is not None) and (model_name != ""):
+            request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
+        else:
+            request_uri = "v2/trace/setting"
+
+        response = self._get(request_uri=request_uri,
+                             headers=headers,
+                             query_params=query_params)
+        _raise_if_error(response)
+
+        content = response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
     def get_system_shared_memory_status(self,
                                         region_name="",
                                         headers=None,
@@ -1013,13 +1116,13 @@ class InferenceServerClient:
 
     @staticmethod
     def generate_request_body(inputs,
-                  outputs=None,
-                  request_id="",
-                  sequence_id=0,
-                  sequence_start=False,
-                  sequence_end=False,
-                  priority=0,
-                  timeout=None):
+                              outputs=None,
+                              request_id="",
+                              sequence_id=0,
+                              sequence_start=False,
+                              sequence_end=False,
+                              priority=0,
+                              timeout=None):
         """Generate a request body for inference using the supplied 'inputs'
         requesting the outputs specified by 'outputs'.
 
@@ -1088,9 +1191,9 @@ class InferenceServerClient:
 
     @staticmethod
     def parse_response_body(response_body,
-                          verbose=False,
-                          header_length=None,
-                          content_encoding=None):
+                            verbose=False,
+                            header_length=None,
+                            content_encoding=None):
         """Generate a InferResult object from the given 'response_body'
 
         Parameters
