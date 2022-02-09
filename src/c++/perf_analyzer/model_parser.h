@@ -63,7 +63,8 @@ class ModelParser {
         inputs_(std::make_shared<ModelTensorMap>()),
         outputs_(std::make_shared<ModelTensorMap>()),
         composing_models_map_(std::make_shared<ComposingModelMap>()),
-        scheduler_type_(NONE), max_batch_size_(0), is_decoupled_(false)
+        scheduler_type_(NONE), max_batch_size_(0), is_decoupled_(false),
+        response_cache_enabled_(false)
   {
   }
 
@@ -130,6 +131,11 @@ class ModelParser {
   /// \return the truth value of whether the model is decoupled
   bool IsDecoupled() const { return is_decoupled_; }
 
+  /// Returns whether or not response cache is enabled for this model
+  /// \return the truth value of whether response cache is enabled for this
+  /// model
+  bool ResponseCacheEnabled() const { return response_cache_enabled_; }
+
   /// Get the details about the model inputs.
   /// \return The map with tensor_name and the tensor details
   /// stored as key-value pair.
@@ -165,6 +171,7 @@ class ModelParser {
   ModelSchedulerType scheduler_type_;
   size_t max_batch_size_;
   bool is_decoupled_;
+  bool response_cache_enabled_;
 };
 
 }}  // namespace triton::perfanalyzer
