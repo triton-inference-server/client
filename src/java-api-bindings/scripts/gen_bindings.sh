@@ -32,7 +32,7 @@ apt update && apt install -y openjdk-11-jdk
 wget https://archive.apache.org/dist/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.tar.gz
 tar zxvf apache-maven-3.8.4-bin.tar.gz
 export PATH=${TRITON_HOME}/apache-maven-3.8.4/bin:$PATH
-echo "javacpp branch ${JAVACPP_BRANCH} and tag ${JAVACPP_BRANCH_TAG}"
+
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 export JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
 export JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}

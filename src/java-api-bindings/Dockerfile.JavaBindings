@@ -30,6 +30,8 @@ ARG JAVACPP_BRANCH_TAG=master
 
 # Build the java bindings from the Base image
 FROM ${BASE_IMAGE} AS base
+ENV JAVACPP_BRANCH=$JAVACPP_BRANCH
+ENV JAVACPP_BRANCH_TAG=$JAVACPP_BRANCH_TAG
 COPY scripts/gen_bindings.sh .
 RUN source gen_bindings.sh
 
