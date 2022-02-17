@@ -24,7 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 # Install jdk and maven
 export TRITON_HOME="/opt/tritonserver"
 cd ${TRITON_HOME}
@@ -39,7 +38,7 @@ export JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
 mvn clean install --projects .,tritonserver > install.txt
-mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64 > platform_install.txt
+mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 cd tritonserver/build
 mvn clean install -Djavacpp.platform=linux-x86_64
 cp target/tritonserver-uber-*.jar ${TRITON_HOME}/tritonserver-java-bindings.jar

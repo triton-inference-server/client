@@ -27,13 +27,13 @@
 ARG BASE_IMAGE=tritonserver
 
 # Build the java bindings from the Base image
-FROM ${BASE_IMAGE} AS base
+FROM ${BASE_IMAGE}
 ARG JAVACPP_BRANCH=https://github.com/bytedeco/javacpp-presets.git
 ARG JAVACPP_BRANCH_TAG=master
 ARG BASE_IMAGE
 RUN echo "BASE_IMAGE is $BASE_IMAGE, Java cpp repository used is $JAVACPP_BRANCH. Using tag: $JAVACPP_BRANCH_TAG"
 ENV JAVACPP_BRANCH=$JAVACPP_BRANCH
 ENV JAVACPP_BRANCH_TAG=$JAVACPP_BRANCH_TAG
-COPY scripts/gen_bindings.sh .
-RUN source gen_bindings.sh
+COPY scripts/install_dependencies_and_build.sh .
+RUN source install_dependencies_and_build.sh
 
