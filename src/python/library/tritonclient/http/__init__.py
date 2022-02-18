@@ -594,7 +594,11 @@ class InferenceServerClient:
 
         return json.loads(content)
 
-    def load_model(self, model_name, headers=None, query_params=None):
+    def load_model(self,
+                   model_name,
+                   headers=None,
+                   query_params=None,
+                   config=None):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -603,10 +607,13 @@ class InferenceServerClient:
             The name of the model to be loaded.
         headers: dict
             Optional dictionary specifying additional
-            HTTP headers to include in the request
+            HTTP headers to include in the request.
         query_params: dict
             Optional url query parameters to use in network
-            transaction
+            transaction.
+        config: str
+            Optional model config provided for the load request,
+            if provided, this config will be used for loading the model.
 
         Raises
         ------
@@ -615,8 +622,13 @@ class InferenceServerClient:
 
         """
         request_uri = "v2/repository/models/{}/load".format(quote(model_name))
+        load_request = {}
+        if config is not None:
+            if "parameters" not in load_request:
+                load_request["parameters"] = {}
+            load_request["parameters"]["config"] = config
         response = self._post(request_uri=request_uri,
-                              request_body="",
+                              request_body=json.dumps(load_request),
                               headers=headers,
                               query_params=query_params)
         _raise_if_error(response)

@@ -606,7 +606,7 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def load_model(self, model_name, headers=None):
+    def load_model(self, model_name, headers=None, config=None):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -616,6 +616,9 @@ class InferenceServerClient:
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        config: str
+            Optional model config provided for the load request,
+            if provided, this config will be used for loading the model.
 
         Raises
         ------
@@ -630,6 +633,8 @@ class InferenceServerClient:
         try:
             request = service_pb2.RepositoryModelLoadRequest(
                 model_name=model_name)
+            if config is not None:
+                request.parameters["config"].string_param = config
             if self._verbose:
                 print("load_model, metadata {}\n{}".format(metadata, request))
             self._client_stub.RepositoryModelLoad(request=request,

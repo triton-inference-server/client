@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. 
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -257,10 +257,13 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// in request.
   /// \param query_params Optional map specifying parameters that must be
   /// included with URL query.
+  /// \param config Optional model config provided for the load request,
+  /// if provided, this config will be used for loading the model.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
       const std::string& model_name, const Headers& headers = Headers(),
-      const Parameters& query_params = Parameters());
+      const Parameters& query_params = Parameters(),
+      const std::string& config = std::string());
 
   /// Request the inference server to unload specified model.
   /// \param model_name The name of the model to be unloaded.

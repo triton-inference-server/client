@@ -602,7 +602,8 @@ InferenceServerGrpcClient::ModelRepositoryIndex(
 
 Error
 InferenceServerGrpcClient::LoadModel(
-    const std::string& model_name, const Headers& headers)
+    const std::string& model_name, const Headers& headers,
+    const std::string& config)
 {
   Error err;
 
@@ -615,6 +616,9 @@ InferenceServerGrpcClient::LoadModel(
   }
 
   request.set_model_name(model_name);
+  if (!config.empty()) {
+    (*request.mutable_parameters())["config"].set_string_param(config);
+  }
   grpc::Status grpc_status =
       stub_->RepositoryModelLoad(&context, request, &response);
   if (!grpc_status.ok()) {
