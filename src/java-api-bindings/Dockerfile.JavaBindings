@@ -30,10 +30,12 @@ ARG BASE_IMAGE=tritonserver
 FROM ${BASE_IMAGE}
 ARG JAVACPP_BRANCH=https://github.com/bytedeco/javacpp-presets.git
 ARG JAVACPP_BRANCH_TAG=master
+ARG MAVEN_VERSION="3.8.4"
 ARG BASE_IMAGE
 RUN echo "BASE_IMAGE is $BASE_IMAGE, Java cpp repository used is $JAVACPP_BRANCH. Using tag: $JAVACPP_BRANCH_TAG"
 ENV JAVACPP_BRANCH=$JAVACPP_BRANCH
 ENV JAVACPP_BRANCH_TAG=$JAVACPP_BRANCH_TAG
+ENV MAVEN_VERSION=$MAVEN_VERSION
 COPY scripts/install_dependencies_and_build.sh .
 RUN source install_dependencies_and_build.sh
 

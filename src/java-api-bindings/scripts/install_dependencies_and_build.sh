@@ -26,11 +26,12 @@
 
 # Install jdk and maven
 export TRITON_HOME="/opt/tritonserver"
+export MAVEN_VERSION=${MAVEN_VERSION:="3.8.4"}
 cd ${TRITON_HOME}
 apt update && apt install -y openjdk-11-jdk
-wget https://archive.apache.org/dist/maven/maven-3/3.8.4/binaries/apache-maven-3.8.4-bin.tar.gz
-tar zxvf apache-maven-3.8.4-bin.tar.gz
-export PATH=${TRITON_HOME}/apache-maven-3.8.4/bin:$PATH
+wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
+export PATH=${TRITON_HOME}/apache-maven-${MAVEN_VERSION}/bin:$PATH
 
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 export JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
