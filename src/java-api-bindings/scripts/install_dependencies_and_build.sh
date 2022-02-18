@@ -40,6 +40,6 @@ git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
 mvn clean install --projects .,tritonserver > install.txt
 mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
-cd tritonserver/build
-mvn clean install -Djavacpp.platform=linux-x86_64
-cp target/tritonserver-uber-*.jar ${TRITON_HOME}/tritonserver-java-bindings.jar
+
+cd tritonserver/platform
+cp target/tritonserver-platform-*shaded.jar ${TRITON_HOME}/tritonserver-java-bindings.jar
