@@ -73,7 +73,9 @@ class CurlGlobal {
   }
 
  private:
-  CurlGlobal() : Error err_;
+  CurlGlobal();
+
+  Error err_;
 };
 
 CurlGlobal::CurlGlobal() : err_(Error::Success)
