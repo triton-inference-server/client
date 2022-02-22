@@ -612,8 +612,9 @@ class InferenceServerClient:
             Optional url query parameters to use in network
             transaction.
         config: str
-            Optional model config provided for the load request,
-            if provided, this config will be used for loading the model.
+            Optional JSON representation of a model config provided for
+            the load request, if provided, this config will be used for
+            loading the model.
 
         Raises
         ------

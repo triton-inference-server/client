@@ -200,8 +200,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param model_name The name of the model to be loaded or reloaded.
   /// \param headers Optional map specifying additional HTTP headers to include
   /// in the metadata of gRPC request.
-  /// \param config Optional model config provided for the load request,
-  /// if provided, this config will be used for loading the model.
+  /// \param config Optional JSON representation of a model config provided for
+  /// the load request, if provided, this config will be used for
+  /// loading the model.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
       const std::string& model_name, const Headers& headers = Headers(),
