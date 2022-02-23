@@ -36,6 +36,7 @@ RUN echo "BASE_IMAGE is $BASE_IMAGE, Java cpp repository used is $JAVACPP_BRANCH
 ENV JAVACPP_BRANCH=$JAVACPP_BRANCH
 ENV JAVACPP_BRANCH_TAG=$JAVACPP_BRANCH_TAG
 ENV MAVEN_VERSION=$MAVEN_VERSION
+WORKDIR /opt/tritonserver
 COPY scripts/install_dependencies_and_build.sh .
 RUN chmod +x install_dependencies_and_build.sh && source install_dependencies_and_build.sh
 
