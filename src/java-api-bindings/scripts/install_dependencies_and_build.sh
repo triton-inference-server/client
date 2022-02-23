@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,6 +24,7 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+set -x
 
 # Install jdk and maven
 export TRITON_HOME="/opt/tritonserver"
@@ -31,15 +33,18 @@ cd ${TRITON_HOME}
 apt update && apt install -y openjdk-11-jdk
 wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
-export PATH=${TRITON_HOME}/apache-maven-${MAVEN_VERSION}/bin:$PATH
+export MAVEN_PATH=${TRITON_HOME}/apache-maven-${MAVEN_VERSION}/bin
 
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 export JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
 export JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
-mvn clean install --projects .,tritonserver > install.txt
-mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
+${MAVEN_PATH}/mvn clean install --projects .,tritonserver
+${MAVEN_PATH}/mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
 cd tritonserver/platform
 cp target/tritonserver-platform-*shaded.jar ${TRITON_HOME}/tritonserver-java-bindings.jar
+cd ${TRITON_HOME}
+
+set +x
