@@ -1130,14 +1130,27 @@ InferenceServerHttpClient::ModelRepositoryIndex(
 Error
 InferenceServerHttpClient::LoadModel(
     const std::string& model_name, const Headers& headers,
-    const Parameters& query_params)
+    const Parameters& query_params, const std::string& config)
 {
   std::string request_uri(
       url_ + "/v2/repository/models/" + model_name + "/load");
 
-  std::string request;  // empty request body
+  triton::common::TritonJson::Value request_json(
+      triton::common::TritonJson::ValueType::OBJECT);
+  if (!config.empty()) {
+    triton::common::TritonJson::Value parameters_json(
+        request_json, triton::common::TritonJson::ValueType::OBJECT);
+    parameters_json.AddStringRef("config", config.c_str());
+    request_json.Add("parameters", std::move(parameters_json));
+  }
+  triton::common::TritonJson::WriteBuffer buffer;
+  Error err = request_json.Write(&buffer);
+  if (!err.IsOk()) {
+    return err;
+  }
+
   std::string response;
-  return Post(request_uri, request, headers, query_params, &response);
+  return Post(request_uri, buffer.Contents(), headers, query_params, &response);
 }
 
 Error
