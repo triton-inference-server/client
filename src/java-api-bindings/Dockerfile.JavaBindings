@@ -37,5 +37,5 @@ ENV JAVACPP_BRANCH=$JAVACPP_BRANCH
 ENV JAVACPP_BRANCH_TAG=$JAVACPP_BRANCH_TAG
 ENV MAVEN_VERSION=$MAVEN_VERSION
 COPY scripts/install_dependencies_and_build.sh .
-RUN source install_dependencies_and_build.sh
+RUN chmod +x install_dependencies_and_build.sh && source install_dependencies_and_build.sh
 
