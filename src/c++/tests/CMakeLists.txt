@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -69,6 +69,30 @@ install(
   TARGETS memory_leak_test
   RUNTIME DESTINATION bin
 )
+
+#
+# CPP Client API test
+#
+find_package(GTest REQUIRED)
+
+add_executable(
+  cc_client_test
+  cc_client_test.cc
+)
+target_include_directories(cc_client_test PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(
+  cc_client_test
+  PRIVATE
+    grpcclient_static
+    httpclient_static
+    ${GTEST_LIBRARY}
+    ${GTEST_MAIN_LIBRARY}
+)
+install(
+  TARGETS cc_client_test
+  RUNTIME DESTINATION bin
+)
+
 endif() # TRITON_ENABLE_CC_HTTP AND TRITON_ENABLE_CC_GRPC
 
 endif()

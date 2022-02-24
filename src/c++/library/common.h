@@ -120,6 +120,7 @@ struct InferStat {
 class InferenceServerClient {
  public:
   using OnCompleteFn = std::function<void(InferResult*)>;
+  using OnMultiCompleteFn = std::function<void(std::vector<InferResult*>)>;
 
   explicit InferenceServerClient(bool verbose)
       : verbose_(verbose), exiting_(false)

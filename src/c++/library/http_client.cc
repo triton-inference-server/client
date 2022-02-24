@@ -1466,6 +1466,33 @@ InferenceServerHttpClient::AsyncInfer(
   return Error::Success;
 }
 
+Error
+InferenceServerHttpClient::InferMulti(
+    std::vector<InferResult*>* results,
+    const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
+{
+  return Error("Not Implemented");
+  return Error::Success;
+}
+
+Error
+InferenceServerHttpClient::AsyncInferMulti(
+    OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
+{
+  return Error("Not Implemented");
+  return Error::Success;
+}
+
 size_t
 InferenceServerHttpClient::InferRequestProvider(
     void* contents, size_t size, size_t nmemb, void* userp)

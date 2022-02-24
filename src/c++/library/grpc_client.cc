@@ -1007,6 +1007,201 @@ InferenceServerGrpcClient::AsyncInfer(
 }
 
 Error
+InferenceServerGrpcClient::InferMulti(
+    std::vector<InferResult*>* results,
+    const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, grpc_compression_algorithm compression_algorithm)
+{
+  Error err;
+
+  // Sanity check
+  if ((inputs.size() != options.size()) && (options.size() != 1)) {
+    return Error(
+        "'options' must either contain 1 element or match size of 'inputs'");
+  }
+  if ((inputs.size() != outputs.size()) &&
+      ((outputs.size() != 1) && (outputs.size() != 0))) {
+    return Error(
+        "'outputs' must either contain 0/1 element or match size of 'inputs'");
+  }
+
+  int64_t max_option_idx = options.size() - 1;
+  // value of '-1' means no output is specified
+  int64_t max_output_idx = outputs.size() - 1;
+  static std::vector<const InferRequestedOutput*> empty_outputs{};
+  for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
+    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_output = (max_output_idx == -1)
+                                     ? empty_outputs
+                                     : outputs[std::min(max_output_idx, i)];
+    grpc::ClientContext context;
+
+    std::shared_ptr<GrpcInferRequest> sync_request(new GrpcInferRequest());
+
+    sync_request->Timer().Reset();
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
+    // Use send timer to measure time for marshalling infer request
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_START);
+    for (const auto& it : headers) {
+      context.AddMetadata(it.first, it.second);
+    }
+
+    if (request_options.client_timeout_ != 0) {
+      auto deadline =
+          std::chrono::system_clock::now() +
+          std::chrono::microseconds(request_options.client_timeout_);
+      context.set_deadline(deadline);
+    }
+    context.set_compression_algorithm(compression_algorithm);
+
+    err = PreRunProcessing(request_options, inputs[i], request_output);
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
+    if (!err.IsOk()) {
+      return err;
+    }
+    sync_request->grpc_response_->Clear();
+    sync_request->grpc_status_ = stub_->ModelInfer(
+        &context, infer_request_, sync_request->grpc_response_.get());
+
+    if (!sync_request->grpc_status_.ok()) {
+      err = Error(sync_request->grpc_status_.error_message());
+    }
+
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::RECV_START);
+    results->emplace_back();
+    InferResultGrpc::Create(
+        &results->back(), sync_request->grpc_response_, err);
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::RECV_END);
+
+    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_END);
+
+    err = UpdateInferStat(sync_request->Timer());
+    if (!err.IsOk()) {
+      std::cerr << "Failed to update context stat: " << err << std::endl;
+    }
+
+    if (sync_request->grpc_status_.ok()) {
+      if (verbose_) {
+        std::cout << sync_request->grpc_response_->DebugString() << std::endl;
+      }
+    }
+
+    if (!results->back()->RequestStatus().IsOk()) {
+      return results->back()->RequestStatus();
+    }
+  }
+  return Error::Success;
+}
+
+Error
+InferenceServerGrpcClient::AsyncInferMulti(
+    OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, grpc_compression_algorithm compression_algorithm)
+{
+  // Sanity check
+  if ((inputs.size() != options.size()) && (options.size() != 1)) {
+    return Error(
+        "'options' must either contain 1 element or match size of 'inputs'");
+  }
+  if ((inputs.size() != outputs.size()) &&
+      ((outputs.size() != 1) && (outputs.size() != 0))) {
+    return Error(
+        "'outputs' must either contain 0/1 element or match size of 'inputs'");
+  }
+  if (callback == nullptr) {
+    return Error(
+        "Callback function must be provided along with AsyncInferMulti() "
+        "call.");
+  }
+  if (!worker_.joinable()) {
+    worker_ = std::thread(&InferenceServerGrpcClient::AsyncTransfer, this);
+  }
+
+  int64_t max_option_idx = options.size() - 1;
+  // value of '-1' means no output is specified
+  int64_t max_output_idx = outputs.size() - 1;
+  static std::vector<const InferRequestedOutput*> empty_outputs{};
+  std::shared_ptr<std::atomic<size_t>> response_counter(
+      new std::atomic<size_t>(inputs.size()));
+  std::shared_ptr<std::vector<InferResult*>> responses(
+      new std::vector<InferResult*>(inputs.size()));
+  for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
+    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_output = (max_output_idx == -1)
+                                     ? empty_outputs
+                                     : outputs[std::min(max_output_idx, i)];
+
+    GrpcInferRequest* async_request;
+    async_request = new GrpcInferRequest(
+        [response_counter, responses, i, callback](InferResult* result) {
+          (*responses)[i] = result;
+          // last response
+          if (response_counter->fetch_sub(1) == 1) {
+            std::vector<InferResult*> results;
+            results.swap(*responses);
+            callback(results);
+          }
+        });
+
+    async_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
+    async_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_START);
+    for (const auto& it : headers) {
+      async_request->grpc_context_.AddMetadata(it.first, it.second);
+    }
+
+    if (request_options.client_timeout_ != 0) {
+      auto deadline =
+          std::chrono::system_clock::now() +
+          std::chrono::microseconds(request_options.client_timeout_);
+      async_request->grpc_context_.set_deadline(deadline);
+    }
+    async_request->grpc_context_.set_compression_algorithm(
+        compression_algorithm);
+
+    Error err = PreRunProcessing(request_options, inputs[i], request_output);
+    if (!err.IsOk()) {
+      // Create response with error as other requests may be sent and their
+      // responses may not be accessed outside the callback.
+      InferResult* err_res;
+      std::shared_ptr<inference::ModelInferResponse> empty_response(
+          new inference::ModelInferResponse());
+      InferResultGrpc::Create(&err_res, empty_response, err);
+      async_request->callback_(err_res);
+      delete async_request;
+      continue;
+    }
+
+    async_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
+
+    std::unique_ptr<
+        grpc::ClientAsyncResponseReader<inference::ModelInferResponse>>
+        rpc(stub_->PrepareAsyncModelInfer(
+            &async_request->grpc_context_, infer_request_,
+            &async_request_completion_queue_));
+
+    rpc->StartCall();
+
+    rpc->Finish(
+        async_request->grpc_response_.get(), &async_request->grpc_status_,
+        (void*)async_request);
+
+    if (verbose_) {
+      std::cout << "Sent request";
+      if (request_options.request_id_.size() != 0) {
+        std::cout << " '" << request_options.request_id_ << "'";
+      }
+      std::cout << std::endl;
+    }
+  }
+
+  return Error::Success;
+}
+
+Error
 InferenceServerGrpcClient::StartStream(
     OnCompleteFn callback, bool enable_stats, uint32_t stream_timeout,
     const Headers& headers, grpc_compression_algorithm compression_algorithm)
