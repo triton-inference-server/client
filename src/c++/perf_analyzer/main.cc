@@ -1813,6 +1813,7 @@ main(int argc, char** argv)
         // compatibility if disabled
         if (parser->ResponseCacheEnabled()) {
           ofs << "Server Cache Hit,";
+          ofs << "Server Cache Miss,";
         }
       }
       ofs << "Client Recv";
@@ -1867,6 +1868,11 @@ main(int argc, char** argv)
                   ? (status.server_stats.cache_hit_time_ns /
                      status.server_stats.cache_hit_count)
                   : 0;
+          uint64_t avg_cache_miss_ns =
+              status.server_stats.cache_miss_count > 0
+                  ? (status.server_stats.cache_miss_time_ns /
+                     status.server_stats.cache_miss_count)
+                  : 0;
 
           uint64_t avg_client_wait_ns = status.client_stats.avg_latency_ns -
                                         status.client_stats.avg_send_time_ns -
@@ -1874,11 +1880,11 @@ main(int argc, char** argv)
           // Network misc is calculated by subtracting data from different
           // measurements (server v.s. client), so the result needs to be capped
           // at 0
+          uint64_t avg_accounted_time = avg_queue_ns + avg_compute_ns +
+                                        avg_cache_hit_ns + avg_cache_miss_ns;
           uint64_t avg_network_misc_ns =
-              avg_client_wait_ns >
-                      (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns)
-                  ? avg_client_wait_ns -
-                        (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns)
+              avg_client_wait_ns > avg_accounted_time
+                  ? (avg_client_wait_ns - avg_accounted_time)
                   : 0;
 
           ofs << (avg_network_misc_ns / 1000) << "," << (avg_queue_ns / 1000)
@@ -1888,6 +1894,7 @@ main(int argc, char** argv)
 
           if (parser->ResponseCacheEnabled()) {
             ofs << (avg_cache_hit_ns / 1000) << ",";
+            ofs << (avg_cache_miss_ns / 1000) << ",";
           }
         }
         ofs << (status.client_stats.avg_receive_time_ns / 1000);
@@ -1925,6 +1932,7 @@ main(int argc, char** argv)
             // compatibility if disabled
             if (parser->ResponseCacheEnabled()) {
               ofs << "Server Cache Hit,";
+              ofs << "Server Cache Miss,";
             }
             ofs << "Client Recv";
 
@@ -1955,17 +1963,21 @@ main(int argc, char** argv)
                   stats.cache_hit_count > 0
                       ? stats.cache_hit_time_ns / stats.cache_hit_count
                       : 0;
+              uint64_t avg_cache_miss_ns =
+                  stats.cache_miss_count > 0
+                      ? stats.cache_miss_time_ns / stats.cache_miss_count
+                      : 0;
 
               uint64_t avg_overhead_ns =
                   stats.success_count > 0
                       ? stats.cumm_time_ns / stats.success_count
                       : 0;
-              avg_overhead_ns =
-                  (avg_overhead_ns >
-                   (avg_queue_ns + avg_compute_ns + avg_cache_hit_ns))
-                      ? (avg_overhead_ns - avg_queue_ns - avg_compute_ns -
-                         avg_cache_hit_ns)
-                      : 0;
+              const uint64_t avg_accounted_time =
+                  avg_queue_ns + avg_compute_ns + avg_cache_hit_ns +
+                  avg_cache_miss_ns;
+              avg_overhead_ns = (avg_overhead_ns > avg_accounted_time)
+                                    ? (avg_overhead_ns - avg_accounted_time)
+                                    : 0;
               // infer / sec of the composing model is calculated using the
               // request count ratio between the composing model and the
               // ensemble
@@ -1990,6 +2002,7 @@ main(int argc, char** argv)
               // compatibility if disabled
               if (parser->ResponseCacheEnabled()) {
                 ofs << (avg_cache_hit_ns / 1000) << ",";
+                ofs << (avg_cache_miss_ns / 1000) << ",";
               }
               // Client recv
               ofs << "0" << std::endl;

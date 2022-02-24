@@ -510,8 +510,14 @@ TritonClientBackend::ParseStatistics(
         this_stat.inference_stats().compute_infer().ns();
     it->second.compute_output_time_ns_ =
         this_stat.inference_stats().compute_output().ns();
-    it->second.cache_hit_count_ = this_stat.inference_stats().cache_hit().count();
-    it->second.cache_hit_time_ns_ = this_stat.inference_stats().cache_hit().ns();
+    it->second.cache_hit_count_ =
+        this_stat.inference_stats().cache_hit().count();
+    it->second.cache_hit_time_ns_ =
+        this_stat.inference_stats().cache_hit().ns();
+    it->second.cache_miss_count_ =
+        this_stat.inference_stats().cache_miss().count();
+    it->second.cache_miss_time_ns_ =
+        this_stat.inference_stats().cache_miss().ns();
   }
 }
 
@@ -547,6 +553,10 @@ TritonClientBackend::ParseStatistics(
         this_stat["inference_stats"]["cache_hit"]["count"].GetUint64();
     it->second.cache_hit_time_ns_ =
         this_stat["inference_stats"]["cache_hit"]["ns"].GetUint64();
+    it->second.cache_miss_count_ =
+        this_stat["inference_stats"]["cache_miss"]["count"].GetUint64();
+    it->second.cache_miss_time_ns_ =
+        this_stat["inference_stats"]["cache_miss"]["ns"].GetUint64();
   }
 }
 
