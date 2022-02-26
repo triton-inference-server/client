@@ -62,12 +62,19 @@ constexpr char kContentLengthHTTPHeader[] = "Content-Length";
 // perform this initialization.
 class CurlGlobal {
  public:
-  CurlGlobal();
   ~CurlGlobal();
 
   const Error& Status() const { return err_; }
 
+  static const CurlGlobal& Get()
+  {
+    static CurlGlobal* curl_global = new CurlGlobal();
+    return *curl_global;
+  }
+
  private:
+  CurlGlobal();
+
   Error err_;
 };
 
@@ -83,7 +90,12 @@ CurlGlobal::~CurlGlobal()
   curl_global_cleanup();
 }
 
-static CurlGlobal curl_global;
+class CurlGlobalDestroyer {
+ public:
+  ~CurlGlobalDestroyer() { delete &CurlGlobal::Get(); }
+};
+
+static CurlGlobalDestroyer curl_global_destroyer_;
 
 std::string
 GetQueryString(const Headers& query_params)
@@ -1337,8 +1349,8 @@ InferenceServerHttpClient::Infer(
   sync_request->Timer().Reset();
   sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
 
-  if (!curl_global.Status().IsOk()) {
-    return curl_global.Status();
+  if (!CurlGlobal::Get().Status().IsOk()) {
+    return CurlGlobal::Get().Status();
   }
 
   err = PreRunProcessing(
@@ -1774,8 +1786,8 @@ InferenceServerHttpClient::Get(
     request_uri = request_uri + "?" + GetQueryString(query_params);
   }
 
-  if (!curl_global.Status().IsOk()) {
-    return curl_global.Status();
+  if (!CurlGlobal::Get().Status().IsOk()) {
+    return CurlGlobal::Get().Status();
   }
 
   CURL* curl = curl_easy_init();
@@ -1850,8 +1862,8 @@ InferenceServerHttpClient::Post(
     request_uri = request_uri + "?" + GetQueryString(query_params);
   }
 
-  if (!curl_global.Status().IsOk()) {
-    return curl_global.Status();
+  if (!CurlGlobal::Get().Status().IsOk()) {
+    return CurlGlobal::Get().Status();
   }
 
   CURL* curl = curl_easy_init();
