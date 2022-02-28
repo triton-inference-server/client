@@ -1757,7 +1757,7 @@ class InferInput:
         self._parameters['shared_memory_region'] = region_name
         self._parameters['shared_memory_byte_size'] = byte_size
         if offset != 0:
-            self._parameters['shared_memory_offset'].int64_param = offset
+            self._parameters['shared_memory_offset'] = offset
 
     def _get_binary_data(self):
         """Returns the raw binary data if available
