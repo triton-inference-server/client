@@ -25,8 +25,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <getopt.h>
+#include <mpi.h>
 #include <signal.h>
+
 #include <algorithm>
+
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "inference_profiler.h"
@@ -749,6 +752,8 @@ Usage(char** argv, const std::string& msg = std::string())
 int
 main(int argc, char** argv)
 {
+  MPI_Init(&argc, &argv);
+
   cb::BackendKind kind(cb::BackendKind::TRITON);
   bool verbose = false;
   bool extra_verbose = false;
@@ -1769,6 +1774,11 @@ main(int argc, char** argv)
     search_mode = pa::SearchMode::NONE;
   }
 
+  if (triton::perfanalyzer::IsMPIRun()) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "we are all ready to inference" << std::endl;
+  }
+
   cb::Error err;
   if (target_concurrency) {
     err = profiler->Profile<size_t>(
@@ -1780,6 +1790,11 @@ main(int argc, char** argv)
         request_rate_range[SEARCH_RANGE::kSTART],
         request_rate_range[SEARCH_RANGE::kEND],
         request_rate_range[SEARCH_RANGE::kSTEP], search_mode, summary);
+  }
+
+  if (triton::perfanalyzer::IsMPIRun()) {
+    MPI_Barrier(MPI_COMM_WORLD);
+    std::cout << "we are all ready to write outputs" << std::endl;
   }
 
   if (!err.IsOk()) {
@@ -1821,5 +1836,8 @@ main(int argc, char** argv)
 
     writer->GenerateReport();
   }
+
+  MPI_Finalize();
+
   return 0;
 }

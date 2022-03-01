@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include <rapidjson/rapidjson.h>
 #include <sys/stat.h>
 #include <time.h>
+
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -36,6 +37,7 @@
 #include <iostream>
 #include <memory>
 #include <random>
+
 #include "client_backend/client_backend.h"
 
 namespace pa = triton::perfanalyzer;
@@ -144,5 +146,8 @@ std::string ShapeTensorValuesToString(const int* data_ptr, const int count);
 template <Distribution distribution>
 std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
     const double request_rate);
+
+// Returns true if the current process is an MPI process
+bool IsMPIRun();
 
 }}  // namespace triton::perfanalyzer

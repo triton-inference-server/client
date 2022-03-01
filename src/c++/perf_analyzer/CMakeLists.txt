@@ -66,11 +66,21 @@ add_executable(
   ${PERF_ANALYZER_HDRS}
   $<TARGET_OBJECTS:json-utils-library>
 )
+
+find_package(MPI REQUIRED)
+
+target_include_directories(
+  perf_analyzer
+  PRIVATE
+    ${MPI_CXX_INCLUDE_DIRS}
+)
+
 target_link_libraries(
   perf_analyzer
   PRIVATE
     client-backend-library
     -lb64
+    ${MPI_CXX_LIBRARIES}
 )
 
 # If gpu is enabled then compile with CUDA dependencies

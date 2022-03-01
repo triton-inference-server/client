@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,12 +25,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "perf_utils.h"
+
 #include <fcntl.h>
+#include <mpi.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <iostream>
 #include <string>
+
 #include "client_backend/client_backend.h"
 
 namespace triton { namespace perfanalyzer {
@@ -421,6 +425,22 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::duration<double>(1.0 / request_rate));
   return [period](std::mt19937& /*gen*/) { return period; };
+}
+
+bool
+IsMPIRun()
+{
+  int initialized{0};
+  MPI_Initialized(&initialized);
+
+  if (initialized == 0) {
+    MPI_Init(nullptr, nullptr);
+  }
+
+  int world_size{1};
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+  return world_size > 1;
 }
 
 }}  // namespace triton::perfanalyzer
