@@ -1514,64 +1514,14 @@ InferenceServerHttpClient::InferMulti(
     const auto& request_output = (max_output_idx == -1)
                                      ? empty_outputs
                                      : outputs[std::min(max_output_idx, i)];
-    std::string request_uri(url_ + "/v2/models/" + request_options.model_name_);
-    if (!request_options.model_version_.empty()) {
-      request_uri = request_uri + "/versions/" + request_options.model_version_;
-    }
-    request_uri = request_uri + "/infer";
-
-    std::shared_ptr<HttpInferRequest> sync_request(
-        new HttpInferRequest(nullptr /* callback */, verbose_));
-
-    sync_request->Timer().Reset();
-    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
-
-    if (!CurlGlobal::Get().Status().IsOk()) {
-      return CurlGlobal::Get().Status();
-    }
-
-    err = PreRunProcessing(
-        easy_handle_, request_uri, request_options, inputs[i], request_output,
-        headers, query_params, request_compression_algorithm,
-        response_compression_algorithm, sync_request);
-    if (!err.IsOk()) {
-      return err;
-    }
-
-    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_START);
-
-    // Set SEND_END when content length is 0 (because
-    // CURLOPT_READFUNCTION will not be called). In that case, we can't
-    // measure SEND_END properly (send ends after sending request
-    // header).
-    if (sync_request->total_input_byte_size_ == 0) {
-      sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
-    }
-
-    // During this call SEND_END (except in above case), RECV_START, and
-    // RECV_END will be set.
-    auto curl_status = curl_easy_perform(easy_handle_);
-    if (curl_status == CURLE_OPERATION_TIMEDOUT) {
-      sync_request->http_code_ = 499;
-    } else if (curl_status != CURLE_OK) {
-      sync_request->http_code_ = 400;
-    } else {
-      curl_easy_getinfo(
-          easy_handle_, CURLINFO_RESPONSE_CODE, &sync_request->http_code_);
-    }
 
     results->emplace_back();
-    InferResultHttp::Create(&results->back(), sync_request);
-
-    sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_END);
-
-    err = UpdateInferStat(sync_request->Timer());
+    err = Infer(
+        &results->back(), request_options, inputs[i], request_output, headers,
+        query_params, request_compression_algorithm,
+        response_compression_algorithm);
     if (!err.IsOk()) {
-      std::cerr << "Failed to update context stat: " << err << std::endl;
-    }
-
-    if (!results->back()->RequestStatus().IsOk()) {
-      return results->back()->RequestStatus();
+      return err;
     }
   }
   return Error::Success;
@@ -1615,42 +1565,20 @@ InferenceServerHttpClient::AsyncInferMulti(
                                      ? empty_outputs
                                      : outputs[std::min(max_output_idx, i)];
 
-    std::shared_ptr<HttpInferRequest> async_request;
-    if (!multi_handle_) {
-      return Error("failed to start HTTP asynchronous client");
-    } else if (!worker_.joinable()) {
-      worker_ = std::thread(&InferenceServerHttpClient::AsyncTransfer, this);
-    }
-
-    std::string request_uri(url_ + "/v2/models/" + request_options.model_name_);
-    if (!request_options.model_version_.empty()) {
-      request_uri = request_uri + "/versions/" + request_options.model_version_;
-    }
-    request_uri = request_uri + "/infer";
-
-    HttpInferRequest* raw_async_request = new HttpInferRequest(
-        [response_counter, responses, i, callback](InferResult* result) {
-          (*responses)[i] = result;
-          // last response
-          if (response_counter->fetch_sub(1) == 1) {
-            std::vector<InferResult*> results;
-            results.swap(*responses);
-            callback(results);
-          }
-        },
-        verbose_);
-    async_request.reset(raw_async_request);
-
-    async_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
-
-    CURL* multi_easy_handle = curl_easy_init();
-    Error err = PreRunProcessing(
-        reinterpret_cast<void*>(multi_easy_handle), request_uri,
-        request_options, inputs[i], request_output, headers, query_params,
-        request_compression_algorithm, response_compression_algorithm,
-        async_request);
+    OnCompleteFn cb = [response_counter, responses, i,
+                       callback](InferResult* result) {
+      (*responses)[i] = result;
+      // last response
+      if (response_counter->fetch_sub(1) == 1) {
+        std::vector<InferResult*> results;
+        results.swap(*responses);
+        callback(results);
+      }
+    };
+    auto err = AsyncInfer(
+        cb, request_options, inputs[i], request_output, headers, query_params,
+        request_compression_algorithm, response_compression_algorithm);
     if (!err.IsOk()) {
-      curl_easy_cleanup(multi_easy_handle);
       // Create response with error as other requests may be sent and their
       // responses may not be accessed outside the callback.
       InferResult* err_res;
@@ -1659,33 +1587,10 @@ InferenceServerHttpClient::AsyncInferMulti(
         std::cerr << "Failed to create result for error: " << err.Message()
                   << std::endl;
       }
-      async_request->callback_(err_res);
+      cb(err_res);
       continue;
     }
-
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-
-      auto insert_result = ongoing_async_requests_.emplace(std::make_pair(
-          reinterpret_cast<uintptr_t>(multi_easy_handle), async_request));
-      if (!insert_result.second) {
-        curl_easy_cleanup(multi_easy_handle);
-        return Error("Failed to insert new asynchronous request context.");
-      }
-
-      async_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_START);
-      if (async_request->total_input_byte_size_ == 0) {
-        // Set SEND_END here because CURLOPT_READFUNCTION will not be called if
-        // content length is 0. In that case, we can't measure SEND_END properly
-        // (send ends after sending request header).
-        async_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_END);
-      }
-
-      curl_multi_add_handle(multi_handle_, multi_easy_handle);
-    }
   }
-
-  cv_.notify_all();
   return Error::Success;
 }
 
