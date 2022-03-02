@@ -99,19 +99,18 @@ else()
   set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/lib/cmake/protobuf")
 endif()
 
-# CURL is installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib64 instead
-# of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib on Centos
-file(STRINGS /etc/os-release DISTRO REGEX "^NAME=")
-string(REGEX REPLACE "NAME=\"(.*)\"" "\\1" DISTRO "${DISTRO}")
-message(STATUS "Distro NAME: ${DISTRO}")
-if(DISTRO STREQUAL "CentOS Linux")
-  message(STATUS "Trying to find curl from ${CURL_DIR}")
-  set (CURL_LIB_DIR "lib64")
-else()
-  set (CURL_LIB_DIR "lib")
-endif()
-
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
+  # CURL is installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib64 instead
+  # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib on Centos
+  file(STRINGS /etc/os-release DISTRO REGEX "^NAME=")
+  string(REGEX REPLACE "NAME=\"(.*)\"" "\\1" DISTRO "${DISTRO}")
+  message(STATUS "Distro NAME: ${DISTRO}")
+  if(DISTRO STREQUAL "CentOS Linux")
+    set (CURL_LIB_DIR "lib64")
+  else()
+    set (CURL_LIB_DIR "lib")
+  endif()
+
   set(_cc_client_depends "")
   if(${TRITON_ENABLE_CC_HTTP})
     set(_cc_client_depends ${_cc_client_depends} curl)
