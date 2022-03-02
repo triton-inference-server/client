@@ -52,8 +52,8 @@ cd javacpp-presets
 ${MAVEN_PATH} clean install --projects .,tritonserver
 ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
-mkdir -p /workspace/install
-cp ${TRITON_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar /workspace/install/tritonserver-java-bindings.jar
+mkdir -p /workspace/install/java-api-bindings
+cp ${TRITON_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar /workspace/install/java-api-bindings/tritonserver-java-bindings.jar
 rm -rf ${TRITON_HOME}
 
 set +x
