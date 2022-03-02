@@ -1,4 +1,4 @@
-// Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,12 +32,28 @@
 
 namespace triton { namespace perfanalyzer {
 
-// TODO add comment
+//==============================================================================
+/// ReportWriter is a helper class to generate csv files from the profiled data.
+///
 class ReportWriter {
  public:
   ~ReportWriter() = default;
 
-  // TODO add param explanation
+  /// Create a ReportWriter that is responsible for generating csv output files.
+  /// \param filename Name of csv file.
+  /// \param target_concurrency Is there a concurrency range or request rate
+  /// range? \param summary Returns the trace of the measurement along the
+  /// search path. \param verbose_csv Print extra information for Model Analyzer
+  /// \param include_server_stats Are server stats included in output
+  /// \param percentile The percentile in terms of latency to be reported.
+  /// if it is a valid percentile value, the percentile latency will reported
+  /// and used as stable criteria instead of average latency. If it is -1,
+  /// average latency will be reported and used as stable criteria.
+  /// \param parser The ModelParse object which holds all the details about the
+  /// model.
+  /// \param writer Returns a new ReportWriter object.
+  /// \return cb::Error object indicating success or
+  /// failure.
   static cb::Error Create(
       const std::string& filename, const bool target_concurrency,
       std::vector<pa::PerfStatus>& summary, const bool verbose_csv,

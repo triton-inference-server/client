@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -41,8 +41,8 @@ ReportWriter::Create(
     std::unique_ptr<ReportWriter>* writer)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
-      filename, target_concurrency, summary, verbose_csv, percentile,
-      include_server_stats, parser));
+      filename, target_concurrency, summary, verbose_csv, include_server_stats,
+      percentile, parser));
 
   *writer = std::move(local_writer);
 
