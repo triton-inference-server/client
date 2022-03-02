@@ -320,6 +320,8 @@ ConcurrencyManager::Infer(
       wake_signal_.wait(lock, [&thread_config]() {
         return early_exit || (thread_config->concurrency_ > 0);
       });
+      // Stop executing if concurrency is 0 and early exit is requested 
+      if (early_exit && thread_config->concurrency_ == 0) { break; }
     }
 
     size_t num_reqs = thread_config->concurrency_;
