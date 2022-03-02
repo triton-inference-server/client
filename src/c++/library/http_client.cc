@@ -1526,8 +1526,8 @@ InferenceServerHttpClient::InferMulti(
     sync_request->Timer().Reset();
     sync_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
 
-    if (!curl_global.Status().IsOk()) {
-      return curl_global.Status();
+    if (!CurlGlobal::Get().Status().IsOk()) {
+      return CurlGlobal::Get().Status();
     }
 
     err = PreRunProcessing(
