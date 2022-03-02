@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -100,6 +100,19 @@ else()
 endif()
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
+  # CURL is installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib64 instead
+  # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib on Centos
+  set (CURL_LIB_DIR "lib")
+  # /etc/os-release does not exist on Windows
+  if(EXISTS "/etc/os-release")
+    file(STRINGS /etc/os-release DISTRO REGEX "^NAME=")
+    string(REGEX REPLACE "NAME=\"(.*)\"" "\\1" DISTRO "${DISTRO}")
+    message(STATUS "Distro Name: ${DISTRO}")
+    if(DISTRO STREQUAL "CentOS Linux")
+      set (CURL_LIB_DIR "lib64")
+    endif()
+  endif()
+
   set(_cc_client_depends "")
   if(${TRITON_ENABLE_CC_HTTP})
     set(_cc_client_depends ${_cc_client_depends} curl)
@@ -116,7 +129,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
       ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
       ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
       ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
-      -DCURL_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/lib/cmake/CURL
+      -DCURL_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/${CURL_LIB_DIR}/cmake/CURL
       -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
       -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
       -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/lib/cmake/c-ares
