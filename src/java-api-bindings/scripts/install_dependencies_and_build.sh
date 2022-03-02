@@ -24,16 +24,25 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-set -ex
+set -x
 
 # Install jdk and maven
 TRITON_HOME="/opt/tritonserver"
+mkdir -p ${TRITON_HOME}
 MAVEN_VERSION=${MAVEN_VERSION:="3.8.4"}
 cd ${TRITON_HOME}
 apt update && apt install -y openjdk-11-jdk
 wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
 MAVEN_PATH=${TRITON_HOME}/apache-maven-${MAVEN_VERSION}/bin/mvn
+
+# Copy tritonserver.h
+mkdir -p /opt/tritonserver/lib/
+cd ${TRITON_HOME}
+CORE_BRANCH=${CORE_BRANCH:="https://github.com/triton-inference-server/core.git"}
+CORE_BRANCH_TAG=${CORE_BRANCH_TAG:="main"}
+git clone --single-branch --depth=1 -b ${CORE_BRANCH_TAG} ${CORE_BRANCH}
+cp -r core/include /opt/tritonserver/include
 
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
@@ -43,7 +52,8 @@ cd javacpp-presets
 ${MAVEN_PATH} clean install --projects .,tritonserver
 ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
-cp ${TRITON_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar ${TRITON_HOME}/tritonserver-java-bindings.jar
-cd ${TRITON_HOME}
+mkdir -p /workspace/install
+cp ${TRITON_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar /workspace/install/tritonserver-java-bindings.jar
+rm -rf ${TRITON_HOME}
 
-set +ex
+set +x
