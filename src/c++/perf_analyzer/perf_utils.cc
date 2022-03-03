@@ -434,7 +434,7 @@ IsMPIRun()
   MPI_Initialized(&initialized);
 
   if (initialized == 0) {
-    MPI_Init(nullptr, nullptr);
+    throw std::runtime_error("Must call MPI_Init() before calling IsMPIRun().");
   }
 
   int world_size{1};

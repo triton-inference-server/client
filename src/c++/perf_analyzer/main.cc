@@ -1776,7 +1776,6 @@ main(int argc, char** argv)
 
   if (triton::perfanalyzer::IsMPIRun()) {
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cout << "we are all ready to inference" << std::endl;
   }
 
   cb::Error err;
@@ -1794,7 +1793,6 @@ main(int argc, char** argv)
 
   if (triton::perfanalyzer::IsMPIRun()) {
     MPI_Barrier(MPI_COMM_WORLD);
-    std::cout << "we are all ready to write outputs" << std::endl;
   }
 
   if (!err.IsOk()) {

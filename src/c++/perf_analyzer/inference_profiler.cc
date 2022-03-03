@@ -573,11 +573,6 @@ InferenceProfiler::ProfileHelper(
       manager_->ResetWorkers();
     }
 
-    if (IsMPIRun()) {
-      MPI_Barrier(MPI_COMM_WORLD);
-      std::cout << "we are all ready to measure" << std::endl;
-    }
-
     if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
       error.push(Measure(status_summary, measurement_window_ms_, false));
     } else {
@@ -663,41 +658,10 @@ InferenceProfiler::ProfileHelper(
           *is_stable = false;
         }
       }
-      if (IsMPIRun()) {
-        int world_size{1};
-        MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-        std::vector<int> stabilities_per_rank{};
-        stabilities_per_rank.resize(world_size, 0);
-        int my_rank{0};
-        MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-        stabilities_per_rank[my_rank] = static_cast<int>(*is_stable);
-        for (int rank{0}; rank < world_size; rank++) {
-          MPI_Bcast(
-              stabilities_per_rank.data() + rank, 1, MPI_INT, rank,
-              MPI_COMM_WORLD);
-        }
-        bool all_stable{true};
-        for (int rank{0}; rank < world_size; rank++) {
-          if (stabilities_per_rank[rank] == 0) {
-            all_stable = false;
-            break;
-          }
-        }
-        if (all_stable) {
-          std::cout << "all stable" << std::endl;
-          break;
-        }
-        if (*is_stable == false) {
-          std::cout << my_rank << ": not stable--continuing profiling..."
-                    << std::endl;
-        } else {
-          std::cout << my_rank << ": stable--continuing profiling..."
-                    << std::endl;
-        }
-      } else {
-        if (*is_stable) {
-          break;
-        }
+      if (IsMPIRun() && AllMPIRanksAreStable(*is_stable)) {
+        break;
+      } else if (*is_stable) {
+        break;
       }
       if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
         break;
@@ -1115,6 +1079,37 @@ InferenceProfiler::SummarizeServerStats(
       std::make_pair(parser_->ModelName(), parser_->ModelVersion()),
       start_status, end_status, server_stats));
   return cb::Error::Success;
+}
+
+bool
+InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
+{
+  int world_size{1};
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+  std::vector<int> stabilities_per_rank{};
+  stabilities_per_rank.resize(world_size, 0);
+  int my_rank{0};
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  stabilities_per_rank[my_rank] = static_cast<int>(current_rank_stability);
+
+  for (int rank{0}; rank < world_size; rank++) {
+    MPI_Bcast(
+        stabilities_per_rank.data() + rank, 1, MPI_INT, rank, MPI_COMM_WORLD);
+  }
+
+  bool all_stable{true};
+  for (int rank{0}; rank < world_size; rank++) {
+    if (stabilities_per_rank[rank] == 0) {
+      all_stable = false;
+      break;
+    }
+  }
+
+  if (verbose_ && all_stable) {
+    std::cout << "All models on all MPI ranks are stable" << std::endl;
+  }
+
+  return all_stable;
 }
 
 }}  // namespace triton::perfanalyzer
