@@ -42,9 +42,9 @@ class ReportWriter {
   /// Create a ReportWriter that is responsible for generating csv output files.
   /// \param filename Name of csv file.
   /// \param target_concurrency Is there a concurrency range or request rate
-  /// range? 
+  /// range?
   /// \param summary Returns the trace of the measurement along the
-  /// search path. 
+  /// search path.
   /// \param verbose_csv Print extra information for Model Analyzer
   /// \param include_server_stats Are server stats included in output
   /// \param percentile The percentile in terms of latency to be reported.
@@ -58,7 +58,7 @@ class ReportWriter {
   /// failure.
   static cb::Error Create(
       const std::string& filename, const bool target_concurrency,
-      std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
+      const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<ReportWriter>* writer);
@@ -68,7 +68,7 @@ class ReportWriter {
  private:
   ReportWriter(
       const std::string& filename, const bool target_concurrency,
-      std::vector<pa::PerfStatus> summary, const bool verbose_csv,
+      const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser);
 
@@ -78,7 +78,7 @@ class ReportWriter {
   const bool include_server_stats_;
   const bool verbose_csv_;
   const int32_t percentile_;
-  std::vector<pa::PerfStatus>& summary_;
+  std::vector<pa::PerfStatus> summary_;
   const std::shared_ptr<ModelParser>& parser_;
 };
 

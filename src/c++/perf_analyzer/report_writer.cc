@@ -35,7 +35,7 @@ namespace triton { namespace perfanalyzer {
 cb::Error
 ReportWriter::Create(
     const std::string& filename, const bool target_concurrency,
-    std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
+    const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<ReportWriter>* writer)
@@ -51,7 +51,7 @@ ReportWriter::Create(
 
 ReportWriter::ReportWriter(
     const std::string& filename, const bool target_concurrency,
-    std::vector<pa::PerfStatus> summary, const bool verbose_csv,
+    const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser)
     : filename_(filename), target_concurrency_(target_concurrency),
