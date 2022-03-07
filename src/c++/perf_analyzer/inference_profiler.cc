@@ -28,13 +28,10 @@
 
 #include <math.h>
 #include <mpi.h>
-
 #include <algorithm>
 #include <limits>
 #include <queue>
-
 #include "perf_utils.h"
-
 
 namespace triton { namespace perfanalyzer {
 namespace {

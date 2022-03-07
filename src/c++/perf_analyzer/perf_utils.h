@@ -29,7 +29,6 @@
 #include <rapidjson/rapidjson.h>
 #include <sys/stat.h>
 #include <time.h>
-
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -37,7 +36,6 @@
 #include <iostream>
 #include <memory>
 #include <random>
-
 #include "client_backend/client_backend.h"
 
 namespace pa = triton::perfanalyzer;

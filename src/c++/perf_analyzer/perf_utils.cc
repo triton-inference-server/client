@@ -30,11 +30,9 @@
 #include <mpi.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
 #include <algorithm>
 #include <iostream>
 #include <string>
-
 #include "client_backend/client_backend.h"
 
 namespace triton { namespace perfanalyzer {
