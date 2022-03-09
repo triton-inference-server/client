@@ -30,7 +30,7 @@ usage: install_dependencies_and_build.sh [options]
 Sets up python execution environment for AWS Neuron SDK for execution on Inferentia chips.
 -h|--help                  Shows usage
 -t|--triton-home           Expected Trition library location, default is: /opt/tritonserver
--b|--build-home            Expected build location, default is: /opt/tritonserver
+-b|--build-home            Expected build location, default is: /tmp/build
 -v|--maven-version         Maven version, default is: "3.8.4"
 -c|--core-tag              Tag for core repo, defaut is: "main"
 -j|--jar-install-path      Path to install the bindings .jar
@@ -42,7 +42,7 @@ Sets up python execution environment for AWS Neuron SDK for execution on Inferen
 OPTS=$(getopt -o ht:b:v:c:j: --long help,triton-home,build-home:,maven-version:,core-tag:jar-install-path:,--javacpp-branch:,--javacpp-branch-tag: -- "$@")
 
 TRITON_HOME="/opt/tritonserver"
-BUILD_HOME=${TRITON_HOME}
+BUILD_HOME="/tmp/build"
 MAVEN_VERSION="3.8.4"
 CORE_BRANCH_TAG="main"
 JAR_INSTALL_PATH="/workspace/install/java-api-bindings"
