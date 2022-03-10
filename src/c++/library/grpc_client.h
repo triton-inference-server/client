@@ -363,6 +363,62 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const Headers& headers = Headers(),
       grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
+  /// Run multiple synchronous inferences on server.
+  /// \param results Returns the results of the inferences.
+  /// \param options The options for each inference request, one set of
+  /// options may be provided and it will be used for all inference requests.
+  /// \param inputs The vector of InferInput objects describing the model inputs
+  /// for each inference request.
+  /// \param outputs Optional vector of InferRequestedOutput objects describing
+  /// how the output must be returned. If not provided then all the outputs in
+  /// the model config will be returned as default settings. And one set of
+  /// outputs may be provided and it will be used for all inference requests.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \param compression_algorithm The compression algorithm to be used
+  /// by gRPC when sending requests. By default compression is not used.
+  /// \return Error object indicating success or failure of the
+  /// request.
+  Error InferMulti(
+      std::vector<InferResult*>* results,
+      const std::vector<InferOptions>& options,
+      const std::vector<std::vector<InferInput*>>& inputs,
+      const std::vector<std::vector<const InferRequestedOutput*>>& outputs =
+          std::vector<std::vector<const InferRequestedOutput*>>(),
+      const Headers& headers = Headers(),
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
+
+  /// Run multiple asynchronous inferences on server.
+  /// Once all the requests are completed, the vector of InferResult pointers
+  /// will be passed to the provided 'callback' function. Upon the invocation
+  /// of callback function, the ownership of the InferResult objects are
+  /// transfered to the function caller. It is then the caller's choice on
+  /// either retrieving the results inside the callback function or deferring it
+  /// to a different thread so that the client is unblocked. In order to
+  /// prevent memory leak, user must ensure these objects get deleted.
+  /// \param callback The callback function to be invoked on the completion of
+  /// all requests.
+  /// \param options The options for each inference request, one set of
+  /// option may be provided and it will be used for all inference requests.
+  /// \param inputs The vector of InferInput objects describing the model inputs
+  /// for each inference request.
+  /// \param outputs Optional vector of InferRequestedOutput objects describing
+  /// how the output must be returned. If not provided then all the outputs in
+  /// the model config will be returned as default settings. And one set of
+  /// outputs may be provided and it will be used for all inference requests.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \param compression_algorithm The compression algorithm to be used
+  /// by gRPC when sending requests. By default compression is not used.
+  /// \return Error object indicating success or failure of the request.
+  Error AsyncInferMulti(
+      OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
+      const std::vector<std::vector<InferInput*>>& inputs,
+      const std::vector<std::vector<const InferRequestedOutput*>>& outputs =
+          std::vector<std::vector<const InferRequestedOutput*>>(),
+      const Headers& headers = Headers(),
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
+
   /// Starts a grpc bi-directional stream to send streaming inferences.
   /// \param callback The callback function to be invoked on receiving a
   /// response at the stream.

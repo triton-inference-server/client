@@ -30,6 +30,7 @@
 
 #include <curl/curl.h>
 #include <zlib.h>
+#include <atomic>
 #include <cstdint>
 #include <deque>
 #include <iostream>
@@ -587,6 +588,8 @@ class InferResultHttp : public InferResult {
       InferResult** infer_result,
       std::shared_ptr<HttpInferRequest> infer_request);
 
+  static Error Create(InferResult** infer_result, const Error err);
+
   Error RequestStatus() const override;
   Error ModelName(std::string* name) const override;
   Error ModelVersion(std::string* version) const override;
@@ -605,6 +608,7 @@ class InferResultHttp : public InferResult {
 
  private:
   InferResultHttp(std::shared_ptr<HttpInferRequest> infer_request);
+  InferResultHttp(const Error err) : status_(err) {}
 
   std::map<std::string, triton::common::TritonJson::Value>
       output_name_to_result_map_;
@@ -622,6 +626,18 @@ InferResultHttp::Create(
 {
   *infer_result =
       reinterpret_cast<InferResult*>(new InferResultHttp(infer_request));
+}
+
+Error
+InferResultHttp::Create(InferResult** infer_result, const Error err)
+{
+  if (err.IsOk()) {
+    return Error(
+        "Error is not provided for error reporting override of "
+        "InferResultHttp::Create()");
+  }
+  *infer_result = reinterpret_cast<InferResult*>(new InferResultHttp(err));
+  return Error::Success;
 }
 
 Error
@@ -1463,6 +1479,118 @@ InferenceServerHttpClient::AsyncInfer(
   }
 
   cv_.notify_all();
+  return Error::Success;
+}
+
+Error
+InferenceServerHttpClient::InferMulti(
+    std::vector<InferResult*>* results,
+    const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
+{
+  Error err;
+
+  // Sanity check
+  if ((inputs.size() != options.size()) && (options.size() != 1)) {
+    return Error(
+        "'options' must either contain 1 element or match size of 'inputs'");
+  }
+  if ((inputs.size() != outputs.size()) &&
+      ((outputs.size() != 1) && (outputs.size() != 0))) {
+    return Error(
+        "'outputs' must either contain 0/1 element or match size of 'inputs'");
+  }
+
+  int64_t max_option_idx = options.size() - 1;
+  // value of '-1' means no output is specified
+  int64_t max_output_idx = outputs.size() - 1;
+  static std::vector<const InferRequestedOutput*> empty_outputs{};
+  for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
+    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_output = (max_output_idx == -1)
+                                     ? empty_outputs
+                                     : outputs[std::min(max_output_idx, i)];
+
+    results->emplace_back();
+    err = Infer(
+        &results->back(), request_options, inputs[i], request_output, headers,
+        query_params, request_compression_algorithm,
+        response_compression_algorithm);
+    if (!err.IsOk()) {
+      return err;
+    }
+  }
+  return Error::Success;
+}
+
+Error
+InferenceServerHttpClient::AsyncInferMulti(
+    OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
+    const std::vector<std::vector<InferInput*>>& inputs,
+    const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
+    const Headers& headers, const Parameters& query_params,
+    const CompressionType request_compression_algorithm,
+    const CompressionType response_compression_algorithm)
+{
+  // Sanity check
+  if ((inputs.size() != options.size()) && (options.size() != 1)) {
+    return Error(
+        "'options' must either contain 1 element or match size of 'inputs'");
+  }
+  if ((inputs.size() != outputs.size()) &&
+      ((outputs.size() != 1) && (outputs.size() != 0))) {
+    return Error(
+        "'outputs' must either contain 0/1 element or match size of 'inputs'");
+  }
+  if (callback == nullptr) {
+    return Error(
+        "Callback function must be provided along with AsyncInfer() call.");
+  }
+
+  int64_t max_option_idx = options.size() - 1;
+  // value of '-1' means no output is specified
+  int64_t max_output_idx = outputs.size() - 1;
+  static std::vector<const InferRequestedOutput*> empty_outputs{};
+  std::shared_ptr<std::atomic<size_t>> response_counter(
+      new std::atomic<size_t>(inputs.size()));
+  std::shared_ptr<std::vector<InferResult*>> responses(
+      new std::vector<InferResult*>(inputs.size()));
+  for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
+    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_output = (max_output_idx == -1)
+                                     ? empty_outputs
+                                     : outputs[std::min(max_output_idx, i)];
+
+    OnCompleteFn cb = [response_counter, responses, i,
+                       callback](InferResult* result) {
+      (*responses)[i] = result;
+      // last response
+      if (response_counter->fetch_sub(1) == 1) {
+        std::vector<InferResult*> results;
+        results.swap(*responses);
+        callback(results);
+      }
+    };
+    auto err = AsyncInfer(
+        cb, request_options, inputs[i], request_output, headers, query_params,
+        request_compression_algorithm, response_compression_algorithm);
+    if (!err.IsOk()) {
+      // Create response with error as other requests may be sent and their
+      // responses may not be accessed outside the callback.
+      InferResult* err_res;
+      err = InferResultHttp::Create(&err_res, err);
+      if (!err.IsOk()) {
+        std::cerr << "Failed to create result for error: " << err.Message()
+                  << std::endl;
+      }
+      cb(err_res);
+      continue;
+    }
+  }
   return Error::Success;
 }
 

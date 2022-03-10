@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -120,6 +120,7 @@ struct InferStat {
 class InferenceServerClient {
  public:
   using OnCompleteFn = std::function<void(InferResult*)>;
+  using OnMultiCompleteFn = std::function<void(std::vector<InferResult*>)>;
 
   explicit InferenceServerClient(bool verbose)
       : verbose_(verbose), exiting_(false)
