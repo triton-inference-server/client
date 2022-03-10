@@ -27,7 +27,7 @@
 USAGE="
 usage: install_dependencies_and_build.sh [options]
 
-Sets up python execution environment for AWS Neuron SDK for execution on Inferentia chips.
+Installs Maven, Java JDK and builds Tritonserver Java bindings
 -h|--help                  Shows usage
 -t|--triton-home           Expected Trition library location, default is: /opt/tritonserver
 -b|--build-home            Expected build location, default is: /tmp/build
