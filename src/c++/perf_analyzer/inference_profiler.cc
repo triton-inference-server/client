@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -58,6 +58,9 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
       const uint64_t infer_cnt = model_stats.second.inference_count;
       // Cache hit count covers cache hits, not related to compute times
       const uint64_t cache_hit_cnt = model_stats.second.cache_hit_count;
+      // cache_miss_cnt should either equal infer_cnt or be zero if
+      // cache is disabled or not supported for the model/scheduler type
+      const uint64_t cache_miss_cnt = model_stats.second.cache_miss_count;
 
       result.total_queue_time_avg_us +=
           AverageDurationInUs(model_stats.second.queue_time_ns, cnt);
@@ -68,19 +71,25 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
           AverageDurationInUs(compute_time, infer_cnt);
       result.total_cache_hit_time_avg_us += AverageDurationInUs(
           model_stats.second.cache_hit_time_ns, cache_hit_cnt);
+      result.total_cache_miss_time_avg_us += AverageDurationInUs(
+          model_stats.second.cache_miss_time_ns, cache_miss_cnt);
       // Track combined cache/compute total avg for reporting latency with cache
       // enabled
       result.total_combined_cache_compute_time_avg_us += AverageDurationInUs(
-          compute_time + model_stats.second.cache_hit_time_ns,
+          compute_time + model_stats.second.cache_hit_time_ns +
+              model_stats.second.cache_miss_time_ns,
           infer_cnt + cache_hit_cnt);
     } else {
       const auto this_ensemble_duration =
           GetTotalEnsembleDurations(model_stats.second);
-      result.total_queue_time_avg_us += this_ensemble_duration.total_queue_time_avg_us;
+      result.total_queue_time_avg_us +=
+          this_ensemble_duration.total_queue_time_avg_us;
       result.total_compute_time_avg_us +=
           this_ensemble_duration.total_compute_time_avg_us;
       result.total_cache_hit_time_avg_us +=
           this_ensemble_duration.total_cache_hit_time_avg_us;
+      result.total_cache_miss_time_avg_us +=
+          this_ensemble_duration.total_cache_miss_time_avg_us;
       result.total_combined_cache_compute_time_avg_us +=
           this_ensemble_duration.total_combined_cache_compute_time_avg_us;
     }
@@ -110,6 +119,7 @@ ReportServerSideStats(
   const uint64_t infer_cnt = stats.inference_count;
   // Cache hit count covers cache hits, not related to compute times
   const uint64_t cache_hit_cnt = stats.cache_hit_count;
+  const uint64_t cache_miss_cnt = stats.cache_miss_count;
 
   // Success count covers all successful requests, cumulative time, queue
   // time, compute, and cache
@@ -125,6 +135,7 @@ ReportServerSideStats(
             << ident << "  Execution count: " << exec_cnt << std::endl;
   if (parser->ResponseCacheEnabled()) {
     std::cout << ident << "  Cache hit count: " << cache_hit_cnt << std::endl;
+    std::cout << ident << "  Cache miss count: " << cache_miss_cnt << std::endl;
   }
   std::cout << ident << "  Successful request count: " << cnt << std::endl
             << ident << "  Avg request latency: " << cumm_avg_us << " usec";
@@ -142,14 +153,16 @@ ReportServerSideStats(
         compute_input_avg_us + compute_infer_avg_us + compute_output_avg_us;
     const uint64_t cache_hit_avg_us =
         AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
+    const uint64_t cache_miss_avg_us =
+        AverageDurationInUs(stats.cache_miss_time_ns, cache_miss_cnt);
     const uint64_t total_compute_time_ns = stats.compute_input_time_ns +
                                            stats.compute_infer_time_ns +
                                            stats.compute_output_time_ns;
-    // Get the average of cache hits and misses (compute portion) across all
-    // successful requests, the rest of cache miss will fall into overhead
-    // category for now
+    // Get the average of cache hits and misses across successful requests
     const uint64_t combined_cache_compute_avg_us = AverageDurationInUs(
-        stats.cache_hit_time_ns + total_compute_time_ns, cnt);
+        stats.cache_hit_time_ns + stats.cache_miss_time_ns +
+            total_compute_time_ns,
+        cnt);
 
     if (parser->ResponseCacheEnabled()) {
       const uint64_t overhead_avg_us = GetOverheadDuration(
@@ -162,10 +175,10 @@ ReportServerSideStats(
       std::cout << ident << ident
                 << "  Average Cache Hit Latency: " << cache_hit_avg_us
                 << " usec" << std::endl;
-      std::cout << ident << ident
-                << "  Average Compute Latency (cache miss only): "
-                << compute_avg_us << " usec "
-                << "(compute input " << compute_input_avg_us << " usec + "
+      std::cout << ident << ident << "  Average Cache Miss Latency: "
+                << cache_miss_avg_us + compute_avg_us << " usec "
+                << "(cache lookup/insertion " << cache_miss_avg_us << " usec + "
+                << "compute input " << compute_input_avg_us << " usec + "
                 << "compute infer " << compute_infer_avg_us << " usec + "
                 << "compute output " << compute_output_avg_us << " usec)"
                 << std::endl
@@ -184,10 +197,10 @@ ReportServerSideStats(
                 << std::endl
                 << std::endl;
 
-      if (cache_hit_avg_us > 0) {
+      if (cache_hit_avg_us > 0 || cache_miss_avg_us > 0) {
         std::cerr << "Response Cache is disabled for model ["
                   << parser->ModelName()
-                  << "] but cache hit latency is non-zero." << std::endl;
+                  << "] but cache hit/miss latency is non-zero." << std::endl;
       }
     }
   }
@@ -200,16 +213,18 @@ ReportServerSideStats(
           cumm_avg_us, ensemble_times.total_queue_time_avg_us,
           ensemble_times.total_combined_cache_compute_time_avg_us);
       std::cout << " (overhead " << overhead_avg_us << " usec + "
-                << "queue " << ensemble_times.total_queue_time_avg_us << " usec + "
+                << "queue " << ensemble_times.total_queue_time_avg_us
+                << " usec + "
                 << "cache hit/miss "
                 << ensemble_times.total_combined_cache_compute_time_avg_us
                 << " usec)" << std::endl;
       std::cout << ident << ident << "  Average Cache Hit Latency: "
                 << ensemble_times.total_cache_hit_time_avg_us << " usec"
                 << std::endl;
-      std::cout << ident << ident
-                << "  Average Compute Latency (cache miss only): "
-                << ensemble_times.total_compute_time_avg_us << " usec " << std::endl
+      std::cout << ident << ident << "  Average Cache Miss Latency: "
+                << ensemble_times.total_cache_miss_time_avg_us +
+                       ensemble_times.total_compute_time_avg_us
+                << " usec " << std::endl
                 << std::endl;
     }
     // Response Cache Disabled
@@ -219,7 +234,8 @@ ReportServerSideStats(
                        cumm_avg_us, ensemble_times.total_queue_time_avg_us,
                        ensemble_times.total_compute_time_avg_us)
                 << " usec + "
-                << "queue " << ensemble_times.total_queue_time_avg_us << " usec + "
+                << "queue " << ensemble_times.total_queue_time_avg_us
+                << " usec + "
                 << "compute " << ensemble_times.total_compute_time_avg_us
                 << " usec)" << std::endl
                 << std::endl;
@@ -977,6 +993,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
     uint64_t start_compute_output_time_ns = 0;
     uint64_t start_cache_hit_cnt = 0;
     uint64_t start_cache_hit_time_ns = 0;
+    uint64_t start_cache_miss_cnt = 0;
+    uint64_t start_cache_miss_time_ns = 0;
 
     const auto& start_itr = start_status.find(this_id);
     if (start_itr != start_status.end()) {
@@ -990,6 +1008,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
       start_compute_output_time_ns = start_itr->second.compute_output_time_ns_;
       start_cache_hit_cnt = start_itr->second.cache_hit_count_;
       start_cache_hit_time_ns = start_itr->second.cache_hit_time_ns_;
+      start_cache_miss_cnt = start_itr->second.cache_miss_count_;
+      start_cache_miss_time_ns = start_itr->second.cache_miss_time_ns_;
     }
 
     server_stats->inference_count =
@@ -1011,6 +1031,10 @@ InferenceProfiler::SummarizeServerStatsHelper(
         end_itr->second.cache_hit_count_ - start_cache_hit_cnt;
     server_stats->cache_hit_time_ns =
         end_itr->second.cache_hit_time_ns_ - start_cache_hit_time_ns;
+    server_stats->cache_miss_count =
+        end_itr->second.cache_miss_count_ - start_cache_miss_cnt;
+    server_stats->cache_miss_time_ns =
+        end_itr->second.cache_miss_time_ns_ - start_cache_miss_time_ns;
   }
 
   return cb::Error::Success;
