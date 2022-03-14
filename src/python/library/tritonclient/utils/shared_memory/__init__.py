@@ -124,7 +124,7 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size):
     return shm_handle
 
 
-def set_shared_memory_region(shm_handle, input_values):
+def set_shared_memory_region(shm_handle, input_values, offset=0):
     """Copy the contents of the numpy array into the system shared memory region.
 
     Parameters
@@ -133,6 +133,9 @@ def set_shared_memory_region(shm_handle, input_values):
         The handle for the system shared memory region.
     input_values : list
         The list of numpy arrays to be copied into the shared memory region.
+    offset : int
+        The offset, in bytes, into the region where you want the array copied. 
+        The default value is 0.
 
     Raises
     ------
@@ -147,7 +150,7 @@ def set_shared_memory_region(shm_handle, input_values):
         if not isinstance(input_value, np.ndarray):
             _raise_error("each element of input_values must be a numpy array")
 
-    offset_current = 0
+    offset_current = offset
     for input_value in input_values:
         input_value = np.ascontiguousarray(input_value).flatten()
         if input_value.dtype == np.object_:
@@ -165,7 +168,7 @@ def set_shared_memory_region(shm_handle, input_values):
     return
 
 
-def get_contents_as_numpy(shm_handle, datatype, shape):
+def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
     """Generates a numpy array using the data stored in the system shared memory
     region specified with the handle.
 
@@ -177,6 +180,9 @@ def get_contents_as_numpy(shm_handle, datatype, shape):
         The datatype of the array to be returned.
     shape : list
         The list of int describing the shape of the array to be returned.
+    offset : int
+        The offset, in bytes, into the region where you want the array extracted. 
+        The default value is 0.
 
     Returns
     -------
@@ -185,14 +191,14 @@ def get_contents_as_numpy(shm_handle, datatype, shape):
         memory region.
     """
     shm_fd = c_int()
-    offset = c_uint64()
+    region_offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()
     shm_key = c_char_p()
     _raise_if_error(
             c_int(_cshm_get_shared_memory_handle_info(shm_handle, byref(shm_addr), byref(shm_key), byref(shm_fd), \
-                                    byref(offset), byref(byte_size))))
-    start_pos = offset.value
+                                    byref(region_offset), byref(byte_size))))
+    start_pos = region_offset.value + offset
     if (datatype != np.object_) and (datatype != np.bytes_):
         requested_byte_size = np.prod(shape) * np.dtype(datatype).itemsize
         cval_len = start_pos + requested_byte_size
