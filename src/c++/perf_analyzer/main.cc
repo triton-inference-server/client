@@ -952,6 +952,11 @@ main(int argc, char** argv)
               argv,
               "failed to parse concurrency range: " + std::string(optarg));
         }
+        if (triton::perfanalyzer::IsMPIRun() &&
+            (concurrency_range[SEARCH_RANGE::kEND] != 1 ||
+             concurrency_range[SEARCH_RANGE::kSTEP] != 1)) {
+          Usage(argv, "cannot use concurrency range with multi-model mode");
+        }
         break;
       }
       case 8: {
@@ -1025,6 +1030,11 @@ main(int argc, char** argv)
           Usage(
               argv,
               "failed to parse request rate range: " + std::string(optarg));
+        }
+        if (triton::perfanalyzer::IsMPIRun() &&
+            (request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
+             request_rate_range[SEARCH_RANGE::kSTEP] != 1.0)) {
+          Usage(argv, "cannot use request rate range with multi-model mode");
         }
         break;
       }
