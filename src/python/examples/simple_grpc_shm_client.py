@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -82,54 +82,47 @@ if __name__ == '__main__':
     input_byte_size = input0_data.size * input0_data.itemsize
     output_byte_size = input_byte_size
 
-    # Create Output0 and Output1 in Shared Memory and store shared memory handles
-    shm_op0_handle = shm.create_shared_memory_region("output0_data",
-                                                     "/output0_simple",
-                                                     output_byte_size)
-    shm_op1_handle = shm.create_shared_memory_region("output1_data",
-                                                     "/output1_simple",
-                                                     output_byte_size)
+    # Create shared memory region for output and store shared memory handle
+    shm_op_handle = shm.create_shared_memory_region("output_data",
+                                                    "/output_simple",
+                                                    output_byte_size * 2)
 
-    # Register Output0 and Output1 shared memory with Triton Server
-    triton_client.register_system_shared_memory("output0_data",
-                                                "/output0_simple",
-                                                output_byte_size)
-    triton_client.register_system_shared_memory("output1_data",
-                                                "/output1_simple",
-                                                output_byte_size)
+    # Register shared memory region for outputs with Triton Server
+    triton_client.register_system_shared_memory("output_data", "/output_simple",
+                                                output_byte_size * 2)
 
-    # Create Input0 and Input1 in Shared Memory and store shared memory handles
-    shm_ip0_handle = shm.create_shared_memory_region("input0_data",
-                                                     "/input0_simple",
-                                                     input_byte_size)
-    shm_ip1_handle = shm.create_shared_memory_region("input1_data",
-                                                     "/input1_simple",
-                                                     input_byte_size)
+    # Create shared memory region for input and store shared memory handle
+    shm_ip_handle = shm.create_shared_memory_region("input_data",
+                                                    "/input_simple",
+                                                    input_byte_size * 2)
 
     # Put input data values into shared memory
-    shm.set_shared_memory_region(shm_ip0_handle, [input0_data])
-    shm.set_shared_memory_region(shm_ip1_handle, [input1_data])
+    shm.set_shared_memory_region(shm_ip_handle, [input0_data])
+    shm.set_shared_memory_region(shm_ip_handle, [input1_data],
+                                 offset=input_byte_size)
 
-    # Register Input0 and Input1 shared memory with Triton Server
-    triton_client.register_system_shared_memory("input0_data", "/input0_simple",
-                                                input_byte_size)
-    triton_client.register_system_shared_memory("input1_data", "/input1_simple",
-                                                input_byte_size)
+    # Register shared memory region for inputs with Triton Server
+    triton_client.register_system_shared_memory("input_data", "/input_simple",
+                                                input_byte_size * 2)
 
     # Set the parameters to use data from shared memory
     inputs = []
     inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
-    inputs[-1].set_shared_memory("input0_data", input_byte_size)
+    inputs[-1].set_shared_memory("input_data", input_byte_size)
 
     inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
-    inputs[-1].set_shared_memory("input1_data", input_byte_size)
+    inputs[-1].set_shared_memory("input_data",
+                                 input_byte_size,
+                                 offset=input_byte_size)
 
     outputs = []
     outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
-    outputs[-1].set_shared_memory("output0_data", output_byte_size)
+    outputs[-1].set_shared_memory("output_data", output_byte_size)
 
     outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
-    outputs[-1].set_shared_memory("output1_data", output_byte_size)
+    outputs[-1].set_shared_memory("output_data",
+                                  output_byte_size,
+                                  offset=output_byte_size)
 
     results = triton_client.infer(model_name=model_name,
                                   inputs=inputs,
@@ -139,7 +132,7 @@ if __name__ == '__main__':
     output0 = results.get_output("OUTPUT0")
     if output0 is not None:
         output0_data = shm.get_contents_as_numpy(
-            shm_op0_handle, utils.triton_to_np_dtype(output0.datatype),
+            shm_op_handle, utils.triton_to_np_dtype(output0.datatype),
             output0.shape)
     else:
         print("OUTPUT0 is missing in the response.")
@@ -147,9 +140,11 @@ if __name__ == '__main__':
 
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
-        output1_data = shm.get_contents_as_numpy(
-            shm_op1_handle, utils.triton_to_np_dtype(output1.datatype),
-            output1.shape)
+        output1_data = shm.get_contents_as_numpy(shm_op_handle,
+                                                 utils.triton_to_np_dtype(
+                                                     output1.datatype),
+                                                 output1.shape,
+                                                 offset=output_byte_size)
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -170,11 +165,9 @@ if __name__ == '__main__':
 
     print(triton_client.get_system_shared_memory_status())
     triton_client.unregister_system_shared_memory()
-    assert len(shm.mapped_shared_memory_regions()) == 4
-    shm.destroy_shared_memory_region(shm_ip0_handle)
-    shm.destroy_shared_memory_region(shm_ip1_handle)
-    shm.destroy_shared_memory_region(shm_op0_handle)
-    shm.destroy_shared_memory_region(shm_op1_handle)
+    assert len(shm.mapped_shared_memory_regions()) == 2
+    shm.destroy_shared_memory_region(shm_ip_handle)
+    shm.destroy_shared_memory_region(shm_op_handle)
     assert len(shm.mapped_shared_memory_regions()) == 0
 
-    print('PASS: shm')
+    print('PASS: system shared memory')
