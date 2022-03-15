@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -44,6 +44,7 @@ set(
   request_rate_manager.cc
   custom_load_manager.cc
   inference_profiler.cc
+  report_writer.cc
 )
 
 set(
@@ -56,6 +57,7 @@ set(
   request_rate_manager.h
   custom_load_manager.h
   inference_profiler.h
+  report_writer.h
 )
 
 add_executable(
