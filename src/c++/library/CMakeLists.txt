@@ -166,7 +166,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       ${_client_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -Wno-unused-parameter -Werror>
-      $<$<CXX_COMPILER_ID:MSVC>:/W4 /D_WIN32_WINNT=0x0A00 /EHsc>
+      $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
     set_target_properties(
@@ -271,10 +271,12 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       ${REQUEST_SRCS} ${REQUEST_HDRS}
   )
 
-  set_property(
-    SOURCE cencode.c
-    PROPERTY COMPILE_FLAGS -Wno-implicit-fallthrough
-  )
+  if (NOT WIN32)
+    set_property(
+      SOURCE cencode.c
+      PROPERTY COMPILE_FLAGS -Wno-implicit-fallthrough
+    )
+  endif() # NOT WIN32
 
   target_link_libraries(
     http-client-library
@@ -329,7 +331,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       ${_client_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
         -Wall -Wextra -Wno-unused-parameter -Werror>
-      $<$<CXX_COMPILER_ID:MSVC>:/W4 /D_WIN32_WINNT=0x0A00 /EHsc>
+      $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
     set_target_properties(
