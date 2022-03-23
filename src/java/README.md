@@ -90,4 +90,15 @@ public class MinExample {
 }
 ```
 
-See more examples in [examples](src/main/java/triton/client/examples/).
+## Building Java Examples
+
+The Java examples can be found in [examples folder](src/main/java/triton/client/examples/). To compile these examples,
+simply run:
+
+```bash
+$ cd client/src/java 
+$ mvn clean install -Ddir=examples
+```
+
+Then you will be able to find the examples located in your target folder: `examples` and the 
+compiled jar at `target/java-api-0.0.1.jar`.
