@@ -119,6 +119,7 @@ ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Dja
 # Copy over the jar to a specific location
 mkdir -p ${JAR_INSTALL_PATH}
 cp ${BUILD_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar ${JAR_INSTALL_PATH}/tritonserver-java-bindings.jar
-rm -rf ${BUILD_HOME}
+rm -r ${BUILD_HOME}
+rm -r /root/.m2/repository
 
 set +x
