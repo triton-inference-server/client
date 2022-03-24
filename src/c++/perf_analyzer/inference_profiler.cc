@@ -27,7 +27,6 @@
 #include "inference_profiler.h"
 
 #include <math.h>
-#include <mpi.h>
 #include <algorithm>
 #include <limits>
 #include <queue>
@@ -655,8 +654,10 @@ InferenceProfiler::ProfileHelper(
           *is_stable = false;
         }
       }
-      if (IsMPIRun() && AllMPIRanksAreStable(*is_stable)) {
-        break;
+      if (IsMPIRun()) {
+        if (AllMPIRanksAreStable(*is_stable)) {
+          break;
+        }
       } else if (*is_stable) {
         break;
       }
@@ -1081,17 +1082,14 @@ InferenceProfiler::SummarizeServerStats(
 bool
 InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
 {
-  int world_size{1};
-  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+  int world_size{MPI_Comm_sizeWorld()};
   std::vector<int> stabilities_per_rank{};
   stabilities_per_rank.resize(world_size, 0);
-  int my_rank{0};
-  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+  int my_rank{MPI_Comm_rankWorld()};
   stabilities_per_rank[my_rank] = static_cast<int>(current_rank_stability);
 
   for (int rank{0}; rank < world_size; rank++) {
-    MPI_Bcast(
-        stabilities_per_rank.data() + rank, 1, MPI_INT, rank, MPI_COMM_WORLD);
+    MPI_BcastIntWorld(stabilities_per_rank.data() + rank, 1, rank);
   }
 
   bool all_stable{true};

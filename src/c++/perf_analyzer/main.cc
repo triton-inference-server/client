@@ -25,7 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <getopt.h>
-#include <mpi.h>
 #include <signal.h>
 #include <algorithm>
 #include "concurrency_manager.h"
@@ -750,8 +749,7 @@ Usage(char** argv, const std::string& msg = std::string())
 int
 main(int argc, char** argv)
 {
-  MPI_Init(&argc, &argv);
-
+  triton::perfanalyzer::MPI_Init(&argc, &argv);
   cb::BackendKind kind(cb::BackendKind::TRITON);
   bool verbose = false;
   bool extra_verbose = false;
@@ -1783,7 +1781,7 @@ main(int argc, char** argv)
   }
 
   if (triton::perfanalyzer::IsMPIRun()) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    triton::perfanalyzer::MPI_BarrierWorld();
   }
 
   cb::Error err;
@@ -1800,7 +1798,7 @@ main(int argc, char** argv)
   }
 
   if (triton::perfanalyzer::IsMPIRun()) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    triton::perfanalyzer::MPI_BarrierWorld();
   }
 
   if (!err.IsOk()) {
@@ -1843,7 +1841,7 @@ main(int argc, char** argv)
     writer->GenerateReport();
   }
 
-  MPI_Finalize();
+  triton::perfanalyzer::MPI_Finalize();
 
   return 0;
 }

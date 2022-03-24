@@ -145,7 +145,49 @@ template <Distribution distribution>
 std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
     const double request_rate);
 
+// Calls MPI_Init API.
+void MPI_Init(int* argc, char*** argv);
+
+// Calls MPI_Initialized API.
+bool MPI_Initialized();
+
+// Calls MPI_Comm_size API with MPI_COMM_WORLD communicator.
+int MPI_Comm_sizeWorld();
+
+// Calls MPI_Barrier API with MPI_COMM_WORLD communicator.
+void MPI_BarrierWorld();
+
+// Calls MPI_Comm_rank API with MPI_COMM_WORLD communicator.
+int MPI_Comm_rankWorld();
+
+// Calls MPI_Bcast API with MPI_INT data type and MPI_COMM_WORLD communicator.
+void MPI_BcastIntWorld(void* buffer, int count, int root);
+
+// Calls MPI_Finalize API.
+void MPI_Finalize();
+
+// Returns MPI_COMM_WORLD value for OpenMPI implementation.
+void* MPI_COMM_WORLDOpenMPI();
+
+// Returns MPI_COMM_WORLD value for MPICH implementation.
+int MPI_COMM_WORLDMPICH();
+
+// Returns MPI_INT value for OpenMPI implementation.
+void* MPI_INTOpenMPI();
+
+// Returns MPI_INT value for MPICH implementation.
+int MPI_INTMPICH();
+
+// Returns pointer to MPI library handle
+void* GetMPIHandle();
+
 // Returns true if the current process is an MPI process
 bool IsMPIRun();
+
+// Enum to hold the supported MPI implementaion.
+enum class MPIImplementation { OpenMPI, MPICH };
+
+// Returns the currently installed MPI implementation.
+MPIImplementation GetMPIImplementation();
 
 }}  // namespace triton::perfanalyzer
