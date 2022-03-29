@@ -119,7 +119,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
       const SslOptions& ssl_options = SslOptions(),
       const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
-      bool use_cached_channel = true);
+      const bool use_cached_channel = true);
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -509,7 +509,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
       const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-      bool use_cached_channel);
+      const bool use_cached_channel);
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);

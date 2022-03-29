@@ -79,7 +79,7 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options, bool use_cached_channel,
+    const KeepAliveOptions& keepalive_options, const bool use_cached_channel,
     bool verbose)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
@@ -406,7 +406,7 @@ InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
     const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    bool use_cached_channel)
+    const bool use_cached_channel)
 {
   client->reset(new InferenceServerGrpcClient(
       server_url, verbose, use_ssl, ssl_options, keepalive_options,
@@ -1550,7 +1550,7 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
     const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    bool use_cached_channel)
+    const bool use_cached_channel)
     : InferenceServerClient(verbose)
 {
   stub_ = GetStub(
