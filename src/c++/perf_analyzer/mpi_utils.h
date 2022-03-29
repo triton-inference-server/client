@@ -79,6 +79,4 @@ class MPIDriver {
   const uint64_t MPIVersionStringMaximumLength{32768};
 };
 
-using MPIDriverPtr_t = std::shared_ptr<MPIDriver>;
-
 }}  // namespace triton::perfanalyzer

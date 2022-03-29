@@ -1327,7 +1327,7 @@ main(int argc, char** argv)
     }
   }
 
-  triton::perfanalyzer::MPIDriverPtr_t mpi_driver{
+  std::shared_ptr<triton::perfanalyzer::MPIDriver> mpi_driver{
       std::make_shared<triton::perfanalyzer::MPIDriver>(verbose)};
   mpi_driver->MPIInit(&argc, &argv);
 

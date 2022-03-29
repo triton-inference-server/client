@@ -364,7 +364,7 @@ InferenceProfiler::Create(
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
-    MPIDriverPtr_t mpi_driver)
+    std::shared_ptr<MPIDriver> mpi_driver)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
@@ -384,7 +384,7 @@ InferenceProfiler::InferenceProfiler(
     std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-    MeasurementMode measurement_mode, MPIDriverPtr_t mpi_driver)
+    MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
