@@ -30,7 +30,7 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
-#include "perf_utils.h"
+
 
 namespace triton { namespace perfanalyzer {
 namespace {
@@ -363,13 +363,14 @@ InferenceProfiler::Create(
     std::unique_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
-    uint64_t measurement_request_count, MeasurementMode measurement_mode)
+    uint64_t measurement_request_count, MeasurementMode measurement_mode,
+    MPIDriverPtr_t mpi_driver)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       std::move(profile_backend), std::move(manager), measurement_request_count,
-      measurement_mode));
+      measurement_mode, mpi_driver));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -383,7 +384,7 @@ InferenceProfiler::InferenceProfiler(
     std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-    MeasurementMode measurement_mode)
+    MeasurementMode measurement_mode, MPIDriverPtr_t mpi_driver)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -391,7 +392,7 @@ InferenceProfiler::InferenceProfiler(
       profile_backend_(std::move(profile_backend)),
       manager_(std::move(manager)),
       measurement_request_count_(measurement_request_count),
-      measurement_mode_(measurement_mode)
+      measurement_mode_(measurement_mode), mpi_driver_(mpi_driver)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -654,7 +655,7 @@ InferenceProfiler::ProfileHelper(
           *is_stable = false;
         }
       }
-      if (IsMPIRun()) {
+      if (mpi_driver_->IsMPIRun()) {
         if (AllMPIRanksAreStable(*is_stable)) {
           break;
         }
@@ -1082,14 +1083,14 @@ InferenceProfiler::SummarizeServerStats(
 bool
 InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
 {
-  int world_size{MPI_Comm_sizeWorld()};
+  int world_size{mpi_driver_->MPICommSizeWorld()};
   std::vector<int> stabilities_per_rank{};
   stabilities_per_rank.resize(world_size, 0);
-  int my_rank{MPI_Comm_rankWorld()};
+  int my_rank{mpi_driver_->MPICommRankWorld()};
   stabilities_per_rank[my_rank] = static_cast<int>(current_rank_stability);
 
   for (int rank{0}; rank < world_size; rank++) {
-    MPI_BcastIntWorld(stabilities_per_rank.data() + rank, 1, rank);
+    mpi_driver_->MPIBcastIntWorld(stabilities_per_rank.data() + rank, 1, rank);
   }
 
   bool all_stable{true};

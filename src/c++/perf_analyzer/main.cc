@@ -31,6 +31,7 @@
 #include "custom_load_manager.h"
 #include "inference_profiler.h"
 #include "model_parser.h"
+#include "mpi_utils.h"
 #include "perf_utils.h"
 #include "report_writer.h"
 #include "request_rate_manager.h"
@@ -749,7 +750,6 @@ Usage(char** argv, const std::string& msg = std::string())
 int
 main(int argc, char** argv)
 {
-  triton::perfanalyzer::MPI_Init(&argc, &argv);
   cb::BackendKind kind(cb::BackendKind::TRITON);
   bool verbose = false;
   bool extra_verbose = false;
@@ -950,11 +950,6 @@ main(int argc, char** argv)
               argv,
               "failed to parse concurrency range: " + std::string(optarg));
         }
-        if (triton::perfanalyzer::IsMPIRun() &&
-            (concurrency_range[SEARCH_RANGE::kEND] != 1 ||
-             concurrency_range[SEARCH_RANGE::kSTEP] != 1)) {
-          Usage(argv, "cannot use concurrency range with multi-model mode");
-        }
         break;
       }
       case 8: {
@@ -1028,11 +1023,6 @@ main(int argc, char** argv)
           Usage(
               argv,
               "failed to parse request rate range: " + std::string(optarg));
-        }
-        if (triton::perfanalyzer::IsMPIRun() &&
-            (request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
-             request_rate_range[SEARCH_RANGE::kSTEP] != 1.0)) {
-          Usage(argv, "cannot use request rate range with multi-model mode");
         }
         break;
       }
@@ -1337,6 +1327,10 @@ main(int argc, char** argv)
     }
   }
 
+  triton::perfanalyzer::MPIDriverPtr_t mpi_driver{
+      std::make_shared<triton::perfanalyzer::MPIDriver>(verbose)};
+  mpi_driver->MPIInit(&argc, &argv);
+
   if (model_name.empty()) {
     Usage(argv, "-m flag must be specified");
   }
@@ -1410,6 +1404,12 @@ main(int argc, char** argv)
         "simultaneously");
   }
 
+  if (using_request_rate_range && mpi_driver->IsMPIRun() &&
+      (request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
+       request_rate_range[SEARCH_RANGE::kSTEP] != 1.0)) {
+    Usage(argv, "cannot use request rate range with multi-model mode");
+  }
+
   if (using_custom_intervals && using_old_options) {
     Usage(argv, "can not use deprecated options with --request-intervals");
   }
@@ -1420,6 +1420,12 @@ main(int argc, char** argv)
         argv,
         "can not use --concurrency-range or --request-rate-range "
         "along with --request-intervals");
+  }
+
+  if (using_concurrency_range && mpi_driver->IsMPIRun() &&
+      (concurrency_range[SEARCH_RANGE::kEND] != 1 ||
+       concurrency_range[SEARCH_RANGE::kSTEP] != 1)) {
+    Usage(argv, "cannot use concurrency range with multi-model mode");
   }
 
   if (((concurrency_range[SEARCH_RANGE::kEND] == pa::NO_LIMIT) ||
@@ -1698,7 +1704,7 @@ main(int argc, char** argv)
           verbose, stability_threshold, measurement_window_ms, max_trials,
           percentile, latency_threshold_ms, protocol, parser,
           std::move(backend), std::move(manager), &profiler,
-          measurement_request_count, measurement_mode),
+          measurement_request_count, measurement_mode, mpi_driver),
       "failed to create profiler");
 
   // pre-run report
@@ -1780,9 +1786,7 @@ main(int argc, char** argv)
     search_mode = pa::SearchMode::NONE;
   }
 
-  if (triton::perfanalyzer::IsMPIRun()) {
-    triton::perfanalyzer::MPI_BarrierWorld();
-  }
+  mpi_driver->MPIBarrierWorld();
 
   cb::Error err;
   if (target_concurrency) {
@@ -1797,9 +1801,7 @@ main(int argc, char** argv)
         request_rate_range[SEARCH_RANGE::kSTEP], search_mode, summary);
   }
 
-  if (triton::perfanalyzer::IsMPIRun()) {
-    triton::perfanalyzer::MPI_BarrierWorld();
-  }
+  mpi_driver->MPIBarrierWorld();
 
   if (!err.IsOk()) {
     std::cerr << err << std::endl;
@@ -1841,7 +1843,7 @@ main(int argc, char** argv)
     writer->GenerateReport();
   }
 
-  triton::perfanalyzer::MPI_Finalize();
+  mpi_driver->MPIFinalize();
 
   return 0;
 }

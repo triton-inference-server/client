@@ -45,6 +45,7 @@ set(
   custom_load_manager.cc
   inference_profiler.cc
   report_writer.cc
+  mpi_utils.cc
 )
 
 set(
@@ -58,6 +59,7 @@ set(
   custom_load_manager.h
   inference_profiler.h
   report_writer.h
+  mpi_utils.h
 )
 
 add_executable(

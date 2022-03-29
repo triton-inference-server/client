@@ -29,6 +29,7 @@
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"
+#include "mpi_utils.h"
 #include "request_rate_manager.h"
 
 namespace triton { namespace perfanalyzer {
@@ -182,6 +183,7 @@ class InferenceProfiler {
   /// \param measurement_request_count The number of requests to capture when
   /// using "count_windows" mode.
   /// \param measurement_mode The measurement mode to use for windows.
+  /// \param mpi_driver The driver class for MPI operations.
   /// \return cb::Error object indicating success or
   /// failure.
   static cb::Error Create(
@@ -192,7 +194,8 @@ class InferenceProfiler {
       std::unique_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager,
       std::unique_ptr<InferenceProfiler>* profiler,
-      uint64_t measurement_request_count, MeasurementMode measurement_mode);
+      uint64_t measurement_request_count, MeasurementMode measurement_mode,
+      MPIDriverPtr_t mpi_driver);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -266,7 +269,7 @@ class InferenceProfiler {
       std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-      MeasurementMode measurement_mode);
+      MeasurementMode measurement_mode, MPIDriverPtr_t mpi_driver);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -429,8 +432,10 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       ServerSideStats* server_stats);
 
-  /// \param current_rank_stability The stability of the current rank.
-  /// \return True if all MPI ranks are stable.
+  /// Returns true if all MPI ranks (models) are stable. Should only be run if
+  /// and only if IsMPIRun() returns true.
+  /// \param current_rank_stability The
+  /// stability of the current rank. \return True if all MPI ranks are stable.
   bool AllMPIRanksAreStable(bool current_rank_stability);
 
   bool verbose_;
@@ -453,6 +458,7 @@ class InferenceProfiler {
 
   bool include_lib_stats_;
   bool include_server_stats_;
+  MPIDriverPtr_t mpi_driver_;
 };
 
 }}  // namespace triton::perfanalyzer
