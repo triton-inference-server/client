@@ -110,8 +110,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// SSL encryption and authorization.
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
-  /// \param force_new_connection If true, then a new channel is created for the
-  /// new client instead reusing old channels from the cache (default false)
+  /// \param force_new_connection If true, a new channel is created for each 
+  /// new client instance. When false, re-use old channels from cache for new
+  /// client instances. The default value is false.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
