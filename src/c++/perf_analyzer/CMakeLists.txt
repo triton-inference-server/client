@@ -89,6 +89,12 @@ if(TRITON_ENABLE_GPU)
   )
 endif()
 
+if(TRITON_ENABLE_PERF_ANALYZER_C_API)
+  target_compile_definitions(
+    client-backend-library
+    PUBLIC TRITON_ENABLE_PERF_ANALYZER_C_API=1
+  )
+endif()
 
 install(
   TARGETS perf_analyzer
