@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include <iostream>
 #include <string>
 #include "client_backend/client_backend.h"
+#include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -421,6 +422,16 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::duration<double>(1.0 / request_rate));
   return [period](std::mt19937& /*gen*/) { return period; };
+}
+
+TEST_CASE("testing the ParseProtocol function")
+{
+  CHECK(ParseProtocol("http") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("HTTP") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("grpc") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("GRPC") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("abc") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
 }
 
 }}  // namespace triton::perfanalyzer
