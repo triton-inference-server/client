@@ -103,6 +103,13 @@ if(TRITON_ENABLE_TF_SERVING)
   )
 endif()
 
+if(TRITON_ENABLE_TORCHSERVE)
+  target_compile_definitions(
+    client-backend-library
+    PUBLIC TRITON_ENABLE_TORCHSERVE=1
+  )
+endif()
+
 install(
   TARGETS perf_analyzer
   RUNTIME DESTINATION bin

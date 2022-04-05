@@ -30,7 +30,6 @@ cmake_minimum_required (VERSION 3.18)
 add_definitions(-DCURL_STATICLIB)
 
 add_subdirectory(triton)
-add_subdirectory(torchserve)
 
 if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   add_subdirectory(triton_c_api)
@@ -38,6 +37,10 @@ endif()
 
 if(TRITON_ENABLE_TF_SERVING)
   add_subdirectory(tensorflow_serving)
+endif()
+
+if(TRITON_ENABLE_TORCHSERVE)
+  add_subdirectory(torchserve)
 endif()
 
 set(
@@ -62,30 +65,36 @@ if(TRITON_ENABLE_TF_SERVING)
   set(TF_SERVING_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>)
 endif()
 
+if(TRITON_ENABLE_TORCHSERVE)
+  set(TORCHSERVE_LIBRARY $<TARGET_OBJECTS:ts-client-backend-library>)
+  set(TORCHSERVE_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>)
+  set(TORCHSERVE_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>)
+endif()
+
 add_library(
   client-backend-library
   ${CLIENT_BACKEND_SRCS}
   ${CLIENT_BACKEND_HDRS}
   $<TARGET_OBJECTS:triton-client-backend-library>
-  $<TARGET_OBJECTS:ts-client-backend-library>
   $<TARGET_OBJECTS:shm-utils-library>
   ${CAPI_LIBRARY}
   ${TF_SERVING_LIBRARY}
+  ${TORCHSERVE_LIBRARY}
 )
 
 target_link_libraries(
   client-backend-library
   PUBLIC triton-common-json        # from repo-common
   PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
-  PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>
   ${CAPI_TARGET_LINK_LIBRARY}
   ${TF_SERVING_TARGET_LINK_LIBRARY}
+  ${TORCHSERVE_TARGET_LINK_LIBRARY}
 )
 
 target_include_directories(
   client-backend-library
   PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
-  PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>
   ${CAPI_TARGET_INCLUDE_DIRECTORY}
   ${TF_SERVING_TARGET_INCLUDE_DIRECTORY}
+  ${TORCHSERVE_TARGET_INCLUDE_DIRECTORY}
 )

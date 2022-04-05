@@ -25,18 +25,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "client_backend.h"
-
-#include "torchserve/torchserve_client_backend.h"
 #include "triton/triton_client_backend.h"
 
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
 #include "triton_c_api/triton_c_api_backend.h"
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
 
-
 #ifdef TRITON_ENABLE_TF_SERVING
 #include "tensorflow_serving/tfserve_client_backend.h"
 #endif  // TRITON_ENABLE_TF_SERVING
+
+#ifdef TRITON_ENABLE_TORCHSERVE
+#include "torchserve/torchserve_client_backend.h"
+#endif  // TRITON_ENABLE_TORCHSERVE
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
@@ -151,10 +152,12 @@ ClientBackend::Create(
         verbose, &local_backend));
   }
 #endif  // TRITON_ENABLE_TF_SERVING
+#ifdef TRITON_ENABLE_TORCHSERVE
   else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
   }
+#endif  // TRITON_ENABLE_TORCHSERVE
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiClientBackend::Create(
@@ -352,10 +355,12 @@ InferInput::Create(
         infer_input, name, dims, datatype));
   }
 #endif  // TRITON_ENABLE_TF_SERVING
+#ifdef TRITON_ENABLE_TORCHSERVE
   else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeInferInput::Create(
         infer_input, name, dims, datatype));
   }
+#endif  // TRITON_ENABLE_TORCHSERVE
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferInput::Create(
@@ -428,7 +433,7 @@ InferRequestedOutput::Create(
     RETURN_IF_CB_ERROR(
         tfserving::TFServeInferRequestedOutput::Create(infer_output, name));
   }
-#endif  //#ifdef TRITON_ENABLE_TF_SERVING
+#endif  // TRITON_ENABLE_TF_SERVING
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
