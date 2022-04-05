@@ -26,7 +26,6 @@
 
 #include "client_backend.h"
 
-#include "tensorflow_serving/tfserve_client_backend.h"
 #include "torchserve/torchserve_client_backend.h"
 #include "triton/triton_client_backend.h"
 
@@ -34,6 +33,10 @@
 #include "triton_c_api/triton_c_api_backend.h"
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
 
+
+#ifdef TRITON_ENABLE_TF_SERVING
+#include "tensorflow_serving/tfserve_client_backend.h"
+#endif  // TRITON_ENABLE_TF_SERVING
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
@@ -140,11 +143,15 @@ ClientBackend::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
         url, protocol, ssl_options, BackendToGrpcType(compression_algorithm),
         http_headers, verbose, &local_backend));
-  } else if (kind == TENSORFLOW_SERVING) {
+  }
+#ifdef TRITON_ENABLE_TF_SERVING
+  else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeClientBackend::Create(
         url, protocol, BackendToGrpcType(compression_algorithm), http_headers,
         verbose, &local_backend));
-  } else if (kind == TORCHSERVE) {
+  }
+#endif  // TRITON_ENABLE_TF_SERVING
+  else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeClientBackend::Create(
         url, protocol, http_headers, verbose, &local_backend));
   }
@@ -338,10 +345,14 @@ InferInput::Create(
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferInput::Create(
         infer_input, name, dims, datatype));
-  } else if (kind == TENSORFLOW_SERVING) {
+  }
+#ifdef TRITON_ENABLE_TF_SERVING
+  else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeInferInput::Create(
         infer_input, name, dims, datatype));
-  } else if (kind == TORCHSERVE) {
+  }
+#endif  // TRITON_ENABLE_TF_SERVING
+  else if (kind == TORCHSERVE) {
     RETURN_IF_CB_ERROR(torchserve::TorchServeInferInput::Create(
         infer_input, name, dims, datatype));
   }
@@ -411,10 +422,13 @@ InferRequestedOutput::Create(
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
         infer_output, name, class_count));
-  } else if (kind == TENSORFLOW_SERVING) {
+  }
+#ifdef TRITON_ENABLE_TF_SERVING
+  else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(
         tfserving::TFServeInferRequestedOutput::Create(infer_output, name));
   }
+#endif  //#ifdef TRITON_ENABLE_TF_SERVING
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
