@@ -36,7 +36,7 @@ add_subdirectory(client_backend)
 set(
   PERF_ANALYZER_SRCS
   main.cc
-  perf_analyzer_runner.cc
+  perf_analyzer.cc
   model_parser.cc
   perf_utils.cc
   load_manager.cc
@@ -51,7 +51,7 @@ set(
 
 set(
   PERF_ANALYZER_HDRS
-  perf_analyzer_runner.h
+  perf_analyzer.h
   model_parser.h
   perf_utils.h
   load_manager.h
@@ -108,7 +108,8 @@ install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ./perf_
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/)")
 install(CODE "message(\"-- Created symlink: perf_client -> ./perf_analyzer\")")
 
-# Configure doctest
+# Configure doctest. Based on
+# https://github.com/doctest/doctest/blob/master/doc/markdown/build-systems.md
 include(ExternalProject)
 find_package(Git REQUIRED)
 
@@ -116,8 +117,7 @@ ExternalProject_Add(
     doctest
     PREFIX ${CMAKE_BINARY_DIR}/doctest
     GIT_REPOSITORY https://github.com/doctest/doctest.git
-    TIMEOUT 10
-    UPDATE_COMMAND ${GIT_EXECUTABLE} pull
+    GIT_TAG "v2.4.8"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     INSTALL_COMMAND ""

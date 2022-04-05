@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "perf_analyzer_runner.h"
+#include "perf_analyzer.h"
 
 #include <getopt.h>
 #include <signal.h>
@@ -752,7 +752,7 @@ Usage(char** argv, const std::string& msg = std::string())
 namespace triton { namespace perfanalyzer {
 
 int
-PerfAnalyzerRunner::run(int argc, char** argv)
+PerfAnalyzer::Run(int argc, char** argv)
 {
   cb::BackendKind kind(cb::BackendKind::TRITON);
   bool verbose = false;

@@ -27,10 +27,10 @@
 
 namespace triton { namespace perfanalyzer {
 
-class PerfAnalyzerRunner {
+class PerfAnalyzer {
  public:
   // Main runner function for Perf Analyzer.
-  static int run(int argc, char* argv[]);
+  static int Run(int argc, char* argv[]);
 };
 
 }}  // namespace triton::perfanalyzer
