@@ -35,11 +35,11 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   add_subdirectory(triton_c_api)
 endif()
 
-if(TRITON_ENABLE_TF_SERVING)
+if(TRITON_ENABLE_PERF_ANALYZER_TFS)
   add_subdirectory(tensorflow_serving)
 endif()
 
-if(TRITON_ENABLE_TORCHSERVE)
+if(TRITON_ENABLE_PERF_ANALYZER_TS)
   add_subdirectory(torchserve)
 endif()
 
@@ -59,16 +59,16 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   set(CAPI_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:triton-c-api-backend-library,INCLUDE_DIRECTORIES>)
 endif()
 
-if(TRITON_ENABLE_TF_SERVING)
-  set(TF_SERVING_LIBRARY $<TARGET_OBJECTS:tfs-client-backend-library>)
-  set(TF_SERVING_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:tfs-client-backend-library,LINK_LIBRARIES>)
-  set(TF_SERVING_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>)
+if(TRITON_ENABLE_PERF_ANALYZER_TFS)
+  set(TFS_LIBRARY $<TARGET_OBJECTS:tfs-client-backend-library>)
+  set(TFS_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:tfs-client-backend-library,LINK_LIBRARIES>)
+  set(TFS_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>)
 endif()
 
-if(TRITON_ENABLE_TORCHSERVE)
-  set(TORCHSERVE_LIBRARY $<TARGET_OBJECTS:ts-client-backend-library>)
-  set(TORCHSERVE_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>)
-  set(TORCHSERVE_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>)
+if(TRITON_ENABLE_PERF_ANALYZER_TS)
+  set(TS_LIBRARY $<TARGET_OBJECTS:ts-client-backend-library>)
+  set(TS_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>)
+  set(TS_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>)
 endif()
 
 add_library(
@@ -78,8 +78,8 @@ add_library(
   $<TARGET_OBJECTS:triton-client-backend-library>
   $<TARGET_OBJECTS:shm-utils-library>
   ${CAPI_LIBRARY}
-  ${TF_SERVING_LIBRARY}
-  ${TORCHSERVE_LIBRARY}
+  ${TFS_LIBRARY}
+  ${TS_LIBRARY}
 )
 
 target_link_libraries(
@@ -87,14 +87,14 @@ target_link_libraries(
   PUBLIC triton-common-json        # from repo-common
   PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
   ${CAPI_TARGET_LINK_LIBRARY}
-  ${TF_SERVING_TARGET_LINK_LIBRARY}
-  ${TORCHSERVE_TARGET_LINK_LIBRARY}
+  ${TFS_TARGET_LINK_LIBRARY}
+  ${TS_TARGET_LINK_LIBRARY}
 )
 
 target_include_directories(
   client-backend-library
   PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
   ${CAPI_TARGET_INCLUDE_DIRECTORY}
-  ${TF_SERVING_TARGET_INCLUDE_DIRECTORY}
-  ${TORCHSERVE_TARGET_INCLUDE_DIRECTORY}
+  ${TFS_TARGET_INCLUDE_DIRECTORY}
+  ${TS_TARGET_INCLUDE_DIRECTORY}
 )

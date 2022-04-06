@@ -96,17 +96,17 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   )
 endif()
 
-if(TRITON_ENABLE_TF_SERVING)
+if(TRITON_ENABLE_PERF_ANALYZER_TFS)
   target_compile_definitions(
     client-backend-library
-    PUBLIC TRITON_ENABLE_TF_SERVING=1
+    PUBLIC TRITON_ENABLE_PERF_ANALYZER_TFS=1
   )
 endif()
 
-if(TRITON_ENABLE_TORCHSERVE)
+if(TRITON_ENABLE_PERF_ANALYZER_TS)
   target_compile_definitions(
     client-backend-library
-    PUBLIC TRITON_ENABLE_TORCHSERVE=1
+    PUBLIC TRITON_ENABLE_PERF_ANALYZER_TS=1
   )
 endif()
 
