@@ -152,4 +152,9 @@ target_link_libraries(
 
 target_include_directories(perf_analyzer_unit_tests PUBLIC ${DOCTEST_INCLUDE_DIR})
 
+install(
+  TARGETS perf_analyzer_unit_tests
+  RUNTIME DESTINATION bin
+)
+
 endif()

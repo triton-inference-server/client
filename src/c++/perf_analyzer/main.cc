@@ -29,5 +29,5 @@
 int
 main(int argc, char* argv[])
 {
-  return triton::perfanalyzer::PerfAnalyzer::Run(argc, argv);
+  return PerfAnalyzer::Run(argc, argv);
 }

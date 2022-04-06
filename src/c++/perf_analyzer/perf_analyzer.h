@@ -25,12 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-namespace triton { namespace perfanalyzer {
-
 class PerfAnalyzer {
  public:
   // Main runner function for Perf Analyzer.
   static int Run(int argc, char* argv[]);
 };
-
-}}  // namespace triton::perfanalyzer

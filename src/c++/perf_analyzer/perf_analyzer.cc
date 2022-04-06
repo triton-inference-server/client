@@ -749,8 +749,6 @@ Usage(char** argv, const std::string& msg = std::string())
 
 }  // namespace
 
-namespace triton { namespace perfanalyzer {
-
 int
 PerfAnalyzer::Run(int argc, char** argv)
 {
@@ -1851,5 +1849,3 @@ PerfAnalyzer::Run(int argc, char** argv)
 
   return 0;
 }
-
-}}  // namespace triton::perfanalyzer

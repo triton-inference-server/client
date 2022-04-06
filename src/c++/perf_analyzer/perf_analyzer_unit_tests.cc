@@ -24,5 +24,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// This file exists to hold a macro-expanded main function for the unit test
+// runner executable.
+//
+// The old contents of main.cc are needed for the unit test runner to compile,
+// but since two main functions cannot be compiled in the same executable, the
+// contents of the old main.cc were moved to a new file/class, which are now
+// included in the compilation of the unit test runner executable.
+//
+// The new contents of main.cc just include the new file/class mentioned above
+// and run the primary function from there in a simplified main function, which
+// runs Perf Analyzer.
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
