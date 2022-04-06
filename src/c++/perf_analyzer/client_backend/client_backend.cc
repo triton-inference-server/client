@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "client_backend.h"
+
 #include "triton/triton_client_backend.h"
 
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API

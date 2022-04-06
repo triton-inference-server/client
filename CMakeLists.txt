@@ -39,8 +39,8 @@ option(TRITON_ENABLE_PYTHON_GRPC "Enable Python GRPC client libraries" OFF)
 option(TRITON_ENABLE_JAVA_HTTP "Enable JAVA HTTP client libraries" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER_C_API "Enable Performance Analyzer C API" OFF)
-option(TRITON_ENABLE_TF_SERVING "Enable Tensorflow Serving support for Performance Analyzer" OFF)
-option(TRITON_ENABLE_TORCHSERVE "Enable Torchserve support for Performance Analyzer" OFF)
+option(TRITON_ENABLE_TF_SERVING "Enable TensorFlow Serving support for Performance Analyzer" OFF)
+option(TRITON_ENABLE_TORCHSERVE "Enable TorchServe support for Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
@@ -127,9 +127,15 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
     set(_cc_client_depends ${_cc_client_depends} grpc protobuf)
   endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
-  if(NOT ${TRITON_ENABLE_PERF_ANALYZER} AND (${TRITON_ENABLE_PERF_ANALYZER_C_API} OR ${TRITON_ENABLE_TF_SERVING} OR ${TRITON_ENABLE_TORCHSERVE}))
-    message(FATAL_ERROR "Must set cmake argument 'TRITON_ENABLE_PERF_ANALYZER=ON' for using different backend support for Performance Analyzer.")
-  endif() # NOT TRITON_ENABLE_PERF_ANALYZER AND (TRITON_ENABLE_PERF_ANALYZER_C_API OR TRITON_ENABLE_TF_SERVING OR TRITON_ENABLE_TORCHSERVE)
+  if(NOT ${TRITON_ENABLE_PERF_ANALYZER} AND ${TRITON_ENABLE_PERF_ANALYZER_C_API})
+    message(FATAL_ERROR "Must set cmake argument 'TRITON_ENABLE_PERF_ANALYZER=ON' for using C API.")
+  endif() # NOT TRITON_ENABLE_PERF_ANALYZER AND TRITON_ENABLE_PERF_ANALYZER_C_API
+  if(NOT ${TRITON_ENABLE_PERF_ANALYZER} AND ${TRITON_ENABLE_TF_SERVING})
+    message(FATAL_ERROR "Must set cmake argument 'TRITON_ENABLE_PERF_ANALYZER=ON' for using TensorFlow Serving.")
+  endif() # NOT TRITON_ENABLE_PERF_ANALYZER AND TRITON_ENABLE_TF_SERVING
+  if(NOT ${TRITON_ENABLE_PERF_ANALYZER} AND ${TRITON_ENABLE_TORCHSERVE})
+    message(FATAL_ERROR "Must set cmake argument 'TRITON_ENABLE_PERF_ANALYZER=ON' for using TorchServe.")
+  endif() # NOT TRITON_ENABLE_PERF_ANALYZER AND TRITON_ENABLE_TORCHSERVE
 
   ExternalProject_Add(cc-clients
     PREFIX cc-clients
