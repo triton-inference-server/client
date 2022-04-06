@@ -234,10 +234,11 @@ because Triton on Windows does not yet support all the build options.
 
 Use *cmake* to configure the build. You should adjust the flags depending on
 the components of Triton Client you are working and would like to build.
-For example, if you want to build Perf Analyzer with C API, you can use \
+For example, if you want to build Perf Analyzer with Triton C API, you can use \
 `-DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PERF_ANALYZER_C_API=ON`. You can
-also use `TRITON_ENABLE_PERF_ANALYZER_TFS` or `TRITON_ENABLE_PERF_ANALYZER_TS` flags
-to enable/disable TensorFlow Serving or TorchServe backend support in the following command.
+also use `TRITON_ENABLE_PERF_ANALYZER_TFS` and `TRITON_ENABLE_PERF_ANALYZER_TS` flags
+to enable/disable support for TensorFlow Serving and TorchServe backend respectively in perf analyzer. \
+The following command demonstrate how to build client with all the features:
 
 ```
 $ mkdir build
