@@ -98,6 +98,20 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   )
 endif()
 
+if(TRITON_ENABLE_PERF_ANALYZER_TFS)
+  target_compile_definitions(
+    client-backend-library
+    PUBLIC TRITON_ENABLE_PERF_ANALYZER_TFS=1
+  )
+endif()
+
+if(TRITON_ENABLE_PERF_ANALYZER_TS)
+  target_compile_definitions(
+    client-backend-library
+    PUBLIC TRITON_ENABLE_PERF_ANALYZER_TS=1
+  )
+endif()
+
 install(
   TARGETS perf_analyzer
   RUNTIME DESTINATION bin
