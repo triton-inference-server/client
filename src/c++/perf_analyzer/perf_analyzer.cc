@@ -820,6 +820,9 @@ PerfAnalyzer::Run(int argc, char** argv)
   // Verbose csv option for including additional information
   bool verbose_csv = false;
 
+  // Enable MPI option for using MPI functionality with multi-model mode.
+  bool enable_mpi = false;
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -865,6 +868,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       {"ssl-https-private-key-file", 1, 0, 40},
       {"ssl-https-private-key-type", 1, 0, 41},
       {"verbose-csv", 0, 0, 42},
+      {"enable-mpi", 0, 0, 43},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1263,6 +1267,10 @@ PerfAnalyzer::Run(int argc, char** argv)
         verbose_csv = true;
         break;
       }
+      case 43: {
+        enable_mpi = true;
+        break;
+      }
       case 'v':
         extra_verbose = verbose;
         verbose = true;
@@ -1330,7 +1338,7 @@ PerfAnalyzer::Run(int argc, char** argv)
   }
 
   std::shared_ptr<triton::perfanalyzer::MPIDriver> mpi_driver{
-      std::make_shared<triton::perfanalyzer::MPIDriver>(verbose)};
+      std::make_shared<triton::perfanalyzer::MPIDriver>(enable_mpi)};
   mpi_driver->MPIInit(&argc, &argv);
 
   if (model_name.empty()) {

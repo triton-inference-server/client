@@ -32,15 +32,19 @@
 
 namespace triton { namespace perfanalyzer {
 
-MPIDriver::MPIDriver(bool verbose)
+MPIDriver::MPIDriver(bool is_enabled) : is_enabled_(is_enabled)
 {
+  if (is_enabled_ == false) {
+    return;
+  }
+
   handle_ = dlopen("libmpi.so", RTLD_LAZY | RTLD_GLOBAL);
 
-  if (verbose && handle_ == nullptr) {
-    std::cerr << "Unable to load MPI library. If you are trying to run with "
-                 "MPI / multiple models, check that 'libmpi.so' is on "
-                 "`LD_LIBRARY_PATH` environment variable path."
-              << std::endl;
+  if (handle_ == nullptr) {
+    throw std::runtime_error(
+        "Unable to load MPI library. If you are trying to run with "
+        "MPI / multiple models, check that 'libmpi.so' is on "
+        "`LD_LIBRARY_PATH` environment variable path.");
   }
 
   CheckMPIImpl();
@@ -49,7 +53,7 @@ MPIDriver::MPIDriver(bool verbose)
 bool
 MPIDriver::IsMPIRun()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return false;
   }
 
@@ -63,7 +67,7 @@ MPIDriver::IsMPIRun()
 void
 MPIDriver::MPIInit(int* argc, char*** argv)
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return;
   }
 
@@ -79,7 +83,7 @@ MPIDriver::MPIInit(int* argc, char*** argv)
 int
 MPIDriver::MPICommSizeWorld()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return -1;
   }
 
@@ -100,7 +104,7 @@ MPIDriver::MPICommSizeWorld()
 void
 MPIDriver::MPIBarrierWorld()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return;
   }
 
@@ -116,7 +120,7 @@ MPIDriver::MPIBarrierWorld()
 int
 MPIDriver::MPICommRankWorld()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return -1;
   }
 
@@ -137,7 +141,7 @@ MPIDriver::MPICommRankWorld()
 void
 MPIDriver::MPIBcastIntWorld(void* buffer, int count, int root)
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return;
   }
 
@@ -153,7 +157,7 @@ MPIDriver::MPIBcastIntWorld(void* buffer, int count, int root)
 void
 MPIDriver::MPIFinalize()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return;
   }
 
@@ -169,7 +173,7 @@ MPIDriver::MPIFinalize()
 bool
 MPIDriver::MPIInitialized()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return false;
   }
 
@@ -188,7 +192,7 @@ MPIDriver::MPIInitialized()
 void*
 MPIDriver::MPICommWorld()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return nullptr;
   }
 
@@ -204,7 +208,7 @@ MPIDriver::MPICommWorld()
 void*
 MPIDriver::MPIInt()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return nullptr;
   }
 
@@ -220,7 +224,7 @@ MPIDriver::MPIInt()
 void
 MPIDriver::CheckMPIImpl()
 {
-  if (handle_ == nullptr) {
+  if (is_enabled_ == false) {
     return;
   }
 

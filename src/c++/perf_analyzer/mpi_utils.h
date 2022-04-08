@@ -32,7 +32,7 @@ namespace triton { namespace perfanalyzer {
 class MPIDriver {
  public:
   // Initializes class. Saves handle to MPI library if MPI library is available.
-  MPIDriver(bool verbose = false);
+  MPIDriver(bool is_enabled = false);
 
   // Returns true if the current process is an MPI process with world size
   // greater than 1.
@@ -71,6 +71,9 @@ class MPIDriver {
 
   // Attempts to check that Open MPI is installed.
   void CheckMPIImpl();
+
+  // Bool for whether user has opted to attempt to use MPI functionality.
+  bool is_enabled_{false};
 
   // Loaded object for MPI library.
   void* handle_{nullptr};
