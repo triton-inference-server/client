@@ -895,9 +895,8 @@ PerfAnalyzer::Run(int argc, char** argv)
         if (colon_pos == std::string::npos) {
           Usage(
               argv,
-              "failed to parse input shape. There must a colon after input "
+              "failed to parse input shape. There must be a colon after input "
               "name.");
-          break;
         }
         std::string name = arg.substr(0, colon_pos);
         std::string shape_str = arg.substr(name.size() + 1);
