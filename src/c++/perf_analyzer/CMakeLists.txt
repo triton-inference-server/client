@@ -36,6 +36,7 @@ add_subdirectory(client_backend)
 set(
   PERF_ANALYZER_SRCS
   main.cc
+  perf_analyzer.cc
   model_parser.cc
   perf_utils.cc
   load_manager.cc
@@ -50,6 +51,7 @@ set(
 
 set(
   PERF_ANALYZER_HDRS
+  perf_analyzer.h
   model_parser.h
   perf_utils.h
   load_manager.h
@@ -105,5 +107,54 @@ install(
 install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ./perf_analyzer perf_client
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/)")
 install(CODE "message(\"-- Created symlink: perf_client -> ./perf_analyzer\")")
+
+# Configure doctest. Based on
+# https://github.com/doctest/doctest/blob/master/doc/markdown/build-systems.md
+include(ExternalProject)
+find_package(Git REQUIRED)
+
+ExternalProject_Add(
+    doctest
+    PREFIX ${CMAKE_BINARY_DIR}/doctest
+    GIT_REPOSITORY https://github.com/doctest/doctest.git
+    GIT_TAG "v2.4.8"
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD ON
+)
+
+# Expose required variable (DOCTEST_INCLUDE_DIR) to parent scope
+ExternalProject_Get_Property(doctest source_dir)
+set(DOCTEST_INCLUDE_DIR ${source_dir}/doctest CACHE INTERNAL "Path to include folder for doctest")
+
+target_include_directories(perf_analyzer PUBLIC ${DOCTEST_INCLUDE_DIR})
+target_compile_definitions(perf_analyzer PUBLIC DOCTEST_CONFIG_DISABLE)
+
+set(PERF_ANALYZER_UNIT_TESTS_SRCS ${PERF_ANALYZER_SRCS})
+list(REMOVE_ITEM PERF_ANALYZER_UNIT_TESTS_SRCS main.cc)
+list(PREPEND PERF_ANALYZER_UNIT_TESTS_SRCS perf_analyzer_unit_tests.cc)
+set(PERF_ANALYZER_UNIT_TESTS_HDRS ${PERF_ANALYZER_HDRS})
+
+add_executable(
+  perf_analyzer_unit_tests
+  ${PERF_ANALYZER_UNIT_TESTS_SRCS}
+  ${PERF_ANALYZER_UNIT_TESTS_HDRS}
+  $<TARGET_OBJECTS:json-utils-library>
+)
+
+target_link_libraries(
+  perf_analyzer_unit_tests
+  PRIVATE
+    client-backend-library
+    -lb64
+)
+
+target_include_directories(perf_analyzer_unit_tests PUBLIC ${DOCTEST_INCLUDE_DIR})
+
+install(
+  TARGETS perf_analyzer_unit_tests
+  RUNTIME DESTINATION bin
+)
 
 endif()
