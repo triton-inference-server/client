@@ -297,6 +297,43 @@ class InferenceServerHttpClient : public InferenceServerClient {
       const std::string& model_version = "", const Headers& headers = Headers(),
       const Parameters& query_params = Parameters());
 
+  /// Update the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param model_name The name of the model to update trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be updated.
+  /// \param settings The new trace setting values. Only the settings listed
+  /// will be updated. If a trace setting is listed in the map with an empty
+  /// string, that setting will be cleared.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
+  /// \return Error object indicating success or failure of the request.
+  Error UpdateTraceSettings(
+      const std::string& model_name = "",
+      const std::map<std::string, std::string>& settings =
+          std::map<std::string, std::string>(),
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
+
+  /// Get the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param settings Returns the JSON representation of the trace
+  /// settings as a string.
+  /// \param model_name The name of the model to get trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be returned.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in request.
+  /// \param query_params Optional map specifying parameters that must be
+  /// included with URL query.
+  /// \return Error object indicating success or failure of the request.
+  Error GetTraceSettings(
+      std::string* settings, const std::string& model_name = "",
+      const Headers& headers = Headers(),
+      const Parameters& query_params = Parameters());
+
   /// Contact the inference server and get the status for requested system
   /// shared memory.
   /// \param status Returns the JSON representation of the system
