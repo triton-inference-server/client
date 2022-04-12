@@ -137,14 +137,14 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       TritonClient::grpcclient ALIAS grpcclient
   )
 
-  if (NOT WIN32)
+  if (NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO)
      set_target_properties(
        grpcclient
        PROPERTIES
          LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
          LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
      )
-  endif() # NOT WIN32
+  endif() # NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO
 
   target_link_libraries(
       grpcclient
