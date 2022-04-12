@@ -61,13 +61,15 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
   set(TRITON_COMMON_ENABLE_GRPC ON)
 
-  FetchContent_Declare(
-    repo-core
-    GIT_REPOSITORY https://github.com/triton-inference-server/core.git
-    GIT_TAG ${TRITON_CORE_REPO_TAG}
-    GIT_SHALLOW ON 
-  )
-  FetchContent_MakeAvailable(repo-core)
+  if(TRITON_ENABLE_PERF_ANALYZER)
+    FetchContent_Declare(
+      repo-core
+      GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+      GIT_TAG ${TRITON_CORE_REPO_TAG}
+      GIT_SHALLOW ON 
+    )
+    FetchContent_MakeAvailable(repo-core)
+  endif() # TRITON_ENABLE_PERF_ANALYZER
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
 FetchContent_MakeAvailable(repo-common)
