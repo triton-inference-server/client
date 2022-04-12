@@ -101,14 +101,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpc-service-library proto-library
   )
 
-  if(TRITON_ENABLE_PERF_ANALYZER)
-    target_link_libraries(
-      grpc-client-library
-      PUBLIC
-        triton-common-json        # from repo-common
-    )
-  endif()
-
   # libgrpcclient_static.a
   add_library(
       grpcclient_static STATIC
@@ -133,12 +125,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
-  if(TRITON_ENABLE_PERF_ANALYZER)
-    target_link_libraries(
-        grpcclient_static
-        PRIVATE triton-common-json
-    )
-  endif()
 
   # libgrpcclient.so
   add_library(
@@ -167,12 +153,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
-  if(TRITON_ENABLE_PERF_ANALYZER)
-    target_link_libraries(
-        grpcclient
-        PRIVATE triton-common-json
-    )
-  endif()
 
   foreach(_client_target grpc-client-library grpcclient_static grpcclient)
     target_compile_features(${_client_target} PRIVATE cxx_std_11)
