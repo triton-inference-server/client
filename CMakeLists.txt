@@ -54,6 +54,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+if(NOT TRITON_ENABLE_PYTHON_GRPC)
+  set(TRITON_COMMON_ENABLE_PROTOBUF_PYTHON OFF)
+endif()
+
 #
 # Dependencies
 #
