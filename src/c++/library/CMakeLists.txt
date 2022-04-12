@@ -45,20 +45,22 @@ target_include_directories(
 #
 # json_utils
 #
-find_package(RapidJSON CONFIG REQUIRED)
-add_library(
-    json-utils-library EXCLUDE_FROM_ALL OBJECT
-    json_utils.h json_utils.cc
-)
-target_include_directories(
-  json-utils-library
-  PUBLIC ${RapidJSON_INCLUDE_DIRS}
-)
-target_link_libraries(
-  json-utils-library
-  PRIVATE:
-    client-common-library
-)
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER OR TRITON_ENABLE_EXAMPLES)
+  find_package(RapidJSON CONFIG REQUIRED)
+  add_library(
+      json-utils-library EXCLUDE_FROM_ALL OBJECT
+      json_utils.h json_utils.cc
+  )
+  target_include_directories(
+    json-utils-library
+    PUBLIC ${RapidJSON_INCLUDE_DIRS}
+  )
+  target_link_libraries(
+    json-utils-library
+    PRIVATE:
+      client-common-library
+  )
+endif()
 
 #
 # shm_utils
@@ -99,11 +101,13 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpc-service-library proto-library
   )
 
-  target_link_libraries(
-    grpc-client-library
-    PUBLIC
-      triton-common-json        # from repo-common
-  )
+  if(TRITON_ENABLE_PERF_ANALYZER)
+    target_link_libraries(
+      grpc-client-library
+      PUBLIC
+        triton-common-json        # from repo-common
+    )
+  endif()
 
   # libgrpcclient_static.a
   add_library(
@@ -126,10 +130,15 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpcclient_static
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
-      PRIVATE triton-common-json
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
+  if(TRITON_ENABLE_PERF_ANALYZER)
+    target_link_libraries(
+        grpcclient_static
+        PRIVATE triton-common-json
+    )
+  endif()
 
   # libgrpcclient.so
   add_library(
@@ -155,10 +164,15 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpcclient
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
-      PRIVATE triton-common-json
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
+  if(TRITON_ENABLE_PERF_ANALYZER)
+    target_link_libraries(
+        grpcclient
+        PRIVATE triton-common-json
+    )
+  endif()
 
   foreach(_client_target grpc-client-library grpcclient_static grpcclient)
     target_compile_features(${_client_target} PRIVATE cxx_std_11)
