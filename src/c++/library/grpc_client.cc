@@ -694,13 +694,13 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
 Error
 InferenceServerGrpcClient::UpdateTraceSettings(
     const std::string& model_name,
-    const std::map<std::string, std::string>& settings, const Headers& headers)
+    const std::map<std::string, std::vector<std::string>>& settings,
+    const Headers& headers)
 {
   Error err;
 
   inference::TraceSettingRequest request;
   inference::TraceSettingResponse response;
-  inference::TraceSettingRequest::SettingValue level_setting;
   grpc::ClientContext context;
 
   for (const auto& it : headers) {
@@ -716,10 +716,13 @@ InferenceServerGrpcClient::UpdateTraceSettings(
         (*request.mutable_settings())[pr.first].clear_value();
       } else {
         if (pr.first == "trace_level") {
-          level_setting.add_value(pr.second);
+          inference::TraceSettingRequest::SettingValue level_setting;
+          for (const auto& v : pr.second) {
+            level_setting.add_value(v);
+          }
           (*request.mutable_settings())[pr.first] = level_setting;
         } else {
-          (*request.mutable_settings())[pr.first].add_value(pr.second);
+          (*request.mutable_settings())[pr.first].add_value(pr.second[0]);
         }
       }
     }

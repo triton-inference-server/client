@@ -250,8 +250,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \return Error object indicating success or failure of the request.
   Error UpdateTraceSettings(
       const std::string& model_name = "",
-      const std::map<std::string, std::string>& settings =
-          std::map<std::string, std::string>(),
+      const std::map<std::string, std::vector<std::string>>& settings =
+          std::map<std::string, std::vector<std::string>>(),
       const Headers& headers = Headers());
 
   /// Get the trace settings for the specified model name, or global trace
