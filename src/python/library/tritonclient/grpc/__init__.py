@@ -38,6 +38,8 @@ except ModuleNotFoundError as error:
         'The installation does not include grpc support. Specify \'grpc\' or \'all\' while installing the tritonclient package to include the support'
     ) from error
 
+from packaging import version
+import warnings
 from tritonclient.grpc import model_config_pb2
 from tritonclient.grpc import service_pb2
 from tritonclient.grpc import service_pb2_grpc
@@ -50,6 +52,15 @@ from tritonclient.utils import *
 INT32_MAX = 2**(struct.Struct('i').size * 8 - 1) - 1
 MAX_GRPC_MESSAGE_SIZE = INT32_MAX
 
+# Check grpc version and issue warnings if grpc version is known to have
+# memory leakage issue.
+if version.parse(grpc.__version__) >= version.parse('1.43.0'):
+    warnings.warn(
+        f"Imported version of grpc is {grpc.__version__}. "
+        "There is memory leak in later Python GRPC (1.43.0 to be specific), "
+        "use known working version (such as 1.41.0) until the memory leak is resolved in the future."
+        "(see https://github.com/grpc/grpc/issues/28513)"
+    )
 
 def get_error_grpc(rpc_error):
     return InferenceServerException(
