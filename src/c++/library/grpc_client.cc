@@ -692,6 +692,84 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
 }
 
 Error
+InferenceServerGrpcClient::UpdateTraceSettings(
+    const std::string& model_name,
+    const std::map<std::string, std::string>& settings, const Headers& headers)
+{
+  Error err;
+
+  inference::TraceSettingRequest request;
+  inference::TraceSettingResponse response;
+  inference::TraceSettingRequest::SettingValue level_setting;
+  grpc::ClientContext context;
+
+  for (const auto& it : headers) {
+    context.AddMetadata(it.first, it.second);
+  }
+
+  if (!model_name.empty()) {
+    request.set_model_name(model_name);
+  }
+  if (!settings.empty()) {
+    for (const auto& pr : settings) {
+      if (pr.second.empty()) {
+        (*request.mutable_settings())[pr.first].clear_value();
+      } else {
+        if (pr.first == "trace_level") {
+          level_setting.add_value(pr.second);
+          (*request.mutable_settings())[pr.first] = level_setting;
+        } else {
+          (*request.mutable_settings())[pr.first].add_value(pr.second);
+        }
+      }
+    }
+  }
+  grpc::Status grpc_status = stub_->TraceSetting(&context, request, &response);
+  if (!grpc_status.ok()) {
+    err = Error(grpc_status.error_message());
+    std::cout << "grpc_status.error_message(): " << grpc_status.error_message()
+              << std::endl;
+  } else {
+    if (verbose_) {
+      std::cout << "Update trace settings " << request.DebugString()
+                << std::endl;
+    }
+  }
+
+  return err;
+}
+
+Error
+InferenceServerGrpcClient::GetTraceSettings(
+    inference::TraceSettingResponse* settings, const std::string& model_name,
+    const Headers& headers)
+{
+  settings->Clear();
+  Error err;
+
+  inference::TraceSettingRequest request;
+  grpc::ClientContext context;
+
+  for (const auto& it : headers) {
+    context.AddMetadata(it.first, it.second);
+  }
+
+  if (!model_name.empty()) {
+    request.set_model_name(model_name);
+  }
+  grpc::Status grpc_status = stub_->TraceSetting(&context, request, settings);
+  if (grpc_status.ok()) {
+    if (verbose_) {
+      std::cout << settings->DebugString() << std::endl;
+    }
+  } else {
+    err = Error(grpc_status.error_message());
+  }
+
+  return err;
+}
+
+Error
 InferenceServerGrpcClient::SystemSharedMemoryStatus(
     inference::SystemSharedMemoryStatusResponse* status,
     const std::string& region_name, const Headers& headers)
