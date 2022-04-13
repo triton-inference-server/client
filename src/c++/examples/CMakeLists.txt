@@ -378,6 +378,20 @@ if(TRITON_ENABLE_CC_HTTP)
     RUNTIME DESTINATION bin
   )
 
+  #
+  # simple_http_trace_client
+  #
+  add_executable(simple_http_trace_client simple_http_trace_client.cc)
+  target_link_libraries(
+    simple_http_trace_client
+    PRIVATE
+      httpclient_static
+  )
+  install(
+    TARGETS simple_http_trace_client
+    RUNTIME DESTINATION bin
+  )
+
   if(${TRITON_ENABLE_GPU})
     #
     # simple_http_cudashm_client

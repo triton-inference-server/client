@@ -1216,8 +1216,8 @@ InferenceServerHttpClient::ModelInferenceStatistics(
 Error
 InferenceServerHttpClient::UpdateTraceSettings(
     const std::string& model_name,
-    const std::map<std::string, std::string>& settings, const Headers& headers,
-    const Parameters& query_params)
+    const std::map<std::string, std::vector<std::string>>& settings,
+    const Headers& headers, const Parameters& query_params)
 {
   std::string request_uri(url_ + "/v2");
   if (!model_name.empty()) {
@@ -1236,10 +1236,12 @@ InferenceServerHttpClient::UpdateTraceSettings(
         if (pr.first == "trace_level") {
           triton::common::TritonJson::Value level_json(
               triton::common::TritonJson::ValueType::ARRAY);
-          level_json.AppendString(pr.second.c_str());
+          for (const auto& v : pr.second) {
+            level_json.AppendString(v.c_str());
+          }
           request_json.Add(pr.first.c_str(), std::move(level_json));
         } else {
-          request_json.AddStringRef(pr.first.c_str(), pr.second.c_str());
+          request_json.AddStringRef(pr.first.c_str(), pr.second[0].c_str());
         }
       }
     }
