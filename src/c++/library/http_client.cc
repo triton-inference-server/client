@@ -1213,7 +1213,7 @@ InferenceServerHttpClient::ModelInferenceStatistics(
   return Get(request_uri, headers, query_params, infer_stat);
 }
 
-Error
+std::string
 InferenceServerHttpClient::UpdateTraceSettings(
     const std::string& model_name,
     const std::map<std::string, std::vector<std::string>>& settings,
@@ -1237,7 +1237,7 @@ InferenceServerHttpClient::UpdateTraceSettings(
           triton::common::TritonJson::Value level_json(
               triton::common::TritonJson::ValueType::ARRAY);
           for (const auto& v : pr.second) {
-            level_json.AppendString(v.c_str());
+            level_json.AppendStringRef(v.c_str());
           }
           request_json.Add(pr.first.c_str(), std::move(level_json));
         } else {
@@ -1250,11 +1250,17 @@ InferenceServerHttpClient::UpdateTraceSettings(
   triton::common::TritonJson::WriteBuffer buffer;
   Error err = request_json.Write(&buffer);
   if (!err.IsOk()) {
-    return err;
+    return "<failed>";
   }
 
   std::string response;
-  return Post(request_uri, buffer.Contents(), headers, query_params, &response);
+  err = Post(request_uri, buffer.Contents(), headers, query_params, &response);
+  if (!err.IsOk()) {
+    std::cerr << "Failed to update trace settings: " << buffer.Contents()
+              << std::endl;
+    return "<failed>";
+  }
+  return response;
 }
 
 Error

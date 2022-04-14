@@ -691,14 +691,12 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
   return err;
 }
 
-Error
+inference::TraceSettingResponse
 InferenceServerGrpcClient::UpdateTraceSettings(
     const std::string& model_name,
     const std::map<std::string, std::vector<std::string>>& settings,
     const Headers& headers)
 {
-  Error err;
-
   inference::TraceSettingRequest request;
   inference::TraceSettingResponse response;
   grpc::ClientContext context;
@@ -716,11 +714,9 @@ InferenceServerGrpcClient::UpdateTraceSettings(
         (*request.mutable_settings())[pr.first].clear_value();
       } else {
         if (pr.first == "trace_level") {
-          inference::TraceSettingRequest::SettingValue level_setting;
           for (const auto& v : pr.second) {
-            level_setting.add_value(v);
+            (*request.mutable_settings())[pr.first].add_value(v);
           }
-          (*request.mutable_settings())[pr.first] = level_setting;
         } else {
           (*request.mutable_settings())[pr.first].add_value(pr.second[0]);
         }
@@ -729,17 +725,16 @@ InferenceServerGrpcClient::UpdateTraceSettings(
   }
   grpc::Status grpc_status = stub_->TraceSetting(&context, request, &response);
   if (!grpc_status.ok()) {
-    err = Error(grpc_status.error_message());
-    std::cout << "grpc_status.error_message(): " << grpc_status.error_message()
-              << std::endl;
+    std::cerr << "Failed to update trace settings: "
+              << grpc_status.error_message() << std::endl;
   } else {
     if (verbose_) {
-      std::cout << "Update trace settings " << request.DebugString()
+      std::cout << "Update trace settings " << response.DebugString()
                 << std::endl;
     }
   }
 
-  return err;
+  return response;
 }
 
 Error

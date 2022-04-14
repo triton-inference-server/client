@@ -247,8 +247,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// loading the model.
   /// \param headers Optional map specifying additional HTTP headers to include
   /// in the metadata of gRPC request.
-  /// \return Error object indicating success or failure of the request.
-  Error UpdateTraceSettings(
+  /// \return The TraceSettingResponse message holding the updated trace
+  /// settings.
+  inference::TraceSettingResponse UpdateTraceSettings(
       const std::string& model_name = "",
       const std::map<std::string, std::vector<std::string>>& settings =
           std::map<std::string, std::vector<std::string>>(),

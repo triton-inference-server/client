@@ -309,8 +309,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// in request.
   /// \param query_params Optional map specifying parameters that must be
   /// included with URL query.
-  /// \return Error object indicating success or failure of the request.
-  Error UpdateTraceSettings(
+  /// \return The string holding the updated trace settings.
+  std::string UpdateTraceSettings(
       const std::string& model_name = "",
       const std::map<std::string, std::vector<std::string>>& settings =
           std::map<std::string, std::vector<std::string>>(),
