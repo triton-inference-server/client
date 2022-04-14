@@ -240,20 +240,6 @@ if(TRITON_ENABLE_CC_GRPC)
     RUNTIME DESTINATION bin
   )
 
-  #
-  # simple_grpc_trace_client
-  #
-  add_executable(simple_grpc_trace_client simple_grpc_trace_client.cc)
-  target_link_libraries(
-    simple_grpc_trace_client
-    PRIVATE
-      grpcclient_static
-  )
-  install(
-    TARGETS simple_grpc_trace_client
-    RUNTIME DESTINATION bin
-  )
-
   if(${TRITON_ENABLE_GPU})
     #
     # simple_grpc_cudashm_client
@@ -389,20 +375,6 @@ if(TRITON_ENABLE_CC_HTTP)
   )
   install(
     TARGETS simple_http_shm_client
-    RUNTIME DESTINATION bin
-  )
-
-  #
-  # simple_http_trace_client
-  #
-  add_executable(simple_http_trace_client simple_http_trace_client.cc)
-  target_link_libraries(
-    simple_http_trace_client
-    PRIVATE
-      httpclient_static
-  )
-  install(
-    TARGETS simple_http_trace_client
     RUNTIME DESTINATION bin
   )
 
