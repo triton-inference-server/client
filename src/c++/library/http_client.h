@@ -299,6 +299,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
 
   /// Update the trace settings for the specified model name, or global trace
   /// settings if model name is not given.
+  /// \param response Returns the JSON representation of the updated trace
+  /// settings as a string.
   /// \param model_name The name of the model to update trace settings. The
   /// default value is an empty string which means the global trace settings
   /// will be updated.
@@ -309,9 +311,9 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// in request.
   /// \param query_params Optional map specifying parameters that must be
   /// included with URL query.
-  /// \return The string holding the updated trace settings.
-  std::string UpdateTraceSettings(
-      const std::string& model_name = "",
+  /// \return Error object indicating success or failure of the request.
+  Error UpdateTraceSettings(
+      std::string* response, const std::string& model_name = "",
       const std::map<std::string, std::vector<std::string>>& settings =
           std::map<std::string, std::vector<std::string>>(),
       const Headers& headers = Headers(),

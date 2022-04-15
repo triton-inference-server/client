@@ -691,15 +691,15 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
   return err;
 }
 
-inference::TraceSettingResponse
+Error
 InferenceServerGrpcClient::UpdateTraceSettings(
-    const std::string& model_name,
+    inference::TraceSettingResponse* response, const std::string& model_name,
     const std::map<std::string, std::vector<std::string>>& settings,
     const Headers& headers)
 {
   inference::TraceSettingRequest request;
-  inference::TraceSettingResponse response;
   grpc::ClientContext context;
+  Error err;
 
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
@@ -723,18 +723,17 @@ InferenceServerGrpcClient::UpdateTraceSettings(
       }
     }
   }
-  grpc::Status grpc_status = stub_->TraceSetting(&context, request, &response);
-  if (!grpc_status.ok()) {
-    std::cerr << "Failed to update trace settings: "
-              << grpc_status.error_message() << std::endl;
-  } else {
+  grpc::Status grpc_status = stub_->TraceSetting(&context, request, response);
+  if (grpc_status.ok()) {
     if (verbose_) {
-      std::cout << "Update trace settings " << response.DebugString()
+      std::cout << "Update trace settings " << response->DebugString()
                 << std::endl;
     }
+  } else {
+    err = Error(grpc_status.error_message());
   }
 
-  return response;
+  return err;
 }
 
 Error

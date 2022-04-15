@@ -236,6 +236,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
 
   /// Update the trace settings for the specified model name, or global trace
   /// settings if model name is not given.
+  /// \param response The updated settings as TraceSettingResponse.
   /// \param model_name The name of the model to update trace settings. The
   /// default value is an empty string which means the global trace settings
   /// will be updated.
@@ -247,9 +248,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// loading the model.
   /// \param headers Optional map specifying additional HTTP headers to include
   /// in the metadata of gRPC request.
-  /// \return The TraceSettingResponse message holding the updated trace
-  /// settings.
-  inference::TraceSettingResponse UpdateTraceSettings(
+  /// \return Error object indicating success or failure of the request.
+  Error UpdateTraceSettings(
+      inference::TraceSettingResponse* response,
       const std::string& model_name = "",
       const std::map<std::string, std::vector<std::string>>& settings =
           std::map<std::string, std::vector<std::string>>(),
