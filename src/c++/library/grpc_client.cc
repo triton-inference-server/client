@@ -713,12 +713,8 @@ InferenceServerGrpcClient::UpdateTraceSettings(
       if (pr.second.empty()) {
         (*request.mutable_settings())[pr.first].clear_value();
       } else {
-        if (pr.first == "trace_level") {
-          for (const auto& v : pr.second) {
-            (*request.mutable_settings())[pr.first].add_value(v);
-          }
-        } else {
-          (*request.mutable_settings())[pr.first].add_value(pr.second[0]);
+        for (const auto& v : pr.second) {
+          (*request.mutable_settings())[pr.first].add_value(v);
         }
       }
     }
