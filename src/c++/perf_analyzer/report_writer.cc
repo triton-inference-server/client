@@ -116,24 +116,24 @@ ReportWriter::GenerateReport()
       ofs << status.client_stats.infer_per_sec << ","
           << (status.client_stats.avg_send_time_ns / 1000) << ",";
       if (include_server_stats_) {
-        uint64_t avg_queue_ns = status.server_stats.success_count > 0
+        uint64_t avg_queue_ns = status.server_stats.queue_count > 0
                                     ? (status.server_stats.queue_time_ns /
-                                       status.server_stats.success_count)
+                                       status.server_stats.queue_count)
                                     : 0;
         uint64_t avg_compute_input_ns =
-            status.server_stats.inference_count > 0
+            status.server_stats.compute_input_count > 0
                 ? (status.server_stats.compute_input_time_ns /
-                   status.server_stats.inference_count)
+                   status.server_stats.compute_input_count)
                 : 0;
         uint64_t avg_compute_infer_ns =
-            status.server_stats.inference_count > 0
+            status.server_stats.compute_infer_count > 0
                 ? (status.server_stats.compute_infer_time_ns /
-                   status.server_stats.inference_count)
+                   status.server_stats.compute_infer_count)
                 : 0;
         uint64_t avg_compute_output_ns =
-            status.server_stats.inference_count > 0
+            status.server_stats.compute_output_count > 0
                 ? (status.server_stats.compute_output_time_ns /
-                   status.server_stats.inference_count)
+                   status.server_stats.compute_output_count)
                 : 0;
 
         uint64_t avg_compute_ns =
@@ -161,6 +161,13 @@ ReportWriter::GenerateReport()
             avg_client_wait_ns > avg_accounted_time
                 ? (avg_client_wait_ns - avg_accounted_time)
                 : 0;
+
+        if (avg_network_misc_ns == 0) {
+          std::cerr << "Server average accounted time was larger than client "
+                       "average wait time due to small sample size. Increase "
+                       "the measurement interval with `--measurement-interval`."
+                    << std::endl;
+        }
 
         ofs << (avg_network_misc_ns / 1000) << "," << (avg_queue_ns / 1000)
             << "," << (avg_compute_input_ns / 1000) << ","
@@ -233,20 +240,19 @@ ReportWriter::GenerateReport()
                 model_identifier.first);
             const auto& stats = it->second;
             uint64_t avg_queue_ns =
-                stats.success_count > 0
-                    ? stats.queue_time_ns / stats.success_count
-                    : 0;
+                stats.queue_count > 0 ? stats.queue_time_ns / stats.queue_count
+                                      : 0;
             uint64_t avg_compute_input_ns =
-                stats.inference_count > 0
-                    ? stats.compute_input_time_ns / stats.inference_count
+                stats.compute_input_count > 0
+                    ? stats.compute_input_time_ns / stats.compute_input_count
                     : 0;
             uint64_t avg_compute_infer_ns =
-                stats.inference_count > 0
-                    ? stats.compute_infer_time_ns / stats.inference_count
+                stats.compute_infer_count > 0
+                    ? stats.compute_infer_time_ns / stats.compute_infer_count
                     : 0;
             uint64_t avg_compute_output_ns =
-                stats.inference_count > 0
-                    ? stats.compute_output_time_ns / stats.inference_count
+                stats.compute_output_count > 0
+                    ? stats.compute_output_time_ns / stats.compute_output_count
                     : 0;
             uint64_t avg_compute_ns = avg_compute_input_ns +
                                       avg_compute_infer_ns +
@@ -270,6 +276,15 @@ ReportWriter::GenerateReport()
             avg_overhead_ns = (avg_overhead_ns > avg_accounted_time)
                                   ? (avg_overhead_ns - avg_accounted_time)
                                   : 0;
+
+            if (avg_overhead_ns == 0) {
+              std::cerr
+                  << "Server average accounted time was larger than client "
+                     "average wait time due to small sample size. Increase "
+                     "the measurement interval with `--measurement-interval`."
+                  << std::endl;
+            }
+
             // infer / sec of the composing model is calculated using the
             // request count ratio between the composing model and the
             // ensemble

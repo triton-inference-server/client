@@ -50,35 +50,45 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
   EnsembleDurations result;
   for (const auto& model_stats : stats.composing_models_stat) {
     if (model_stats.second.composing_models_stat.empty()) {
-      // Success count covers all successful requests, cumulative time, queue
-      // time, compute, and cache
-      const uint64_t cnt = model_stats.second.success_count;
-      // Infer/exec counts cover compute time done in inference backends,
-      // not related to cache hit times
-      const uint64_t infer_cnt = model_stats.second.inference_count;
+      result.total_queue_time_avg_us += AverageDurationInUs(
+          model_stats.second.queue_time_ns, model_stats.second.queue_count);
+      const uint64_t compute_input_time_avg_us = AverageDurationInUs(
+          model_stats.second.compute_input_time_ns,
+          model_stats.second.compute_input_count);
+      const uint64_t compute_infer_time_avg_us = AverageDurationInUs(
+          model_stats.second.compute_infer_time_ns,
+          model_stats.second.compute_infer_count);
+      const uint64_t compute_output_time_avg_us = AverageDurationInUs(
+          model_stats.second.compute_output_time_ns,
+          model_stats.second.compute_output_count);
+      const uint64_t compute_time_avg_us = compute_input_time_avg_us +
+                                           compute_infer_time_avg_us +
+                                           compute_output_time_avg_us;
+      result.total_compute_time_avg_us += compute_time_avg_us;
+
       // Cache hit count covers cache hits, not related to compute times
       const uint64_t cache_hit_cnt = model_stats.second.cache_hit_count;
+      const uint64_t cache_hit_time_avg_us = AverageDurationInUs(
+          model_stats.second.cache_hit_time_ns, cache_hit_cnt);
       // cache_miss_cnt should either equal infer_cnt or be zero if
       // cache is disabled or not supported for the model/scheduler type
       const uint64_t cache_miss_cnt = model_stats.second.cache_miss_count;
-
-      result.total_queue_time_avg_us +=
-          AverageDurationInUs(model_stats.second.queue_time_ns, cnt);
-      const uint64_t compute_time = model_stats.second.compute_input_time_ns +
-                                    model_stats.second.compute_infer_time_ns +
-                                    model_stats.second.compute_output_time_ns;
-      result.total_compute_time_avg_us +=
-          AverageDurationInUs(compute_time, infer_cnt);
-      result.total_cache_hit_time_avg_us += AverageDurationInUs(
-          model_stats.second.cache_hit_time_ns, cache_hit_cnt);
-      result.total_cache_miss_time_avg_us += AverageDurationInUs(
+      const uint64_t cache_miss_time_avg_us = AverageDurationInUs(
           model_stats.second.cache_miss_time_ns, cache_miss_cnt);
+      result.total_cache_hit_time_avg_us += cache_hit_time_avg_us;
+      result.total_cache_miss_time_avg_us += cache_miss_time_avg_us;
+
       // Track combined cache/compute total avg for reporting latency with cache
       // enabled
-      result.total_combined_cache_compute_time_avg_us += AverageDurationInUs(
-          compute_time + model_stats.second.cache_hit_time_ns +
-              model_stats.second.cache_miss_time_ns,
-          infer_cnt + cache_hit_cnt);
+      const uint64_t combined_cache_compute_time_avg_us =
+          cache_miss_cnt + cache_hit_cnt > 0
+              ? ((cache_miss_cnt *
+                  (cache_miss_time_avg_us + compute_time_avg_us)) +
+                 (cache_hit_cnt * cache_hit_time_avg_us)) /
+                    (cache_miss_cnt + cache_hit_cnt)
+              : 0;
+      result.total_combined_cache_compute_time_avg_us +=
+          combined_cache_compute_time_avg_us;
     } else {
       const auto this_ensemble_duration =
           GetTotalEnsembleDurations(model_stats.second);
@@ -142,45 +152,51 @@ ReportServerSideStats(
 
   // Non-ensemble model
   if (stats.composing_models_stat.empty()) {
-    const uint64_t queue_avg_us = AverageDurationInUs(stats.queue_time_ns, cnt);
-    const uint64_t compute_input_avg_us =
-        AverageDurationInUs(stats.compute_input_time_ns, infer_cnt);
-    const uint64_t compute_infer_avg_us =
-        AverageDurationInUs(stats.compute_infer_time_ns, infer_cnt);
-    const uint64_t compute_output_avg_us =
-        AverageDurationInUs(stats.compute_output_time_ns, infer_cnt);
-    const uint64_t compute_avg_us =
-        compute_input_avg_us + compute_infer_avg_us + compute_output_avg_us;
-    const uint64_t cache_hit_avg_us =
+    const uint64_t queue_time_avg_us =
+        AverageDurationInUs(stats.queue_time_ns, stats.queue_count);
+    const uint64_t compute_input_time_avg_us = AverageDurationInUs(
+        stats.compute_input_time_ns, stats.compute_input_count);
+    const uint64_t compute_infer_time_avg_us = AverageDurationInUs(
+        stats.compute_infer_time_ns, stats.compute_infer_count);
+    const uint64_t compute_output_time_avg_us = AverageDurationInUs(
+        stats.compute_output_time_ns, stats.compute_output_count);
+    const uint64_t compute_time_avg_us = compute_input_time_avg_us +
+                                         compute_infer_time_avg_us +
+                                         compute_output_time_avg_us;
+    const uint64_t cache_hit_time_avg_us =
         AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
-    const uint64_t cache_miss_avg_us =
+    const uint64_t cache_miss_time_avg_us =
         AverageDurationInUs(stats.cache_miss_time_ns, cache_miss_cnt);
     const uint64_t total_compute_time_ns = stats.compute_input_time_ns +
                                            stats.compute_infer_time_ns +
                                            stats.compute_output_time_ns;
     // Get the average of cache hits and misses across successful requests
-    const uint64_t combined_cache_compute_avg_us = AverageDurationInUs(
-        stats.cache_hit_time_ns + stats.cache_miss_time_ns +
-            total_compute_time_ns,
-        cnt);
+    const uint64_t combined_cache_compute_time_avg_us =
+        cache_miss_cnt + cache_hit_cnt > 0
+            ? ((cache_miss_cnt *
+                (cache_miss_time_avg_us + compute_time_avg_us)) +
+               (cache_hit_cnt * cache_hit_time_avg_us)) /
+                  (cache_miss_cnt + cache_hit_cnt)
+            : 0;
 
     if (parser->ResponseCacheEnabled()) {
-      const uint64_t overhead_avg_us = GetOverheadDuration(
-          cumm_avg_us, queue_avg_us, combined_cache_compute_avg_us);
+      const uint64_t overhead_time_avg_us = GetOverheadDuration(
+          cumm_avg_us, queue_time_avg_us, combined_cache_compute_time_avg_us);
 
-      std::cout << " (overhead " << overhead_avg_us << " usec + "
-                << "queue " << queue_avg_us << " usec + "
-                << "cache hit/miss " << combined_cache_compute_avg_us
+      std::cout << " (overhead " << overhead_time_avg_us << " usec + "
+                << "queue " << queue_time_avg_us << " usec + "
+                << "cache hit/miss " << combined_cache_compute_time_avg_us
                 << " usec)" << std::endl;
       std::cout << ident << ident
-                << "  Average Cache Hit Latency: " << cache_hit_avg_us
+                << "  Average Cache Hit Latency: " << cache_hit_time_avg_us
                 << " usec" << std::endl;
       std::cout << ident << ident << "  Average Cache Miss Latency: "
-                << cache_miss_avg_us + compute_avg_us << " usec "
-                << "(cache lookup/insertion " << cache_miss_avg_us << " usec + "
-                << "compute input " << compute_input_avg_us << " usec + "
-                << "compute infer " << compute_infer_avg_us << " usec + "
-                << "compute output " << compute_output_avg_us << " usec)"
+                << cache_miss_time_avg_us + compute_time_avg_us << " usec "
+                << "(cache lookup/insertion " << cache_miss_time_avg_us
+                << " usec + "
+                << "compute input " << compute_input_time_avg_us << " usec + "
+                << "compute infer " << compute_infer_time_avg_us << " usec + "
+                << "compute output " << compute_output_time_avg_us << " usec)"
                 << std::endl
                 << std::endl;
     }
@@ -188,16 +204,16 @@ ReportServerSideStats(
     else {
       std::cout << " (overhead "
                 << GetOverheadDuration(
-                       cumm_avg_us, queue_avg_us, compute_avg_us)
+                       cumm_avg_us, queue_time_avg_us, compute_time_avg_us)
                 << " usec + "
-                << "queue " << queue_avg_us << " usec + "
-                << "compute input " << compute_input_avg_us << " usec + "
-                << "compute infer " << compute_infer_avg_us << " usec + "
-                << "compute output " << compute_output_avg_us << " usec)"
+                << "queue " << queue_time_avg_us << " usec + "
+                << "compute input " << compute_input_time_avg_us << " usec + "
+                << "compute infer " << compute_infer_time_avg_us << " usec + "
+                << "compute output " << compute_output_time_avg_us << " usec)"
                 << std::endl
                 << std::endl;
 
-      if (cache_hit_avg_us > 0 || cache_miss_avg_us > 0) {
+      if (cache_hit_time_avg_us > 0 || cache_miss_time_avg_us > 0) {
         std::cerr << "Response Cache is disabled for model ["
                   << parser->ModelName()
                   << "] but cache hit/miss latency is non-zero." << std::endl;
@@ -209,10 +225,10 @@ ReportServerSideStats(
     const auto ensemble_times = GetTotalEnsembleDurations(stats);
     // Response Cache Enabled
     if (parser->ResponseCacheEnabled()) {
-      const uint64_t overhead_avg_us = GetOverheadDuration(
+      const uint64_t overhead_time_avg_us = GetOverheadDuration(
           cumm_avg_us, ensemble_times.total_queue_time_avg_us,
           ensemble_times.total_combined_cache_compute_time_avg_us);
-      std::cout << " (overhead " << overhead_avg_us << " usec + "
+      std::cout << " (overhead " << overhead_time_avg_us << " usec + "
                 << "queue " << ensemble_times.total_queue_time_avg_us
                 << " usec + "
                 << "cache hit/miss "
@@ -991,6 +1007,10 @@ InferenceProfiler::SummarizeServerStatsHelper(
     uint64_t start_infer_cnt = 0;
     uint64_t start_exec_cnt = 0;
     uint64_t start_cnt = 0;
+    uint64_t start_queue_cnt = 0;
+    uint64_t start_compute_input_cnt = 0;
+    uint64_t start_compute_infer_cnt = 0;
+    uint64_t start_compute_output_cnt = 0;
     uint64_t start_cumm_time_ns = 0;
     uint64_t start_queue_time_ns = 0;
     uint64_t start_compute_input_time_ns = 0;
@@ -1006,6 +1026,10 @@ InferenceProfiler::SummarizeServerStatsHelper(
       start_infer_cnt = start_itr->second.inference_count_;
       start_exec_cnt = start_itr->second.execution_count_;
       start_cnt = start_itr->second.success_count_;
+      start_queue_cnt = start_itr->second.queue_count_;
+      start_compute_input_cnt = start_itr->second.compute_input_count_;
+      start_compute_infer_cnt = start_itr->second.compute_infer_count_;
+      start_compute_output_cnt = start_itr->second.compute_output_count_;
       start_cumm_time_ns = start_itr->second.cumm_time_ns_;
       start_queue_time_ns = start_itr->second.queue_time_ns_;
       start_compute_input_time_ns = start_itr->second.compute_input_time_ns_;
@@ -1022,6 +1046,13 @@ InferenceProfiler::SummarizeServerStatsHelper(
     server_stats->execution_count =
         end_itr->second.execution_count_ - start_exec_cnt;
     server_stats->success_count = end_itr->second.success_count_ - start_cnt;
+    server_stats->queue_count = end_itr->second.queue_count_ - start_queue_cnt;
+    server_stats->compute_input_count =
+        end_itr->second.compute_input_count_ - start_compute_input_cnt;
+    server_stats->compute_infer_count =
+        end_itr->second.compute_infer_count_ - start_compute_infer_cnt;
+    server_stats->compute_output_count =
+        end_itr->second.compute_output_count_ - start_compute_output_cnt;
     server_stats->cumm_time_ns =
         end_itr->second.cumm_time_ns_ - start_cumm_time_ns;
     server_stats->queue_time_ns =
