@@ -126,6 +126,148 @@ class ClientTest : public ::testing::Test {
   std::string dtype_;
 };
 
+class HTTPTraceTest : public ::testing::Test {
+ public:
+  HTTPTraceTest() : model_name_("simple") {}
+
+  void SetUp() override
+  {
+    std::string url;
+    url = "localhost:8000";
+    auto err = tc::InferenceServerHttpClient::Create(&client_, url);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create HTTP client: " << err.Message();
+  }
+
+  // Helper function to clear all the trace settings to initial state.
+  void TearDown()
+  {
+    tc::Error err = tc::Error::Success;
+    std::string response;
+
+    std::map<std::string, std::vector<std::string>> clear_settings = {
+        {"trace_file", {}},
+        {"trace_level", {}},
+        {"trace_rate", {}},
+        {"trace_count", {}},
+        {"log_frequency", {}}};
+
+    err = client_->UpdateTraceSettings(&response, model_name_, clear_settings);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to update trace settings: " << err.Message();
+    err = client_->UpdateTraceSettings(&response, "", clear_settings);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to update trace settings: " << err.Message();
+  }
+
+  // Helper function to make sure the trace setting is properly initialized /
+  // reset before actually running the test case.
+  void CheckServerInitialState()
+  {
+    tc::Error err = tc::Error::Success;
+    std::string trace_settings;
+
+    std::string initial_settings =
+        "{\"trace_level\":[\"TIMESTAMPS\"],\"trace_rate\":\"1\",\"trace_"
+        "count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"global_"
+        "unittest.log\"}";
+
+    err = client_->GetTraceSettings(&trace_settings, model_name_);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to get trace settings: " << err.Message();
+    ASSERT_EQ(trace_settings, initial_settings)
+        << "error: trace settings is not properly initialized for model'"
+        << model_name_ << "'" << std::endl;
+
+    err = client_->GetTraceSettings(&trace_settings, "");
+    ASSERT_TRUE(err.IsOk())
+        << "unable to get default trace settings: " << err.Message();
+    ASSERT_EQ(trace_settings, initial_settings)
+        << "error: default trace settings is not properly initialized"
+        << std::endl;
+  }
+
+  std::string model_name_;
+  std::unique_ptr<tc::InferenceServerHttpClient> client_;
+};
+
+class GRPCTraceTest : public ::testing::Test {
+ public:
+  GRPCTraceTest() : model_name_("simple") {}
+
+  void SetUp() override
+  {
+    std::string url;
+    url = "localhost:8001";
+    auto err = tc::InferenceServerGrpcClient::Create(&this->client_, url);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create GRPC client: " << err.Message();
+  }
+  // Helper function to convert 'inference::TraceSettingResponse response' to a
+  // string
+  void ConvertResponse(
+      const inference::TraceSettingResponse& response, std::string* str)
+  {
+    *str = response.DebugString();
+    str->erase(std::remove(str->begin(), str->end(), ' '), str->end());
+    str->erase(std::remove(str->begin(), str->end(), '\n'), str->end());
+  }
+
+  // Helper function to clear all the trace settings to initial state.
+  void TearDown()
+  {
+    tc::Error err = tc::Error::Success;
+    inference::TraceSettingResponse response;
+
+    std::map<std::string, std::vector<std::string>> clear_settings = {
+        {"trace_file", {}},
+        {"trace_level", {}},
+        {"trace_rate", {}},
+        {"trace_count", {}},
+        {"log_frequency", {}}};
+
+    err = client_->UpdateTraceSettings(&response, model_name_, clear_settings);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to update trace settings: " << err.Message();
+    err = client_->UpdateTraceSettings(&response, "", clear_settings);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to update trace settings: " << err.Message();
+  }
+
+  // Helper function to make sure the trace setting is properly initialized /
+  // reset before actually running the test case.
+  void CheckServerInitialState()
+  {
+    tc::Error err = tc::Error::Success;
+    inference::TraceSettingResponse response;
+    std::string trace_settings;
+
+    std::string initial_settings =
+        "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
+        "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+        "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
+        "\"TIMESTAMPS\"}}settings{key:\"trace_rate\"value{value:\"1\"}}";
+    err = client_->GetTraceSettings(&response, model_name_);
+    ASSERT_TRUE(err.IsOk())
+        << "unable to get trace settings: " << err.Message();
+    EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+    ASSERT_EQ(trace_settings, initial_settings)
+        << "error: trace settings is not properly initialized for model'"
+        << model_name_ << "'" << std::endl;
+
+    err = client_->GetTraceSettings(&response, "");
+    ASSERT_TRUE(err.IsOk())
+        << "unable to get default trace settings: " << err.Message();
+    EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+    ASSERT_EQ(trace_settings, initial_settings)
+        << "error: default trace settings is not properly initialized"
+        << std::endl;
+  }
+
+  std::string model_name_;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client_;
+};
+
 
 TYPED_TEST_SUITE_P(ClientTest);
 
@@ -416,6 +558,7 @@ TYPED_TEST_P(ClientTest, InferMultiOneOutput)
 
   EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
+
 TYPED_TEST_P(ClientTest, InferMultiNoOutput)
 {
   // Not specifying 'outputs' at all, but combine with different 'options'
@@ -1030,6 +1173,272 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiMismatchOutputs)
   ASSERT_FALSE(err.IsOk()) << "Expect AsyncInferMulti() to fail";
 }
 
+TEST_F(HTTPTraceTest, HTTPUpdateTraceSettings)
+{
+  // Update model and global trace settings in order, and expect the global
+  // trace settings will only reflect to the model setting fields that haven't
+  // been specified.
+  tc::Error err = tc::Error::Success;
+  std::string trace_settings;
+
+  EXPECT_NO_FATAL_FAILURE(this->TearDown());
+  EXPECT_NO_FATAL_FAILURE(this->CheckServerInitialState());
+
+  std::string expected_first_model_settings =
+      "{\"trace_level\":[\"TIMESTAMPS\"],\"trace_rate\":\"1\",\"trace_count\":"
+      "\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"model.log\"}";
+  std::string expected_second_model_settings =
+      "{\"trace_level\":[\"TIMESTAMPS\",\"TENSORS\"],\"trace_rate\":\"1\","
+      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"model."
+      "log\"}";
+  std::string expected_global_settings =
+      "{\"trace_level\":[\"TIMESTAMPS\",\"TENSORS\"],\"trace_rate\":\"1\","
+      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"another."
+      "log\"}";
+
+  std::map<std::string, std::vector<std::string>> model_update_settings = {
+      {"trace_file", {"model.log"}}};
+  std::map<std::string, std::vector<std::string>> global_update_settings = {
+      {"trace_file", {"another.log"}},
+      {"trace_level", {"TIMESTAMPS", "TENSORS"}}};
+
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, this->model_name_, model_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  ASSERT_EQ(trace_settings, expected_first_model_settings)
+      << "error: Unexpected updated model trace settings" << std::endl;
+  // Note that 'trace_level' may be mismatch due to the order of the levels
+  // listed, currently we assume the order is the same for simplicity. But the
+  // order shouldn't be enforced and this checking needs to be improved when
+  // this kind of failure is reported
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, "", global_update_settings);
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected updated global trace settings" << std::endl;
+
+  err = this->client_->GetTraceSettings(&trace_settings, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  ASSERT_EQ(trace_settings, expected_second_model_settings)
+      << "error: Unexpected model trace settings after global update"
+      << std::endl;
+}
+
+TEST_F(HTTPTraceTest, HTTPClearTraceSettings)
+{
+  // Clear global and model trace settings in order, and expect the default /
+  // global trace settings are propagated properly.
+  tc::Error err = tc::Error::Success;
+  std::string trace_settings;
+
+  EXPECT_NO_FATAL_FAILURE(this->TearDown());
+  EXPECT_NO_FATAL_FAILURE(this->CheckServerInitialState());
+
+  // First set up the model / global trace setting that: model 'simple' has
+  // 'trace_rate' and 'log_frequency' specified global has 'trace_level',
+  // 'trace_count' and 'trace_rate' specified
+  std::map<std::string, std::vector<std::string>> model_update_settings = {
+      {"trace_rate", {"12"}}, {"log_frequency", {"34"}}};
+  std::map<std::string, std::vector<std::string>> global_update_settings = {
+      {"trace_rate", {"56"}},
+      {"trace_count", {"78"}},
+      {"trace_level", {"OFF"}}};
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, "", global_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, this->model_name_, model_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+
+  std::string expected_global_settings =
+      "{\"trace_level\":[\"OFF\"],\"trace_rate\":\"1\",\"trace_count\":\"-1\","
+      "\"log_frequency\":\"0\",\"trace_file\":\"global_unittest.log\"}";
+  std::string expected_first_model_settings =
+      "{\"trace_level\":[\"OFF\"],\"trace_rate\":\"12\",\"trace_count\":\"-1\","
+      "\"log_frequency\":\"34\",\"trace_file\":\"global_unittest.log\"}";
+  std::string expected_second_model_settings =
+      "{\"trace_level\":[\"OFF\"],\"trace_rate\":\"1\",\"trace_count\":\"-1\","
+      "\"log_frequency\":\"34\",\"trace_file\":\"global_unittest.log\"}";
+  std::map<std::string, std::vector<std::string>> global_clear_settings = {
+      {"trace_rate", {}}, {"trace_count", {}}};
+  std::map<std::string, std::vector<std::string>> model_clear_settings = {
+      {"trace_rate", {}}, {"trace_level", {}}};
+
+  // Clear global
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, "", global_clear_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected updated global trace settings" << std::endl;
+  err = this->client_->GetTraceSettings(&trace_settings, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  ASSERT_EQ(trace_settings, expected_first_model_settings)
+      << "error: Unexpected model trace settings after global clear"
+      << std::endl;
+
+  // Clear model
+  err = this->client_->UpdateTraceSettings(
+      &trace_settings, this->model_name_, model_clear_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  ASSERT_EQ(trace_settings, expected_second_model_settings)
+      << "error: Unexpected model trace settings after model clear"
+      << std::endl;
+  err = this->client_->GetTraceSettings(&trace_settings, "");
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected global trace settings after model clear"
+      << std::endl;
+}
+
+TEST_F(GRPCTraceTest, GRPCUpdateTraceSettings)
+{
+  // Update model and global trace settings in order, and expect the global
+  // trace settings will only reflect to the model setting fields that haven't
+  // been specified.
+  tc::Error err = tc::Error::Success;
+  inference::TraceSettingResponse response;
+  std::string trace_settings;
+
+  EXPECT_NO_FATAL_FAILURE(this->TearDown());
+  EXPECT_NO_FATAL_FAILURE(this->CheckServerInitialState());
+
+  std::string expected_first_model_settings =
+      "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"model.log\"}}settings{key:\"trace_level\"value{value:\"TIMESTAMPS\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
+  std::string expected_second_model_settings =
+      "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"model.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_rate\"value{value:"
+      "\"1\"}}";
+  std::string expected_global_settings =
+      "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"another.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_rate\"value{value:"
+      "\"1\"}}";
+
+  std::map<std::string, std::vector<std::string>> model_update_settings = {
+      {"trace_file", {"model.log"}}};
+  std::map<std::string, std::vector<std::string>> global_update_settings = {
+      {"trace_file", {"another.log"}},
+      {"trace_level", {"TIMESTAMPS", "TENSORS"}}};
+
+
+  err = this->client_->UpdateTraceSettings(
+      &response, this->model_name_, model_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_first_model_settings)
+      << "error: Unexpected updated model trace settings" << std::endl;
+  // Note that 'trace_level' may be mismatch due to the order of the levels
+  // listed, currently we assume the order is the same for simplicity. But the
+  // order shouldn't be enforced and this checking needs to be improved when
+  // this kind of failure is reported
+  err =
+      this->client_->UpdateTraceSettings(&response, "", global_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected updated global trace settings" << std::endl;
+
+  err = client_->GetTraceSettings(&response, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_second_model_settings)
+      << "error: Unexpected model trace settings after global update"
+      << std::endl;
+}
+
+TEST_F(GRPCTraceTest, GRPCClearTraceSettings)
+{
+  // Clear global and model trace settings in order, and expect the default /
+  // global trace settings are propagated properly.
+  tc::Error err = tc::Error::Success;
+  inference::TraceSettingResponse response;
+  std::string trace_settings;
+
+  EXPECT_NO_FATAL_FAILURE(this->TearDown());
+  EXPECT_NO_FATAL_FAILURE(this->CheckServerInitialState());
+
+  // First set up the model / global trace setting that: model 'simple' has
+  // 'trace_rate' and 'log_frequency' specified global has 'trace_level',
+  // 'trace_count' and 'trace_rate' specified
+  std::map<std::string, std::vector<std::string>> model_update_settings = {
+      {"trace_rate", {"12"}}, {"log_frequency", {"34"}}};
+  std::map<std::string, std::vector<std::string>> global_update_settings = {
+      {"trace_rate", {"56"}},
+      {"trace_count", {"78"}},
+      {"trace_level", {"OFF"}}};
+  err =
+      this->client_->UpdateTraceSettings(&response, "", global_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  err = this->client_->UpdateTraceSettings(
+      &response, this->model_name_, model_update_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+
+  std::string expected_global_settings =
+      "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"1\"}}";
+  std::string expected_first_model_settings =
+      "settings{key:\"log_frequency\"value{value:\"34\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"12\"}}";
+  std::string expected_second_model_settings =
+      "settings{key:\"log_frequency\"value{value:\"34\"}}settings{key:\"trace_"
+      "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"1\"}}";
+  std::map<std::string, std::vector<std::string>> global_clear_settings = {
+      {"trace_rate", {}}, {"trace_count", {}}};
+  std::map<std::string, std::vector<std::string>> model_clear_settings = {
+      {"trace_rate", {}}, {"trace_level", {}}};
+
+  // Clear global
+  err =
+      this->client_->UpdateTraceSettings(&response, "", global_clear_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected updated global trace settings" << std::endl;
+  err = client_->GetTraceSettings(&response, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_first_model_settings)
+      << "error: Unexpected model trace settings after global clear"
+      << std::endl;
+
+  // Clear model
+  err = this->client_->UpdateTraceSettings(
+      &response, this->model_name_, model_clear_settings);
+  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
+                          << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_second_model_settings)
+      << "error: Unexpected model trace settings after model clear"
+      << std::endl;
+  err = client_->GetTraceSettings(&response, "");
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
+  EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
+  ASSERT_EQ(trace_settings, expected_global_settings)
+      << "error: Unexpected global trace settings after model clear"
+      << std::endl;
+}
+
 REGISTER_TYPED_TEST_SUITE_P(
     ClientTest, InferMulti, InferMultiDifferentOutputs,
     InferMultiDifferentOptions, InferMultiOneOption, InferMultiOneOutput,
@@ -1039,8 +1448,10 @@ REGISTER_TYPED_TEST_SUITE_P(
     AsyncInferMultiOneOutput, AsyncInferMultiNoOutput,
     AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs);
 
-INSTANTIATE_TYPED_TEST_SUITE_P(GRPC, ClientTest, tc::InferenceServerGrpcClient);
-INSTANTIATE_TYPED_TEST_SUITE_P(HTTP, ClientTest, tc::InferenceServerHttpClient);
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    GRPC, ClientTest, tc::InferenceServerGrpcClient);
+INSTANTIATE_TYPED_TEST_SUITE_P(
+    HTTP, ClientTest, tc::InferenceServerHttpClient);
 
 }  // namespace
 

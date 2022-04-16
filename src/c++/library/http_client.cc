@@ -1214,6 +1214,63 @@ InferenceServerHttpClient::ModelInferenceStatistics(
 }
 
 Error
+InferenceServerHttpClient::UpdateTraceSettings(
+    std::string* response, const std::string& model_name,
+    const std::map<std::string, std::vector<std::string>>& settings,
+    const Headers& headers, const Parameters& query_params)
+{
+  std::string request_uri(url_ + "/v2");
+  if (!model_name.empty()) {
+    request_uri += "/models/" + model_name;
+  }
+  request_uri += "/trace/setting";
+
+  triton::common::TritonJson::Value request_json(
+      triton::common::TritonJson::ValueType::OBJECT);
+  {
+    for (const auto& pr : settings) {
+      if (pr.second.empty()) {
+        request_json.Add(
+            pr.first.c_str(), std::move(triton::common::TritonJson::Value()));
+      } else {
+        if (pr.first == "trace_level") {
+          triton::common::TritonJson::Value level_json(
+              triton::common::TritonJson::ValueType::ARRAY);
+          for (const auto& v : pr.second) {
+            level_json.AppendStringRef(v.c_str());
+          }
+          request_json.Add(pr.first.c_str(), std::move(level_json));
+        } else {
+          request_json.AddStringRef(pr.first.c_str(), pr.second[0].c_str());
+        }
+      }
+    }
+  }
+
+  triton::common::TritonJson::WriteBuffer buffer;
+  Error err = request_json.Write(&buffer);
+  if (!err.IsOk()) {
+    return err;
+  }
+
+  return Post(request_uri, buffer.Contents(), headers, query_params, response);
+}
+
+Error
+InferenceServerHttpClient::GetTraceSettings(
+    std::string* settings, const std::string& model_name,
+    const Headers& headers, const Parameters& query_params)
+{
+  std::string request_uri(url_ + "/v2");
+  if (!model_name.empty()) {
+    request_uri += "/models/" + model_name;
+  }
+  request_uri += "/trace/setting";
+
+  return Get(request_uri, headers, query_params, settings);
+}
+
+Error
 InferenceServerHttpClient::SystemSharedMemoryStatus(
     std::string* status, const std::string& name, const Headers& headers,
     const Parameters& query_params)

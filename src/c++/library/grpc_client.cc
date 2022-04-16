@@ -692,6 +692,77 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
 }
 
 Error
+InferenceServerGrpcClient::UpdateTraceSettings(
+    inference::TraceSettingResponse* response, const std::string& model_name,
+    const std::map<std::string, std::vector<std::string>>& settings,
+    const Headers& headers)
+{
+  inference::TraceSettingRequest request;
+  grpc::ClientContext context;
+  Error err;
+
+  for (const auto& it : headers) {
+    context.AddMetadata(it.first, it.second);
+  }
+
+  if (!model_name.empty()) {
+    request.set_model_name(model_name);
+  }
+  if (!settings.empty()) {
+    for (const auto& pr : settings) {
+      if (pr.second.empty()) {
+        (*request.mutable_settings())[pr.first].clear_value();
+      } else {
+        for (const auto& v : pr.second) {
+          (*request.mutable_settings())[pr.first].add_value(v);
+        }
+      }
+    }
+  }
+  grpc::Status grpc_status = stub_->TraceSetting(&context, request, response);
+  if (grpc_status.ok()) {
+    if (verbose_) {
+      std::cout << "Update trace settings " << response->DebugString()
+                << std::endl;
+    }
+  } else {
+    err = Error(grpc_status.error_message());
+  }
+
+  return err;
+}
+
+Error
+InferenceServerGrpcClient::GetTraceSettings(
+    inference::TraceSettingResponse* settings, const std::string& model_name,
+    const Headers& headers)
+{
+  settings->Clear();
+  Error err;
+
+  inference::TraceSettingRequest request;
+  grpc::ClientContext context;
+
+  for (const auto& it : headers) {
+    context.AddMetadata(it.first, it.second);
+  }
+
+  if (!model_name.empty()) {
+    request.set_model_name(model_name);
+  }
+  grpc::Status grpc_status = stub_->TraceSetting(&context, request, settings);
+  if (grpc_status.ok()) {
+    if (verbose_) {
+      std::cout << settings->DebugString() << std::endl;
+    }
+  } else {
+    err = Error(grpc_status.error_message());
+  }
+
+  return err;
+}
+
+Error
 InferenceServerGrpcClient::SystemSharedMemoryStatus(
     inference::SystemSharedMemoryStatusResponse* status,
     const std::string& region_name, const Headers& headers)

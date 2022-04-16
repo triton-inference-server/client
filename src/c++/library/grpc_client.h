@@ -234,6 +234,41 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::string& model_name = "", const std::string& model_version = "",
       const Headers& headers = Headers());
 
+  /// Update the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param response The updated settings as TraceSettingResponse.
+  /// \param model_name The name of the model to update trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be updated.
+  /// \param settings The new trace setting values. Only the settings listed
+  /// will be updated. If a trace setting is listed in the map with an empty
+  /// string, that setting will be cleared.
+  /// \param config Optional JSON representation of a model config provided for
+  /// the load request, if provided, this config will be used for
+  /// loading the model.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \return Error object indicating success or failure of the request.
+  Error UpdateTraceSettings(
+      inference::TraceSettingResponse* response,
+      const std::string& model_name = "",
+      const std::map<std::string, std::vector<std::string>>& settings =
+          std::map<std::string, std::vector<std::string>>(),
+      const Headers& headers = Headers());
+
+  /// Get the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param settings The trace settings as TraceSettingResponse.
+  /// \param model_name The name of the model to get trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be returned.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \return Error object indicating success or failure of the request.
+  Error GetTraceSettings(
+      inference::TraceSettingResponse* settings,
+      const std::string& model_name = "", const Headers& headers = Headers());
+
   /// Contact the inference server and get the status for requested system
   /// shared memory.
   /// \param status The system shared memory status as
