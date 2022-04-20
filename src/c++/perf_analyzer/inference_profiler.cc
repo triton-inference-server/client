@@ -50,45 +50,39 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
   EnsembleDurations result;
   for (const auto& model_stats : stats.composing_models_stat) {
     if (model_stats.second.composing_models_stat.empty()) {
-      result.total_queue_time_avg_us += AverageDurationInUs(
-          model_stats.second.queue_time_ns, model_stats.second.queue_count);
-      const uint64_t compute_input_time_avg_us = AverageDurationInUs(
-          model_stats.second.compute_input_time_ns,
-          model_stats.second.compute_input_count);
-      const uint64_t compute_infer_time_avg_us = AverageDurationInUs(
-          model_stats.second.compute_infer_time_ns,
-          model_stats.second.compute_infer_count);
-      const uint64_t compute_output_time_avg_us = AverageDurationInUs(
-          model_stats.second.compute_output_time_ns,
-          model_stats.second.compute_output_count);
-      const uint64_t compute_time_avg_us = compute_input_time_avg_us +
-                                           compute_infer_time_avg_us +
-                                           compute_output_time_avg_us;
-      result.total_compute_time_avg_us += compute_time_avg_us;
-
       // Cache hit count covers cache hits, not related to compute times
       const uint64_t cache_hit_cnt = model_stats.second.cache_hit_count;
-      const uint64_t cache_hit_time_avg_us = AverageDurationInUs(
-          model_stats.second.cache_hit_time_ns, cache_hit_cnt);
       // cache_miss_cnt should either equal infer_cnt or be zero if
       // cache is disabled or not supported for the model/scheduler type
       const uint64_t cache_miss_cnt = model_stats.second.cache_miss_count;
-      const uint64_t cache_miss_time_avg_us = AverageDurationInUs(
-          model_stats.second.cache_miss_time_ns, cache_miss_cnt);
-      result.total_cache_hit_time_avg_us += cache_hit_time_avg_us;
-      result.total_cache_miss_time_avg_us += cache_miss_time_avg_us;
 
+      result.total_queue_time_avg_us += AverageDurationInUs(
+          model_stats.second.queue_time_ns, model_stats.second.queue_count);
+      const uint64_t compute_time = model_stats.second.compute_input_time_ns +
+                                    model_stats.second.compute_infer_time_ns +
+                                    model_stats.second.compute_output_time_ns;
+      if (model_stats.second.compute_input_count !=
+              model_stats.second.compute_infer_count ||
+          model_stats.second.compute_infer_count !=
+              model_stats.second.compute_output_count) {
+        throw std::runtime_error(
+            "Server side statistics compute counts must be the same.");
+      }
+      const uint64_t compute_cnt = model_stats.second.compute_input_count +
+                                   model_stats.second.compute_infer_count +
+                                   model_stats.second.compute_output_count;
+      result.total_compute_time_avg_us +=
+          AverageDurationInUs(compute_time, compute_cnt);
+      result.total_cache_hit_time_avg_us += AverageDurationInUs(
+          model_stats.second.cache_hit_time_ns, cache_hit_cnt);
+      result.total_cache_miss_time_avg_us += AverageDurationInUs(
+          model_stats.second.cache_miss_time_ns, cache_miss_cnt);
       // Track combined cache/compute total avg for reporting latency with cache
       // enabled
-      const uint64_t combined_cache_compute_time_avg_us =
-          cache_miss_cnt + cache_hit_cnt > 0
-              ? ((cache_miss_cnt *
-                  (cache_miss_time_avg_us + compute_time_avg_us)) +
-                 (cache_hit_cnt * cache_hit_time_avg_us)) /
-                    (cache_miss_cnt + cache_hit_cnt)
-              : 0;
-      result.total_combined_cache_compute_time_avg_us +=
-          combined_cache_compute_time_avg_us;
+      result.total_combined_cache_compute_time_avg_us += AverageDurationInUs(
+          compute_time + model_stats.second.cache_hit_time_ns +
+              model_stats.second.cache_miss_time_ns,
+          compute_cnt + cache_hit_cnt);
     } else {
       const auto this_ensemble_duration =
           GetTotalEnsembleDurations(model_stats.second);
@@ -152,51 +146,57 @@ ReportServerSideStats(
 
   // Non-ensemble model
   if (stats.composing_models_stat.empty()) {
-    const uint64_t queue_time_avg_us =
+    const uint64_t queue_avg_us =
         AverageDurationInUs(stats.queue_time_ns, stats.queue_count);
-    const uint64_t compute_input_time_avg_us = AverageDurationInUs(
+    const uint64_t compute_input_avg_us = AverageDurationInUs(
         stats.compute_input_time_ns, stats.compute_input_count);
-    const uint64_t compute_infer_time_avg_us = AverageDurationInUs(
+    const uint64_t compute_infer_avg_us = AverageDurationInUs(
         stats.compute_infer_time_ns, stats.compute_infer_count);
-    const uint64_t compute_output_time_avg_us = AverageDurationInUs(
+    const uint64_t compute_output_avg_us = AverageDurationInUs(
         stats.compute_output_time_ns, stats.compute_output_count);
-    const uint64_t compute_time_avg_us = compute_input_time_avg_us +
-                                         compute_infer_time_avg_us +
-                                         compute_output_time_avg_us;
-    const uint64_t cache_hit_time_avg_us =
+    const uint64_t compute_time = stats.compute_input_time_ns +
+                                  stats.compute_infer_time_ns +
+                                  stats.compute_output_time_ns;
+    if (stats.compute_input_count != stats.compute_infer_count ||
+        stats.compute_infer_count != stats.compute_output_count) {
+      throw std::runtime_error(
+          "Server side statistics compute counts must be the same.");
+    }
+    const uint64_t compute_cnt = stats.compute_input_count +
+                                 stats.compute_infer_count +
+                                 stats.compute_output_count;
+    const uint64_t compute_avg_us =
+        AverageDurationInUs(compute_time, compute_cnt);
+    const uint64_t cache_hit_avg_us =
         AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
-    const uint64_t cache_miss_time_avg_us =
+    const uint64_t cache_miss_avg_us =
         AverageDurationInUs(stats.cache_miss_time_ns, cache_miss_cnt);
     const uint64_t total_compute_time_ns = stats.compute_input_time_ns +
                                            stats.compute_infer_time_ns +
                                            stats.compute_output_time_ns;
     // Get the average of cache hits and misses across successful requests
-    const uint64_t combined_cache_compute_time_avg_us =
-        cache_miss_cnt + cache_hit_cnt > 0
-            ? ((cache_miss_cnt *
-                (cache_miss_time_avg_us + compute_time_avg_us)) +
-               (cache_hit_cnt * cache_hit_time_avg_us)) /
-                  (cache_miss_cnt + cache_hit_cnt)
-            : 0;
+    const uint64_t combined_cache_compute_avg_us = AverageDurationInUs(
+        stats.cache_hit_time_ns + stats.cache_miss_time_ns +
+            total_compute_time_ns,
+        compute_cnt + cache_hit_cnt);
 
     if (parser->ResponseCacheEnabled()) {
-      const uint64_t overhead_time_avg_us = GetOverheadDuration(
-          cumm_avg_us, queue_time_avg_us, combined_cache_compute_time_avg_us);
+      const uint64_t overhead_avg_us = GetOverheadDuration(
+          cumm_avg_us, queue_avg_us, combined_cache_compute_avg_us);
 
-      std::cout << " (overhead " << overhead_time_avg_us << " usec + "
-                << "queue " << queue_time_avg_us << " usec + "
-                << "cache hit/miss " << combined_cache_compute_time_avg_us
+      std::cout << " (overhead " << overhead_avg_us << " usec + "
+                << "queue " << queue_avg_us << " usec + "
+                << "cache hit/miss " << combined_cache_compute_avg_us
                 << " usec)" << std::endl;
       std::cout << ident << ident
-                << "  Average Cache Hit Latency: " << cache_hit_time_avg_us
+                << "  Average Cache Hit Latency: " << cache_hit_avg_us
                 << " usec" << std::endl;
       std::cout << ident << ident << "  Average Cache Miss Latency: "
-                << cache_miss_time_avg_us + compute_time_avg_us << " usec "
-                << "(cache lookup/insertion " << cache_miss_time_avg_us
-                << " usec + "
-                << "compute input " << compute_input_time_avg_us << " usec + "
-                << "compute infer " << compute_infer_time_avg_us << " usec + "
-                << "compute output " << compute_output_time_avg_us << " usec)"
+                << cache_miss_avg_us + compute_avg_us << " usec "
+                << "(cache lookup/insertion " << cache_miss_avg_us << " usec + "
+                << "compute input " << compute_input_avg_us << " usec + "
+                << "compute infer " << compute_infer_avg_us << " usec + "
+                << "compute output " << compute_output_avg_us << " usec)"
                 << std::endl
                 << std::endl;
     }
@@ -204,16 +204,16 @@ ReportServerSideStats(
     else {
       std::cout << " (overhead "
                 << GetOverheadDuration(
-                       cumm_avg_us, queue_time_avg_us, compute_time_avg_us)
+                       cumm_avg_us, queue_avg_us, compute_avg_us)
                 << " usec + "
-                << "queue " << queue_time_avg_us << " usec + "
-                << "compute input " << compute_input_time_avg_us << " usec + "
-                << "compute infer " << compute_infer_time_avg_us << " usec + "
-                << "compute output " << compute_output_time_avg_us << " usec)"
+                << "queue " << queue_avg_us << " usec + "
+                << "compute input " << compute_input_avg_us << " usec + "
+                << "compute infer " << compute_infer_avg_us << " usec + "
+                << "compute output " << compute_output_avg_us << " usec)"
                 << std::endl
                 << std::endl;
 
-      if (cache_hit_time_avg_us > 0 || cache_miss_time_avg_us > 0) {
+      if (cache_hit_avg_us > 0 || cache_miss_avg_us > 0) {
         std::cerr << "Response Cache is disabled for model ["
                   << parser->ModelName()
                   << "] but cache hit/miss latency is non-zero." << std::endl;
@@ -225,10 +225,10 @@ ReportServerSideStats(
     const auto ensemble_times = GetTotalEnsembleDurations(stats);
     // Response Cache Enabled
     if (parser->ResponseCacheEnabled()) {
-      const uint64_t overhead_time_avg_us = GetOverheadDuration(
+      const uint64_t overhead_avg_us = GetOverheadDuration(
           cumm_avg_us, ensemble_times.total_queue_time_avg_us,
           ensemble_times.total_combined_cache_compute_time_avg_us);
-      std::cout << " (overhead " << overhead_time_avg_us << " usec + "
+      std::cout << " (overhead " << overhead_avg_us << " usec + "
                 << "queue " << ensemble_times.total_queue_time_avg_us
                 << " usec + "
                 << "cache hit/miss "

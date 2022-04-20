@@ -135,9 +135,21 @@ ReportWriter::GenerateReport()
                 ? (status.server_stats.compute_output_time_ns /
                    status.server_stats.compute_output_count)
                 : 0;
-
+        uint64_t compute_time_ns = status.server_stats.compute_input_time_ns +
+                                   status.server_stats.compute_infer_time_ns +
+                                   status.server_stats.compute_output_time_ns;
+        if (status.server_stats.compute_input_count !=
+                status.server_stats.compute_infer_count ||
+            status.server_stats.compute_infer_count !=
+                status.server_stats.compute_output_count) {
+          throw std::runtime_error(
+              "Server side statistics compute counts must be the same.");
+        }
+        uint64_t compute_cnt = status.server_stats.compute_input_count +
+                               status.server_stats.compute_infer_count +
+                               status.server_stats.compute_output_count;
         uint64_t avg_compute_ns =
-            avg_compute_input_ns + avg_compute_infer_ns + avg_compute_output_ns;
+            compute_cnt > 0 ? compute_time_ns / compute_cnt : 0;
         uint64_t avg_cache_hit_ns =
             status.server_stats.cache_hit_count > 0
                 ? (status.server_stats.cache_hit_time_ns /
@@ -254,9 +266,19 @@ ReportWriter::GenerateReport()
                 stats.compute_output_count > 0
                     ? stats.compute_output_time_ns / stats.compute_output_count
                     : 0;
-            uint64_t avg_compute_ns = avg_compute_input_ns +
-                                      avg_compute_infer_ns +
-                                      avg_compute_output_ns;
+            uint64_t compute_time_ns = stats.compute_input_time_ns +
+                                       stats.compute_infer_time_ns +
+                                       stats.compute_output_time_ns;
+            if (stats.compute_input_count != stats.compute_infer_count ||
+                stats.compute_infer_count != stats.compute_output_count) {
+              throw std::runtime_error(
+                  "Server side statistics compute counts must be the same.");
+            }
+            uint64_t compute_cnt = stats.compute_input_count +
+                                   stats.compute_infer_count +
+                                   stats.compute_output_count;
+            uint64_t avg_compute_ns =
+                compute_cnt > 0 ? compute_time_ns / compute_cnt : 0;
             uint64_t avg_cache_hit_ns =
                 stats.cache_hit_count > 0
                     ? stats.cache_hit_time_ns / stats.cache_hit_count
