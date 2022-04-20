@@ -81,10 +81,13 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-t <client timeout in microseconds>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
-  std::cerr << std::endl;
   std::cerr
       << "For -H, header must be 'Header:Value'. May be given multiple times."
       << std::endl;
+  std::cerr << "\t-C <grpc compression algortithm>. \'deflate\', "
+              "\'gzip\' and \'none\' are supported" << std::endl;
+  std::cerr << "\t-n Don't use cached channel when creating new client. False by default" << std::endl;
+  std::cerr << std::endl;
 
   exit(1);
 }
@@ -104,6 +107,7 @@ main(int argc, char** argv)
   std::string certificate_chain;
   grpc_compression_algorithm compression_algorithm =
       grpc_compression_algorithm::GRPC_COMPRESS_NONE;
+  bool dont_use_cached_channel = false;
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {{"ssl", 0, 0, 0},
@@ -113,7 +117,7 @@ main(int argc, char** argv)
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt_long(argc, argv, "vu:t:H:C:", long_options, NULL)) !=
+  while ((opt = getopt_long(argc, argv, "vu:t:H:C:n", long_options, NULL)) !=
          -1) {
     switch (opt) {
       case 0:
@@ -163,6 +167,10 @@ main(int argc, char** argv)
         }
         break;
       }
+      case 'n': {
+        dont_use_cached_channel = true;
+        break;
+      }
       case '?':
         Usage(argv);
         break;
@@ -190,8 +198,14 @@ main(int argc, char** argv)
         "unable to create secure grpc client");
   } else {
     FAIL_IF_ERR(
-        tc::InferenceServerGrpcClient::Create(&client, url, verbose),
+        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), dont_use_cached_channel),
         "unable to create grpc client");
+    if (dont_use_cached_channel) { // Create a new client with the same name to ensure cached channel is not used
+        tc::KeepAliveOptions keepalive_options;
+        FAIL_IF_ERR(
+        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), dont_use_cached_channel),
+        "unable to create grpc client");
+    }
   }
 
   // Create the data for the two input tensors. Initialize the first

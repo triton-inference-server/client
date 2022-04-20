@@ -79,7 +79,7 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options, bool force_new_connection)
+    const KeepAliveOptions& keepalive_options, bool dont_use_cached_channel)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
@@ -401,11 +401,11 @@ InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
     const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    bool force_new_connection)
+    bool dont_use_cached_channel)
 {
   client->reset(new InferenceServerGrpcClient(
       server_url, verbose, use_ssl, ssl_options, keepalive_options,
-      force_new_connection));
+      dont_use_cached_channel));
   return Error::Success;
 }
 
@@ -1545,14 +1545,14 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
     const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    bool force_new_connection)
+    bool dont_use_cached_channel)
     : InferenceServerClient(verbose)
 {
 <<<<<<< HEAD
   stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options);
 =======
   auto channel_stub = GetChannelStub(
-      url, use_ssl, ssl_options, keepalive_options, force_new_connection);
+      url, use_ssl, ssl_options, keepalive_options, dont_use_cached_channel);
   stub_ = channel_stub.second;
 >>>>>>> add force_new_connection variable to force create a new channel instead of using the old channel for grpc client
 }
