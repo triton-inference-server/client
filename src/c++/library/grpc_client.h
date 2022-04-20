@@ -509,7 +509,11 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
       const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+<<<<<<< HEAD
       const bool use_cached_channel);
+=======
+      bool dont_use_cached_channel);
+>>>>>>> temp commit to check java stuff
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);
