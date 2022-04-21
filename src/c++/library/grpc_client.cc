@@ -43,8 +43,9 @@ namespace {
 
 //==============================================================================
 
-// Use map to keep track of GRPC channels. <key, value> : <url, Channel*>
-// If context is created on url that has established Channel, then reuse it.
+// Use map to keep track of GRPC channels. <key, value> : <url, <shared_count,
+// Channel*, Stub*>> If context is created on url that has established Channel
+// and hasn't reached max shared count, then reuse it.
 std::map<
     std::string, std::tuple<
                      size_t, std::shared_ptr<grpc::Channel>,
@@ -114,6 +115,13 @@ GetStub(
   arguments.SetInt(
       GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
       keepalive_options.http2_max_pings_without_data);
+
+  static std::atomic<int> channel_count{0};
+  // Explicitly avoid channel re-use
+  // "channels must have different channel args to prevent re-use
+  // so define a use-specific channel arg such as channel number"
+  // https://grpc.io/docs/guides/performance/
+  arguments.SetInt("client_channel_idx", channel_count.fetch_add(1));
   std::shared_ptr<grpc::ChannelCredentials> credentials;
   if (use_ssl) {
     std::string root;
