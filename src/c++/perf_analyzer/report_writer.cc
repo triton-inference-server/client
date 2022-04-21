@@ -145,9 +145,7 @@ ReportWriter::GenerateReport()
           throw std::runtime_error(
               "Server side statistics compute counts must be the same.");
         }
-        uint64_t compute_cnt = status.server_stats.compute_input_count +
-                               status.server_stats.compute_infer_count +
-                               status.server_stats.compute_output_count;
+        uint64_t compute_cnt = status.server_stats.compute_input_count;
         uint64_t avg_compute_ns =
             compute_cnt > 0 ? compute_time_ns / compute_cnt : 0;
         uint64_t avg_cache_hit_ns =
@@ -274,9 +272,7 @@ ReportWriter::GenerateReport()
               throw std::runtime_error(
                   "Server side statistics compute counts must be the same.");
             }
-            uint64_t compute_cnt = stats.compute_input_count +
-                                   stats.compute_infer_count +
-                                   stats.compute_output_count;
+            uint64_t compute_cnt = stats.compute_input_count;
             uint64_t avg_compute_ns =
                 compute_cnt > 0 ? compute_time_ns / compute_cnt : 0;
             uint64_t avg_cache_hit_ns =
