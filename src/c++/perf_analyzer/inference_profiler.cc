@@ -68,7 +68,7 @@ GetTotalEnsembleDurations(const ServerSideStats& stats)
         throw std::runtime_error(
             "Server side statistics compute counts must be the same.");
       }
-      const uint64_t compute_cnt = model_stats.second.compute_input_time_ns;
+      const uint64_t compute_cnt = model_stats.second.compute_input_count;
       result.total_compute_time_avg_us +=
           AverageDurationInUs(compute_time, compute_cnt);
       result.total_cache_hit_time_avg_us += AverageDurationInUs(
