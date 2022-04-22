@@ -598,7 +598,8 @@ class InferenceServerClient:
                    model_name,
                    headers=None,
                    query_params=None,
-                   config=None):
+                   config=None,
+                   encoded_files={}):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -615,6 +616,11 @@ class InferenceServerClient:
             Optional JSON representation of a model config provided for
             the load request, if provided, this config will be used for
             loading the model.
+        encoded_files: dict
+            Optional dictionary specifying file path (with "file:" prefix) in
+            the override model directory to the base64 encoded file content.
+            If specified, 'config' must be provided to be
+            the model configuration of the override model directory.
 
         Raises
         ------
@@ -628,6 +634,10 @@ class InferenceServerClient:
             if "parameters" not in load_request:
                 load_request["parameters"] = {}
             load_request["parameters"]["config"] = config
+        for path, content in encoded_files.items():
+            if "parameters" not in load_request:
+                load_request["parameters"] = {}
+            load_request["parameters"][path] = content
         response = self._post(request_uri=request_uri,
                               request_body=json.dumps(load_request),
                               headers=headers,

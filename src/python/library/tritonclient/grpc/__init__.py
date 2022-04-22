@@ -606,7 +606,11 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def load_model(self, model_name, headers=None, config=None):
+    def load_model(self,
+                   model_name,
+                   headers=None,
+                   config=None,
+                   encoded_files={}):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -620,6 +624,11 @@ class InferenceServerClient:
             Optional JSON representation of a model config provided for
             the load request, if provided, this config will be used for
             loading the model.
+        encoded_files: dict
+            Optional dictionary specifying file path (with "file:" prefix) in
+            the override model directory to the base64 encoded file content.
+            If specified, 'config' must be provided to be
+            the model configuration of the override model directory.
 
         Raises
         ------
@@ -637,7 +646,11 @@ class InferenceServerClient:
             if config is not None:
                 request.parameters["config"].string_param = config
             if self._verbose:
-                print("load_model, metadata {}\n{}".format(metadata, request))
+                # Don't print file content which can be large
+                print("load_model, metadata {}\noverride files omitted:\n{}".
+                      format(metadata, request))
+            for path, content in encoded_files.items():
+                request.parameters[path].string_param = content
             self._client_stub.RepositoryModelLoad(request=request,
                                                   metadata=metadata)
             if self._verbose:
