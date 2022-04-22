@@ -106,6 +106,9 @@ if (NOT WIN32)
     )
   endif() # TRITON_ENABLE_GPU
 
+  if (${TRITON_ENABLE_PERF_ANALYZER})
+    set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
+  endif()
   set(linux_wheel_stamp_file "linux_stamp.whl")
   add_custom_command(
     OUTPUT "${linux_wheel_stamp_file}"
@@ -114,7 +117,7 @@ if (NOT WIN32)
       "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.py"
       --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/linux"
       --linux
-      --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer
+      ${perf_analyzer_arg}
     DEPENDS ${LINUX_WHEEL_DEPENDS}
   )
 
