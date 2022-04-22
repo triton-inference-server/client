@@ -91,7 +91,7 @@ GetStub(
       std::stoul(GetEnvironmentVariableOrDefault(
           "TRITON_CLIENT_GRPC_CHANNEL_MAX_SHARE_COUNT", "6"));
   const auto& channel_itr = grpc_channel_stub_map_.find(url);
-  if ((channel_itr != grpc_channel_stub_map_.end()) && (!force_new_connection)){
+  if ((channel_itr != grpc_channel_stub_map_.end()) && (!dont_use_cached_channel)){
     // check if NewStub should be created
     const auto& shared_count = std::get<0>(channel_itr->second);
     if (shared_count % max_share_count != 0) {
@@ -1548,13 +1548,7 @@ InferenceServerGrpcClient::InferenceServerGrpcClient(
     bool dont_use_cached_channel)
     : InferenceServerClient(verbose)
 {
-<<<<<<< HEAD
-  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options);
-=======
-  auto channel_stub = GetChannelStub(
-      url, use_ssl, ssl_options, keepalive_options, dont_use_cached_channel);
-  stub_ = channel_stub.second;
->>>>>>> add force_new_connection variable to force create a new channel instead of using the old channel for grpc client
+  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options, dont_use_cached_channel);
 }
 
 InferenceServerGrpcClient::~InferenceServerGrpcClient()
