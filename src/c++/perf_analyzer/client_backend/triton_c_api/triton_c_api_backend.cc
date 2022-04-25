@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -197,6 +197,14 @@ TritonCApiClientBackend::ParseStatistics(
     it->second.execution_count_ = this_stat["execution_count"].GetUint64();
     it->second.success_count_ =
         this_stat["inference_stats"]["success"]["count"].GetUint64();
+    it->second.queue_count_ =
+        this_stat["inference_stats"]["queue"]["count"].GetUint64();
+    it->second.compute_input_count_ =
+        this_stat["inference_stats"]["compute_input"]["count"].GetUint64();
+    it->second.compute_infer_count_ =
+        this_stat["inference_stats"]["compute_infer"]["count"].GetUint64();
+    it->second.compute_output_count_ =
+        this_stat["inference_stats"]["compute_output"]["count"].GetUint64();
     it->second.cumm_time_ns_ =
         this_stat["inference_stats"]["success"]["ns"].GetUint64();
     it->second.queue_time_ns_ =

@@ -502,6 +502,13 @@ TritonClientBackend::ParseStatistics(
     it->second.inference_count_ = this_stat.inference_count();
     it->second.execution_count_ = this_stat.execution_count();
     it->second.success_count_ = this_stat.inference_stats().success().count();
+    it->second.queue_count_ = this_stat.inference_stats().queue().count();
+    it->second.compute_input_count_ =
+        this_stat.inference_stats().compute_input().count();
+    it->second.compute_infer_count_ =
+        this_stat.inference_stats().compute_infer().count();
+    it->second.compute_output_count_ =
+        this_stat.inference_stats().compute_output().count();
     it->second.cumm_time_ns_ = this_stat.inference_stats().success().ns();
     it->second.queue_time_ns_ = this_stat.inference_stats().queue().ns();
     it->second.compute_input_time_ns_ =
@@ -539,6 +546,14 @@ TritonClientBackend::ParseStatistics(
     it->second.execution_count_ = this_stat["execution_count"].GetUint64();
     it->second.success_count_ =
         this_stat["inference_stats"]["success"]["count"].GetUint64();
+    it->second.queue_count_ =
+        this_stat["inference_stats"]["queue"]["count"].GetUint64();
+    it->second.compute_input_count_ =
+        this_stat["inference_stats"]["compute_input"]["count"].GetUint64();
+    it->second.compute_infer_count_ =
+        this_stat["inference_stats"]["compute_infer"]["count"].GetUint64();
+    it->second.compute_output_count_ =
+        this_stat["inference_stats"]["compute_output"]["count"].GetUint64();
     it->second.cumm_time_ns_ =
         this_stat["inference_stats"]["success"]["ns"].GetUint64();
     it->second.queue_time_ns_ =

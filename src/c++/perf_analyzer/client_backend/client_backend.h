@@ -144,6 +144,10 @@ struct ModelStatistics {
   uint64_t success_count_;
   uint64_t inference_count_;
   uint64_t execution_count_;
+  uint64_t queue_count_;
+  uint64_t compute_input_count_;
+  uint64_t compute_infer_count_;
+  uint64_t compute_output_count_;
   uint64_t cache_hit_count_;
   uint64_t cache_miss_count_;
   uint64_t cumm_time_ns_;
