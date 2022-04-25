@@ -107,7 +107,7 @@ main(int argc, char** argv)
   std::string certificate_chain;
   grpc_compression_algorithm compression_algorithm =
       grpc_compression_algorithm::GRPC_COMPRESS_NONE;
-  bool dont_use_cached_channel = false;
+  bool use_cached_channel = true;
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {{"ssl", 0, 0, 0},
@@ -168,7 +168,7 @@ main(int argc, char** argv)
         break;
       }
       case 'n': {
-        dont_use_cached_channel = true;
+        use_cached_channel = false;
         break;
       }
       case '?':
@@ -198,12 +198,12 @@ main(int argc, char** argv)
         "unable to create secure grpc client");
   } else {
     FAIL_IF_ERR(
-        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), dont_use_cached_channel),
+        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), use_cached_channel),
         "unable to create grpc client");
-    if (dont_use_cached_channel) { // Create a new client with the same name to ensure cached channel is not used
+    if (use_cached_channel) { // Create a new client with the same name to ensure cached channel is not used
         tc::KeepAliveOptions keepalive_options;
         FAIL_IF_ERR(
-        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), dont_use_cached_channel),
+        tc::InferenceServerGrpcClient::Create(&client, url, verbose, false, tc::SslOptions(), tc::KeepAliveOptions(), use_cached_channel),
         "unable to create grpc client");
     }
   }
