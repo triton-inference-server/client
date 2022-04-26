@@ -262,7 +262,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
   /// loading the model.
   /// \param encoded_files Optional map specifying file path (with "file:"
   /// prefix) in the override model directory to the base64 encoded file
-  /// content. If specified, 'config' must be provided to be
+  /// content. The files will form the model directory that the model
+  /// to be loaded from. If specified, 'config' must be provided to be
   /// the model configuration of the override model directory.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
