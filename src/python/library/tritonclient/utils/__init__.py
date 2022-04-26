@@ -151,6 +151,9 @@ def np_to_triton_dtype(np_dtype):
         return "FP64"
     elif np_dtype == np.object_ or np_dtype.type == np.bytes_:
         return "BYTES"
+    # FIXME: Add proper bfloat16 support
+    elif np_dtype == "BF16":
+        return "BF16"
     return None
 
 
@@ -181,6 +184,9 @@ def triton_to_np_dtype(dtype):
         return np.float64
     elif dtype == "BYTES":
         return np.object_
+    # FIXME: Add proper bfloat16 support instead of fp16 WAR
+    elif dtype == "BF16":
+        return np.float16
     return None
 
 
