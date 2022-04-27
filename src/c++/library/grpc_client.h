@@ -206,7 +206,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param encoded_files Optional map specifying file path (with "file:"
   /// prefix) in the override model directory to the base64 encoded file
   /// content. The files will form the model directory that the model
-  /// to be loaded from. If specified, 'config' must be provided to be
+  /// will be loaded from. If specified, 'config' must be provided to be
   /// the model configuration of the override model directory.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(

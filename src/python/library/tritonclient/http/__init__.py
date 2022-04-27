@@ -619,7 +619,8 @@ class InferenceServerClient:
         encoded_files: dict
             Optional dictionary specifying file path (with "file:" prefix) in
             the override model directory to the base64 encoded file content.
-            If specified, 'config' must be provided to be
+            The files will form the model directory that the model will be
+            loaded from. If specified, 'config' must be provided to be
             the model configuration of the override model directory.
 
         Raises
