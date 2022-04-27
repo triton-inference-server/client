@@ -1158,17 +1158,26 @@ InferenceServerHttpClient::ModelRepositoryIndex(
 Error
 InferenceServerHttpClient::LoadModel(
     const std::string& model_name, const Headers& headers,
-    const Parameters& query_params, const std::string& config)
+    const Parameters& query_params, const std::string& config,
+    const std::map<std::string, std::string>& encoded_files)
 {
   std::string request_uri(
       url_ + "/v2/repository/models/" + model_name + "/load");
 
   triton::common::TritonJson::Value request_json(
       triton::common::TritonJson::ValueType::OBJECT);
+  bool has_param = false;
+  triton::common::TritonJson::Value parameters_json(
+      request_json, triton::common::TritonJson::ValueType::OBJECT);
   if (!config.empty()) {
-    triton::common::TritonJson::Value parameters_json(
-        request_json, triton::common::TritonJson::ValueType::OBJECT);
+    has_param = true;
     parameters_json.AddStringRef("config", config.c_str());
+  }
+  for (const auto& file : encoded_files) {
+    has_param = true;
+    parameters_json.AddStringRef(file.first.c_str(), file.second.c_str());
+  }
+  if (has_param) {
     request_json.Add("parameters", std::move(parameters_json));
   }
   triton::common::TritonJson::WriteBuffer buffer;

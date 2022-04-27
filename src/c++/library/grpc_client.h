@@ -203,10 +203,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param config Optional JSON representation of a model config provided for
   /// the load request, if provided, this config will be used for
   /// loading the model.
+  /// \param encoded_files Optional map specifying file path (with "file:"
+  /// prefix) in the override model directory to the base64 encoded file
+  /// content. The files will form the model directory that the model
+  /// will be loaded from. If specified, 'config' must be provided to be
+  /// the model configuration of the override model directory.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
       const std::string& model_name, const Headers& headers = Headers(),
-      const std::string& config = std::string());
+      const std::string& config = std::string(),
+      const std::map<std::string, std::string>& encoded_files = {});
 
   /// Request the inference server to unload specified model.
   /// \param model_name The name of the model to be unloaded.
