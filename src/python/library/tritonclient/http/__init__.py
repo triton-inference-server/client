@@ -251,6 +251,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -290,6 +292,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -312,6 +316,33 @@ class InferenceServerClient:
             print(response)
 
         return response
+
+    def _validate_headers(self, headers):
+        """Checks for any unsupported HTTP headers before processing a request.
+
+        Parameters
+        ----------
+        headers: dict
+            HTTP headers to validate before processing the request.
+
+        Raises
+        ------
+        InferenceServerException
+            If an unsupported HTTP header is included in a request.
+        """
+        if not headers:
+            return
+
+        # HTTP headers are case-insensitive, so force lowercase for comparison
+        headers_ci = {k.lower(): v for k, v in headers.items()}
+        # The python client library (and geventhttpclient) do not chunk-encode
+        # request data sent, so reject this header if included. Other libraries
+        # may do this chunk-encoding under the hood.
+        if headers_ci.get("transfer-encoding", "").lower() == "chunked":
+            raise_error("HTTP header 'Transfer-Encoding: chunked' is not "
+                        "supported in the Python client library. Use raw HTTP "
+                        "request libraries or the C++ client instead for this "
+                        "header.")
 
     def is_server_live(self, headers=None, query_params=None):
         """Contact the inference server and get liveness.
