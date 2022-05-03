@@ -334,12 +334,14 @@ class InferenceServerClient:
             return
 
         # HTTP headers are case-insensitive, so force lowercase for comparison
-        headers_ci = {k.lower(): v for k, v in headers.items()}
-        # The python client library (and geventhttpclient) do not chunk-encode
-        # request data sent, so reject this header if included. Other libraries
-        # may do this chunk-encoding under the hood.
-        if headers_ci.get("transfer-encoding", "").lower() == "chunked":
-            raise_error("HTTP header 'Transfer-Encoding: chunked' is not "
+        headers_lowercase = {k.lower(): v for k, v in headers.items()}
+        # The python client lirary (and geventhttpclient) do not encode request
+        # data based on "Transfer-Encoding" header, so reject this header if 
+        # included. Other libraries may do this encoding under the hood.
+        # The python client library does expose special arguments to support
+        # some "Content-Encoding" headers.
+        if "transfer-encoding" in headers_lowercase:
+            raise_error("Unsupported HTTP header: 'Transfer-Encoding' is not "
                         "supported in the Python client library. Use raw HTTP "
                         "request libraries or the C++ client instead for this "
                         "header.")
