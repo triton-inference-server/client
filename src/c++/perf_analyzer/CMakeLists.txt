@@ -62,6 +62,7 @@ set(
   inference_profiler.h
   report_writer.h
   mpi_utils.h
+  doctest.h
 )
 
 add_executable(
@@ -117,33 +118,14 @@ install(
   RUNTIME DESTINATION bin
 )
 
+target_compile_definitions(perf_analyzer PUBLIC DOCTEST_CONFIG_DISABLE)
+
 # Creating perf_client link to perf_analyzer binary for backwards compatibility.
 install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ./perf_analyzer perf_client
   WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/)")
 install(CODE "message(\"-- Created symlink: perf_client -> ./perf_analyzer\")")
 
-# Configure doctest. Based on
-# https://github.com/doctest/doctest/blob/master/doc/markdown/build-systems.md
-include(ExternalProject)
-find_package(Git REQUIRED)
 
-ExternalProject_Add(
-    doctest
-    PREFIX ${CMAKE_BINARY_DIR}/doctest
-    GIT_REPOSITORY https://github.com/doctest/doctest.git
-    GIT_TAG "v2.4.8"
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ""
-    LOG_DOWNLOAD ON
-)
-
-# Expose required variable (DOCTEST_INCLUDE_DIR) to parent scope
-ExternalProject_Get_Property(doctest source_dir)
-set(DOCTEST_INCLUDE_DIR ${source_dir}/doctest CACHE INTERNAL "Path to include folder for doctest")
-
-target_include_directories(perf_analyzer PUBLIC ${DOCTEST_INCLUDE_DIR})
-target_compile_definitions(perf_analyzer PUBLIC DOCTEST_CONFIG_DISABLE)
 
 set(PERF_ANALYZER_UNIT_TESTS_SRCS ${PERF_ANALYZER_SRCS})
 list(REMOVE_ITEM PERF_ANALYZER_UNIT_TESTS_SRCS main.cc)
@@ -163,8 +145,6 @@ target_link_libraries(
     client-backend-library
     -lb64
 )
-
-target_include_directories(perf_analyzer_unit_tests PUBLIC ${DOCTEST_INCLUDE_DIR})
 
 install(
   TARGETS perf_analyzer_unit_tests
