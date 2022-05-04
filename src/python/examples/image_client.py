@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -181,19 +181,19 @@ def preprocess(img, format, dtype, c, h, w, scaling, protocol):
     return ordered
 
 
-def postprocess(results, output_name, batch_size, batching):
+def postprocess(results, output_name, batch_size, supports_batching):
     """
     Post-process results to show classifications.
     """
 
     output_array = results.as_numpy(output_name)
-    if len(output_array) != batch_size:
+    if supports_batching and len(output_array) != batch_size:
         raise Exception("expected {} results, got {}".format(
             batch_size, len(output_array)))
 
     # Include special handling for non-batching models
     for results in output_array:
-        if not batching:
+        if not supports_batching:
             results = [results]
         for result in results:
             if output_array.dtype.type == np.object_:
@@ -345,6 +345,11 @@ if __name__ == '__main__':
     max_batch_size, input_name, output_name, c, h, w, format, dtype = parse_model(
         model_metadata, model_config)
 
+    supports_batching = max_batch_size > 0
+    if not supports_batching and FLAGS.batch_size != 1:
+        print("ERROR: This model doesn't support batching.")
+        sys.exit(1)
+
     filenames = []
     if os.path.isdir(FLAGS.image_filename):
         filenames = [
@@ -398,7 +403,7 @@ if __name__ == '__main__':
             if image_idx == 0:
                 last_request = True
 
-        if max_batch_size > 0:
+        if supports_batching:
             batched_image_data = np.stack(repeated_image_data, axis=0)
         else:
             batched_image_data = repeated_image_data[0]
@@ -472,6 +477,6 @@ if __name__ == '__main__':
         else:
             this_id = response.get_response()["id"]
         print("Request {}, batch size {}".format(this_id, FLAGS.batch_size))
-        postprocess(response, output_name, FLAGS.batch_size, max_batch_size > 0)
+        postprocess(response, output_name, FLAGS.batch_size, supports_batching)
 
     print("PASS")
