@@ -28,7 +28,6 @@
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerGrpcClient
 #include "common.h"
 
-#include <grpcpp/grpcpp.h>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -105,12 +104,12 @@ GetStub(
   // Set user-defined "custom_args" before setting Triton-specific args to
   // expose custom settings generically. These args are set at user's own risk.
   grpc::ChannelArguments arguments(custom_args);
-  // TODO: Remove
-  // custom_args.SetChannelArgs(&arguments.c_channel_args());
 
+  // TODO: Check for args that are already set before overwriting them
   // Set Triton-specific args that are required or already exposed
   arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
   arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
+
   // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
   arguments.SetInt(
       GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);

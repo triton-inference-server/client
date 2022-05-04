@@ -27,6 +27,7 @@
 
 /// \file
 
+#include <grpcpp/grpcpp.h>
 #include <queue>
 #include "common.h"
 #include "grpc_service.grpc.pb.h"
@@ -111,8 +112,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
   /// \param custom_args Exposes user-defined grpc::ChannelArguments to
-  /// be set for the client. Any arguments that are already exposed or set in
-  /// the client will overwrite duplicate settings in custom_args.
+  /// be set for the client. Some arguments that are already exposed or set in
+  /// the client may overwrite duplicate settings in custom_args.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
