@@ -251,6 +251,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -290,6 +292,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -312,6 +316,35 @@ class InferenceServerClient:
             print(response)
 
         return response
+
+    def _validate_headers(self, headers):
+        """Checks for any unsupported HTTP headers before processing a request.
+
+        Parameters
+        ----------
+        headers: dict
+            HTTP headers to validate before processing the request.
+
+        Raises
+        ------
+        InferenceServerException
+            If an unsupported HTTP header is included in a request.
+        """
+        if not headers:
+            return
+
+        # HTTP headers are case-insensitive, so force lowercase for comparison
+        headers_lowercase = {k.lower(): v for k, v in headers.items()}
+        # The python client lirary (and geventhttpclient) do not encode request
+        # data based on "Transfer-Encoding" header, so reject this header if 
+        # included. Other libraries may do this encoding under the hood.
+        # The python client library does expose special arguments to support
+        # some "Content-Encoding" headers.
+        if "transfer-encoding" in headers_lowercase:
+            raise_error("Unsupported HTTP header: 'Transfer-Encoding' is not "
+                        "supported in the Python client library. Use raw HTTP "
+                        "request libraries or the C++ client instead for this "
+                        "header.")
 
     def is_server_live(self, headers=None, query_params=None):
         """Contact the inference server and get liveness.
