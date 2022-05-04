@@ -110,7 +110,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// SSL encryption and authorization.
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
-  /// \param use_cached_channel If false, a new channel is created for each 
+  /// \param use_cached_channel If false, a new channel is created for each
   /// new client instance. When true, re-use old channels from cache for new
   /// client instances. The default value is true.
   /// \return Error object indicating success or failure.
@@ -208,15 +208,15 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// the load request, if provided, this config will be used for
   /// loading the model.
   /// \param encoded_files Optional map specifying file path (with "file:"
-  /// prefix) in the override model directory to the base64 encoded file
-  /// content. The files will form the model directory that the model
+  /// prefix) in the override model directory to the file content.
+  /// The files will form the model directory that the model
   /// will be loaded from. If specified, 'config' must be provided to be
   /// the model configuration of the override model directory.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
       const std::string& model_name, const Headers& headers = Headers(),
       const std::string& config = std::string(),
-      const std::map<std::string, std::string>& encoded_files = {});
+      const std::map<std::string, std::vector<char>>& files = {});
 
   /// Request the inference server to unload specified model.
   /// \param model_name The name of the model to be unloaded.
