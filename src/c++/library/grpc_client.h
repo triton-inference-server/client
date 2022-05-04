@@ -110,12 +110,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// SSL encryption and authorization.
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
+  /// \param use_cached_channel If false, a new channel is created for each 
+  /// new client instance. When true, re-use old channels from cache for new
+  /// client instances. The default value is true.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
       const SslOptions& ssl_options = SslOptions(),
-      const KeepAliveOptions& keepalive_options = KeepAliveOptions());
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
+      const bool use_cached_channel = true);
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -504,7 +508,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
+      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+      const bool use_cached_channel);
+
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);

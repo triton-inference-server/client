@@ -79,7 +79,8 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options)
+    const KeepAliveOptions& keepalive_options, const bool use_cached_channel,
+    bool verbose)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
@@ -91,7 +92,9 @@ GetStub(
       std::stoul(GetEnvironmentVariableOrDefault(
           "TRITON_CLIENT_GRPC_CHANNEL_MAX_SHARE_COUNT", "6"));
   const auto& channel_itr = grpc_channel_stub_map_.find(url);
-  if (channel_itr != grpc_channel_stub_map_.end()) {
+  // Reuse cached channel if the channel is found in the map and
+  // used_cached_channel flag is true
+  if ((channel_itr != grpc_channel_stub_map_.end()) && use_cached_channel) {
     // check if NewStub should be created
     const auto& shared_count = std::get<0>(channel_itr->second);
     if (shared_count % max_share_count != 0) {
@@ -99,7 +102,9 @@ GetStub(
       return std::get<2>(channel_itr->second);
     }
   }
-
+  if (verbose) {
+    std::cout << "Creating new channel with url:" << url << std::endl;
+  }
   // New channel / stub should be created
   grpc::ChannelArguments arguments;
   arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
@@ -400,10 +405,12 @@ Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+    const bool use_cached_channel)
 {
   client->reset(new InferenceServerGrpcClient(
-      server_url, verbose, use_ssl, ssl_options, keepalive_options));
+      server_url, verbose, use_ssl, ssl_options, keepalive_options,
+      use_cached_channel));
   return Error::Success;
 }
 
@@ -1542,10 +1549,13 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+    const bool use_cached_channel)
     : InferenceServerClient(verbose)
 {
-  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options);
+  stub_ = GetStub(
+      url, use_ssl, ssl_options, keepalive_options, use_cached_channel,
+      verbose);
 }
 
 InferenceServerGrpcClient::~InferenceServerGrpcClient()

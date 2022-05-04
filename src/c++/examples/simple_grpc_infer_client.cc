@@ -34,7 +34,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -81,10 +81,17 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-t <client timeout in microseconds>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
-  std::cerr << std::endl;
   std::cerr
-      << "For -H, header must be 'Header:Value'. May be given multiple times."
+      << "\tFor -H, header must be 'Header:Value'. May be given multiple times."
       << std::endl;
+  std::cerr << "\t-C <grpc compression algortithm>. \'deflate\', "
+               "\'gzip\' and \'none\' are supported"
+            << std::endl;
+  std::cerr << "\t-c <use_cached_channel>. "
+               " Use cached channel when creating new client. "
+               " Specify 'true' or 'false'. True by default"
+            << std::endl;
+  std::cerr << std::endl;
 
   exit(1);
 }
@@ -104,6 +111,8 @@ main(int argc, char** argv)
   std::string certificate_chain;
   grpc_compression_algorithm compression_algorithm =
       grpc_compression_algorithm::GRPC_COMPRESS_NONE;
+  bool test_use_cached_channel = false;
+  bool use_cached_channel = true;
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {{"ssl", 0, 0, 0},
@@ -113,7 +122,7 @@ main(int argc, char** argv)
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt_long(argc, argv, "vu:t:H:C:", long_options, NULL)) !=
+  while ((opt = getopt_long(argc, argv, "vu:t:H:C:c:", long_options, NULL)) !=
          -1) {
     switch (opt) {
       case 0:
@@ -140,7 +149,14 @@ main(int argc, char** argv)
       case 'H': {
         std::string arg = optarg;
         std::string header = arg.substr(0, arg.find(":"));
-        http_headers[header] = arg.substr(header.size() + 1);
+        if (header.size() == arg.size() || header.empty()) {
+          Usage(
+              argv,
+              "HTTP header specified incorrectly. Must be formmated as "
+              "'Header:Value'");
+        } else {
+          http_headers[header] = arg.substr(header.size() + 1);
+        }
         break;
       }
       case 'C': {
@@ -163,6 +179,18 @@ main(int argc, char** argv)
         }
         break;
       }
+      case 'c': {
+        test_use_cached_channel = true;
+        std::string arg = optarg;
+        if (arg.find("false") != std::string::npos) {
+          use_cached_channel = false;
+        } else if (arg.find("true") != std::string::npos) {
+          use_cached_channel = true;
+        } else {
+          Usage(argv, "need to specify true or false for use_cached_channel");
+        }
+        break;
+      }
       case '?':
         Usage(argv);
         break;
@@ -179,159 +207,163 @@ main(int argc, char** argv)
   // Create a InferenceServerGrpcClient instance to communicate with the
   // server using gRPC protocol.
   std::unique_ptr<tc::InferenceServerGrpcClient> client;
+  tc::SslOptions ssl_options = tc::SslOptions();
+  std::string err;
   if (use_ssl) {
-    tc::SslOptions ssl_options;
     ssl_options.root_certificates = root_certificates;
     ssl_options.private_key = private_key;
     ssl_options.certificate_chain = certificate_chain;
+    err = "unable to create secure grpc client";
+  } else {
+    err = "unable to create grpc client";
+  }
+  // Run with the same name to ensure cached channel is not used
+  int numRuns = test_use_cached_channel ? 2 : 1;
+  for (int i = 0; i < numRuns; ++i) {
     FAIL_IF_ERR(
         tc::InferenceServerGrpcClient::Create(
-            &client, url, verbose, use_ssl, ssl_options),
-        "unable to create secure grpc client");
-  } else {
+            &client, url, verbose, use_ssl, ssl_options, tc::KeepAliveOptions(),
+            use_cached_channel),
+        err);
+
+    // Create the data for the two input tensors. Initialize the first
+    // to unique integers and the second to all ones.
+    std::vector<int32_t> input0_data(16);
+    std::vector<int32_t> input1_data(16);
+    for (size_t i = 0; i < 16; ++i) {
+      input0_data[i] = i;
+      input1_data[i] = 1;
+    }
+
+    std::vector<int64_t> shape{1, 16};
+
+    // Initialize the inputs with the data.
+    tc::InferInput* input0;
+    tc::InferInput* input1;
+
     FAIL_IF_ERR(
-        tc::InferenceServerGrpcClient::Create(&client, url, verbose),
-        "unable to create grpc client");
-  }
+        tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
+        "unable to get INPUT0");
+    std::shared_ptr<tc::InferInput> input0_ptr;
+    input0_ptr.reset(input0);
+    FAIL_IF_ERR(
+        tc::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
+        "unable to get INPUT1");
+    std::shared_ptr<tc::InferInput> input1_ptr;
+    input1_ptr.reset(input1);
 
-  // Create the data for the two input tensors. Initialize the first
-  // to unique integers and the second to all ones.
-  std::vector<int32_t> input0_data(16);
-  std::vector<int32_t> input1_data(16);
-  for (size_t i = 0; i < 16; ++i) {
-    input0_data[i] = i;
-    input1_data[i] = 1;
-  }
+    FAIL_IF_ERR(
+        input0_ptr->AppendRaw(
+            reinterpret_cast<uint8_t*>(&input0_data[0]),
+            input0_data.size() * sizeof(int32_t)),
+        "unable to set data for INPUT0");
+    FAIL_IF_ERR(
+        input1_ptr->AppendRaw(
+            reinterpret_cast<uint8_t*>(&input1_data[0]),
+            input1_data.size() * sizeof(int32_t)),
+        "unable to set data for INPUT1");
 
-  std::vector<int64_t> shape{1, 16};
+    // Generate the outputs to be requested.
+    tc::InferRequestedOutput* output0;
+    tc::InferRequestedOutput* output1;
 
-  // Initialize the inputs with the data.
-  tc::InferInput* input0;
-  tc::InferInput* input1;
-
-  FAIL_IF_ERR(
-      tc::InferInput::Create(&input0, "INPUT0", shape, "INT32"),
-      "unable to get INPUT0");
-  std::shared_ptr<tc::InferInput> input0_ptr;
-  input0_ptr.reset(input0);
-  FAIL_IF_ERR(
-      tc::InferInput::Create(&input1, "INPUT1", shape, "INT32"),
-      "unable to get INPUT1");
-  std::shared_ptr<tc::InferInput> input1_ptr;
-  input1_ptr.reset(input1);
-
-  FAIL_IF_ERR(
-      input0_ptr->AppendRaw(
-          reinterpret_cast<uint8_t*>(&input0_data[0]),
-          input0_data.size() * sizeof(int32_t)),
-      "unable to set data for INPUT0");
-  FAIL_IF_ERR(
-      input1_ptr->AppendRaw(
-          reinterpret_cast<uint8_t*>(&input1_data[0]),
-          input1_data.size() * sizeof(int32_t)),
-      "unable to set data for INPUT1");
-
-  // Generate the outputs to be requested.
-  tc::InferRequestedOutput* output0;
-  tc::InferRequestedOutput* output1;
-
-  FAIL_IF_ERR(
-      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
-      "unable to get 'OUTPUT0'");
-  std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
-  output0_ptr.reset(output0);
-  FAIL_IF_ERR(
-      tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
-      "unable to get 'OUTPUT1'");
-  std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
-  output1_ptr.reset(output1);
+    FAIL_IF_ERR(
+        tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+        "unable to get 'OUTPUT0'");
+    std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
+    output0_ptr.reset(output0);
+    FAIL_IF_ERR(
+        tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
+        "unable to get 'OUTPUT1'");
+    std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
+    output1_ptr.reset(output1);
 
 
-  // The inference settings. Will be using default for now.
-  tc::InferOptions options(model_name);
-  options.model_version_ = model_version;
-  options.client_timeout_ = client_timeout;
+    // The inference settings. Will be using default for now.
+    tc::InferOptions options(model_name);
+    options.model_version_ = model_version;
+    options.client_timeout_ = client_timeout;
 
-  std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                           output1_ptr.get()};
+    std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
+    std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
+                                                            output1_ptr.get()};
 
-  tc::InferResult* results;
-  FAIL_IF_ERR(
-      client->Infer(
-          &results, options, inputs, outputs, http_headers,
-          compression_algorithm),
-      "unable to run model");
-  std::shared_ptr<tc::InferResult> results_ptr;
-  results_ptr.reset(results);
+    tc::InferResult* results;
+    FAIL_IF_ERR(
+        client->Infer(
+            &results, options, inputs, outputs, http_headers,
+            compression_algorithm),
+        "unable to run model");
+    std::shared_ptr<tc::InferResult> results_ptr;
+    results_ptr.reset(results);
 
-  // Validate the results...
-  ValidateShapeAndDatatype("OUTPUT0", results_ptr);
-  ValidateShapeAndDatatype("OUTPUT1", results_ptr);
+    // Validate the results...
+    ValidateShapeAndDatatype("OUTPUT0", results_ptr);
+    ValidateShapeAndDatatype("OUTPUT1", results_ptr);
 
-  // Get pointers to the result returned...
-  int32_t* output0_data;
-  size_t output0_byte_size;
-  FAIL_IF_ERR(
-      results_ptr->RawData(
-          "OUTPUT0", (const uint8_t**)&output0_data, &output0_byte_size),
-      "unable to get result data for 'OUTPUT0'");
-  if (output0_byte_size != 64) {
-    std::cerr << "error: received incorrect byte size for 'OUTPUT0': "
-              << output0_byte_size << std::endl;
-    exit(1);
-  }
-
-  int32_t* output1_data;
-  size_t output1_byte_size;
-  FAIL_IF_ERR(
-      results_ptr->RawData(
-          "OUTPUT1", (const uint8_t**)&output1_data, &output1_byte_size),
-      "unable to get result data for 'OUTPUT1'");
-  if (output1_byte_size != 64) {
-    std::cerr << "error: received incorrect byte size for 'OUTPUT1': "
-              << output1_byte_size << std::endl;
-    exit(1);
-  }
-
-  for (size_t i = 0; i < 16; ++i) {
-    std::cout << input0_data[i] << " + " << input1_data[i] << " = "
-              << *(output0_data + i) << std::endl;
-    std::cout << input0_data[i] << " - " << input1_data[i] << " = "
-              << *(output1_data + i) << std::endl;
-
-    if ((input0_data[i] + input1_data[i]) != *(output0_data + i)) {
-      std::cerr << "error: incorrect sum" << std::endl;
+    // Get pointers to the result returned...
+    int32_t* output0_data;
+    size_t output0_byte_size;
+    FAIL_IF_ERR(
+        results_ptr->RawData(
+            "OUTPUT0", (const uint8_t**)&output0_data, &output0_byte_size),
+        "unable to get result data for 'OUTPUT0'");
+    if (output0_byte_size != 64) {
+      std::cerr << "error: received incorrect byte size for 'OUTPUT0': "
+                << output0_byte_size << std::endl;
       exit(1);
     }
-    if ((input0_data[i] - input1_data[i]) != *(output1_data + i)) {
-      std::cerr << "error: incorrect difference" << std::endl;
+
+    int32_t* output1_data;
+    size_t output1_byte_size;
+    FAIL_IF_ERR(
+        results_ptr->RawData(
+            "OUTPUT1", (const uint8_t**)&output1_data, &output1_byte_size),
+        "unable to get result data for 'OUTPUT1'");
+    if (output1_byte_size != 64) {
+      std::cerr << "error: received incorrect byte size for 'OUTPUT1': "
+                << output1_byte_size << std::endl;
       exit(1);
     }
+
+    for (size_t i = 0; i < 16; ++i) {
+      std::cout << input0_data[i] << " + " << input1_data[i] << " = "
+                << *(output0_data + i) << std::endl;
+      std::cout << input0_data[i] << " - " << input1_data[i] << " = "
+                << *(output1_data + i) << std::endl;
+
+      if ((input0_data[i] + input1_data[i]) != *(output0_data + i)) {
+        std::cerr << "error: incorrect sum" << std::endl;
+        exit(1);
+      }
+      if ((input0_data[i] - input1_data[i]) != *(output1_data + i)) {
+        std::cerr << "error: incorrect difference" << std::endl;
+        exit(1);
+      }
+    }
+
+    // Get full response
+    std::cout << results_ptr->DebugString() << std::endl;
+
+    tc::InferStat infer_stat;
+    client->ClientInferStat(&infer_stat);
+    std::cout << "======Client Statistics======" << std::endl;
+    std::cout << "completed_request_count "
+              << infer_stat.completed_request_count << std::endl;
+    std::cout << "cumulative_total_request_time_ns "
+              << infer_stat.cumulative_total_request_time_ns << std::endl;
+    std::cout << "cumulative_send_time_ns "
+              << infer_stat.cumulative_send_time_ns << std::endl;
+    std::cout << "cumulative_receive_time_ns "
+              << infer_stat.cumulative_receive_time_ns << std::endl;
+
+    inference::ModelStatisticsResponse model_stat;
+    client->ModelInferenceStatistics(&model_stat, model_name);
+    std::cout << "======Model Statistics======" << std::endl;
+    std::cout << model_stat.DebugString() << std::endl;
+
+
+    std::cout << "PASS : Infer" << std::endl;
   }
-
-  // Get full response
-  std::cout << results_ptr->DebugString() << std::endl;
-
-  tc::InferStat infer_stat;
-  client->ClientInferStat(&infer_stat);
-  std::cout << "======Client Statistics======" << std::endl;
-  std::cout << "completed_request_count " << infer_stat.completed_request_count
-            << std::endl;
-  std::cout << "cumulative_total_request_time_ns "
-            << infer_stat.cumulative_total_request_time_ns << std::endl;
-  std::cout << "cumulative_send_time_ns " << infer_stat.cumulative_send_time_ns
-            << std::endl;
-  std::cout << "cumulative_receive_time_ns "
-            << infer_stat.cumulative_receive_time_ns << std::endl;
-
-  inference::ModelStatisticsResponse model_stat;
-  client->ModelInferenceStatistics(&model_stat, model_name);
-  std::cout << "======Model Statistics======" << std::endl;
-  std::cout << model_stat.DebugString() << std::endl;
-
-
-  std::cout << "PASS : Infer" << std::endl;
-
   return 0;
 }
