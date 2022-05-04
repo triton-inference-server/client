@@ -79,7 +79,8 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options)
+    const KeepAliveOptions& keepalive_options,
+    const grpc::ChannelArguments& custom_args)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
@@ -101,7 +102,13 @@ GetStub(
   }
 
   // New channel / stub should be created
-  grpc::ChannelArguments arguments;
+  // Set user-defined "custom_args" before setting Triton-specific args to
+  // expose custom settings generically. These args are set at user's own risk.
+  grpc::ChannelArguments arguments(custom_args);
+  // TODO: Remove
+  // custom_args.SetChannelArgs(&arguments.c_channel_args());
+
+  // Set Triton-specific args that are required or already exposed
   arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
   arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
   // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
@@ -400,10 +407,12 @@ Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+    const grpc::ChannelArguments& custom_args)
 {
   client->reset(new InferenceServerGrpcClient(
-      server_url, verbose, use_ssl, ssl_options, keepalive_options));
+      server_url, verbose, use_ssl, ssl_options, keepalive_options,
+      custom_args));
   return Error::Success;
 }
 
@@ -1542,10 +1551,11 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+    const grpc::ChannelArguments& custom_args)
     : InferenceServerClient(verbose)
 {
-  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options);
+  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options, custom_args);
 }
 
 InferenceServerGrpcClient::~InferenceServerGrpcClient()
