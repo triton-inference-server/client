@@ -207,7 +207,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param config Optional JSON representation of a model config provided for
   /// the load request, if provided, this config will be used for
   /// loading the model.
-  /// \param encoded_files Optional map specifying file path (with "file:"
+  /// \param files Optional map specifying file path (with "file:"
   /// prefix) in the override model directory to the file content.
   /// The files will form the model directory that the model
   /// will be loaded from. If specified, 'config' must be provided to be

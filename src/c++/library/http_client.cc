@@ -119,7 +119,7 @@ GetQueryString(const Headers& query_params)
 // encoded size to get the right contents.
 void
 Base64Encode(
-    char* raw_ptr, size_t raw_size, char** encoded_ptr, int* encoded_size)
+    const char* raw_ptr, size_t raw_size, char** encoded_ptr, int* encoded_size)
 {
   // Encode the handle object to base64
   base64_encodestate es;
@@ -1159,7 +1159,7 @@ Error
 InferenceServerHttpClient::LoadModel(
     const std::string& model_name, const Headers& headers,
     const Parameters& query_params, const std::string& config,
-    const std::map<std::string, std::string>& encoded_files)
+    const std::map<std::string, std::vector<char>>& files)
 {
   std::string request_uri(
       url_ + "/v2/repository/models/" + model_name + "/load");
@@ -1173,9 +1173,20 @@ InferenceServerHttpClient::LoadModel(
     has_param = true;
     parameters_json.AddStringRef("config", config.c_str());
   }
-  for (const auto& file : encoded_files) {
+  for (const auto& file : files) {
+    // base64 encode the file content for HTTP protocol requirement
+    // Must free encoded_handle after use to prevent memory leak
+    char* encoded_handle = nullptr;
+    int encoded_size;
+    Base64Encode(
+        file.second.data(), file.second.size(), &encoded_handle, &encoded_size);
+    if (encoded_handle == nullptr) {
+      return Error("Failed to base64 encode the file content");
+    }
+
     has_param = true;
-    parameters_json.AddStringRef(file.first.c_str(), file.second.c_str());
+    parameters_json.AddString(file.first.c_str(), encoded_handle, encoded_size);
+    free(encoded_handle);
   }
   if (has_param) {
     request_json.Add("parameters", std::move(parameters_json));
