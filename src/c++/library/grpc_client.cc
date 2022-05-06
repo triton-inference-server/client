@@ -78,7 +78,6 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options,
     const grpc::ChannelArguments& custom_args)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
@@ -100,34 +99,17 @@ GetStub(
     }
   }
 
-  // New channel / stub should be created
-  // Set user-defined "custom_args" before setting Triton-specific args to
-  // expose custom settings generically. These args are set at user's own risk.
+  // Set user-defined "custom_args" to expose custom settings generically.
+  // NOTE: These args are set at user's own risk.
   grpc::ChannelArguments arguments(custom_args);
-
-  // TODO: Check for args that are already set before overwriting them
-  // Set Triton-specific args that are required or already exposed
-  arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
-  arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
-
-  // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
-      keepalive_options.keepalive_permit_without_calls);
-  arguments.SetInt(
-      GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
-      keepalive_options.http2_max_pings_without_data);
 
   static std::atomic<int> channel_count{0};
   // Explicitly avoid channel re-use
   // "channels must have different channel args to prevent re-use
   // so define a use-specific channel arg such as channel number"
   // https://grpc.io/docs/guides/performance/
-  arguments.SetInt("client_channel_idx", channel_count.fetch_add(1));
+  // NOTE: The argument name "triton_client_channel_idx" is arbitrary.
+  arguments.SetInt("triton_client_channel_idx", channel_count.fetch_add(1));
   std::shared_ptr<grpc::ChannelCredentials> credentials;
   if (use_ssl) {
     std::string root;
@@ -154,6 +136,36 @@ GetStub(
   }
 
   return stub;
+}
+
+// For backwards-compatibility, this method takes in KeepAliveOptions
+// and constructs a grpc::ChannelArguments object to pass to the new
+// overloaded GetStub method.
+std::shared_ptr<inference::GRPCInferenceService::Stub>
+GetStub(
+    const std::string& url, bool use_ssl, const SslOptions& ssl_options,
+    const KeepAliveOptions& keepalive_options)
+{
+  // Construct channel arguments specific to Triton
+  grpc::ChannelArguments arguments;
+
+  arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
+  arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
+
+  // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+  arguments.SetInt(
+      GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
+  arguments.SetInt(
+      GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
+  arguments.SetInt(
+      GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
+      keepalive_options.keepalive_permit_without_calls);
+  arguments.SetInt(
+      GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
+      keepalive_options.http2_max_pings_without_data);
+
+  // Pass triton-specific channel arguments to overloaded method
+  return GetStub(url, use_ssl, ssl_options, arguments);
 }
 }  // namespace
 
@@ -402,16 +414,29 @@ InferResultGrpc::InferResultGrpc(
 
 //==============================================================================
 
+// Moving forward, users can generically pass any channel arguments
+// through the custom_args parameter, including KeepAlive options.
+// Channel arguments provided by the user are assumed to be correct/complete.
+Error
+InferenceServerGrpcClient::Create(
+    std::unique_ptr<InferenceServerGrpcClient>* client,
+    const std::string& server_url, const grpc::ChannelArguments& custom_args,
+    bool verbose, bool use_ssl, const SslOptions& ssl_options)
+{
+  client->reset(new InferenceServerGrpcClient(
+      server_url, verbose, use_ssl, ssl_options, custom_args));
+  return Error::Success;
+}
+
+// For backwards-compatibility, support passing KeepAliveOptions struct.
 Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
     const std::string& server_url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    const grpc::ChannelArguments& custom_args)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
 {
   client->reset(new InferenceServerGrpcClient(
-      server_url, verbose, use_ssl, ssl_options, keepalive_options,
-      custom_args));
+      server_url, verbose, use_ssl, ssl_options, keepalive_options));
   return Error::Success;
 }
 
@@ -1547,14 +1572,20 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
   grpc_stream_->Finish();
 }
 
+InferenceServerGrpcClient::InferenceServerGrpcClient(
+    const std::string& url, bool verbose, bool use_ssl,
+    const SslOptions& ssl_options, const grpc::ChannelArguments& custom_args)
+    : InferenceServerClient(verbose)
+{
+  stub_ = GetStub(url, use_ssl, ssl_options, custom_args);
+}
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-    const grpc::ChannelArguments& custom_args)
+    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options)
     : InferenceServerClient(verbose)
 {
-  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options, custom_args);
+  stub_ = GetStub(url, use_ssl, ssl_options, keepalive_options);
 }
 
 InferenceServerGrpcClient::~InferenceServerGrpcClient()

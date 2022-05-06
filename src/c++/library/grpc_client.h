@@ -103,6 +103,29 @@ class InferenceServerGrpcClient : public InferenceServerClient {
 
   /// Create a client that can be used to communicate with the server.
   /// \param client Returns a new InferenceServerGrpcClient object.
+  /// \param custom_args Exposes user-defined grpc::ChannelArguments to
+  /// be set for the client. Triton assumes that the "custom_args" passed
+  /// to this method are correct and complete, and are set at the user's
+  /// own risk. For example, GRPC KeepAlive options may be specified directly
+  /// in this argument rather than passing a KeepAliveOptions object.
+  /// \param server_url The inference server name and port.
+  /// \param verbose If true generate verbose output when contacting
+  /// the inference server.
+  /// \param use_ssl If true use encrypted channel to the server.
+  /// \param ssl_options Specifies the files required for
+  /// SSL encryption and authorization.
+  /// \return Error object indicating success or failure.
+  static Error Create(
+      std::unique_ptr<InferenceServerGrpcClient>* client,
+      const std::string& server_url, const grpc::ChannelArguments& custom_args,
+      bool verbose = false, bool use_ssl = false,
+      const SslOptions& ssl_options = SslOptions());
+
+  /// Create a client that can be used to communicate with the server.
+  /// This method is maintained for backwards-compatibility. It simply
+  /// constructs Triton-specific channel arguments and passes them to the
+  /// overloaded Create() method that accepts grpc::ChannelArguments.
+  /// \param client Returns a new InferenceServerGrpcClient object.
   /// \param server_url The inference server name and port.
   /// \param verbose If true generate verbose output when contacting
   /// the inference server.
@@ -111,16 +134,12 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// SSL encryption and authorization.
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
-  /// \param custom_args Exposes user-defined grpc::ChannelArguments to
-  /// be set for the client. Some arguments that are already exposed or set in
-  /// the client may overwrite duplicate settings in custom_args.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
       const SslOptions& ssl_options = SslOptions(),
-      const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
-      const grpc::ChannelArguments& custom_args = grpc::ChannelArguments());
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions());
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -509,8 +528,10 @@ class InferenceServerGrpcClient : public InferenceServerClient {
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
-      const grpc::ChannelArguments& custom_args);
+      const SslOptions& ssl_options, const grpc::ChannelArguments& custom_args);
+  InferenceServerGrpcClient(
+      const std::string& url, bool verbose, bool use_ssl,
+      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);
