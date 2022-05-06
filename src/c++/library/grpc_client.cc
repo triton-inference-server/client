@@ -78,7 +78,7 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const grpc::ChannelArguments& custom_args)
+    const grpc::ChannelArguments& channel_args)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
 
@@ -99,9 +99,9 @@ GetStub(
     }
   }
 
-  // Set user-defined "custom_args" to expose custom settings generically.
+  // Set user-defined "channel_args" to expose custom settings generically.
   // NOTE: These args are set at user's own risk.
-  grpc::ChannelArguments arguments(custom_args);
+  grpc::ChannelArguments arguments(channel_args);
 
   static std::atomic<int> channel_count{0};
   // Explicitly avoid channel re-use
@@ -415,16 +415,16 @@ InferResultGrpc::InferResultGrpc(
 //==============================================================================
 
 // Moving forward, users can generically pass any channel arguments
-// through the custom_args parameter, including KeepAlive options.
+// through the channel_args parameter, including KeepAlive options.
 // Channel arguments provided by the user are assumed to be correct/complete.
 Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
-    const std::string& server_url, const grpc::ChannelArguments& custom_args,
+    const std::string& server_url, const grpc::ChannelArguments& channel_args,
     bool verbose, bool use_ssl, const SslOptions& ssl_options)
 {
   client->reset(new InferenceServerGrpcClient(
-      server_url, verbose, use_ssl, ssl_options, custom_args));
+      server_url, verbose, use_ssl, ssl_options, channel_args));
   return Error::Success;
 }
 
@@ -1574,10 +1574,10 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const grpc::ChannelArguments& custom_args)
+    const SslOptions& ssl_options, const grpc::ChannelArguments& channel_args)
     : InferenceServerClient(verbose)
 {
-  stub_ = GetStub(url, use_ssl, ssl_options, custom_args);
+  stub_ = GetStub(url, use_ssl, ssl_options, channel_args);
 }
 
 InferenceServerGrpcClient::InferenceServerGrpcClient(

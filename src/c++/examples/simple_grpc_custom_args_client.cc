@@ -100,16 +100,16 @@ main(int argc, char** argv)
   uint32_t client_timeout = 0;
   bool use_ssl = false;
   tc::SslOptions ssl_options;
-  grpc::ChannelArguments custom_args;
+  grpc::ChannelArguments channel_args;
   // Set any valid grpc::ChannelArguments here based on use case
-  custom_args.SetMaxSendMessageSize(1024 * 1024);
-  custom_args.SetMaxReceiveMessageSize(1024 * 1024);
+  channel_args.SetMaxSendMessageSize(1024 * 1024);
+  channel_args.SetMaxReceiveMessageSize(1024 * 1024);
   // Setting KeepAlive options using new generic channel arguments option
   // https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
-  custom_args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, INT_MAX);
-  custom_args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 20000);
-  custom_args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, false);
-  custom_args.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 2);
+  channel_args.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, INT_MAX);
+  channel_args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 20000);
+  channel_args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, false);
+  channel_args.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 2);
 
   // Parse commandline...
   int opt;
@@ -148,7 +148,7 @@ main(int argc, char** argv)
   std::unique_ptr<tc::InferenceServerGrpcClient> client;
   FAIL_IF_ERR(
       tc::InferenceServerGrpcClient::Create(
-          &client, url, custom_args, verbose, use_ssl, ssl_options),
+          &client, url, channel_args, verbose, use_ssl, ssl_options),
       "unable to create grpc client");
 
   // Create the data for the two input tensors. Initialize the first
