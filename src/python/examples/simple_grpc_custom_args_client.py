@@ -59,7 +59,9 @@ if __name__ == '__main__':
             ('grpc.keepalive_time_ms', 2**31-1),
             ('grpc.keepalive_timeout_ms', 20000),
             ('grpc.keepalive_permit_without_calls', False),
-            ('grpc.http2.max_pings_without_data', 2)
+            ('grpc.http2.max_pings_without_data', 2),
+            # Example arg requested for the feature
+            ('grpc.dns_enable_srv_queries', 1)
         ]
 
         triton_client = grpcclient.InferenceServerClient(

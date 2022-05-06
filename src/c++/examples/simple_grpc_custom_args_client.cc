@@ -110,6 +110,8 @@ main(int argc, char** argv)
   channel_args.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 20000);
   channel_args.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, false);
   channel_args.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 2);
+  // Example arg requested for the feature
+  channel_args.SetInt(GRPC_ARG_DNS_ENABLE_SRV_QUERIES, 1);
 
   // Parse commandline...
   int opt;
