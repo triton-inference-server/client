@@ -114,6 +114,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param use_ssl If true use encrypted channel to the server.
   /// \param ssl_options Specifies the files required for
   /// SSL encryption and authorization.
+  /// \param use_cached_channel If false, a new channel is created for each
+  /// new client instance. When true, re-use old channels from cache for new
+  /// client instances. The default value is true.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
