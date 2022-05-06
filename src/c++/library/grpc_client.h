@@ -102,6 +102,31 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   ~InferenceServerGrpcClient();
 
   /// Create a client that can be used to communicate with the server.
+  /// This is the expected method for most users to create a GRPC client with
+  /// the options directly exposed Triton.
+  /// \param client Returns a new InferenceServerGrpcClient object.
+  /// \param server_url The inference server name and port.
+  /// \param verbose If true generate verbose output when contacting
+  /// the inference server.
+  /// \param use_ssl If true use encrypted channel to the server.
+  /// \param ssl_options Specifies the files required for
+  /// SSL encryption and authorization.
+  /// \param keepalive_options Specifies the GRPC KeepAlive options described
+  /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
+  /// \param use_cached_channel If false, a new channel is created for each
+  /// new client instance. When true, re-use old channels from cache for new
+  /// client instances. The default value is true.
+  /// \return Error object indicating success or failure.
+  static Error Create(
+      std::unique_ptr<InferenceServerGrpcClient>* client,
+      const std::string& server_url, bool verbose = false, bool use_ssl = false,
+      const SslOptions& ssl_options = SslOptions(),
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
+      const bool use_cached_channel = true);
+
+  /// Create a client that can be used to communicate with the server.
+  /// This method is available for advanced users who need to specify custom
+  /// grpc::ChannelArguments not exposed by Triton, at their own risk.
   /// \param client Returns a new InferenceServerGrpcClient object.
   /// \param channel_args Exposes user-defined grpc::ChannelArguments to
   /// be set for the client. Triton assumes that the "channel_args" passed
@@ -123,30 +148,6 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::string& server_url, const grpc::ChannelArguments& channel_args,
       bool verbose = false, bool use_ssl = false,
       const SslOptions& ssl_options = SslOptions(),
-      const bool use_cached_channel = true);
-
-  /// Create a client that can be used to communicate with the server.
-  /// This method is maintained for backwards-compatibility. It simply
-  /// constructs Triton-specific channel arguments and passes them to the
-  /// overloaded Create() method that accepts grpc::ChannelArguments.
-  /// \param client Returns a new InferenceServerGrpcClient object.
-  /// \param server_url The inference server name and port.
-  /// \param verbose If true generate verbose output when contacting
-  /// the inference server.
-  /// \param use_ssl If true use encrypted channel to the server.
-  /// \param ssl_options Specifies the files required for
-  /// SSL encryption and authorization.
-  /// \param keepalive_options Specifies the GRPC KeepAlive options described
-  /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
-  /// \param use_cached_channel If false, a new channel is created for each
-  /// new client instance. When true, re-use old channels from cache for new
-  /// client instances. The default value is true.
-  /// \return Error object indicating success or failure.
-  static Error Create(
-      std::unique_ptr<InferenceServerGrpcClient>* client,
-      const std::string& server_url, bool verbose = false, bool use_ssl = false,
-      const SslOptions& ssl_options = SslOptions(),
-      const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
       const bool use_cached_channel = true);
 
   /// Contact the inference server and get its liveness.
@@ -537,10 +538,6 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
       const SslOptions& ssl_options, const grpc::ChannelArguments& channel_args,
-      const bool use_cached_channel);
-  InferenceServerGrpcClient(
-      const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
       const bool use_cached_channel);
 
   Error PreRunProcessing(
