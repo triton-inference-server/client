@@ -110,12 +110,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// SSL encryption and authorization.
   /// \param keepalive_options Specifies the GRPC KeepAlive options described
   /// in https://grpc.github.io/grpc/cpp/md_doc_keepalive.html
+  /// \param use_cached_channel If false, a new channel is created for each 
+  /// new client instance. When true, re-use old channels from cache for new
+  /// client instances. The default value is true.
   /// \return Error object indicating success or failure.
   static Error Create(
       std::unique_ptr<InferenceServerGrpcClient>* client,
       const std::string& server_url, bool verbose = false, bool use_ssl = false,
       const SslOptions& ssl_options = SslOptions(),
-      const KeepAliveOptions& keepalive_options = KeepAliveOptions());
+      const KeepAliveOptions& keepalive_options = KeepAliveOptions(),
+      const bool use_cached_channel = true);
 
   /// Contact the inference server and get its liveness.
   /// \param live Returns whether the server is live or not.
@@ -203,10 +207,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// \param config Optional JSON representation of a model config provided for
   /// the load request, if provided, this config will be used for
   /// loading the model.
+  /// \param encoded_files Optional map specifying file path (with "file:"
+  /// prefix) in the override model directory to the base64 encoded file
+  /// content. The files will form the model directory that the model
+  /// will be loaded from. If specified, 'config' must be provided to be
+  /// the model configuration of the override model directory.
   /// \return Error object indicating success or failure of the request.
   Error LoadModel(
       const std::string& model_name, const Headers& headers = Headers(),
-      const std::string& config = std::string());
+      const std::string& config = std::string(),
+      const std::map<std::string, std::string>& encoded_files = {});
 
   /// Request the inference server to unload specified model.
   /// \param model_name The name of the model to be unloaded.
@@ -233,6 +243,41 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       inference::ModelStatisticsResponse* infer_stat,
       const std::string& model_name = "", const std::string& model_version = "",
       const Headers& headers = Headers());
+
+  /// Update the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param response The updated settings as TraceSettingResponse.
+  /// \param model_name The name of the model to update trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be updated.
+  /// \param settings The new trace setting values. Only the settings listed
+  /// will be updated. If a trace setting is listed in the map with an empty
+  /// string, that setting will be cleared.
+  /// \param config Optional JSON representation of a model config provided for
+  /// the load request, if provided, this config will be used for
+  /// loading the model.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \return Error object indicating success or failure of the request.
+  Error UpdateTraceSettings(
+      inference::TraceSettingResponse* response,
+      const std::string& model_name = "",
+      const std::map<std::string, std::vector<std::string>>& settings =
+          std::map<std::string, std::vector<std::string>>(),
+      const Headers& headers = Headers());
+
+  /// Get the trace settings for the specified model name, or global trace
+  /// settings if model name is not given.
+  /// \param settings The trace settings as TraceSettingResponse.
+  /// \param model_name The name of the model to get trace settings. The
+  /// default value is an empty string which means the global trace settings
+  /// will be returned.
+  /// \param headers Optional map specifying additional HTTP headers to include
+  /// in the metadata of gRPC request.
+  /// \return Error object indicating success or failure of the request.
+  Error GetTraceSettings(
+      inference::TraceSettingResponse* settings,
+      const std::string& model_name = "", const Headers& headers = Headers());
 
   /// Contact the inference server and get the status for requested system
   /// shared memory.
@@ -463,7 +508,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
-      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options);
+      const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+      const bool use_cached_channel);
+
   Error PreRunProcessing(
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs);

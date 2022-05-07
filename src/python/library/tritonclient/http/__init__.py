@@ -251,6 +251,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -290,6 +292,8 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        self._validate_headers(headers)
+
         if self._base_uri is not None:
             request_uri = self._base_uri + "/" + request_uri
 
@@ -312,6 +316,35 @@ class InferenceServerClient:
             print(response)
 
         return response
+
+    def _validate_headers(self, headers):
+        """Checks for any unsupported HTTP headers before processing a request.
+
+        Parameters
+        ----------
+        headers: dict
+            HTTP headers to validate before processing the request.
+
+        Raises
+        ------
+        InferenceServerException
+            If an unsupported HTTP header is included in a request.
+        """
+        if not headers:
+            return
+
+        # HTTP headers are case-insensitive, so force lowercase for comparison
+        headers_lowercase = {k.lower(): v for k, v in headers.items()}
+        # The python client lirary (and geventhttpclient) do not encode request
+        # data based on "Transfer-Encoding" header, so reject this header if 
+        # included. Other libraries may do this encoding under the hood.
+        # The python client library does expose special arguments to support
+        # some "Content-Encoding" headers.
+        if "transfer-encoding" in headers_lowercase:
+            raise_error("Unsupported HTTP header: 'Transfer-Encoding' is not "
+                        "supported in the Python client library. Use raw HTTP "
+                        "request libraries or the C++ client instead for this "
+                        "header.")
 
     def is_server_live(self, headers=None, query_params=None):
         """Contact the inference server and get liveness.
@@ -598,7 +631,8 @@ class InferenceServerClient:
                    model_name,
                    headers=None,
                    query_params=None,
-                   config=None):
+                   config=None,
+                   encoded_files={}):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -615,6 +649,12 @@ class InferenceServerClient:
             Optional JSON representation of a model config provided for
             the load request, if provided, this config will be used for
             loading the model.
+        encoded_files: dict
+            Optional dictionary specifying file path (with "file:" prefix) in
+            the override model directory to the base64 encoded file content.
+            The files will form the model directory that the model will be
+            loaded from. If specified, 'config' must be provided to be
+            the model configuration of the override model directory.
 
         Raises
         ------
@@ -628,6 +668,10 @@ class InferenceServerClient:
             if "parameters" not in load_request:
                 load_request["parameters"] = {}
             load_request["parameters"]["config"] = config
+        for path, content in encoded_files.items():
+            if "parameters" not in load_request:
+                load_request["parameters"] = {}
+            load_request["parameters"][path] = content
         response = self._post(request_uri=request_uri,
                               request_body=json.dumps(load_request),
                               headers=headers,

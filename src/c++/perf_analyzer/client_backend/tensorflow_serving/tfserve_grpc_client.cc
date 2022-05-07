@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -53,6 +53,8 @@ GetTensorFlowDataType(const std::string& datatype, tensorflow::DataType* dtype)
 {
   if (datatype == "FP16") {
     *dtype = tensorflow::DataType::DT_HALF;
+  } else if (datatype == "BF16") {
+    *dtype = tensorflow::DataType::DT_BFLOAT16;
   } else if (datatype == "FP32") {
     *dtype = tensorflow::DataType::DT_FLOAT;
   } else if (datatype == "FP64") {
@@ -482,6 +484,9 @@ GrpcClient::PopulateInputData(
 {
   if (input->Datatype() == "FP16") {
     RETURN_IF_CB_ERROR(PopulateHalfVal(input_tensor_proto));
+  } else if (input->Datatype() == "BF16") {
+    return Error(
+        "BF16 datatype not currently supported for populating input data.");
   } else if (input->Datatype() == "FP32") {
     RETURN_IF_CB_ERROR(PopulateFloatVal(input_tensor_proto));
   } else if (input->Datatype() == "FP64") {

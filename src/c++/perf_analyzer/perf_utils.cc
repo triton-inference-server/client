@@ -54,6 +54,8 @@ ConvertDTypeFromTFS(const std::string& tf_dtype, std::string* datatype)
 {
   if (tf_dtype == "DT_HALF") {
     *datatype = "FP16";
+  } else if (tf_dtype == "DT_BFLOAT16") {
+    *datatype = "BF16";
   } else if (tf_dtype == "DT_FLOAT") {
     *datatype = "FP32";
   } else if (tf_dtype == "DT_DOUBLE") {
@@ -188,7 +190,7 @@ ByteSize(const std::vector<int64_t>& shape, const std::string& datatype)
     one_element_size = 1;
   } else if (
       (datatype.compare("INT16") == 0) || (datatype.compare("UINT16") == 0) ||
-      (datatype.compare("FP16") == 0)) {
+      (datatype.compare("FP16") == 0) || (datatype.compare("BF16") == 0)) {
     one_element_size = 2;
   } else if (
       (datatype.compare("INT32") == 0) || (datatype.compare("UINT32") == 0) ||
@@ -304,6 +306,9 @@ SerializeExplicitTensor(
       } else if (dt.compare("FP16") == 0) {
         return cb::Error(
             "Can not use explicit tensor description for fp16 datatype");
+      } else if (dt.compare("BF16") == 0) {
+        return cb::Error(
+            "Can not use explicit tensor description for bf16 datatype");
       } else if (dt.compare("UINT32") == 0) {
         if (!value.IsUint()) {
           return cb::Error("unable to find uint32_t data in json");

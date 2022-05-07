@@ -87,6 +87,10 @@ struct ServerSideStats {
   uint64_t cache_hit_count;
   uint64_t cache_miss_count;
   uint64_t success_count;
+  uint64_t queue_count;
+  uint64_t compute_input_count;
+  uint64_t compute_infer_count;
+  uint64_t compute_output_count;
   uint64_t cumm_time_ns;
   uint64_t queue_time_ns;
   uint64_t compute_input_time_ns;
