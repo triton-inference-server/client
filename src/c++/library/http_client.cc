@@ -119,7 +119,8 @@ GetQueryString(const Headers& query_params)
 // encoded size to get the right contents.
 void
 Base64Encode(
-    const char* raw_ptr, size_t raw_size, char** encoded_ptr, int* encoded_size)
+    const char* raw_ptr, const size_t raw_size, char** encoded_ptr,
+    int* encoded_size)
 {
   // Encode the handle object to base64
   base64_encodestate es;

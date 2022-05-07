@@ -28,6 +28,8 @@
 #include "grpc_client.h"
 #include "http_client.h"
 
+#include <fstream>
+
 namespace tc = triton::client;
 
 namespace {
@@ -119,12 +121,35 @@ class ClientTest : public ::testing::Test {
     }
   }
 
+  tc::Error LoadModel(
+      const std::string& model_name, const std::string& config,
+      const std::map<std::string, std::vector<char>>& files);
+
   std::string model_name_;
   std::unique_ptr<ClientType> client_;
   std::vector<std::vector<int32_t>> input_data_;
   std::vector<int64_t> shape_;
   std::string dtype_;
 };
+
+template <>
+tc::Error
+ClientTest<tc::InferenceServerGrpcClient>::LoadModel(
+    const std::string& model_name, const std::string& config,
+    const std::map<std::string, std::vector<char>>& files)
+{
+  return this->client_->LoadModel(model_name, tc::Headers(), config, files);
+}
+
+template <>
+tc::Error
+ClientTest<tc::InferenceServerHttpClient>::LoadModel(
+    const std::string& model_name, const std::string& config,
+    const std::map<std::string, std::vector<char>>& files)
+{
+  return this->client_->LoadModel(
+      model_name, tc::Headers(), tc::Parameters(), config, files);
+}
 
 class HTTPTraceTest : public ::testing::Test {
  public:
@@ -1173,6 +1198,110 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiMismatchOutputs)
   ASSERT_FALSE(err.IsOk()) << "Expect AsyncInferMulti() to fail";
 }
 
+TYPED_TEST_P(ClientTest, LoadWithFileOverride)
+{
+  std::vector<char> content;
+  {
+    std::string path("unit_test_models/onnx_int32_int32_int32/3/model.onnx");
+    std::ifstream in(path, std::ios::in | std::ios::binary);
+    if (!in) {
+      ASSERT_TRUE(false) << "failed to open file for testing";
+    }
+
+    in.seekg(0, std::ios::end);
+    content = std::vector<char>(in.tellg());
+    in.seekg(0, std::ios::beg);
+    in.read(content.data(), content.size());
+    in.close();
+  }
+
+  std::string config("{\"backend\":\"onnxruntime\"}");
+  std::string model_name("onnx_int32_int32_int32");
+  std::string override_name("override_model");
+  std::vector<std::pair<std::string, bool>> expected_version_ready{{"1", false},
+                                                                   {"3", true}};
+  std::vector<std::pair<std::string, bool>> expected_override_version_ready{
+      {"1", true}, {"3", false}};
+
+  tc::Error err = tc::Error::Success;
+  for (const auto& vr : expected_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Request to load the model with override file, should fail
+  // without providing override config. The config requirement
+  // serves as an reminder that the existing model directory will
+  // not be used.
+  err = this->LoadModel(
+      model_name, std::string(), {{"file:1/model.onnx", content}});
+  ASSERT_FALSE(err.IsOk()) << "Expect LoadModel() to fail";
+  // Sanity check that the model is unchanged
+  for (const auto& vr : expected_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Request to load the model with override file and config in
+  // a different name
+  err =
+      this->LoadModel(override_name, config, {{"file:1/model.onnx", content}});
+  ASSERT_TRUE(err.IsOk()) << "Expect LoadModel() succeed: " << err.Message();
+  // Sanity check that the model with original name is unchanged
+  for (const auto& vr : expected_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Check override model readiness
+  for (const auto& vr : expected_override_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, override_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second)
+        << "expect model " << override_name << " version " << vr.first
+        << " readiness: " << vr.second;
+  }
+
+  // Request to load the model with override file and config in
+  // original name
+  err = this->LoadModel(model_name, config, {{"file:1/model.onnx", content}});
+  ASSERT_TRUE(err.IsOk()) << "Expect LoadModel() succeed: " << err.Message();
+  // check that the model with original name is changed
+  for (const auto& vr : expected_override_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Sanity check readiness of the different named model
+  for (const auto& vr : expected_override_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, override_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second)
+        << "expect model " << override_name << " version " << vr.first
+        << " readiness: " << vr.second;
+  }
+}
+
 TEST_F(HTTPTraceTest, HTTPUpdateTraceSettings)
 {
   // Update model and global trace settings in order, and expect the global
@@ -1446,12 +1575,11 @@ REGISTER_TYPED_TEST_SUITE_P(
     AsyncInferMulti, AsyncInferMultiDifferentOutputs,
     AsyncInferMultiDifferentOptions, AsyncInferMultiOneOption,
     AsyncInferMultiOneOutput, AsyncInferMultiNoOutput,
-    AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs);
+    AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs,
+    LoadWithFileOverride);
 
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    GRPC, ClientTest, tc::InferenceServerGrpcClient);
-INSTANTIATE_TYPED_TEST_SUITE_P(
-    HTTP, ClientTest, tc::InferenceServerHttpClient);
+INSTANTIATE_TYPED_TEST_SUITE_P(GRPC, ClientTest, tc::InferenceServerGrpcClient);
+INSTANTIATE_TYPED_TEST_SUITE_P(HTTP, ClientTest, tc::InferenceServerHttpClient);
 
 }  // namespace
 
