@@ -34,6 +34,7 @@ try:
     import numpy as np
     import struct
     import gzip, zlib
+    import base64
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'
@@ -336,7 +337,7 @@ class InferenceServerClient:
         # HTTP headers are case-insensitive, so force lowercase for comparison
         headers_lowercase = {k.lower(): v for k, v in headers.items()}
         # The python client lirary (and geventhttpclient) do not encode request
-        # data based on "Transfer-Encoding" header, so reject this header if 
+        # data based on "Transfer-Encoding" header, so reject this header if
         # included. Other libraries may do this encoding under the hood.
         # The python client library does expose special arguments to support
         # some "Content-Encoding" headers.
@@ -632,7 +633,7 @@ class InferenceServerClient:
                    headers=None,
                    query_params=None,
                    config=None,
-                   encoded_files={}):
+                   files=None):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -649,9 +650,9 @@ class InferenceServerClient:
             Optional JSON representation of a model config provided for
             the load request, if provided, this config will be used for
             loading the model.
-        encoded_files: dict
+        files: dict
             Optional dictionary specifying file path (with "file:" prefix) in
-            the override model directory to the base64 encoded file content.
+            the override model directory to the file content as bytes.
             The files will form the model directory that the model will be
             loaded from. If specified, 'config' must be provided to be
             the model configuration of the override model directory.
@@ -668,10 +669,11 @@ class InferenceServerClient:
             if "parameters" not in load_request:
                 load_request["parameters"] = {}
             load_request["parameters"]["config"] = config
-        for path, content in encoded_files.items():
-            if "parameters" not in load_request:
-                load_request["parameters"] = {}
-            load_request["parameters"][path] = content
+        if files is not None:
+            for path, content in files.items():
+                if "parameters" not in load_request:
+                    load_request["parameters"] = {}
+                load_request["parameters"][path] = base64.b64encode(content)
         response = self._post(request_uri=request_uri,
                               request_body=json.dumps(load_request),
                               headers=headers,
