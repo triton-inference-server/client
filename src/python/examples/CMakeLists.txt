@@ -66,6 +66,8 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
       simple_grpc_shm_client.py
       simple_grpc_shm_string_client.py
       simple_grpc_model_control.py
+      simple_grpc_keepalive_client.py
+      simple_grpc_custom_args_client.py
     DESTINATION python
   )
   if(${TRITON_ENABLE_GPU})
