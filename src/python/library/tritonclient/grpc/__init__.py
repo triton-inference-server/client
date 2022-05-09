@@ -606,7 +606,7 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def load_model(self, model_name, headers=None, config=None, files={}):
+    def load_model(self, model_name, headers=None, config=None, files=None):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -646,8 +646,9 @@ class InferenceServerClient:
                 # Don't print file content which can be large
                 print("load_model, metadata {}\noverride files omitted:\n{}".
                       format(metadata, request))
-            for path, content in files.items():
-                request.parameters[path].bytes_param = content
+            if files is not None:
+                for path, content in files.items():
+                    request.parameters[path].bytes_param = content
             self._client_stub.RepositoryModelLoad(request=request,
                                                   metadata=metadata)
             if self._verbose:

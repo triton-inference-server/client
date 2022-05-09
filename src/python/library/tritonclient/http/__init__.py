@@ -633,7 +633,7 @@ class InferenceServerClient:
                    headers=None,
                    query_params=None,
                    config=None,
-                   files={}):
+                   files=None):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -669,10 +669,11 @@ class InferenceServerClient:
             if "parameters" not in load_request:
                 load_request["parameters"] = {}
             load_request["parameters"]["config"] = config
-        for path, content in files.items():
-            if "parameters" not in load_request:
-                load_request["parameters"] = {}
-            load_request["parameters"][path] = base64.b64encode(content)
+        if files is not None:
+            for path, content in files.items():
+                if "parameters" not in load_request:
+                    load_request["parameters"] = {}
+                load_request["parameters"][path] = base64.b64encode(content)
         response = self._post(request_uri=request_uri,
                               request_body=json.dumps(load_request),
                               headers=headers,
