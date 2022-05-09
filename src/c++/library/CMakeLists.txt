@@ -45,20 +45,22 @@ target_include_directories(
 #
 # json_utils
 #
-find_package(RapidJSON CONFIG REQUIRED)
-add_library(
-    json-utils-library EXCLUDE_FROM_ALL OBJECT
-    json_utils.h json_utils.cc
-)
-target_include_directories(
-  json-utils-library
-  PUBLIC ${RapidJSON_INCLUDE_DIRS}
-)
-target_link_libraries(
-  json-utils-library
-  PRIVATE:
-    client-common-library
-)
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER OR TRITON_ENABLE_EXAMPLES)
+  find_package(RapidJSON CONFIG REQUIRED)
+  add_library(
+      json-utils-library EXCLUDE_FROM_ALL OBJECT
+      json_utils.h json_utils.cc
+  )
+  target_include_directories(
+    json-utils-library
+    PUBLIC ${RapidJSON_INCLUDE_DIRS}
+  )
+  target_link_libraries(
+    json-utils-library
+    PRIVATE:
+      client-common-library
+  )
+endif()
 
 #
 # shm_utils
@@ -99,12 +101,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpc-service-library proto-library
   )
 
-  target_link_libraries(
-    grpc-client-library
-    PUBLIC
-      triton-common-json        # from repo-common
-  )
-
   # libgrpcclient_static.a
   add_library(
       grpcclient_static STATIC
@@ -126,7 +122,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpcclient_static
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
-      PRIVATE triton-common-json
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
@@ -142,20 +137,19 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       TritonClient::grpcclient ALIAS grpcclient
   )
 
-  if (NOT WIN32)
+  if (NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO)
      set_target_properties(
        grpcclient
        PROPERTIES
          LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
          LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
      )
-  endif() # NOT WIN32
+  endif() # NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO
 
   target_link_libraries(
       grpcclient
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
-      PRIVATE triton-common-json
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
@@ -201,46 +195,48 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
     endif() # TRITON_ENABLE_GPU
   endforeach()
 
-  if (NOT WIN32)
+  if (TRITON_USE_THIRD_PARTY)
+    if (NOT WIN32)
+      install(
+        DIRECTORY
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib/
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FILES_MATCHING
+          PATTERN "*\.a"
+          PATTERN "CMakeFiles" EXCLUDE
+          PATTERN "cmake" EXCLUDE
+          PATTERN "gens" EXCLUDE
+          PATTERN "libs" EXCLUDE
+          PATTERN "third_party" EXCLUDE
+      )
+    else()
+      install(
+        DIRECTORY
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build
+          ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        FILES_MATCHING
+          PATTERN "*\.lib"
+          PATTERN "CMakeFiles" EXCLUDE
+          PATTERN "cmake" EXCLUDE
+          PATTERN "gens" EXCLUDE
+          PATTERN "libs" EXCLUDE
+          PATTERN "third_party" EXCLUDE
+      )
+    endif() # NOT WIN32
+  
     install(
       DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib/
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build/
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build/
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib/
-      DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      FILES_MATCHING
-        PATTERN "*\.a"
-        PATTERN "CMakeFiles" EXCLUDE
-        PATTERN "cmake" EXCLUDE
-        PATTERN "gens" EXCLUDE
-        PATTERN "libs" EXCLUDE
-        PATTERN "third_party" EXCLUDE
+        ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
+        ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/include/
+        DESTINATION include
     )
-  else()
-    install(
-      DIRECTORY
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/curl/src/curl-build/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/grpc/src/grpc-build
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/protobuf/src/protobuf-build
-        ${CMAKE_CURRENT_BINARY_DIR}/../../_deps/repo-third-party-build/c-ares/src/c-ares-build/lib
-      DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      FILES_MATCHING
-        PATTERN "*\.lib"
-        PATTERN "CMakeFiles" EXCLUDE
-        PATTERN "cmake" EXCLUDE
-        PATTERN "gens" EXCLUDE
-        PATTERN "libs" EXCLUDE
-        PATTERN "third_party" EXCLUDE
-    )
-  endif() # NOT WIN32
-
-  install(
-    DIRECTORY
-      ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
-      ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/include/
-      DESTINATION include
-  )
+  endif()
 
   install(
       FILES

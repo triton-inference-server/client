@@ -37,6 +37,8 @@ option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
+option(TRITON_USE_THIRD_PARTY "Use local version of third party libraries" ON)
+option(TRITON_KEEP_TYPEINFO "Keep typeinfo symbols by disabling ldscript" OFF)
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
@@ -61,14 +63,20 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
   set(TRITON_COMMON_ENABLE_GRPC ON)
 
-  FetchContent_Declare(
-    repo-core
-    GIT_REPOSITORY https://github.com/triton-inference-server/core.git
-    GIT_TAG ${TRITON_CORE_REPO_TAG}
-    GIT_SHALLOW ON 
-  )
-  FetchContent_MakeAvailable(repo-core)
+  if(TRITON_ENABLE_PERF_ANALYZER)
+    FetchContent_Declare(
+      repo-core
+      GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+      GIT_TAG ${TRITON_CORE_REPO_TAG}
+      GIT_SHALLOW ON 
+    )
+    FetchContent_MakeAvailable(repo-core)
+  endif() # TRITON_ENABLE_PERF_ANALYZER
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
+
+if(NOT TRITON_ENABLE_PERF_ANALYZER AND NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_ENABLE_EXAMPLES)
+  set(TRITON_COMMON_ENABLE_JSON OFF)
+endif()
 
 FetchContent_MakeAvailable(repo-common)
 
