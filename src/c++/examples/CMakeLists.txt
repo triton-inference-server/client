@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -149,6 +149,20 @@ if(TRITON_ENABLE_CC_GRPC)
   )
   install(
     TARGETS simple_grpc_keepalive_client
+    RUNTIME DESTINATION bin
+  )
+
+  #
+  # simple_grpc_custom_args_client
+  #
+  add_executable(simple_grpc_custom_args_client simple_grpc_custom_args_client.cc)
+  target_link_libraries(
+    simple_grpc_custom_args_client
+    PRIVATE
+      grpcclient_static
+  )
+  install(
+    TARGETS simple_grpc_custom_args_client
     RUNTIME DESTINATION bin
   )
 
