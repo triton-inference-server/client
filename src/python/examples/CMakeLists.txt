@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -66,6 +66,8 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
       simple_grpc_shm_client.py
       simple_grpc_shm_string_client.py
       simple_grpc_model_control.py
+      simple_grpc_keepalive_client.py
+      simple_grpc_custom_args_client.py
     DESTINATION python
   )
   if(${TRITON_ENABLE_GPU})

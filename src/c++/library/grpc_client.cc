@@ -28,7 +28,6 @@
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerGrpcClient
 #include "common.h"
 
-#include <grpcpp/grpcpp.h>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -79,7 +78,7 @@ ReadFile(const std::string& filename, std::string& data)
 std::shared_ptr<inference::GRPCInferenceService::Stub>
 GetStub(
     const std::string& url, bool use_ssl, const SslOptions& ssl_options,
-    const KeepAliveOptions& keepalive_options, const bool use_cached_channel,
+    const grpc::ChannelArguments& channel_args, const bool use_cached_channel,
     bool verbose)
 {
   std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
@@ -102,31 +101,21 @@ GetStub(
       return std::get<2>(channel_itr->second);
     }
   }
+
   if (verbose) {
     std::cout << "Creating new channel with url:" << url << std::endl;
   }
-  // New channel / stub should be created
-  grpc::ChannelArguments arguments;
-  arguments.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
-  arguments.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
-  // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
-  arguments.SetInt(
-      GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
-      keepalive_options.keepalive_permit_without_calls);
-  arguments.SetInt(
-      GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
-      keepalive_options.http2_max_pings_without_data);
+
+  // Start with a copy of channel_args param, then modify our copy as needed.
+  grpc::ChannelArguments arguments(channel_args);
 
   static std::atomic<int> channel_count{0};
   // Explicitly avoid channel re-use
   // "channels must have different channel args to prevent re-use
   // so define a use-specific channel arg such as channel number"
   // https://grpc.io/docs/guides/performance/
-  arguments.SetInt("client_channel_idx", channel_count.fetch_add(1));
+  // NOTE: The argument name "triton_client_channel_idx" is arbitrary.
+  arguments.SetInt("triton_client_channel_idx", channel_count.fetch_add(1));
   std::shared_ptr<grpc::ChannelCredentials> credentials;
   if (use_ssl) {
     std::string root;
@@ -401,6 +390,25 @@ InferResultGrpc::InferResultGrpc(
 
 //==============================================================================
 
+// Advanced users can generically pass any channel arguments
+// through the channel_args parameter, including KeepAlive options.
+// Channel arguments provided by the user are at the user's own risk and
+// are assumed to be correct/complete.
+Error
+InferenceServerGrpcClient::Create(
+    std::unique_ptr<InferenceServerGrpcClient>* client,
+    const std::string& server_url, const grpc::ChannelArguments& channel_args,
+    bool verbose, bool use_ssl, const SslOptions& ssl_options,
+    const bool use_cached_channel)
+{
+  client->reset(new InferenceServerGrpcClient(
+      server_url, verbose, use_ssl, ssl_options, channel_args,
+      use_cached_channel));
+  return Error::Success;
+}
+
+// Most users should use this method of creating a client unless
+// they have an advanced use case that is not supported.
 Error
 InferenceServerGrpcClient::Create(
     std::unique_ptr<InferenceServerGrpcClient>* client,
@@ -408,8 +416,26 @@ InferenceServerGrpcClient::Create(
     const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
     const bool use_cached_channel)
 {
+  // Construct channel channel_args specific to Triton
+  grpc::ChannelArguments channel_args;
+
+  channel_args.SetMaxSendMessageSize(MAX_GRPC_MESSAGE_SIZE);
+  channel_args.SetMaxReceiveMessageSize(MAX_GRPC_MESSAGE_SIZE);
+
+  // GRPC KeepAlive: https://github.com/grpc/grpc/blob/master/doc/keepalive.md
+  channel_args.SetInt(
+      GRPC_ARG_KEEPALIVE_TIME_MS, keepalive_options.keepalive_time_ms);
+  channel_args.SetInt(
+      GRPC_ARG_KEEPALIVE_TIMEOUT_MS, keepalive_options.keepalive_timeout_ms);
+  channel_args.SetInt(
+      GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS,
+      keepalive_options.keepalive_permit_without_calls);
+  channel_args.SetInt(
+      GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA,
+      keepalive_options.http2_max_pings_without_data);
+
   client->reset(new InferenceServerGrpcClient(
-      server_url, verbose, use_ssl, ssl_options, keepalive_options,
+      server_url, verbose, use_ssl, ssl_options, channel_args,
       use_cached_channel));
   return Error::Success;
 }
@@ -1547,16 +1573,14 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
   grpc_stream_->Finish();
 }
 
-
 InferenceServerGrpcClient::InferenceServerGrpcClient(
     const std::string& url, bool verbose, bool use_ssl,
-    const SslOptions& ssl_options, const KeepAliveOptions& keepalive_options,
+    const SslOptions& ssl_options, const grpc::ChannelArguments& channel_args,
     const bool use_cached_channel)
     : InferenceServerClient(verbose)
 {
   stub_ = GetStub(
-      url, use_ssl, ssl_options, keepalive_options, use_cached_channel,
-      verbose);
+      url, use_ssl, ssl_options, channel_args, use_cached_channel, verbose);
 }
 
 InferenceServerGrpcClient::~InferenceServerGrpcClient()

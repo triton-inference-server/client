@@ -190,6 +190,15 @@ class InferenceServerClient:
         Object encapsulating various GRPC KeepAlive options. See
         the class definition for more information. Default is None.
 
+    channel_args: List[Tuple]
+        List of Tuple pairs ("key", value) to be passed directly to the GRPC
+        channel as the channel_arguments. If this argument is provided, it is
+        expected the channel arguments are correct and complete, and the
+        keepalive_options parameter will be ignored since the corresponding
+        keepalive channel arguments can be set directly in this parameter. See
+        https://grpc.github.io/grpc/python/glossary.html#term-channel_arguments
+        for more details. Default is None.
+
     Raises
     ------
     Exception
@@ -205,24 +214,31 @@ class InferenceServerClient:
                  private_key=None,
                  certificate_chain=None,
                  creds=None,
-                 keepalive_options=None):
-        # Use GRPC KeepAlive client defaults if unspecified
-        if not keepalive_options:
-            keepalive_options = KeepAliveOptions()
+                 keepalive_options=None,
+                 channel_args=None):
 
-        # FixMe: Are any of the channel options worth exposing?
-        # https://grpc.io/grpc/core/group__grpc__arg__keys.html
-        channel_opt = [
-            ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
-            ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
-            ('grpc.keepalive_time_ms', keepalive_options.keepalive_time_ms),
-            ('grpc.keepalive_timeout_ms',
-             keepalive_options.keepalive_timeout_ms),
-            ('grpc.keepalive_permit_without_calls',
-             keepalive_options.keepalive_permit_without_calls),
-            ('grpc.http2.max_pings_without_data',
-             keepalive_options.http2_max_pings_without_data),
-        ]
+        # Explicitly check "is not None" here to support passing an empty
+        # list to specify setting no channel arguments.
+        if channel_args is not None:
+            channel_opt = channel_args
+        else:
+            # Use GRPC KeepAlive client defaults if unspecified
+            if not keepalive_options:
+                keepalive_options = KeepAliveOptions()
+
+            # To specify custom channel_opt, see the channel_args parameter.
+            channel_opt = [
+                ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
+                ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
+                ('grpc.keepalive_time_ms', keepalive_options.keepalive_time_ms),
+                ('grpc.keepalive_timeout_ms',
+                 keepalive_options.keepalive_timeout_ms),
+                ('grpc.keepalive_permit_without_calls',
+                 keepalive_options.keepalive_permit_without_calls),
+                ('grpc.http2.max_pings_without_data',
+                 keepalive_options.http2_max_pings_without_data),
+            ]
+
         if creds:
             self._channel = grpc.secure_channel(url, creds, options=channel_opt)
         elif ssl:
