@@ -410,6 +410,23 @@ demonstrating how to setup these parameters on the client-side. For information
 on the corresponding server-side parameters, refer to the 
 [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#grpc-keepalive)
 
+#### Custom GRPC Channel Arguments
+
+Advanced users may require specific client-side GRPC Channel Arguments that are
+not currently exposed by Triton through direct means. To support this, Triton
+allows users to pass custom channel arguments upon creating a GRPC client. When
+using this option, it is up to the user to pass a valid combination of arguments
+for their use case; Triton cannot feasibly test every posisble combination of
+channel arguments.
+
+There is a [C++](src/c%2B%2B/examples/simple_grpc_custom_args_client.cc) and 
+[Python](src/python/examples/simple_grpc_custom_args_client.py) example
+demonstrating how to construct and pass these custom arguments upon creating
+a GRPC client.
+
+You can find a comprehensive list of possible GRPC Channel Arguments
+[here](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html).
+
 ## Simple Example Applications
 
 This section describes several of the simple example applications and
