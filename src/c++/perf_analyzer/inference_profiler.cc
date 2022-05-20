@@ -866,6 +866,18 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
+  const double minimum_valid_requests_percent = 0.5;
+  if (verbose_ &&
+      valid_latencies->size() / static_cast<double>(timestamps.size()) <
+          minimum_valid_requests_percent) {
+    std::cerr << "WARNING: Very few requests were recorded within the "
+                 "measurement window, which could affect measurement accuracy. "
+                 "Consider increasing the `--measurement-request-count` for "
+                 "`count_windows` mode or `--measurement-interval` for "
+                 "`time_windows` mode."
+              << std::endl;
+  }
+
   // Always sort measured latencies as percentile will be reported as default
   std::sort(valid_latencies->begin(), valid_latencies->end());
 }
