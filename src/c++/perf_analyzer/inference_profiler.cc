@@ -867,9 +867,11 @@ InferenceProfiler::ValidLatencyMeasurement(
   }
 
   const double minimum_valid_requests_percent = 0.5;
+  const uint64_t valid_requests_count = valid_latencies->size();
+  const uint64_t total_requests_count = timestamps.size();
   if (verbose_ &&
-      valid_latencies->size() / static_cast<double>(timestamps.size()) <
-          minimum_valid_requests_percent) {
+      (valid_requests_count / static_cast<double>(total_requests_count) <
+       minimum_valid_requests_percent)) {
     std::cerr << "WARNING: Very few requests were recorded within the "
                  "measurement window, which could affect measurement accuracy. "
                  "Consider increasing the `--measurement-request-count` for "
