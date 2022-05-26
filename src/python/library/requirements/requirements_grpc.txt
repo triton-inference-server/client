@@ -24,7 +24,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-protobuf>=3.5.0
+# Temporary change from >=3.5.0 to prevent breaking versions from being
+# installed
+protobuf==3.19.0
 # There is memory leak in later Python GRPC (1.43.0 to be specific),
 # use known working version until the memory leak is resolved in the future
 # (see https://github.com/grpc/grpc/issues/28513)
