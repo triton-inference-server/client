@@ -24,7 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-protobuf>=3.5.0
+# Restrict maximum version due to breaking protobuf 4.21.0 changes
+# (see https://github.com/protocolbuffers/protobuf/issues/10051)
+# TODO: Update to be compatible with 4.0 release (DLIS-3809)
+protobuf>=3.5.0,<3.20
 # There is memory leak in later Python GRPC (1.43.0 to be specific),
 # use known working version until the memory leak is resolved in the future
 # (see https://github.com/grpc/grpc/issues/28513)
