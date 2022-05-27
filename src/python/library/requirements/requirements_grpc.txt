@@ -24,7 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Restricting maximum version due to issue with breaking protobuf 4.21.0 changes
+# Restrict maximum version due to breaking protobuf 4.21.0 changes
 # (see https://github.com/protocolbuffers/protobuf/issues/10051)
 # TODO: Update to be compatible wtih 4.0 release
 # https://jirasw.nvidia.com/browse/DLIS-3809
