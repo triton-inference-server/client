@@ -27,6 +27,7 @@
 
 #include <deque>
 #include <thread>
+
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"
@@ -337,6 +338,10 @@ class InferenceProfiler {
   /// \return cb::Error object indicating success or failure.
   cb::Error ProfileHelper(
       const bool clean_starts, PerfStatus& status_summary, bool* is_stable);
+
+  void set_stable(LoadStatus& load_status, bool* is_stable);
+  bool check_within_threshold(size_t idx, LoadStatus& load_status);
+  bool check_stability(size_t idx, LoadStatus& load_status);
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.

@@ -27,9 +27,11 @@
 #include "inference_profiler.h"
 
 #include <math.h>
+
 #include <algorithm>
 #include <limits>
 #include <queue>
+
 #include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
@@ -637,7 +639,10 @@ InferenceProfiler::ProfileHelper(
                   << "] cb::Error: " << error.back().Message() << std::endl;
       }
     }
-
+    //
+    // stability check starts here
+    //
+    /*
     if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
       size_t idx =
           load_status.infer_per_sec.size() - load_parameters_.stability_window;
@@ -689,6 +694,8 @@ InferenceProfiler::ProfileHelper(
         break;
       }
     }
+    */
+    set_stable(load_status, is_stable);
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
@@ -708,6 +715,116 @@ InferenceProfiler::ProfileHelper(
     return cb::Error("Received exit signal.");
   }
   return cb::Error::Success;
+}
+
+void
+InferenceProfiler::set_stable(LoadStatus& load_status, bool* is_stable)
+{
+  if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
+    size_t idx =
+        load_status.infer_per_sec.size() - load_parameters_.stability_window;
+    // if (load_status.infer_per_sec.size() > load_parameters_.stability_window)
+    // {
+    //   load_status.avg_ips -= load_status.infer_per_sec[idx - 1] /
+    //                          load_parameters_.stability_window;
+    //   load_status.avg_latency -=
+    //       load_status.latencies[idx - 1] / load_parameters_.stability_window;
+    // }
+    *is_stable = true;
+    bool within_threshold = false;
+    for (; idx < load_status.infer_per_sec.size(); idx++) {
+      if (load_status.infer_per_sec[idx] == 0) {
+        *is_stable = false;
+      }
+
+      // check if within threshold
+      // if ((load_status.latencies[idx] < (latency_threshold_ms_ * 1000 *
+      // 1000))) {
+      //   within_threshold = true;
+      // }
+      /*
+      // We call it complete only if stability_window measurements are within
+      // +/-(stability_threshold)% of the average infer per second and latency
+      if ((load_status.infer_per_sec[idx] < load_status.avg_ips * (1 -
+      load_parameters_.stability_threshold)) || (load_status.infer_per_sec[idx]
+      > load_status.avg_ips * (1 + load_parameters_.stability_threshold))) {
+        *is_stable = false;
+      }
+      if ((load_status.latencies[idx] < load_status.avg_latency * (1 -
+      load_parameters_.stability_threshold)) || (load_status.latencies[idx] >
+      load_status.avg_latency * (1 + load_parameters_.stability_threshold))) {
+        *is_stable = false;
+      }
+    }
+      */
+      within_threshold = check_within_threshold(idx, load_status);
+      *is_stable = check_stability(idx, load_status);
+
+
+      if (mpi_driver_->IsMPIRun()) {
+        if (AllMPIRanksAreStable(*is_stable)) {
+          break;
+        }
+      } else if (*is_stable) {
+        break;
+      }
+      if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
+        break;
+      }
+    }
+  }
+}
+
+bool
+InferenceProfiler::check_within_threshold(size_t idx, LoadStatus& load_status)
+{
+  return load_status.latencies[idx] < (latency_threshold_ms_ * 1000 * 1000);
+}
+
+bool
+InferenceProfiler::check_stability(size_t idx, LoadStatus& load_status)
+{
+  // uint64_t max_infer_per_sec = std::max_element(
+  //     load_status.infer_per_sec[idx],
+  //     load_status.infer_per_sec[idx] + load_parameters_.stability_window);
+  // uint64_t min_infer_per_sec = std::min_element(
+  //     load_status.infer_per_sec[idx],
+  //     load_status.infer_per_sec[idx] + load_parameters_.stability_window);
+
+  // uint64_t max_infer_per_sec =
+  //     *std::max_element(start, start + load_parameters_.stability_window);
+
+  // uint64_t min_infer_per_sec = std::min_element(
+  //     load_status.infer_per_sec[idx],
+  //     load_status.infer_per_sec[idx] + load_parameters_.stability_window);
+  auto infer_start = std::begin(load_status.infer_per_sec) + idx;
+  auto infer_per_sec_measurements = std::minmax_element(
+      infer_start, infer_start + load_parameters_.stability_window);
+
+  auto max_infer_per_sec = *infer_per_sec_measurements.second;
+  auto min_infer_per_sec = *infer_per_sec_measurements.first;
+
+  bool infer_per_sec_is_stable = max_infer_per_sec / min_infer_per_sec <=
+                                 1 + load_parameters_.stability_threshold;
+
+  auto latency_start = std::begin(load_status.latencies) + idx;
+  auto latencies_per_sec_measurements = std::minmax_element(
+      latency_start, latency_start + load_parameters_.stability_window);
+
+  auto max_latency = *latencies_per_sec_measurements.second;
+  auto min_latency = *latencies_per_sec_measurements.first;
+
+
+  // uint64_t max_latency = std::max_element(
+  //     load_status.latencies[idx],
+  //     load_status.latencies[idx] + load_parameters_.stability_window);
+  // uint64_t min_latency = std::min_element(
+  //     load_status.latencies[idx],
+  //     load_status.latencies[idx] + load_parameters_.stability_window);
+  bool latency_is_stable =
+      max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
+
+  return infer_per_sec_is_stable && latency_is_stable;
 }
 
 cb::Error
@@ -1172,8 +1289,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     ServerSideStats* server_stats)
 {
-  // If model_version is an empty string then look in the end status to find the
-  // latest (highest valued version) and use that as the version.
+  // If model_version is an empty string then look in the end status to find
+  // the latest (highest valued version) and use that as the version.
   int64_t status_model_version = -1;
   if (model_identifier.second.empty()) {
     for (const auto& id : end_status) {
