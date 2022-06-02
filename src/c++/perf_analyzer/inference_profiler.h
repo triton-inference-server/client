@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <deque>
 #include <thread>
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
@@ -116,6 +117,8 @@ struct ClientSideStats {
   uint64_t avg_latency_ns;
   // a ordered map of percentiles to be reported (<percentile, value> pair)
   std::map<size_t, uint64_t> percentile_latency_ns;
+  // List of all the valid latencies.
+  std::vector<uint64_t> latencies;
   // Using usec to avoid square of large number (large in nsec)
   uint64_t std_us;
   uint64_t avg_request_time_ns;
@@ -124,6 +127,9 @@ struct ClientSideStats {
   // Per sec stat
   double infer_per_sec;
   double sequence_per_sec;
+
+  // Completed request count reported by the client library
+  uint64_t completed_count;
 };
 
 /// The entire statistics record.
@@ -291,12 +297,15 @@ class InferenceProfiler {
       const size_t concurrent_request_count, std::vector<PerfStatus>& summary,
       bool* meets_threshold);
 
-  /// Similar to above function, but instead of setting the concurrency, it sets
-  /// the specified request rate for measurements.
-  /// \param request_rate The request rate for inferences.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the setting meets the threshold.
-  /// \return cb::Error object indicating success or failure.
+  cb::Error MergePerfStatusReports(
+      std::deque<PerfStatus>& perf_status, PerfStatus& summary_status);
+
+  /// Similar to above function, but instead of setting the concurrency, it
+  /// sets the specified request rate for measurements. \param request_rate
+  /// The request rate for inferences. \param summary Appends the
+  /// measurements summary at the end of this list. \param meets_threshold
+  /// Returns whether the setting meets the threshold. \return cb::Error
+  /// object indicating success or failure.
   cb::Error Profile(
       const double request_rate, std::vector<PerfStatus>& summary,
       bool* meets_threshold);

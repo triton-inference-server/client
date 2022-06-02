@@ -573,8 +573,10 @@ InferenceProfiler::ProfileHelper(
   LoadStatus load_status;
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
+  std::deque<PerfStatus> perf_status;
 
   do {
+    PerfStatus status_summary;
     RETURN_IF_ERROR(manager_->CheckHealth());
 
     // Needed to obtain stable measurements
@@ -587,8 +589,11 @@ InferenceProfiler::ProfileHelper(
     } else {
       error.push(Measure(status_summary, measurement_request_count_, true));
     }
-    if (error.size() >= load_parameters_.stability_window) {
+    perf_status.push_back(status_summary);
+
+    if (error.size() > load_parameters_.stability_window) {
       error.pop();
+      perf_status.pop_front();
     }
 
     if (error.back().IsOk()) {
@@ -648,6 +653,7 @@ InferenceProfiler::ProfileHelper(
              (latency_threshold_ms_ * 1000 * 1000))) {
           within_threshold = true;
         }
+
         // We call it complete only if stability_window measurements are within
         // +/-(stability_threshold)% of the average infer per second and latency
         if ((load_status.infer_per_sec[idx] <
@@ -681,6 +687,7 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
+
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
   while (!error.empty()) {
@@ -690,10 +697,177 @@ InferenceProfiler::ProfileHelper(
       error.pop();
     }
   }
+  RETURN_IF_ERROR(MergePerfStatusReports(perf_status, status_summary));
 
   if (early_exit) {
     return cb::Error("Received exit signal.");
   }
+  return cb::Error::Success;
+}
+
+cb::Error
+InferenceProfiler::MergePerfStatusReports(
+    std::deque<PerfStatus>& perf_status_reports, PerfStatus& summary_status)
+{
+  if (perf_status_reports.size() != load_parameters_.stability_window) {
+    return cb::Error(
+        "Perf Status reports size must match the stability window.");
+  }
+
+  auto& perf_status = perf_status_reports[0];
+
+  // Make sure that the perf status reports profiling settings match with each
+  // other.
+  for (size_t i = 1; i < perf_status_reports.size(); i++) {
+    perf_status.concurrency = summary_status.concurrency;
+    perf_status.request_rate = summary_status.request_rate;
+
+    if (perf_status_reports[i].on_sequence_model !=
+        perf_status.on_sequence_model) {
+      return cb::Error("Incosistent sequence setting detected.");
+    }
+
+    if (perf_status_reports[i].batch_size != perf_status.batch_size) {
+      return cb::Error("Incosistent batch size detected.");
+    }
+  }
+
+  summary_status.batch_size = perf_status.batch_size;
+  summary_status.on_sequence_model = perf_status.on_sequence_model;
+
+  // Initialize the client stats for the merged report.
+  summary_status.client_stats.request_count = 0;
+  summary_status.client_stats.sequence_count = 0;
+  summary_status.client_stats.delayed_request_count = 0;
+  summary_status.client_stats.duration_ns = 0;
+  summary_status.client_stats.avg_latency_ns = 0;
+  summary_status.client_stats.percentile_latency_ns.clear();
+  summary_status.client_stats.latencies.clear();
+  summary_status.client_stats.std_us = 0;
+  summary_status.client_stats.avg_request_time_ns = 0;
+  summary_status.client_stats.avg_send_time_ns = 0;
+  summary_status.client_stats.avg_receive_time_ns = 0;
+  summary_status.client_stats.infer_per_sec = 0;
+  summary_status.client_stats.sequence_per_sec = 0;
+  summary_status.client_stats.completed_count = 0;
+  summary_status.stabilizing_latency_ns = 0;
+
+  // Initialize the server stats for the merged report.
+  summary_status.server_stats.inference_count = 0;
+  summary_status.server_stats.execution_count = 0;
+  summary_status.server_stats.cache_hit_count = 0;
+  summary_status.server_stats.cache_miss_count = 0;
+  summary_status.server_stats.success_count = 0;
+  summary_status.server_stats.queue_count = 0;
+  summary_status.server_stats.compute_input_count = 0;
+  summary_status.server_stats.compute_output_count = 0;
+  summary_status.server_stats.compute_infer_count = 0;
+  summary_status.server_stats.cumm_time_ns = 0;
+  summary_status.server_stats.queue_time_ns = 0;
+  summary_status.server_stats.compute_input_time_ns = 0;
+  summary_status.server_stats.compute_infer_time_ns = 0;
+  summary_status.server_stats.compute_output_time_ns = 0;
+  summary_status.server_stats.cache_hit_time_ns = 0;
+  summary_status.server_stats.cache_miss_time_ns = 0;
+  summary_status.server_stats.composing_models_stat.clear();
+
+  for (auto& perf_status : perf_status_reports) {
+    // Aggregated Client Stats
+    summary_status.client_stats.request_count +=
+        perf_status.client_stats.request_count;
+    summary_status.client_stats.sequence_count +=
+        perf_status.client_stats.sequence_count;
+    summary_status.client_stats.delayed_request_count +=
+        perf_status.client_stats.delayed_request_count;
+    summary_status.client_stats.duration_ns +=
+        perf_status.client_stats.duration_ns;
+
+    // Aggregated Server Stats
+    summary_status.server_stats.inference_count +=
+        perf_status.server_stats.inference_count;
+    summary_status.server_stats.execution_count +=
+        perf_status.server_stats.execution_count;
+    summary_status.server_stats.cache_hit_count +=
+        perf_status.server_stats.cache_hit_count;
+    summary_status.server_stats.cache_miss_count +=
+        perf_status.server_stats.cache_miss_count;
+    summary_status.server_stats.success_count +=
+        perf_status.server_stats.success_count;
+    summary_status.server_stats.queue_count +=
+        perf_status.server_stats.queue_count;
+    summary_status.server_stats.compute_input_count +=
+        perf_status.server_stats.compute_input_count;
+    summary_status.server_stats.compute_infer_count +=
+        perf_status.server_stats.compute_infer_count;
+    summary_status.server_stats.compute_output_count +=
+        perf_status.server_stats.compute_output_count;
+    summary_status.server_stats.cumm_time_ns +=
+        perf_status.server_stats.cumm_time_ns;
+    summary_status.server_stats.queue_time_ns +=
+        perf_status.server_stats.queue_time_ns;
+    summary_status.server_stats.compute_input_time_ns +=
+        perf_status.server_stats.compute_input_time_ns;
+    summary_status.server_stats.compute_infer_time_ns +=
+        perf_status.server_stats.compute_infer_time_ns;
+    summary_status.server_stats.compute_output_time_ns +=
+        perf_status.server_stats.compute_output_time_ns;
+    summary_status.server_stats.cache_hit_time_ns +=
+        perf_status.server_stats.cache_hit_time_ns;
+    summary_status.server_stats.cache_miss_time_ns +=
+        perf_status.server_stats.cache_miss_time_ns;
+
+    summary_status.client_stats.latencies.insert(
+        summary_status.client_stats.latencies.end(),
+        perf_status.client_stats.latencies.begin(),
+        perf_status.client_stats.latencies.end());
+  }
+
+  if (include_lib_stats_) {
+    for (auto& perf_status : perf_status_reports) {
+      summary_status.client_stats.completed_count +=
+          perf_status.client_stats.completed_count;
+
+      summary_status.client_stats.avg_request_time_ns +=
+          perf_status.client_stats.avg_request_time_ns *
+          perf_status.client_stats.completed_count;
+
+      summary_status.client_stats.avg_send_time_ns +=
+          perf_status.client_stats.avg_send_time_ns *
+          perf_status.client_stats.completed_count;
+
+      summary_status.client_stats.avg_receive_time_ns +=
+          perf_status.client_stats.avg_receive_time_ns *
+          perf_status.client_stats.completed_count;
+    }
+
+    if (summary_status.client_stats.completed_count != 0) {
+      summary_status.client_stats.avg_request_time_ns =
+          summary_status.client_stats.avg_request_time_ns /
+          summary_status.client_stats.completed_count;
+
+      summary_status.client_stats.avg_send_time_ns =
+          summary_status.client_stats.avg_send_time_ns /
+          summary_status.client_stats.completed_count;
+
+      summary_status.client_stats.avg_receive_time_ns =
+          summary_status.client_stats.avg_receive_time_ns /
+          summary_status.client_stats.completed_count;
+    }
+  }
+  std::sort(
+      summary_status.client_stats.latencies.begin(),
+      summary_status.client_stats.latencies.end());
+
+  float client_duration_sec =
+      (float)summary_status.client_stats.duration_ns / NANOS_PER_SECOND;
+  summary_status.client_stats.sequence_per_sec =
+      summary_status.client_stats.sequence_count / client_duration_sec;
+  summary_status.client_stats.infer_per_sec =
+      (summary_status.client_stats.request_count * summary_status.batch_size) /
+      client_duration_sec;
+  RETURN_IF_ERROR(
+      SummarizeLatency(summary_status.client_stats.latencies, summary_status));
+
   return cb::Error::Success;
 }
 
@@ -793,6 +967,7 @@ InferenceProfiler::Summarize(
   RETURN_IF_ERROR(SummarizeClientStat(
       start_stat, end_stat, valid_range.second - valid_range.first,
       latencies.size(), valid_sequence_count, delayed_request_count, summary));
+  summary.client_stats.latencies = std::move(latencies);
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
@@ -951,6 +1126,7 @@ InferenceProfiler::SummarizeClientStat(
         end_stat.completed_request_count - start_stat.completed_request_count;
     uint64_t request_time_ns = end_stat.cumulative_total_request_time_ns -
                                start_stat.cumulative_total_request_time_ns;
+    summary.client_stats.completed_count = completed_count;
     uint64_t send_time_ns =
         end_stat.cumulative_send_time_ns - start_stat.cumulative_send_time_ns;
     uint64_t receive_time_ns = end_stat.cumulative_receive_time_ns -
