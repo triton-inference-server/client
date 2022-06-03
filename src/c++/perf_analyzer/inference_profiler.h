@@ -343,10 +343,10 @@ class InferenceProfiler {
   cb::Error ProfileHelper(
       const bool clean_starts, PerfStatus& status_summary, bool* is_stable);
 
-  /// A helper function to determine stability
+  /// A helper function to determine stability within a series of windows
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \param is_stable Returns whether the measurement stabilized or not.
-  void set_stable(LoadStatus& load_status, bool* is_stable);
+  void check_windows_for_stability(LoadStatus& load_status, bool* is_stable);
 
   /// Check if observed latencies are within the latency threshold
   /// \param idx index in latency vector
@@ -354,9 +354,10 @@ class InferenceProfiler {
   bool check_within_threshold(size_t idx, LoadStatus& load_status);
 
   /// Check if observed inferences and latencies max/min is within threshold
+  /// for a window
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
-  bool check_stability(size_t idx, LoadStatus& load_status);
+  bool check_window_for_stability(size_t idx, LoadStatus& load_status);
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.

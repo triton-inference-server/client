@@ -639,7 +639,8 @@ InferenceProfiler::ProfileHelper(
                   << "] cb::Error: " << error.back().Message() << std::endl;
       }
     }
-    set_stable(load_status, is_stable);
+
+    check_windows_for_stability(load_status, is_stable);
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
@@ -662,7 +663,8 @@ InferenceProfiler::ProfileHelper(
 }
 
 void
-InferenceProfiler::set_stable(LoadStatus& load_status, bool* is_stable)
+InferenceProfiler::check_windows_for_stability(
+    LoadStatus& load_status, bool* is_stable)
 {
   if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
     size_t idx =
@@ -676,7 +678,7 @@ InferenceProfiler::set_stable(LoadStatus& load_status, bool* is_stable)
       }
 
       within_threshold = check_within_threshold(idx, load_status);
-      *is_stable = check_stability(idx, load_status);
+      *is_stable = check_window_for_stability(idx, load_status);
 
       if (mpi_driver_->IsMPIRun()) {
         if (AllMPIRanksAreStable(*is_stable)) {
@@ -699,7 +701,8 @@ InferenceProfiler::check_within_threshold(size_t idx, LoadStatus& load_status)
 }
 
 bool
-InferenceProfiler::check_stability(size_t idx, LoadStatus& load_status)
+InferenceProfiler::check_window_for_stability(
+    size_t idx, LoadStatus& load_status)
 {
   // Check inference stability
   auto infer_start = std::begin(load_status.infer_per_sec) + idx;
@@ -1369,7 +1372,7 @@ class TestInferenceProfiler {
 
     InferenceProfiler ip(lp);
 
-    return ip.check_stability(idx, ls);
+    return ip.check_window_for_stability(idx, ls);
   };
 };
 
