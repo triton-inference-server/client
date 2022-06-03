@@ -36,6 +36,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestInferenceProfiler;
+#endif
+
 /// Constant parameters that determine the whether stopping criteria has met
 /// for the current phase of testing
 struct LoadParams {
@@ -516,5 +520,4 @@ class InferenceProfiler {
   InferenceProfiler() = default;
 #endif
 };
-
 }}  // namespace triton::perfanalyzer

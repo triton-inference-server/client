@@ -1362,6 +1362,15 @@ class TestInferenceProfiler {
     inference_profiler.ValidLatencyMeasurement(
         valid_range, valid_sequence_count, delayed_request_count, latencies);
   }
+
+  static bool test_stability(LoadStatus& ls, LoadParams& lp)
+  {
+    size_t idx = ls.infer_per_sec.size() - lp.stability_window;
+
+    InferenceProfiler ip(lp);
+
+    return ip.check_stability(idx, ls);
+  };
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -1413,5 +1422,54 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
 }
 
+TEST_CASE("test_stability")
+{
+  LoadStatus ls;
+  LoadParams lp;
+
+  SUBCASE("test throughput not stable")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::test_stability(ls, lp) == false);
+  }
+  SUBCASE("test throughput stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::test_stability(ls, lp) == true);
+  }
+  SUBCASE("test latency not stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {1, 100, 50};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::test_stability(ls, lp) == false);
+  }
+  SUBCASE("test latency stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {45, 50, 45};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::test_stability(ls, lp) == true);
+  }
+  SUBCASE("test throughput stable after many measurements")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0, 1500.0, 500.0, 520.0, 510.0};
+    ls.latencies = {1, 1, 1, 1, 1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::test_stability(ls, lp) == true);
+  }
+}
+
+
 #endif
+
 }}  // namespace triton::perfanalyzer
