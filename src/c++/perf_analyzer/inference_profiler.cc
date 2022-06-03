@@ -706,6 +706,85 @@ InferenceProfiler::ProfileHelper(
 }
 
 cb::Error
+InferenceProfiler::MergeServerSideStats(
+    std::vector<ServerSideStats>& server_side_stats,
+    ServerSideStats& server_side_summary)
+{
+  auto& server_side_stat = server_side_stats[0];
+
+  // Make sure that the perf status reports profiling settings match with each
+  // other.
+  for (size_t i = 1; i < server_side_stats.size(); i++) {
+    if (server_side_stats[i].composing_models_stat.size() !=
+        server_side_stat.composing_models_stat.size()) {
+      return cb::Error(
+          "Inconsistent ensemble setting detected between the trials.");
+    }
+  }
+
+  // Initialize the server stats for the merged report.
+  server_side_summary.inference_count = 0;
+  server_side_summary.execution_count = 0;
+  server_side_summary.cache_hit_count = 0;
+  server_side_summary.cache_miss_count = 0;
+  server_side_summary.success_count = 0;
+  server_side_summary.queue_count = 0;
+  server_side_summary.compute_input_count = 0;
+  server_side_summary.compute_output_count = 0;
+  server_side_summary.compute_infer_count = 0;
+  server_side_summary.cumm_time_ns = 0;
+  server_side_summary.queue_time_ns = 0;
+  server_side_summary.compute_input_time_ns = 0;
+  server_side_summary.compute_infer_time_ns = 0;
+  server_side_summary.compute_output_time_ns = 0;
+  server_side_summary.cache_hit_time_ns = 0;
+  server_side_summary.cache_miss_time_ns = 0;
+  server_side_summary.composing_models_stat.clear();
+  for (auto& composing_model_stat : server_side_stat.composing_models_stat) {
+    std::vector<ServerSideStats> composing_model_stats;
+    for (auto& server_side_stat : server_side_stats) {
+      composing_model_stats.push_back(
+          server_side_stat.composing_models_stat[composing_model_stat.first]);
+    }
+
+    ServerSideStats merged_composing_model_stats;
+    RETURN_IF_ERROR(MergeServerSideStats(
+        composing_model_stats, merged_composing_model_stats));
+    server_side_summary.composing_models_stat.insert(
+        {composing_model_stat.first, merged_composing_model_stats});
+  }
+
+  for (auto& server_side_stat : server_side_stats) {
+    // Aggregated Server Stats
+    server_side_summary.inference_count += server_side_stat.inference_count;
+    server_side_summary.execution_count += server_side_stat.execution_count;
+    server_side_summary.cache_hit_count += server_side_stat.cache_hit_count;
+    server_side_summary.cache_miss_count += server_side_stat.cache_miss_count;
+    server_side_summary.success_count += server_side_stat.success_count;
+    server_side_summary.queue_count += server_side_stat.queue_count;
+    server_side_summary.compute_input_count +=
+        server_side_stat.compute_input_count;
+    server_side_summary.compute_infer_count +=
+        server_side_stat.compute_infer_count;
+    server_side_summary.compute_output_count +=
+        server_side_stat.compute_output_count;
+    server_side_summary.cumm_time_ns += server_side_stat.cumm_time_ns;
+    server_side_summary.queue_time_ns += server_side_stat.queue_time_ns;
+    server_side_summary.compute_input_time_ns +=
+        server_side_stat.compute_input_time_ns;
+    server_side_summary.compute_infer_time_ns +=
+        server_side_stat.compute_infer_time_ns;
+    server_side_summary.compute_output_time_ns +=
+        server_side_stat.compute_output_time_ns;
+    server_side_summary.cache_hit_time_ns += server_side_stat.cache_hit_time_ns;
+    server_side_summary.cache_miss_time_ns +=
+        server_side_stat.cache_miss_time_ns;
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
 InferenceProfiler::MergePerfStatusReports(
     std::deque<PerfStatus>& perf_status_reports, PerfStatus& summary_status)
 {
@@ -730,6 +809,12 @@ InferenceProfiler::MergePerfStatusReports(
     if (perf_status_reports[i].batch_size != perf_status.batch_size) {
       return cb::Error("Incosistent batch size detected.");
     }
+
+    if (perf_status_reports[i].server_stats.composing_models_stat.size() !=
+        perf_status.server_stats.composing_models_stat.size()) {
+      return cb::Error(
+          "Inconsistent ensemble setting detected between the trials.");
+    }
   }
 
   summary_status.batch_size = perf_status.batch_size;
@@ -752,25 +837,8 @@ InferenceProfiler::MergePerfStatusReports(
   summary_status.client_stats.completed_count = 0;
   summary_status.stabilizing_latency_ns = 0;
 
-  // Initialize the server stats for the merged report.
-  summary_status.server_stats.inference_count = 0;
-  summary_status.server_stats.execution_count = 0;
-  summary_status.server_stats.cache_hit_count = 0;
-  summary_status.server_stats.cache_miss_count = 0;
-  summary_status.server_stats.success_count = 0;
-  summary_status.server_stats.queue_count = 0;
-  summary_status.server_stats.compute_input_count = 0;
-  summary_status.server_stats.compute_output_count = 0;
-  summary_status.server_stats.compute_infer_count = 0;
-  summary_status.server_stats.cumm_time_ns = 0;
-  summary_status.server_stats.queue_time_ns = 0;
-  summary_status.server_stats.compute_input_time_ns = 0;
-  summary_status.server_stats.compute_infer_time_ns = 0;
-  summary_status.server_stats.compute_output_time_ns = 0;
-  summary_status.server_stats.cache_hit_time_ns = 0;
-  summary_status.server_stats.cache_miss_time_ns = 0;
-  summary_status.server_stats.composing_models_stat.clear();
 
+  std::vector<ServerSideStats> server_side_stats;
   for (auto& perf_status : perf_status_reports) {
     // Aggregated Client Stats
     summary_status.client_stats.request_count +=
@@ -782,39 +850,7 @@ InferenceProfiler::MergePerfStatusReports(
     summary_status.client_stats.duration_ns +=
         perf_status.client_stats.duration_ns;
 
-    // Aggregated Server Stats
-    summary_status.server_stats.inference_count +=
-        perf_status.server_stats.inference_count;
-    summary_status.server_stats.execution_count +=
-        perf_status.server_stats.execution_count;
-    summary_status.server_stats.cache_hit_count +=
-        perf_status.server_stats.cache_hit_count;
-    summary_status.server_stats.cache_miss_count +=
-        perf_status.server_stats.cache_miss_count;
-    summary_status.server_stats.success_count +=
-        perf_status.server_stats.success_count;
-    summary_status.server_stats.queue_count +=
-        perf_status.server_stats.queue_count;
-    summary_status.server_stats.compute_input_count +=
-        perf_status.server_stats.compute_input_count;
-    summary_status.server_stats.compute_infer_count +=
-        perf_status.server_stats.compute_infer_count;
-    summary_status.server_stats.compute_output_count +=
-        perf_status.server_stats.compute_output_count;
-    summary_status.server_stats.cumm_time_ns +=
-        perf_status.server_stats.cumm_time_ns;
-    summary_status.server_stats.queue_time_ns +=
-        perf_status.server_stats.queue_time_ns;
-    summary_status.server_stats.compute_input_time_ns +=
-        perf_status.server_stats.compute_input_time_ns;
-    summary_status.server_stats.compute_infer_time_ns +=
-        perf_status.server_stats.compute_infer_time_ns;
-    summary_status.server_stats.compute_output_time_ns +=
-        perf_status.server_stats.compute_output_time_ns;
-    summary_status.server_stats.cache_hit_time_ns +=
-        perf_status.server_stats.cache_hit_time_ns;
-    summary_status.server_stats.cache_miss_time_ns +=
-        perf_status.server_stats.cache_miss_time_ns;
+    server_side_stats.push_back(perf_status.server_stats);
 
     summary_status.client_stats.latencies.insert(
         summary_status.client_stats.latencies.end(),
@@ -854,6 +890,10 @@ InferenceProfiler::MergePerfStatusReports(
           summary_status.client_stats.completed_count;
     }
   }
+
+  RETURN_IF_ERROR(
+      MergeServerSideStats(server_side_stats, summary_status.server_stats));
+
   std::sort(
       summary_status.client_stats.latencies.begin(),
       summary_status.client_stats.latencies.end());
