@@ -1370,7 +1370,9 @@ class TestInferenceProfiler {
   {
     size_t idx = ls.infer_per_sec.size() - lp.stability_window;
 
-    InferenceProfiler ip(lp);
+    InferenceProfiler ip;
+    ip.load_parameters_.stability_threshold = lp.stability_threshold;
+    ip.load_parameters_.stability_window = lp.stability_window;
 
     return ip.check_window_for_stability(idx, ls);
   };
