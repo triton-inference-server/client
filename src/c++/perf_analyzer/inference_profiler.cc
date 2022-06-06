@@ -640,7 +640,10 @@ InferenceProfiler::ProfileHelper(
       }
     }
 
-    check_windows_for_stability(load_status, is_stable);
+    if (reached_stability(load_status, is_stable)) {
+      break;
+    }
+
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
@@ -662,10 +665,10 @@ InferenceProfiler::ProfileHelper(
   return cb::Error::Success;
 }
 
-void
-InferenceProfiler::check_windows_for_stability(
-    LoadStatus& load_status, bool* is_stable)
+bool
+InferenceProfiler::reached_stability(LoadStatus& load_status, bool* is_stable)
 {
+  bool should_break = false;
   if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
     size_t idx =
         load_status.infer_per_sec.size() - load_parameters_.stability_window;
@@ -675,23 +678,26 @@ InferenceProfiler::check_windows_for_stability(
     for (; idx < load_status.infer_per_sec.size(); idx++) {
       if (load_status.infer_per_sec[idx] == 0) {
         *is_stable = false;
+        break;
       }
 
       within_threshold = check_within_threshold(idx, load_status);
-      *is_stable = check_window_for_stability(idx, load_status);
+    }
 
-      if (mpi_driver_->IsMPIRun()) {
-        if (AllMPIRanksAreStable(*is_stable)) {
-          break;
-        }
-      } else if (*is_stable) {
-        break;
+    *is_stable = *is_stable && check_window_for_stability(idx, load_status);
+
+    if (mpi_driver_->IsMPIRun()) {
+      if (AllMPIRanksAreStable(*is_stable)) {
+        should_break = true;
       }
-      if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
-        break;
-      }
+    } else if (*is_stable) {
+      should_break = true;
+    }
+    if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
+      should_break = true;
     }
   }
+  return should_break;
 }
 
 bool
