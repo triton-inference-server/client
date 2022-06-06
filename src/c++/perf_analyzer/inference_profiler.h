@@ -353,11 +353,23 @@ class InferenceProfiler {
   /// \param load_status Stores the observations of infer_per_sec and latencies
   bool check_within_threshold(size_t idx, LoadStatus& load_status);
 
-  /// Check if observed inferences and latencies max/min is within threshold
+  /// Check if observed inferences and latencies max/min are within threshold
   /// for a window
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   bool check_window_for_stability(size_t idx, LoadStatus& load_status);
+
+  /// Check if observed inferences max/min are within threshold
+  /// for a window
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  bool is_infer_stable(size_t idx, LoadStatus& load_status);
+
+  /// Check if observed latencies max/min are within threshold
+  /// for a window
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  bool is_latency_stable(size_t idx, LoadStatus& load_status);
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.

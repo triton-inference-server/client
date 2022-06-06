@@ -704,7 +704,13 @@ bool
 InferenceProfiler::check_window_for_stability(
     size_t idx, LoadStatus& load_status)
 {
-  // Check inference stability
+  return is_infer_stable(idx, load_status) &&
+         is_latency_stable(idx, load_status);
+}
+
+bool
+InferenceProfiler::is_infer_stable(size_t idx, LoadStatus& load_status)
+{
   auto infer_start = std::begin(load_status.infer_per_sec) + idx;
   auto infer_per_sec_measurements = std::minmax_element(
       infer_start, infer_start + load_parameters_.stability_window);
@@ -712,10 +718,13 @@ InferenceProfiler::check_window_for_stability(
   auto max_infer_per_sec = *infer_per_sec_measurements.second;
   auto min_infer_per_sec = *infer_per_sec_measurements.first;
 
-  bool infer_per_sec_is_stable = max_infer_per_sec / min_infer_per_sec <=
-                                 1 + load_parameters_.stability_threshold;
+  return max_infer_per_sec / min_infer_per_sec <=
+         1 + load_parameters_.stability_threshold;
+}
 
-  // Check latency stability
+bool
+InferenceProfiler::is_latency_stable(size_t idx, LoadStatus& load_status)
+{
   auto latency_start = std::begin(load_status.latencies) + idx;
   auto latencies_per_sec_measurements = std::minmax_element(
       latency_start, latency_start + load_parameters_.stability_window);
@@ -723,10 +732,7 @@ InferenceProfiler::check_window_for_stability(
   auto max_latency = *latencies_per_sec_measurements.second;
   auto min_latency = *latencies_per_sec_measurements.first;
 
-  bool latency_is_stable =
-      max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
-
-  return infer_per_sec_is_stable && latency_is_stable;
+  return max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
 }
 
 cb::Error
