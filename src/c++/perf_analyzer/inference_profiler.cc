@@ -640,7 +640,7 @@ InferenceProfiler::ProfileHelper(
       }
     }
 
-    if (reached_stability(load_status, is_stable)) {
+    if (finished_profiling(load_status, is_stable)) {
       break;
     }
 
@@ -666,9 +666,9 @@ InferenceProfiler::ProfileHelper(
 }
 
 bool
-InferenceProfiler::reached_stability(LoadStatus& load_status, bool* is_stable)
+InferenceProfiler::finished_profiling(LoadStatus& load_status, bool* is_stable)
 {
-  bool should_break = false;
+  bool done = false;
   if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
     size_t idx =
         load_status.infer_per_sec.size() - load_parameters_.stability_window;
@@ -688,16 +688,16 @@ InferenceProfiler::reached_stability(LoadStatus& load_status, bool* is_stable)
     if (mpi_driver_->IsMPIRun()) {
       // if (mpi_driver_ && mpi_driver_->IsMPIRun()) {
       if (AllMPIRanksAreStable(*is_stable)) {
-        should_break = true;
+        done = true;
       }
     } else if (*is_stable) {
-      should_break = true;
+      done = true;
     }
     if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
-      should_break = true;
+      done = true;
     }
   }
-  return should_break;
+  return done;
 }
 
 bool
@@ -710,12 +710,12 @@ bool
 InferenceProfiler::check_window_for_stability(
     size_t idx, LoadStatus& load_status)
 {
-  return is_infer_stable(idx, load_status) &&
-         is_latency_stable(idx, load_status);
+  return is_infer_window_stable(idx, load_status) &&
+         is_latency_window_stable(idx, load_status);
 }
 
 bool
-InferenceProfiler::is_infer_stable(size_t idx, LoadStatus& load_status)
+InferenceProfiler::is_infer_window_stable(size_t idx, LoadStatus& load_status)
 {
   auto infer_start = std::begin(load_status.infer_per_sec) + idx;
   auto infer_per_sec_measurements = std::minmax_element(
@@ -729,7 +729,7 @@ InferenceProfiler::is_infer_stable(size_t idx, LoadStatus& load_status)
 }
 
 bool
-InferenceProfiler::is_latency_stable(size_t idx, LoadStatus& load_status)
+InferenceProfiler::is_latency_window_stable(size_t idx, LoadStatus& load_status)
 {
   auto latency_start = std::begin(load_status.latencies) + idx;
   auto latencies_per_sec_measurements = std::minmax_element(
@@ -1400,7 +1400,7 @@ class TestInferenceProfiler {
     return ip.check_window_for_stability(idx, ls);
   };
 
-  static bool test_reached_stability(
+  static bool test_finished_profiling(
       LoadStatus& ls, LoadParams& lp, uint64_t latency_threshold_ms)
   {
     InferenceProfiler ip;
@@ -1409,7 +1409,7 @@ class TestInferenceProfiler {
     ip.latency_threshold_ms_ = latency_threshold_ms;
 
     bool is_stable = false;
-    ip.reached_stability(ls, &is_stable);
+    ip.finished_profiling(ls, &is_stable);
     return is_stable;
   };
 };

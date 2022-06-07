@@ -343,39 +343,39 @@ class InferenceProfiler {
   cb::Error ProfileHelper(
       const bool clean_starts, PerfStatus& status_summary, bool* is_stable);
 
-  /// A helper function to determine stability within a series of windows
+  /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \param is_stable Returns whether the measurement stabilized or not.
   /// \return Returns if the threshold and latencies are stable. Used to
   /// determine if we should break out of the infinite stability check loop.
-  bool reached_stability(LoadStatus& load_status, bool* is_stable);
+  bool finished_profiling(LoadStatus& load_status, bool* is_stable);
 
-  /// Check if observed latencies are within the latency threshold
+  /// Check if latency at index idx is within the latency threshold
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \return Returns whether the latencies are below the max threshold
   bool check_within_threshold(size_t idx, LoadStatus& load_status);
 
-  /// Check if observed inferences and latencies max/min are within threshold
-  /// for a window
+  /// Check if observed inferences and latencies are within threshold
+  /// for a single window starting at idx
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \return Returns whether inference and latency are stable
   bool check_window_for_stability(size_t idx, LoadStatus& load_status);
 
-  /// Check if observed inferences max/min are within threshold
-  /// for a window
+  /// Check if observed inferences are within threshold
+  /// for a single window starting at idx
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \return Returns whether inference is stable
-  bool is_infer_stable(size_t idx, LoadStatus& load_status);
+  bool is_infer_window_stable(size_t idx, LoadStatus& load_status);
 
-  /// Check if observed latencies max/min are within threshold
-  /// for a window
+  /// Check if observed latencies are within threshold
+  /// for a single window starting at idx
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \return Returns whether latency is stable
-  bool is_latency_stable(size_t idx, LoadStatus& load_status);
+  bool is_latency_window_stable(size_t idx, LoadStatus& load_status);
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
