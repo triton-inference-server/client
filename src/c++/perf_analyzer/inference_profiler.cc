@@ -1340,8 +1340,9 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
   TimestampVector all_timestamps{
-      // request ends before window starts, which means it ended after previous
-      // window ended: included in current window
+      // request ends before window starts, but the fact that it exists in the
+      // list means it ended after previous window ended: included in current
+      // window
       std::make_tuple(timespec{0, 1}, timespec{0, 2}, 0, false),
 
       // request starts before window starts and ends inside window: included in
