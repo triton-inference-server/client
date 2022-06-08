@@ -244,6 +244,11 @@ class InferenceProfiler {
         current_value += step;
       } while (((current_value <= end) || (end == static_cast<T>(NO_LIMIT))) &&
                (meets_threshold));
+      // If there was only one concurrency we swept over and it did not meet the
+      // stability threshold, we should return an error.
+      if (current_value == (start + step) && meets_threshold == false) {
+        return cb::Error(" ");
+      }
     } else {
       err = Profile(start, summary, &meets_threshold);
       if (!err.IsOk() || (!meets_threshold)) {
