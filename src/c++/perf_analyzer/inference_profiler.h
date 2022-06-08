@@ -27,7 +27,6 @@
 
 #include <deque>
 #include <thread>
-
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"

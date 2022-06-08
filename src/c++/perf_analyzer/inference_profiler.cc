@@ -27,11 +27,9 @@
 #include "inference_profiler.h"
 
 #include <math.h>
-
 #include <algorithm>
 #include <limits>
 #include <queue>
-
 #include "doctest.h"
 
 namespace triton { namespace perfanalyzer {

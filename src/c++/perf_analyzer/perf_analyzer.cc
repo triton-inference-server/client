@@ -28,9 +28,7 @@
 
 #include <getopt.h>
 #include <signal.h>
-
 #include <algorithm>
-
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "inference_profiler.h"
