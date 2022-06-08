@@ -1053,6 +1053,9 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
+  // Iterate through erase indices backwards so that erases from
+  // `all_timestamps_` happen from the back to the front to avoid using wrong
+  // indices after subsequent erases
   std::for_each(erase_indices.rbegin(), erase_indices.rend(), [this](size_t i) {
     this->all_timestamps_.erase(this->all_timestamps_.begin() + i);
   });
