@@ -82,6 +82,15 @@ SignalHandler(int signum)
 //     specified, the selected percentile value will be reported instead of
 //     average value.
 //
+// Perf Analyzer determines the stability of throughput and latency by observing
+// observing measurements in different trials. If the latency and throughput,
+// are within the stability percentage (see --stability-percentage option) Perf
+// Analyzer will report the average of the throughput and latency numbers
+// observed in the last three trials. All the measurements gathered during the
+// last three trials is aggregated to generate a single report. The number of
+// total requests is the sum of all the requests in the individual measurement
+// windows.
+//
 // There are broadly three ways to load server for the data collection using
 // perf_analyzer:
 // - Maintaining Target Concurrency:
@@ -172,8 +181,7 @@ SignalHandler(int signum)
 // --concurrency-range: The range of concurrency levels perf_analyzer will use.
 //    A concurrency level indicates the number of concurrent requests in queue.
 // --request-rate-range: The range of request rates perf_analyzer will use to
-// load
-//    the server.
+//    load the server.
 // --request-intervals: File containing time intervals (in microseconds) to use
 //    between successive requests.
 // --latency-threshold: latency threshold in msec.
@@ -181,7 +189,7 @@ SignalHandler(int signum)
 // --async: Enables Asynchronous inference calls.
 // --binary-search: Enables binary search within the specified range.
 // --request-distribution: Allows user to specify the distribution for selecting
-//     the time intervals between the request dispatch.
+//    the time intervals between the request dispatch.
 //
 // For detail of the options not listed, please refer to the usage.
 //
@@ -483,7 +491,10 @@ Usage(char** argv, const std::string& msg = std::string())
              "latency measurements when determining if a result is stable. The "
              "measurement is considered as stable if the recent 3 measurements "
              "are within +/- (stability percentage)% of their average in terms "
-             "of both infer per second and latency. Default is 10(%).",
+             "of both infer per second and latency. When perf analyzer "
+             "determines that the measurements are stable, it returns average "
+             "of the measurements collected in the last 3 windows. Default is "
+             "10(%).",
              18)
       << std::endl;
   std::cerr << FormatMessage(

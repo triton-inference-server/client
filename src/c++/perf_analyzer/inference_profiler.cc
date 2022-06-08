@@ -837,7 +837,6 @@ InferenceProfiler::MergePerfStatusReports(
   summary_status.client_stats.completed_count = 0;
   summary_status.stabilizing_latency_ns = 0;
 
-
   std::vector<ServerSideStats> server_side_stats;
   for (auto& perf_status : perf_status_reports) {
     // Aggregated Client Stats
