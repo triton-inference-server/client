@@ -345,16 +345,21 @@ class InferenceProfiler {
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
-  /// \param is_stable Returns whether the measurement stabilized or not.
-  /// \return Returns if the threshold and latencies are stable. Used to
-  /// determine if we should break out of the infinite stability check loop.
-  bool finished_profiling(LoadStatus& load_status, bool* is_stable);
+  /// \return Returns if the threshold and latencies are stable.
+  bool determine_stability(LoadStatus& load_status);
 
   /// Check if latency at index idx is within the latency threshold
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
   /// \return Returns whether the latencies are below the max threshold
   bool check_within_threshold(size_t idx, LoadStatus& load_status);
+
+  /// A helper function to determine if profiling is done
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \param is_stable Returns whether the measurement stabilized or not.
+  /// \return Returns if we should break out of the infinite stability check
+  /// loop.
+  bool is_done_profiling(LoadStatus& load_status, bool* is_stable);
 
   /// Check if observed inferences and latencies are within threshold
   /// for a single window starting at idx
