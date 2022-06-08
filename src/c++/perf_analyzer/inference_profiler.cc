@@ -574,6 +574,8 @@ InferenceProfiler::ProfileHelper(
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
   std::deque<PerfStatus> perf_status;
+  all_timestamps_.clear();
+  previous_window_end_ns_ = 0;
 
   do {
     PerfStatus status_summary;
@@ -940,9 +942,14 @@ InferenceProfiler::Measure(
   }
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
 
-  std::chrono::nanoseconds window_start_ns =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::system_clock::now().time_since_epoch());
+  // Set current window start time to end of previous window. For first
+  // measurement window, capture start time.
+  uint64_t window_start_ns = previous_window_end_ns_;
+  if (window_start_ns == 0) {
+    window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+  }
 
   if (!is_count_based) {
     // Wait for specified time interval in msec
@@ -958,9 +965,11 @@ InferenceProfiler::Measure(
     } while (manager_->CountCollectedRequests() < measurement_window);
   }
 
-  std::chrono::nanoseconds window_end_ns =
+  uint64_t window_end_ns =
       std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::system_clock::now().time_since_epoch());
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  previous_window_end_ns_ = window_end_ns;
 
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
 
@@ -978,7 +987,7 @@ InferenceProfiler::Measure(
 
   RETURN_IF_ERROR(Summarize(
       start_status, end_status, start_stat, end_stat, status_summary,
-      window_start_ns.count(), window_end_ns.count()));
+      window_start_ns, window_end_ns));
 
   return cb::Error::Success;
 }
@@ -1024,12 +1033,13 @@ InferenceProfiler::ValidLatencyMeasurement(
   std::vector<size_t> erase_indices{};
   for (size_t i = 0; i < all_timestamps_.size(); i++) {
     const auto& timestamp = all_timestamps_[i];
-    uint64_t request_start_ns = TIMESPEC_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_ns = TIMESPEC_TO_NANOS(std::get<1>(timestamp));
+    uint64_t request_start_ns = CHRONO_TO_NANOS(std::get<0>(timestamp));
+    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp));
 
     if (request_start_ns <= request_end_ns) {
       // Only counting requests that end within the time interval
-      if (request_end_ns <= valid_range.second) {
+      if ((request_end_ns >= valid_range.first) &&
+          (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
         erase_indices.push_back(i);
         // Just add the sequence_end flag here.
@@ -1043,7 +1053,7 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
-  std::for_each(erase_indices.begin(), erase_indices.end(), [this](size_t i) {
+  std::for_each(erase_indices.rbegin(), erase_indices.rend(), [this](size_t i) {
     this->all_timestamps_.erase(this->all_timestamps_.begin() + i);
   });
 
@@ -1339,42 +1349,46 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   std::vector<uint64_t> latencies{};
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
+  using time_point = std::chrono::time_point<std::chrono::system_clock>;
+  using ns = std::chrono::nanoseconds;
   TimestampVector all_timestamps{
-      // request ends before window starts, but the fact that it exists in the
-      // list means it ended after previous window ended: included in current
-      // window
-      std::make_tuple(timespec{0, 1}, timespec{0, 2}, 0, false),
+      // request ends before window starts, this should not be possible to exist
+      // in the vector of requests, but if it is, we exclude it: not included in
+      // current window
+      std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false),
 
       // request starts before window starts and ends inside window: included in
       // current window
-      std::make_tuple(timespec{0, 3}, timespec{0, 5}, 0, false),
+      std::make_tuple(time_point(ns(3)), time_point(ns(5)), 0, false),
 
       // requests start and end inside window: included in current window
-      std::make_tuple(timespec{0, 6}, timespec{0, 9}, 0, false),
-      std::make_tuple(timespec{0, 10}, timespec{0, 14}, 0, false),
+      std::make_tuple(time_point(ns(6)), time_point(ns(9)), 0, false),
+      std::make_tuple(time_point(ns(10)), time_point(ns(14)), 0, false),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
-      std::make_tuple(timespec{0, 15}, timespec{0, 20}, 0, false),
+      std::make_tuple(time_point(ns(15)), time_point(ns(20)), 0, false),
 
       // request starts after window ends: not included in current window
-      std::make_tuple(timespec{0, 21}, timespec{0, 27}, 0, false)};
+      std::make_tuple(time_point(ns(21)), time_point(ns(27)), 0, false)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
       all_timestamps);
 
   const auto& convert_timestamp_to_latency{
-      [](std::tuple<struct timespec, struct timespec, uint32_t, bool> t) {
-        return TIMESPEC_TO_NANOS(std::get<1>(t)) -
-               TIMESPEC_TO_NANOS(std::get<0>(t));
+      [](std::tuple<
+          std::chrono::time_point<std::chrono::system_clock>,
+          std::chrono::time_point<std::chrono::system_clock>, uint32_t, bool>
+             t) {
+        return CHRONO_TO_NANOS(std::get<1>(t)) -
+               CHRONO_TO_NANOS(std::get<0>(t));
       }};
 
-  CHECK(latencies.size() == 4);
-  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[0]));
-  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[1]));
-  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[2]));
-  CHECK(latencies[3] == convert_timestamp_to_latency(all_timestamps[3]));
+  CHECK(latencies.size() == 3);
+  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
+  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
+  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
 }
 
 #endif

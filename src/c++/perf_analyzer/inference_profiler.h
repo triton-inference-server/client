@@ -483,6 +483,9 @@ class InferenceProfiler {
   /// The timestamps of the requests completed during all measurements
   TimestampVector all_timestamps_;
 
+  /// The end time of the previous measurement window
+  uint64_t previous_window_end_ns_;
+
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
   InferenceProfiler() = default;
