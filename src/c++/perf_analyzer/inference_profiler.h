@@ -146,6 +146,10 @@ struct PerfStatus {
   uint64_t stabilizing_latency_ns;
 };
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestInferenceProfiler;
+#endif
+
 //==============================================================================
 /// A InferenceProfiler is a helper class that measures and summarizes the
 /// inference statistic under different concurrency level.
@@ -346,31 +350,20 @@ class InferenceProfiler {
       std::map<cb::ModelIdentifier, cb::ModelStatistics>* model_status);
 
   /// Sumarize the measurement with the provided statistics.
-  /// \param timestamps The timestamps of the requests completed during the
-  /// measurement.
   /// \param start_status The model status at the start of the measurement.
   /// \param end_status The model status at the end of the measurement.
   /// \param start_stat The accumulated context status at the start.
   /// \param end_stat The accumulated context status at the end.
   /// \param summary Returns the summary of the measurement.
+  /// \param window_start_ns The window start timestamp in nanoseconds.
+  /// \param window_end_ns The window end timestamp in nanoseconds.
   /// \return cb::Error object indicating success or failure.
   cb::Error Summarize(
-      const TimestampVector& timestamps,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-      PerfStatus& summary, long long measurement_window_ms);
+      PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns);
 
-  /// A helper function to get the start and end of a measurement window.
-  /// \param timestamps The timestamps collected for the measurement.
-  /// \param valid_range Returns the start and end timestamp of the measurement
-  /// window.
-  void MeasurementTimestamp(
-      const TimestampVector& timestamps,
-      std::pair<uint64_t, uint64_t>* valid_range,
-      long long measurement_window_ms);
-
-  /// \param timestamps The timestamps collected for the measurement.
   /// \param valid_range The start and end timestamp of the measurement window.
   /// \param valid_sequence_count Returns the number of completed sequences
   /// during the measurement. A sequence is a set of correlated requests sent to
@@ -378,7 +371,6 @@ class InferenceProfiler {
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
   void ValidLatencyMeasurement(
-      const TimestampVector& timestamps,
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies);
@@ -487,6 +479,17 @@ class InferenceProfiler {
   bool include_lib_stats_;
   bool include_server_stats_;
   std::shared_ptr<MPIDriver> mpi_driver_;
+
+  /// The timestamps of the requests completed during all measurements
+  TimestampVector all_timestamps_;
+
+  /// The end time of the previous measurement window
+  uint64_t previous_window_end_ns_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestInferenceProfiler;
+  InferenceProfiler() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

@@ -30,7 +30,7 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
-
+#include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
 namespace {
@@ -574,6 +574,8 @@ InferenceProfiler::ProfileHelper(
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
   std::deque<PerfStatus> perf_status;
+  all_timestamps_.clear();
+  previous_window_end_ns_ = 0;
 
   do {
     PerfStatus status_summary;
@@ -934,22 +936,26 @@ InferenceProfiler::Measure(
   std::map<cb::ModelIdentifier, cb::ModelStatistics> end_status;
   cb::InferStat start_stat;
   cb::InferStat end_stat;
-  long long measurement_window_ms;
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(GetServerSideStatus(&start_status));
   }
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
 
+  // Set current window start time to end of previous window. For first
+  // measurement window, capture start time.
+  uint64_t window_start_ns = previous_window_end_ns_;
+  if (window_start_ns == 0) {
+    window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count();
+  }
+
   if (!is_count_based) {
     // Wait for specified time interval in msec
     std::this_thread::sleep_for(
         std::chrono::milliseconds((uint64_t)(measurement_window_ms_ * 1.2)));
-    measurement_window_ms = measurement_window_ms_;
   } else {
-    std::chrono::milliseconds measurement_window_start =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
     do {
       // Check the health of the worker threads.
       RETURN_IF_ERROR(manager_->CheckHealth());
@@ -957,13 +963,13 @@ InferenceProfiler::Measure(
       // Wait for 1s until enough samples have been collected.
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
     } while (manager_->CountCollectedRequests() < measurement_window);
-
-    std::chrono::milliseconds measurement_window_end =
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch());
-    measurement_window_ms =
-        (measurement_window_end - measurement_window_start).count();
   }
+
+  uint64_t window_end_ns =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  previous_window_end_ns_ = window_end_ns;
 
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
 
@@ -975,32 +981,32 @@ InferenceProfiler::Measure(
 
   TimestampVector current_timestamps;
   RETURN_IF_ERROR(manager_->SwapTimestamps(current_timestamps));
+  all_timestamps_.insert(
+      all_timestamps_.end(), current_timestamps.begin(),
+      current_timestamps.end());
 
   RETURN_IF_ERROR(Summarize(
-      current_timestamps, start_status, end_status, start_stat, end_stat,
-      status_summary, measurement_window_ms));
+      start_status, end_status, start_stat, end_stat, status_summary,
+      window_start_ns, window_end_ns));
 
   return cb::Error::Success;
 }
 
 cb::Error
 InferenceProfiler::Summarize(
-    const TimestampVector& timestamps,
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-    PerfStatus& summary, long long measurement_window_ms)
+    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns)
 {
   size_t valid_sequence_count = 0;
   size_t delayed_request_count = 0;
 
   // Get measurement from requests that fall within the time interval
-  std::pair<uint64_t, uint64_t> valid_range;
-  MeasurementTimestamp(timestamps, &valid_range, measurement_window_ms);
+  std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
   std::vector<uint64_t> latencies;
   ValidLatencyMeasurement(
-      timestamps, valid_range, valid_sequence_count, delayed_request_count,
-      &latencies);
+      valid_range, valid_sequence_count, delayed_request_count, &latencies);
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
@@ -1017,58 +1023,25 @@ InferenceProfiler::Summarize(
 }
 
 void
-InferenceProfiler::MeasurementTimestamp(
-    const TimestampVector& timestamps,
-    std::pair<uint64_t, uint64_t>* valid_range, long long measurement_window_ms)
-{
-  // finding the start time of the first request
-  // and the end time of the last request in the timestamp queue
-  uint64_t first_request_start_ns = 0;
-  uint64_t last_request_end_ns = 0;
-  for (auto& timestamp : timestamps) {
-    uint64_t request_start_time = TIMESPEC_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_time = TIMESPEC_TO_NANOS(std::get<1>(timestamp));
-    if ((first_request_start_ns > request_start_time) ||
-        (first_request_start_ns == 0)) {
-      first_request_start_ns = request_start_time;
-    }
-    if ((last_request_end_ns < request_end_time) ||
-        (last_request_end_ns == 0)) {
-      last_request_end_ns = request_end_time;
-    }
-  }
-
-  // Define the measurement window [client_start_ns, client_end_ns) to be
-  // in the middle of the queue
-  uint64_t measurement_window_ns = measurement_window_ms * 1000 * 1000;
-  uint64_t offset = first_request_start_ns + measurement_window_ns;
-  offset =
-      (offset > last_request_end_ns) ? 0 : (last_request_end_ns - offset) / 2;
-
-  uint64_t start_ns = first_request_start_ns + offset;
-  uint64_t end_ns = start_ns + measurement_window_ns;
-
-  *valid_range = std::make_pair(start_ns, end_ns);
-}
-
-void
 InferenceProfiler::ValidLatencyMeasurement(
-    const TimestampVector& timestamps,
     const std::pair<uint64_t, uint64_t>& valid_range,
     size_t& valid_sequence_count, size_t& delayed_request_count,
     std::vector<uint64_t>* valid_latencies)
 {
   valid_latencies->clear();
   valid_sequence_count = 0;
-  for (auto& timestamp : timestamps) {
-    uint64_t request_start_ns = TIMESPEC_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_ns = TIMESPEC_TO_NANOS(std::get<1>(timestamp));
+  std::vector<size_t> erase_indices{};
+  for (size_t i = 0; i < all_timestamps_.size(); i++) {
+    const auto& timestamp = all_timestamps_[i];
+    uint64_t request_start_ns = CHRONO_TO_NANOS(std::get<0>(timestamp));
+    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp));
 
     if (request_start_ns <= request_end_ns) {
       // Only counting requests that end within the time interval
       if ((request_end_ns >= valid_range.first) &&
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
+        erase_indices.push_back(i);
         // Just add the sequence_end flag here.
         if (std::get<2>(timestamp)) {
           valid_sequence_count++;
@@ -1079,6 +1052,13 @@ InferenceProfiler::ValidLatencyMeasurement(
       }
     }
   }
+
+  // Iterate through erase indices backwards so that erases from
+  // `all_timestamps_` happen from the back to the front to avoid using wrong
+  // indices after subsequent erases
+  std::for_each(erase_indices.rbegin(), erase_indices.rend(), [this](size_t i) {
+    this->all_timestamps_.erase(this->all_timestamps_.begin() + i);
+  });
 
   // Always sort measured latencies as percentile will be reported as default
   std::sort(valid_latencies->begin(), valid_latencies->end());
@@ -1350,4 +1330,69 @@ InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
   return all_stable;
 }
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestInferenceProfiler {
+ public:
+  static void ValidLatencyMeasurement(
+      const std::pair<uint64_t, uint64_t>& valid_range,
+      size_t& valid_sequence_count, size_t& delayed_request_count,
+      std::vector<uint64_t>* latencies, TimestampVector& all_timestamps)
+  {
+    InferenceProfiler inference_profiler{};
+    inference_profiler.all_timestamps_ = all_timestamps;
+    inference_profiler.ValidLatencyMeasurement(
+        valid_range, valid_sequence_count, delayed_request_count, latencies);
+  }
+};
+
+TEST_CASE("testing the ValidLatencyMeasurement function")
+{
+  size_t valid_sequence_count{};
+  size_t delayed_request_count{};
+  std::vector<uint64_t> latencies{};
+
+  const std::pair<uint64_t, uint64_t> window{4, 17};
+  using time_point = std::chrono::time_point<std::chrono::system_clock>;
+  using ns = std::chrono::nanoseconds;
+  TimestampVector all_timestamps{
+      // request ends before window starts, this should not be possible to exist
+      // in the vector of requests, but if it is, we exclude it: not included in
+      // current window
+      std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false),
+
+      // request starts before window starts and ends inside window: included in
+      // current window
+      std::make_tuple(time_point(ns(3)), time_point(ns(5)), 0, false),
+
+      // requests start and end inside window: included in current window
+      std::make_tuple(time_point(ns(6)), time_point(ns(9)), 0, false),
+      std::make_tuple(time_point(ns(10)), time_point(ns(14)), 0, false),
+
+      // request starts before window ends and ends after window ends: not
+      // included in current window
+      std::make_tuple(time_point(ns(15)), time_point(ns(20)), 0, false),
+
+      // request starts after window ends: not included in current window
+      std::make_tuple(time_point(ns(21)), time_point(ns(27)), 0, false)};
+
+  TestInferenceProfiler::ValidLatencyMeasurement(
+      window, valid_sequence_count, delayed_request_count, &latencies,
+      all_timestamps);
+
+  const auto& convert_timestamp_to_latency{
+      [](std::tuple<
+          std::chrono::time_point<std::chrono::system_clock>,
+          std::chrono::time_point<std::chrono::system_clock>, uint32_t, bool>
+             t) {
+        return CHRONO_TO_NANOS(std::get<1>(t)) -
+               CHRONO_TO_NANOS(std::get<0>(t));
+      }};
+
+  CHECK(latencies.size() == 3);
+  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
+  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
+  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+}
+
+#endif
 }}  // namespace triton::perfanalyzer
