@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -45,13 +45,15 @@ namespace triton { namespace perfanalyzer {
 
 constexpr uint64_t NANOS_PER_SECOND = 1000000000;
 constexpr uint64_t NANOS_PER_MILLIS = 1000000;
-#define TIMESPEC_TO_NANOS(TS) \
-  ((TS).tv_sec * pa::NANOS_PER_SECOND + (TS).tv_nsec)
-#define TIMESPEC_TO_MILLIS(TS) (TIMESPEC_TO_NANOS(TS) / pa::NANOS_PER_MILLIS)
+#define CHRONO_TO_NANOS(TS)                                                    \
+  (std::chrono::duration_cast<std::chrono::nanoseconds>(TS.time_since_epoch()) \
+       .count())
+#define CHRONO_TO_MILLIS(TS) (CHRONO_TO_NANOS(TS) / pa::NANOS_PER_MILLIS)
 
 //==============================================================================
-using TimestampVector =
-    std::vector<std::tuple<struct timespec, struct timespec, uint32_t, bool>>;
+using TimestampVector = std::vector<std::tuple<
+    std::chrono::time_point<std::chrono::system_clock>,
+    std::chrono::time_point<std::chrono::system_clock>, uint32_t, bool>>;
 
 // Will use the characters specified here to construct random strings
 std::string const character_set =

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -110,7 +110,7 @@ class LoadManager {
     // send this request.
     uint32_t ctx_id_;
     // The timestamp of when the request was started.
-    struct timespec start_time_;
+    std::chrono::time_point<std::chrono::system_clock> start_time_;
     // Whether or not the request is at the end of a sequence.
     bool sequence_end_;
     // Whether or not the request is delayed as per schedule.
