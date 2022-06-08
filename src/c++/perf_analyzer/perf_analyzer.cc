@@ -83,13 +83,12 @@ SignalHandler(int signum)
 //     average value.
 //
 // Perf Analyzer determines the stability of throughput and latency by observing
-// observing measurements in different trials. If the latency and throughput,
-// are within the stability percentage (see --stability-percentage option) Perf
-// Analyzer will report the average of the throughput and latency numbers
-// observed in the last three trials. All the measurements gathered during the
-// last three trials is aggregated to generate a single report. The number of
-// total requests is the sum of all the requests in the individual measurement
-// windows.
+// measurements in different trials. If the latency and throughput, are within
+// the stability percentage (see --stability-percentage option) Perf Analyzer
+// will report the average of the throughput and latency numbers observed in the
+// last three trials. All the measurements gathered during the last three trials
+// is aggregated to generate a single report. The number of total requests is
+// the sum of all the requests in the individual measurement windows.
 //
 // There are broadly three ways to load server for the data collection using
 // perf_analyzer:

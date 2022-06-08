@@ -298,11 +298,11 @@ class InferenceProfiler {
       bool* meets_threshold);
 
   /// Similar to above function, but instead of setting the concurrency, it
-  /// sets the specified request rate for measurements. \param request_rate
-  /// The request rate for inferences. \param summary Appends the
-  /// measurements summary at the end of this list. \param meets_threshold
-  /// Returns whether the setting meets the threshold. \return cb::Error
-  /// object indicating success or failure.
+  /// sets the specified request rate for measurements.
+  /// \param request_rate The request rate for inferences.
+  /// \param summary Appends the measurements summary at the end of this list.
+  /// \param meets_threshold Returns whether the setting meets the threshold.
+  /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
       const double request_rate, std::vector<PerfStatus>& summary,
       bool* meets_threshold);
