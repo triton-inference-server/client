@@ -488,11 +488,9 @@ Usage(char** argv, const std::string& msg = std::string())
       << FormatMessage(
              " --stability-percentage (-s): Indicates the allowed variation in "
              "latency measurements when determining if a result is stable. The "
-             "measurement is considered as stable if the recent 3 measurements "
-             "are within +/- (stability percentage)% of their average in terms "
-             "of both infer per second and latency. When perf analyzer "
-             "determines that the measurements are stable, it returns average "
-             "of the measurements collected in the last 3 windows. Default is "
+             "measurement is considered as stable if the ratio of max / min "
+             "from the recent 3 measurements is within (stability percentage)% "
+             "in terms of both infer per second and latency. Default is "
              "10(%).",
              18)
       << std::endl;

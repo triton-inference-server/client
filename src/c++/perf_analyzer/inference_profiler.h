@@ -35,6 +35,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestInferenceProfiler;
+#endif
+
 /// Constant parameters that determine the whether stopping criteria has met
 /// for the current phase of testing
 struct LoadParams {
@@ -338,6 +342,45 @@ class InferenceProfiler {
   cb::Error ProfileHelper(
       const bool clean_starts, PerfStatus& status_summary, bool* is_stable);
 
+  /// A helper function to determine if profiling is stable
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \return Returns if the threshold and latencies are stable.
+  bool DetermineStability(LoadStatus& load_status);
+
+  /// Check if latency at index idx is within the latency threshold
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \return Returns whether the latencies are below the max threshold
+  bool CheckWithinThreshold(size_t idx, LoadStatus& load_status);
+
+  /// A helper function to determine if profiling is done
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \param is_stable Returns whether the measurement stabilized or not.
+  /// \return Returns if we should break out of the infinite stability check
+  /// loop.
+  bool IsDoneProfiling(LoadStatus& load_status, bool* is_stable);
+
+  /// Check if observed inferences and latencies are within threshold
+  /// for a single window starting at idx
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \return Returns whether inference and latency are stable
+  bool CheckWindowForStability(size_t idx, LoadStatus& load_status);
+
+  /// Check if observed inferences are within threshold
+  /// for a single window starting at idx
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \return Returns whether inference is stable
+  bool IsInferWindowStable(size_t idx, LoadStatus& load_status);
+
+  /// Check if observed latencies are within threshold
+  /// for a single window starting at idx
+  /// \param idx index in latency vector
+  /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \return Returns whether latency is stable
+  bool IsLatencyWindowStable(size_t idx, LoadStatus& load_status);
+
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
   /// \param measurement_window Indicating the number of requests or the
@@ -500,5 +543,4 @@ class InferenceProfiler {
   InferenceProfiler() = default;
 #endif
 };
-
 }}  // namespace triton::perfanalyzer
