@@ -722,13 +722,15 @@ InferenceProfiler::IsLatencyWindowStable(size_t idx, LoadStatus& load_status)
 bool
 InferenceProfiler::IsDoneProfiling(LoadStatus& load_status, bool* is_stable)
 {
-  size_t idx =
-      load_status.infer_per_sec.size() - load_parameters_.stability_window;
-  bool within_threshold = true;
   bool done = false;
+  bool within_threshold = true;
+  if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
+    size_t idx =
+        load_status.infer_per_sec.size() - load_parameters_.stability_window;
 
-  for (size_t i = idx; i < load_status.infer_per_sec.size(); i++) {
-    within_threshold &= CheckWithinThreshold(idx, load_status);
+    for (; idx < load_status.infer_per_sec.size(); idx++) {
+      within_threshold &= CheckWithinThreshold(idx, load_status);
+    }
   }
 
   if (mpi_driver_->IsMPIRun()) {
@@ -1593,20 +1595,6 @@ TEST_CASE("test_is_done_profiling")
             ls, lp, latency_threshold_ms) == false);
   }
 
-  SUBCASE("test latency_threshold is NO_LIMIT")
-  {
-    ls.infer_per_sec = {1.0, 1000.0, 500.0};
-    ls.latencies = {1, 1, 1};
-    lp.stability_window = 3;
-    lp.stability_threshold = 0.1;
-    uint64_t latency_threshold_ms = NO_LIMIT;
-
-    CHECK(
-        TestInferenceProfiler::TestIsDoneProfiling(
-            ls, lp, latency_threshold_ms) == false);
-  }
-
-
   SUBCASE("test not within threshold from done profiling")
   {
     ls.infer_per_sec = {1.0, 1000.0, 500.0};
@@ -1635,6 +1623,18 @@ TEST_CASE("test_is_done_profiling")
     CHECK(
         TestInferenceProfiler::TestIsDoneProfiling(
             ls, lp, latency_threshold_ms) == true);
+  }
+
+  SUBCASE("test underflow")
+  {
+    ls.infer_per_sec = {500.0, 510.0};
+    ls.latencies = {1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == false);
   }
 }
 
