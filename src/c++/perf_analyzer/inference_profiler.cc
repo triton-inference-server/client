@@ -638,57 +638,12 @@ InferenceProfiler::ProfileHelper(
       }
     }
 
-    if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
-      size_t idx =
-          load_status.infer_per_sec.size() - load_parameters_.stability_window;
-      if (load_status.infer_per_sec.size() >
-          load_parameters_.stability_window) {
-        load_status.avg_ips -= load_status.infer_per_sec[idx - 1] /
-                               load_parameters_.stability_window;
-        load_status.avg_latency -=
-            load_status.latencies[idx - 1] / load_parameters_.stability_window;
-      }
-      *is_stable = true;
-      bool within_threshold = false;
-      for (; idx < load_status.infer_per_sec.size(); idx++) {
-        if (load_status.infer_per_sec[idx] == 0) {
-          *is_stable = false;
-        }
-        if ((load_status.latencies[idx] <
-             (latency_threshold_ms_ * 1000 * 1000))) {
-          within_threshold = true;
-        }
+    *is_stable = DetermineStability(load_status);
 
-        // We call it complete only if stability_window measurements are within
-        // +/-(stability_threshold)% of the average infer per second and latency
-        if ((load_status.infer_per_sec[idx] <
-             load_status.avg_ips *
-                 (1 - load_parameters_.stability_threshold)) ||
-            (load_status.infer_per_sec[idx] >
-             load_status.avg_ips *
-                 (1 + load_parameters_.stability_threshold))) {
-          *is_stable = false;
-        }
-        if ((load_status.latencies[idx] <
-             load_status.avg_latency *
-                 (1 - load_parameters_.stability_threshold)) ||
-            (load_status.latencies[idx] >
-             load_status.avg_latency *
-                 (1 + load_parameters_.stability_threshold))) {
-          *is_stable = false;
-        }
-      }
-      if (mpi_driver_->IsMPIRun()) {
-        if (AllMPIRanksAreStable(*is_stable)) {
-          break;
-        }
-      } else if (*is_stable) {
-        break;
-      }
-      if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
-        break;
-      }
+    if (IsDoneProfiling(load_status, is_stable)) {
+      break;
     }
+
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
@@ -708,6 +663,93 @@ InferenceProfiler::ProfileHelper(
     return cb::Error("Received exit signal.");
   }
   return cb::Error::Success;
+}
+
+bool
+InferenceProfiler::DetermineStability(LoadStatus& load_status)
+{
+  bool stable = false;
+  if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
+    stable = true;
+    size_t idx =
+        load_status.infer_per_sec.size() - load_parameters_.stability_window;
+
+    for (size_t i = idx; i < load_status.infer_per_sec.size(); i++) {
+      if (load_status.infer_per_sec[i] == 0) {
+        stable = false;
+      }
+    }
+
+    stable = stable && CheckWindowForStability(idx, load_status);
+  }
+  return stable;
+}
+
+bool
+InferenceProfiler::CheckWindowForStability(size_t idx, LoadStatus& load_status)
+{
+  return IsInferWindowStable(idx, load_status) &&
+         IsLatencyWindowStable(idx, load_status);
+}
+
+bool
+InferenceProfiler::IsInferWindowStable(size_t idx, LoadStatus& load_status)
+{
+  auto infer_start = std::begin(load_status.infer_per_sec) + idx;
+  auto infer_per_sec_measurements = std::minmax_element(
+      infer_start, infer_start + load_parameters_.stability_window);
+
+  auto max_infer_per_sec = *infer_per_sec_measurements.second;
+  auto min_infer_per_sec = *infer_per_sec_measurements.first;
+
+  return max_infer_per_sec / min_infer_per_sec <=
+         1 + load_parameters_.stability_threshold;
+}
+
+bool
+InferenceProfiler::IsLatencyWindowStable(size_t idx, LoadStatus& load_status)
+{
+  auto latency_start = std::begin(load_status.latencies) + idx;
+  auto latencies_per_sec_measurements = std::minmax_element(
+      latency_start, latency_start + load_parameters_.stability_window);
+
+  auto max_latency = *latencies_per_sec_measurements.second;
+  auto min_latency = *latencies_per_sec_measurements.first;
+
+  return max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
+}
+
+bool
+InferenceProfiler::IsDoneProfiling(LoadStatus& load_status, bool* is_stable)
+{
+  bool done = false;
+  bool within_threshold = true;
+  if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
+    size_t idx =
+        load_status.infer_per_sec.size() - load_parameters_.stability_window;
+
+    for (; idx < load_status.infer_per_sec.size(); idx++) {
+      within_threshold &= CheckWithinThreshold(idx, load_status);
+    }
+  }
+
+  if (mpi_driver_->IsMPIRun()) {
+    if (AllMPIRanksAreStable(*is_stable)) {
+      done = true;
+    }
+  } else if (*is_stable) {
+    done = true;
+  }
+  if ((!within_threshold) && (latency_threshold_ms_ != NO_LIMIT)) {
+    done = true;
+  }
+  return done;
+}
+
+bool
+InferenceProfiler::CheckWithinThreshold(size_t idx, LoadStatus& load_status)
+{
+  return load_status.latencies[idx] < (latency_threshold_ms_ * 1000 * 1000);
 }
 
 cb::Error
@@ -1172,8 +1214,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     ServerSideStats* server_stats)
 {
-  // If model_version is an empty string then look in the end status to find the
-  // latest (highest valued version) and use that as the version.
+  // If model_version is an empty string then look in the end status to find
+  // the latest (highest valued version) and use that as the version.
   int64_t status_model_version = -1;
   if (model_identifier.second.empty()) {
     for (const auto& id : end_status) {
@@ -1346,6 +1388,50 @@ class TestInferenceProfiler {
     inference_profiler.ValidLatencyMeasurement(
         valid_range, valid_sequence_count, delayed_request_count, latencies);
   }
+
+
+  static bool TestCheckWithinThreshold(
+      LoadStatus& ls, LoadParams& lp, uint64_t latency_threshold_ms)
+  {
+    InferenceProfiler ip;
+    size_t idx = ls.infer_per_sec.size() - lp.stability_window;
+    ip.latency_threshold_ms_ = latency_threshold_ms;
+
+    return ip.CheckWithinThreshold(idx, ls);
+  }
+
+  static bool TestCheckWindowForStability(LoadStatus& ls, LoadParams& lp)
+  {
+    size_t idx = ls.infer_per_sec.size() - lp.stability_window;
+
+    InferenceProfiler ip;
+    ip.load_parameters_.stability_threshold = lp.stability_threshold;
+    ip.load_parameters_.stability_window = lp.stability_window;
+
+    return ip.CheckWindowForStability(idx, ls);
+  };
+
+  static bool TestDetermineStability(LoadStatus& ls, LoadParams& lp)
+  {
+    InferenceProfiler ip;
+    ip.load_parameters_.stability_threshold = lp.stability_threshold;
+    ip.load_parameters_.stability_window = lp.stability_window;
+
+    return ip.DetermineStability(ls);
+  }
+
+  static bool TestIsDoneProfiling(
+      LoadStatus& ls, LoadParams& lp, uint64_t latency_threshold_ms)
+  {
+    InferenceProfiler ip;
+    ip.load_parameters_.stability_threshold = lp.stability_threshold;
+    ip.load_parameters_.stability_window = lp.stability_window;
+    ip.latency_threshold_ms_ = latency_threshold_ms;
+    ip.mpi_driver_ = std::make_shared<triton::perfanalyzer::MPIDriver>(false);
+
+    bool is_stable = ip.DetermineStability(ls);
+    return ip.IsDoneProfiling(ls, &is_stable);
+  };
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -1395,6 +1481,161 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
   CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
   CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+}
+
+TEST_CASE("test_check_window_for_stability")
+{
+  LoadStatus ls;
+  LoadParams lp;
+
+  SUBCASE("test throughput not stable")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == false);
+  }
+  SUBCASE("test throughput stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
+  }
+  SUBCASE("test latency not stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {1, 100, 50};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == false);
+  }
+  SUBCASE("test latency stable")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {45, 50, 45};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
+  }
+  SUBCASE("test throughput stable after many measurements")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0, 1500.0, 500.0, 520.0, 510.0};
+    ls.latencies = {1, 1, 1, 1, 1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
+  }
+}
+
+TEST_CASE("test check within threshold")
+{
+  LoadStatus ls;
+  LoadParams lp;
+
+  ls.infer_per_sec = {500.0, 520.0, 510.0};
+  lp.stability_window = 3;
+  lp.stability_threshold = 0.1;
+  uint64_t latency_threshold_ms = 1;
+
+  SUBCASE("test not within threshold")
+  {
+    ls.latencies = {2000000, 2000000, 2000000};
+    CHECK(
+        TestInferenceProfiler::TestCheckWithinThreshold(
+            ls, lp, latency_threshold_ms) == false);
+  }
+
+  SUBCASE("test within threshold")
+  {
+    ls.latencies = {100000, 100000, 100000};
+    CHECK(
+        TestInferenceProfiler::TestCheckWithinThreshold(
+            ls, lp, latency_threshold_ms) == true);
+  }
+}
+
+TEST_CASE("test_determine_stability")
+{
+  LoadStatus ls;
+  LoadParams lp;
+
+  SUBCASE("test inference equals zero")
+  {
+    ls.infer_per_sec = {500.0, 0.0, 510.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp) == false);
+
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp) == true);
+  }
+}
+
+TEST_CASE("test_is_done_profiling")
+{
+  LoadStatus ls;
+  LoadParams lp;
+
+
+  SUBCASE("test latency_threshold is NO_LIMIT")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = NO_LIMIT;
+
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == false);
+  }
+
+  SUBCASE("test not within threshold from done profiling")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0};
+    ls.latencies = {2000000, 2000000, 2000000};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == true);
+  }
+
+  SUBCASE("test stability from is done profiling")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 500.0};
+    ls.latencies = {1, 1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == false);
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == true);
+  }
+
+  SUBCASE("test underflow")
+  {
+    ls.infer_per_sec = {500.0, 510.0};
+    ls.latencies = {1, 1};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(
+        TestInferenceProfiler::TestIsDoneProfiling(
+            ls, lp, latency_threshold_ms) == false);
+  }
 }
 
 #endif
