@@ -702,7 +702,11 @@ InferenceProfiler::ProfileHelper(
       error.pop();
     }
   }
-  RETURN_IF_ERROR(MergePerfStatusReports(perf_status, status_summary));
+
+  // Only merge the results if the results have stabilized.
+  if (*is_stable) {
+    RETURN_IF_ERROR(MergePerfStatusReports(perf_status, status_summary));
+  }
 
   if (early_exit) {
     return cb::Error("Received exit signal.");
@@ -793,11 +797,6 @@ cb::Error
 InferenceProfiler::MergePerfStatusReports(
     std::deque<PerfStatus>& perf_status_reports, PerfStatus& summary_status)
 {
-  if (perf_status_reports.size() != load_parameters_.stability_window) {
-    return cb::Error(
-        "Perf Status reports size must match the stability window.");
-  }
-
   auto& perf_status = perf_status_reports[0];
 
   // Make sure that the perf status reports profiling settings match with each
