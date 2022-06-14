@@ -300,6 +300,8 @@ DataLoader::GetInputData(
     const ModelTensor& input, const int stream_id, const int step_id,
     const uint8_t** data_ptr, size_t* batch1_size)
 {
+  bool data_found = false;
+
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {
     // validate if the indices conform to the vector sizes
@@ -329,23 +331,27 @@ DataLoader::GetInputData(
         *batch1_size = string_data->size();
       }
       *data_ptr = (const uint8_t*)&((it->second)[0]);
-    } else {
-      return cb::Error(
-          "unable to find data for input '" + input.name_ +
-          "' in provided data.");
+      data_found = true;
     }
-  } else if (
-      (input.datatype_.compare("BYTES") != 0) && (input_buf_.size() != 0)) {
-    int64_t byte_size = ByteSize(input.shape_, input.datatype_);
-    if (byte_size < 0) {
-      return cb::Error(
-          "failed to get correct byte size for '" + input.name_ + "'.");
+  }
+
+  if (!data_found) {
+    if ((input.datatype_.compare("BYTES") != 0) && (input_buf_.size() != 0)) {
+      int64_t byte_size = ByteSize(input.shape_, input.datatype_);
+      if (byte_size < 0) {
+        return cb::Error(
+            "failed to get correct byte size for '" + input.name_ + "'.");
+      }
+      *batch1_size = (size_t)byte_size;
+      *data_ptr = &input_buf_[0];
+      data_found = true;
     }
-    *batch1_size = (size_t)byte_size;
-    *data_ptr = &input_buf_[0];
-  } else {
+  }
+
+  if (!data_found) {
     return cb::Error("unable to find data for input '" + input.name_ + "'.");
   }
+
   return cb::Error::Success;
 }
 
