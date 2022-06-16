@@ -125,6 +125,7 @@ class InferenceServerException(Exception):
 
 
 def np_to_triton_dtype(np_dtype):
+    from bfloat16 import bfloat16
     if np_dtype == bool:
         return "BOOL"
     elif np_dtype == np.int8:
@@ -149,12 +150,15 @@ def np_to_triton_dtype(np_dtype):
         return "FP32"
     elif np_dtype == np.float64:
         return "FP64"
+    elif np_dtype == bfloat16:
+        return "BF16"
     elif np_dtype == np.object_ or np_dtype.type == np.bytes_:
         return "BYTES"
     return None
 
 
 def triton_to_np_dtype(dtype):
+    from bfloat16 import bfloat16
     if dtype == "BOOL":
         return bool
     elif dtype == "INT8":
@@ -175,6 +179,8 @@ def triton_to_np_dtype(dtype):
         return np.uint64
     elif dtype == "FP16":
         return np.float16
+    elif dtype == "BF16":
+        return bfloat16
     elif dtype == "FP32":
         return np.float32
     elif dtype == "FP64":
