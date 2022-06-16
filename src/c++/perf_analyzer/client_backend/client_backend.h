@@ -258,6 +258,7 @@ class ClientBackendFactory {
   static Error Create(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -272,12 +273,14 @@ class ClientBackendFactory {
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
       const bool verbose)
       : kind_(kind), url_(url), protocol_(protocol), ssl_options_(ssl_options),
+        trace_options_(trace_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path),
@@ -289,6 +292,7 @@ class ClientBackendFactory {
   const std::string url_;
   const ProtocolType protocol_;
   const SslOptionsBase& ssl_options_;
+  const std::map<std::string, std::vector<std::string>> trace_options_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
   std::string triton_server_path;
@@ -305,6 +309,7 @@ class ClientBackend {
   static Error Create(
       const BackendKind kind, const std::string& url,
       const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,
