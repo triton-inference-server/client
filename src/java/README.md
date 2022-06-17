@@ -90,10 +90,12 @@ public class MinExample {
 HTTP client is supported with limited capabilty. Currently supported:
 - Synchronous inference requests
 
+GRPC has very limited support. Please see [grpc generated Java client](https://github.com/triton-inference-server/client/tree/main/src/grpc_generated/java) for details 
+
 ### *Unsupported* Java client features:
-- GRPC has very limited support. Please see [grpc generated Java client](https://github.com/triton-inference-server/client/tree/main/src/grpc_generated/java) for details 
 GRPC client:
 - Full feature Java GRPC client and corresponding tests
+
 HTTP client:
 1. Asynchronous inference requests
 2. Streaming inference requests
@@ -103,9 +105,7 @@ HTTP client:
 6. Requesting/Recieving Model Inference Statistics
 7. Sending inference requests using Shared Memory (System, GPU)
 8. Sending multiple synchronous inferences on server
-9. Health, metadata, statistics, model-management
-10. [Extensions](https://github.com/triton-inference-server/server/tree/main/docs/protocol)
-  are not supported
+9. [Extensions](https://github.com/triton-inference-server/server/tree/main/docs/protocol) are not supported
 
 ## Building Java Examples
 
