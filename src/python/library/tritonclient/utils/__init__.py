@@ -152,6 +152,13 @@ def np_to_triton_dtype(np_dtype):
     elif np_dtype == np.object_ or np_dtype.type == np.bytes_:
         return "BYTES"
     elif (str(np_dtype) == "<class 'bfloat16'>"):
+    # Assumed bfloat16 package in use: https://pypi.org/project/bfloat16/
+    # Code is avoiding import requirement due known incompatability issue
+    # between this package and tensorflow: 
+    # https://github.com/GreenWaves-Technologies/bfloat16/issues/2
+    # 
+    # Can clean up code when numpy officially supports bfloat16
+    # https://github.com/numpy/numpy/issues/19808
         if np_dtype == bfloat16:
             return "BF16"
     return None
