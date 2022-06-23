@@ -123,6 +123,13 @@ class InferenceServerException(Exception):
         """
         return self._debug_details
 
+def import_bfloat16():
+    try:
+        from bfloat16 import bfloat16
+    except:
+        print("ERROR: bfloat16 package is required, please install it: <pip install bfloat16>")
+        return False
+    return True
 
 def np_to_triton_dtype(np_dtype):
     if np_dtype == bool:
@@ -152,7 +159,6 @@ def np_to_triton_dtype(np_dtype):
     elif np_dtype == np.object_ or np_dtype.type == np.bytes_:
         return "BYTES"
     elif (str(np_dtype) == "<class 'bfloat16'>"):
-        from bfloat16 import bfloat16
         # Assumed bfloat16 package in use: https://pypi.org/project/bfloat16/
         # Code is avoiding import requirement due known incompatability issue
         # between this package and tensorflow: 
@@ -160,7 +166,7 @@ def np_to_triton_dtype(np_dtype):
         # 
         # Can clean up code when numpy officially supports bfloat16
         # https://github.com/numpy/numpy/issues/19808
-        if np_dtype == bfloat16:
+        if import_bfloat16() and np_dtype == bfloat16:
             return "BF16"
     return None
 
@@ -187,8 +193,10 @@ def triton_to_np_dtype(dtype):
     elif dtype == "FP16":
         return np.float16
     elif dtype == "BF16":
-        from bfloat16 import bfloat16
-        return bfloat16
+        if import_bfloat16():
+            return bfloat16
+        else:
+            return None
     elif dtype == "FP32":
         return np.float32
     elif dtype == "FP64":
