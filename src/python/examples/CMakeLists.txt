@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -56,6 +56,15 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
       grpc_explicit_int_content_client.py
       grpc_explicit_int8_content_client.py
       grpc_image_client.py
+      simple_grpc_aio_health_metadata.py
+      simple_grpc_aio_infer_client.py
+      simple_grpc_aio_sequence_sync_infer_client.py
+      simple_grpc_aio_string_infer_client.py
+      simple_grpc_aio_shm_client.py
+      simple_grpc_aio_shm_string_client.py
+      simple_grpc_aio_model_control.py
+      simple_grpc_aio_keepalive_client.py
+      simple_grpc_aio_custom_args_client.py
       simple_grpc_custom_repeat.py
       simple_grpc_health_metadata.py
       simple_grpc_async_infer_client.py
@@ -73,6 +82,7 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
   if(${TRITON_ENABLE_GPU})
     install(
       PROGRAMS
+        simple_grpc_aio_cudashm_client.py
         simple_grpc_cudashm_client.py
       DESTINATION python
     )
