@@ -427,6 +427,12 @@ a GRPC client.
 You can find a comprehensive list of possible GRPC Channel Arguments
 [here](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html).
 
+#### Python AsyncIO Support
+
+Advanced users may call the Python client via `async` and `await` syntax.
+This [Python](src/python/examples/simple_grpc_aio_infer_client.py) example 
+demonstrates how to infer with AsyncIO.
+
 ## Simple Example Applications
 
 This section describes several of the simple example applications and
