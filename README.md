@@ -366,6 +366,13 @@ Similarly, for Python client, see `request_compression_algorithm` and `response_
 
 The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples demonstrates how to use compression options.
 
+#### Python AsyncIO Support
+
+Advanced users may call the Python client via `async` and `await` syntax.
+This [Python](src/python/examples/simple_http_aio_infer_client.py) example demonstrates how to infer with AsyncIO.
+
+If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in [http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
+
 ### GRPC Options
 
 #### SSL/TLS
