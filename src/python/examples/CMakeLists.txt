@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,6 +29,13 @@ cmake_minimum_required (VERSION 3.18)
 if(${TRITON_ENABLE_PYTHON_HTTP})
   install(
     PROGRAMS
+      simple_http_aio_health_metadata.py
+      simple_http_aio_infer_client.py
+      simple_http_aio_string_infer_client.py
+      simple_http_aio_sequence_sync_infer_client.py
+      simple_http_aio_shm_client.py
+      simple_http_aio_shm_string_client.py
+      simple_http_aio_model_control.py
       simple_http_health_metadata.py
       simple_http_infer_client.py
       simple_http_string_infer_client.py
@@ -42,6 +49,7 @@ if(${TRITON_ENABLE_PYTHON_HTTP})
   if(${TRITON_ENABLE_GPU})
     install(
       PROGRAMS
+        simple_http_aio_cudashm_client.py
         simple_http_cudashm_client.py
       DESTINATION python
     )
