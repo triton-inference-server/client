@@ -24,85 +24,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-try:
-    from google.protobuf.json_format import MessageToJson
-    import grpc
-    import base64
-    import rapidjson as json
-except ModuleNotFoundError as error:
-    raise RuntimeError(
-        'The installation does not include grpc support. Specify \'grpc\' or \'all\' while installing the tritonclient package to include the support'
-    ) from error
+from tritonclient.grpc import *
+from tritonclient.grpc import _get_inference_request, _grpc_compression_type
 
-from tritonclient.grpc import model_config_pb2
-from tritonclient.grpc import service_pb2
-from tritonclient.grpc import service_pb2_grpc
-
-from tritonclient.utils import *
-
-from tritonclient.grpc import INT32_MAX, MAX_GRPC_MESSAGE_SIZE
-from tritonclient.grpc import get_error_grpc, raise_error_grpc, \
-    _get_inference_request, _grpc_compression_type
-from tritonclient.grpc import KeepAliveOptions, InferInput, \
-    InferRequestedOutput, InferResult
+# In case user try to import dependency from here
+from tritonclient.grpc import InferInput, InferRequestedOutput
 
 
 class InferenceServerClient():
-    """An InferenceServerClient object is used to perform any kind of
-    communication with the InferenceServer using gRPC protocol. Most
-    of the methods are thread-safe except start_stream, stop_stream
-    and async_stream_infer. Accessing a client stream with different
-    threads will cause undefined behavior.
-
-    Parameters
-    ----------
-    url : str
-        The inference server URL, e.g. 'localhost:8001'.
-
-    verbose : bool
-        If True generate verbose output. Default value is False.
-
-    ssl : bool
-        If True use SSL encrypted secure channel. Default is False.
-
-    root_certificates : str
-        File holding the PEM-encoded root certificates as a byte
-        string, or None to retrieve them from a default location
-        chosen by gRPC runtime. The option is ignored if `ssl`
-        is False. Default is None.
-
-    private_key : str
-        File holding the PEM-encoded private key as a byte string,
-        or None if no private key should be used. The option is
-        ignored if `ssl` is False. Default is None.
-
-    certificate_chain : str
-        File holding PEM-encoded certificate chain as a byte string
-        to use or None if no certificate chain should be used. The
-        option is ignored if `ssl` is False. Default is None.
-
-    creds: grpc.ChannelCredentials
-        A grpc.ChannelCredentials object to use for the connection.
-        The ssl, root_certificates, private_key and certificate_chain
-        options will be ignored when using this option. Default is None.
-
-    keepalive_options: KeepAliveOptions
-        Object encapsulating various GRPC KeepAlive options. See
-        the class definition for more information. Default is None.
-
-    channel_args: List[Tuple]
-        List of Tuple pairs ("key", value) to be passed directly to the GRPC
-        channel as the channel_arguments. If this argument is provided, it is
-        expected the channel arguments are correct and complete, and the
-        keepalive_options parameter will be ignored since the corresponding
-        keepalive channel arguments can be set directly in this parameter. See
-        https://grpc.github.io/grpc/python/glossary.html#term-channel_arguments
-        for more details. Default is None.
-
-    Raises
-    ------
-    Exception
-        If unable to create a client.
+    """An analogy of the tritonclient.grpc.InferenceServerClient to enable 
+    calling via asyncio syntax.
 
     """
 
@@ -140,8 +71,9 @@ class InferenceServerClient():
             ]
 
         if creds:
-            self._channel = grpc.aio.secure_channel(
-                url, creds, options=channel_opt)
+            self._channel = grpc.aio.secure_channel(url,
+                                                    creds,
+                                                    options=channel_opt)
         elif ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
@@ -156,15 +88,15 @@ class InferenceServerClient():
             creds = grpc.ssl_channel_credentials(root_certificates=rc_bytes,
                                                  private_key=pk_bytes,
                                                  certificate_chain=cc_bytes)
-            self._channel = grpc.aio.secure_channel(
-                url, creds, options=channel_opt)
+            self._channel = grpc.aio.secure_channel(url,
+                                                    creds,
+                                                    options=channel_opt)
         else:
             self._channel = grpc.aio.insecure_channel(url, options=channel_opt)
         self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
             self._channel)
         self._verbose = verbose
-        self._stream = None
-    
+
     async def __aenter__(self):
         return self
 
@@ -176,27 +108,10 @@ class InferenceServerClient():
         will result in an Error.
 
         """
-        self.stop_stream()
         await self._channel.close()
 
     async def is_server_live(self, headers=None):
-        """Contact the inference server and get liveness.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Returns
-        -------
-        bool
-            True if server is live, False if server is not live.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get liveness.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -208,8 +123,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("is_server_live, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ServerLive(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ServerLive(request=request,
+                                                          metadata=metadata)
             if self._verbose:
                 print(response)
             return response.live
@@ -217,23 +132,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def is_server_ready(self, headers=None):
-        """Contact the inference server and get readiness.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Returns
-        -------
-        bool
-            True if server is ready, False if server is not ready.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get readiness.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -245,8 +144,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("is_server_ready, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ServerReady(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ServerReady(request=request,
+                                                           metadata=metadata)
             if self._verbose:
                 print(response)
             return response.ready
@@ -254,29 +153,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def is_model_ready(self, model_name, model_version="", headers=None):
-        """Contact the inference server and get the readiness of specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model to check for readiness.
-        model_version: str
-            The version of the model to check for readiness. The default value
-            is an empty string which means then the server will choose a version
-            based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Returns
-        -------
-        bool
-            True if the model is ready, False if not ready.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get model readiness.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -291,8 +168,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("is_model_ready, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ModelReady(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ModelReady(request=request,
+                                                          metadata=metadata)
             if self._verbose:
                 print(response)
             return response.ready
@@ -300,32 +177,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def get_server_metadata(self, headers=None, as_json=False):
-        """Contact the inference server and get its metadata.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns server metadata as a json dict,
-            otherwise as a protobuf message. Default value is
-            False. The returned json is generated from the protobuf
-            message using MessageToJson and as a result int64 values
-            are represented as string. It is the caller's
-            responsibility to convert these strings back to int64
-            values as necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or ServerMetadataResponse message
-            holding the metadata.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get server metadata.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -337,8 +189,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("get_server_metadata, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ServerMetadata(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ServerMetadata(request=request,
+                                                              metadata=metadata)
             if self._verbose:
                 print(response)
             if as_json:
@@ -349,43 +201,12 @@ class InferenceServerClient():
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_model_metadata(self, 
-                                 model_name, 
-                                 model_version="", 
-                                 headers=None, 
+    async def get_model_metadata(self,
+                                 model_name,
+                                 model_version="",
+                                 headers=None,
                                  as_json=False):
-        """Contact the inference server and get the metadata for specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model
-        model_version: str
-            The version of the model to get metadata. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns model metadata as a json dict,
-            otherwise as a protobuf message. Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or ModelMetadataResponse message holding
-            the metadata.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get model metadata.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -400,8 +221,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("get_model_metadata, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ModelMetadata(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ModelMetadata(request=request,
+                                                             metadata=metadata)
             if self._verbose:
                 print(response)
             if as_json:
@@ -417,38 +238,7 @@ class InferenceServerClient():
                                model_version="",
                                headers=None,
                                as_json=False):
-        """Contact the inference server and get the configuration for specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model
-        model_version: str
-            The version of the model to get configuration. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns configuration as a json dict, otherwise
-            as a protobuf message. Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or ModelConfigResponse message holding
-            the metadata.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get model configuration.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -463,8 +253,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("get_model_config, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.ModelConfig(
-                request=request, metadata=metadata)
+            response = await self._client_stub.ModelConfig(request=request,
+                                                           metadata=metadata)
             if self._verbose:
                 print(response)
             if as_json:
@@ -476,28 +266,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def get_model_repository_index(self, headers=None, as_json=False):
-        """Get the index of model repository contents
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns model repository index
-            as a json dict, otherwise as a protobuf message.
-            Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or RepositoryIndexResponse message holding
-            the model repository index.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -521,31 +290,12 @@ class InferenceServerClient():
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def load_model(self, model_name, headers=None, config=None, files=None):
-        """Request the inference server to load or reload specified model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to be loaded.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        config: str
-            Optional JSON representation of a model config provided for
-            the load request, if provided, this config will be used for
-            loading the model.
-        files: dict
-            Optional dictionary specifying file path (with "file:" prefix) in
-            the override model directory to the file content as bytes.
-            The files will form the model directory that the model will be
-            loaded from. If specified, 'config' must be provided to be
-            the model configuration of the override model directory.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to load the model.
+    async def load_model(self,
+                         model_name,
+                         headers=None,
+                         config=None,
+                         files=None):
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -564,30 +314,18 @@ class InferenceServerClient():
             if files is not None:
                 for path, content in files.items():
                     request.parameters[path].bytes_param = content
-            await self._client_stub.RepositoryModelLoad(
-                request=request, metadata=metadata)
+            await self._client_stub.RepositoryModelLoad(request=request,
+                                                        metadata=metadata)
             if self._verbose:
                 print("Loaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def unload_model(self, model_name, headers=None, unload_dependents=False):
-        """Request the inference server to unload specified model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to be unloaded.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        unload_dependents : bool
-            Whether the dependents of the model should also be unloaded.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unload the model.
+    async def unload_model(self,
+                           model_name,
+                           headers=None,
+                           unload_dependents=False):
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -601,8 +339,8 @@ class InferenceServerClient():
                 'unload_dependents'].bool_param = unload_dependents
             if self._verbose:
                 print("unload_model, metadata {}\n{}".format(metadata, request))
-            await self._client_stub.RepositoryModelUnload(
-                request=request, metadata=metadata)
+            await self._client_stub.RepositoryModelUnload(request=request,
+                                                          metadata=metadata)
             if self._verbose:
                 print("Unloaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
@@ -613,36 +351,7 @@ class InferenceServerClient():
                                        model_version="",
                                        headers=None,
                                        as_json=False):
-        """Get the inference statistics for the specified model name and
-        version.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to get statistics. The default value is
-            an empty string, which means statistics of all models will
-            be returned.
-        model_version: str
-            The version of the model to get inference statistics. The
-            default value is an empty string which means then the server
-            will return the statistics of all available model versions.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns inference statistics
-            as a json dict, otherwise as a protobuf message.
-            Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the model inference statistics.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -674,43 +383,7 @@ class InferenceServerClient():
                                     settings={},
                                     headers=None,
                                     as_json=False):
-        """Update the trace settings for the specified model name, or
-        global trace settings if model name is not given.
-        Returns the trace settings after the update.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to update trace settings. Specifying None or
-            empty string will update the global trace settings.
-            The default value is None.
-        settings: dict
-            The new trace setting values. Only the settings listed will be
-            updated. If a trace setting is listed in the dictionary with
-            a value of 'None', that setting will be cleared.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns trace settings
-            as a json dict, otherwise as a protobuf message.
-            Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or TraceSettingResponse message holding
-            the updated trace settings.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to update the trace settings.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -731,8 +404,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("update_trace_settings, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.TraceSetting(
-                request=request, metadata=metadata)
+            response = await self._client_stub.TraceSetting(request=request,
+                                                            metadata=metadata)
             if self._verbose:
                 print(response)
             if as_json:
@@ -743,39 +416,11 @@ class InferenceServerClient():
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_trace_settings(self, model_name=None, headers=None, as_json=False):
-        """Get the trace settings for the specified model name, or global trace
-        settings if model name is not given
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to get trace settings. Specifying None or
-            empty string will return the global trace settings.
-            The default value is None.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns trace settings
-            as a json dict, otherwise as a protobuf message.
-            Default value is False.
-            The returned json is generated from the protobuf message
-            using MessageToJson and as a result int64 values are
-            represented as string. It is the caller's responsibility
-            to convert these strings back to int64 values as
-            necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or TraceSettingResponse message holding
-            the trace settings.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the trace settings.
+    async def get_trace_settings(self,
+                                 model_name=None,
+                                 headers=None,
+                                 as_json=False):
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -789,8 +434,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("get_trace_settings, metadata {}\n{}".format(
                     metadata, request))
-            response = await self._client_stub.TraceSetting(
-                request=request, metadata=metadata)
+            response = await self._client_stub.TraceSetting(request=request,
+                                                            metadata=metadata)
             if self._verbose:
                 print(response)
             if as_json:
@@ -805,36 +450,7 @@ class InferenceServerClient():
                                               region_name="",
                                               headers=None,
                                               as_json=False):
-        """Request system shared memory status from the server.
-
-        Parameters
-        ----------
-        region_name : str
-            The name of the region to query status. The default
-            value is an empty string, which means that the status
-            of all active system shared memory will be returned.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns system shared memory status as a json
-            dict, otherwise as a protobuf message. Default value is
-            False.  The returned json is generated from the protobuf
-            message using MessageToJson and as a result int64 values
-            are represented as string. It is the caller's
-            responsibility to convert these strings back to int64
-            values as necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or SystemSharedMemoryStatusResponse message holding
-            the system shared memory status.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the status of specified shared memory.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -865,30 +481,7 @@ class InferenceServerClient():
                                             byte_size,
                                             offset=0,
                                             headers=None):
-        """Request the server to register a system shared memory with the
-        following specification.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to register.
-        key : str
-            The key of the underlying memory object that contains the
-            system shared memory region.
-        byte_size : int
-            The size of the system shared memory region, in bytes.
-        offset : int
-            Offset, in bytes, within the underlying memory object to
-            the start of the system shared memory region. The default
-            value is zero.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to register the specified system shared memory.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -910,23 +503,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def unregister_system_shared_memory(self, name="", headers=None):
-        """Request the server to unregister a system shared memory with the
-        specified name.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to unregister. The default value is empty
-            string which means all the system shared memory regions will be
-            unregistered.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unregister the specified system shared memory region.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -953,36 +530,7 @@ class InferenceServerClient():
                                             region_name="",
                                             headers=None,
                                             as_json=False):
-        """Request cuda shared memory status from the server.
-
-        Parameters
-        ----------
-        region_name : str
-            The name of the region to query status. The default
-            value is an empty string, which means that the status
-            of all active cuda shared memory will be returned.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        as_json : bool
-            If True then returns cuda shared memory status as a json
-            dict, otherwise as a protobuf message. Default value is
-            False.  The returned json is generated from the protobuf
-            message using MessageToJson and as a result int64 values
-            are represented as string. It is the caller's
-            responsibility to convert these strings back to int64
-            values as necessary.
-
-        Returns
-        -------
-        dict or protobuf message
-            The JSON dict or CudaSharedMemoryStatusResponse message holding
-            the cuda shared memory status.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the status of specified shared memory.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
 
@@ -1014,27 +562,7 @@ class InferenceServerClient():
                                           device_id,
                                           byte_size,
                                           headers=None):
-        """Request the server to register a system shared memory with the
-        following specification.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to register.
-        raw_handle : bytes
-            The raw serialized cudaIPC handle in base64 encoding.
-        device_id : int
-            The GPU device ID on which the cudaIPC handle was created.
-        byte_size : int
-            The size of the cuda shared memory region, in bytes.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to register the specified cuda shared memory.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -1050,8 +578,8 @@ class InferenceServerClient():
             if self._verbose:
                 print("register_cuda_shared_memory, metadata {}\n{}".format(
                     metadata, request))
-            await self._client_stub.CudaSharedMemoryRegister(
-                request=request, metadata=metadata)
+            await self._client_stub.CudaSharedMemoryRegister(request=request,
+                                                             metadata=metadata)
             if self._verbose:
                 print(
                     "Registered cuda shared memory with name '{}'".format(name))
@@ -1059,23 +587,7 @@ class InferenceServerClient():
             raise_error_grpc(rpc_error)
 
     async def unregister_cuda_shared_memory(self, name="", headers=None):
-        """Request the server to unregister a cuda shared memory with the
-        specified name.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to unregister. The default value is empty
-            string which means all the cuda shared memory regions will be
-            unregistered.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unregister the specified cuda shared memory region.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
         """
         if headers is not None:
@@ -1113,77 +625,8 @@ class InferenceServerClient():
                     client_timeout=None,
                     headers=None,
                     compression_algorithm=None):
-        """Run inference using the supplied 'inputs' requesting the outputs 
-        specified by 'outputs'.
+        """Refer to tritonclient.grpc.InferenceServerClient
 
-        Parameters
-        ----------
-        model_name: str
-            The name of the model to run inference.
-        inputs : list
-            A list of InferInput objects, each describing data for a input
-            tensor required by the model.
-        model_version : str
-            The version of the model to run inference. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
-            data must be returned. If not specified all outputs produced
-            by the model will be returned using default settings.
-        request_id : str
-            Optional identifier for the request. If specified will be returned
-            in the response. Default value is an empty string which means no
-            request_id will be used.
-        sequence_id : int
-            The unique identifier for the sequence being represented by the
-            object. Default value is 0 which means that the request does not
-            belong to a sequence.
-        sequence_start : bool
-            Indicates whether the request being added marks the start of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        sequence_end : bool
-            Indicates whether the request being added marks the end of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        priority : int
-            Indicates the priority of the request. Priority value zero
-            indicates that the default priority level should be used
-            (i.e. same behavior as not specifying the priority parameter).
-            Lower value priorities indicate higher priority levels. Thus
-            the highest priority level is indicated by setting the parameter
-            to 1, the next highest is 2, etc. If not provided, the server
-            will handle the request using default setting for the model.
-        timeout : int
-            The timeout value for the request, in microseconds. If the request
-            cannot be completed within the time the server can take a
-            model-specific action such as terminating the request. If not
-            provided, the server will handle the request using default setting
-            for the model.
-        client_timeout : float
-            The maximum end-to-end time, in seconds, the request is allowed
-            to take. The client will abort request and raise
-            InferenceServerExeption with message "Deadline Exceeded" when the
-            specified time elapses. The default value is None which means
-            client will wait for the response from the server.
-        headers : dict
-            Optional dictionary specifying additional HTTP headers to include
-            in the request.
-        compression_algorithm : str
-            Optional grpc compression algorithm to be used on client side.
-            Currently supports "deflate", "gzip" and None. By default, no
-            compression is used.
-
-        Returns
-        -------
-        InferResult
-            The object holding the result of the inference.
-
-        Raises
-        ------
-        InferenceServerException
-            If server fails to perform inference.
         """
 
         if headers is not None:
@@ -1217,5 +660,103 @@ class InferenceServerClient():
                 print(response)
             result = InferResult(response)
             return result
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
+    async def stream_infer(self,
+                           inputs_iterator,
+                           stream_timeout=None,
+                           headers=None,
+                           compression_algorithm=None):
+        """Runs an asynchronous inference over gRPC bi-directional streaming
+        API.
+
+        Parameters
+        ----------
+        inputs_iterator : async_generator
+            Async iterator that yields a dict(s) consists of the input 
+            parameters to the async_stream_infer function defined in 
+            tritonclient.grpc.InferenceServerClient.
+        stream_timeout : float
+            Optional stream timeout. The stream will be closed once the
+            specified timeout expires.
+        headers: dict
+            Optional dictionary specifying additional HTTP headers to include 
+            in the request.
+        compression_algorithm : str
+            Optional grpc compression algorithm to be used on client side.
+            Currently supports "deflate", "gzip" and None. By default, no
+            compression is used.
+
+        Returns
+        -------
+        async_generator
+            Yield tuple holding (InferResult, InferenceServerException) objects.
+
+        Raises
+        ------
+        InferenceServerException
+            If inputs_iterator does not yield the correct input.
+
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+
+        async def _request_iterator(inputs_iterator):
+            # Internal iterator for converting into grpc request
+            async for inputs in inputs_iterator:
+                if type(inputs) != dict:
+                    raise_error("inputs_iterator is not yielding a dict")
+                if "model_name" not in inputs or "inputs" not in inputs:
+                    raise_error(
+                        "model_name and/or inputs is missing from inputs_iterator's yielded dict"
+                    )
+                if "model_version" not in inputs:
+                    inputs["model_version"] = ""
+                if type(inputs["model_version"]) != str:
+                    raise_error("model_version must be a string")
+                if "outputs" not in inputs:
+                    inputs["outputs"] = None
+                if "request_id" not in inputs:
+                    inputs["request_id"] = ""
+                if "sequence_id" not in inputs:
+                    inputs["sequence_id"] = 0
+                if "sequence_start" not in inputs:
+                    inputs["sequence_start"] = False
+                if "sequence_end" not in inputs:
+                    inputs["sequence_end"] = False
+                if "priority" not in inputs:
+                    inputs["priority"] = 0
+                if "timeout" not in inputs:
+                    inputs["timeout"] = None
+                yield _get_inference_request(
+                    model_name=inputs["model_name"],
+                    inputs=inputs["inputs"],
+                    model_version=inputs["model_version"],
+                    request_id=inputs["request_id"],
+                    outputs=inputs["outputs"],
+                    sequence_id=inputs["sequence_id"],
+                    sequence_start=inputs["sequence_start"],
+                    sequence_end=inputs["sequence_end"],
+                    priority=inputs["priority"],
+                    timeout=inputs["timeout"])
+
+        try:
+            response_iterator = self._client_stub.ModelStreamInfer(
+                _request_iterator(inputs_iterator),
+                metadata=metadata,
+                timeout=stream_timeout,
+                compression=_grpc_compression_type(compression_algorithm))
+            async for response in response_iterator:
+                if self._verbose:
+                    print(response)
+                result = error = None
+                if response.error_message != "":
+                    error = InferenceServerException(msg=response.error_message)
+                else:
+                    result = InferResult(response.infer_response)
+                yield (result, error)
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
