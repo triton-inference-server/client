@@ -33,8 +33,9 @@ from functools import partial
 
 import tritonclient.grpc.aio as grpcclient
 
+
 def get_triton_client(FLAGS):
-    
+
     try:
         triton_client = grpcclient.InferenceServerClient(
             url=FLAGS.url,
@@ -48,6 +49,7 @@ def get_triton_client(FLAGS):
         sys.exit()
 
     return triton_client
+
 
 def get_inputs_and_outputs():
 
@@ -72,12 +74,13 @@ def get_inputs_and_outputs():
 
     return inputs, outputs, input0_data, input1_data
 
+
 def get_output(input0_data, input1_data, results):
 
     # Get the output arrays from the results
     output0_data = results.as_numpy('OUTPUT0')
     output1_data = results.as_numpy('OUTPUT1')
-    
+
     # Validate the output
     for i in range(16):
         print(
@@ -92,6 +95,7 @@ def get_output(input0_data, input1_data, results):
         if (input0_data[0][i] - input1_data[0][i]) != output1_data[0][i]:
             print("sync infer error: incorrect difference")
             sys.exit(1)
+
 
 async def main(FLAGS):
 
@@ -124,7 +128,7 @@ async def main(FLAGS):
             model_name=model_name,
             inputs=inputs,
             outputs=None,
-            compression_algorithm=FLAGS.grpc_compression_algorithm), 
+            compression_algorithm=FLAGS.grpc_compression_algorithm),
         triton_client.infer(
             model_name=model_name,
             inputs=inputs,
@@ -134,7 +138,8 @@ async def main(FLAGS):
     get_output(input0_data, input1_data, result_1)
     get_output(input0_data, input1_data, result_2)
 
-    print('PASS: infer')
+    print('PASS: grpc aio infer')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

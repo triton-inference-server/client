@@ -43,7 +43,8 @@ class UserData:
         self._completed_requests = queue.Queue()
 
 
-async def async_stream_yield(values, batch_size, sequence_id, model_name, model_version):
+async def async_stream_yield(values, batch_size, sequence_id, model_name,
+                             model_version):
     count = 1
     for value in values:
         # Create the tensor for INPUT
@@ -58,13 +59,14 @@ async def async_stream_yield(values, batch_size, sequence_id, model_name, model_
         outputs.append(grpcclient.InferRequestedOutput('OUTPUT'))
         # Issue the asynchronous sequence inference.
         yield {
-            "model_name": model_name, 
-            "inputs": inputs, 
-            "outputs": outputs, 
-            "request_id": '{}_{}'.format(sequence_id, count), 
-            "sequence_id": sequence_id, 
-            "sequence_start": (count == 1), 
-            "sequence_end": (count == len(values))}
+            "model_name": model_name,
+            "inputs": inputs,
+            "outputs": outputs,
+            "request_id": '{}_{}'.format(sequence_id, count),
+            "sequence_id": sequence_id,
+            "sequence_start": (count == 1),
+            "sequence_end": (count == len(values))
+        }
         count = count + 1
 
 
@@ -103,17 +105,25 @@ async def main(FLAGS):
 
         # Request iterator that yields the next request
         async def async_request_iterator():
-            async for request in async_stream_yield([0] + values, batch_size, int_sequence_id0, int_sequence_model_name, model_version):
+            async for request in async_stream_yield([0] + values, batch_size,
+                                                    int_sequence_id0,
+                                                    int_sequence_model_name,
+                                                    model_version):
                 yield request
-            async for request in async_stream_yield([100] + [-1 * val for val in values], batch_size, int_sequence_id1, int_sequence_model_name, model_version):
+            async for request in async_stream_yield(
+                [100] + [-1 * val for val in values], batch_size,
+                    int_sequence_id1, int_sequence_model_name, model_version):
                 yield request
-            async for request in async_stream_yield([20] + [-1 * val for val in values], batch_size, string_sequence_id0, string_sequence_model_name, model_version):
+            async for request in async_stream_yield(
+                [20] + [-1 * val for val in values], batch_size,
+                    string_sequence_id0, string_sequence_model_name,
+                    model_version):
                 yield request
 
         try:
             # Start streaming
             response_iterator = triton_client.stream_infer(
-                inputs_iterator=async_request_iterator(), 
+                inputs_iterator=async_request_iterator(),
                 stream_timeout=FLAGS.stream_timeout)
             # Read response from the stream
             user_data = UserData()
@@ -153,6 +163,7 @@ async def main(FLAGS):
 
             recv_count = recv_count + 1
 
+    # Check results
     for i in range(len(int_result0_list)):
         int_seq0_expected = 1 if (i == 0) else values[i - 1]
         int_seq1_expected = 101 if (i == 0) else values[i - 1] * -1
@@ -186,8 +197,8 @@ async def main(FLAGS):
                   str(int_seq1_expected) + " : " + str(string_seq0_expected))
             sys.exit(1)
 
-    print("PASS: Sequence")
-    
+    print("PASS: grpc aio sequence stream")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
