@@ -35,7 +35,7 @@ import tritonclient.http.aio as httpclient
 from tritonclient.utils import InferenceServerException
 
 
-async def test_infer(triton_client, 
+async def test_infer(triton_client,
                      model_name,
                      input0_data,
                      input1_data,
@@ -67,7 +67,7 @@ async def test_infer(triton_client,
     return results
 
 
-async def test_infer_no_outputs(triton_client, 
+async def test_infer_no_outputs(triton_client,
                                 model_name,
                                 input0_data,
                                 input1_data,
@@ -117,21 +117,23 @@ async def main(FLAGS):
     # Initialize triton_client
     try:
         if FLAGS.ssl:
-            ssl_context = None   # default SSL check
+            ssl_context = None  # default SSL check
             if FLAGS.insecure:
-                ssl_context = False   # Skip SSL certification validation
+                ssl_context = False  # Skip SSL certification validation
             elif (FLAGS.key_file is not None and FLAGS.cert_file is not None) \
                     or FLAGS.ca_certs is not None:
                 # Custom certification validation
                 ssl_context = ssl.create_default_context()
                 if FLAGS.key_file is not None and FLAGS.cert_file is not None:
-                    ssl_context.load_cert_chain(
-                        certfile=FLAGS.cert_file, keyfile=FLAGS.key_file)
+                    ssl_context.load_cert_chain(certfile=FLAGS.cert_file,
+                                                keyfile=FLAGS.key_file)
                 if FLAGS.ca_certs is not None:
                     ssl_context.load_verify_locations(cafile=FLAGS.ca_certs)
             triton_client = httpclient.InferenceServerClient(
-                url=FLAGS.url, verbose=FLAGS.verbose, 
-                ssl=True, ssl_context=ssl_context)
+                url=FLAGS.url,
+                verbose=FLAGS.verbose,
+                ssl=True,
+                ssl_context=ssl_context)
         else:
             triton_client = httpclient.InferenceServerClient(
                 url=FLAGS.url, verbose=FLAGS.verbose)
@@ -155,11 +157,10 @@ async def main(FLAGS):
         headers_dict = None
 
     # Infer with requested Outputs
-    results = await test_infer(
-        triton_client, 
-        model_name, input0_data, input1_data, headers_dict,
-        FLAGS.request_compression_algorithm, 
-        FLAGS.response_compression_algorithm)
+    results = await test_infer(triton_client, model_name, input0_data,
+                               input1_data, headers_dict,
+                               FLAGS.request_compression_algorithm,
+                               FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     statistics = await triton_client.get_inference_statistics(
@@ -173,11 +174,11 @@ async def main(FLAGS):
     validate_result(results, input0_data, input1_data)
 
     # Infer without requested Outputs
-    results = await test_infer_no_outputs(
-        triton_client, 
-        model_name, input0_data, input1_data, headers_dict,
-        FLAGS.request_compression_algorithm,
-        FLAGS.response_compression_algorithm)
+    results = await test_infer_no_outputs(triton_client, model_name,
+                                          input0_data, input1_data,
+                                          headers_dict,
+                                          FLAGS.request_compression_algorithm,
+                                          FLAGS.response_compression_algorithm)
     print(results.get_response())
 
     # Validate the results by comparing with precomputed values.
@@ -185,9 +186,8 @@ async def main(FLAGS):
 
     # Infer with incorrect model name
     try:
-        response = (await test_infer(
-            triton_client, 
-            "wrong_model_name", input0_data, input1_data)).get_response()
+        response = (await test_infer(triton_client, "wrong_model_name",
+                                     input0_data, input1_data)).get_response()
         print("expected error message for wrong model name")
         sys.exit(1)
     except InferenceServerException as ex:
@@ -195,27 +195,23 @@ async def main(FLAGS):
         if not (ex.message().startswith("Request for unknown model")):
             print("improper error message for wrong model name")
             sys.exit(1)
-    
+
     # Infer in parallel
     result_1, result_2 = await asyncio.gather(
-        test_infer(
-            triton_client, 
-            model_name, input0_data, input1_data, headers_dict,
-            FLAGS.request_compression_algorithm, 
-            FLAGS.response_compression_algorithm), 
-        test_infer_no_outputs(
-            triton_client, 
-            model_name, input0_data, input1_data, headers_dict,
-            FLAGS.request_compression_algorithm,
-            FLAGS.response_compression_algorithm)
-    )
+        test_infer(triton_client, model_name, input0_data, input1_data,
+                   headers_dict, FLAGS.request_compression_algorithm,
+                   FLAGS.response_compression_algorithm),
+        test_infer_no_outputs(triton_client, model_name, input0_data,
+                              input1_data, headers_dict,
+                              FLAGS.request_compression_algorithm,
+                              FLAGS.response_compression_algorithm))
 
     # Validate the results by comparing with precomputed values.
     print(result_1.get_response())
     validate_result(result_1, input0_data, input1_data)
     print(result_2.get_response())
     validate_result(result_2, input0_data, input1_data)
-    
+
     await triton_client.close()
 
     print("PASS: infer")

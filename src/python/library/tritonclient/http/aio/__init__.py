@@ -26,19 +26,16 @@
 
 try:
     import aiohttp
-    from urllib.parse import quote, quote_plus
-    import rapidjson as json
-    import gzip, zlib
-    import base64
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'
     ) from error
 
-from tritonclient.utils import *
-
+from tritonclient.http import *
 from tritonclient.http import _get_query_string, _get_inference_request
-from tritonclient.http import InferInput, InferRequestedOutput, InferResult
+
+# In case user try to import dependency from here
+from tritonclient.http import InferInput, InferRequestedOutput
 
 
 async def _get_error(response):
@@ -47,7 +44,8 @@ async def _get_error(response):
     indicates the error. If no error then return None
     """
     if response.status != 200:
-        error_response = json.loads(await response.read())
+        result = await response.read()
+        error_response = json.loads(result) if len(result) else {"error": ""}
         return InferenceServerException(msg=error_response["error"])
     else:
         return None
@@ -64,43 +62,8 @@ async def _raise_if_error(response):
 
 
 class InferenceServerClient:
-    """An InferenceServerClient object is used to perform any kind of
-    communication with the InferenceServer using http protocol. None
-    of the methods are thread safe. The object is intended to be used
-    by a single thread and simultaneously calling different methods
-    with different threads is not supported and will cause undefined
-    behavior.
-
-    Parameters
-    ----------
-    url : str
-        The inference server name, port and optional base path 
-        in the following format: host:port/<base-path>, e.g.
-        'localhost:8000'.
-
-    verbose : bool
-        If True generate verbose output. Default value is False.
-    conn_limit : int
-        Total number of simultaneous connections. Default value is 100.
-    conn_timeout : float
-        Total number of seconds for an entire request.
-        Default value is 60.0 sec.
-    ssl : bool
-        If True, channels the requests to encrypted https scheme.
-        Some improper settings may cause connection to prematurely
-        terminate with an unsuccessful handshake. See
-        `ssl_context` option for using secure default
-        settings. Default value for this option is False.
-    ssl_context : None / False / ssl.SSLContext object
-        None: Use default SSL check, ssl.create_default_context()
-        False: Skip SSL certification validation
-        ssl.SSLContext: For custom SSL certification validation
-        The argument is ignored if 'ssl' is specified False.
-
-    Raises
-        ------
-        Exception
-            If unable to create a client.
+    """An analogy of the tritonclient.http.InferenceServerClient to enable 
+    calling via asyncio syntax.
 
     """
 
@@ -256,29 +219,9 @@ class InferenceServerClient:
         return fix_header
 
     async def is_server_live(self, headers=None, query_params=None):
-        """Contact the inference server and get liveness.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-
-        Returns
-        -------
-        bool
-            True if server is live, False if server is not live.
-
-        Raises
-        ------
-        Exception
-            If unable to get liveness.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
-
         request_uri = "v2/health/live"
         response = await self._get(request_uri=request_uri,
                                    headers=headers,
@@ -287,26 +230,7 @@ class InferenceServerClient:
         return response.status == 200
 
     async def is_server_ready(self, headers=None, query_params=None):
-        """Contact the inference server and get readiness.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-
-        Returns
-        -------
-        bool
-            True if server is ready, False if server is not ready.
-
-        Raises
-        ------
-        Exception
-            If unable to get readiness.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/health/ready"
@@ -321,32 +245,7 @@ class InferenceServerClient:
                              model_version="",
                              headers=None,
                              query_params=None):
-        """Contact the inference server and get the readiness of specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model to check for readiness.
-        model_version: str
-            The version of the model to check for readiness. The default value
-            is an empty string which means then the server will choose a version
-            based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-
-        Returns
-        -------
-        bool
-            True if the model is ready, False if not ready.
-
-        Raises
-        ------
-        Exception
-            If unable to get model readiness.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if type(model_version) != str:
@@ -364,26 +263,7 @@ class InferenceServerClient:
         return response.status == 200
 
     async def get_server_metadata(self, headers=None, query_params=None):
-        """Contact the inference server and get its metadata.
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the metadata.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get server metadata.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2"
@@ -403,32 +283,7 @@ class InferenceServerClient:
                                  model_version="",
                                  headers=None,
                                  query_params=None):
-        """Contact the inference server and get the metadata for specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model
-        model_version: str
-            The version of the model to get metadata. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the metadata.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get model metadata.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if type(model_version) != str:
@@ -455,32 +310,7 @@ class InferenceServerClient:
                                model_version="",
                                headers=None,
                                query_params=None):
-        """Contact the inference server and get the configuration for specified model.
-
-        Parameters
-        ----------
-        model_name: str
-            The name of the model
-        model_version: str
-            The version of the model to get configuration. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the model config.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get model configuration.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if model_version != "":
@@ -501,26 +331,7 @@ class InferenceServerClient:
         return json.loads(content)
 
     async def get_model_repository_index(self, headers=None, query_params=None):
-        """Get the index of model repository contents
-
-        Parameters
-        ----------
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the model repository index.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the repository index.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/repository/index"
@@ -542,33 +353,7 @@ class InferenceServerClient:
                          query_params=None,
                          config=None,
                          files=None):
-        """Request the inference server to load or reload specified model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to be loaded.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-        config: str
-            Optional JSON representation of a model config provided for
-            the load request, if provided, this config will be used for
-            loading the model.
-        files: dict
-            Optional dictionary specifying file path (with "file:" prefix) in
-            the override model directory to the file content as bytes.
-            The files will form the model directory that the model will be
-            loaded from. If specified, 'config' must be provided to be
-            the model configuration of the override model directory.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to load the model.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/repository/models/{}/load".format(quote(model_name))
@@ -595,25 +380,7 @@ class InferenceServerClient:
                            headers=None,
                            query_params=None,
                            unload_dependents=False):
-        """Request the inference server to unload specified model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to be unloaded.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-        unload_dependents : bool
-            Whether the dependents of the model should also be unloaded.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unload the model.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/repository/models/{}/unload".format(quote(model_name))
@@ -635,38 +402,9 @@ class InferenceServerClient:
                                        model_version="",
                                        headers=None,
                                        query_params=None):
-        """Get the inference statistics for the specified model name and
-        version.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to get statistics. The default value is
-            an empty string, which means statistics of all models will
-            be returned.
-        model_version: str
-            The version of the model to get inference statistics. The
-            default value is an empty string which means then the server
-            will return the statistics of all available model versions.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the model inference statistics.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the model inference statistics.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
-
         if model_name != "":
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -694,39 +432,9 @@ class InferenceServerClient:
                                     settings={},
                                     headers=None,
                                     query_params=None):
-        """Update the trace settings for the specified model name, or
-        global trace settings if model name is not given.
-        Returns the trace settings after the update.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to update trace settings. Specifying None or
-            empty string will update the global trace settings.
-            The default value is None.
-        settings: dict
-            The new trace setting values. Only the settings listed will be
-            updated. If a trace setting is listed in the dictionary with
-            a value of 'None', that setting will be cleared.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the updated trace settings.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to update the trace settings.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
-
         if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
@@ -748,34 +456,9 @@ class InferenceServerClient:
                                  model_name=None,
                                  headers=None,
                                  query_params=None):
-        """Get the trace settings for the specified model name, or global trace
-        settings if model name is not given
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to get trace settings. Specifying None or
-            empty string will return the global trace settings.
-            The default value is None.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding the trace settings.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the trace settings.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
-
         if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
@@ -796,30 +479,7 @@ class InferenceServerClient:
                                               region_name="",
                                               headers=None,
                                               query_params=None):
-        """Request system shared memory status from the server.
-
-        Parameters
-        ----------
-        region_name : str
-            The name of the region to query status. The default
-            value is an empty string, which means that the status
-            of all active system shared memory will be returned.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding system shared memory status.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the status of specified shared memory.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if region_name != "":
@@ -846,33 +506,7 @@ class InferenceServerClient:
                                             offset=0,
                                             headers=None,
                                             query_params=None):
-        """Request the server to register a system shared memory with the
-        following specification.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to register.
-        key : str
-            The key of the underlying memory object that contains the
-            system shared memory region.
-        byte_size : int
-            The size of the system shared memory region, in bytes.
-        offset : int
-            Offset, in bytes, within the underlying memory object to
-            the start of the system shared memory region. The default
-            value is zero.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to register the specified system shared memory.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/systemsharedmemory/region/{}/register".format(
@@ -897,26 +531,7 @@ class InferenceServerClient:
                                               name="",
                                               headers=None,
                                               query_params=None):
-        """Request the server to unregister a system shared memory with the
-        specified name.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to unregister. The default value is empty
-            string which means all the system shared memory regions will be
-            unregistered.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unregister the specified system shared memory region.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if name != "":
@@ -941,30 +556,7 @@ class InferenceServerClient:
                                             region_name="",
                                             headers=None,
                                             query_params=None):
-        """Request cuda shared memory status from the server.
-
-        Parameters
-        ----------
-        region_name : str
-            The name of the region to query status. The default
-            value is an empty string, which means that the status
-            of all active cuda shared memory will be returned.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Returns
-        -------
-        dict
-            The JSON dict holding cuda shared memory status.
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to get the status of specified shared memory.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if region_name != "":
@@ -991,30 +583,7 @@ class InferenceServerClient:
                                           byte_size,
                                           headers=None,
                                           query_params=None):
-        """Request the server to register a system shared memory with the
-        following specification.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to register.
-        raw_handle : bytes
-            The raw serialized cudaIPC handle in base64 encoding.
-        device_id : int
-            The GPU device ID on which the cudaIPC handle was created.
-        byte_size : int
-            The size of the cuda shared memory region, in bytes.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to register the specified cuda shared memory.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         request_uri = "v2/cudasharedmemory/region/{}/register".format(
@@ -1041,26 +610,7 @@ class InferenceServerClient:
                                             name="",
                                             headers=None,
                                             query_params=None):
-        """Request the server to unregister a cuda shared memory with the
-        specified name.
-
-        Parameters
-        ----------
-        name : str
-            The name of the region to unregister. The default value is empty
-            string which means all the cuda shared memory regions will be
-            unregistered.
-        headers: dict
-            Optional dictionary specifying additional
-            HTTP headers to include in the request
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction
-
-        Raises
-        ------
-        InferenceServerException
-            If unable to unregister the specified cuda shared memory region.
+        """Refer to tritonclient.http.InferenceServerClient
 
         """
         if name != "":
@@ -1090,62 +640,8 @@ class InferenceServerClient:
                               sequence_end=False,
                               priority=0,
                               timeout=None):
-        """Generate a request body for inference using the supplied 'inputs'
-        requesting the outputs specified by 'outputs'.
+        """Refer to tritonclient.http.InferenceServerClient
 
-        Parameters
-        ----------
-        inputs : list
-            A list of InferInput objects, each describing data for a input
-            tensor required by the model.
-        outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
-            data must be returned. If not specified all outputs produced
-            by the model will be returned using default settings.
-        request_id: str
-            Optional identifier for the request. If specified will be returned
-            in the response. Default value is an empty string which means no
-            request_id will be used.
-        sequence_id : int or str
-            The unique identifier for the sequence being represented by the
-            object. A value of 0 or "" means that the request does not
-            belong to a sequence. Default is 0.
-        sequence_start: bool
-            Indicates whether the request being added marks the start of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        sequence_end: bool
-            Indicates whether the request being added marks the end of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        priority : int
-            Indicates the priority of the request. Priority value zero
-            indicates that the default priority level should be used
-            (i.e. same behavior as not specifying the priority parameter).
-            Lower value priorities indicate higher priority levels. Thus
-            the highest priority level is indicated by setting the parameter
-            to 1, the next highest is 2, etc. If not provided, the server
-            will handle the request using default setting for the model.
-        timeout : int
-            The timeout value for the request, in microseconds. If the request
-            cannot be completed within the time the server can take a
-            model-specific action such as terminating the request. If not
-            provided, the server will handle the request using default setting
-            for the model.
-
-        Returns
-        -------
-        Bytes
-            The request body of the inference.
-        Int
-            The byte size of the inference request header in the request body.
-            Returns None if the whole request body constitutes the request header.
-            
-
-        Raises
-        ------
-        InferenceServerException
-            If server fails to perform inference.
         """
         return _get_inference_request(inputs=inputs,
                                       request_id=request_id,
@@ -1161,25 +657,8 @@ class InferenceServerClient:
                             verbose=False,
                             header_length=None,
                             content_encoding=None):
-        """Generate a InferResult object from the given 'response_body'
+        """Refer to tritonclient.http.InferenceServerClient
 
-        Parameters
-        ----------
-        response_body : bytes
-            The inference response from the server
-        verbose : bool
-            If True generate verbose output. Default value is False.
-        header_length : int
-            The length of the inference header if the header does not occupy
-            the whole response body. Default value is None.
-        content_encoding : string
-            The encoding of the response body if it is compressed.
-            Default value is None.
-        
-        Returns
-        -------
-        InferResult
-            The InferResult object generated from the response body
         """
         return InferResult.from_response_body(response_body, verbose,
                                               header_length, content_encoding)
@@ -1199,81 +678,9 @@ class InferenceServerClient:
                     query_params=None,
                     request_compression_algorithm=None,
                     response_compression_algorithm=None):
-        """Run synchronous inference using the supplied 'inputs' requesting
-        the outputs specified by 'outputs'.
+        """Refer to tritonclient.http.InferenceServerClient
 
-        Parameters
-        ----------
-        model_name: str
-            The name of the model to run inference.
-        inputs : list
-            A list of InferInput objects, each describing data for a input
-            tensor required by the model.
-        model_version: str
-            The version of the model to run inference. The default value
-            is an empty string which means then the server will choose
-            a version based on the model and internal policy.
-        outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
-            data must be returned. If not specified all outputs produced
-            by the model will be returned using default settings.
-        request_id: str
-            Optional identifier for the request. If specified will be returned
-            in the response. Default value is an empty string which means no
-            request_id will be used.
-        sequence_id : int
-            The unique identifier for the sequence being represented by the
-            object. Default value is 0 which means that the request does not
-            belong to a sequence.
-        sequence_start: bool
-            Indicates whether the request being added marks the start of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        sequence_end: bool
-            Indicates whether the request being added marks the end of the
-            sequence. Default value is False. This argument is ignored if
-            'sequence_id' is 0.
-        priority : int
-            Indicates the priority of the request. Priority value zero
-            indicates that the default priority level should be used
-            (i.e. same behavior as not specifying the priority parameter).
-            Lower value priorities indicate higher priority levels. Thus
-            the highest priority level is indicated by setting the parameter
-            to 1, the next highest is 2, etc. If not provided, the server
-            will handle the request using default setting for the model.
-        timeout : int
-            The timeout value for the request, in microseconds. If the request
-            cannot be completed within the time the server can take a
-            model-specific action such as terminating the request. If not
-            provided, the server will handle the request using default setting
-            for the model.
-        headers: dict
-            Optional dictionary specifying additional HTTP
-            headers to include in the request.
-        query_params: dict
-            Optional url query parameters to use in network
-            transaction.
-        request_compression_algorithm : str
-            Optional HTTP compression algorithm to use for the request body on client side.
-            Currently supports "deflate", "gzip" and None. By default, no
-            compression is used.
-        response_compression_algorithm : str
-            Optional HTTP compression algorithm to request for the response body.
-            Note that the response may not be compressed if the server does not
-            support the specified algorithm. Currently supports "deflate",
-            "gzip" and None. By default, no compression is requested.
-
-        Returns
-        -------
-        InferResult
-            The object holding the result of the inference.
-
-        Raises
-        ------
-        InferenceServerException
-            If server fails to perform inference.
         """
-
         request_body, json_size = _get_inference_request(
             inputs=inputs,
             request_id=request_id,
