@@ -366,7 +366,9 @@ Similarly, for Python client, see `request_compression_algorithm` and `response_
 
 The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples demonstrates how to use compression options.
 
-#### Python AsyncIO Support
+#### Python AsyncIO Support (Beta)
+
+*This feature is currently in beta and may be subject to change.*
 
 Advanced users may call the Python client via `async` and `await` syntax. The
 [infer](src/python/examples/simple_http_aio_infer_client.py) example 

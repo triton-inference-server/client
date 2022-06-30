@@ -62,8 +62,12 @@ async def _raise_if_error(response):
 
 
 class InferenceServerClient:
-    """An analogy of the tritonclient.http.InferenceServerClient to enable 
-    calling via asyncio syntax.
+    """This feature is currently in beta and may be subject to change.
+    
+    An analogy of the tritonclient.http.InferenceServerClient to enable 
+    calling via asyncio syntax. The object is intended to be used by a single 
+    thread and simultaneously calling methods with different threads is not 
+    supported and can cause undefined behavior.
 
     """
 
