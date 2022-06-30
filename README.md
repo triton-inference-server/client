@@ -368,13 +368,12 @@ The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/pyt
 
 #### Python AsyncIO Support
 
-Advanced users may call the Python client via `async` and `await` syntax.
-This [simple](src/python/examples/simple_http_aio_test_client.py) example 
-demonstrates how to call the AsyncIO interface. The
+Advanced users may call the Python client via `async` and `await` syntax. The
 [infer](src/python/examples/simple_http_aio_infer_client.py) example 
-demonstrate how to infer with AsyncIO.
+demonstrates how to infer with AsyncIO.
 
-If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in [http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
+If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in 
+[http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
 
 ### GRPC Options
 

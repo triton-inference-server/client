@@ -30,7 +30,6 @@ if(${TRITON_ENABLE_PYTHON_HTTP})
   install(
     PROGRAMS
       simple_http_aio_infer_client.py
-      simple_http_aio_test_client.py
       simple_http_health_metadata.py
       simple_http_infer_client.py
       simple_http_string_infer_client.py
