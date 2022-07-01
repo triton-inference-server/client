@@ -136,12 +136,15 @@ add_executable(
   perf_analyzer_unit_tests
   ${PERF_ANALYZER_UNIT_TESTS_SRCS}
   ${PERF_ANALYZER_UNIT_TESTS_HDRS}
+  mock_inference_profiler.h
+  test_inference_profiler.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 
 target_link_libraries(
   perf_analyzer_unit_tests
   PRIVATE
+    gmock
     client-backend-library
     -lb64
 )
