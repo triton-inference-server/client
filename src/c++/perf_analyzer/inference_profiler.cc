@@ -1373,7 +1373,7 @@ InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
 
   return all_stable;
 }
-
+/*
 #ifndef DOCTEST_CONFIG_DISABLE
 class TestInferenceProfiler {
  public:
@@ -1636,6 +1636,6 @@ TEST_CASE("test_is_done_profiling")
             ls, lp, latency_threshold_ms) == false);
   }
 }
-
 #endif
+*/
 }}  // namespace triton::perfanalyzer
