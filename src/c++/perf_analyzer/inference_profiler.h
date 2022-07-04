@@ -534,6 +534,12 @@ class InferenceProfiler {
   /// The end time of the previous measurement window
   uint64_t previous_window_end_ns_;
 
+  /// Previous server side statistics
+  std::map<cb::ModelIdentifier, cb::ModelStatistics> prev_server_side_stats_;
+
+  /// Previous client side statistics
+  cb::InferStat prev_client_side_stats_;
+
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
 
