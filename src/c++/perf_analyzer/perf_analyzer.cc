@@ -743,12 +743,12 @@ Usage(char** argv, const std::string& msg = std::string())
              " If --trace-log-frequency is also specified, this argument "
              "value will be the prefix of the files to save the trace "
              "output. See --trace-log-frequency for details. Only used for "
-             "service-kind of triton and triton_c_api. Default value is none.",
+             "service-kind of triton. Default value is none.",
              18)
       << std::endl;
   std::cerr
       << FormatMessage(
-             " trace-level: Specify a trace level. OFF to disable tracing, "
+             "--trace-level: Specify a trace level. OFF to disable tracing, "
              "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
              "may be specified multiple times to trace multiple "
              "informations. Default is OFF.",
@@ -769,7 +769,7 @@ Usage(char** argv, const std::string& msg = std::string())
       << std::endl;
   std::cerr
       << FormatMessage(
-             " --trace-log-frequency:  Set the trace log frequency. If the "
+             " --log-frequency:  Set the trace log frequency. If the "
              "value is 0, Triton will only log the trace output to "
              "<trace-file> when shutting down. Otherwise, Triton will log "
              "the trace output to <trace-file>.<idx> when it collects the "
@@ -933,7 +933,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       {"trace-level", 1, 0, 45},
       {"trace-rate", 1, 0, 46},
       {"trace-count", 1, 0, 47},
-      {"trace-log-frequency", 1, 0, 48},
+      {"log-frequency", 1, 0, 48},
       {0, 0, 0, 0}};
 
   // Parse commandline...
