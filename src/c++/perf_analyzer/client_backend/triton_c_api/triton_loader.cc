@@ -1,4 +1,4 @@
-// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
 namespace {
-bool enforce_memory_type = false;
+
 TRITONSERVER_MemoryType requested_memory_type;
 bool helper_verbose = false;
 /// Helper function for allocating memory
@@ -70,20 +70,8 @@ ResponseAlloc(
     }
   } else {
     void* allocated_ptr = nullptr;
-    if (enforce_memory_type) {
-      *actual_memory_type = requested_memory_type;
-    }
-
-    switch (*actual_memory_type) {
-      // Use CPU memory if the requested memory type is unknown
-      // (default case).
-      case TRITONSERVER_MEMORY_CPU:
-      default: {
-        *actual_memory_type = TRITONSERVER_MEMORY_CPU;
-        allocated_ptr = malloc(byte_size);
-        break;
-      }
-    }
+    *actual_memory_type = TRITONSERVER_MEMORY_CPU;
+    allocated_ptr = malloc(byte_size);
 
     // Pass the tensor name with buffer_userp so we can show it when
     // releasing the buffer.
@@ -138,8 +126,7 @@ void
 InferRequestComplete(
     TRITONSERVER_InferenceRequest* request, const uint32_t flags, void* userp)
 {
-  // request is deleted at the end of the Infer call so don't need to do
-  // anything here
+  TritonLoader::DeleteInferRequest(request);
 }
 
 
@@ -955,9 +942,6 @@ TritonLoader::Infer(
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->inference_response_delete_fn_(completed_response),
       "deleting inference response");
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->request_delete_fn_(irequest),
-      "deleting inference request");
   RETURN_IF_TRITONSERVER_ERROR(
       GetSingleton()->response_allocator_delete_fn_(allocator),
       "deleting response allocator");

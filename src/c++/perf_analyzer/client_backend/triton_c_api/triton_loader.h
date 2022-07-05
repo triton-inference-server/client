@@ -1,4 +1,4 @@
-// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -119,6 +119,11 @@ class TritonLoader : public tc::InferenceServerClient {
 
   static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
   static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
+  static TRITONSERVER_Error* DeleteInferRequest(
+      TRITONSERVER_InferenceRequest* irequest)
+  {
+    return GetSingleton()->request_delete_fn_(irequest);
+  }
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
