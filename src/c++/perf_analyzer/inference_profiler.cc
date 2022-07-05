@@ -981,13 +981,12 @@ InferenceProfiler::Measure(
   cb::InferStat start_stat;
   cb::InferStat end_stat;
 
-  uint64_t window_start_ns = previous_window_end_ns_;
-  start_stat = prev_client_side_stats_;
-  start_status = prev_server_side_stats_;
-  
   // Set current window start time to end of previous window. For first
   // measurement window, capture start time, server side stats, and client side
   // stats.
+  uint64_t window_start_ns = previous_window_end_ns_;
+  start_stat = prev_client_side_stats_;
+  start_status = prev_server_side_stats_;
   if (window_start_ns == 0) {
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
