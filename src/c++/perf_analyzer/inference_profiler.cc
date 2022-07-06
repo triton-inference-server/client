@@ -1017,15 +1017,15 @@ InferenceProfiler::Measure(
           .count();
   previous_window_end_ns_ = window_end_ns;
 
-  RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
-  prev_client_side_stats_ = end_stat;
-
   // Get server status and then print report on difference between
   // before and after status.
   if (include_server_stats_) {
     RETURN_IF_ERROR(GetServerSideStatus(&end_status));
     prev_server_side_stats_ = end_status;
   }
+
+  RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
+  prev_client_side_stats_ = end_stat;
 
   TimestampVector current_timestamps;
   RETURN_IF_ERROR(manager_->SwapTimestamps(current_timestamps));
