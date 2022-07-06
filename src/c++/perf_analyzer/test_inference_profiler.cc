@@ -30,7 +30,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-#ifndef DOCTEST_CONFIG_DISABLE
 class TestInferenceProfiler {
  public:
   static void ValidLatencyMeasurement(
@@ -44,6 +43,12 @@ class TestInferenceProfiler {
         valid_range, valid_sequence_count, delayed_request_count, latencies);
   }
 
+  static std::tuple<uint64_t, double> GetTotalLatencies(
+      const std::vector<uint64_t>& latencies)
+  {
+    InferenceProfiler inference_profiler{};
+    return inference_profiler.GetTotalLatencies(latencies);
+  }
 
   static bool TestCheckWithinThreshold(
       LoadStatus& ls, LoadParams& lp, uint64_t latency_threshold_ms)
@@ -292,6 +297,7 @@ TEST_CASE("test_is_done_profiling")
             ls, lp, latency_threshold_ms) == false);
   }
 }
+
 TEST_CASE("test mocking")
 {
   using testing::AtLeast;
@@ -304,5 +310,29 @@ TEST_CASE("test mocking")
 
   CHECK(mip.IncludeServerStats() == false);
 }
-#endif
+
+TEST_CASE("testing the GetTotalLatencies function")
+{
+  uint64_t tol_latency_ns{0};
+  double tol_square_latency_us{0.0};
+
+  SUBCASE("calculation not exceeding UINT64_MAX")
+  {
+    std::vector<uint64_t> latencies{100000, 200000, 50000};
+    std::tie(tol_latency_ns, tol_square_latency_us) =
+        TestInferenceProfiler::GetTotalLatencies(latencies);
+    CHECK(tol_latency_ns == 350000);
+    CHECK(tol_square_latency_us == doctest::Approx(52500.0));
+  }
+
+  SUBCASE("calculation exceeding UINT64_MAX")
+  {
+    std::vector<uint64_t> latencies{4000000000, 4500000000, 3000000000};
+    std::tie(tol_latency_ns, tol_square_latency_us) =
+        TestInferenceProfiler::GetTotalLatencies(latencies);
+    CHECK(tol_latency_ns == 11500000000);
+    CHECK(tol_square_latency_us == doctest::Approx(45250000000000.0));
+  }
+}
+
 }}  // namespace triton::perfanalyzer

@@ -1123,12 +1123,10 @@ InferenceProfiler::SummarizeLatency(
   }
 
   uint64_t tol_latency_ns = 0;
-  uint64_t tol_square_latency_us = 0;
+  double tol_square_latency_us = 0.0;
 
-  for (const auto& latency : latencies) {
-    tol_latency_ns += latency;
-    tol_square_latency_us += (latency * latency) / (1000 * 1000);
-  }
+  std::tie(tol_latency_ns, tol_square_latency_us) =
+      GetTotalLatencies(latencies);
 
   summary.client_stats.avg_latency_ns = tol_latency_ns / latencies.size();
 
@@ -1164,6 +1162,21 @@ InferenceProfiler::SummarizeLatency(
   summary.client_stats.std_us = (uint64_t)(sqrt(var_us));
 
   return cb::Error::Success;
+}
+
+std::tuple<uint64_t, double>
+InferenceProfiler::GetTotalLatencies(const std::vector<uint64_t>& latencies)
+{
+  uint64_t tol_latency_ns{0};
+  double tol_square_latency_us{0.0};
+
+  for (const auto& latency : latencies) {
+    tol_latency_ns += latency;
+    tol_square_latency_us +=
+        (latency * static_cast<double>(latency)) / (1000 * 1000);
+  }
+
+  return std::make_tuple(tol_latency_ns, tol_square_latency_us);
 }
 
 cb::Error

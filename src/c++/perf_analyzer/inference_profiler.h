@@ -27,6 +27,7 @@
 
 #include <deque>
 #include <thread>
+#include <tuple>
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"
@@ -429,6 +430,13 @@ class InferenceProfiler {
   /// \return cb::Error object indicating success or failure.
   cb::Error SummarizeLatency(
       const std::vector<uint64_t>& latencies, PerfStatus& summary);
+
+  /// \param latencies The vector of request latencies collected.
+  /// \return std::tuple object containing:
+  ///   * sum of latencies in nanoseconds
+  ///   * sum of squared latencies in microseconds
+  std::tuple<uint64_t, double> GetTotalLatencies(
+      const std::vector<uint64_t>& latencies);
 
   /// \param start_stat The accumulated client statistics at the start.
   /// \param end_stat The accumulated client statistics at the end.
