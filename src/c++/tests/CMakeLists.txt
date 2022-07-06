@@ -85,6 +85,7 @@ target_link_libraries(
   PRIVATE
     grpcclient_static
     httpclient_static
+    GTest::gtest
     ${GTEST_LIBRARY}
     ${GTEST_MAIN_LIBRARY}
 )

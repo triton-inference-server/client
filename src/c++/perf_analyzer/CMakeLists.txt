@@ -144,7 +144,7 @@ add_executable(
 target_link_libraries(
   perf_analyzer_unit_tests
   PRIVATE
-    gmock
+    GTest::gmock
     client-backend-library
     -lb64
 )
