@@ -381,8 +381,7 @@ if __name__ == '__main__':
 
     supports_batching = max_batch_size > 0
     if not supports_batching and FLAGS.batch_size != 1:
-        print("ERROR: This model doesn't support batching.")
-        sys.exit(1)
+        raise Exception("ERROR: This model doesn't support batching.")
 
     # Send requests of FLAGS.batch_size images. If the number of
     # images isn't an exact multiple of FLAGS.batch_size then just
