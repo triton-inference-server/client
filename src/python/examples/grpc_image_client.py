@@ -148,8 +148,8 @@ def parse_model(model_metadata, model_config):
         h = input_metadata.shape[2 if input_batch_dim else 1]
         w = input_metadata.shape[3 if input_batch_dim else 2]
 
-    return (model_config.max_batch_size, input_metadata.name, 
-            output_metadata.name, c, h, w, input_config.format, 
+    return (model_config.max_batch_size, input_metadata.name,
+            output_metadata.name, c, h, w, input_config.format,
             input_metadata.datatype)
 
 
@@ -255,9 +255,11 @@ def requestGenerator(input_name, output_name, c, h, w, format, dtype, FLAGS,
     input.name = input_name
     input.datatype = dtype
     if format == mc.ModelInput.FORMAT_NHWC:
-        input.shape.extend([FLAGS.batch_size, h, w, c] if supports_batching else [h, w, c])
+        input.shape.extend(
+            [FLAGS.batch_size, h, w, c] if supports_batching else [h, w, c])
     else:
-        input.shape.extend([FLAGS.batch_size, c, h, w] if supports_batching else [c, h, w])
+        input.shape.extend(
+            [FLAGS.batch_size, c, h, w] if supports_batching else [c, h, w])
 
     # Preprocess image into input data according to model requirements
     # Preprocess the images into input data according to model
@@ -376,7 +378,7 @@ if __name__ == '__main__':
 
     max_batch_size, input_name, output_name, c, h, w, format, dtype = parse_model(
         metadata_response, config_response.config)
-    
+
     supports_batching = max_batch_size > 0
     if not supports_batching and FLAGS.batch_size != 1:
         print("ERROR: This model doesn't support batching.")
@@ -393,7 +395,7 @@ if __name__ == '__main__':
     if FLAGS.streaming:
         for response in grpc_stub.ModelStreamInfer(
                 requestGenerator(input_name, output_name, c, h, w, format,
-                                 dtype, FLAGS, result_filenames, 
+                                 dtype, FLAGS, result_filenames,
                                  supports_batching)):
             responses.append(response)
     else:
@@ -421,7 +423,7 @@ if __name__ == '__main__':
                 postprocess(response.infer_response, result_filenames[idx],
                             FLAGS.batch_size, supports_batching)
         else:
-            postprocess(response, result_filenames[idx], FLAGS.batch_size, 
+            postprocess(response, result_filenames[idx], FLAGS.batch_size,
                         supports_batching)
         idx += 1
 
