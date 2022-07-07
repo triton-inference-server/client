@@ -434,7 +434,7 @@ class InferenceProfiler {
   /// \param latencies The vector of request latencies collected.
   /// \return std::tuple object containing:
   ///   * mean of latencies in nanoseconds
-  ///   * sample standard deviation of latencies in nanoseconds
+  ///   * sample standard deviation of latencies in microseconds
   std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
       const std::vector<uint64_t>& latencies);
 
