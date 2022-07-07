@@ -141,12 +141,10 @@ add_executable(
   $<TARGET_OBJECTS:json-utils-library>
 )
 
-find_package(GTest REQUIRED)
-
 target_link_libraries(
   perf_analyzer_unit_tests
   PRIVATE
-    GTest::gmock
+    gmock
     client-backend-library
     -lb64
 )

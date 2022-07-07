@@ -59,17 +59,10 @@ FetchContent_Declare(
   GIT_SHALLOW ON
 )
 
-find_package(GTest REQUIRED)
-
-if(NOT GTest_FOUND)
-  message(STATUS "GTest not found")
-  FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/9406a60c7839052e4944ea4dbc8344762a89f9bd.zip
-    FIND_PACKAGE_ARGS NAMES GTest
-  )
-  FetchContent_MakeAvailable(googletest)
-endif()
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/9406a60c7839052e4944ea4dbc8344762a89f9bd.zip
+)
 
 if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
@@ -90,6 +83,7 @@ if(NOT TRITON_ENABLE_PERF_ANALYZER AND NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_
   set(TRITON_COMMON_ENABLE_JSON OFF)
 endif()
 
+FetchContent_MakeAvailable(googletest)
 FetchContent_MakeAvailable(repo-common)
 
 #
