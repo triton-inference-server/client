@@ -43,11 +43,11 @@ class TestInferenceProfiler {
         valid_range, valid_sequence_count, delayed_request_count, latencies);
   }
 
-  static std::tuple<uint64_t, double> GetTotalLatencies(
+  static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
       const std::vector<uint64_t>& latencies)
   {
     InferenceProfiler inference_profiler{};
-    return inference_profiler.GetTotalLatencies(latencies);
+    return inference_profiler.GetMeanAndStdDev(latencies);
   }
 
   static bool TestCheckWithinThreshold(
@@ -311,27 +311,28 @@ TEST_CASE("test mocking")
   CHECK(mip.IncludeServerStats() == false);
 }
 
-TEST_CASE("testing the GetTotalLatencies function")
+TEST_CASE("testing the GetMeanAndStdDev function")
 {
-  uint64_t tol_latency_ns{0};
-  double tol_square_latency_us{0.0};
+  uint64_t avg_latency_ns{0};
+  uint64_t std_dev_latency_us{0};
 
-  SUBCASE("calculation not exceeding UINT64_MAX")
+  SUBCASE("calculation using small numbers")
   {
     std::vector<uint64_t> latencies{100000, 200000, 50000};
-    std::tie(tol_latency_ns, tol_square_latency_us) =
-        TestInferenceProfiler::GetTotalLatencies(latencies);
-    CHECK(tol_latency_ns == 350000);
-    CHECK(tol_square_latency_us == doctest::Approx(52500.0));
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 116666);
+    CHECK(std_dev_latency_us == 76);
   }
 
-  SUBCASE("calculation exceeding UINT64_MAX")
+  SUBCASE("calculation using big numbers")
   {
-    std::vector<uint64_t> latencies{4000000000, 4500000000, 3000000000};
-    std::tie(tol_latency_ns, tol_square_latency_us) =
-        TestInferenceProfiler::GetTotalLatencies(latencies);
-    CHECK(tol_latency_ns == 11500000000);
-    CHECK(tol_square_latency_us == doctest::Approx(45250000000000.0));
+    // Squaring these would exceed UINT64_MAX.
+    std::vector<uint64_t> latencies{4300000000, 4400000000, 5000000000};
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 4566666666);
+    CHECK(std_dev_latency_us == 378593);
   }
 }
 
