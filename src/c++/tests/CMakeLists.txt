@@ -70,11 +70,6 @@ install(
   RUNTIME DESTINATION bin
 )
 
-#
-# CPP Client API test
-#
-find_package(GTest REQUIRED)
-
 add_executable(
   cc_client_test
   cc_client_test.cc
@@ -85,6 +80,7 @@ target_link_libraries(
   PRIVATE
     grpcclient_static
     httpclient_static
+    gtest
     ${GTEST_LIBRARY}
     ${GTEST_MAIN_LIBRARY}
 )

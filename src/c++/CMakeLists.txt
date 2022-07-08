@@ -59,6 +59,11 @@ FetchContent_Declare(
   GIT_SHALLOW ON
 )
 
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/9406a60c7839052e4944ea4dbc8344762a89f9bd.zip
+)
+
 if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   set(TRITON_COMMON_ENABLE_PROTOBUF ON)
   set(TRITON_COMMON_ENABLE_GRPC ON)
@@ -78,6 +83,7 @@ if(NOT TRITON_ENABLE_PERF_ANALYZER AND NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_
   set(TRITON_COMMON_ENABLE_JSON OFF)
 endif()
 
+FetchContent_MakeAvailable(googletest)
 FetchContent_MakeAvailable(repo-common)
 
 #
@@ -122,6 +128,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
   if(TRITON_ENABLE_EXAMPLES)
     add_subdirectory(examples)
   endif() # TRITON_ENABLE_EXAMPLES
+
   if(TRITON_ENABLE_TESTS)
     add_subdirectory(tests)
   endif() # TRITON_ENABLE_TESTS

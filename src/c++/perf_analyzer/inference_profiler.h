@@ -150,10 +150,6 @@ struct PerfStatus {
   uint64_t stabilizing_latency_ns;
 };
 
-#ifndef DOCTEST_CONFIG_DISABLE
-class TestInferenceProfiler;
-#endif
-
 //==============================================================================
 /// A InferenceProfiler is a helper class that measures and summarizes the
 /// inference statistic under different concurrency level.
@@ -540,6 +536,8 @@ class InferenceProfiler {
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
+
+ protected:
   InferenceProfiler() = default;
 #endif
 };
