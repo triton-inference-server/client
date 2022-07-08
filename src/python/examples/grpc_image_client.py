@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -148,8 +148,9 @@ def parse_model(model_metadata, model_config):
         h = input_metadata.shape[2 if input_batch_dim else 1]
         w = input_metadata.shape[3 if input_batch_dim else 2]
 
-    return (input_metadata.name, output_metadata.name, c, h, w,
-            input_config.format, input_metadata.datatype)
+    return (model_config.max_batch_size, input_metadata.name,
+            output_metadata.name, c, h, w, input_config.format,
+            input_metadata.datatype)
 
 
 def preprocess(img, format, dtype, c, h, w, scaling):
@@ -194,7 +195,7 @@ def preprocess(img, format, dtype, c, h, w, scaling):
     return ordered
 
 
-def postprocess(response, filenames, batch_size):
+def postprocess(response, filenames, batch_size, supports_batching):
     """
     Post-process response to show classifications.
     """
@@ -209,13 +210,15 @@ def postprocess(response, filenames, batch_size):
     batched_result = deserialize_bytes_tensor(response.raw_output_contents[0])
     contents = np.reshape(batched_result, response.outputs[0].shape)
 
-    if len(contents) != batch_size:
+    if supports_batching and len(contents) != batch_size:
         raise Exception("expected {} results, got {}".format(
             batch_size, len(contents)))
-    if len(filenames) != batch_size:
+    if supports_batching and len(filenames) != batch_size:
         raise Exception("expected {} filenames, got {}".format(
             batch_size, len(filenames)))
 
+    if not supports_batching:
+        contents = [contents]
     for (index, results) in enumerate(contents):
         print("Image '{}':".format(filenames[index]))
         for result in results:
@@ -224,7 +227,7 @@ def postprocess(response, filenames, batch_size):
 
 
 def requestGenerator(input_name, output_name, c, h, w, format, dtype, FLAGS,
-                     result_filenames):
+                     result_filenames, supports_batching):
     request = service_pb2.ModelInferRequest()
     request.model_name = FLAGS.model_name
     request.model_version = FLAGS.model_version
@@ -252,9 +255,11 @@ def requestGenerator(input_name, output_name, c, h, w, format, dtype, FLAGS,
     input.name = input_name
     input.datatype = dtype
     if format == mc.ModelInput.FORMAT_NHWC:
-        input.shape.extend([FLAGS.batch_size, h, w, c])
+        input.shape.extend(
+            [FLAGS.batch_size, h, w, c] if supports_batching else [h, w, c])
     else:
-        input.shape.extend([FLAGS.batch_size, c, h, w])
+        input.shape.extend(
+            [FLAGS.batch_size, c, h, w] if supports_batching else [c, h, w])
 
     # Preprocess image into input data according to model requirements
     # Preprocess the images into input data according to model
@@ -371,8 +376,12 @@ if __name__ == '__main__':
                                                     version=FLAGS.model_version)
     config_response = grpc_stub.ModelConfig(config_request)
 
-    input_name, output_name, c, h, w, format, dtype = parse_model(
+    max_batch_size, input_name, output_name, c, h, w, format, dtype = parse_model(
         metadata_response, config_response.config)
+
+    supports_batching = max_batch_size > 0
+    if not supports_batching and FLAGS.batch_size != 1:
+        raise Exception("This model doesn't support batching.")
 
     # Send requests of FLAGS.batch_size images. If the number of
     # images isn't an exact multiple of FLAGS.batch_size then just
@@ -385,11 +394,13 @@ if __name__ == '__main__':
     if FLAGS.streaming:
         for response in grpc_stub.ModelStreamInfer(
                 requestGenerator(input_name, output_name, c, h, w, format,
-                                 dtype, FLAGS, result_filenames)):
+                                 dtype, FLAGS, result_filenames,
+                                 supports_batching)):
             responses.append(response)
     else:
         for request in requestGenerator(input_name, output_name, c, h, w,
-                                        format, dtype, FLAGS, result_filenames):
+                                        format, dtype, FLAGS, result_filenames,
+                                        supports_batching):
             if not FLAGS.async_set:
                 responses.append(grpc_stub.ModelInfer(request))
             else:
@@ -409,9 +420,10 @@ if __name__ == '__main__':
                 print(response.error_message)
             else:
                 postprocess(response.infer_response, result_filenames[idx],
-                            FLAGS.batch_size)
+                            FLAGS.batch_size, supports_batching)
         else:
-            postprocess(response, result_filenames[idx], FLAGS.batch_size)
+            postprocess(response, result_filenames[idx], FLAGS.batch_size,
+                        supports_batching)
         idx += 1
 
     if error_found:
