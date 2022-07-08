@@ -463,9 +463,12 @@ LoadManager::InitSharedMemory()
 cb::Error
 LoadManager::PrepareInfer(InferContext* ctx)
 {
+  // Reset final inputs for this inference request
+  ctx->final_inputs_.clear();
+
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
-    const uint8_t* data_ptr;
+    const uint8_t* data_ptr{nullptr};
     size_t batch1_bytesize;
     // Set input shape before getting the input data
     std::vector<int64_t> shape;
@@ -486,6 +489,12 @@ LoadManager::PrepareInfer(InferContext* ctx)
 
     RETURN_IF_ERROR(data_loader_->GetInputData(
         input.second, 0, 0, &data_ptr, &batch1_bytesize));
+
+    // If there was data for the current inference input, include this input in
+    // the inference request
+    if (data_ptr != nullptr) {
+      ctx->final_inputs_.push_back(infer_input);
+    }
 
     if (!shape.empty()) {
       size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
@@ -554,7 +563,8 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
 
 cb::Error
 LoadManager::UpdateInputs(
-    std::vector<cb::InferInput*>& inputs, int stream_index, int step_index)
+    std::vector<cb::InferInput*>& inputs, int stream_index, int step_index,
+    InferContext* ctx)
 {
   // Validate update parameters here
   size_t data_stream_count = data_loader_->GetDataStreamsCount();
@@ -574,7 +584,7 @@ LoadManager::UpdateInputs(
   }
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    RETURN_IF_ERROR(SetInputs(inputs, stream_index, step_index));
+    RETURN_IF_ERROR(SetInputs(inputs, stream_index, step_index, ctx));
   } else {
     RETURN_IF_ERROR(SetInputsSharedMemory(inputs, stream_index, step_index));
   }
@@ -669,14 +679,17 @@ LoadManager::ValidateOutputs(
 cb::Error
 LoadManager::SetInputs(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
-    const int step_index)
+    const int step_index, InferContext* ctx)
 {
+  // Reset final inputs for this inference request
+  ctx->final_inputs_.clear();
+
   for (const auto& input : inputs) {
     RETURN_IF_ERROR(input->Reset());
 
     const auto& model_input = (*(parser_->Inputs()))[input->Name()];
 
-    const uint8_t* data_ptr;
+    const uint8_t* data_ptr{nullptr};
     size_t batch1_bytesize;
     const int* set_shape_values = nullptr;
     int set_shape_value_cnt = 0;
@@ -710,6 +723,13 @@ LoadManager::SetInputs(
           model_input, stream_index,
           (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
           &batch1_bytesize));
+
+      // If there was data for the current inference input, include this input
+      // in the inference request
+      if (data_ptr != nullptr) {
+        ctx->final_inputs_.push_back(input);
+      }
+
       if (!model_input.is_shape_tensor_) {
         RETURN_IF_ERROR(input->AppendRaw(data_ptr, batch1_bytesize));
       } else {

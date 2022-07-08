@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -160,6 +160,12 @@ ModelParser::InitTriton(
       const auto& shape_tensor_itr = input_config.FindMember("is_shape_tensor");
       if (shape_tensor_itr != input_config.MemberEnd()) {
         it->second.is_shape_tensor_ = shape_tensor_itr->value.GetBool();
+      }
+
+      if (input_config.HasMember("optional")) {
+        it->second.is_optional_ = input_config["optional"].GetBool();
+      } else {
+        it->second.is_optional_ = false;
       }
     }
   }

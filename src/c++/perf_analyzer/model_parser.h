@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@ struct ModelTensor {
   std::string datatype_;
   std::vector<int64_t> shape_;
   bool is_shape_tensor_;
+  bool is_optional_;
 };
 
 using ModelTensorMap = std::map<std::string, ModelTensor>;
