@@ -26,6 +26,7 @@
 #pragma once
 
 #include <string>
+#include "../../constants.h"
 #include "../../perf_utils.h"
 #include "../client_backend.h"
 #include "grpc_client.h"
@@ -45,7 +46,7 @@
     const tc::Error err = (X);                                     \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(1);                                                     \
+      exit(pa::TRITON_SERVER_ERROR);                               \
     }                                                              \
   }
 

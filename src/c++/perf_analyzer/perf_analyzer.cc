@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <algorithm>
 #include "concurrency_manager.h"
+#include "constants.h"
 #include "custom_load_manager.h"
 #include "inference_profiler.h"
 #include "model_parser.h"
@@ -54,7 +55,7 @@ SignalHandler(int signum)
     early_exit = true;
   } else {
     std::cout << "Exiting immediately..." << std::endl;
-    exit(0);
+    exit(INTERRUPT);
   }
 }
 }}  // namespace triton::perfanalyzer
@@ -752,7 +753,7 @@ Usage(char** argv, const std::string& msg = std::string())
                    "will include additional information.",
                    18)
             << std::endl;
-  exit(1);
+  exit(pa::INVALID_USAGE);
 }
 
 }  // namespace
@@ -1501,17 +1502,17 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr
           << "perf_analyzer supports only grpc protocol for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (streaming) {
       std::cerr
           << "perf_analyzer does not support streaming for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (async) {
       std::cerr
           << "perf_analyzer does not support async API for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (!using_batch_size) {
       batch_size = 0;
     }
@@ -1520,7 +1521,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr << "--input-data should be provided with a json file with "
                    "input data for torchserve"
                 << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
   }
 
@@ -1537,10 +1538,10 @@ PerfAnalyzer::Run(int argc, char** argv)
               << std::endl;
     if (!target_concurrency) {
       std::cerr << "Only target concurrency is supported by C API" << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
       std::cerr << "Shared memory not yet supported by C API" << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (
         triton_server_path.empty() || model_repository_path.empty() ||
         memory_type.empty()) {
@@ -1549,10 +1550,10 @@ PerfAnalyzer::Run(int argc, char** argv)
              "directory:"
           << triton_server_path << " model repo:" << model_repository_path
           << " memory type:" << memory_type << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     } else if (async) {
       std::cerr << "Async API not yet supported by C API" << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
     protocol = cb::ProtocolType::UNKNOWN;
   }
@@ -1565,12 +1566,12 @@ PerfAnalyzer::Run(int argc, char** argv)
           kind, url, protocol, ssl_options, compression_algorithm, http_headers,
           triton_server_path, model_repository_path, memory_type, extra_verbose,
           &factory),
-      "failed to create client factory");
+      "failed to create client factory", pa::CREATION_ERROR);
 
   std::unique_ptr<cb::ClientBackend> backend;
   FAIL_IF_ERR(
       factory->CreateClientBackend(&backend),
-      "failed to create triton client backend");
+      "failed to create triton client backend", pa::CREATION_ERROR);
 
   std::shared_ptr<pa::ModelParser> parser =
       std::make_shared<pa::ModelParser>(kind);
@@ -1579,39 +1580,39 @@ PerfAnalyzer::Run(int argc, char** argv)
     rapidjson::Document model_metadata;
     FAIL_IF_ERR(
         backend->ModelMetadata(&model_metadata, model_name, model_version),
-        "failed to get model metadata");
+        "failed to get model metadata", pa::CREATION_ERROR);
     rapidjson::Document model_config;
     FAIL_IF_ERR(
         backend->ModelConfig(&model_config, model_name, model_version),
-        "failed to get model config");
+        "failed to get model config", pa::CREATION_ERROR);
     FAIL_IF_ERR(
         parser->InitTriton(
             model_metadata, model_config, model_version, input_shapes, backend),
-        "failed to create model parser");
+        "failed to create model parser", pa::CREATION_ERROR);
   } else if (kind == cb::BackendKind::TENSORFLOW_SERVING) {
     rapidjson::Document model_metadata;
     FAIL_IF_ERR(
         backend->ModelMetadata(&model_metadata, model_name, model_version),
-        "failed to get model metadata");
+        "failed to get model metadata", pa::CREATION_ERROR);
     FAIL_IF_ERR(
         parser->InitTFServe(
             model_metadata, model_name, model_version, model_signature_name,
             batch_size, input_shapes, backend),
-        "failed to create model parser");
+        "failed to create model parser", pa::CREATION_ERROR);
   } else if (kind == cb::BackendKind::TORCHSERVE) {
     FAIL_IF_ERR(
         parser->InitTorchServe(model_name, model_version, batch_size),
-        "failed to create model parser");
+        "failed to create model parser", pa::CREATION_ERROR);
   } else {
     std::cerr << "unsupported client backend kind" << std::endl;
-    return 1;
+    return pa::UNSUPPORTED_ERROR;
   }
 
   if ((parser->MaxBatchSize() == 0) && batch_size > 1) {
     std::cerr << "can not specify batch size > 1 as the model does not support "
                  "batching"
               << std::endl;
-    return 1;
+    return pa::UNSUPPORTED_ERROR;
   }
 
   // Change the default value for the --async option for sequential models
@@ -1624,14 +1625,14 @@ PerfAnalyzer::Run(int argc, char** argv)
     if (batch_size > 1) {
       std::cerr << "can not specify batch size > 1 when using a sequence model"
                 << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
   }
 
   if (streaming) {
     if (forced_sync) {
       std::cerr << "can not use streaming with synchronous API" << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
     async = true;
   }
@@ -1645,7 +1646,7 @@ PerfAnalyzer::Run(int argc, char** argv)
         std::cerr << "The 'end' concurrency can not be 0 for sequence "
                      "models when using asynchronous API."
                   << std::endl;
-        return 1;
+        return pa::UNSUPPORTED_ERROR;
       }
     }
     max_concurrency = std::max(
@@ -1678,7 +1679,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr << "sequence id range specified is smallar than the "
                 << "maximum possible concurrency, sequence id collision may "
                 << "occur." << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
     FAIL_IF_ERR(
         pa::ConcurrencyManager::Create(
@@ -1686,7 +1687,7 @@ PerfAnalyzer::Run(int argc, char** argv)
             sequence_length, string_length, string_data, zero_input, user_data,
             shared_memory_type, output_shm_size, start_sequence_id,
             sequence_id_range, parser, factory, &manager),
-        "failed to create concurrency manager");
+        "failed to create concurrency manager", pa::CREATION_ERROR);
 
   } else if (using_request_rate_range) {
     if ((sequence_id_range != 0) && (sequence_id_range < num_of_sequences)) {
@@ -1694,7 +1695,7 @@ PerfAnalyzer::Run(int argc, char** argv)
           << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
     FAIL_IF_ERR(
         pa::RequestRateManager::Create(
@@ -1703,7 +1704,7 @@ PerfAnalyzer::Run(int argc, char** argv)
             string_length, string_data, zero_input, user_data,
             shared_memory_type, output_shm_size, start_sequence_id,
             sequence_id_range, parser, factory, &manager),
-        "failed to create request rate manager");
+        "failed to create request rate manager", pa::CREATION_ERROR);
 
   } else {
     if ((sequence_id_range != 0) && (sequence_id_range < num_of_sequences)) {
@@ -1711,7 +1712,7 @@ PerfAnalyzer::Run(int argc, char** argv)
           << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
-      return 1;
+      return pa::UNSUPPORTED_ERROR;
     }
     FAIL_IF_ERR(
         pa::CustomLoadManager::Create(
@@ -1720,7 +1721,7 @@ PerfAnalyzer::Run(int argc, char** argv)
             string_length, string_data, zero_input, user_data,
             shared_memory_type, output_shm_size, start_sequence_id,
             sequence_id_range, parser, factory, &manager),
-        "failed to create custom load manager");
+        "failed to create custom load manager", pa::CREATION_ERROR);
   }
 
   std::unique_ptr<pa::InferenceProfiler> profiler;
@@ -1730,7 +1731,7 @@ PerfAnalyzer::Run(int argc, char** argv)
           percentile, latency_threshold_ms, protocol, parser,
           std::move(backend), std::move(manager), &profiler,
           measurement_request_count, measurement_mode, mpi_driver),
-      "failed to create profiler");
+      "failed to create profiler", pa::CREATION_ERROR);
 
   // pre-run report
   std::cout << "*** Measurement Settings ***" << std::endl;
@@ -1833,7 +1834,7 @@ PerfAnalyzer::Run(int argc, char** argv)
     // In the case of early_exit, the thread does not return and continues to
     // report the summary
     if (!pa::early_exit) {
-      return 1;
+      return pa::PROFILE_ERROR;
     }
   }
   if (summary.size()) {
@@ -1863,7 +1864,7 @@ PerfAnalyzer::Run(int argc, char** argv)
         pa::ReportWriter::Create(
             filename, target_concurrency, summary, verbose_csv,
             profiler->IncludeServerStats(), percentile, parser, &writer),
-        "failed to create report writer");
+        "failed to create report writer", pa::CREATION_ERROR);
 
     writer->GenerateReport();
   }

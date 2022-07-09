@@ -26,6 +26,7 @@
 #pragma once
 
 #include <string>
+#include "../../constants.h"
 #include "../client_backend.h"
 #include "triton_loader.h"
 
@@ -42,7 +43,7 @@
     const tc::Error err = (X);                                     \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(1);                                                     \
+      exit(triton::perfanalyzer::TRITON_SERVER_ERROR);             \
     }                                                              \
   }
 

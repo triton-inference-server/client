@@ -198,11 +198,13 @@ TritonLoader::Create(
     FAIL_IF_ERR(
         GetSingleton()->PopulateInternals(
             triton_server_path, model_repository_path, memory_type, verbose),
-        "Populating internal variables");
+        "Populating internal variables", pa::TRITON_SERVER_ERROR);
     FAIL_IF_ERR(
-        GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
+        GetSingleton()->LoadServerLibrary(), "Loading Triton Server library",
+        pa::TRITON_SERVER_ERROR);
     FAIL_IF_ERR(
-        GetSingleton()->StartTriton(memory_type), "Starting Triton Server");
+        GetSingleton()->StartTriton(memory_type), "Starting Triton Server",
+        pa::TRITON_SERVER_ERROR);
   }
 
   return Error::Success;
@@ -518,7 +520,7 @@ TritonLoader::LoadServerLibrary()
   RETURN_IF_ERROR(FolderExists(full_path));
   FAIL_IF_ERR(
       OpenLibraryHandle(full_path, &dlhandle_),
-      "shared library loading library:" + full_path);
+      "shared library loading library:" + full_path, pa::TRITON_SERVER_ERROR);
 
   TritonServerApiVersionFn_t apifn;
   TritonServerOptionsNewFn_t onfn;
@@ -1145,8 +1147,11 @@ TritonLoader::GetSingleton()
 
 TritonLoader::~TritonLoader()
 {
-  FAIL_IF_ERR(Delete(), "dereferencing server instance...");
-  FAIL_IF_ERR(CloseLibraryHandle(dlhandle_), "error on closing triton loader");
+  FAIL_IF_ERR(
+      Delete(), "dereferencing server instance...", pa::TRITON_SERVER_ERROR);
+  FAIL_IF_ERR(
+      CloseLibraryHandle(dlhandle_), "error on closing triton loader",
+      pa::TRITON_SERVER_ERROR);
   GetSingleton()->ClearHandles();
 }
 

@@ -29,6 +29,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include "../../constants.h"
 #include "../client_backend.h"
 #include "common.h"
 #include "shared_library.h"
@@ -37,6 +38,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 
+namespace pa = triton::perfanalyzer;
 // If TRITONSERVER error is non-OK, return the corresponding status.
 #define RETURN_IF_TRITONSERVER_ERROR(E, MSG)                                \
   do {                                                                      \
@@ -60,7 +62,7 @@
                 << GetSingleton()->error_message_fn_(err__) << std::endl;   \
       Error newErr = Error(MSG);                                            \
       GetSingleton()->error_delete_fn_(err__);                              \
-      exit(1);                                                              \
+      exit(pa::TRITON_SERVER_ERROR);                                        \
     }                                                                       \
   } while (false)
 

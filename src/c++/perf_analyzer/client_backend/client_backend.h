@@ -59,7 +59,17 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
     triton::perfanalyzer::clientbackend::Error err = (X);          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(1);                                                     \
+      exit(DEFAULT_BACKEND_ERROR);                                 \
+    }                                                              \
+  }                                                                \
+  while (false)
+
+#define FAIL_IF_ERR(X, MSG, ERROR_CODE)                            \
+  {                                                                \
+    triton::perfanalyzer::clientbackend::Error err = (X);          \
+    if (!err.IsOk()) {                                             \
+      std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
+      exit(ERROR_CODE);                                            \
     }                                                              \
   }                                                                \
   while (false)
