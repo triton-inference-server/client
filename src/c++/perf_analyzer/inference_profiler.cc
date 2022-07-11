@@ -981,18 +981,20 @@ InferenceProfiler::Measure(
   cb::InferStat start_stat;
   cb::InferStat end_stat;
 
-  if (include_server_stats_) {
-    RETURN_IF_ERROR(GetServerSideStatus(&start_status));
-  }
-  RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
-
   // Set current window start time to end of previous window. For first
-  // measurement window, capture start time.
+  // measurement window, capture start time, server side stats, and client side
+  // stats.
   uint64_t window_start_ns = previous_window_end_ns_;
+  start_stat = prev_client_side_stats_;
+  start_status = prev_server_side_stats_;
   if (window_start_ns == 0) {
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
+    if (include_server_stats_) {
+      RETURN_IF_ERROR(GetServerSideStatus(&start_status));
+    }
+    RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
   if (!is_count_based) {
@@ -1015,13 +1017,15 @@ InferenceProfiler::Measure(
           .count();
   previous_window_end_ns_ = window_end_ns;
 
-  RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
-
   // Get server status and then print report on difference between
   // before and after status.
   if (include_server_stats_) {
     RETURN_IF_ERROR(GetServerSideStatus(&end_status));
+    prev_server_side_stats_ = end_status;
   }
+
+  RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
+  prev_client_side_stats_ = end_stat;
 
   TimestampVector current_timestamps;
   RETURN_IF_ERROR(manager_->SwapTimestamps(current_timestamps));
