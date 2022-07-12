@@ -26,6 +26,7 @@
 
 #include "triton_client_backend.h"
 
+#include "../../constants.h"
 #include "json_utils.h"
 
 namespace {
@@ -120,12 +121,12 @@ TritonClientBackend::ServerExtensions(std::set<std::string>* extensions)
     std::string server_metadata;
     FAIL_IF_TRITON_ERR(
         client_.http_client_->ServerMetadata(&server_metadata, *http_headers_),
-        "unable to get server metadata");
+        "unable to get server metadata", pa::TRITON_SERVER_ERROR);
 
     rapidjson::Document server_metadata_json;
     FAIL_IF_TRITON_ERR(
         tc::ParseJson(&server_metadata_json, server_metadata),
-        "failed to parse server metadata");
+        "failed to parse server metadata", pa::TRITON_SERVER_ERROR);
     for (const auto& extension :
          server_metadata_json["extensions"].GetArray()) {
       extensions->insert(
@@ -135,7 +136,7 @@ TritonClientBackend::ServerExtensions(std::set<std::string>* extensions)
     inference::ServerMetadataResponse server_metadata;
     FAIL_IF_TRITON_ERR(
         client_.grpc_client_->ServerMetadata(&server_metadata, *http_headers_),
-        "unable to get server metadata");
+        "unable to get server metadata", pa::TRITON_SERVER_ERROR);
     for (const auto& extension : server_metadata.extensions()) {
       extensions->insert(extension);
     }
