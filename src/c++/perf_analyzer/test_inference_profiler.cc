@@ -316,7 +316,7 @@ TEST_CASE("testing the GetMeanAndStdDev function")
   uint64_t avg_latency_ns{0};
   uint64_t std_dev_latency_us{0};
 
-  SUBCASE("calculation using small numbers")
+  SUBCASE("calculation using small latencies")
   {
     std::vector<uint64_t> latencies{100000, 200000, 50000};
     std::tie(avg_latency_ns, std_dev_latency_us) =
@@ -325,7 +325,7 @@ TEST_CASE("testing the GetMeanAndStdDev function")
     CHECK(std_dev_latency_us == 76);
   }
 
-  SUBCASE("calculation using big numbers")
+  SUBCASE("calculation using big latencies")
   {
     // Squaring these would exceed UINT64_MAX.
     std::vector<uint64_t> latencies{4300000000, 4400000000, 5000000000};
@@ -333,6 +333,16 @@ TEST_CASE("testing the GetMeanAndStdDev function")
         TestInferenceProfiler::GetMeanAndStdDev(latencies);
     CHECK(avg_latency_ns == 4566666666);
     CHECK(std_dev_latency_us == 378593);
+  }
+
+  SUBCASE("calculation using one latency")
+  {
+    // Edge case should set standard deviation to near infinity
+    std::vector<uint64_t> latencies{100};
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 100);
+    CHECK(std_dev_latency_us == UINT64_MAX);
   }
 }
 

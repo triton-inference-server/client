@@ -1167,8 +1167,13 @@ InferenceProfiler::GetMeanAndStdDev(const std::vector<uint64_t>& latencies)
         sq_sum_latency_avg_diff_ns += static_cast<int64_t>(l - avg_latency_ns) *
                                       static_cast<int64_t>(l - avg_latency_ns);
       });
-  std_dev_latency_us =
-      std::sqrt(sq_sum_latency_avg_diff_ns / (latencies.size() - 1)) / 1000;
+  if (latencies.size() > 1) {
+    std_dev_latency_us =
+        std::sqrt(sq_sum_latency_avg_diff_ns / (latencies.size() - 1)) / 1000;
+  } else {
+    std_dev_latency_us = UINT64_MAX;
+  }
+
 
   return std::make_tuple(avg_latency_ns, std_dev_latency_us);
 }
