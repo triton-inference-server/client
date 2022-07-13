@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -463,12 +463,9 @@ LoadManager::InitSharedMemory()
 cb::Error
 LoadManager::PrepareInfer(InferContext* ctx)
 {
-  // Reset final inputs for this inference request
-  ctx->final_inputs_.clear();
-
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
-    const uint8_t* data_ptr{nullptr};
+    const uint8_t* data_ptr;
     size_t batch1_bytesize;
     // Set input shape before getting the input data
     std::vector<int64_t> shape;
@@ -489,12 +486,6 @@ LoadManager::PrepareInfer(InferContext* ctx)
 
     RETURN_IF_ERROR(data_loader_->GetInputData(
         input.second, 0, 0, &data_ptr, &batch1_bytesize));
-
-    // If there was data for the current inference input, include this input in
-    // the inference request
-    if (data_ptr != nullptr) {
-      ctx->final_inputs_.push_back(infer_input);
-    }
 
     if (!shape.empty()) {
       size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
@@ -563,8 +554,9 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
 
 cb::Error
 LoadManager::UpdateInputs(
-    std::vector<cb::InferInput*>& inputs, int stream_index, int step_index,
-    InferContext* ctx)
+    const std::vector<cb::InferInput*>& inputs,
+    std::vector<cb::InferInput*>& valid_inputs, int stream_index,
+    int step_index)
 {
   // Validate update parameters here
   size_t data_stream_count = data_loader_->GetDataStreamsCount();
@@ -584,7 +576,7 @@ LoadManager::UpdateInputs(
   }
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    RETURN_IF_ERROR(SetInputs(inputs, stream_index, step_index, ctx));
+    RETURN_IF_ERROR(SetInputs(inputs, valid_inputs, stream_index, step_index));
   } else {
     RETURN_IF_ERROR(SetInputsSharedMemory(inputs, stream_index, step_index));
   }
@@ -678,11 +670,12 @@ LoadManager::ValidateOutputs(
 
 cb::Error
 LoadManager::SetInputs(
-    const std::vector<cb::InferInput*>& inputs, const int stream_index,
-    const int step_index, InferContext* ctx)
+    const std::vector<cb::InferInput*>& inputs,
+    std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
+    const int step_index)
 {
-  // Reset final inputs for this inference request
-  ctx->final_inputs_.clear();
+  // Reset inputs for this inference request
+  valid_inputs.clear();
 
   for (const auto& input : inputs) {
     RETURN_IF_ERROR(input->Reset());
@@ -693,6 +686,9 @@ LoadManager::SetInputs(
     size_t batch1_bytesize;
     const int* set_shape_values = nullptr;
     int set_shape_value_cnt = 0;
+
+    // Number of missing pieces of data for optional inputs
+    int missing_data_cnt = 0;
 
     for (size_t i = 0; i < batch_size_; ++i) {
       std::vector<int64_t> shape;
@@ -719,15 +715,17 @@ LoadManager::SetInputs(
           }
         }
       }
+      data_ptr = nullptr;
       RETURN_IF_ERROR(data_loader_->GetInputData(
           model_input, stream_index,
           (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
           &batch1_bytesize));
 
-      // If there was data for the current inference input, include this input
-      // in the inference request
-      if (data_ptr != nullptr) {
-        ctx->final_inputs_.push_back(input);
+      // Update number of missing pieces of data for optional inputs to
+      // potentially detect error
+      if (data_ptr == nullptr) {
+        missing_data_cnt++;
+        continue;
       }
 
       if (!model_input.is_shape_tensor_) {
@@ -765,6 +763,17 @@ LoadManager::SetInputs(
           }
         }
       }
+    }
+
+    // If all optional inputs had data provided, this is a valid input. But if
+    // some inferences in the batch provided data for an optional input and some
+    // inferences did not, this is an invalid case and an error is thrown.
+    if (missing_data_cnt == 0) {
+      valid_inputs.push_back(input);
+    } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
+      return cb::Error(
+          "Batch contained partial data for optional inputs. Batches sizes "
+          "larger than 1 must either provide all optional inputs or none.");
     }
   }
   return cb::Error::Success;

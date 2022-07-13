@@ -87,12 +87,12 @@ class LoadManager {
     }
     // The backend to communicate with the server
     std::unique_ptr<cb::ClientBackend> infer_backend_;
-    // The vector of pointers to InferInput objects for each input in the model
-    // config.
+    // The vector of pointers to InferInput objects for all possible inputs,
+    // potentially including optional inputs with no provided data.
     std::vector<cb::InferInput*> inputs_;
-    // The vector of pointers to InferInput objects for each input in the model
-    // config except optional inputs that have no user data provided.
-    std::vector<cb::InferInput*> final_inputs_;
+    // The vector of pointers to InferInput objects to be
+    // used for inference request.
+    std::vector<cb::InferInput*> valid_inputs_;
     // The vector of pointers to InferRequestedOutput objects
     // to be used with the inference request.
     std::vector<const cb::InferRequestedOutput*> outputs_;
@@ -159,14 +159,18 @@ class LoadManager {
   cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
 
   /// Updates the input data to use for inference request
-  /// \param inputs The vector of pointers to InferInput objects
+  /// \param inputs The vector of pointers to InferInput objects for all
+  /// possible inputs, potentially including optional inputs with no provided
+  /// data
+  /// \param valid_inputs The vector of pointers to InferInput objects to be
+  /// used for inference request.
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
-  /// \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.
   cb::Error UpdateInputs(
-      std::vector<cb::InferInput*>& inputs, int stream_index, int step_index,
-      InferContext* ctx);
+      const std::vector<cb::InferInput*>& inputs,
+      std::vector<cb::InferInput*>& valid_inputs, int stream_index,
+      int step_index);
 
   /// Updates the expected output data to use for inference request. Empty
   /// vector will be returned if there is no expected output associated to the
@@ -199,14 +203,18 @@ class LoadManager {
 
  private:
   /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects
+  /// \param inputs The vector of pointers to InferInput objects for all
+  /// possible inputs, potentially including optional inputs with no provided
+  /// data
+  /// \param valid_inputs The vector of pointers to InferInput objects to be
+  /// used for inference request.
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
-  /// \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.
   cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index, InferContext* ctx);
+      const std::vector<cb::InferInput*>& inputs,
+      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
+      const int step_index);
 
   /// Helper function to update the shared memory inputs
   /// \param inputs The vector of pointers to InferInput objects
