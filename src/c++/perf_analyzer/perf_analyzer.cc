@@ -300,7 +300,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t--trace-level" << std::endl;
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
-  std::cerr << "\t--trace-log-frequency" << std::endl;
+  std::cerr << "\t--log-frequency" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
