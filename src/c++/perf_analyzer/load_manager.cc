@@ -538,6 +538,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
         &infer_input, backend_->Kind(), input.first, shape,
         input.second.datatype_));
     ctx->inputs_.push_back(infer_input);
+    ctx->valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].second));
