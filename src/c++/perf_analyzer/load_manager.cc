@@ -465,7 +465,7 @@ LoadManager::PrepareInfer(InferContext* ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
-    const uint8_t* data_ptr;
+    const uint8_t* data_ptr{nullptr};
     size_t batch1_bytesize;
     // Set input shape before getting the input data
     std::vector<int64_t> shape;
@@ -484,8 +484,14 @@ LoadManager::PrepareInfer(InferContext* ctx)
         input.second.datatype_));
     ctx->inputs_.push_back(infer_input);
 
+    data_ptr = nullptr;
     RETURN_IF_ERROR(data_loader_->GetInputData(
         input.second, 0, 0, &data_ptr, &batch1_bytesize));
+
+    // Add optional input to request if data was found
+    if (data_ptr != nullptr) {
+      ctx->valid_inputs_.push_back(infer_input);
+    }
 
     if (!shape.empty()) {
       size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
@@ -772,8 +778,9 @@ LoadManager::SetInputs(
       valid_inputs.push_back(input);
     } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
       return cb::Error(
-          "Batch contained partial data for optional inputs. Batches sizes "
-          "larger than 1 must either provide all optional inputs or none.");
+          "For batch sizes larger than 1, the same set of inputs must be "
+          "specified for each batch. You cannot use different set of optional "
+          "inputs for each individual batch.");
     }
   }
   return cb::Error::Success;
