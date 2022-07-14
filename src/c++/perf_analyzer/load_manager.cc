@@ -32,14 +32,16 @@
 #ifdef TRITON_ENABLE_GPU
 #include <cuda_runtime_api.h>
 
-#define RETURN_IF_CUDA_ERR(FUNC)                                               \
-  {                                                                            \
-    const cudaError_t result = FUNC;                                           \
-    if (result != cudaSuccess) {                                               \
-      return cb::Error(                                                        \
-          "CUDA exception (line " + std::to_string(__LINE__) + "): " +         \
-          cudaGetErrorName(result) + " (" + cudaGetErrorString(result) + ")"); \
-    }                                                                          \
+#define RETURN_IF_CUDA_ERR(FUNC)                               \
+  {                                                            \
+    const cudaError_t result = FUNC;                           \
+    if (result != cudaSuccess) {                               \
+      return cb::Error(                                        \
+          "CUDA exception (line " + std::to_string(__LINE__) + \
+              "): " + cudaGetErrorName(result) + " (" +        \
+              cudaGetErrorString(result) + ")",                \
+          pa::CUDA_ERROR);                                     \
+    }                                                          \
   }
 
 #endif  // TRITON_ENABLE_GPU
@@ -139,10 +141,13 @@ LoadManager::CheckHealth()
     if (!thread_stat->status_.IsOk()) {
       return cb::Error(
           "Failed to maintain requested inference load."
-          " Worker thread(s) failed to generate concurrent requests.");
+          " Worker thread(s) failed to generate concurrent requests.",
+          pa::LOAD_MANAGER_ERROR);
     }
     if (!thread_stat->cb_status_.IsOk()) {
-      return cb::Error("Failed to retrieve results from inference request.");
+      return cb::Error(
+          "Failed to retrieve results from inference request.",
+          pa::LOAD_MANAGER_ERROR);
     }
   }
   return cb::Error::Success;
@@ -293,8 +298,9 @@ LoadManager::InitSharedMemory()
       if (cuda_err != cudaSuccess) {
         return cb::Error(
             "unable to allocate memory of " + std::to_string(alloc_size) +
-            " bytes on gpu for output " + output.first + " : " +
-            std::string(cudaGetErrorString(cuda_err)));
+                " bytes on gpu for output " + output.first + " : " +
+                std::string(cudaGetErrorString(cuda_err)),
+            pa::GPU_ERROR);
       }
       shared_memory_regions_[region_name] =
           std::pair<uint8_t*, size_t>(output_shm_ptr, alloc_size);
@@ -335,9 +341,10 @@ LoadManager::InitSharedMemory()
                 return cb::Error(
                     "can not batch tensors with different shapes together "
                     "(input '" +
-                    input.first + "' expected shape " +
-                    ShapeVecToString(prev_shape) + " and received " +
-                    ShapeVecToString(shape));
+                        input.first + "' expected shape " +
+                        ShapeVecToString(prev_shape) + " and received " +
+                        ShapeVecToString(shape),
+                    pa::LOAD_MANAGER_ERROR);
               }
             }
           }
@@ -361,14 +368,16 @@ LoadManager::InitSharedMemory()
           if (batch1_bytesize != byte_size.back()) {
             return cb::Error(
                 "The shape tensors should be identical in a batch (mismatch in "
-                "size)");
+                "size)",
+                pa::LOAD_MANAGER_ERROR);
           }
 
           for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
             if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
               return cb::Error(
                   "The shape tensors should be identical in a batch (mismatch "
-                  "in content)");
+                  "in content)",
+                  pa::LOAD_MANAGER_ERROR);
             }
           }
           count++;
@@ -409,8 +418,9 @@ LoadManager::InitSharedMemory()
           if (cuda_err != cudaSuccess) {
             return cb::Error(
                 "unable to allocate memory of " + std::to_string(alloc_size) +
-                "bytes on gpu for input " + region_name + " : " +
-                std::string(cudaGetErrorString(cuda_err)));
+                    "bytes on gpu for input " + region_name + " : " +
+                    std::string(cudaGetErrorString(cuda_err)),
+                pa::GPU_ERROR);
           }
 
           shared_memory_regions_[region_name] =
@@ -427,8 +437,9 @@ LoadManager::InitSharedMemory()
             if (cuda_err != cudaSuccess) {
               return cb::Error(
                   "Failed to copy data to cuda shared memory for " +
-                  region_name + " : " +
-                  std::string(cudaGetErrorString(cuda_err)));
+                      region_name + " : " +
+                      std::string(cudaGetErrorString(cuda_err)),
+                  pa::GPU_ERROR);
             }
             offset += byte_size[count];
             count++;
@@ -460,7 +471,8 @@ LoadManager::PrepareInfer(InferContext* ctx)
     std::vector<int64_t> shape;
     RETURN_IF_ERROR(data_loader_->GetInputShape(input.second, 0, 0, &shape));
     if (shape.empty() && (backend_->Kind() == cb::BackendKind::TRITON)) {
-      return cb::Error("unable to set shape for the input");
+      return cb::Error(
+          "unable to set shape for the input", pa::LOAD_MANAGER_ERROR);
     }
 
     if ((parser_->MaxBatchSize() != 0) && (!input.second.is_shape_tensor_)) {
@@ -513,7 +525,8 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
         shape.insert(shape.begin(), (int64_t)batch_size_);
       }
     } else {
-      return cb::Error("unable to set shape for the input");
+      return cb::Error(
+          "unable to set shape for the input", pa::LOAD_MANAGER_ERROR);
     }
 
     cb::InferInput* infer_input;
@@ -550,14 +563,16 @@ LoadManager::UpdateInputs(
   if (stream_index < 0 || stream_index >= (int)data_stream_count) {
     return cb::Error(
         "stream_index for retrieving the data should be less than " +
-        std::to_string(data_stream_count) + ", got " +
-        std::to_string(stream_index));
+            std::to_string(data_stream_count) + ", got " +
+            std::to_string(stream_index),
+        pa::LOAD_MANAGER_ERROR);
   }
   size_t step_count = data_loader_->GetTotalSteps(stream_index);
   if (step_index < 0 || step_index >= (int)step_count) {
     return cb::Error(
         "step_id for retrieving the data should be less than " +
-        std::to_string(step_count) + ", got " + std::to_string(step_index));
+            std::to_string(step_count) + ", got " + std::to_string(step_index),
+        pa::LOAD_MANAGER_ERROR);
   }
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
@@ -581,14 +596,16 @@ LoadManager::UpdateValidationOutputs(
   if (stream_index < 0 || stream_index >= (int)data_stream_count) {
     return cb::Error(
         "stream_index for retrieving the data should be less than " +
-        std::to_string(data_stream_count) + ", got " +
-        std::to_string(stream_index));
+            std::to_string(data_stream_count) + ", got " +
+            std::to_string(stream_index),
+        pa::LOAD_MANAGER_ERROR);
   }
   size_t step_count = data_loader_->GetTotalSteps(stream_index);
   if (step_index < 0 || step_index >= (int)step_count) {
     return cb::Error(
         "step_id for retrieving the data should be less than " +
-        std::to_string(step_count) + ", got " + std::to_string(step_index));
+            std::to_string(step_count) + ", got " + std::to_string(step_index),
+        pa::LOAD_MANAGER_ERROR);
   }
 
   for (const auto& output : outputs) {
@@ -632,16 +649,20 @@ LoadManager::ValidateOutputs(
       result_ptr->RawData(ctx.outputs_[i]->Name(), &buf, &byte_size);
       for (const auto& expected : ctx.expected_outputs_[i]) {
         if (byte_size < expected.second) {
-          return cb::Error("Output size doesn't match expected size");
+          return cb::Error(
+              "Output size doesn't match expected size",
+              pa::LOAD_MANAGER_ERROR);
         } else if (memcmp(buf, expected.first, expected.second) != 0) {
-          return cb::Error("Output doesn't match expected output");
+          return cb::Error(
+              "Output doesn't match expected output", pa::LOAD_MANAGER_ERROR);
         } else {
           buf += expected.second;
           byte_size -= expected.second;
         }
       }
       if (byte_size != 0) {
-        return cb::Error("Output size doesn't match expected size");
+        return cb::Error(
+            "Output size doesn't match expected size", pa::LOAD_MANAGER_ERROR);
       }
     }
   }
@@ -680,10 +701,11 @@ LoadManager::SetInputs(
             return cb::Error(
                 "can not batch tensors with different shapes together "
                 "(input '" +
-                input->Name() + "' expected shape " +
-                ShapeVecToString(input->Shape(), true /* skip_first */) +
-                " and received " +
-                ShapeVecToString(shape, true /* skip_first */));
+                    input->Name() + "' expected shape " +
+                    ShapeVecToString(input->Shape(), true /* skip_first */) +
+                    " and received " +
+                    ShapeVecToString(shape, true /* skip_first */),
+                pa::LOAD_MANAGER_ERROR);
           }
         }
       }
@@ -716,12 +738,13 @@ LoadManager::SetInputs(
             return cb::Error(
                 "can not batch shape tensors with different values together "
                 "(input '" +
-                input->Name() + "' expected shape values" +
-                ShapeTensorValuesToString(
-                    set_shape_values, set_shape_value_cnt) +
-                " and received " +
-                ShapeTensorValuesToString(
-                    (int*)data_ptr, (batch1_bytesize / sizeof(int))));
+                    input->Name() + "' expected shape values" +
+                    ShapeTensorValuesToString(
+                        set_shape_values, set_shape_value_cnt) +
+                    " and received " +
+                    ShapeTensorValuesToString(
+                        (int*)data_ptr, (batch1_bytesize / sizeof(int))),
+                pa::LOAD_MANAGER_ERROR);
           }
         }
       }

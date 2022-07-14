@@ -107,7 +107,8 @@ cb::Error
 CustomLoadManager::GetCustomRequestRate(double* request_rate)
 {
   if (custom_intervals_.empty()) {
-    return cb::Error("The custom intervals vector is empty");
+    return cb::Error(
+        "The custom intervals vector is empty", pa::LOAD_MANAGER_ERROR);
   }
   uint64_t total_time_ns = 0;
   for (auto interval : custom_intervals_) {

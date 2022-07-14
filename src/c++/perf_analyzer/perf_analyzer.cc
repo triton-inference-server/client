@@ -752,7 +752,7 @@ Usage(char** argv, const std::string& msg = std::string())
                    "will include additional information.",
                    18)
             << std::endl;
-  exit(1);
+  exit(pa::INVALID_USAGE);
 }
 
 }  // namespace

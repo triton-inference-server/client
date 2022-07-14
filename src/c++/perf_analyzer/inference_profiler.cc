@@ -664,7 +664,7 @@ InferenceProfiler::ProfileHelper(
   }
 
   if (early_exit) {
-    return cb::Error("Received exit signal.");
+    return cb::Error("Received exit signal.", pa::EXIT_SIGNAL);
   }
   return cb::Error::Success;
 }
@@ -769,7 +769,8 @@ InferenceProfiler::MergeServerSideStats(
     if (server_side_stats[i].composing_models_stat.size() !=
         server_side_stat.composing_models_stat.size()) {
       return cb::Error(
-          "Inconsistent ensemble setting detected between the trials.");
+          "Inconsistent ensemble setting detected between the trials.",
+          pa::INCONSISTENT_SETTING_ERROR);
     }
   }
 
@@ -849,17 +850,21 @@ InferenceProfiler::MergePerfStatusReports(
 
     if (perf_status_reports[i].on_sequence_model !=
         perf_status.on_sequence_model) {
-      return cb::Error("Incosistent sequence setting detected.");
+      return cb::Error(
+          "Incosistent sequence setting detected.",
+          pa::INCONSISTENT_SETTING_ERROR);
     }
 
     if (perf_status_reports[i].batch_size != perf_status.batch_size) {
-      return cb::Error("Incosistent batch size detected.");
+      return cb::Error(
+          "Incosistent batch size detected.", pa::INCONSISTENT_SETTING_ERROR);
     }
 
     if (perf_status_reports[i].server_stats.composing_models_stat.size() !=
         perf_status.server_stats.composing_models_stat.size()) {
       return cb::Error(
-          "Inconsistent ensemble setting detected between the trials.");
+          "Inconsistent ensemble setting detected between the trials.",
+          pa::INCONSISTENT_SETTING_ERROR);
     }
   }
 
@@ -1119,7 +1124,8 @@ InferenceProfiler::SummarizeLatency(
   if (latencies.size() == 0) {
     return cb::Error(
         "No valid requests recorded within time interval."
-        " Please use a larger time window.");
+        " Please use a larger time window.",
+        pa::OPTION_ERROR);
   }
 
   std::tie(summary.client_stats.avg_latency_ns, summary.client_stats.std_us) =
@@ -1248,7 +1254,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
   }
 
   if (status_model_version == -1) {
-    return cb::Error("failed to determine the requested model version");
+    return cb::Error(
+        "failed to determine the requested model version", pa::DATA_ERROR);
   }
 
   const std::pair<std::string, std::string> this_id(
@@ -1256,7 +1263,7 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    return cb::Error("missing statistics for requested model");
+    return cb::Error("missing statistics for requested model", pa::DATA_ERROR);
   } else {
     uint64_t start_infer_cnt = 0;
     uint64_t start_exec_cnt = 0;

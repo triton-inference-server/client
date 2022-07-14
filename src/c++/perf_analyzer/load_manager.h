@@ -63,7 +63,8 @@ class LoadManager {
   virtual cb::Error ResetWorkers()
   {
     return cb::Error(
-        "resetting worker threads not supported for this load manager.");
+        "resetting worker threads not supported for this load manager.",
+        pa::LOAD_MANAGER_ERROR);
   }
 
   /// Count the number of requests collected until now.
