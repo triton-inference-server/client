@@ -45,13 +45,8 @@ constexpr static const uint32_t PARSE_ERROR = 9;
 constexpr static const uint32_t CUDA_ERROR = 10;
 constexpr static const uint32_t GPU_ERROR = 11;
 constexpr static const uint32_t DATA_TYPE_ERROR = 12;
-
+constexpr static const uint32_t UNSUPPORTED_ERROR = 13;
 
 constexpr static const uint32_t DEFAULT_ERROR = 99;
-// constexpr static const uint32_t UNSUPPORTED_ERROR = 53;
-// constexpr static const uint32_t CREATION_ERROR = 54;
-// constexpr static const uint32_t PROFILE_ERROR = 55;
-// constexpr static const uint32_t TRITON_SERVER_ERROR = 56;
-
 
 }}  // namespace triton::perfanalyzer
