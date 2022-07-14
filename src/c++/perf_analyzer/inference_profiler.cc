@@ -1122,15 +1122,8 @@ InferenceProfiler::SummarizeLatency(
         " Please use a larger time window.");
   }
 
-  uint64_t tol_latency_ns = 0;
-  uint64_t tol_square_latency_us = 0;
-
-  for (const auto& latency : latencies) {
-    tol_latency_ns += latency;
-    tol_square_latency_us += (latency * latency) / (1000 * 1000);
-  }
-
-  summary.client_stats.avg_latency_ns = tol_latency_ns / latencies.size();
+  std::tie(summary.client_stats.avg_latency_ns, summary.client_stats.std_us) =
+      GetMeanAndStdDev(latencies);
 
   // retrieve other interesting percentile
   summary.client_stats.percentile_latency_ns.clear();
@@ -1152,18 +1145,40 @@ InferenceProfiler::SummarizeLatency(
     summary.stabilizing_latency_ns = summary.client_stats.avg_latency_ns;
   }
 
-  // calculate standard deviation
-  uint64_t expected_square_latency_us =
-      tol_square_latency_us / latencies.size();
-  uint64_t square_avg_latency_us = (summary.client_stats.avg_latency_ns *
-                                    summary.client_stats.avg_latency_ns) /
-                                   (1000 * 1000);
-  uint64_t var_us = (expected_square_latency_us > square_avg_latency_us)
-                        ? (expected_square_latency_us - square_avg_latency_us)
-                        : 0;
-  summary.client_stats.std_us = (uint64_t)(sqrt(var_us));
-
   return cb::Error::Success;
+}
+
+std::tuple<uint64_t, uint64_t>
+InferenceProfiler::GetMeanAndStdDev(const std::vector<uint64_t>& latencies)
+{
+  uint64_t avg_latency_ns{0};
+  uint64_t std_dev_latency_us{0};
+
+  // calculate mean of latencies
+  uint64_t tol_latency_ns{
+      std::accumulate(latencies.begin(), latencies.end(), 0ULL)};
+  avg_latency_ns = tol_latency_ns / latencies.size();
+
+  // calculate sample standard deviation of latencies
+  uint64_t sq_sum_latency_avg_diff_ns{0};
+  std::for_each(
+      latencies.begin(), latencies.end(),
+      [avg_latency_ns, &sq_sum_latency_avg_diff_ns](uint64_t l) {
+        sq_sum_latency_avg_diff_ns += static_cast<int64_t>(l - avg_latency_ns) *
+                                      static_cast<int64_t>(l - avg_latency_ns);
+      });
+  if (latencies.size() > 1) {
+    std_dev_latency_us =
+        std::sqrt(sq_sum_latency_avg_diff_ns / (latencies.size() - 1)) / 1000;
+  } else {
+    std_dev_latency_us = UINT64_MAX;
+    std::cerr << "WARNING: Pass contained only one request, so sample latency "
+                 "standard deviation will be infinity (UINT64_MAX)."
+              << std::endl;
+  }
+
+
+  return std::make_tuple(avg_latency_ns, std_dev_latency_us);
 }
 
 cb::Error

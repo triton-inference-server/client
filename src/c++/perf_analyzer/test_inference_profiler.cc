@@ -30,7 +30,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-#ifndef DOCTEST_CONFIG_DISABLE
 class TestInferenceProfiler {
  public:
   static void ValidLatencyMeasurement(
@@ -44,6 +43,12 @@ class TestInferenceProfiler {
         valid_range, valid_sequence_count, delayed_request_count, latencies);
   }
 
+  static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
+      const std::vector<uint64_t>& latencies)
+  {
+    InferenceProfiler inference_profiler{};
+    return inference_profiler.GetMeanAndStdDev(latencies);
+  }
 
   static bool TestCheckWithinThreshold(
       LoadStatus& ls, LoadParams& lp, uint64_t latency_threshold_ms)
@@ -292,6 +297,7 @@ TEST_CASE("test_is_done_profiling")
             ls, lp, latency_threshold_ms) == false);
   }
 }
+
 TEST_CASE("test mocking")
 {
   using testing::AtLeast;
@@ -304,5 +310,40 @@ TEST_CASE("test mocking")
 
   CHECK(mip.IncludeServerStats() == false);
 }
-#endif
+
+TEST_CASE("testing the GetMeanAndStdDev function")
+{
+  uint64_t avg_latency_ns{0};
+  uint64_t std_dev_latency_us{0};
+
+  SUBCASE("calculation using small latencies")
+  {
+    std::vector<uint64_t> latencies{100000, 200000, 50000};
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 116666);
+    CHECK(std_dev_latency_us == 76);
+  }
+
+  SUBCASE("calculation using big latencies")
+  {
+    // Squaring these would exceed UINT64_MAX.
+    std::vector<uint64_t> latencies{4300000000, 4400000000, 5000000000};
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 4566666666);
+    CHECK(std_dev_latency_us == 378593);
+  }
+
+  SUBCASE("calculation using one latency")
+  {
+    // Edge case should set standard deviation to near infinity
+    std::vector<uint64_t> latencies{100};
+    std::tie(avg_latency_ns, std_dev_latency_us) =
+        TestInferenceProfiler::GetMeanAndStdDev(latencies);
+    CHECK(avg_latency_ns == 100);
+    CHECK(std_dev_latency_us == UINT64_MAX);
+  }
+}
+
 }}  // namespace triton::perfanalyzer
