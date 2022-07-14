@@ -44,17 +44,23 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 //================================================
 
-const Error Error::Success;
-const Error Error::Failure("");
+const Error Error::Success("", pa::SUCCESS);
+const Error Error::Failure("", pa::DEFAULT_ERROR);
 
 Error::Error()
 {
-  has_error_ = false;
+  msg_ = "";
+  error_ = 0;
+}
+
+Error::Error(const std::string& msg, const uint32_t err)
+    : msg_(msg), error_(err)
+{
 }
 
 Error::Error(const std::string& msg) : msg_(msg)
 {
-  has_error_ = true;
+  error_ = 10;
 }
 
 std::ostream&

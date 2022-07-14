@@ -34,6 +34,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "../constants.h"
 #include "ipc.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -59,7 +60,7 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
     triton::perfanalyzer::clientbackend::Error err = (X);          \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(1);                                                     \
+      exit(err.Err());                                             \
     }                                                              \
   }                                                                \
   while (false)
@@ -72,18 +73,24 @@ class Error {
   /// Create an error
   explicit Error();
 
-  /// Create an error with the specified message.
+  /// Create an error with the specified message and error code.
   /// \param msg The message for the error
+  /// \param err The error code for the error
+  explicit Error(const std::string& msg, const uint32_t err);
   explicit Error(const std::string& msg);
 
   /// Accessor for the message of this error.
   /// \return The messsage for the error. Empty if no error.
   const std::string& Message() const { return msg_; }
 
+  /// Accessor for the error code.
+  /// \return The error code for the error. 0 if no error.
+  const uint32_t Err() const { return error_; }
+
   /// Does this error indicate OK status?
   /// \return True if this error indicates "ok"/"success", false if
   /// error indicates a failure.
-  bool IsOk() const { return !has_error_; }
+  bool IsOk() const { return error_ == 0; }
 
   /// Convenience "success" value. Can be used as Error::Success to
   /// indicate no error.
@@ -96,7 +103,7 @@ class Error {
  private:
   friend std::ostream& operator<<(std::ostream&, const Error&);
   std::string msg_;
-  bool has_error_;
+  uint32_t error_;
 };
 
 //===================================================================================
