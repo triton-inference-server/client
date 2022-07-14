@@ -1172,6 +1172,9 @@ InferenceProfiler::GetMeanAndStdDev(const std::vector<uint64_t>& latencies)
         std::sqrt(sq_sum_latency_avg_diff_ns / (latencies.size() - 1)) / 1000;
   } else {
     std_dev_latency_us = UINT64_MAX;
+    std::cerr << "WARNING: Pass contained only one request, so sample latency "
+                 "standard deviation will be infinity (UINT64_MAX)."
+              << std::endl;
   }
 
 
