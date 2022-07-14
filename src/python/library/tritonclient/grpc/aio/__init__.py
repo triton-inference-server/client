@@ -450,6 +450,70 @@ class InferenceServerClient():
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
+    async def update_log_settings(self,
+                                  settings={},
+                                  headers=None,
+                                  as_json=False):
+        """Refer to tritonclient.grpc.InferenceServerClient
+
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+        try:
+            request = service_pb2.LogSettingsRequest()
+            for key, value in settings.items():
+                if value is None:
+                    request.settings[key]
+                else:
+                    if key == "log_file" or key == "log_format":
+                        request.settings[key].string_param = value
+                    elif key == "log_verbose_level":
+                        request.settings[key].uint32_param = value
+                    else:
+                        request.settings[key].bool_param = value
+
+            if self._verbose:
+                print("update_log_settings, metadata {}\n{}".format(
+                    metadata, request))
+            response = await self._client_stub.LogSettings(request=request,
+                                                           metadata=metadata)
+            if self._verbose:
+                print(response)
+            if as_json:
+                return json.loads(
+                    MessageToJson(response, preserving_proto_field_name=True))
+            else:
+                return response
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
+    async def get_log_settings(self, headers=None, as_json=False):
+        """Refer to tritonclient.grpc.InferenceServerClient
+
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+        try:
+            request = service_pb2.LogSettingsRequest()
+            if self._verbose:
+                print("get_log_settings, metadata {}\n{}".format(
+                    metadata, request))
+            response = await self._client_stub.LogSettings(request=request,
+                                                           metadata=metadata)
+            if self._verbose:
+                print(response)
+            if as_json:
+                return json.loads(
+                    MessageToJson(response, preserving_proto_field_name=True))
+            else:
+                return response
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
     async def get_system_shared_memory_status(self,
                                               region_name="",
                                               headers=None,
