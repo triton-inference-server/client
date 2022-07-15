@@ -78,6 +78,10 @@ class Error {
   /// \param err The error code for the error
   explicit Error(const std::string& msg, const uint32_t err);
 
+  /// Create an error with the specified message.
+  /// \param msg The message for the error
+  explicit Error(const std::string& msg);
+
   /// Accessor for the message of this error.
   /// \return The messsage for the error. Empty if no error.
   const std::string& Message() const { return msg_; }

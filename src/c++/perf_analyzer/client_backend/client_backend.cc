@@ -58,6 +58,11 @@ Error::Error(const std::string& msg, const uint32_t err)
 {
 }
 
+Error::Error(const std::string& msg) : msg_(msg)
+{
+  error_ = DEFAULT_ERROR;
+}
+
 std::ostream&
 operator<<(std::ostream& out, const Error& err)
 {
