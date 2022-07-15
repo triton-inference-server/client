@@ -29,6 +29,7 @@
 #include <thread>
 #include <tuple>
 #include "concurrency_manager.h"
+#include "constants.h"
 #include "custom_load_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
@@ -248,7 +249,8 @@ class InferenceProfiler {
       // If there was only one concurrency we swept over and it did not meet the
       // stability threshold, we should return an error.
       if (current_value == (start + step) && is_stable == false) {
-        return cb::Error::Failure;
+        return cb::Error(
+            "Failed to obtain stable measurement.", pa::STABILITY_ERROR);
       }
     } else {
       err = Profile(start, summary, meets_threshold, is_stable);

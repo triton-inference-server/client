@@ -47,7 +47,8 @@ constexpr static const uint32_t GPU_ERROR = 11;
 constexpr static const uint32_t DATA_TYPE_ERROR = 12;
 constexpr static const uint32_t TRITON_SERVER_ERROR = 13;
 constexpr static const uint32_t TRITON_CLIENT_ERROR = 14;
-constexpr static const uint32_t UNSUPPORTED_ERROR = 15;
+constexpr static const uint32_t STABILITY_ERROR = 15;
+constexpr static const uint32_t UNSUPPORTED_ERROR = 16;
 
 constexpr static const uint32_t DEFAULT_ERROR = 99;
 
