@@ -56,7 +56,7 @@ Error::Error(const std::string& msg, const uint32_t err)
 
 Error::Error(const std::string& msg) : msg_(msg)
 {
-  error_ = GENERIC_ERROR;
+  error_ = pa::GENERIC_ERROR;
 }
 
 std::ostream&
