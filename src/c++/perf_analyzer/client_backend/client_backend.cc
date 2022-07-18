@@ -47,7 +47,7 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 const Error Error::Success("", pa::SUCCESS);
 const Error Error::Failure("", pa::GENERIC_ERROR);
 
-Error::Error() : msg_(""), error_(0) {}
+Error::Error() : msg_(""), error_(pa::SUCCESS) {}
 
 Error::Error(const std::string& msg, const uint32_t err)
     : msg_(msg), error_(err)

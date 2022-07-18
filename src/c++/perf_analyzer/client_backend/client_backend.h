@@ -106,7 +106,7 @@ class Error {
  private:
   friend std::ostream& operator<<(std::ostream&, const Error&);
   std::string msg_{""};
-  uint32_t error_{0};
+  uint32_t error_{pa::SUCCESS};
 };
 
 //===================================================================================
