@@ -34,22 +34,9 @@ namespace pa = triton::perfanalyzer;
 
 constexpr static const uint32_t SUCCESS = 0;
 
-constexpr static const uint32_t EXIT_SIGNAL = 2;
-constexpr static const uint32_t INVALID_USAGE = 3;
-constexpr static const uint32_t LOAD_MANAGER_ERROR = 4;
-constexpr static const uint32_t DATA_ERROR = 5;
-constexpr static const uint32_t FILE_READ_ERROR = 6;
-constexpr static const uint32_t INCONSISTENT_SETTING_ERROR = 7;
-constexpr static const uint32_t OPTION_ERROR = 8;
-constexpr static const uint32_t PARSE_ERROR = 9;
-constexpr static const uint32_t CUDA_ERROR = 10;
-constexpr static const uint32_t GPU_ERROR = 11;
-constexpr static const uint32_t DATA_TYPE_ERROR = 12;
-constexpr static const uint32_t TRITON_SERVER_ERROR = 13;
-constexpr static const uint32_t TRITON_CLIENT_ERROR = 14;
-constexpr static const uint32_t STABILITY_ERROR = 15;
-constexpr static const uint32_t UNSUPPORTED_ERROR = 16;
+constexpr static const uint32_t STABILITY_ERROR = 2;
+constexpr static const uint32_t OPTION_ERROR = 3;
 
-constexpr static const uint32_t DEFAULT_ERROR = 99;
+constexpr static const uint32_t GENERIC_ERROR = 99;
 
 }}  // namespace triton::perfanalyzer

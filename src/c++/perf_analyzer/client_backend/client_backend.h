@@ -105,8 +105,8 @@ class Error {
 
  private:
   friend std::ostream& operator<<(std::ostream&, const Error&);
-  std::string msg_;
-  uint32_t error_;
+  std::string msg_{""};
+  uint32_t error_{0};
 };
 
 //===================================================================================

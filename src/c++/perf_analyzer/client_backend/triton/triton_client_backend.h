@@ -33,12 +33,12 @@
 #include "http_client.h"
 #include "shm_utils.h"
 
-#define RETURN_IF_TRITON_ERROR(S)                              \
-  do {                                                         \
-    const tc::Error& status__ = (S);                           \
-    if (!status__.IsOk()) {                                    \
-      return Error(status__.Message(), pa::UNSUPPORTED_ERROR); \
-    }                                                          \
+#define RETURN_IF_TRITON_ERROR(S)                          \
+  do {                                                     \
+    const tc::Error& status__ = (S);                       \
+    if (!status__.IsOk()) {                                \
+      return Error(status__.Message(), pa::GENERIC_ERROR); \
+    }                                                      \
   } while (false)
 
 #define FAIL_IF_TRITON_ERR(X, MSG)                                 \
@@ -46,7 +46,7 @@
     const tc::Error err = (X);                                     \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
-      exit(pa::TRITON_CLIENT_ERROR);                               \
+      exit(pa::GENERIC_ERROR);                                     \
     }                                                              \
   }
 

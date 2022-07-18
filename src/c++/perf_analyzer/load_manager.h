@@ -64,7 +64,7 @@ class LoadManager {
   {
     return cb::Error(
         "resetting worker threads not supported for this load manager.",
-        pa::LOAD_MANAGER_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   /// Count the number of requests collected until now.

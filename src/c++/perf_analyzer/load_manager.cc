@@ -40,7 +40,7 @@
           "CUDA exception (line " + std::to_string(__LINE__) + \
               "): " + cudaGetErrorName(result) + " (" +        \
               cudaGetErrorString(result) + ")",                \
-          pa::CUDA_ERROR);                                     \
+          pa::GENERIC_ERROR);                                  \
     }                                                          \
   }
 
@@ -142,12 +142,12 @@ LoadManager::CheckHealth()
       return cb::Error(
           "Failed to maintain requested inference load."
           " Worker thread(s) failed to generate concurrent requests.",
-          pa::LOAD_MANAGER_ERROR);
+          pa::GENERIC_ERROR);
     }
     if (!thread_stat->cb_status_.IsOk()) {
       return cb::Error(
           "Failed to retrieve results from inference request.",
-          pa::LOAD_MANAGER_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
   return cb::Error::Success;
@@ -300,7 +300,7 @@ LoadManager::InitSharedMemory()
             "unable to allocate memory of " + std::to_string(alloc_size) +
                 " bytes on gpu for output " + output.first + " : " +
                 std::string(cudaGetErrorString(cuda_err)),
-            pa::GPU_ERROR);
+            pa::GENERIC_ERROR);
       }
       shared_memory_regions_[region_name] =
           std::pair<uint8_t*, size_t>(output_shm_ptr, alloc_size);
@@ -344,7 +344,7 @@ LoadManager::InitSharedMemory()
                         input.first + "' expected shape " +
                         ShapeVecToString(prev_shape) + " and received " +
                         ShapeVecToString(shape),
-                    pa::LOAD_MANAGER_ERROR);
+                    pa::GENERIC_ERROR);
               }
             }
           }
@@ -369,7 +369,7 @@ LoadManager::InitSharedMemory()
             return cb::Error(
                 "The shape tensors should be identical in a batch (mismatch in "
                 "size)",
-                pa::LOAD_MANAGER_ERROR);
+                pa::GENERIC_ERROR);
           }
 
           for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
@@ -377,7 +377,7 @@ LoadManager::InitSharedMemory()
               return cb::Error(
                   "The shape tensors should be identical in a batch (mismatch "
                   "in content)",
-                  pa::LOAD_MANAGER_ERROR);
+                  pa::GENERIC_ERROR);
             }
           }
           count++;
@@ -420,7 +420,7 @@ LoadManager::InitSharedMemory()
                 "unable to allocate memory of " + std::to_string(alloc_size) +
                     "bytes on gpu for input " + region_name + " : " +
                     std::string(cudaGetErrorString(cuda_err)),
-                pa::GPU_ERROR);
+                pa::GENERIC_ERROR);
           }
 
           shared_memory_regions_[region_name] =
@@ -439,7 +439,7 @@ LoadManager::InitSharedMemory()
                   "Failed to copy data to cuda shared memory for " +
                       region_name + " : " +
                       std::string(cudaGetErrorString(cuda_err)),
-                  pa::GPU_ERROR);
+                  pa::GENERIC_ERROR);
             }
             offset += byte_size[count];
             count++;
@@ -471,8 +471,7 @@ LoadManager::PrepareInfer(InferContext* ctx)
     std::vector<int64_t> shape;
     RETURN_IF_ERROR(data_loader_->GetInputShape(input.second, 0, 0, &shape));
     if (shape.empty() && (backend_->Kind() == cb::BackendKind::TRITON)) {
-      return cb::Error(
-          "unable to set shape for the input", pa::LOAD_MANAGER_ERROR);
+      return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
     }
 
     if ((parser_->MaxBatchSize() != 0) && (!input.second.is_shape_tensor_)) {
@@ -525,8 +524,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
         shape.insert(shape.begin(), (int64_t)batch_size_);
       }
     } else {
-      return cb::Error(
-          "unable to set shape for the input", pa::LOAD_MANAGER_ERROR);
+      return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
     }
 
     cb::InferInput* infer_input;
@@ -565,14 +563,14 @@ LoadManager::UpdateInputs(
         "stream_index for retrieving the data should be less than " +
             std::to_string(data_stream_count) + ", got " +
             std::to_string(stream_index),
-        pa::LOAD_MANAGER_ERROR);
+        pa::GENERIC_ERROR);
   }
   size_t step_count = data_loader_->GetTotalSteps(stream_index);
   if (step_index < 0 || step_index >= (int)step_count) {
     return cb::Error(
         "step_id for retrieving the data should be less than " +
             std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::LOAD_MANAGER_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
@@ -598,14 +596,14 @@ LoadManager::UpdateValidationOutputs(
         "stream_index for retrieving the data should be less than " +
             std::to_string(data_stream_count) + ", got " +
             std::to_string(stream_index),
-        pa::LOAD_MANAGER_ERROR);
+        pa::GENERIC_ERROR);
   }
   size_t step_count = data_loader_->GetTotalSteps(stream_index);
   if (step_index < 0 || step_index >= (int)step_count) {
     return cb::Error(
         "step_id for retrieving the data should be less than " +
             std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::LOAD_MANAGER_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   for (const auto& output : outputs) {
@@ -650,11 +648,10 @@ LoadManager::ValidateOutputs(
       for (const auto& expected : ctx.expected_outputs_[i]) {
         if (byte_size < expected.second) {
           return cb::Error(
-              "Output size doesn't match expected size",
-              pa::LOAD_MANAGER_ERROR);
+              "Output size doesn't match expected size", pa::GENERIC_ERROR);
         } else if (memcmp(buf, expected.first, expected.second) != 0) {
           return cb::Error(
-              "Output doesn't match expected output", pa::LOAD_MANAGER_ERROR);
+              "Output doesn't match expected output", pa::GENERIC_ERROR);
         } else {
           buf += expected.second;
           byte_size -= expected.second;
@@ -662,7 +659,7 @@ LoadManager::ValidateOutputs(
       }
       if (byte_size != 0) {
         return cb::Error(
-            "Output size doesn't match expected size", pa::LOAD_MANAGER_ERROR);
+            "Output size doesn't match expected size", pa::GENERIC_ERROR);
       }
     }
   }
@@ -705,7 +702,7 @@ LoadManager::SetInputs(
                     ShapeVecToString(input->Shape(), true /* skip_first */) +
                     " and received " +
                     ShapeVecToString(shape, true /* skip_first */),
-                pa::LOAD_MANAGER_ERROR);
+                pa::GENERIC_ERROR);
           }
         }
       }
@@ -744,7 +741,7 @@ LoadManager::SetInputs(
                     " and received " +
                     ShapeTensorValuesToString(
                         (int*)data_ptr, (batch1_bytesize / sizeof(int))),
-                pa::LOAD_MANAGER_ERROR);
+                pa::GENERIC_ERROR);
           }
         }
       }

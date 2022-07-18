@@ -47,7 +47,7 @@ GetInt(const rapidjson::Value& value, int64_t* integer_value)
     catch (...) {
       return cb::Error(
           std::string("unable to convert '") + str + "' to integer",
-          pa::PARSE_ERROR);
+          pa::GENERIC_ERROR);
     }
 
   } else if (value.IsInt64()) {
@@ -55,7 +55,7 @@ GetInt(const rapidjson::Value& value, int64_t* integer_value)
   } else if (value.IsInt()) {
     *integer_value = value.GetInt();
   } else {
-    return cb::Error("failed to parse the integer value", pa::PARSE_ERROR);
+    return cb::Error("failed to parse the integer value", pa::GENERIC_ERROR);
   }
 
   return cb::Error::Success;
@@ -155,7 +155,7 @@ ModelParser::InitTriton(
       auto it = inputs_->find(name);
       if (it == inputs_->end()) {
         return cb::Error(
-            "no metadata found for input tensor " + name, pa::DATA_ERROR);
+            "no metadata found for input tensor " + name, pa::GENERIC_ERROR);
       }
       const auto& shape_tensor_itr = input_config.FindMember("is_shape_tensor");
       if (shape_tensor_itr != input_config.MemberEnd()) {
@@ -195,7 +195,7 @@ ModelParser::InitTriton(
       auto itr = outputs_->find(name);
       if (itr == outputs_->end()) {
         return cb::Error(
-            "no metadata found for output tensor " + name, pa::DATA_ERROR);
+            "no metadata found for output tensor " + name, pa::GENERIC_ERROR);
       }
       const auto& shape_tensor_itr =
           output_config.FindMember("is_shape_tensor");
@@ -240,7 +240,7 @@ ModelParser::InitTFServe(
     return cb::Error(
         "Failed to find signature_name \"" + model_signature_name +
             "\" in the metadata",
-        pa::DATA_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   // Get the information about inputs from metadata
@@ -261,7 +261,7 @@ ModelParser::InitTFServe(
           return cb::Error(
               "Can not specify -b flag for saved model with unknown ranked "
               "inputs",
-              pa::OPTION_ERROR);
+              pa::GENERIC_ERROR);
         }
         is_dynamic = true;
       } else {
@@ -275,7 +275,7 @@ ModelParser::InitTFServe(
               return cb::Error(
                   "Can not specify -b flag for saved model with input not "
                   "having their first dim as -1",
-                  pa::OPTION_ERROR);
+                  pa::GENERIC_ERROR);
             }
             first_dim = false;
           } else {

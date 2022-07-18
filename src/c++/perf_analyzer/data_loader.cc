@@ -61,14 +61,14 @@ DataLoader::ReadDataFromDir(
             "input " + input.second.name_ +
                 " contains dynamic shape, provide shapes to send along with "
                 "the request",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
       if (it->second.size() != byte_size) {
         return cb::Error(
             "provided data for input " + input.second.name_ +
                 " has byte size " + std::to_string(it->second.size()) +
                 ", expect " + std::to_string(byte_size),
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
     } else {
       const auto file_path = data_directory + "/" + input.second.name_;
@@ -85,14 +85,14 @@ DataLoader::ReadDataFromDir(
             "input " + input.second.name_ +
                 " contains dynamic shape, provide shapes to send along with "
                 "the request",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
       if (input_string_data.size() != batch1_num_strings) {
         return cb::Error(
             "provided data for input " + input.second.name_ + " has " +
                 std::to_string(it->second.size()) + " byte elements, expect " +
                 std::to_string(batch1_num_strings),
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
     }
   }
@@ -132,7 +132,7 @@ DataLoader::ReadDataFromJSON(
   FILE* data_file = fopen(json_file.c_str(), "r");
   if (data_file == nullptr) {
     return cb::Error(
-        "failed to open file for reading provided data", pa::FILE_READ_ERROR);
+        "failed to open file for reading provided data", pa::GENERIC_ERROR);
   }
 
   char readBuffer[65536];
@@ -147,12 +147,12 @@ DataLoader::ReadDataFromJSON(
               << "Offset : " << d.GetErrorOffset() << '\n';
     return cb::Error(
         "failed to parse the specified json file for reading provided data",
-        pa::FILE_READ_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   if (!d.HasMember("data")) {
     return cb::Error(
-        "The json file doesn't contain data field", pa::FILE_READ_ERROR);
+        "The json file doesn't contain data field", pa::GENERIC_ERROR);
   }
 
   const rapidjson::Value& streams = d["data"];
@@ -165,7 +165,7 @@ DataLoader::ReadDataFromJSON(
       return cb::Error(
           "The 'validation_data' field doesn't align with 'data' field in the "
           "json file",
-          pa::FILE_READ_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
 
@@ -189,7 +189,7 @@ DataLoader::ReadDataFromJSON(
           return cb::Error(
               "The 'validation_data' field doesn't align with 'data' field in "
               "the json file",
-              pa::FILE_READ_ERROR);
+              pa::GENERIC_ERROR);
         }
         for (size_t k = 0; k < step_num_[i]; k++) {
           RETURN_IF_ERROR(
@@ -244,7 +244,7 @@ DataLoader::GenerateData(
       return cb::Error(
           "can not generate data for shape tensor '" + input.second.name_ +
               "', user-provided data is needed.",
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
 
@@ -257,7 +257,7 @@ DataLoader::GenerateData(
             "input " + input.second.name_ +
                 " contains dynamic shape, provide shapes to send along with "
                 "the request",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
       max_input_byte_size = std::max(max_input_byte_size, (size_t)byte_size);
     } else {
@@ -269,7 +269,7 @@ DataLoader::GenerateData(
             "input " + input.second.name_ +
                 " contains dynamic shape, provide shapes to send along with "
                 "the request",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
       input_string_data.resize(batch1_num_strings);
       if (!string_data.empty()) {
@@ -322,14 +322,14 @@ DataLoader::GetInputData(
           "stream_id for retrieving the data should be less than " +
               std::to_string(data_stream_cnt_) + ", got " +
               std::to_string(stream_id),
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
     if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
       return cb::Error(
           "step_id for retrieving the data should be less than " +
               std::to_string(step_num_[stream_id]) + ", got " +
               std::to_string(step_id),
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
     std::string key_name(
         input.name_ + "_" + std::to_string(stream_id) + "_" +
@@ -355,7 +355,7 @@ DataLoader::GetInputData(
       if (byte_size < 0) {
         return cb::Error(
             "failed to get correct byte size for '" + input.name_ + "'.",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
       *batch1_size = (size_t)byte_size;
       *data_ptr = &input_buf_[0];
@@ -365,7 +365,8 @@ DataLoader::GetInputData(
 
   if (!data_found) {
     return cb::Error(
-        "unable to find data for input '" + input.name_ + "'.", pa::DATA_ERROR);
+        "unable to find data for input '" + input.name_ + "'.",
+        pa::GENERIC_ERROR);
   }
 
   return cb::Error::Success;
@@ -386,14 +387,14 @@ DataLoader::GetOutputData(
           "stream_id for retrieving the data should be less than " +
               std::to_string(data_stream_cnt_) + ", got " +
               std::to_string(stream_id),
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
     if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
       return cb::Error(
           "step_id for retrieving the data should be less than " +
               std::to_string(step_num_[stream_id]) + ", got " +
               std::to_string(step_id),
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
     std::string key_name(
         output_name + "_" + std::to_string(stream_id) + "_" +
@@ -462,7 +463,7 @@ DataLoader::ReadTensorData(
           for (const auto& value : tensor["shape"].GetArray()) {
             if (!value.IsInt()) {
               return cb::Error(
-                  "shape values must be integers.", pa::DATA_ERROR);
+                  "shape values must be integers.", pa::GENERIC_ERROR);
             }
             shape_it->second.push_back(value.GetInt());
           }
@@ -473,7 +474,7 @@ DataLoader::ReadTensorData(
               "missing content field. ( Location stream id: " +
                   std::to_string(stream_index) +
                   ", step id: " + std::to_string(step_index) + ")",
-              pa::DATA_ERROR);
+              pa::GENERIC_ERROR);
         }
 
         content = &tensor["content"];
@@ -508,7 +509,7 @@ DataLoader::ReadTensorData(
                       " bytes ( Location stream id: " +
                       std::to_string(stream_index) +
                       ", step id: " + std::to_string(step_index) + ")",
-                  pa::DATA_ERROR);
+                  pa::GENERIC_ERROR);
             }
           } else {
             return cb::Error(
@@ -516,7 +517,7 @@ DataLoader::ReadTensorData(
                 "Location stream id: " +
                     std::to_string(stream_index) +
                     ", step id: " + std::to_string(step_index) + ")",
-                pa::DATA_ERROR);
+                pa::GENERIC_ERROR);
           }
         } else {
           return cb::Error(
@@ -524,7 +525,7 @@ DataLoader::ReadTensorData(
               "b64 string ( Location stream id: " +
                   std::to_string(stream_index) +
                   ", step id: " + std::to_string(step_index) + ")",
-              pa::DATA_ERROR);
+              pa::GENERIC_ERROR);
         }
       }
 
@@ -540,14 +541,14 @@ DataLoader::ReadTensorData(
         return cb::Error(
             "The variable-sized tensor \"" + io.second.name_ +
                 "\" is missing shape, see --shape option.",
-            pa::DATA_ERROR);
+            pa::GENERIC_ERROR);
       }
     } else {
       return cb::Error(
           "missing tensor " + io.first +
               " ( Location stream id: " + std::to_string(stream_index) +
               ", step id: " + std::to_string(step_index) + ")",
-          pa::DATA_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
 

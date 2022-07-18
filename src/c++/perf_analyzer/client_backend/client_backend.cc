@@ -45,13 +45,9 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 //================================================
 
 const Error Error::Success("", pa::SUCCESS);
-const Error Error::Failure("", pa::DEFAULT_ERROR);
+const Error Error::Failure("", pa::GENERIC_ERROR);
 
-Error::Error()
-{
-  msg_ = "";
-  error_ = 0;
-}
+Error::Error() : msg_(""), error_(0) {}
 
 Error::Error(const std::string& msg, const uint32_t err)
     : msg_(msg), error_(err)
@@ -60,7 +56,7 @@ Error::Error(const std::string& msg, const uint32_t err)
 
 Error::Error(const std::string& msg) : msg_(msg)
 {
-  error_ = DEFAULT_ERROR;
+  error_ = GENERIC_ERROR;
 }
 
 std::ostream&
@@ -182,7 +178,7 @@ ClientBackend::Create(
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
   else {
-    return Error("unsupported client backend requested", pa::UNSUPPORTED_ERROR);
+    return Error("unsupported client backend requested", pa::GENERIC_ERROR);
   }
 
   *client_backend = std::move(local_backend);
@@ -196,7 +192,7 @@ ClientBackend::ServerExtensions(std::set<std::string>* server_extensions)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ServerExtensions API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -207,7 +203,7 @@ ClientBackend::ModelMetadata(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ModelMetadata API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -218,7 +214,7 @@ ClientBackend::ModelConfig(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ModelConfig API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -230,7 +226,7 @@ ClientBackend::Infer(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support Infer API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -242,7 +238,7 @@ ClientBackend::AsyncInfer(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support AsyncInfer API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -251,7 +247,7 @@ ClientBackend::StartStream(OnCompleteFn callback, bool enable_stats)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support StartStream API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -262,7 +258,7 @@ ClientBackend::AsyncStreamInfer(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support AsyncStreamInfer API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -271,7 +267,7 @@ ClientBackend::ClientInferStat(InferStat* infer_stat)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ClientInferStat API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -282,7 +278,7 @@ ClientBackend::ModelInferenceStatistics(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ModelInferenceStatistics API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -291,7 +287,7 @@ ClientBackend::UnregisterAllSharedMemory()
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support UnregisterAllSharedMemory API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -301,7 +297,7 @@ ClientBackend::RegisterSystemSharedMemory(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support RegisterSystemSharedMemory API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -312,7 +308,7 @@ ClientBackend::RegisterCudaSharedMemory(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support RegisterCudaSharedMemory API",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 //
@@ -325,7 +321,7 @@ ClientBackend::CreateSharedMemoryRegion(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support CreateSharedMemoryRegion()",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 
@@ -336,7 +332,7 @@ ClientBackend::MapSharedMemory(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support MapSharedMemory()",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 
@@ -346,7 +342,7 @@ ClientBackend::CloseSharedMemory(int shm_fd)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support CloseSharedMemory()",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -355,7 +351,7 @@ ClientBackend::UnlinkSharedMemoryRegion(std::string shm_key)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support UnlinkSharedMemoryRegion()",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -364,7 +360,7 @@ ClientBackend::UnmapSharedMemory(void* shm_addr, size_t byte_size)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support UnmapSharedMemory()",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 
@@ -403,7 +399,7 @@ InferInput::Create(
   else {
     return Error(
         "unsupported client backend provided to create InferInput object",
-        pa::UNSUPPORTED_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   return Error::Success;
@@ -415,7 +411,7 @@ InferInput::SetShape(const std::vector<int64_t>& shape)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support SetShape() for InferInput",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -424,7 +420,7 @@ InferInput::Reset()
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support Reset() for InferInput",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -433,7 +429,7 @@ InferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support AppendRaw() for InferInput",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 Error
@@ -443,7 +439,7 @@ InferInput::SetSharedMemory(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support SetSharedMemory() for InferInput",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 
@@ -482,7 +478,7 @@ InferRequestedOutput::Create(
     return Error(
         "unsupported client backend provided to create InferRequestedOutput "
         "object",
-        pa::UNSUPPORTED_ERROR);
+        pa::GENERIC_ERROR);
   }
 
   return Error::Success;
@@ -495,7 +491,7 @@ InferRequestedOutput::SetSharedMemory(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support SetSharedMemory() for InferRequestedOutput",
-      pa::UNSUPPORTED_ERROR);
+      pa::GENERIC_ERROR);
 }
 
 InferRequestedOutput::InferRequestedOutput(

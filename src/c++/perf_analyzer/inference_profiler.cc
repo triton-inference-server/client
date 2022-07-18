@@ -664,7 +664,7 @@ InferenceProfiler::ProfileHelper(
   }
 
   if (early_exit) {
-    return cb::Error("Received exit signal.", pa::EXIT_SIGNAL);
+    return cb::Error("Received exit signal.", pa::GENERIC_ERROR);
   }
   return cb::Error::Success;
 }
@@ -770,7 +770,7 @@ InferenceProfiler::MergeServerSideStats(
         server_side_stat.composing_models_stat.size()) {
       return cb::Error(
           "Inconsistent ensemble setting detected between the trials.",
-          pa::INCONSISTENT_SETTING_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
 
@@ -851,20 +851,18 @@ InferenceProfiler::MergePerfStatusReports(
     if (perf_status_reports[i].on_sequence_model !=
         perf_status.on_sequence_model) {
       return cb::Error(
-          "Incosistent sequence setting detected.",
-          pa::INCONSISTENT_SETTING_ERROR);
+          "Incosistent sequence setting detected.", pa::GENERIC_ERROR);
     }
 
     if (perf_status_reports[i].batch_size != perf_status.batch_size) {
-      return cb::Error(
-          "Incosistent batch size detected.", pa::INCONSISTENT_SETTING_ERROR);
+      return cb::Error("Incosistent batch size detected.", pa::GENERIC_ERROR);
     }
 
     if (perf_status_reports[i].server_stats.composing_models_stat.size() !=
         perf_status.server_stats.composing_models_stat.size()) {
       return cb::Error(
           "Inconsistent ensemble setting detected between the trials.",
-          pa::INCONSISTENT_SETTING_ERROR);
+          pa::GENERIC_ERROR);
     }
   }
 
@@ -1255,7 +1253,7 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   if (status_model_version == -1) {
     return cb::Error(
-        "failed to determine the requested model version", pa::DATA_ERROR);
+        "failed to determine the requested model version", pa::GENERIC_ERROR);
   }
 
   const std::pair<std::string, std::string> this_id(
@@ -1263,7 +1261,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    return cb::Error("missing statistics for requested model", pa::DATA_ERROR);
+    return cb::Error(
+        "missing statistics for requested model", pa::GENERIC_ERROR);
   } else {
     uint64_t start_infer_cnt = 0;
     uint64_t start_exec_cnt = 0;
