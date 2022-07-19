@@ -81,7 +81,8 @@ ConvertDTypeFromTFS(const std::string& tf_dtype, std::string* datatype)
   } else if (tf_dtype == "DT_UINT64") {
     *datatype = "UINT64";
   } else {
-    return cb::Error("unsupported datatype encountered " + tf_dtype);
+    return cb::Error(
+        "unsupported datatype encountered " + tf_dtype, pa::GENERIC_ERROR);
   }
 
   return cb::Error::Success;
@@ -92,7 +93,7 @@ ReadFile(const std::string& path, std::vector<char>* contents)
 {
   std::ifstream in(path, std::ios::in | std::ios::binary);
   if (!in) {
-    return cb::Error("failed to open file '" + path + "'");
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
   }
 
   in.seekg(0, std::ios::end);
@@ -108,9 +109,10 @@ ReadFile(const std::string& path, std::vector<char>* contents)
 
   // If size is invalid, report after ifstream is closed
   if (file_size < 0) {
-    return cb::Error("failed to get size for file '" + path + "'");
+    return cb::Error(
+        "failed to get size for file '" + path + "'", pa::GENERIC_ERROR);
   } else if (file_size == 0) {
-    return cb::Error("file '" + path + "' is empty");
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
   }
 
   return cb::Error::Success;
@@ -121,7 +123,7 @@ ReadTextFile(const std::string& path, std::vector<std::string>* contents)
 {
   std::ifstream in(path);
   if (!in) {
-    return cb::Error("failed to open file '" + path + "'");
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
   }
 
   std::string current_string;
@@ -131,7 +133,7 @@ ReadTextFile(const std::string& path, std::vector<std::string>* contents)
   in.close();
 
   if (contents->size() == 0) {
-    return cb::Error("file '" + path + "' is empty");
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
   }
   return cb::Error::Success;
 }
@@ -142,7 +144,7 @@ ReadTimeIntervalsFile(
 {
   std::ifstream in(path);
   if (!in) {
-    return cb::Error("failed to open file '" + path + "'");
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
   }
 
   std::string current_string;
@@ -154,7 +156,7 @@ ReadTimeIntervalsFile(
   in.close();
 
   if (contents->size() == 0) {
-    return cb::Error("file '" + path + "' is empty");
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
   }
   return cb::Error::Success;
 }
@@ -256,7 +258,8 @@ SerializeExplicitTensor(
     std::string serialized = "";
     for (const auto& value : tensor.GetArray()) {
       if (!value.IsString()) {
-        return cb::Error("unable to find string data in json");
+        return cb::Error(
+            "unable to find string data in json", pa::GENERIC_ERROR);
       }
       std::string element(value.GetString());
       uint32_t len = element.size();
@@ -270,83 +273,96 @@ SerializeExplicitTensor(
     for (const auto& value : tensor.GetArray()) {
       if (dt.compare("BOOL") == 0) {
         if (!value.IsBool()) {
-          return cb::Error("unable to find bool data in json");
+          return cb::Error(
+              "unable to find bool data in json", pa::GENERIC_ERROR);
         }
         bool element(value.GetBool());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(bool));
       } else if (dt.compare("UINT8") == 0) {
         if (!value.IsUint()) {
-          return cb::Error("unable to find uint8_t data in json");
+          return cb::Error(
+              "unable to find uint8_t data in json", pa::GENERIC_ERROR);
         }
         uint8_t element(static_cast<uint8_t>(value.GetUint()));
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(uint8_t));
       } else if (dt.compare("INT8") == 0) {
         if (!value.IsInt()) {
-          return cb::Error("unable to find int8_t data in json");
+          return cb::Error(
+              "unable to find int8_t data in json", pa::GENERIC_ERROR);
         }
         int8_t element(static_cast<int8_t>(value.GetInt()));
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(int8_t));
       } else if (dt.compare("UINT16") == 0) {
         if (!value.IsUint()) {
-          return cb::Error("unable to find uint16_t data in json");
+          return cb::Error(
+              "unable to find uint16_t data in json", pa::GENERIC_ERROR);
         }
         uint16_t element(static_cast<uint16_t>(value.GetUint()));
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(uint16_t));
       } else if (dt.compare("INT16") == 0) {
         if (!value.IsInt()) {
-          return cb::Error("unable to find int16_t data in json");
+          return cb::Error(
+              "unable to find int16_t data in json", pa::GENERIC_ERROR);
         }
         int16_t element(static_cast<int16_t>(value.GetInt()));
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(int16_t));
       } else if (dt.compare("FP16") == 0) {
         return cb::Error(
-            "Can not use explicit tensor description for fp16 datatype");
+            "Can not use explicit tensor description for fp16 datatype",
+            pa::GENERIC_ERROR);
       } else if (dt.compare("BF16") == 0) {
         return cb::Error(
-            "Can not use explicit tensor description for bf16 datatype");
+            "Can not use explicit tensor description for bf16 datatype",
+            pa::GENERIC_ERROR);
       } else if (dt.compare("UINT32") == 0) {
         if (!value.IsUint()) {
-          return cb::Error("unable to find uint32_t data in json");
+          return cb::Error(
+              "unable to find uint32_t data in json", pa::GENERIC_ERROR);
         }
         uint32_t element(value.GetUint());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(uint32_t));
       } else if (dt.compare("INT32") == 0) {
         if (!value.IsInt()) {
-          return cb::Error("unable to find int32_t data in json");
+          return cb::Error(
+              "unable to find int32_t data in json", pa::GENERIC_ERROR);
         }
         int32_t element(value.GetInt());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(int32_t));
       } else if (dt.compare("FP32") == 0) {
         if (!value.IsDouble()) {
-          return cb::Error("unable to find float data in json");
+          return cb::Error(
+              "unable to find float data in json", pa::GENERIC_ERROR);
         }
         float element(value.GetFloat());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(float));
       } else if (dt.compare("UINT64") == 0) {
         if (!value.IsUint64()) {
-          return cb::Error("unable to find uint64_t data in json");
+          return cb::Error(
+              "unable to find uint64_t data in json", pa::GENERIC_ERROR);
         }
         uint64_t element(value.GetUint64());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(uint64_t));
       } else if (dt.compare("INT64") == 0) {
         if (!value.IsInt64()) {
-          return cb::Error("unable to find int64_t data in json");
+          return cb::Error(
+              "unable to find int64_t data in json", pa::GENERIC_ERROR);
         }
         int64_t element(value.GetInt64());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(int64_t));
       } else if (dt.compare("FP64") == 0) {
         if (!value.IsDouble()) {
-          return cb::Error("unable to find fp64 data in json");
+          return cb::Error(
+              "unable to find fp64 data in json", pa::GENERIC_ERROR);
         }
         double element(value.GetDouble());
         const char* src = reinterpret_cast<const char*>(&element);

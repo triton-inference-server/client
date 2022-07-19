@@ -752,7 +752,7 @@ Usage(char** argv, const std::string& msg = std::string())
                    "will include additional information.",
                    18)
             << std::endl;
-  exit(1);
+  exit(pa::GENERIC_ERROR);
 }
 
 }  // namespace
@@ -1501,17 +1501,17 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr
           << "perf_analyzer supports only grpc protocol for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (streaming) {
       std::cerr
           << "perf_analyzer does not support streaming for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (async) {
       std::cerr
           << "perf_analyzer does not support async API for TensorFlow Serving."
           << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (!using_batch_size) {
       batch_size = 0;
     }
@@ -1520,7 +1520,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr << "--input-data should be provided with a json file with "
                    "input data for torchserve"
                 << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
   }
 
@@ -1537,10 +1537,10 @@ PerfAnalyzer::Run(int argc, char** argv)
               << std::endl;
     if (!target_concurrency) {
       std::cerr << "Only target concurrency is supported by C API" << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (shared_memory_type != pa::NO_SHARED_MEMORY) {
       std::cerr << "Shared memory not yet supported by C API" << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (
         triton_server_path.empty() || model_repository_path.empty() ||
         memory_type.empty()) {
@@ -1549,10 +1549,10 @@ PerfAnalyzer::Run(int argc, char** argv)
              "directory:"
           << triton_server_path << " model repo:" << model_repository_path
           << " memory type:" << memory_type << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     } else if (async) {
       std::cerr << "Async API not yet supported by C API" << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
     protocol = cb::ProtocolType::UNKNOWN;
   }
@@ -1604,14 +1604,14 @@ PerfAnalyzer::Run(int argc, char** argv)
         "failed to create model parser");
   } else {
     std::cerr << "unsupported client backend kind" << std::endl;
-    return 1;
+    return pa::GENERIC_ERROR;
   }
 
   if ((parser->MaxBatchSize() == 0) && batch_size > 1) {
     std::cerr << "can not specify batch size > 1 as the model does not support "
                  "batching"
               << std::endl;
-    return 1;
+    return pa::GENERIC_ERROR;
   }
 
   // Change the default value for the --async option for sequential models
@@ -1624,14 +1624,14 @@ PerfAnalyzer::Run(int argc, char** argv)
     if (batch_size > 1) {
       std::cerr << "can not specify batch size > 1 when using a sequence model"
                 << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
   }
 
   if (streaming) {
     if (forced_sync) {
       std::cerr << "can not use streaming with synchronous API" << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
     async = true;
   }
@@ -1645,7 +1645,7 @@ PerfAnalyzer::Run(int argc, char** argv)
         std::cerr << "The 'end' concurrency can not be 0 for sequence "
                      "models when using asynchronous API."
                   << std::endl;
-        return 1;
+        return pa::GENERIC_ERROR;
       }
     }
     max_concurrency = std::max(
@@ -1678,7 +1678,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       std::cerr << "sequence id range specified is smallar than the "
                 << "maximum possible concurrency, sequence id collision may "
                 << "occur." << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
     FAIL_IF_ERR(
         pa::ConcurrencyManager::Create(
@@ -1694,7 +1694,7 @@ PerfAnalyzer::Run(int argc, char** argv)
           << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
     FAIL_IF_ERR(
         pa::RequestRateManager::Create(
@@ -1711,7 +1711,7 @@ PerfAnalyzer::Run(int argc, char** argv)
           << "sequence id range specified is smallar than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
-      return 1;
+      return pa::GENERIC_ERROR;
     }
     FAIL_IF_ERR(
         pa::CustomLoadManager::Create(
@@ -1833,7 +1833,7 @@ PerfAnalyzer::Run(int argc, char** argv)
     // In the case of early_exit, the thread does not return and continues to
     // report the summary
     if (!pa::early_exit) {
-      return 1;
+      return pa::GENERIC_ERROR;
     }
   }
   if (summary.size()) {

@@ -279,7 +279,7 @@ TritonClientBackend::StartStream(OnCompleteFn callback, bool enable_stats)
         wrapped_callback, enable_stats, 0 /* stream_timeout */, *http_headers_,
         compression_algorithm_));
   } else {
-    return Error("HTTP does not support starting streams");
+    return Error("HTTP does not support starting streams", pa::GENERIC_ERROR);
   }
 
   return Error::Success;
@@ -303,7 +303,8 @@ TritonClientBackend::AsyncStreamInfer(
     RETURN_IF_TRITON_ERROR(client_.grpc_client_->AsyncStreamInfer(
         triton_options, triton_inputs, triton_outputs));
   } else {
-    return Error("HTTP does not support streaming inferences");
+    return Error(
+        "HTTP does not support streaming inferences", pa::GENERIC_ERROR);
   }
 
   return Error::Success;

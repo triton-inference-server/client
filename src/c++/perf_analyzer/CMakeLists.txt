@@ -63,6 +63,7 @@ set(
   report_writer.h
   mpi_utils.h
   doctest.h
+  constants.h
 )
 
 add_executable(
