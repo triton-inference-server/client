@@ -207,6 +207,14 @@ corresponding headers in /workspace/install/include, and the Python
 wheel files in /workspace/install/python. The image will also contain
 the built client examples.
 
+**Important Note:** When running either the server or the client using
+Docker containers and using the CUDA shared memory feature you need to add
+`--pid host` flag when launching the containers. The reason is that CUDA IPC
+APIs require the PID of the source and destination of the exported pointer to be
+different. By default, Docker enables PID namespace which may result in equality
+between the source and destination PIDs. The error will be always observed when
+both of the containers are started in the non-interacive mode.
+
 ### Build Using CMake
 
 The client library build is performed using CMake. To build the client
