@@ -518,9 +518,6 @@ LoadManager::PrepareInfer(InferContext* ctx)
 cb::Error
 LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
 {
-  // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
-  // currently, and will be implemented in the associated story.
-
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
         TensorToRegionName(input.first) + "_" + std::to_string(0) + "_" +
@@ -541,6 +538,9 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
         &infer_input, backend_->Kind(), input.first, shape,
         input.second.datatype_));
     ctx->inputs_.push_back(infer_input);
+
+    // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+    // currently, and will be implemented in the associated story.
     ctx->valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
