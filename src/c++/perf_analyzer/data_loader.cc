@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2022, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -363,7 +363,7 @@ DataLoader::GetInputData(
     }
   }
 
-  if (!data_found) {
+  if (input.is_optional_ == false && !data_found) {
     return cb::Error(
         "unable to find data for input '" + input.name_ + "'.",
         pa::GENERIC_ERROR);
@@ -543,7 +543,7 @@ DataLoader::ReadTensorData(
                 "\" is missing shape, see --shape option.",
             pa::GENERIC_ERROR);
       }
-    } else {
+    } else if (io.second.is_optional_ == false) {
       return cb::Error(
           "missing tensor " + io.first +
               " ( Location stream id: " + std::to_string(stream_index) +

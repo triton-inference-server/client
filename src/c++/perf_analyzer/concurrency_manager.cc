@@ -251,8 +251,8 @@ ConcurrencyManager::Infer(
                         sequence_stat_[seq_id]->remaining_queries_;
 
           RETURN_IF_ERROR(UpdateInputs(
-              ctxs[ctx_id]->inputs_, sequence_stat_[seq_id]->data_stream_id_,
-              step_id));
+              ctxs[ctx_id]->inputs_, ctxs[ctx_id]->valid_inputs_,
+              sequence_stat_[seq_id]->data_stream_id_, step_id));
           RETURN_IF_ERROR(UpdateValidationOutputs(
               ctxs[ctx_id]->outputs_, sequence_stat_[seq_id]->data_stream_id_,
               step_id, ctxs[ctx_id]->expected_outputs_));
@@ -375,7 +375,8 @@ ConcurrencyManager::Infer(
                       batch_size_;
         thread_config->non_sequence_data_step_id_ += active_threads_;
         // There will be only one ctx in non-sequence case
-        thread_stat->status_ = UpdateInputs(ctxs[ctx_id]->inputs_, 0, step_id);
+        thread_stat->status_ = UpdateInputs(
+            ctxs[ctx_id]->inputs_, ctxs[ctx_id]->valid_inputs_, 0, step_id);
         if (thread_stat->status_.IsOk()) {
           thread_stat->status_ = UpdateValidationOutputs(
               ctxs[ctx_id]->outputs_, 0, step_id,
@@ -411,8 +412,8 @@ ConcurrencyManager::Infer(
                           sequence_stat_[seq_id]->remaining_queries_;
 
             thread_stat->status_ = UpdateInputs(
-                ctxs[ctx_id]->inputs_, sequence_stat_[seq_id]->data_stream_id_,
-                step_id);
+                ctxs[ctx_id]->inputs_, ctxs[ctx_id]->valid_inputs_,
+                sequence_stat_[seq_id]->data_stream_id_, step_id);
             if (thread_stat->status_.IsOk()) {
               thread_stat->status_ = UpdateValidationOutputs(
                   ctxs[ctx_id]->outputs_,
@@ -441,12 +442,12 @@ ConcurrencyManager::Infer(
         }
         if (streaming_) {
           thread_stat->status_ = ctxs[ctx_id]->infer_backend_->AsyncStreamInfer(
-              *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
+              *(ctxs[ctx_id]->options_), ctxs[ctx_id]->valid_inputs_,
               ctxs[ctx_id]->outputs_);
         } else {
           thread_stat->status_ = ctxs[ctx_id]->infer_backend_->AsyncInfer(
-              callback_func, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
-              ctxs[ctx_id]->outputs_);
+              callback_func, *(ctxs[ctx_id]->options_),
+              ctxs[ctx_id]->valid_inputs_, ctxs[ctx_id]->outputs_);
         }
         if (!thread_stat->status_.IsOk()) {
           return;
@@ -457,7 +458,7 @@ ConcurrencyManager::Infer(
         start_time_sync = std::chrono::system_clock::now();
         cb::InferResult* results = nullptr;
         thread_stat->status_ = ctxs[ctx_id]->infer_backend_->Infer(
-            &results, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->inputs_,
+            &results, *(ctxs[ctx_id]->options_), ctxs[ctx_id]->valid_inputs_,
             ctxs[ctx_id]->outputs_);
         if (results != nullptr) {
           if (thread_stat->status_.IsOk()) {
