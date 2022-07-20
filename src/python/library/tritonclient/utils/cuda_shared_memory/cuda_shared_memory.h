@@ -40,6 +40,8 @@ int CudaSharedMemoryGetRawHandle(
     void* cuda_shm_handle, char** serialized_raw_handle);
 int CudaSharedMemoryRegionSet(
     void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data);
+int CudaSharedMemoryRegionSetDptr(
+    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* dptr);
 int GetCudaSharedMemoryHandleInfo(
     void* shm_handle, char** shm_addr, size_t* offset, size_t* byte_size);
 int CudaSharedMemoryReleaseBuffer(char* ptr);
