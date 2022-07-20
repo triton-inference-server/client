@@ -243,7 +243,7 @@ def serialize_byte_tensor(input_tensor):
 
 def deserialize_bytes_tensor(encoded_tensor):
     """
-    Deserializes an encoded bytes tensor into an
+    Deserializes an encoded bytes tensor into a
     numpy array of dtype of python objects
 
     Parameters
@@ -317,7 +317,7 @@ def serialize_bf16_tensor(input_tensor):
 
 def deserialize_bf16_tensor(encoded_tensor):
     """
-    Deserializes an encoded bf16 tensor into an
+    Deserializes an encoded bf16 tensor into a
     numpy array of dtype of python objects
 
     Parameters
