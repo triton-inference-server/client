@@ -1721,10 +1721,17 @@ class InferInput:
         if not isinstance(input_tensor, (np.ndarray,)):
             raise_error("input_tensor must be a numpy array")
         dtype = np_to_triton_dtype(input_tensor.dtype)
-        if self._datatype != dtype:
-            raise_error(
-                "got unexpected datatype {} from numpy array, expected {}".
-                format(dtype, self._datatype))
+        # DLIS-3720: Special handling for bfloat16 until Numpy officially supports it
+        if self._datatype == "BF16":
+            if dtype != triton_to_np_dtype(self._datatype):
+                raise_error(
+                    "got unexpected datatype {} from numpy array, expected {} for BF16 type"
+                    .format(dtype, triton_to_np_dtype(self._datatype)))
+        else:
+            if self._datatype != dtype:
+                raise_error(
+                    "got unexpected datatype {} from numpy array, expected {}".
+                    format(dtype, self._datatype))
         valid_shape = True
         if len(self._shape) != len(input_tensor.shape):
             valid_shape = False
@@ -1745,6 +1752,10 @@ class InferInput:
         if not binary_data:
             self._parameters.pop('binary_data_size', None)
             self._raw_data = None
+            if self._datatype == "BF16":
+                raise_error(
+                    "BF16 inputs must be sent as binary data over HTTP. Please set binary_data=True"
+                )
             if self._datatype == "BYTES":
                 self._data = []
                 try:
@@ -1774,6 +1785,12 @@ class InferInput:
             self._data = None
             if self._datatype == "BYTES":
                 serialized_output = serialize_byte_tensor(input_tensor)
+                if serialized_output.size > 0:
+                    self._raw_data = serialized_output.item()
+                else:
+                    self._raw_data = b''
+            elif self._datatype == "BF16":
+                serialized_output = serialize_bf16_tensor(input_tensor)
                 if serialized_output.size > 0:
                     self._raw_data = serialized_output.item()
                 else:
@@ -2085,6 +2102,9 @@ class InferResult:
                                     # need to decode the raw bytes to convert into
                                     # array elements.
                                     np_array = deserialize_bytes_tensor(
+                                        self._buffer[start_index:end_index])
+                                elif datatype == "BF16":
+                                    np_array = deserialize_bf16_tensor(
                                         self._buffer[start_index:end_index])
                                 else:
                                     np_array = np.frombuffer(

@@ -175,7 +175,7 @@ def triton_to_np_dtype(dtype):
         return np.uint64
     elif dtype == "FP16":
         return np.float16
-    elif dtype == "FP32":
+    elif dtype == "FP32" or dtype == "BF16":
         return np.float32
     elif dtype == "FP64":
         return np.float64
@@ -269,3 +269,76 @@ def deserialize_bytes_tensor(encoded_tensor):
         offset += l
         strs.append(sb)
     return (np.array(strs, dtype=np.object_))
+
+
+def serialize_bf16_tensor(input_tensor):
+    """
+    Serializes a bfloat16 tensor into a flat numpy array of length prepended
+    bytes. The numpy array should use dtype of np.float32.
+
+    Parameters
+    ----------
+    input_tensor : np.array
+        The bfloat16 tensor to serialize.
+
+    Returns
+    -------
+    serialized_bf16_tensor : np.array
+        The 1-D numpy array of type uint8 containing the serialized bytes in 'C' order.
+
+    Raises
+    ------
+    InferenceServerException
+        If unable to serialize the given tensor.
+    """
+
+    if input_tensor.size == 0:
+        return np.empty([0], dtype=np.object_)
+
+    # If the input is a tensor of float32, then must flatten those into
+    # a 1-dimensional array containing the element bytes. All elements
+    # are concatenated together in "C" order.
+
+    if (input_tensor.dtype == np.float32):
+        flattened_ls = []
+        for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
+            high_order_bytes = (obj & 0xffff0000).tobytes()[2:4]
+            flattened_ls.append(high_order_bytes)
+        flattened = b''.join(flattened_ls)
+        flattened_array = np.asarray(flattened, dtype=np.object_)
+        if not flattened_array.flags['C_CONTIGUOUS']:
+            flattened_array = np.ascontiguousarray(flattened_array,
+                                                   dtype=np.object_)
+        return flattened_array
+    else:
+        raise_error("cannot serialize bf16 tensor: invalid datatype")
+    return None
+
+
+def deserialize_bf16_tensor(encoded_tensor):
+    """
+    Deserializes an encoded bf16 tensor into an
+    numpy array of dtype of python objects
+
+    Parameters
+    ----------
+    encoded_tensor : bytes
+        The encoded bytes tensor where each element
+        has its length in first 4 bytes followed by
+        the content
+    Returns
+    -------
+    string_tensor : np.array
+        The 1-D numpy array of type float32 containing the
+        deserialized bytes in 'C' order.
+   
+    """
+    strs = list()
+    offset = 0
+    val_buf = encoded_tensor
+    while offset < len(val_buf):
+        sb = struct.unpack_from("<2s", val_buf, offset)[0]
+        # Bfloat16 contains 2 bytes
+        offset += 2
+        strs.append(struct.unpack('<f', (b'\x00\x00' + sb)))
+    return (np.array(strs, dtype=np.float32))
