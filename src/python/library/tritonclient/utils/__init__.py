@@ -273,8 +273,8 @@ def deserialize_bytes_tensor(encoded_tensor):
 
 def serialize_bf16_tensor(input_tensor):
     """
-    Serializes a bfloat16 tensor into a flat numpy array of length prepended
-    bytes. The numpy array should use dtype of np.float32.
+    Serializes a bfloat16 tensor into a flat numpy array of bytes.
+    The numpy array should use dtype of np.float32.
 
     Parameters
     ----------
@@ -324,8 +324,7 @@ def deserialize_bf16_tensor(encoded_tensor):
     ----------
     encoded_tensor : bytes
         The encoded bytes tensor where each element
-        has its length in first 4 bytes followed by
-        the content
+        is 2 bytes (size of bfloat16)
     Returns
     -------
     string_tensor : np.array
