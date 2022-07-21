@@ -226,7 +226,7 @@ public class InferenceServerClient implements AutoCloseable {
     }
 
     public void setRetryCnt(int retryCnt) {
-        Preconditions.checkArgument(retryCnt > 0, "Invalid retryCount: %s", retryCnt);
+        Preconditions.checkArgument(retryCnt >= 0, "Invalid retryCount: %s", retryCnt);
         this.retryCnt = retryCnt;
     }
 
