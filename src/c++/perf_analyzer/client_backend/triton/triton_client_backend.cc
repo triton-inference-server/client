@@ -85,6 +85,7 @@ Error
 TritonClientBackend::Create(
     const std::string& url, const ProtocolType protocol,
     const SslOptionsBase& ssl_options,
+    const std::map<std::string, std::vector<std::string>> trace_options,
     const grpc_compression_algorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     std::unique_ptr<ClientBackend>* client_backend)
@@ -97,6 +98,12 @@ TritonClientBackend::Create(
     RETURN_IF_TRITON_ERROR(tc::InferenceServerHttpClient::Create(
         &(triton_client_backend->client_.http_client_), url, verbose,
         http_ssl_options));
+    if (!trace_options.empty()) {
+      std::string response;
+      RETURN_IF_TRITON_ERROR(
+          triton_client_backend->client_.http_client_->UpdateTraceSettings(
+              &response, "", trace_options));
+    }
   } else {
     std::pair<bool, triton::client::SslOptions> grpc_ssl_options_pair =
         ParseGrpcSslOptions(ssl_options);
@@ -105,6 +112,12 @@ TritonClientBackend::Create(
     RETURN_IF_TRITON_ERROR(tc::InferenceServerGrpcClient::Create(
         &(triton_client_backend->client_.grpc_client_), url, verbose, use_ssl,
         grpc_ssl_options));
+    if (!trace_options.empty()) {
+      inference::TraceSettingResponse response;
+      RETURN_IF_TRITON_ERROR(
+          triton_client_backend->client_.grpc_client_->UpdateTraceSettings(
+              &response, "", trace_options));
+    }
   }
 
   *client_backend = std::move(triton_client_backend);

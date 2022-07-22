@@ -296,6 +296,11 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t--streaming" << std::endl;
   std::cerr << "\t--grpc-compression-algorithm <compression_algorithm>"
             << std::endl;
+  std::cerr << "\t--trace-file" << std::endl;
+  std::cerr << "\t--trace-level" << std::endl;
+  std::cerr << "\t--trace-rate" << std::endl;
+  std::cerr << "\t--trace-count" << std::endl;
+  std::cerr << "\t--log-frequency" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
@@ -732,6 +737,47 @@ Usage(char** argv, const std::string& msg = std::string())
              18)
       << std::endl;
 
+  std::cerr
+      << FormatMessage(
+             " --trace-file: Set the file where trace output will be saved."
+             " If --trace-log-frequency is also specified, this argument "
+             "value will be the prefix of the files to save the trace "
+             "output. See --trace-log-frequency for details. Only used for "
+             "service-kind of triton. Default value is none.",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             "--trace-level: Specify a trace level. OFF to disable tracing, "
+             "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
+             "may be specified multiple times to trace multiple "
+             "informations. Default is OFF.",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             " --trace-rate: Set the trace sampling rate. Default is 1000.", 18)
+      << std::endl;
+  std::cerr << FormatMessage(
+                   " --trace-count: Set the number of traces to be sampled. "
+                   "If the value is -1, the number of traces to be sampled "
+                   "will not be limited. Default is -1.",
+                   18)
+            << std::endl;
+  std::cerr
+      << FormatMessage(
+             " --log-frequency:  Set the trace log frequency. If the "
+             "value is 0, Triton will only log the trace output to "
+             "<trace-file> when shutting down. Otherwise, Triton will log "
+             "the trace output to <trace-file>.<idx> when it collects the "
+             "specified number of traces. For example, if the log frequency "
+             "is 100, when Triton collects the 100-th trace, it logs the "
+             "traces to file <trace-file>.0, and when it collects the 200-th "
+             "trace, it logs the 101-th to the 200-th traces to file "
+             "<trace-file>.1. Default is 0.",
+             18)
+      << std::endl;
+
   std::cerr << FormatMessage(
                    " --triton-server-directory: The Triton server install "
                    "path. Required by and only used when C API "
@@ -825,6 +871,9 @@ PerfAnalyzer::Run(int argc, char** argv)
   // gRPC and HTTP SSL options
   cb::SslOptionsBase ssl_options;
 
+  // Trace options
+  std::map<std::string, std::vector<std::string>> trace_options;
+
   // Verbose csv option for including additional information
   bool verbose_csv = false;
 
@@ -877,6 +926,11 @@ PerfAnalyzer::Run(int argc, char** argv)
       {"ssl-https-private-key-type", 1, 0, 41},
       {"verbose-csv", 0, 0, 42},
       {"enable-mpi", 0, 0, 43},
+      {"trace-file", 1, 0, 44},
+      {"trace-level", 1, 0, 45},
+      {"trace-rate", 1, 0, 46},
+      {"trace-count", 1, 0, 47},
+      {"log-frequency", 1, 0, 48},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1286,6 +1340,26 @@ PerfAnalyzer::Run(int argc, char** argv)
         enable_mpi = true;
         break;
       }
+      case 44: {
+        trace_options["trace_file"] = {optarg};
+        break;
+      }
+      case 45: {
+        trace_options["trace_level"] = {optarg};
+        break;
+      }
+      case 46: {
+        trace_options["trace_rate"] = {optarg};
+        break;
+      }
+      case 47: {
+        trace_options["trace_count"] = {optarg};
+        break;
+      }
+      case 48: {
+        trace_options["log_frequency"] = {optarg};
+        break;
+      }
       case 'v':
         extra_verbose = verbose;
         verbose = true;
@@ -1562,9 +1636,9 @@ PerfAnalyzer::Run(int argc, char** argv)
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
-          kind, url, protocol, ssl_options, compression_algorithm, http_headers,
-          triton_server_path, model_repository_path, memory_type, extra_verbose,
-          &factory),
+          kind, url, protocol, ssl_options, trace_options,
+          compression_algorithm, http_headers, triton_server_path,
+          model_repository_path, memory_type, extra_verbose, &factory),
       "failed to create client factory");
 
   std::unique_ptr<cb::ClientBackend> backend;
