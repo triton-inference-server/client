@@ -942,8 +942,6 @@ class InferenceServerClient:
             metadata = ()
         try:
             request = service_pb2.LogSettingsRequest()
-            print(settings)
-            print(settings.items())
             for key, value in settings.items():
                 if value is None:
                     request.settings[key]
