@@ -756,17 +756,14 @@ Usage(char** argv, const std::string& msg = std::string())
       << std::endl;
   std::cerr
       << FormatMessage(
-             " --trace-rate: The compression algorithm Set the trace "
-             "sampling rate. Default is 1000.",
-             18)
+             " --trace-rate: Set the trace sampling rate. Default is 1000.", 18)
       << std::endl;
-  std::cerr
-      << FormatMessage(
-             " --trace-count: Set the number of traces to be sampled. "
-             "If the value is -1, the number of traces to be sampled "
-             "will not be limited. Default is -1.",
-             18)
-      << std::endl;
+  std::cerr << FormatMessage(
+                   " --trace-count: Set the number of traces to be sampled. "
+                   "If the value is -1, the number of traces to be sampled "
+                   "will not be limited. Default is -1.",
+                   18)
+            << std::endl;
   std::cerr
       << FormatMessage(
              " --log-frequency:  Set the trace log frequency. If the "
@@ -1639,9 +1636,9 @@ PerfAnalyzer::Run(int argc, char** argv)
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
-          kind, url, protocol, ssl_options, trace_options, compression_algorithm, http_headers,
-          triton_server_path, model_repository_path, memory_type, extra_verbose,
-          &factory),
+          kind, url, protocol, ssl_options, trace_options,
+          compression_algorithm, http_headers, triton_server_path,
+          model_repository_path, memory_type, extra_verbose, &factory),
       "failed to create client factory");
 
   std::unique_ptr<cb::ClientBackend> backend;
