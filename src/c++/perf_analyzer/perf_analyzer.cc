@@ -728,14 +728,13 @@ Usage(char** argv, const std::string& msg = std::string())
              18)
       << std::endl;
 
-  std::cerr
-      << FormatMessage(
-             " --grpc-compression-algorithm: The compression algorithm "
-             "to be used by gRPC when sending request. Only supported "
-             "when grpc protocol is being used. The supported values are "
-             "none, gzip, deflate and stream_gzip. Default value is none.",
-             18)
-      << std::endl;
+  std::cerr << FormatMessage(
+                   " --grpc-compression-algorithm: The compression algorithm "
+                   "to be used by gRPC when sending request. Only supported "
+                   "when grpc protocol is being used. The supported values are "
+                   "none, gzip, and deflate. Default value is none.",
+                   18)
+            << std::endl;
 
   std::cerr
       << FormatMessage(
@@ -1172,8 +1171,6 @@ PerfAnalyzer::Run(int argc, char** argv)
           compression_algorithm = cb::COMPRESS_DEFLATE;
         } else if (arg.compare("gzip") == 0) {
           compression_algorithm = cb::COMPRESS_GZIP;
-        } else if (arg.compare("stream_gzip") == 0) {
-          compression_algorithm = cb::COMPRESS_STREAM_GZIP;
         } else {
           Usage(argv, "unsupported --grpc-compression-algorithm specified");
         }

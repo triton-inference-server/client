@@ -126,8 +126,7 @@ enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {
   COMPRESS_NONE = 0,
   COMPRESS_DEFLATE = 1,
-  COMPRESS_GZIP = 2,
-  COMPRESS_STREAM_GZIP = 3
+  COMPRESS_GZIP = 2
 };
 typedef std::map<std::string, std::string> Headers;
 
