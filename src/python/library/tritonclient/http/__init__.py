@@ -1720,14 +1720,15 @@ class InferInput:
         """
         if not isinstance(input_tensor, (np.ndarray,)):
             raise_error("input_tensor must be a numpy array")
-        dtype = np_to_triton_dtype(input_tensor.dtype)
         # DLIS-3720: Special handling for bfloat16 until Numpy officially supports it
         if self._datatype == "BF16":
-            if dtype != triton_to_np_dtype(self._datatype):
+            if input_tensor.dtype != triton_to_np_dtype(self._datatype):
                 raise_error(
                     "got unexpected datatype {} from numpy array, expected {} for BF16 type"
-                    .format(dtype, triton_to_np_dtype(self._datatype)))
+                    .format(input_tensor.dtype,
+                            triton_to_np_dtype(self._datatype)))
         else:
+            dtype = np_to_triton_dtype(input_tensor.dtype)
             if self._datatype != dtype:
                 raise_error(
                     "got unexpected datatype {} from numpy array, expected {}".
