@@ -450,10 +450,7 @@ class InferenceServerClient():
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def update_log_settings(self,
-                                  settings={},
-                                  headers=None,
-                                  as_json=False):
+    async def update_log_settings(self, settings, headers=None, as_json=False):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """

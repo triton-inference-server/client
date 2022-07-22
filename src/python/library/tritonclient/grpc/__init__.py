@@ -902,7 +902,7 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def update_log_settings(self, settings={}, headers=None, as_json=False):
+    def update_log_settings(self, settings, headers=None, as_json=False):
         """Update the global log settings.
         Returns the log settings after the update.
 

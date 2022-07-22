@@ -884,7 +884,7 @@ class InferenceServerClient:
 
         return json.loads(content)
 
-    def update_log_settings(self, settings={}, headers=None, query_params=None):
+    def update_log_settings(self, settings, headers=None, query_params=None):
         """Update the global log settings of the Triton server.
 
         Parameters

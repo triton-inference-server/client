@@ -481,7 +481,7 @@ class InferenceServerClient:
         return json.loads(content)
 
     async def update_log_settings(self,
-                                  settings={},
+                                  settings,
                                   headers=None,
                                   query_params=None):
         """Refer to tritonclient.http.InferenceServerClient
