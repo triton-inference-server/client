@@ -1737,9 +1737,9 @@ class InferInput:
         elif self._input.datatype == "BF16":
             serialized_output = serialize_bf16_tensor(input_tensor)
             if serialized_output.size > 0:
-                self._raw_data = serialized_output.item()
+                self._raw_content = serialized_output.item()
             else:
-                self._raw_data = b''
+                self._raw_content = b''
         else:
             self._raw_content = input_tensor.tobytes()
 
