@@ -174,9 +174,9 @@ if __name__ == '__main__':
             platform_name = "manylinux2014_aarch64"
         else:
             platform_name = "manylinux1_x86_64"
-        args = ['python3', 'setup.py', 'bdist_wheel', '--plat-name', platform_name]
+        args = ['python3', 'setup.py', 'bdist_wheel', 'sdist', '--plat-name', platform_name]
     else:
-        args = ['python3', 'setup.py', 'bdist_wheel']
+        args = ['python3', 'setup.py', 'bdist_wheel', 'sdist']
 
     wenv = os.environ.copy()
     wenv["VERSION"] = FLAGS.triton_version
