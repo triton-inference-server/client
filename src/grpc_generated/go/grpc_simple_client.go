@@ -35,7 +35,7 @@ import (
 	"log"
 	"time"
 
-	triton "nvidia_inferenceserver"
+	triton "github.com/triton-inference-server/client/src/grpc_generated/go/grpc-client"
 
 	"google.golang.org/grpc"
 )
