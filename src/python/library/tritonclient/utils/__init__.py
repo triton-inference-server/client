@@ -308,7 +308,7 @@ def serialize_bf16_tensor(input_tensor):
             obj = obj & np.uint32(0xFFFF0000)
             obj = obj.view(np.float32)
             obj = obj.tobytes()[2:4]
-            flattened_ls.append(s)
+            flattened_ls.append(obj)
         flattened = b''.join(flattened_ls)
         flattened_array = np.asarray(flattened, dtype=np.object_)
         if not flattened_array.flags['C_CONTIGUOUS']:
