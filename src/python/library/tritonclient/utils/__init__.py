@@ -303,12 +303,8 @@ def serialize_bf16_tensor(input_tensor):
         flattened_ls = []
         for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
             # To trunctate the float32 to a bfloat16, we need the high-order bits.
-            # We update the types to prevent Numpy upcasting to the bitmask to int64.
-            obj = obj.view(np.uint32)
-            obj = obj & np.uint32(0xFFFF0000)
-            obj = obj.view(np.float32)
-            obj = obj.tobytes()[2:4]
-            flattened_ls.append(obj)
+            obj_bytes = struct.pack("<f", obj)[2:4]
+            flattened_ls.append(obj_bytes)
         flattened = b''.join(flattened_ls)
         flattened_array = np.asarray(flattened, dtype=np.object_)
         if not flattened_array.flags['C_CONTIGUOUS']:
