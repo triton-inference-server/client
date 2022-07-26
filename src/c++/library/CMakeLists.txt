@@ -199,10 +199,10 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
     if (NOT WIN32)
       install(
         DIRECTORY
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib/
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FILES_MATCHING
           PATTERN "*\.a"
@@ -215,10 +215,10 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
     else()
       install(
         DIRECTORY
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib/
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FILES_MATCHING
           PATTERN "*\.lib"
