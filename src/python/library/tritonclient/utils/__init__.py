@@ -55,6 +55,7 @@ def serialized_byte_size(tensor_value):
 
     if tensor_value.size > 0:
         total_bytes = 0
+        # 'C' order is row-major.
         for obj in np.nditer(tensor_value, flags=["refs_ok"], order='C'):
             total_bytes += len(obj.item())
         return total_bytes
@@ -199,7 +200,7 @@ def serialize_byte_tensor(input_tensor):
     Returns
     -------
     serialized_bytes_tensor : np.array
-        The 1-D numpy array of type uint8 containing the serialized bytes in 'C' order.
+        The 1-D numpy array of type uint8 containing the serialized bytes in row-major form.
 
     Raises
     ------
@@ -212,11 +213,12 @@ def serialize_byte_tensor(input_tensor):
 
     # If the input is a tensor of string/bytes objects, then must flatten those into
     # a 1-dimensional array containing the 4-byte byte size followed by the
-    # actual element bytes. All elements are concatenated together in "C"
+    # actual element bytes. All elements are concatenated together in row-major
     # order.
     if (input_tensor.dtype == np.object_) or (input_tensor.dtype.type
                                               == np.bytes_):
         flattened_ls = []
+        # 'C' order is row-major.
         for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
             # If directly passing bytes to BYTES type,
             # don't convert it to str as Python will encode the
@@ -256,7 +258,7 @@ def deserialize_bytes_tensor(encoded_tensor):
     -------
     string_tensor : np.array
         The 1-D numpy array of type object containing the
-        deserialized bytes in 'C' order.
+        deserialized bytes in row-major form.
    
     """
     strs = list()
@@ -284,7 +286,7 @@ def serialize_bf16_tensor(input_tensor):
     Returns
     -------
     serialized_bf16_tensor : np.array
-        The 1-D numpy array of type uint8 containing the serialized bytes in 'C' order.
+        The 1-D numpy array of type uint8 containing the serialized bytes in row-major form.
 
     Raises
     ------
@@ -297,10 +299,11 @@ def serialize_bf16_tensor(input_tensor):
 
     # If the input is a tensor of float32, then must flatten those into
     # a 1-dimensional array containing the element bytes. All elements
-    # are concatenated together in "C" order.
+    # are concatenated together in row-major order.
 
     if (input_tensor.dtype == np.float32):
         flattened_ls = []
+        # 'C' order is row-major.
         for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
             # To trunctate the float32 to a bfloat16, we need the high-order bits.
             obj_bytes = struct.pack("<f", obj)[2:4]
@@ -330,7 +333,7 @@ def deserialize_bf16_tensor(encoded_tensor):
     -------
     string_tensor : np.array
         The 1-D numpy array of type float32 containing the
-        deserialized bytes in 'C' order.
+        deserialized bytes in row-major form.
    
     """
     strs = list()
