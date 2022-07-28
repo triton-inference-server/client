@@ -167,7 +167,7 @@ TEST_CASE("test_check_window_for_stability")
   SUBCASE("test latency not stable")
   {
     ls.infer_per_sec = {500.0, 520.0, 510.0};
-    ls.latencies = {1, 100, 50};
+    ls.latencies = {100, 106, 112};
     lp.stability_window = 3;
     lp.stability_threshold = 0.1;
     CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == false);
@@ -175,7 +175,7 @@ TEST_CASE("test_check_window_for_stability")
   SUBCASE("test latency stable")
   {
     ls.infer_per_sec = {500.0, 520.0, 510.0};
-    ls.latencies = {45, 50, 45};
+    ls.latencies = {100, 104, 108};
     lp.stability_window = 3;
     lp.stability_threshold = 0.1;
     CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);

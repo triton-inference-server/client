@@ -717,8 +717,8 @@ InferenceProfiler::IsLatencyWindowStable(size_t idx, LoadStatus& load_status)
   auto latencies_per_sec_measurements = std::minmax_element(
       latency_start, latency_start + load_parameters_.stability_window);
 
-  auto max_latency = *latencies_per_sec_measurements.second;
-  auto min_latency = *latencies_per_sec_measurements.first;
+  double max_latency = *latencies_per_sec_measurements.second;
+  double min_latency = *latencies_per_sec_measurements.first;
 
   return max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
 }
