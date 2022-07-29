@@ -84,8 +84,8 @@ class InferenceServerClient:
         self._url = scheme + (url if url[-1] != "/" else url[:-1])
         self._conn = aiohttp.TCPConnector(ssl=ssl_context, limit=conn_limit)
         self._stub = aiohttp.ClientSession(
-            connector=self._conn, 
-            timeout=aiohttp.ClientTimeout(total=conn_timeout), 
+            connector=self._conn,
+            timeout=aiohttp.ClientTimeout(total=conn_timeout),
             auto_decompress=False)
         self._verbose = verbose
 
@@ -129,8 +129,8 @@ class InferenceServerClient:
         if self._verbose:
             print("GET {}, headers {}".format(req_url, headers))
 
-        res = await self._stub.get(
-            url=req_url, headers=self._fix_header(headers))
+        res = await self._stub.get(url=req_url,
+                                   headers=self._fix_header(headers))
 
         if self._verbose:
             print(res)
@@ -163,13 +163,14 @@ class InferenceServerClient:
             req_url = req_url + "?" + _get_query_string(query_params)
 
         if self._verbose:
-            print("POST {}, headers {}\n{}".format(
-                req_url, headers, request_body))
-        
+            print("POST {}, headers {}\n{}".format(req_url, headers,
+                                                   request_body))
+
         if isinstance(request_body, str):
             request_body = request_body.encode()
-        res = await self._stub.post(
-            url=req_url, data=request_body, headers=self._fix_header(headers))
+        res = await self._stub.post(url=req_url,
+                                    data=request_body,
+                                    headers=self._fix_header(headers))
 
         if self._verbose:
             print(res)
@@ -204,7 +205,7 @@ class InferenceServerClient:
                         "supported in the Python client library. Use raw HTTP "
                         "request libraries or the C++ client instead for this "
                         "header.")
-    
+
     def _fix_header(self, headers):
         """Returns a header that is valid for aiohttp.
         
@@ -737,9 +738,9 @@ class InferenceServerClient:
         await _raise_if_error(response)
 
         content_encoding = response.headers.get("Content-Encoding", None)
-        header_length = response.headers.get(
-            "Inference-Header-Content-Length", None)
+        header_length = response.headers.get("Inference-Header-Content-Length",
+                                             None)
         response_body = await response.read()
 
-        return InferResult.from_response_body(
-            response_body, self._verbose, header_length, content_encoding)
+        return InferResult.from_response_body(response_body, self._verbose,
+                                              header_length, content_encoding)

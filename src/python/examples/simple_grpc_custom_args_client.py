@@ -53,10 +53,10 @@ if __name__ == '__main__':
         # correct and complete.
         channel_args = [
             # Define custom max message sizes: 1MB here is an arbitrary example.
-            ('grpc.max_send_message_length', 1024*1024),
-            ('grpc.max_receive_message_length', 1024*1024),
+            ('grpc.max_send_message_length', 1024 * 1024),
+            ('grpc.max_receive_message_length', 1024 * 1024),
             # Example of setting KeepAlive options through generic channel_args
-            ('grpc.keepalive_time_ms', 2**31-1),
+            ('grpc.keepalive_time_ms', 2**31 - 1),
             ('grpc.keepalive_timeout_ms', 20000),
             ('grpc.keepalive_permit_without_calls', False),
             ('grpc.http2.max_pings_without_data', 2),
@@ -65,10 +65,7 @@ if __name__ == '__main__':
         ]
 
         triton_client = grpcclient.InferenceServerClient(
-            url=FLAGS.url,
-            verbose=FLAGS.verbose,
-            channel_args=channel_args
-        )
+            url=FLAGS.url, verbose=FLAGS.verbose, channel_args=channel_args)
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit()
@@ -95,11 +92,10 @@ if __name__ == '__main__':
     outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
 
     # Test with outputs
-    results = triton_client.infer(
-        model_name=model_name,
-        inputs=inputs,
-        outputs=outputs,
-        headers={'test': '1'})
+    results = triton_client.infer(model_name=model_name,
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  headers={'test': '1'})
 
     # Get the output arrays from the results
     output0_data = results.as_numpy('OUTPUT0')
