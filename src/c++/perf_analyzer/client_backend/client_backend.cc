@@ -95,14 +95,13 @@ BackendKindToString(const BackendKind kind)
 grpc_compression_algorithm
 BackendToGrpcType(const GrpcCompressionAlgorithm compression_algorithm)
 {
-  if (compression_algorithm == COMPRESS_STREAM_GZIP) {
-    return grpc_compression_algorithm::GRPC_COMPRESS_STREAM_GZIP;
-  } else if (compression_algorithm == COMPRESS_DEFLATE) {
-    return grpc_compression_algorithm::GRPC_COMPRESS_DEFLATE;
-  } else if (compression_algorithm == COMPRESS_GZIP) {
-    return grpc_compression_algorithm::GRPC_COMPRESS_GZIP;
-  } else {
-    return grpc_compression_algorithm::GRPC_COMPRESS_NONE;
+  switch (compression_algorithm) {
+    case COMPRESS_DEFLATE:
+      return grpc_compression_algorithm::GRPC_COMPRESS_DEFLATE;
+    case COMPRESS_GZIP:
+      return grpc_compression_algorithm::GRPC_COMPRESS_GZIP;
+    default:
+      return grpc_compression_algorithm::GRPC_COMPRESS_NONE;
   }
 }
 
