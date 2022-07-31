@@ -27,20 +27,22 @@
 
 |License|
 
+Regenerate Go Client stubs
+==========================
+  # Clone the repo containing the proto definitions, from within client/src/grpc_generated/go/
+    git clone https://github.com/triton-inference-server/common.git
+
+  # Compiles *.proto to *.pb.go
+  ./gen_go_stubs.sh
+
+
 Example Go Client
 =================
 
-This sample script assumes that the protobuf stubs will be compiled
-local to the client, under the nvidia_inferenceserver directory. This
-can be easily tweaked by uncommenting gen_go_stubs.sh to generate the
-stubs in ${GOPATH}/src/nvidia_inferenceserver to have something more
-global instead.
+To regenerate the grpc client::
 
-Usage::
-
-  # Clone repos
+  # Clone the repo containing the example model, from within client/src/grpc_generated/go/.
   git clone https://github.com/triton-inference-server/server.git
-  git clone https://github.com/triton-inference-server/common.git
 
   # Setup "simple" model from example model_repository
   cd server/docs/examples
@@ -48,10 +50,9 @@ Usage::
 
   # Launch (detached) Triton
   docker run -d -p8000:8000 -p8001:8001 -p8002:8002 -it -v $(pwd)/model_repository:/models nvcr.io/nvidia/tritonserver:20.11-py3 tritonserver --model-store=/models
+  
   # Use client
   cd ../../../
-  # Compiles *.proto to *.pb.go
-  ./gen_go_stubs.sh
   go run grpc_simple_client.go
 
 Sample Output::
@@ -99,3 +100,4 @@ Sample Output::
 
 .. |License| image:: https://img.shields.io/badge/License-BSD3-lightgrey.svg
    :target: https://opensource.org/licenses/BSD-3-Clause
+   
