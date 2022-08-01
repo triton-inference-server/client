@@ -45,7 +45,7 @@ std::condition_variable cv_;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -216,7 +216,7 @@ main(int argc, char** argv)
       "unable to set data for 'WAIT'");
 
   std::vector<tc::InferInput*> inputs = {in_ptr.get(), delay_ptr.get(),
-                                          wait_ptr.get()};
+                                         wait_ptr.get()};
 
   tc::InferOptions options(model_name);
 

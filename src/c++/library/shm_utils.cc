@@ -87,8 +87,7 @@ UnlinkSharedMemoryRegion(std::string shm_key)
 {
   int shm_fd = shm_unlink(shm_key.c_str());
   if (shm_fd == -1) {
-    return Error(
-        "unable to unlink shared memory for key '" + shm_key + "'");
+    return Error("unable to unlink shared memory for key '" + shm_key + "'");
   }
 
   return Error::Success;

@@ -35,7 +35,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -153,7 +153,7 @@ InferAndValidate(
   }
 
   std::vector<const tc::InferRequestedOutput*> routputs = {outputs[0],
-                                                            outputs[1]};
+                                                           outputs[1]};
 
   tc::InferResult* results;
   if (protocol == "http") {
@@ -428,7 +428,7 @@ main(int argc, char** argv)
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
   std::vector<tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                     output1_ptr.get()};
+                                                    output1_ptr.get()};
 
   std::vector<int*> shm_ptrs = {input0_shm, input1_shm, output0_shm,
                                 output1_shm};
