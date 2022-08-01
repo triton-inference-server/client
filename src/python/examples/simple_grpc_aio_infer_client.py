@@ -29,7 +29,6 @@ import argparse
 import numpy as np
 import sys
 import asyncio
-from functools import partial
 
 import tritonclient.grpc.aio as grpcclient
 

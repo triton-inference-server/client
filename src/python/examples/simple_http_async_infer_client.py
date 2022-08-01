@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,13 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from functools import partial
 import argparse
 import numpy as np
 import sys
 
 import tritonclient.http as httpclient
-from tritonclient.utils import InferenceServerException
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

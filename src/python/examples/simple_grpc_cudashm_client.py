@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 
 import argparse
 import numpy as np
-import os
 import sys
 from builtins import range
 

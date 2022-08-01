@@ -92,7 +92,7 @@ def _get_inference_request(model_name, inputs, model_version, request_id,
 
 
 def _grpc_compression_type(algorithm_str):
-    if (algorithm_str == None):
+    if (algorithm_str is None):
         return grpc.Compression.NoCompression
     elif (algorithm_str.lower() == "deflate"):
         return grpc.Compression.Deflate
