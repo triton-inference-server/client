@@ -217,7 +217,7 @@ def serialize_byte_tensor(input_tensor):
     # order.
 
     if (input_tensor.dtype != np.object_) and (input_tensor.dtype.type
-                                              == np.bytes_):
+                                              != np.bytes_):
         raise_error("cannot serialize bytes tensor: invalid datatype")
     
     flattened_ls = []
