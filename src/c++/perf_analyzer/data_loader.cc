@@ -451,6 +451,11 @@ DataLoader::ReadTensorData(
 
       const rapidjson::Value* content;
 
+      // Check if the input data file is malformed
+      if (!(tensor.IsArray() || tensor.IsObject())) {
+        return cb::Error("Input data file is malformed.", pa::GENERIC_ERROR);
+      }
+
       if (tensor.IsArray()) {
         content = &tensor;
       } else if (tensor.HasMember("b64")) {
