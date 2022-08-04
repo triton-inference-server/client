@@ -884,6 +884,74 @@ class InferenceServerClient:
 
         return json.loads(content)
 
+    def update_log_settings(self, settings, headers=None, query_params=None):
+        """Update the global log settings of the Triton server.
+        Parameters
+        ----------
+        settings: dict
+            The new log setting values. Only the settings listed will be
+            updated.
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        query_params: dict
+            Optional url query parameters to use in network
+            transaction
+        Returns
+        -------
+        dict
+            The JSON dict holding the updated log settings.
+        Raises
+        ------
+        InferenceServerException
+            If unable to update the log settings.
+        """
+        request_uri = "v2/logging"
+        response = self._post(request_uri=request_uri,
+                              request_body=json.dumps(settings),
+                              headers=headers,
+                              query_params=query_params)
+        _raise_if_error(response)
+
+        content = response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
+    def get_log_settings(self, headers=None, query_params=None):
+        """Get the global log settings for the Triton server
+        Parameters
+        ----------
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        query_params: dict
+            Optional url query parameters to use in network
+            transaction
+        Returns
+        -------
+        dict
+            The JSON dict holding the log settings.
+        Raises
+        ------
+        InferenceServerException
+            If unable to get the log settings.
+        """
+
+        request_uri = "v2/logging"
+
+        response = self._get(request_uri=request_uri,
+                             headers=headers,
+                             query_params=query_params)
+        _raise_if_error(response)
+
+        content = response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
     def get_system_shared_memory_status(self,
                                         region_name="",
                                         headers=None,

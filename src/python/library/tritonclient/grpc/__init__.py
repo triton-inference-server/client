@@ -902,6 +902,115 @@ class InferenceServerClient:
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
+    def update_log_settings(self, settings, headers=None, as_json=False):
+        """Update the global log settings.
+        Returns the log settings after the update.
+        Parameters
+        ----------
+        settings: dict
+            The new log setting values. Only the settings listed will be
+            updated.
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        as_json : bool
+            If True then returns trace settings
+            as a json dict, otherwise as a protobuf message.
+            Default value is False.
+            The returned json is generated from the protobuf message
+            using MessageToJson and as a result int64 values are
+            represented as string. It is the caller's responsibility
+            to convert these strings back to int64 values as
+            necessary.
+        Returns
+        -------
+        dict or protobuf message
+            The JSON dict or LogSettingsResponse message holding
+            the updated log settings.
+        Raises
+        ------
+        InferenceServerException
+            If unable to update the log settings.
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+        try:
+            request = service_pb2.LogSettingsRequest()
+            for key, value in settings.items():
+                if value is None:
+                    request.settings[key]
+                else:
+                    if key == "log_file" or key == "log_format":
+                        request.settings[key].string_param = value
+                    elif key == "log_verbose_level":
+                        request.settings[key].uint32_param = value
+                    else:
+                        request.settings[key].bool_param = value
+
+            if self._verbose:
+                print("update_log_settings, metadata {}\n{}".format(
+                    metadata, request))
+            response = self._client_stub.LogSettings(request=request,
+                                                     metadata=metadata)
+            if self._verbose:
+                print(response)
+            if as_json:
+                return json.loads(
+                    MessageToJson(response, preserving_proto_field_name=True))
+            else:
+                return response
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
+    def get_log_settings(self, headers=None, as_json=False):
+        """Get the global log settings.
+        Parameters
+        ----------
+        headers: dict
+            Optional dictionary specifying additional HTTP
+            headers to include in the request.
+        as_json : bool
+            If True then returns log settings
+            as a json dict, otherwise as a protobuf message.
+            Default value is False.
+            The returned json is generated from the protobuf message
+            using MessageToJson and as a result int64 values are
+            represented as string. It is the caller's responsibility
+            to convert these strings back to int64 values as
+            necessary.
+        Returns
+        -------
+        dict or protobuf message
+            The JSON dict or LogSettingsResponse message holding
+            the log settings.
+        Raises
+        ------
+        InferenceServerException
+            If unable to get the log settings.
+        """
+        if headers is not None:
+            metadata = headers.items()
+        else:
+            metadata = ()
+        try:
+            request = service_pb2.LogSettingsRequest()
+            if self._verbose:
+                print("get_log_settings, metadata {}\n{}".format(
+                    metadata, request))
+            response = self._client_stub.LogSettings(request=request,
+                                                     metadata=metadata)
+            if self._verbose:
+                print(response)
+            if as_json:
+                return json.loads(
+                    MessageToJson(response, preserving_proto_field_name=True))
+            else:
+                return response
+        except grpc.RpcError as rpc_error:
+            raise_error_grpc(rpc_error)
+
     def get_system_shared_memory_status(self,
                                         region_name="",
                                         headers=None,
