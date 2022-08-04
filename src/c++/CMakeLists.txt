@@ -83,7 +83,9 @@ if(NOT TRITON_ENABLE_PERF_ANALYZER AND NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_
   set(TRITON_COMMON_ENABLE_JSON OFF)
 endif()
 
-FetchContent_MakeAvailable(googletest)
+if(TRITON_ENABLE_TESTS OR TRITON_ENABLE_PERF_ANALYZER)
+  FetchContent_MakeAvailable(googletest)
+endif()
 FetchContent_MakeAvailable(repo-common)
 
 #
