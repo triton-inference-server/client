@@ -30,6 +30,11 @@
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestModelParser;
+#endif
+
 struct ModelTensor {
   ModelTensor() : is_shape_tensor_(false) {}
   std::string name_;
@@ -160,6 +165,15 @@ class ModelParser {
       const rapidjson::Document& config, const std::string& model_version,
       std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential);
 
+  /// In the json produced by protobuf, int64 and uint64 values are
+  /// represented as strings. Protobuf doesn't provide an option to
+  /// disable this (sigh) so we need to correctly parse these fields
+  /// for ModelParser to receive appopriate requests.
+  /// \param value The rapidjson value object with the int value.
+  /// \param integer_value The output integer pointer.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error GetInt(const rapidjson::Value& value, int64_t* integer_value);
+
   cb::BackendKind backend_kind_;
 
   std::shared_ptr<ModelTensorMap> inputs_;
@@ -173,6 +187,13 @@ class ModelParser {
   size_t max_batch_size_;
   bool is_decoupled_;
   bool response_cache_enabled_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestModelParser;
+
+ private:
+  ModelParser() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
