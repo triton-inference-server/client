@@ -929,10 +929,6 @@ TritonLoader::Infer(
     return Error("request failure in triton server", 1);
   }
 
-  // RETURN_IF_TRITONSERVER_ERROR(
-  //     GetSingleton()->inference_response_error_fn_(completed_response),
-  //     "response status");
-
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
@@ -947,13 +943,13 @@ TritonLoader::Infer(
       "Failed to get request id");
   std::string id(cid);
   InferResult::Create(result, err, id);
-  // // clean up
-  // RETURN_IF_TRITONSERVER_ERROR(
-  //     GetSingleton()->inference_response_delete_fn_(completed_response),
-  //     "deleting inference response");
-  // RETURN_IF_TRITONSERVER_ERROR(
-  //     GetSingleton()->response_allocator_delete_fn_(allocator),
-  //     "deleting response allocator");
+  // clean up
+  RETURN_IF_TRITONSERVER_ERROR(
+      GetSingleton()->inference_response_delete_fn_(completed_response),
+      "deleting inference response");
+  RETURN_IF_TRITONSERVER_ERROR(
+      GetSingleton()->response_allocator_delete_fn_(allocator),
+      "deleting response allocator");
   return Error::Success;
 }
 
