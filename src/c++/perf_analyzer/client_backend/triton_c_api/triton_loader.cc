@@ -921,9 +921,18 @@ TritonLoader::Infer(
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
   // Wait for the inference to complete.
   TRITONSERVER_InferenceResponse* completed_response = completed.get();
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_response_error_fn_(completed_response),
-      "response status");
+
+  // check if there completed response is an error and needs to shut down
+  // gracefully
+  if (completed_response != nullptr) {
+    CleanUp(completed_response, allocator);
+    return Error("request failure in triton server", 1);
+  }
+
+  // RETURN_IF_TRITONSERVER_ERROR(
+  //     GetSingleton()->inference_response_error_fn_(completed_response),
+  //     "response status");
+
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
@@ -938,14 +947,24 @@ TritonLoader::Infer(
       "Failed to get request id");
   std::string id(cid);
   InferResult::Create(result, err, id);
-  // clean up
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_response_delete_fn_(completed_response),
-      "deleting inference response");
-  RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->response_allocator_delete_fn_(allocator),
-      "deleting response allocator");
+  // // clean up
+  // RETURN_IF_TRITONSERVER_ERROR(
+  //     GetSingleton()->inference_response_delete_fn_(completed_response),
+  //     "deleting inference response");
+  // RETURN_IF_TRITONSERVER_ERROR(
+  //     GetSingleton()->response_allocator_delete_fn_(allocator),
+  //     "deleting response allocator");
   return Error::Success;
+}
+
+void
+TritonLoader::CleanUp(
+    TRITONSERVER_InferenceResponse* completed_response,
+    TRITONSERVER_ResponseAllocator* allocator)
+{
+  // clean up
+  GetSingleton()->inference_response_delete_fn_(completed_response);
+  GetSingleton()->response_allocator_delete_fn_(allocator);
 }
 
 Error
