@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -215,32 +215,32 @@ def serialize_byte_tensor(input_tensor):
     # a 1-dimensional array containing the 4-byte byte size followed by the
     # actual element bytes. All elements are concatenated together in row-major
     # order.
-    if (input_tensor.dtype == np.object_) or (input_tensor.dtype.type
-                                              == np.bytes_):
-        flattened_ls = []
-        # 'C' order is row-major.
-        for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
-            # If directly passing bytes to BYTES type,
-            # don't convert it to str as Python will encode the
-            # bytes which may distort the meaning
-            if input_tensor.dtype == np.object_:
-                if type(obj.item()) == bytes:
-                    s = obj.item()
-                else:
-                    s = str(obj.item()).encode('utf-8')
-            else:
-                s = obj.item()
-            flattened_ls.append(struct.pack("<I", len(s)))
-            flattened_ls.append(s)
-        flattened = b''.join(flattened_ls)
-        flattened_array = np.asarray(flattened, dtype=np.object_)
-        if not flattened_array.flags['C_CONTIGUOUS']:
-            flattened_array = np.ascontiguousarray(flattened_array,
-                                                   dtype=np.object_)
-        return flattened_array
-    else:
+
+    if (input_tensor.dtype != np.object_) and (input_tensor.dtype.type
+                                              != np.bytes_):
         raise_error("cannot serialize bytes tensor: invalid datatype")
-    return None
+    
+    flattened_ls = []
+    # 'C' order is row-major.
+    for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
+        # If directly passing bytes to BYTES type,
+        # don't convert it to str as Python will encode the
+        # bytes which may distort the meaning
+        if input_tensor.dtype == np.object_:
+            if type(obj.item()) == bytes:
+                s = obj.item()
+            else:
+                s = str(obj.item()).encode('utf-8')
+        else:
+            s = obj.item()
+        flattened_ls.append(struct.pack("<I", len(s)))
+        flattened_ls.append(s)
+    flattened = b''.join(flattened_ls)
+    flattened_array = np.asarray(flattened, dtype=np.object_)
+    if not flattened_array.flags['C_CONTIGUOUS']:
+        flattened_array = np.ascontiguousarray(flattened_array,
+                                                dtype=np.object_)
+    return flattened_array
 
 
 def deserialize_bytes_tensor(encoded_tensor):
@@ -301,22 +301,21 @@ def serialize_bf16_tensor(input_tensor):
     # a 1-dimensional array containing the element bytes. All elements
     # are concatenated together in row-major order.
 
-    if (input_tensor.dtype == np.float32):
-        flattened_ls = []
-        # 'C' order is row-major.
-        for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
-            # To trunctate the float32 to a bfloat16, we need the high-order bits.
-            obj_bytes = struct.pack("<f", obj)[2:4]
-            flattened_ls.append(obj_bytes)
-        flattened = b''.join(flattened_ls)
-        flattened_array = np.asarray(flattened, dtype=np.object_)
-        if not flattened_array.flags['C_CONTIGUOUS']:
-            flattened_array = np.ascontiguousarray(flattened_array,
-                                                   dtype=np.object_)
-        return flattened_array
-    else:
+    if (input_tensor.dtype != np.float32):
         raise_error("cannot serialize bf16 tensor: invalid datatype")
-    return None
+    
+    flattened_ls = []
+    # 'C' order is row-major.
+    for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
+        # To trunctate the float32 to a bfloat16, we need the high-order bits.
+        obj_bytes = struct.pack("<f", obj)[2:4]
+        flattened_ls.append(obj_bytes)
+    flattened = b''.join(flattened_ls)
+    flattened_array = np.asarray(flattened, dtype=np.object_)
+    if not flattened_array.flags['C_CONTIGUOUS']:
+        flattened_array = np.ascontiguousarray(flattened_array,
+                                                dtype=np.object_)
+    return flattened_array
 
 
 def deserialize_bf16_tensor(encoded_tensor):
