@@ -107,7 +107,7 @@ class TritonLoader : public tc::InferenceServerClient {
       const std::vector<const tc::InferRequestedOutput*>& outputs,
       InferResult** result);
 
-  static void CleanUp(
+  static Error CleanUp(
       TRITONSERVER_InferenceResponse* completed_response,
       TRITONSERVER_ResponseAllocator* allocator);
 
