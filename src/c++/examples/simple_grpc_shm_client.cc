@@ -34,7 +34,7 @@ namespace tc = triton::client;
 
 #define FAIL_IF_ERR(X, MSG)                                        \
   {                                                                \
-    tc::Error err = (X);                                          \
+    tc::Error err = (X);                                           \
     if (!err.IsOk()) {                                             \
       std::cerr << "error: " << (MSG) << ": " << err << std::endl; \
       exit(1);                                                     \
@@ -243,7 +243,7 @@ main(int argc, char** argv)
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
   std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                           output1_ptr.get()};
+                                                          output1_ptr.get()};
 
   tc::InferResult* results;
   FAIL_IF_ERR(

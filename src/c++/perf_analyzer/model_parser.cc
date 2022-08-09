@@ -30,39 +30,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-namespace {
-// In the json produced by protobuf, int64 and uint64 values are
-// represented as strings. Protobuf doesn't provide an option to
-// disable this (sigh) so we need to correctly parse these fields
-// for ModelParser to receive appopriate requests.
-cb::Error
-GetInt(const rapidjson::Value& value, int64_t* integer_value)
-{
-  if (value.IsString()) {
-    std::string str(value.GetString(), value.GetStringLength());
-
-    try {
-      *integer_value = std::atoll(str.c_str());
-    }
-    catch (...) {
-      return cb::Error(
-          std::string("unable to convert '") + str + "' to integer",
-          pa::GENERIC_ERROR);
-    }
-
-  } else if (value.IsInt64()) {
-    *integer_value = value.GetInt64();
-  } else if (value.IsInt()) {
-    *integer_value = value.GetInt();
-  } else {
-    return cb::Error("failed to parse the integer value", pa::GENERIC_ERROR);
-  }
-
-  return cb::Error::Success;
-}
-
-}  // namespace
-
 cb::Error
 ModelParser::InitTriton(
     const rapidjson::Document& metadata, const rapidjson::Document& config,
@@ -375,6 +342,32 @@ ModelParser::GetEnsembleSchedulerType(
         response_cache_enabled_ = cache_itr->value["enable"].GetBool();
       }
     }
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::GetInt(const rapidjson::Value& value, int64_t* integer_value)
+{
+  if (value.IsString()) {
+    std::string str(value.GetString(), value.GetStringLength());
+
+    try {
+      *integer_value = std::stoll(str.c_str());
+    }
+    catch (...) {
+      return cb::Error(
+          std::string("unable to convert '") + str + "' to integer",
+          pa::GENERIC_ERROR);
+    }
+
+  } else if (value.IsInt64()) {
+    *integer_value = value.GetInt64();
+  } else if (value.IsInt()) {
+    *integer_value = value.GetInt();
+  } else {
+    return cb::Error("failed to parse the integer value", pa::GENERIC_ERROR);
   }
 
   return cb::Error::Success;
