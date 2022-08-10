@@ -35,7 +35,6 @@ Regenerate Go Client stubs
   # Compiles *.proto to *.pb.go
   ./gen_go_stubs.sh
 
-
 Example Go Client
 =================
 
@@ -49,7 +48,7 @@ To regenerate the grpc client::
   ./fetch_models.sh
 
   # Launch (detached) Triton
-  docker run -d -p8000:8000 -p8001:8001 -p8002:8002 -it -v $(pwd)/model_repository:/models nvcr.io/nvidia/tritonserver:20.11-py3 tritonserver --model-store=/models
+  docker run -d -p8000:8000 -p8001:8001 -p8002:8002 -it -v $(pwd)/model_repository:/models nvcr.io/nvidia/tritonserver:22.07-py3 tritonserver --model-store=/models
   
   # Use client
   cd ../../../
@@ -100,4 +99,3 @@ Sample Output::
 
 .. |License| image:: https://img.shields.io/badge/License-BSD3-lightgrey.svg
    :target: https://opensource.org/licenses/BSD-3-Clause
-   
