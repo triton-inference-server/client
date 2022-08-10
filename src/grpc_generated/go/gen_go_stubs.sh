@@ -40,5 +40,4 @@ do
 done
 
 # Requires protoc and protoc-gen-go plugin: https://github.com/golang/protobuf#installation
-# https://github.com/golang/protobuf/issues/1070.
 protoc -I core --go-grpc_out="./" --go_out="./" core/*.proto
