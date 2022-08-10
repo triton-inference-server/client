@@ -39,7 +39,7 @@ Generate Go Client stubs
 Example Go Client
 =================
 
-To regenerate the grpc client::
+To run the grpc client example::
 
   # Clone the repo containing the example model, from within client/src/grpc_generated/go/.
   git clone https://github.com/triton-inference-server/server.git
