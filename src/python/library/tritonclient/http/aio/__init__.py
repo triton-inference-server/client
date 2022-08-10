@@ -480,6 +480,42 @@ class InferenceServerClient:
 
         return json.loads(content)
 
+    async def update_log_settings(self,
+                                  settings,
+                                  headers=None,
+                                  query_params=None):
+        """Refer to tritonclient.http.InferenceServerClient
+        """
+        request_uri = "v2/logging"
+
+        response = await self._post(request_uri=request_uri,
+                                    request_body=json.dumps(settings),
+                                    headers=headers,
+                                    query_params=query_params)
+        await _raise_if_error(response)
+
+        content = await response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
+    async def get_log_settings(self, headers=None, query_params=None):
+        """Refer to tritonclient.http.InferenceServerClient
+        """
+        request_uri = "v2/logging"
+
+        response = await self._get(request_uri=request_uri,
+                                   headers=headers,
+                                   query_params=query_params)
+        await _raise_if_error(response)
+
+        content = await response.read()
+        if self._verbose:
+            print(content)
+
+        return json.loads(content)
+
     async def get_system_shared_memory_status(self,
                                               region_name="",
                                               headers=None,
