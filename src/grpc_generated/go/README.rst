@@ -29,8 +29,11 @@
 
 Generate Go Client stubs
 ==========================
+
+To generate the stubs::
+
   # Clone the repo containing the proto definitions, from within client/src/grpc_generated/go/
-    git clone https://github.com/triton-inference-server/common.git
+  git clone https://github.com/triton-inference-server/common.git
 
   # Compiles *.proto to *.pb.go
   ./gen_go_stubs.sh
