@@ -27,10 +27,13 @@
 
 |License|
 
-Regenerate Go Client stubs
+Generate Go Client stubs
 ==========================
+
+To generate the stubs::
+
   # Clone the repo containing the proto definitions, from within client/src/grpc_generated/go/
-    git clone https://github.com/triton-inference-server/common.git
+  git clone https://github.com/triton-inference-server/common.git
 
   # Compiles *.proto to *.pb.go
   ./gen_go_stubs.sh
@@ -38,7 +41,7 @@ Regenerate Go Client stubs
 Example Go Client
 =================
 
-To regenerate the grpc client::
+To run the grpc client example::
 
   # Clone the repo containing the example model, from within client/src/grpc_generated/go/.
   git clone https://github.com/triton-inference-server/server.git
