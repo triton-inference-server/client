@@ -27,7 +27,7 @@
 
 |License|
 
-Regenerate Go Client stubs
+Generate Go Client stubs
 ==========================
   # Clone the repo containing the proto definitions, from within client/src/grpc_generated/go/
     git clone https://github.com/triton-inference-server/common.git
