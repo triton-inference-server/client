@@ -1904,7 +1904,7 @@ PerfAnalyzer::Run(int argc, char** argv)
     // In the case of early_exit, the thread does not return and continues to
     // report the summary
     if (!pa::early_exit) {
-      return pa::GENERIC_ERROR;
+      return err.Err();
     }
   }
   if (summary.size()) {
