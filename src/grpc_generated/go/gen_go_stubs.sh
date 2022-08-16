@@ -39,5 +39,5 @@ do
   echo "option go_package = \"./${PACKAGE}\";" >> $i
 done
 
-# Requires protoc and protoc-gen-go plugin: https://github.com/golang/protobuf#installation
+# Requires protoc and protoc-gen-go plugin: https://grpc.io/docs/protoc-installation/
 protoc -I core --go-grpc_out="./" --go_out="./" core/*.proto
