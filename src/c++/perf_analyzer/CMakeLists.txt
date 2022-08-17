@@ -35,7 +35,7 @@ add_subdirectory(client_backend)
 
 set(
   PERF_ANALYZER_SRCS
-  main.cc
+  command_line_parser.cc
   perf_analyzer.cc
   model_parser.cc
   perf_utils.cc
@@ -51,6 +51,7 @@ set(
 
 set(
   PERF_ANALYZER_HDRS
+  command_line_parser.h
   perf_analyzer.h
   model_parser.h
   perf_utils.h
@@ -68,6 +69,7 @@ set(
 
 add_executable(
   perf_analyzer
+  main.cc
   ${PERF_ANALYZER_SRCS}
   ${PERF_ANALYZER_HDRS}
   $<TARGET_OBJECTS:json-utils-library>
@@ -129,7 +131,6 @@ install(CODE "message(\"-- Created symlink: perf_client -> ./perf_analyzer\")")
 
 
 set(PERF_ANALYZER_UNIT_TESTS_SRCS ${PERF_ANALYZER_SRCS})
-list(REMOVE_ITEM PERF_ANALYZER_UNIT_TESTS_SRCS main.cc)
 list(PREPEND PERF_ANALYZER_UNIT_TESTS_SRCS perf_analyzer_unit_tests.cc)
 set(PERF_ANALYZER_UNIT_TESTS_HDRS ${PERF_ANALYZER_HDRS})
 
@@ -139,9 +140,16 @@ add_executable(
   ${PERF_ANALYZER_UNIT_TESTS_HDRS}
   mock_inference_profiler.h
   test_inference_profiler.cc
+  test_command_line_parser.cc
   test_model_parser.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
+
+# -Wno-write-strings is needed for the unit tests in order to statically create
+# input argv cases in the CommandLineParser unit test
+#
+set_target_properties(perf_analyzer_unit_tests 
+  PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
 
 target_link_libraries(
   perf_analyzer_unit_tests

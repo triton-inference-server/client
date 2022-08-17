@@ -28,6 +28,7 @@
 #include <deque>
 #include <thread>
 #include <tuple>
+
 #include "concurrency_manager.h"
 #include "constants.h"
 #include "custom_load_manager.h"
@@ -62,9 +63,6 @@ struct LoadStatus {
   // Stores the average latency within the stability window
   uint64_t avg_latency = 0;
 };
-
-/// Different measurement modes possible.
-enum MeasurementMode { TIME_WINDOWS = 0, COUNT_WINDOWS = 1 };
 
 // Holds the total of the timiming components of composing models of an
 // ensemble.

@@ -27,6 +27,7 @@
 
 #include <rapidjson/document.h>
 #include <rapidjson/rapidjson.h>
+
 #include <functional>
 #include <iostream>
 #include <map>
@@ -34,8 +35,11 @@
 #include <set>
 #include <string>
 #include <vector>
+
 #include "../constants.h"
 #include "ipc.h"
+
+namespace pa = triton::perfanalyzer;
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 

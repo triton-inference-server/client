@@ -29,6 +29,7 @@
 #include <rapidjson/rapidjson.h>
 #include <sys/stat.h>
 #include <time.h>
+
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -36,6 +37,7 @@
 #include <iostream>
 #include <memory>
 #include <random>
+
 #include "client_backend/client_backend.h"
 
 namespace pa = triton::perfanalyzer;
@@ -71,6 +73,18 @@ enum SharedMemoryType {
 };
 
 constexpr uint64_t NO_LIMIT = 0;
+
+// Templated range class that tracks the start, stop, and step for a range.
+//
+template <typename T>
+class Range {
+ public:
+  Range(T start, T end, T step) : start(start), end(end), step(step) {}
+
+  T start;
+  T end;
+  T step;
+};
 
 // Converts the datatype from tensorflow to perf analyzer space
 // \param tf_dtype The data type string returned from the model metadata.
