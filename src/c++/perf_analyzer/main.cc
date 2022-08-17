@@ -25,9 +25,23 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "perf_analyzer.h"
+#include "perf_analyzer_exception.h"
+
+namespace pa = triton::perfanalyzer;
 
 int
 main(int argc, char* argv[])
 {
-  return PerfAnalyzer::Run(argc, argv);
+  try {
+    triton::perfanalyzer::CLParser clp;
+    pa::PAParamsPtr params = clp.Parse(argc, argv);
+
+    PerfAnalyzer analyzer(params);
+    analyzer.Run();
+  }
+  catch (pa::PerfAnalyzerException& e) {
+    return e.GetError();
+  }
+
+  return 0;
 }
