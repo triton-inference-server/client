@@ -35,7 +35,7 @@ several client libraries and examples of how to use those
 libraries. Ask questions or report problems in the main Triton [issues
 page](https://github.com/triton-inference-server/server/issues).
 
-The provided client libaries are:
+The provided client libraries are:
 
 * [C++ and Python APIs](#client-library-apis) that make it easy to
   communicate with Triton from your C++ or Python application. Using
@@ -214,7 +214,7 @@ you need to add `--pid host` flag when launching the containers. The reason is
 that CUDA IPC APIs require the PID of the source and destination of the exported
 pointer to be different. Otherwise, Docker enables PID namespace which may
 result in equality between the source and destination PIDs. The error will be
-always observed when both of the containers are started in the non-interacive
+always observed when both of the containers are started in the non-interactive
 mode.
 
 ### Build Using CMake
@@ -351,7 +351,7 @@ to the [Java client directory](src/java).
 
 #### SSL/TLS
 
-The client library allows communication across a secured channel using HTTPS protocol. Just setting these SSL options do not ensure the secure communication. Triton server should be running behind `https://` proxy such as nginx. The client can then establish a secure channel to the proxy. The [`qa/L0_https`](https://github.com/triton-inference-server/server/blob/main/qa/L0_https/test.sh) in the server repository demonstrates how this can be acheived. 
+The client library allows communication across a secured channel using HTTPS protocol. Just setting these SSL options do not ensure the secure communication. Triton server should be running behind `https://` proxy such as nginx. The client can then establish a secure channel to the proxy. The [`qa/L0_https`](https://github.com/triton-inference-server/server/blob/main/qa/L0_https/test.sh) in the server repository demonstrates how this can be achieved. 
 
 For C++ client, see `HttpSslOptions` struct that encapsulates these options in [http_client.h](src/c%2B%2B/library/http_client.h).
 
@@ -372,7 +372,7 @@ The client library enables on-wire compression for HTTP transactions.
 
 For C++ client, see `request_compression_algorithm` and `response_compression_algorithm` parameters in the `Infer` and `AsyncInfer` functions in [http_client.h](src/c%2B%2B/library/http_client.h). By default, the parameter is set as `CompressionType::NONE`.
 
-Similarly, for Python client, see `request_compression_algorithm` and `response_compression_algorithm` parameters in `infer`and `async_infer` functions in [http/\_\_init\_\_.py](src/python/library/tritonclient/http/__init__.py).
+Similarly, for Python client, see `request_compression_algorithm` and `response_compression_algorithm` parameters in `infer` and `async_infer` functions in [http/\_\_init\_\_.py](src/python/library/tritonclient/http/__init__.py).
 
 The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples demonstrates how to use compression options.
 
@@ -437,7 +437,7 @@ Advanced users may require specific client-side GRPC Channel Arguments that are
 not currently exposed by Triton through direct means. To support this, Triton
 allows users to pass custom channel arguments upon creating a GRPC client. When
 using this option, it is up to the user to pass a valid combination of arguments
-for their use case; Triton cannot feasibly test every posisble combination of
+for their use case; Triton cannot feasibly test every possible combination of
 channel arguments.
 
 There is a [C++](src/c%2B%2B/examples/simple_grpc_custom_args_client.cc) and 
