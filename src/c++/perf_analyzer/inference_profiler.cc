@@ -997,6 +997,9 @@ InferenceProfiler::Measure(
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
+    // Need to zero out start stats when window start is 0
+    start_status = std::map<cb::ModelIdentifier, cb::ModelStatistics>();
+    start_stat = cb::InferStat();
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
