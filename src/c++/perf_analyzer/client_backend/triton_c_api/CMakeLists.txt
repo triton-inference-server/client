@@ -31,6 +31,7 @@ set(
     triton_c_api_backend.cc
     shared_library.cc
     triton_loader.cc
+    scoped_defer.cc
 )
 
 set(
@@ -39,6 +40,7 @@ set(
     shared_library.h
     triton_loader.h
     c_api_infer_results.h
+    scoped_defer.h
 )
 
 add_library(

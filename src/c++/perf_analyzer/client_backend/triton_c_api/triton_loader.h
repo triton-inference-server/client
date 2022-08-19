@@ -97,7 +97,8 @@ class TritonLoader : public tc::InferenceServerClient {
 
   static Error ModelMetadata(rapidjson::Document* model_metadata);
 
-  static Error ModelConfig(rapidjson::Document* model_config);
+  static Error ModelConfig(rapidjson::Document* model_config, const std::string& model_name,
+    const std::string& model_version);
 
   static Error ServerMetaData(rapidjson::Document* server_metadata);
 
@@ -108,8 +109,8 @@ class TritonLoader : public tc::InferenceServerClient {
       InferResult** result);
 
   static Error CleanUp(
-      TRITONSERVER_InferenceResponse* completed_response,
-      TRITONSERVER_ResponseAllocator* allocator);
+    TRITONSERVER_InferenceResponse* completed_response,
+    TRITONSERVER_ResponseAllocator* allocator);
 
   static Error ModelInferenceStatistics(
       const std::string& model_name, const std::string& model_version,

@@ -89,7 +89,7 @@ TritonCApiClientBackend::ModelConfig(
   if (!TritonLoader::ModelIsLoaded()) {
     TritonLoader::LoadModel(model_name, model_version);
   }
-  RETURN_IF_ERROR(TritonLoader::ModelConfig(model_config));
+  RETURN_IF_ERROR(TritonLoader::ModelConfig(model_config, model_name, model_version));
   return Error::Success;
 }
 
