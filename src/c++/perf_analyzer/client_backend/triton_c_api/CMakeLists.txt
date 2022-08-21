@@ -31,6 +31,7 @@ set(
     triton_c_api_backend.cc
     shared_library.cc
     triton_loader.cc
+    shared_memory_manager.cc
     scoped_defer.cc
 )
 
@@ -38,6 +39,7 @@ set(
     TRITON_C_API_CLIENT_BACKEND_HDRS
     triton_c_api_backend.h
     shared_library.h
+    shared_memory_manager.h
     triton_loader.h
     c_api_infer_results.h
     scoped_defer.h

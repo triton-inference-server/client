@@ -27,6 +27,7 @@
 
 #include <string>
 #include "../client_backend.h"
+#include "shared_memory_manager.h"
 #include "triton_loader.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
@@ -66,17 +67,16 @@ class TritonCApiClientBackend : public ClientBackend {
   /// \param triton_server_path Tritonserver library that contains
   /// lib/libtritonserver.so.
   /// \param model_repository_path The model repository.
-  /// \param memory_type Type of memory used in Triton Server.
   /// \param verbose Enables the verbose mode of TritonServer.
   /// \param client_backend Returns a new TritonCApiClientBackend object.
   /// \return Error object indicating success
   /// or failure.
   static Error Create(
       const std::string& triton_server_path,
-      const std::string& model_repository_path, const std::string& memory_type,
-      const bool verbose, std::unique_ptr<ClientBackend>* client_backend);
+      const std::string& model_repository_path, const bool verbose,
+      std::unique_ptr<ClientBackend>* client_backend);
 
-  ~TritonCApiClientBackend() { TritonLoader::Delete(); }
+  ~TritonCApiClientBackend() { triton_loader_->Delete(); }
 
   /// See ClientBackend::ServerExtensions()
   Error ServerExtensions(std::set<std::string>* server_extensions) override;
@@ -106,8 +106,19 @@ class TritonCApiClientBackend : public ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "") override;
 
+  /// See ClientBackend::RegisterCudaMemory
+  Error RegisterCudaMemory(
+      const std::string& name, void* handle, const size_t byte_size) override;
+
+  /// See ClientBackend::UnregisterAllSharedMemory
+  Error UnregisterAllSharedMemory();
+
  private:
-  TritonCApiClientBackend() : ClientBackend(BackendKind::TRITON_C_API) {}
+  TritonCApiClientBackend()
+      : ClientBackend(BackendKind::TRITON_C_API),
+        triton_loader_(TritonLoader::GetSingleton())
+  {
+  }
   void ParseInferInputToTriton(
       const std::vector<InferInput*>& inputs,
       std::vector<tc::InferInput*>* triton_inputs);
@@ -121,6 +132,7 @@ class TritonCApiClientBackend : public ClientBackend {
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
+  TritonLoader* triton_loader_;
 };
 
 //==============================================================
@@ -132,16 +144,25 @@ class TritonCApiInferInput : public InferInput {
   static Error Create(
       InferInput** infer_input, const std::string& name,
       const std::vector<int64_t>& dims, const std::string& datatype);
+
   /// Returns the raw InferInput object required by triton client library.
   tc::InferInput* Get() const { return input_.get(); }
+
   /// See InferInput::Shape()
   const std::vector<int64_t>& Shape() const override;
+
   /// See InferInput::SetShape()
   Error SetShape(const std::vector<int64_t>& shape) override;
+
   /// See InferInput::Reset()
   Error Reset() override;
+
   /// See InferInput::AppendRaw()
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override;
+
+  /// See InferInput::SetSharedMemory()
+  Error SetSharedMemory(
+      const std::string& name, size_t byte_size, size_t offset = 0) override;
 
  private:
   explicit TritonCApiInferInput(
@@ -162,6 +183,10 @@ class TritonCApiInferRequestedOutput : public InferRequestedOutput {
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
   tc::InferRequestedOutput* Get() const { return output_.get(); }
+
+  /// See InferInput::SetSharedMemory()
+  Error SetSharedMemory(
+      const std::string& name, size_t byte_size, size_t offset = 0) override;
 
  private:
   explicit TritonCApiInferRequestedOutput(const std::string& name);

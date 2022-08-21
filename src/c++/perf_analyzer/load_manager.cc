@@ -305,11 +305,11 @@ LoadManager::InitSharedMemory()
       shared_memory_regions_[region_name] =
           std::pair<uint8_t*, size_t>(output_shm_ptr, alloc_size);
 
-      cudaIpcMemHandle_t cuda_handle;
-      RETURN_IF_ERROR(CreateCUDAIPCHandle(&cuda_handle, (void*)output_shm_ptr));
-      // Using GPU with device id 0
-      RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
-          region_name, cuda_handle, alloc_size));
+      // cudaIpcMemHandle_t cuda_handle;
+      // RETURN_IF_ERROR(CreateCUDAIPCHandle(&cuda_handle,
+      // (void*)output_shm_ptr)); Using GPU with device id 0
+      RETURN_IF_ERROR(backend_->RegisterCudaMemory(
+          region_name, output_shm_ptr, alloc_size));
 #endif  // TRITON_ENABLE_GPU
     }
   }
@@ -445,13 +445,15 @@ LoadManager::InitSharedMemory()
             count++;
           }
 
-          cudaIpcMemHandle_t cuda_handle;
-          RETURN_IF_ERROR(
-              CreateCUDAIPCHandle(&cuda_handle, (void*)input_shm_ptr));
+          // cudaIpcMemHandle_t cuda_handle;
+          // RETURN_IF_ERROR(
+          //     CreateCUDAIPCHandle(&cuda_handle, (void*)input_shm_ptr));
 
           // Register the region with triton
-          RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
-              region_name, cuda_handle, alloc_size));
+          RETURN_IF_ERROR(backend_->RegisterCudaMemory(
+              region_name, (void*)input_shm_ptr, alloc_size));
+          std::cout << "Input shm ptr is <<" << ((void*)input_shm_ptr)
+                    << std::endl;
 #endif  // TRITON_ENABLE_GPU
         }
       }

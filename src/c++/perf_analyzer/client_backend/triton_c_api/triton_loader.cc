@@ -44,7 +44,36 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
 namespace {
 
-TRITONSERVER_MemoryType requested_memory_type;
+struct AllocPayload {
+  struct OutputInfo {
+    enum Kind { BINARY, SHM };
+
+    Kind kind_;
+    void* base_;
+    uint64_t byte_size_;
+    TRITONSERVER_MemoryType memory_type_;
+    int64_t device_id_;
+
+    // For shared memory
+    OutputInfo(
+        void* base, uint64_t byte_size, TRITONSERVER_MemoryType memory_type,
+        int64_t device_id)
+        : kind_(SHM), base_(base), byte_size_(byte_size),
+          memory_type_(memory_type), device_id_(device_id)
+    {
+    }
+  };
+
+  ~AllocPayload()
+  {
+    for (auto it : output_map_) {
+      delete it.second;
+    }
+  }
+
+  std::unordered_map<std::string, OutputInfo*> output_map_;
+};
+
 bool helper_verbose = false;
 /// Helper function for allocating memory
 TRITONSERVER_Error*
@@ -70,20 +99,22 @@ ResponseAlloc(
                 << tensor_name << std::endl;
     }
   } else {
-    void* allocated_ptr = nullptr;
-    *actual_memory_type = TRITONSERVER_MEMORY_CPU;
-    allocated_ptr = malloc(byte_size);
+    AllocPayload* alloc_payload = reinterpret_cast<AllocPayload*>(userp);
+    auto output_map_it = alloc_payload->output_map_.find(tensor_name);
+    if (output_map_it == alloc_payload->output_map_.end()) {
+      void* allocated_ptr = nullptr;
+      *actual_memory_type = TRITONSERVER_MEMORY_GPU;
+      allocated_ptr = malloc(byte_size);
 
-    // Pass the tensor name with buffer_userp so we can show it when
-    // releasing the buffer.
-    if (allocated_ptr != nullptr) {
-      *buffer = allocated_ptr;
-      *buffer_userp = new std::string(tensor_name);
-      if (helper_verbose) {
-        std::cout << "allocated " << byte_size << " bytes in "
-                  << size_t(*actual_memory_type) << " for result tensor "
-                  << tensor_name << std::endl;
+      if (allocated_ptr != nullptr) {
+        *buffer = allocated_ptr;
       }
+    } else {
+      // It is in shared memory
+      AllocPayload::OutputInfo* output_info = output_map_it->second;
+      *actual_memory_type = output_info->memory_type_;
+      *actual_memory_type_id = output_info->device_id_;
+      *buffer = output_info->base_;
     }
   }
 
@@ -98,23 +129,9 @@ ResponseRelease(
     int64_t memory_type_id)
 {
   std::string* name = nullptr;
-  if (buffer_userp != nullptr) {
-    name = reinterpret_cast<std::string*>(buffer_userp);
-  } else {
-    name = new std::string("<unknown>");
-  }
-  if (helper_verbose) {
-    std::cout << "Releasing buffer " << buffer << " of size " << byte_size
-              << " in " << size_t(memory_type) << " for result '" << *name
-              << "'" << std::endl;
-  }
   switch (memory_type) {
     case TRITONSERVER_MEMORY_CPU:
       free(buffer);
-      break;
-    default:
-      std::cerr << "error: unexpected buffer allocated in CUDA managed memory"
-                << std::endl;
       break;
   }
 
@@ -127,7 +144,7 @@ void
 InferRequestComplete(
     TRITONSERVER_InferenceRequest* request, const uint32_t flags, void* userp)
 {
-  TritonLoader::DeleteInferRequest(request);
+  TritonLoader::GetSingleton()->DeleteInferRequest(request);
 }
 
 
@@ -188,8 +205,7 @@ FolderExists(const std::string& path)
 Error
 TritonLoader::Create(
     const std::string& triton_server_path,
-    const std::string& model_repository_path, const std::string& memory_type,
-    bool verbose)
+    const std::string& model_repository_path, bool verbose)
 {
   if (!GetSingleton()->ServerIsReady()) {
     if (triton_server_path.empty() || model_repository_path.empty()) {
@@ -198,12 +214,11 @@ TritonLoader::Create(
     GetSingleton()->ClearHandles();
     FAIL_IF_ERR(
         GetSingleton()->PopulateInternals(
-            triton_server_path, model_repository_path, memory_type, verbose),
+            triton_server_path, model_repository_path, verbose),
         "Populating internal variables");
     FAIL_IF_ERR(
         GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
-    FAIL_IF_ERR(
-        GetSingleton()->StartTriton(memory_type), "Starting Triton Server");
+    FAIL_IF_ERR(GetSingleton()->StartTriton(), "Starting Triton Server");
   }
 
   return Error::Success;
@@ -212,10 +227,10 @@ TritonLoader::Create(
 Error
 TritonLoader::Delete()
 {
-  if (GetSingleton()->server_ != nullptr) {
-    GetSingleton()->server_is_ready_ = false;
-    GetSingleton()->model_is_loaded_ = false;
-    (GetSingleton()->server_).reset();
+  if (server_ != nullptr) {
+    server_is_ready_ = false;
+    model_is_loaded_ = false;
+    server_.reset();
   }
   return Error::Success;
 }
@@ -223,25 +238,24 @@ TritonLoader::Delete()
 Error
 TritonLoader::PopulateInternals(
     const std::string& triton_server_path,
-    const std::string& model_repository_path, const std::string& memory_type,
-    bool verbose)
+    const std::string& model_repository_path, bool verbose)
 {
   RETURN_IF_ERROR(FolderExists(triton_server_path));
   RETURN_IF_ERROR(FolderExists(model_repository_path));
-  GetSingleton()->triton_server_path_ = triton_server_path;
-  GetSingleton()->model_repository_path_ = model_repository_path;
-  GetSingleton()->verbose_ = verbose;
-  GetSingleton()->verbose_level_ = GetSingleton()->verbose_ ? 1 : 0;
+  triton_server_path_ = triton_server_path;
+  model_repository_path_ = model_repository_path;
+  verbose_ = verbose;
+  verbose_level_ = verbose_ ? 1 : 0;
   return Error::Success;
 }
 
 Error
-TritonLoader::StartTriton(const std::string& memory_type)
+TritonLoader::StartTriton()
 {
   // Check API version.
   uint32_t api_version_major, api_version_minor;
   REPORT_TRITONSERVER_ERROR(
-      GetSingleton()->api_version_fn_(&api_version_major, &api_version_minor));
+      api_version_fn_(&api_version_major, &api_version_minor));
   if ((TRITONSERVER_API_VERSION_MAJOR != api_version_major) ||
       (TRITONSERVER_API_VERSION_MINOR > api_version_minor)) {
     std::stringstream sstream;
@@ -255,65 +269,55 @@ TritonLoader::StartTriton(const std::string& memory_type)
   // Create the server...
   TRITONSERVER_ServerOptions* server_options = nullptr;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->options_new_fn_(&server_options),
-      "creating server options");
+      options_new_fn_(&server_options), "creating server options");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->options_set_model_repo_path_fn_(
-          server_options, GetSingleton()->model_repository_path_.c_str()),
+      options_set_model_repo_path_fn_(
+          server_options, model_repository_path_.c_str()),
       "setting model repository path");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_log_verbose_fn_(
-          server_options, GetSingleton()->verbose_level_),
+      set_log_verbose_fn_(server_options, verbose_level_),
       "setting verbose logging level");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_log_info_fn_(
-          server_options, GetSingleton()->verbose_),
+      set_log_info_fn_(server_options, verbose_),
       "setting if log verbose level is true");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_backend_directory_fn_(
-          server_options,
-          (GetSingleton()->triton_server_path_ + "/backends").c_str()),
+      set_backend_directory_fn_(
+          server_options, (triton_server_path_ + "/backends").c_str()),
       "setting backend directory");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_repo_agent_directory_fn_(
-          server_options,
-          (GetSingleton()->triton_server_path_ + "/repoagents").c_str()),
+      set_repo_agent_directory_fn_(
+          server_options, (triton_server_path_ + "/repoagents").c_str()),
       "setting repository agent directory");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_strict_model_config_fn_(server_options, true),
+      set_strict_model_config_fn_(server_options, true),
       "setting strict model configuration");
   double min_compute_capability = 0;
   // FIXME: Do not have GPU support right now
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->set_min_supported_compute_capability_fn_(
+      set_min_supported_compute_capability_fn_(
           server_options, min_compute_capability),
       "setting minimum supported CUDA compute capability");
   TRITONSERVER_Server* server_ptr = nullptr;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->server_new_fn_(&server_ptr, server_options),
-      "creating server");
+      server_new_fn_(&server_ptr, server_options), "creating server");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->server_options_delete_fn_(server_options),
-      "deleting server options");
+      server_options_delete_fn_(server_options), "deleting server options");
   std::shared_ptr<TRITONSERVER_Server> shared_server(
-      server_ptr, GetSingleton()->server_delete_fn_);
-  GetSingleton()->server_ = shared_server;
+      server_ptr, server_delete_fn_);
+  server_ = shared_server;
 
   // Wait until the server is both live and ready.
   size_t health_iters = 0;
   while (true) {
     bool live, ready;
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->server_is_live_fn_(
-            (GetSingleton()->server_).get(), &live),
+        server_is_live_fn_(server_.get(), &live),
         "unable to get server liveness");
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->server_is_ready_fn_(
-            (GetSingleton()->server_).get(), &ready),
+        server_is_ready_fn_(server_.get(), &ready),
         "unable to get server readiness");
     if (live && ready) {
-      std::cout << "server is alive!" << std::endl;
-      GetSingleton()->server_is_ready_ = true;
+      server_is_ready_ = true;
       break;
     }
 
@@ -324,24 +328,20 @@ TritonLoader::StartTriton(const std::string& memory_type)
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   // Print status of the server.
-  if (GetSingleton()->verbose_) {
+  if (verbose_) {
     TRITONSERVER_Message* server_metadata_message;
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->server_metadata_fn_(
-            (GetSingleton()->server_).get(), &server_metadata_message),
+        server_metadata_fn_(server_.get(), &server_metadata_message),
         "unable to get server metadata message");
     const char* buffer;
     size_t byte_size;
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->message_serialize_to_json_fn_(
+        message_serialize_to_json_fn_(
             server_metadata_message, &buffer, &byte_size),
         "unable to serialize server metadata message");
 
-    std::cout << "Server Status:" << std::endl;
-    std::cout << std::string(buffer, byte_size) << std::endl;
-
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->message_delete_fn_(server_metadata_message),
+        message_delete_fn_(server_metadata_message),
         "deleting status metadata");
   }
 
@@ -356,13 +356,12 @@ TritonLoader::ServerMetaData(rapidjson::Document* server_metadata)
   }
   TRITONSERVER_Message* server_metadata_message;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->server_metadata_fn_(
-          (GetSingleton()->server_).get(), &server_metadata_message),
+      server_metadata_fn_(server_.get(), &server_metadata_message),
       "unable to get server metadata message");
   const char* buffer;
   size_t byte_size;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_serialize_to_json_fn_(
+      message_serialize_to_json_fn_(
           server_metadata_message, &buffer, &byte_size),
       "unable to serialize server metadata message");
   server_metadata->Parse(buffer, byte_size);
@@ -373,8 +372,7 @@ TritonLoader::ServerMetaData(rapidjson::Document* server_metadata)
         " at " + std::to_string(server_metadata->GetErrorOffset()));
   }
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_delete_fn_(server_metadata_message),
-      "deleting status metadata");
+      message_delete_fn_(server_metadata_message), "deleting status metadata");
   return Error::Success;
 }
 
@@ -385,23 +383,21 @@ TritonLoader::LoadModel(
   if (!ServerIsReady()) {
     return Error("server is not ready, abort!");
   }
-  GetSingleton()->model_name_ = model_name;
+  model_name_ = model_name;
 
-  RETURN_IF_ERROR(GetModelVersionFromString(
-      model_version, &(GetSingleton()->model_version_)));
+  RETURN_IF_ERROR(GetModelVersionFromString(model_version, &model_version_));
   // Wait for the model to become available.
   bool is_ready = false;
   size_t health_iters = 0;
 
   // some error handling
-  if (GetSingleton()->model_repository_path_.empty()) {
+  if (model_repository_path_.empty()) {
     return Error("Need to specify model repository");
   }
   while (!is_ready) {
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->model_is_ready_fn_(
-            GetSingleton()->server_.get(), GetSingleton()->model_name_.c_str(),
-            GetSingleton()->model_version_, &is_ready),
+        model_is_ready_fn_(
+            server_.get(), model_name_.c_str(), model_version_, &is_ready),
         "unable to get model readiness");
     if (!is_ready) {
       if (++health_iters >= 10) {
@@ -411,8 +407,8 @@ TritonLoader::LoadModel(
       continue;
     }
   }
-  GetSingleton()->model_is_loaded_ =
-      true;  // flag to confirm model is correct and loaded
+  // flag to confirm model is correct and loaded
+  model_is_loaded_ = true;
   return Error::Success;
 }
 
@@ -426,14 +422,14 @@ TritonLoader::ModelMetadata(rapidjson::Document* model_metadata)
 
   // get model metadata
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->model_metadata_fn_(
-          (GetSingleton()->server_).get(), GetSingleton()->model_name_.c_str(),
-          GetSingleton()->model_version_, &model_metadata_message),
+      model_metadata_fn_(
+          server_.get(), model_name_.c_str(), model_version_,
+          &model_metadata_message),
       "unable to get model metadata message");
   const char* buffer;
   size_t byte_size;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_serialize_to_json_fn_(
+      message_serialize_to_json_fn_(
           model_metadata_message, &buffer, &byte_size),
       "unable to serialize model status protobuf");
 
@@ -446,21 +442,17 @@ TritonLoader::ModelMetadata(rapidjson::Document* model_metadata)
   }
 
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_delete_fn_(model_metadata_message),
-      "deleting status protobuf");
+      message_delete_fn_(model_metadata_message), "deleting status protobuf");
 
-  if (strcmp(
-          (*model_metadata)["name"].GetString(),
-          GetSingleton()->model_name_.c_str())) {
+  if (strcmp((*model_metadata)["name"].GetString(), model_name_.c_str())) {
     return Error("unable to find metadata for model");
   }
 
   bool found_version = false;
   if (model_metadata->HasMember("versions")) {
     for (const auto& version : (*model_metadata)["versions"].GetArray()) {
-      if (strcmp(
-              version.GetString(),
-              std::to_string(GetSingleton()->model_version_).c_str()) == 0) {
+      if (strcmp(version.GetString(), std::to_string(model_version_).c_str()) ==
+          0) {
         found_version = true;
         break;
       }
@@ -468,15 +460,15 @@ TritonLoader::ModelMetadata(rapidjson::Document* model_metadata)
   }
   if (!found_version) {
     std::string msg = "unable to find version " +
-                      std::to_string(GetSingleton()->model_version_) +
-                      " status for model";
+                      std::to_string(model_version_) + " status for model";
     return Error(msg);
   }
   return Error::Success;
 }
 
 Error
-TritonLoader::ModelConfig(rapidjson::Document* model_config, const std::string& model_name,
+TritonLoader::ModelConfig(
+    rapidjson::Document* model_config, const std::string& model_name,
     const std::string& model_version)
 {
   if (!ModelIsLoaded() || !ServerIsReady()) {
@@ -485,16 +477,14 @@ TritonLoader::ModelConfig(rapidjson::Document* model_config, const std::string& 
   TRITONSERVER_Message* model_config_message;
   uint32_t config_version = 1;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->model_config_fn_(
-          (GetSingleton()->server_).get(), model_name.c_str(),
-          GetSingleton()->model_version_, config_version,
+      model_config_fn_(
+          (server_).get(), model_name.c_str(), model_version_, config_version,
           &model_config_message),
       "unable to get model config message");
   const char* buffer;
   size_t byte_size;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_serialize_to_json_fn_(
-          model_config_message, &buffer, &byte_size),
+      message_serialize_to_json_fn_(model_config_message, &buffer, &byte_size),
       "unable to serialize model config status protobuf");
 
   model_config->Parse(buffer, byte_size);
@@ -506,7 +496,7 @@ TritonLoader::ModelConfig(rapidjson::Document* model_config, const std::string& 
   }
 
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->message_delete_fn_(model_config_message),
+      message_delete_fn_(model_config_message),
       "deleting server config status protobuf");
 
   return Error::Success;
@@ -515,8 +505,7 @@ TritonLoader::ModelConfig(rapidjson::Document* model_config, const std::string& 
 Error
 TritonLoader::LoadServerLibrary()
 {
-  std::string full_path =
-      GetSingleton()->triton_server_path_ + SERVER_LIBRARY_PATH;
+  std::string full_path = triton_server_path_ + server_library_path_;
   RETURN_IF_ERROR(FolderExists(full_path));
   FAIL_IF_ERR(
       OpenLibraryHandle(full_path, &dlhandle_),
@@ -913,24 +902,45 @@ TritonLoader::Infer(
   timer.Reset();
   timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_START);
 
-  RETURN_IF_ERROR(GetSingleton()->InitializeRequest(options, outputs, &allocator, &irequest));
-  ScopedDefer error_handler([&error, completed_response, allocator]{
-    Error val = CleanUp(completed_response, allocator);
+  RETURN_IF_ERROR(InitializeRequest(options, outputs, &allocator, &irequest));
+  ScopedDefer error_handler([&error, completed_response, allocator, this] {
+    error = CleanUp(completed_response, allocator);
   });
-  RETURN_IF_ERROR(GetSingleton()->AddInputs(inputs, irequest));
-  RETURN_IF_ERROR(GetSingleton()->AddOutputs(outputs, irequest));
+  RETURN_IF_ERROR(AddInputs(inputs, irequest));
+  RETURN_IF_ERROR(AddOutputs(outputs, irequest));
+
+  AllocPayload alloc_payload;
+  for (auto& output : outputs) {
+    if (output->IsSharedMemory()) {
+      std::string shm_name;
+      size_t shm_byte_size;
+      size_t offset;
+      // TODO: Error handling
+      output->SharedMemoryInfo(&shm_name, &shm_byte_size, &offset);
+
+      void* buf;
+      TRITONSERVER_MemoryType memory_type;
+      int64_t memory_type_id;
+      RETURN_IF_ERROR(shm_manager_->GetMemoryInfo(
+          shm_name, offset, &buf, &memory_type, &memory_type_id));
+
+      alloc_payload.output_map_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(output->Name()),
+          std::forward_as_tuple(new AllocPayload::OutputInfo(
+              buf, shm_byte_size, memory_type, memory_type_id)));
+    }
+  }
 
   // Perform inference...
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_request_set_response_callback_fn_(
-          irequest, allocator, nullptr /* response_allocator_userp */,
+      inference_request_set_response_callback_fn_(
+          irequest, allocator, &alloc_payload /* response_allocator_userp */,
           InferResponseComplete, reinterpret_cast<void*>(p)),
       "setting response callback");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->infer_async_fn_(
-          (GetSingleton()->server_).get(), irequest, nullptr /* trace */),
+      infer_async_fn_((server_).get(), irequest, nullptr /* trace */),
       "running inference");
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
 
@@ -938,20 +948,21 @@ TritonLoader::Infer(
   std::future<TRITONSERVER_InferenceResponse*> completed = p->get_future();
   completed_response = completed.get();
 
-  RETURN_IF_TRITONSERVER_ERROR(GetSingleton()->inference_response_error_fn_(completed_response), "inference response error");
+  RETURN_IF_TRITONSERVER_ERROR(
+      inference_response_error_fn_(completed_response),
+      "inference response error");
 
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_START);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::RECV_END);
   timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_END);
 
-  tc::Error err = GetSingleton()->UpdateInferStat(timer);
+  tc::Error err = UpdateInferStat(timer);
   if (!err.IsOk()) {
     std::cerr << "Failed to update context stat: " << err << std::endl;
   }
   const char* cid;
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->request_id_fn_(irequest, &cid),
-      "Failed to get request id");
+      request_id_fn_(irequest, &cid), "Failed to get request id");
   std::string id(cid);
   InferResult::Create(result, err, id);
 
@@ -966,13 +977,11 @@ TritonLoader::CleanUp(
     TRITONSERVER_InferenceResponse* completed_response,
     TRITONSERVER_ResponseAllocator* allocator)
 {
-  TRITONSERVER_Error* response_err;
-  if (completed_response != nullptr){
-    response_err =
-        GetSingleton()->inference_response_delete_fn_(completed_response);
+  TRITONSERVER_Error* response_err = nullptr;
+  if (completed_response != nullptr) {
+    response_err = inference_response_delete_fn_(completed_response);
   }
-  TRITONSERVER_Error* allocator_err =
-      GetSingleton()->response_allocator_delete_fn_(allocator);
+  TRITONSERVER_Error* allocator_err = response_allocator_delete_fn_(allocator);
   RETURN_IF_TRITONSERVER_ERROR(response_err, "deleting inference response");
   RETURN_IF_TRITONSERVER_ERROR(allocator_err, "deleting response allocator");
   return Error::Success;
@@ -1002,25 +1011,22 @@ TritonLoader::InitializeRequest(
 
   // set up inference request
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_request_new_fn_(
-          irequest, (GetSingleton()->server_).get(),
-          GetSingleton()->model_name_.c_str(), GetSingleton()->model_version_),
+      inference_request_new_fn_(
+          irequest, (server_).get(), model_name_.c_str(), model_version_),
       "creating inference request");
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_request_set_id_fn_(
-          *irequest, options.request_id_.c_str()),
+      inference_request_set_id_fn_(*irequest, options.request_id_.c_str()),
       "setting ID for the request");
   if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "") ||
       (options.priority_ != 0) || (options.server_timeout_ != 0) ||
       outputs.empty()) {
     if (options.sequence_id_ != 0) {
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->set_correlation_id_fn_(
-              *irequest, options.sequence_id_),
+          set_correlation_id_fn_(*irequest, options.sequence_id_),
           "setting sequence ID for the request");
     } else if (options.sequence_id_str_ != "") {
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->set_string_correlation_id_fn_(
+          set_string_correlation_id_fn_(
               *irequest, options.sequence_id_str_.c_str()),
           "setting sequence ID for the request");
     }
@@ -1032,21 +1038,21 @@ TritonLoader::InitializeRequest(
       flags |= TRITONSERVER_REQUEST_FLAG_SEQUENCE_END;
     }
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->set_flags_fn_(*irequest, flags),
+        set_flags_fn_(*irequest, flags),
         "setting inference flags for the request");
   }
   if (options.priority_ != 0) {
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->set_priority_fn_(*irequest, options.priority_),
+        set_priority_fn_(*irequest, options.priority_),
         "setting priority for the request");
   }
   if (options.server_timeout_ != 0) {
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->set_timeout_ms_fn_(*irequest, options.server_timeout_),
+        set_timeout_ms_fn_(*irequest, options.server_timeout_),
         "setting timeout for the request");
   }
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()->inference_request_set_release_callback_fn_(
+      inference_request_set_release_callback_fn_(
           *irequest, InferRequestComplete, nullptr /* request_release_userp */),
       "setting request release callback");
   return Error::Success;
@@ -1060,19 +1066,16 @@ TritonLoader::AddInputs(
   for (auto io : inputs) {
     const char* input_name = io->Name().c_str();
     const char* datatype = io->Datatype().c_str();
-    const TRITONSERVER_DataType dtype =
-        GetSingleton()->string_to_datatype_fn_(datatype);
+    const TRITONSERVER_DataType dtype = string_to_datatype_fn_(datatype);
     std::vector<int64_t> shape_vec;
     for (const int64_t dim : io->Shape()) {  // this is a vector, just use it
       shape_vec.push_back(dim);
     }
+
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->inference_request_add_input_fn_(
+        inference_request_add_input_fn_(
             irequest, input_name, dtype, &shape_vec[0], shape_vec.size()),
         "setting input for the request");
-    if (io->IsSharedMemory()) {
-      return Error("shared library not supported for C API");
-    }
     size_t byte_size;
     tc::Error err = io->ByteSize(&byte_size);
     if (!err.IsOk()) {
@@ -1080,25 +1083,45 @@ TritonLoader::AddInputs(
     }
     if (byte_size == 0) {
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->inference_request_append_input_data_fn_(
+          inference_request_append_input_data_fn_(
               irequest, input_name, nullptr, 0 /* byte_size */,
-              TRITONSERVER_MEMORY_CPU, 0 /* memory_type_id */),
+              TRITONSERVER_MEMORY_CPU /* memory type */,
+              0 /* memory_type_id */),
           "appending input data with byte size zero");
     } else {
-      io->PrepareForRequest();
-      bool end_of_input = false;
-      while (!end_of_input) {
-        const uint8_t* buf;
-        size_t buf_size;
-        io->GetNext(&buf, &buf_size, &end_of_input);
-        if (buf != nullptr) {
-          RETURN_IF_TRITONSERVER_ERROR(
-              GetSingleton()->inference_request_append_input_data_fn_(
-                  irequest, input_name, const_cast<uint8_t*>(buf), buf_size,
-                  GetSingleton()->requested_memory_type_,
-                  0 /* memory_type_id */),
-              "appending data to tritonserver");
+      if (!io->IsSharedMemory()) {
+        io->PrepareForRequest();
+        bool end_of_input = false;
+        while (!end_of_input) {
+          const uint8_t* buf;
+          size_t buf_size;
+          io->GetNext(&buf, &buf_size, &end_of_input);
+          if (buf != nullptr) {
+            RETURN_IF_TRITONSERVER_ERROR(
+                inference_request_append_input_data_fn_(
+                    irequest, input_name, const_cast<uint8_t*>(buf), buf_size,
+                    TRITONSERVER_MEMORY_CPU /* memory_type */,
+                    0 /* memory_type_id */),
+                "appending data to tritonserver");
+          }
         }
+      } else {
+        std::string shm_name;
+        size_t shm_byte_size;
+        size_t offset;
+        // TODO: Error handling
+        io->SharedMemoryInfo(&shm_name, &shm_byte_size, &offset);
+        void* buf;
+        TRITONSERVER_MemoryType memory_type;
+        int64_t memory_type_id;
+        RETURN_IF_ERROR(shm_manager_->GetMemoryInfo(
+            shm_name, offset, &buf, &memory_type, &memory_type_id));
+        RETURN_IF_TRITONSERVER_ERROR(
+            inference_request_append_input_data_fn_(
+                irequest, input_name, buf, byte_size,
+                memory_type /* memory_type */,
+                memory_type_id /* memory_type_id */),
+            "appending data to tritonserver");
       }
     }
   }
@@ -1115,8 +1138,7 @@ TritonLoader::AddOutputs(
   for (auto io : outputs) {
     const char* output_name = io->Name().c_str();
     RETURN_IF_TRITONSERVER_ERROR(
-        GetSingleton()->inference_request_add_requested_output_fn_(
-            irequest, output_name),
+        inference_request_add_requested_output_fn_(irequest, output_name),
         "setting output for the request");
   }
   return Error::Success;
@@ -1135,15 +1157,15 @@ TritonLoader::ModelInferenceStatistics(
         GetModelVersionFromString(model_version, &requested_model_version);
     if (err.IsOk()) {
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->model_statistics_fn_(
-              (GetSingleton()->server_).get(), model_name.c_str(),
-              requested_model_version, &model_stats_message),
+          model_statistics_fn_(
+              (server_).get(), model_name.c_str(), requested_model_version,
+              &model_stats_message),
           "getting model statistics from server");
 
       const char* buffer;
       size_t byte_size;
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->message_serialize_to_json_fn_(
+          message_serialize_to_json_fn_(
               model_stats_message, &buffer, &byte_size),
           "serializing message to json");
 
@@ -1155,7 +1177,7 @@ TritonLoader::ModelInferenceStatistics(
             " at " + std::to_string(infer_stat->GetErrorOffset()));
       }
       RETURN_IF_TRITONSERVER_ERROR(
-          GetSingleton()->message_delete_fn_(model_stats_message),
+          message_delete_fn_(model_stats_message),
           "deleting inference statistics message");
     }
     return err;
@@ -1177,7 +1199,24 @@ TritonLoader::~TritonLoader()
 {
   FAIL_IF_ERR(Delete(), "dereferencing server instance...");
   FAIL_IF_ERR(CloseLibraryHandle(dlhandle_), "error on closing triton loader");
-  GetSingleton()->ClearHandles();
+  ClearHandles();
+}
+
+
+Error
+TritonLoader::RegisterCudaMemory(
+    const std::string& name, void* handle, const size_t byte_size)
+{
+  RETURN_IF_ERROR(shm_manager_->RegisterCUDASharedMemory(
+      name, handle, byte_size, 0 /* device id */));
+  return Error::Success;
+}
+
+Error
+TritonLoader::UnregisterAllSharedMemory()
+{
+  RETURN_IF_ERROR(shm_manager_->UnregisterAll(TRITONSERVER_MEMORY_GPU));
+  return Error::Success;
 }
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

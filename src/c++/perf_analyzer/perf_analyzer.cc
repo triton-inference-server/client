@@ -78,8 +78,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->kind, params_->url, params_->protocol, params_->ssl_options,
           params_->trace_options, params_->compression_algorithm,
           params_->http_headers, params_->triton_server_path,
-          params_->model_repository_path, params_->memory_type,
-          params_->extra_verbose, params_->metrics_url, &factory),
+          params_->model_repository_path, params_->extra_verbose,
+          params_->metrics_url, &factory),
       "failed to create client factory");
 
   FAIL_IF_ERR(

@@ -25,6 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -32,10 +34,8 @@
 #include "../client_backend.h"
 #include "common.h"
 #include "shared_library.h"
+#include "shared_memory_manager.h"
 #include "triton/core/tritonserver.h"
-
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
 
 // If TRITONSERVER error is non-OK, return the corresponding status.
 #define RETURN_IF_TRITONSERVER_ERROR(E, MSG)                                \
@@ -86,49 +86,55 @@ class TritonLoader : public tc::InferenceServerClient {
 
   static Error Create(
       const std::string& triton_server_path,
-      const std::string& model_repository_path, const std::string& memory_type,
-      bool verbose);
+      const std::string& model_repository_path, bool verbose);
 
-  static Error Delete();
-  static Error StartTriton(const std::string& memory_type);
+  Error Delete();
+  Error StartTriton();
 
-  static Error LoadModel(
+  Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
-  static Error ModelMetadata(rapidjson::Document* model_metadata);
+  Error ModelMetadata(rapidjson::Document* model_metadata);
 
-  static Error ModelConfig(rapidjson::Document* model_config, const std::string& model_name,
-    const std::string& model_version);
+  Error ModelConfig(
+      rapidjson::Document* model_config, const std::string& model_name,
+      const std::string& model_version);
 
-  static Error ServerMetaData(rapidjson::Document* server_metadata);
+  Error ServerMetaData(rapidjson::Document* server_metadata);
 
-  static Error Infer(
+  Error Infer(
       const tc::InferOptions& options,
       const std::vector<tc::InferInput*>& inputs,
       const std::vector<const tc::InferRequestedOutput*>& outputs,
       InferResult** result);
 
-  static Error CleanUp(
-    TRITONSERVER_InferenceResponse* completed_response,
-    TRITONSERVER_ResponseAllocator* allocator);
+  Error CleanUp(
+      TRITONSERVER_InferenceResponse* completed_response,
+      TRITONSERVER_ResponseAllocator* allocator);
 
-  static Error ModelInferenceStatistics(
+  Error ModelInferenceStatistics(
       const std::string& model_name, const std::string& model_version,
       rapidjson::Document* infer_stat);
 
-  static Error ClientInferStat(tc::InferStat* infer_stat)
+  Error ClientInferStat(tc::InferStat* infer_stat)
   {
-    *infer_stat = GetSingleton()->infer_stat_;
+    *infer_stat = infer_stat_;
     return Error::Success;
   }
 
-  static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
-  static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
-  static TRITONSERVER_Error* DeleteInferRequest(
+  Error RegisterCudaMemory(
+      const std::string& name, void* handle, const size_t byte_size);
+
+  Error UnregisterAllSharedMemory();
+
+  bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
+  bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
+  TRITONSERVER_Error* DeleteInferRequest(
       TRITONSERVER_InferenceRequest* irequest)
   {
-    return GetSingleton()->request_delete_fn_(irequest);
+    return request_delete_fn_(irequest);
   }
+  static TritonLoader* GetSingleton();
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
@@ -340,14 +346,12 @@ class TritonLoader : public tc::InferenceServerClient {
     requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
     model_is_loaded_ = false;
     server_is_ready_ = false;
+    shm_manager_ = std::move(std::make_unique<SharedMemoryManager>());
   }
 
   Error PopulateInternals(
       const std::string& triton_server_path,
-      const std::string& model_repository_path, const std::string& memory_type,
-      bool verbose);
-
-  static TritonLoader* GetSingleton();
+      const std::string& model_repository_path, bool verbose);
 
   /// Load all tritonserver.h functions onto triton_loader
   /// internal handles
@@ -358,7 +362,7 @@ class TritonLoader : public tc::InferenceServerClient {
   /// Check if file exists in the current directory
   /// \param filepath Path of library to check
   /// \return perfanalyzer::clientbackend::Error
-  static Error FileExists(std::string& filepath);
+  Error FileExists(std::string& filepath);
 
   Error InitializeRequest(
       const tc::InferOptions& options,
@@ -447,15 +451,16 @@ class TritonLoader : public tc::InferenceServerClient {
 
   std::shared_ptr<TRITONSERVER_Server> server_;
   std::string triton_server_path_;
-  const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
+  const std::string server_library_path_ = "/lib/libtritonserver.so";
   int verbose_level_;
+  TRITONSERVER_MemoryType requested_memory_type_;
   bool enforce_memory_type_;
   std::string model_repository_path_;
   std::string model_name_;
   int64_t model_version_;
-  TRITONSERVER_memorytype_enum requested_memory_type_;
   bool model_is_loaded_;
   bool server_is_ready_;
+  std::unique_ptr<SharedMemoryManager> shm_manager_;
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
