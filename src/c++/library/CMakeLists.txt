@@ -229,7 +229,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
           PATTERN "third_party" EXCLUDE
       )
     endif() # NOT WIN32
-  
+
     install(
       DIRECTORY
         ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
