@@ -140,6 +140,7 @@ add_executable(
   mock_inference_profiler.h
   test_inference_profiler.cc
   test_model_parser.cc
+  client_backend/triton/test_triton_client_backend.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

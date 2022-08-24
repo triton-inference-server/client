@@ -25,9 +25,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <cstdint>
+#include <map>
 #include <string>
 #include "../../constants.h"
 #include "../../perf_utils.h"
+#include "../../triton_metrics.h"
 #include "../client_backend.h"
 #include "grpc_client.h"
 #include "http_client.h"
@@ -55,6 +58,10 @@ namespace tc = triton::client;
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritonremote {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestTritonClientBackend;
+#endif
+
 //==============================================================================
 /// TritonClientBackend uses triton client C++ library to communicate with
 /// triton inference service.
@@ -69,8 +76,8 @@ class TritonClientBackend : public ClientBackend {
   /// \param http_headers Map of HTTP headers. The map key/value indicates
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
-  /// \param client_backend Returns a new TritonClientBackend
-  /// object.
+  /// \param triton_metrics_url The inference server metrics url and port.
+  /// \param client_backend Returns a new TritonClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
       const std::string& url, const ProtocolType protocol,
@@ -78,6 +85,7 @@ class TritonClientBackend : public ClientBackend {
       const std::map<std::string, std::vector<std::string>> trace_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
+      const std::string& triton_metrics_url,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -122,6 +130,10 @@ class TritonClientBackend : public ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "") override;
 
+  /// See ClientBackend::TritonMetrics()
+  Error TritonMetrics(
+      triton::perfanalyzer::TritonMetrics& triton_metrics) override;
+
   /// See ClientBackend::UnregisterAllSharedMemory()
   Error UnregisterAllSharedMemory() override;
 
@@ -156,10 +168,11 @@ class TritonClientBackend : public ClientBackend {
   TritonClientBackend(
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<tc::Headers> http_headers)
+      std::shared_ptr<tc::Headers> http_headers,
+      const std::string& triton_metrics_url)
       : ClientBackend(BackendKind::TRITON), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers)
+        http_headers_(http_headers), triton_metrics_url_(triton_metrics_url)
   {
   }
 
@@ -179,6 +192,19 @@ class TritonClientBackend : public ClientBackend {
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
+  std::string AccessTritonMetricsEndpoint();
+  void ParseAndStoreTritonMetrics(
+      const std::string& metrics_endpoint_text,
+      triton::perfanalyzer::TritonMetrics& triton_metrics);
+  void ParseAndStoreGPUUtilization(
+      const std::string& metrics_endpoint_text,
+      std::map<std::string, double>& gpu_utilization_per_gpu);
+  void ParseAndStoreGPUPowerUsage(
+      const std::string& metrics_endpoint_text,
+      std::map<std::string, double>& gpu_power_usage_per_gpu);
+  void ParseAndStoreGPUMemoryUsedBytes(
+      const std::string& metrics_endpoint_text,
+      std::map<std::string, uint64_t>& gpu_memory_used_bytes_per_gpu);
 
   /// Union to represent the underlying triton client belonging to one of
   /// the protocols
@@ -193,9 +219,17 @@ class TritonClientBackend : public ClientBackend {
     std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_;
   } client_;
 
-  const ProtocolType protocol_;
-  const grpc_compression_algorithm compression_algorithm_;
+  const ProtocolType protocol_{UNKNOWN};
+  const grpc_compression_algorithm compression_algorithm_{GRPC_COMPRESS_NONE};
   std::shared_ptr<tc::Headers> http_headers_;
+  const std::string triton_metrics_url_{};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestTritonClientBackend;
+
+ protected:
+  TritonClientBackend() = default;
+#endif
 };
 
 //==============================================================

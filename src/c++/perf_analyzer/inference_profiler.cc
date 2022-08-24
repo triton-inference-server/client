@@ -372,17 +372,18 @@ InferenceProfiler::Create(
     const uint64_t measurement_window_ms, const size_t max_trials,
     const int64_t percentile, const uint64_t latency_threshold_ms_,
     const cb::ProtocolType protocol, std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<cb::ClientBackend> profile_backend,
+    std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
-    std::shared_ptr<MPIDriver> mpi_driver)
+    std::shared_ptr<MPIDriver> mpi_driver,
+    const uint64_t triton_metrics_interval_ms)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
-      std::move(profile_backend), std::move(manager), measurement_request_count,
-      measurement_mode, mpi_driver));
+      profile_backend, std::move(manager), measurement_request_count,
+      measurement_mode, mpi_driver, triton_metrics_interval_ms));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -394,14 +395,14 @@ InferenceProfiler::InferenceProfiler(
     const bool extra_percentile, const size_t percentile,
     const uint64_t latency_threshold_ms_, const cb::ProtocolType protocol,
     std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<cb::ClientBackend> profile_backend,
+    std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-    MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver)
+    MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
+    const uint64_t triton_metrics_interval_ms)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
-      protocol_(protocol), parser_(parser),
-      profile_backend_(std::move(profile_backend)),
+      protocol_(protocol), parser_(parser), profile_backend_(profile_backend),
       manager_(std::move(manager)),
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver)
@@ -422,6 +423,8 @@ InferenceProfiler::InferenceProfiler(
     include_lib_stats_ = true;
     include_server_stats_ = false;
   }
+  triton_metrics_manager_ = std::make_shared<TritonMetricsManager>(
+      profile_backend, triton_metrics_interval_ms);
 }
 
 cb::Error
@@ -580,6 +583,8 @@ InferenceProfiler::ProfileHelper(
   all_timestamps_.clear();
   previous_window_end_ns_ = 0;
 
+  triton_metrics_manager_->StartQueryingTritonMetrics();
+
   do {
     PerfStatus status_summary;
     RETURN_IF_ERROR(manager_->CheckHealth());
@@ -647,6 +652,7 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
+  triton_metrics_manager_->StopQueryingTritonMetrics();
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.

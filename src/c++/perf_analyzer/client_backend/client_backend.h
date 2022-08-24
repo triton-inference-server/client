@@ -35,6 +35,7 @@
 #include <string>
 #include <vector>
 #include "../constants.h"
+#include "../triton_metrics.h"
 #include "ipc.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -252,6 +253,7 @@ class ClientBackendFactory {
   /// \param memory_type Only for C api backend. Type of memory used
   /// (system is default)
   /// \param verbose Enables the verbose mode.
+  /// \param triton_metrics_url The inference server metrics url and port.
   /// \param factory Returns a new ClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
@@ -262,7 +264,8 @@ class ClientBackendFactory {
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
-      const bool verbose, std::shared_ptr<ClientBackendFactory>* factory);
+      const bool verbose, const std::string& triton_metrics_url,
+      std::shared_ptr<ClientBackendFactory>* factory);
 
   /// Create a ClientBackend.
   /// \param backend Returns a new Client backend object.
@@ -277,13 +280,14 @@ class ClientBackendFactory {
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const std::string& memory_type,
-      const bool verbose)
+      const bool verbose, const std::string& triton_metrics_url)
       : kind_(kind), url_(url), protocol_(protocol), ssl_options_(ssl_options),
         trace_options_(trace_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path),
-        memory_type_(memory_type), verbose_(verbose)
+        memory_type_(memory_type), verbose_(verbose),
+        triton_metrics_url_(triton_metrics_url)
   {
   }
 
@@ -298,6 +302,7 @@ class ClientBackendFactory {
   std::string model_repository_path_;
   std::string memory_type_;
   const bool verbose_;
+  const std::string triton_metrics_url_{};
 };
 
 //
@@ -312,7 +317,7 @@ class ClientBackend {
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,
-      const std::string& memory_type,
+      const std::string& memory_type, const std::string& triton_metrics_url,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// Destructor for the client backend object
@@ -365,6 +370,11 @@ class ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "");
 
+  /// Gets the server-side metrics from the server.
+  /// \param triton_metrics Output triton metrics object.
+  /// \return Error object indicating success or failure.
+  virtual Error TritonMetrics(TritonMetrics& triton_metrics);
+
   /// Unregisters all the shared memory from the server
   virtual Error UnregisterAllSharedMemory();
 
@@ -416,7 +426,12 @@ class ClientBackend {
   /// Constructor for client backend
   ClientBackend(const BackendKind kind);
   // The kind of the backend.
-  const BackendKind kind_;
+  const BackendKind kind_{TRITON};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  ClientBackend() = default;
+#endif
 };
 
 
