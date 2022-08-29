@@ -26,11 +26,11 @@
 #pragma once
 
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <future>
 #include <memory>
 #include <mutex>
-#include <thread>
 #include <utility>
 #include <vector>
 #include "client_backend/client_backend.h"
@@ -38,57 +38,24 @@
 
 namespace triton { namespace perfanalyzer {
 
-// FIXME: pull all this stuff into implementation file :(
-// FIXME: add testing for methods here
 class TritonMetricsManager {
  public:
   TritonMetricsManager(
       std::shared_ptr<clientbackend::ClientBackend> client_backend,
-      uint64_t triton_metrics_interval_ms)
-      : client_backend_(client_backend),
-        triton_metrics_interval_ms_(triton_metrics_interval_ms)
-  {
-  }
+      uint64_t triton_metrics_interval_ms);
 
-  ~TritonMetricsManager() { StopQueryingTritonMetrics(); }
+  /// Ends the background thread, redundant in case StopQueryingTritonMetrics()
+  /// doesn't get called
+  ~TritonMetricsManager();
 
-  void StartQueryingTritonMetrics()
-  {
-    should_keep_querying_ = true;
-    query_triton_metrics_main_loop_future_ = std::async(
-        &TritonMetricsManager::QueryTritonMetricsEveryNMilliseconds, this);
-  }
+  /// Starts background thread that queries triton metrics on an interval
+  void StartQueryingTritonMetrics();
 
-  void QueryTritonMetricsEveryNMilliseconds()
-  {
-    while (should_keep_querying_) {
-      std::future<void> f{
-          std::async(&TritonMetricsManager::QueryTritonMetrics, this)};
-      query_triton_metrics_futures_.push_back(std::move(f));
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(triton_metrics_interval_ms_));
-    }
-  }
+  /// Main loop of background thread that queries triton metrics on an interval
+  void QueryTritonMetricsEveryNMilliseconds();
 
-  void QueryTritonMetrics()
-  {
-    const auto& current_time{std::chrono::system_clock::now()};
-    TritonMetrics triton_metrics{};
-    client_backend_->TritonMetrics(triton_metrics);
-    std::lock_guard<std::mutex> triton_metrics_per_timestamp_lock(
-        triton_metrics_per_timestamp_mutex_);
-    triton_metrics_per_timestamp_.emplace_back(
-        current_time, std::move(triton_metrics));
-  }
-
-  void StopQueryingTritonMetrics()
-  {
-    should_keep_querying_ = false;
-    for (const auto& f : query_triton_metrics_futures_) {
-      f.wait();
-    }
-    query_triton_metrics_main_loop_future_.wait();
-  }
+  /// Ends the background thread
+  void StopQueryingTritonMetrics();
 
  private:
   std::shared_ptr<clientbackend::ClientBackend> client_backend_{nullptr};
@@ -96,10 +63,11 @@ class TritonMetricsManager {
   std::vector<std::pair<
       std::chrono::time_point<std::chrono::system_clock>, TritonMetrics>>
       triton_metrics_per_timestamp_{};
-  std::mutex triton_metrics_per_timestamp_mutex_{};
   bool should_keep_querying_{false};
-  std::future<void> query_triton_metrics_main_loop_future_{};
-  std::vector<std::future<void>> query_triton_metrics_futures_{};
+  std::future<void> query_loop_future_{};
+  std::mutex query_loop_mutex_{};
+  std::unique_lock<std::mutex> query_loop_lock_{query_loop_mutex_};
+  std::condition_variable query_loop_cv_{};
 };
 
 }}  // namespace triton::perfanalyzer

@@ -583,8 +583,6 @@ InferenceProfiler::ProfileHelper(
   all_timestamps_.clear();
   previous_window_end_ns_ = 0;
 
-  triton_metrics_manager_->StartQueryingTritonMetrics();
-
   do {
     PerfStatus status_summary;
     RETURN_IF_ERROR(manager_->CheckHealth());
@@ -651,8 +649,6 @@ InferenceProfiler::ProfileHelper(
 
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
-
-  triton_metrics_manager_->StopQueryingTritonMetrics();
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
@@ -1009,6 +1005,8 @@ InferenceProfiler::Measure(
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
+  triton_metrics_manager_->StartQueryingTritonMetrics();
+
   if (!is_count_based) {
     // Wait for specified time interval in msec
     std::this_thread::sleep_for(
@@ -1022,6 +1020,8 @@ InferenceProfiler::Measure(
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
     } while (manager_->CountCollectedRequests() < measurement_window);
   }
+
+  triton_metrics_manager_->StopQueryingTritonMetrics();
 
   uint64_t window_end_ns =
       std::chrono::duration_cast<std::chrono::nanoseconds>(

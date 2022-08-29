@@ -192,7 +192,7 @@ class TritonClientBackend : public ClientBackend {
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
-  std::string AccessTritonMetricsEndpoint();
+  void AccessTritonMetricsEndpoint(std::string& metrics_endpoint_text);
   void ParseAndStoreTritonMetrics(
       const std::string& metrics_endpoint_text,
       triton::perfanalyzer::TritonMetrics& triton_metrics);

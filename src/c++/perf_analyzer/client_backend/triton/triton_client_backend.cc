@@ -372,7 +372,8 @@ TritonClientBackend::TritonMetrics(
     triton::perfanalyzer::TritonMetrics& triton_metrics)
 {
   try {
-    std::string metrics_endpoint_text{AccessTritonMetricsEndpoint()};
+    std::string metrics_endpoint_text{""};
+    AccessTritonMetricsEndpoint(metrics_endpoint_text);
     ParseAndStoreTritonMetrics(metrics_endpoint_text, triton_metrics);
   }
   catch (const std::exception& e) {
@@ -381,11 +382,10 @@ TritonClientBackend::TritonMetrics(
   return Error::Success;
 }
 
-std::string
-TritonClientBackend::AccessTritonMetricsEndpoint()
+void
+TritonClientBackend::AccessTritonMetricsEndpoint(
+    std::string& metrics_endpoint_text)
 {
-  std::string metrics_endpoint_text{};
-
   CURL* curl{curl_easy_init()};
   if (curl == nullptr) {
     throw std::runtime_error("Error calling curl_easy_init()");
@@ -420,8 +420,6 @@ TritonClientBackend::AccessTritonMetricsEndpoint()
   }
 
   curl_easy_cleanup(curl);
-
-  return metrics_endpoint_text;
 }
 
 void

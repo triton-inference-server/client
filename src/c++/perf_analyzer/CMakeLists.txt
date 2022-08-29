@@ -47,6 +47,7 @@ set(
   inference_profiler.cc
   report_writer.cc
   mpi_utils.cc
+  triton_metrics_manager.cc
 )
 
 set(
@@ -64,6 +65,8 @@ set(
   mpi_utils.h
   doctest.h
   constants.h
+  triton_metrics.h
+  triton_metrics_manager.h
 )
 
 add_executable(

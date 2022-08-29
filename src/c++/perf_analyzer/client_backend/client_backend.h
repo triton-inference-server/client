@@ -302,7 +302,7 @@ class ClientBackendFactory {
   std::string model_repository_path_;
   std::string memory_type_;
   const bool verbose_;
-  const std::string triton_metrics_url_{};
+  const std::string triton_metrics_url_{""};
 };
 
 //
