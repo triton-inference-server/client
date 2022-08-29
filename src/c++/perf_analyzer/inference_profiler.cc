@@ -644,6 +644,7 @@ InferenceProfiler::ProfileHelper(
     *is_stable = DetermineStability(load_status);
 
     if (IsDoneProfiling(load_status, is_stable)) {
+      triton_metrics_manager_->StopQueryingTritonMetrics();
       break;
     }
 
@@ -996,6 +997,7 @@ InferenceProfiler::Measure(
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
+    triton_metrics_manager_->StartQueryingTritonMetrics();
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
@@ -1004,8 +1006,6 @@ InferenceProfiler::Measure(
     start_stat = cb::InferStat();
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
-
-  triton_metrics_manager_->StartQueryingTritonMetrics();
 
   if (!is_count_based) {
     // Wait for specified time interval in msec
@@ -1020,8 +1020,6 @@ InferenceProfiler::Measure(
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
     } while (manager_->CountCollectedRequests() < measurement_window);
   }
-
-  triton_metrics_manager_->StopQueryingTritonMetrics();
 
   uint64_t window_end_ns =
       std::chrono::duration_cast<std::chrono::nanoseconds>(
