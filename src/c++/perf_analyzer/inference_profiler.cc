@@ -644,12 +644,13 @@ InferenceProfiler::ProfileHelper(
     *is_stable = DetermineStability(load_status);
 
     if (IsDoneProfiling(load_status, is_stable)) {
-      triton_metrics_manager_->StopQueryingTritonMetrics();
       break;
     }
 
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
+
+  triton_metrics_manager_->StopQueryingTritonMetrics();
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
@@ -1006,6 +1007,8 @@ InferenceProfiler::Measure(
     start_stat = cb::InferStat();
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
+
+  triton_metrics_manager_->CheckQueryingStatus();
 
   if (!is_count_based) {
     // Wait for specified time interval in msec

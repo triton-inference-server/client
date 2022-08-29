@@ -54,6 +54,9 @@ class TritonMetricsManager {
   /// Main loop of background thread that queries triton metrics on an interval
   void QueryTritonMetricsEveryNMilliseconds();
 
+  /// Checks if background thread threw exception and propogates it if so
+  void CheckQueryingStatus();
+
   /// Ends the background thread
   void StopQueryingTritonMetrics();
 

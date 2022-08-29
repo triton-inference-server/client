@@ -1632,7 +1632,10 @@ PerfAnalyzer::Run(int argc, char** argv)
   signal(SIGINT, pa::SignalHandler);
   std::shared_ptr<cb::ClientBackendFactory> factory;
   // FIXME: TMA-862 pass triton metrics url here
-  const std::string triton_metrics_url{std::getenv("--triton-metrics-url")};
+  std::string triton_metrics_url{"localhost:8002/metrics"};
+  if (const char* triton_metrics_url_c_str{std::getenv("TRITON_METRICS_URL")}) {
+    triton_metrics_url = triton_metrics_url_c_str;
+  }
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, ssl_options, trace_options,
@@ -1799,8 +1802,11 @@ PerfAnalyzer::Run(int argc, char** argv)
 
   std::unique_ptr<pa::InferenceProfiler> profiler;
   // FIXME: TMA-783 pass triton metrics interval here
-  const uint64_t triton_metrics_interval_ms{
-      std::stoull(std::getenv("--triton-metrics-interval"))};
+  uint64_t triton_metrics_interval_ms{1000};
+  if (const char* triton_metrics_interval_ms_c_str{
+          std::getenv("TRITON_METRICS_INTERVAL")}) {
+    triton_metrics_interval_ms = std::stoull(triton_metrics_interval_ms_c_str);
+  }
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
           verbose, stability_threshold, measurement_window_ms, max_trials,

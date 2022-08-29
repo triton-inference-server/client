@@ -446,6 +446,12 @@ TritonClientBackend::ParseAndStoreGPUUtilization(
       metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
       gpu_utilization_regex)};
 
+  if (gpu_utilization_begin == std::sregex_iterator()) {
+    std::cerr << "WARNING: Triton 'nv_gpu_utilization' metric is missing or "
+                 "misformatted."
+              << std::endl;
+  }
+
   for (std::sregex_iterator i{gpu_utilization_begin};
        i != std::sregex_iterator(); i++) {
     const std::smatch& match{*i};
@@ -466,6 +472,12 @@ TritonClientBackend::ParseAndStoreGPUPowerUsage(
       metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
       gpu_power_usage_regex)};
 
+  if (gpu_power_usage_begin == std::sregex_iterator()) {
+    std::cerr << "WARNING: Triton 'nv_gpu_power_usage' metric is missing or "
+                 "misformatted."
+              << std::endl;
+  }
+
   for (std::sregex_iterator i{gpu_power_usage_begin};
        i != std::sregex_iterator(); i++) {
     const std::smatch& match{*i};
@@ -485,6 +497,12 @@ TritonClientBackend::ParseAndStoreGPUMemoryUsedBytes(
   std::sregex_iterator gpu_memory_used_bytes_begin{std::sregex_iterator(
       metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
       gpu_memory_used_bytes_regex)};
+
+  if (gpu_memory_used_bytes_begin == std::sregex_iterator()) {
+    std::cerr << "WARNING: Triton 'nv_gpu_memory_used_bytes' metric is missing "
+                 "or misformatted."
+              << std::endl;
+  }
 
   for (std::sregex_iterator i{gpu_memory_used_bytes_begin};
        i != std::sregex_iterator(); i++) {

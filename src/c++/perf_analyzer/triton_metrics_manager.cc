@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "triton_metrics_manager.h"
+#include <stdexcept>
 
 namespace triton { namespace perfanalyzer {
 
@@ -56,7 +57,10 @@ TritonMetricsManager::QueryTritonMetricsEveryNMilliseconds()
     const auto& start{std::chrono::system_clock::now()};
 
     TritonMetrics triton_metrics{};
-    client_backend_->TritonMetrics(triton_metrics);
+    clientbackend::Error err{client_backend_->TritonMetrics(triton_metrics)};
+    if (err.IsOk() == false) {
+      throw std::runtime_error(err.Message());
+    }
     triton_metrics_per_timestamp_.emplace_back(
         start, std::move(triton_metrics));
 
@@ -82,12 +86,21 @@ TritonMetricsManager::QueryTritonMetricsEveryNMilliseconds()
 }
 
 void
+TritonMetricsManager::CheckQueryingStatus()
+{
+  if (query_loop_future_.wait_for(std::chrono::seconds(0)) ==
+      std::future_status::ready) {
+    query_loop_future_.get();
+  }
+}
+
+void
 TritonMetricsManager::StopQueryingTritonMetrics()
 {
   should_keep_querying_ = false;
   query_loop_cv_.notify_one();
   if (query_loop_future_.valid()) {
-    query_loop_future_.wait();
+    query_loop_future_.get();
   }
 }
 
