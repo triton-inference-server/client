@@ -269,6 +269,8 @@ class ClientBackendFactory {
       const std::string& metrics_url,
       std::shared_ptr<ClientBackendFactory>* factory);
 
+  const BackendKind& Kind();
+
   /// Create a ClientBackend.
   /// \param backend Returns a new Client backend object.
   virtual Error CreateClientBackend(std::unique_ptr<ClientBackend>* backend);
@@ -403,13 +405,16 @@ class ClientBackend {
   virtual Error RegisterCudaMemory(
       const std::string& name, void* handle, const size_t byte_size);
 
+  /// Registers a system memory location on the server.
+  virtual Error RegisterSystemMemory(
+      const std::string& name, void* memory_ptr, const size_t byte_size);
+
   //
   // Shared Memory Utilities
   //
-  // FIXME: These should probably move to a common area with shm_utils not tied
-  // specifically to inferenceserver.
-  // Create a shared memory region of the size 'byte_size' and return the unique
-  // identifier.
+  // FIXME: These should probably move to a common area with shm_utils not
+  // tied specifically to inferenceserver. Create a shared memory region of
+  // the size 'byte_size' and return the unique identifier.
   virtual Error CreateSharedMemoryRegion(
       std::string shm_key, size_t byte_size, int* shm_fd);
 

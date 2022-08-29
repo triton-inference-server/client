@@ -147,6 +147,12 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error InitSharedMemory();
 
+  /// Create a memory region.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error CreateMemoryRegion(
+      std::string& shm_region_name, const SharedMemoryType& memory_type,
+      size_t byte_size, void** ptr);
+
   /// Helper function to prepare the InferContext for sending inference request.
   /// \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.

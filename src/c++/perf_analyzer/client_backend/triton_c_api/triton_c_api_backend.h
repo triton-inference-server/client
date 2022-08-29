@@ -110,6 +110,10 @@ class TritonCApiClientBackend : public ClientBackend {
   Error RegisterCudaMemory(
       const std::string& name, void* handle, const size_t byte_size) override;
 
+  /// See ClientBackend::RegisterSystemMemory
+  Error RegisterSystemMemory(
+      const std::string& name, void* ptr, const size_t byte_size) override;
+
   /// See ClientBackend::UnregisterAllSharedMemory
   Error UnregisterAllSharedMemory();
 

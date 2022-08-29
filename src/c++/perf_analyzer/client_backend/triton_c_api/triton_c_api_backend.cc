@@ -145,14 +145,13 @@ TritonCApiClientBackend::UnregisterAllSharedMemory()
   return Error::Success;
 }
 
-// Error
-// TritonCApiClientBackend::RegisterSystemSharedMemory(
-//       const std::string& name, const std::string& key, const size_t
-//       byte_size)
-// {
-//   // RETURN_IF_ERROR(shm_manager_->RegisterSystemSharedMemory(name, key, 0 /*
-//   offset */, byte_size)); return Error::Success;
-// }
+Error
+TritonCApiClientBackend::RegisterSystemMemory(
+    const std::string& name, void* ptr, const size_t byte_size)
+{
+  RETURN_IF_ERROR(triton_loader_->RegisterSystemMemory(name, ptr, byte_size));
+  return Error::Success;
+}
 
 Error
 TritonCApiClientBackend::RegisterCudaMemory(
@@ -161,24 +160,6 @@ TritonCApiClientBackend::RegisterCudaMemory(
   RETURN_IF_ERROR(triton_loader_->RegisterCudaMemory(name, handle, byte_size));
   return Error::Success;
 }
-
-// Error
-// TritonCApiClientBackend::CreateSharedMemoryRegion(std::string shm_key, size_t
-// byte_size, int* shm_fd)
-// {
-// }
-
-// Error
-// TritonCApiClientBackend::MapSharedMemory(int shm_fd, size_t offset, size_t
-// byte_size, void** shm_addr)
-//       {
-
-//       }
-
-//   Error TritonCApiClientBackend::CloseSharedMemory(int shm_fd){}
-//   Error TritonCApiClientBackend::UnlinkSharedMemoryRegion(std::string
-//   shm_key); Error TritonCApiClientBackend::UnmapSharedMemory(void* shm_addr,
-//   size_t byte_size);
 
 void
 TritonCApiClientBackend::ParseInferInputToTriton(

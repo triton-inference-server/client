@@ -28,7 +28,6 @@
   triton::perfanalyzer::clientbackend::tritoncapi::TritonLoader
 
 #include "triton_loader.h"
-
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <sys/stat.h>
@@ -103,7 +102,8 @@ ResponseAlloc(
     auto output_map_it = alloc_payload->output_map_.find(tensor_name);
     if (output_map_it == alloc_payload->output_map_.end()) {
       void* allocated_ptr = nullptr;
-      *actual_memory_type = TRITONSERVER_MEMORY_GPU;
+      *actual_memory_type = TRITONSERVER_MEMORY_CPU;
+      *actual_memory_type_id = 0;
       allocated_ptr = malloc(byte_size);
 
       if (allocated_ptr != nullptr) {
@@ -934,6 +934,7 @@ TritonLoader::Infer(
   // Perform inference...
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
+  std::future<TRITONSERVER_InferenceResponse*> completed = p->get_future();
   RETURN_IF_TRITONSERVER_ERROR(
       inference_request_set_response_callback_fn_(
           irequest, allocator, &alloc_payload /* response_allocator_userp */,
@@ -945,7 +946,6 @@ TritonLoader::Infer(
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_END);
 
   // Wait for the inference to complete.
-  std::future<TRITONSERVER_InferenceResponse*> completed = p->get_future();
   completed_response = completed.get();
 
   RETURN_IF_TRITONSERVER_ERROR(
@@ -1202,19 +1202,27 @@ TritonLoader::~TritonLoader()
   ClearHandles();
 }
 
-
 Error
 TritonLoader::RegisterCudaMemory(
     const std::string& name, void* handle, const size_t byte_size)
 {
-  RETURN_IF_ERROR(shm_manager_->RegisterCUDASharedMemory(
+  RETURN_IF_ERROR(shm_manager_->RegisterCUDAMemory(
       name, handle, byte_size, 0 /* device id */));
+  return Error::Success;
+}
+
+Error
+TritonLoader::RegisterSystemMemory(
+    const std::string& name, void* ptr, const size_t byte_size)
+{
+  RETURN_IF_ERROR(shm_manager_->RegisterSystemMemory(name, ptr, byte_size));
   return Error::Success;
 }
 
 Error
 TritonLoader::UnregisterAllSharedMemory()
 {
+  RETURN_IF_ERROR(shm_manager_->UnregisterAll(TRITONSERVER_MEMORY_GPU));
   RETURN_IF_ERROR(shm_manager_->UnregisterAll(TRITONSERVER_MEMORY_GPU));
   return Error::Success;
 }

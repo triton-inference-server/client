@@ -125,6 +125,9 @@ class TritonLoader : public tc::InferenceServerClient {
   Error RegisterCudaMemory(
       const std::string& name, void* handle, const size_t byte_size);
 
+  Error RegisterSystemMemory(
+      const std::string& name, void* ptr, const size_t byte_size);
+
   Error UnregisterAllSharedMemory();
 
   bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }

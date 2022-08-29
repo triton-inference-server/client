@@ -35,150 +35,16 @@
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
 
-namespace {
-
-Error
-OpenSharedMemoryRegion(const std::string& shm_key, int* shm_fd)
-{
-  // get shared memory region descriptor
-  *shm_fd = shm_open(shm_key.c_str(), O_RDWR, S_IRUSR | S_IWUSR);
-  if (*shm_fd == -1) {
-    return Error(
-        std::string("Unable to open shared memory region: '" + shm_key + "'"));
-  }
-
-  return Error::Success;
-}
-
-Error
-MapSharedMemory(
-    const int shm_fd, const size_t offset, const size_t byte_size,
-    void** mapped_addr)
-{
-  // map shared memory to process address space
-  *mapped_addr = mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, shm_fd, offset);
-  if (*mapped_addr == MAP_FAILED) {
-    return Error(std::string(
-        "unable to process address space" + std::string(std::strerror(errno))));
-  }
-
-  return Error::Success;
-}
-
-Error
-CloseSharedMemoryRegion(int shm_fd)
-{
-  int status = close(shm_fd);
-  if (status == -1) {
-    return Error(std::string(
-        "unable to close shared memory descriptor, errno: " +
-        std::string(std::strerror(errno))));
-  }
-
-  return Error::Success;
-}
-
-Error
-UnmapSharedMemory(void* mapped_addr, size_t byte_size)
-{
-  int status = munmap(mapped_addr, byte_size);
-  if (status == -1) {
-    return Error(std::string(
-        "unable to munmap shared memory region, errno: " +
-        std::string(std::strerror(errno))));
-  }
-
-  return Error::Success;
-}
-
-#ifdef TRITON_ENABLE_GPU
-Error
-OpenCudaIPCRegion(
-    const cudaIpcMemHandle_t* cuda_shm_handle, void** data_ptr, int device_id)
-{
-  // Set to device curres
-  cudaSetDevice(device_id);
-
-  // Open CUDA IPC handle and read data from it
-  cudaError_t err = cudaIpcOpenMemHandle(
-      data_ptr, *cuda_shm_handle, cudaIpcMemLazyEnablePeerAccess);
-  if (err != cudaSuccess) {
-    return Error(std::string(
-        "failed to open CUDA IPC handle: " +
-        std::string(cudaGetErrorString(err))));
-  }
-
-  return Error::Success;
-}
-#endif  // TRITON_ENABLE_GPU
-
-}  // namespace
-
 SharedMemoryManager::~SharedMemoryManager()
 {
   UnregisterAll(TRITONSERVER_MEMORY_CPU);
   UnregisterAll(TRITONSERVER_MEMORY_GPU);
 }
 
-Error
-SharedMemoryManager::RegisterSystemSharedMemory(
-    const std::string& name, const std::string& shm_key, const size_t offset,
-    const size_t byte_size)
-{
-  std::lock_guard<std::mutex> lock(mu_);
-
-  if (shared_memory_map_.find(name) != shared_memory_map_.end()) {
-    return Error(
-        std::string("shared memory region '" + name + "' already in manager"));
-  }
-
-  // register
-  void* mapped_addr;
-  int shm_fd = -1;
-
-  // don't re-open if shared memory is already open
-  for (auto itr = shared_memory_map_.begin(); itr != shared_memory_map_.end();
-       ++itr) {
-    if (itr->second->shm_key_ == shm_key) {
-      shm_fd = itr->second->shm_fd_;
-      break;
-    }
-  }
-
-  // open and set new shm_fd if new shared memory key
-  if (shm_fd == -1) {
-    RETURN_IF_ERROR(OpenSharedMemoryRegion(shm_key, &shm_fd));
-  }
-
-  // Mmap and then close the shared memory descriptor
-  Error err_mmap = MapSharedMemory(shm_fd, offset, byte_size, &mapped_addr);
-  Error err_close = CloseSharedMemoryRegion(shm_fd);
-  if (!err_mmap.IsOk()) {
-    return Error(std::string(
-                     "failed to register shared memory region '" + name +
-                     "': " + err_mmap.Message())
-                     .c_str());
-  }
-
-  if (!err_close.IsOk()) {
-    return Error(std::string(
-                     "failed to register shared memory region '" + name +
-                     "': " + err_close.Message())
-                     .c_str());
-  }
-
-  shared_memory_map_.insert(std::make_pair(
-      name, std::unique_ptr<SharedMemoryInfo>(new SharedMemoryInfo(
-                name, shm_key, offset, byte_size, shm_fd, mapped_addr,
-                TRITONSERVER_MEMORY_CPU, 0))));
-
-  return Error::Success;
-}
-
 #ifdef TRITON_ENABLE_GPU
 Error
-SharedMemoryManager::RegisterCUDASharedMemory(
-    const std::string& name, void* cuda_shm_handle, const size_t byte_size,
+SharedMemoryManager::RegisterCUDAMemory(
+    const std::string& name, void* dev_ptr, const size_t byte_size,
     const int device_id)
 {
   // Serialize all operations that write/read current shared memory regions
@@ -191,21 +57,35 @@ SharedMemoryManager::RegisterCUDASharedMemory(
         std::string("shared memory region '" + name + "' already in manager"));
   }
 
-  // Get CUDA shared memory base address
-  // Error err = OpenCudaIPCRegion(cuda_shm_handle, &mapped_addr, device_id);
-  // if (!err.IsOk()) {
-  //   return Error(std::string(
-  //       "failed to register CUDA shared memory region '" + name +
-  //       "': " + err.Message()));
-  // }
-
   shared_memory_map_.insert(std::make_pair(
-      name, std::unique_ptr<CUDASharedMemoryInfo>(new CUDASharedMemoryInfo(
-                name, "", 0, byte_size, 0, cuda_shm_handle,
+      name, std::unique_ptr<MemoryInfo>(new MemoryInfo(
+                name, 0 /* offset */, byte_size, dev_ptr,
                 TRITONSERVER_MEMORY_GPU, device_id))));
   return Error::Success;
 }
 #endif  // TRITON_ENABLE_GPU
+
+Error
+SharedMemoryManager::RegisterSystemMemory(
+    const std::string& name, void* ptr, const size_t byte_size)
+{
+  // Serialize all operations that write/read current shared memory regions
+  std::lock_guard<std::mutex> lock(mu_);
+
+  // If name is already in shared_memory_map_ then return error saying already
+  // registered
+  if (shared_memory_map_.find(name) != shared_memory_map_.end()) {
+    return Error(
+        std::string("shared memory region '" + name + "' already in manager"));
+  }
+
+  shared_memory_map_.insert(std::make_pair(
+      name, std::unique_ptr<MemoryInfo>(new MemoryInfo(
+                name, 0 /* offset */, byte_size, ptr, TRITONSERVER_MEMORY_CPU,
+                0 /* device id */))));
+
+  return Error::Success;
+}
 
 Error
 SharedMemoryManager::GetMemoryInfo(
@@ -233,26 +113,6 @@ SharedMemoryManager::GetMemoryInfo(
   return Error::Success;
 }
 
-#ifdef TRITON_ENABLE_GPU
-Error
-SharedMemoryManager::GetCUDAHandle(
-    const std::string& name, cudaIpcMemHandle_t** cuda_mem_handle)
-{
-  // protect shared_memory_map_ from concurrent access
-  std::lock_guard<std::mutex> lock(mu_);
-
-  auto it = shared_memory_map_.find(name);
-  if (it == shared_memory_map_.end()) {
-    return Error(
-        std::string("Unable to find shared memory region: '" + name + "'"));
-  }
-  CUDASharedMemoryInfo& shm_info =
-      reinterpret_cast<CUDASharedMemoryInfo&>(*(it->second));
-  // *cuda_mem_handle = &(shm_info.cuda_ipc_handle_);
-
-  return Error::Success;
-}
-#endif
 
 Error
 SharedMemoryManager::Unregister(
@@ -314,29 +174,9 @@ SharedMemoryManager::UnregisterHelper(
 {
   // Must hold the lock on register_mu_ while calling this function.
   auto it = shared_memory_map_.find(name);
-  if (it != shared_memory_map_.end() && it->second->kind_ == memory_type) {
-    if (it->second->kind_ == TRITONSERVER_MEMORY_CPU) {
-      RETURN_IF_ERROR(
-          UnmapSharedMemory(it->second->mapped_addr_, it->second->byte_size_));
-    } else {
-#ifdef TRITON_ENABLE_GPU
-      // cudaError_t err = cudaIpcCloseMemHandle(it->second->mapped_addr_);
-      // if (err != cudaSuccess) {
-      //   return Error(std::string(
-      //       "failed to close CUDA IPC handle: " +
-      //       std::string(cudaGetErrorString(err))));
-      // }
-#else
-      return Error(std::string(
-                       "failed to unregister CUDA shared memory region: '" +
-                       name + "', GPUs not supported")
-                       .c_str());
-#endif  // TRITON_ENABLE_GPU
-    }
 
-    // Remove region information from shared_memory_map_
-    shared_memory_map_.erase(it);
-  }
+  // Remove region information from shared_memory_map_
+  shared_memory_map_.erase(it);
 
   return Error::Success;
 }
