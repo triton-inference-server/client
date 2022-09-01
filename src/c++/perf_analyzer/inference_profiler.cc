@@ -1007,7 +1007,12 @@ InferenceProfiler::Measure(
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
-  metrics_manager_->CheckQueryingStatus();
+  try {
+    metrics_manager_->CheckQueryingStatus();
+  }
+  catch (const std::exception& e) {
+    return cb::Error(e.what(), pa::GENERIC_ERROR);
+  }
 
   if (!is_count_based) {
     // Wait for specified time interval in msec
@@ -1029,7 +1034,7 @@ InferenceProfiler::Measure(
           .count();
   previous_window_end_ns_ = window_end_ns;
 
-  metrics_manager_->SwapMetrics(status_summary.metrics_per_timestamp);
+  metrics_manager_->SwapMetrics(status_summary.metrics);
 
   // Get server status and then print report on difference between
   // before and after status.

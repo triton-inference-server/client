@@ -25,7 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "metrics_manager.h"
+#include <iostream>
 #include <stdexcept>
+#include <utility>
 
 namespace triton { namespace perfanalyzer {
 
@@ -60,15 +62,18 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
     Metrics metrics{};
     clientbackend::Error err{client_backend_->Metrics(metrics)};
     if (err.IsOk() == false) {
-      throw std::runtime_error(err.Message());
+      // FIXME: this custom logic enables PA in C API mode, remove in TMA-775
+      if (err.Message() !=
+          "client backend of kind TRITON_C_API does not support Metrics API") {
+        throw std::runtime_error(err.Message());
+      }
     }
 
     CheckForMissingMetrics(metrics);
 
     {
-      std::lock_guard<std::mutex> metrics_per_timestamp_lock{
-          metrics_per_timestamp_mutex_};
-      metrics_per_timestamp_.emplace_back(start, std::move(metrics));
+      std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
+      metrics_.push_back(std::move(metrics));
     }
 
     const auto& end{std::chrono::system_clock::now()};
@@ -130,25 +135,22 @@ MetricsManager::CheckForMetricIntervalTooShort(
 void
 MetricsManager::CheckQueryingStatus()
 {
-  if (query_loop_future_.wait_for(std::chrono::seconds(0)) ==
-      std::future_status::ready) {
+  if (query_loop_future_.valid() &&
+      query_loop_future_.wait_for(std::chrono::seconds(0)) ==
+          std::future_status::ready) {
     query_loop_future_.get();
   }
 }
 
 void
-MetricsManager::SwapMetrics(
-    std::vector<
-        std::pair<std::chrono::time_point<std::chrono::system_clock>, Metrics>>&
-        metrics_per_timestamp)
+MetricsManager::SwapMetrics(std::vector<Metrics>& metrics)
 {
-  if (metrics_per_timestamp.empty() == false) {
+  if (metrics.empty() == false) {
     throw std::runtime_error(
         "MetricsManager::SwapMetrics() must be passed an empty vector.");
   }
-  std::lock_guard<std::mutex> metrics_per_timestamp_lock{
-      metrics_per_timestamp_mutex_};
-  metrics_per_timestamp_.swap(metrics_per_timestamp);
+  std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
+  metrics_.swap(metrics);
 }
 
 void

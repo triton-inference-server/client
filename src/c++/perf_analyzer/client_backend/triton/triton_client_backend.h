@@ -196,6 +196,7 @@ class TritonClientBackend : public ClientBackend {
   void ParseAndStoreMetrics(
       const std::string& metrics_endpoint_text,
       triton::perfanalyzer::Metrics& metrics);
+
   template <typename T>
   void ParseAndStoreMetric(
       const std::string& metrics_endpoint_text, const std::string metric_id,

@@ -152,9 +152,7 @@ struct PerfStatus {
   size_t batch_size;
   ServerSideStats server_stats;
   ClientSideStats client_stats;
-  std::vector<
-      std::pair<std::chrono::time_point<std::chrono::system_clock>, Metrics>>
-      metrics_per_timestamp{};
+  std::vector<Metrics> metrics{};
   bool on_sequence_model;
 
   // placeholder for the latency value that is used for conditional checking

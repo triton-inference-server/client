@@ -31,7 +31,6 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include <utility>
 #include <vector>
 #include "client_backend/client_backend.h"
 #include "metrics.h"
@@ -55,22 +54,17 @@ class MetricsManager {
   /// Starts background thread that queries metrics on an interval
   void StartQueryingMetrics();
 
-  /// Main loop of background thread that queries metrics on an interval
-  void QueryMetricsEveryNMilliseconds();
-
   /// Checks if background thread threw exception and propogates it if so
   void CheckQueryingStatus();
 
   /// Swaps the the currently collected metrics with an empty external vector
-  void SwapMetrics(
-      std::vector<std::pair<
-          std::chrono::time_point<std::chrono::system_clock>, Metrics>>&
-          metrics_per_timestamp);
+  void SwapMetrics(std::vector<Metrics>& metrics_per_timestamp);
 
   /// Ends the background thread
   void StopQueryingMetrics();
 
  private:
+  void QueryMetricsEveryNMilliseconds();
   void CheckForMissingMetrics(const Metrics& metrics);
   void CheckForMetricIntervalTooShort(
       const std::chrono::nanoseconds& remainder,
@@ -78,10 +72,8 @@ class MetricsManager {
 
   std::shared_ptr<clientbackend::ClientBackend> client_backend_{nullptr};
   uint64_t metrics_interval_ms_{0};
-  std::mutex metrics_per_timestamp_mutex_{};
-  std::vector<
-      std::pair<std::chrono::time_point<std::chrono::system_clock>, Metrics>>
-      metrics_per_timestamp_{};
+  std::mutex metrics_mutex_{};
+  std::vector<Metrics> metrics_{};
   bool should_keep_querying_{false};
   std::future<void> query_loop_future_{};
   std::mutex query_loop_mutex_{};
