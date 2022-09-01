@@ -25,18 +25,22 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <memory>
 #include <thread>
 #include <tuple>
+#include <utility>
+#include <vector>
 #include "concurrency_manager.h"
 #include "constants.h"
 #include "custom_load_manager.h"
+#include "metrics.h"
+#include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
 #include "request_rate_manager.h"
-#include "triton_metrics_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -148,7 +152,9 @@ struct PerfStatus {
   size_t batch_size;
   ServerSideStats server_stats;
   ClientSideStats client_stats;
-
+  std::vector<
+      std::pair<std::chrono::time_point<std::chrono::system_clock>, Metrics>>
+      metrics_per_timestamp{};
   bool on_sequence_model;
 
   // placeholder for the latency value that is used for conditional checking
@@ -203,8 +209,9 @@ class InferenceProfiler {
   /// using "count_windows" mode.
   /// \param measurement_mode The measurement mode to use for windows.
   /// \param mpi_driver The driver class for MPI operations.
-  /// \return cb::Error object indicating success or
-  /// failure.
+  /// \param metrics_interval_ms The interval at which the server-side metrics
+  /// are queried.
+  /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
       const uint64_t measurement_window_ms, const size_t max_trials,
@@ -215,7 +222,7 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver,
-      const uint64_t triton_metrics_interval_ms);
+      const uint64_t metrics_interval_ms);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -296,7 +303,7 @@ class InferenceProfiler {
       std::shared_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-      const uint64_t triton_metrics_interval_ms);
+      const uint64_t metrics_interval_ms);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -555,8 +562,8 @@ class InferenceProfiler {
   /// Client side statistics from the previous measurement window
   cb::InferStat prev_client_side_stats_;
 
-  /// Triton metrics manager that collects server-side metrics periodically
-  std::shared_ptr<TritonMetricsManager> triton_metrics_manager_{nullptr};
+  /// Metrics manager that collects server-side metrics periodically
+  std::shared_ptr<MetricsManager> metrics_manager_{nullptr};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;

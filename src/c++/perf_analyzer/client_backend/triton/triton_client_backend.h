@@ -27,10 +27,12 @@
 
 #include <cstdint>
 #include <map>
+#include <regex>
 #include <string>
+#include <type_traits>
 #include "../../constants.h"
+#include "../../metrics.h"
 #include "../../perf_utils.h"
-#include "../../triton_metrics.h"
 #include "../client_backend.h"
 #include "grpc_client.h"
 #include "http_client.h"
@@ -76,7 +78,7 @@ class TritonClientBackend : public ClientBackend {
   /// \param http_headers Map of HTTP headers. The map key/value indicates
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
-  /// \param triton_metrics_url The inference server metrics url and port.
+  /// \param metrics_url The inference server metrics url and port.
   /// \param client_backend Returns a new TritonClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
@@ -85,7 +87,7 @@ class TritonClientBackend : public ClientBackend {
       const std::map<std::string, std::vector<std::string>> trace_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
-      const std::string& triton_metrics_url,
+      const std::string& metrics_url,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -130,9 +132,8 @@ class TritonClientBackend : public ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "") override;
 
-  /// See ClientBackend::TritonMetrics()
-  Error TritonMetrics(
-      triton::perfanalyzer::TritonMetrics& triton_metrics) override;
+  /// See ClientBackend::Metrics()
+  Error Metrics(triton::perfanalyzer::Metrics& metrics) override;
 
   /// See ClientBackend::UnregisterAllSharedMemory()
   Error UnregisterAllSharedMemory() override;
@@ -168,11 +169,10 @@ class TritonClientBackend : public ClientBackend {
   TritonClientBackend(
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<tc::Headers> http_headers,
-      const std::string& triton_metrics_url)
+      std::shared_ptr<tc::Headers> http_headers, const std::string& metrics_url)
       : ClientBackend(BackendKind::TRITON), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers), triton_metrics_url_(triton_metrics_url)
+        http_headers_(http_headers), metrics_url_(metrics_url)
   {
   }
 
@@ -192,19 +192,34 @@ class TritonClientBackend : public ClientBackend {
       std::map<ModelIdentifier, ModelStatistics>* model_stats);
   void ParseInferStat(
       const tc::InferStat& triton_infer_stat, InferStat* infer_stat);
-  void AccessTritonMetricsEndpoint(std::string& metrics_endpoint_text);
-  void ParseAndStoreTritonMetrics(
+  void AccessMetricsEndpoint(std::string& metrics_endpoint_text);
+  void ParseAndStoreMetrics(
       const std::string& metrics_endpoint_text,
-      triton::perfanalyzer::TritonMetrics& triton_metrics);
-  void ParseAndStoreGPUUtilization(
-      const std::string& metrics_endpoint_text,
-      std::map<std::string, double>& gpu_utilization_per_gpu);
-  void ParseAndStoreGPUPowerUsage(
-      const std::string& metrics_endpoint_text,
-      std::map<std::string, double>& gpu_power_usage_per_gpu);
-  void ParseAndStoreGPUMemoryUsedBytes(
-      const std::string& metrics_endpoint_text,
-      std::map<std::string, uint64_t>& gpu_memory_used_bytes_per_gpu);
+      triton::perfanalyzer::Metrics& metrics);
+  template <typename T>
+  void ParseAndStoreMetric(
+      const std::string& metrics_endpoint_text, const std::string metric_id,
+      std::map<std::string, T>& metric_per_gpu)
+  {
+    std::regex metric_regex(
+        R"(\n)" + metric_id + R"(\{gpu_uuid\=\"([^"]+)\"\} (\d+\.?\d*))");
+    std::sregex_iterator metric_regex_match_begin{std::sregex_iterator(
+        metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
+        metric_regex)};
+
+    for (std::sregex_iterator i{metric_regex_match_begin};
+         i != std::sregex_iterator(); i++) {
+      const std::smatch& match{*i};
+      const std::string& gpu_uuid{match[1].str()};
+      T metric{};
+      if (std::is_same<T, double>::value) {
+        metric = std::stod(match[2].str());
+      } else if (std::is_same<T, uint64_t>::value) {
+        metric = static_cast<uint64_t>(std::stod(match[2].str()));
+      }
+      metric_per_gpu[gpu_uuid] = metric;
+    }
+  }
 
   /// Union to represent the underlying triton client belonging to one of
   /// the protocols
@@ -222,7 +237,7 @@ class TritonClientBackend : public ClientBackend {
   const ProtocolType protocol_{UNKNOWN};
   const grpc_compression_algorithm compression_algorithm_{GRPC_COMPRESS_NONE};
   std::shared_ptr<tc::Headers> http_headers_;
-  const std::string triton_metrics_url_{};
+  const std::string metrics_url_{""};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestTritonClientBackend;

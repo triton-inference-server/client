@@ -91,12 +91,12 @@ TritonClientBackend::Create(
     const std::map<std::string, std::vector<std::string>> trace_options,
     const grpc_compression_algorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
-    const std::string& triton_metrics_url,
+    const std::string& metrics_url,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<TritonClientBackend> triton_client_backend(
       new TritonClientBackend(
-          protocol, compression_algorithm, http_headers, triton_metrics_url));
+          protocol, compression_algorithm, http_headers, metrics_url));
   if (protocol == ProtocolType::HTTP) {
     triton::client::HttpSslOptions http_ssl_options =
         ParseHttpSslOptions(ssl_options);
@@ -368,13 +368,12 @@ TritonClientBackend::ModelInferenceStatistics(
 }
 
 Error
-TritonClientBackend::TritonMetrics(
-    triton::perfanalyzer::TritonMetrics& triton_metrics)
+TritonClientBackend::Metrics(triton::perfanalyzer::Metrics& metrics)
 {
   try {
     std::string metrics_endpoint_text{""};
-    AccessTritonMetricsEndpoint(metrics_endpoint_text);
-    ParseAndStoreTritonMetrics(metrics_endpoint_text, triton_metrics);
+    AccessMetricsEndpoint(metrics_endpoint_text);
+    ParseAndStoreMetrics(metrics_endpoint_text, metrics);
   }
   catch (const std::exception& e) {
     return Error(e.what(), pa::GENERIC_ERROR);
@@ -383,25 +382,24 @@ TritonClientBackend::TritonMetrics(
 }
 
 void
-TritonClientBackend::AccessTritonMetricsEndpoint(
-    std::string& metrics_endpoint_text)
+TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
 {
   CURL* curl{curl_easy_init()};
   if (curl == nullptr) {
     throw std::runtime_error("Error calling curl_easy_init()");
   }
 
-  const auto write_function{
+  const auto metrics_response_handler{
       [](char* ptr, size_t size, size_t nmemb, std::string* userdata) {
         userdata->append(ptr, size * nmemb);
         return size * nmemb;
       }};
 
-  curl_easy_setopt(curl, CURLOPT_URL, triton_metrics_url_.c_str());
+  curl_easy_setopt(curl, CURLOPT_URL, metrics_url_.c_str());
   curl_easy_setopt(
       curl, CURLOPT_WRITEFUNCTION,
       static_cast<size_t (*)(char*, size_t, size_t, std::string*)>(
-          write_function));
+          metrics_response_handler));
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &metrics_endpoint_text);
 
   CURLcode res{curl_easy_perform(curl)};
@@ -415,103 +413,26 @@ TritonClientBackend::AccessTritonMetricsEndpoint(
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
   if (response_code != 200) {
-    throw std::runtime_error(
-        "Triton metrics endpoint curling did not succeed.");
+    throw std::runtime_error("Metrics endpoint curling did not succeed.");
   }
 
   curl_easy_cleanup(curl);
 }
 
 void
-TritonClientBackend::ParseAndStoreTritonMetrics(
+TritonClientBackend::ParseAndStoreMetrics(
     const std::string& metrics_endpoint_text,
-    triton::perfanalyzer::TritonMetrics& triton_metrics)
+    triton::perfanalyzer::Metrics& metrics)
 {
-  ParseAndStoreGPUUtilization(
-      metrics_endpoint_text, triton_metrics.gpu_utilization_per_gpu);
-  ParseAndStoreGPUPowerUsage(
-      metrics_endpoint_text, triton_metrics.gpu_power_usage_per_gpu);
-  ParseAndStoreGPUMemoryUsedBytes(
-      metrics_endpoint_text, triton_metrics.gpu_memory_used_bytes_per_gpu);
-}
-
-void
-TritonClientBackend::ParseAndStoreGPUUtilization(
-    const std::string& metrics_endpoint_text,
-    std::map<std::string, double>& gpu_utilization_per_gpu)
-{
-  std::regex gpu_utilization_regex(
-      R"(\nnv_gpu_utilization\{gpu_uuid\=\"([^"]+)\"\} (\d+\.?\d*))");
-  std::sregex_iterator gpu_utilization_begin{std::sregex_iterator(
-      metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
-      gpu_utilization_regex)};
-
-  if (gpu_utilization_begin == std::sregex_iterator()) {
-    std::cerr << "WARNING: Triton 'nv_gpu_utilization' metric is missing or "
-                 "misformatted."
-              << std::endl;
-  }
-
-  for (std::sregex_iterator i{gpu_utilization_begin};
-       i != std::sregex_iterator(); i++) {
-    const std::smatch& match{*i};
-    const std::string& gpu_uuid{match[1].str()};
-    const double gpu_utilization{std::stod(match[2].str())};
-    gpu_utilization_per_gpu[gpu_uuid] = gpu_utilization;
-  }
-}
-
-void
-TritonClientBackend::ParseAndStoreGPUPowerUsage(
-    const std::string& metrics_endpoint_text,
-    std::map<std::string, double>& gpu_power_usage_per_gpu)
-{
-  std::regex gpu_power_usage_regex(
-      R"(\nnv_gpu_power_usage\{gpu_uuid\=\"([^"]+)\"\} (\d+\.?\d*))");
-  std::sregex_iterator gpu_power_usage_begin{std::sregex_iterator(
-      metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
-      gpu_power_usage_regex)};
-
-  if (gpu_power_usage_begin == std::sregex_iterator()) {
-    std::cerr << "WARNING: Triton 'nv_gpu_power_usage' metric is missing or "
-                 "misformatted."
-              << std::endl;
-  }
-
-  for (std::sregex_iterator i{gpu_power_usage_begin};
-       i != std::sregex_iterator(); i++) {
-    const std::smatch& match{*i};
-    const std::string& gpu_uuid{match[1].str()};
-    const double gpu_power_usage{std::stod(match[2].str())};
-    gpu_power_usage_per_gpu[gpu_uuid] = gpu_power_usage;
-  }
-}
-
-void
-TritonClientBackend::ParseAndStoreGPUMemoryUsedBytes(
-    const std::string& metrics_endpoint_text,
-    std::map<std::string, uint64_t>& gpu_memory_used_bytes_per_gpu)
-{
-  std::regex gpu_memory_used_bytes_regex(
-      R"(\nnv_gpu_memory_used_bytes\{gpu_uuid\=\"([^"]+)\"\} (\d+\.?\d*))");
-  std::sregex_iterator gpu_memory_used_bytes_begin{std::sregex_iterator(
-      metrics_endpoint_text.begin(), metrics_endpoint_text.end(),
-      gpu_memory_used_bytes_regex)};
-
-  if (gpu_memory_used_bytes_begin == std::sregex_iterator()) {
-    std::cerr << "WARNING: Triton 'nv_gpu_memory_used_bytes' metric is missing "
-                 "or misformatted."
-              << std::endl;
-  }
-
-  for (std::sregex_iterator i{gpu_memory_used_bytes_begin};
-       i != std::sregex_iterator(); i++) {
-    const std::smatch& match{*i};
-    const std::string& gpu_uuid{match[1].str()};
-    const uint64_t gpu_memory_used_bytes{
-        static_cast<uint64_t>(std::stod(match[2].str()))};
-    gpu_memory_used_bytes_per_gpu[gpu_uuid] = gpu_memory_used_bytes;
-  }
+  ParseAndStoreMetric<double>(
+      metrics_endpoint_text, "nv_gpu_utilization",
+      metrics.gpu_utilization_per_gpu);
+  ParseAndStoreMetric<double>(
+      metrics_endpoint_text, "nv_gpu_power_usage",
+      metrics.gpu_power_usage_per_gpu);
+  ParseAndStoreMetric<uint64_t>(
+      metrics_endpoint_text, "nv_gpu_memory_used_bytes",
+      metrics.gpu_memory_used_bytes_per_gpu);
 }
 
 Error

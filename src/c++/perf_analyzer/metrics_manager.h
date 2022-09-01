@@ -34,43 +34,67 @@
 #include <utility>
 #include <vector>
 #include "client_backend/client_backend.h"
-#include "triton_metrics.h"
+#include "metrics.h"
 
 namespace triton { namespace perfanalyzer {
 
-class TritonMetricsManager {
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestMetricsManager;
+#endif
+
+class MetricsManager {
  public:
-  TritonMetricsManager(
+  MetricsManager(
       std::shared_ptr<clientbackend::ClientBackend> client_backend,
-      uint64_t triton_metrics_interval_ms);
+      uint64_t metrics_interval_ms);
 
-  /// Ends the background thread, redundant in case StopQueryingTritonMetrics()
-  /// doesn't get called
-  ~TritonMetricsManager();
+  /// Ends the background thread, redundant in case StopQueryingMetrics() isn't
+  /// called
+  ~MetricsManager();
 
-  /// Starts background thread that queries triton metrics on an interval
-  void StartQueryingTritonMetrics();
+  /// Starts background thread that queries metrics on an interval
+  void StartQueryingMetrics();
 
-  /// Main loop of background thread that queries triton metrics on an interval
-  void QueryTritonMetricsEveryNMilliseconds();
+  /// Main loop of background thread that queries metrics on an interval
+  void QueryMetricsEveryNMilliseconds();
 
   /// Checks if background thread threw exception and propogates it if so
   void CheckQueryingStatus();
 
+  /// Swaps the the currently collected metrics with an empty external vector
+  void SwapMetrics(
+      std::vector<std::pair<
+          std::chrono::time_point<std::chrono::system_clock>, Metrics>>&
+          metrics_per_timestamp);
+
   /// Ends the background thread
-  void StopQueryingTritonMetrics();
+  void StopQueryingMetrics();
 
  private:
+  void CheckForMissingMetrics(const Metrics& metrics);
+  void CheckForMetricIntervalTooShort(
+      const std::chrono::nanoseconds& remainder,
+      const std::chrono::nanoseconds& duration);
+
   std::shared_ptr<clientbackend::ClientBackend> client_backend_{nullptr};
-  uint64_t triton_metrics_interval_ms_{0};
-  std::vector<std::pair<
-      std::chrono::time_point<std::chrono::system_clock>, TritonMetrics>>
-      triton_metrics_per_timestamp_{};
+  uint64_t metrics_interval_ms_{0};
+  std::mutex metrics_per_timestamp_mutex_{};
+  std::vector<
+      std::pair<std::chrono::time_point<std::chrono::system_clock>, Metrics>>
+      metrics_per_timestamp_{};
   bool should_keep_querying_{false};
   std::future<void> query_loop_future_{};
   std::mutex query_loop_mutex_{};
-  std::unique_lock<std::mutex> query_loop_lock_{query_loop_mutex_};
   std::condition_variable query_loop_cv_{};
+  bool has_given_missing_metrics_warning_{false};
+  bool has_given_metric_interval_warning_{false};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestMetricsManager;
+
+ protected:
+  MetricsManager() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

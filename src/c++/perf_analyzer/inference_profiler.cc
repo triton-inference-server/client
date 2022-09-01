@@ -376,14 +376,13 @@ InferenceProfiler::Create(
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
-    std::shared_ptr<MPIDriver> mpi_driver,
-    const uint64_t triton_metrics_interval_ms)
+    std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
-      measurement_mode, mpi_driver, triton_metrics_interval_ms));
+      measurement_mode, mpi_driver, metrics_interval_ms));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -398,7 +397,7 @@ InferenceProfiler::InferenceProfiler(
     std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-    const uint64_t triton_metrics_interval_ms)
+    const uint64_t metrics_interval_ms)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -423,8 +422,8 @@ InferenceProfiler::InferenceProfiler(
     include_lib_stats_ = true;
     include_server_stats_ = false;
   }
-  triton_metrics_manager_ = std::make_shared<TritonMetricsManager>(
-      profile_backend, triton_metrics_interval_ms);
+  metrics_manager_ =
+      std::make_shared<MetricsManager>(profile_backend, metrics_interval_ms);
 }
 
 cb::Error
@@ -650,7 +649,7 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
-  triton_metrics_manager_->StopQueryingTritonMetrics();
+  metrics_manager_->StopQueryingMetrics();
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
@@ -998,7 +997,7 @@ InferenceProfiler::Measure(
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
-    triton_metrics_manager_->StartQueryingTritonMetrics();
+    metrics_manager_->StartQueryingMetrics();
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
@@ -1008,7 +1007,7 @@ InferenceProfiler::Measure(
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
-  triton_metrics_manager_->CheckQueryingStatus();
+  metrics_manager_->CheckQueryingStatus();
 
   if (!is_count_based) {
     // Wait for specified time interval in msec
@@ -1029,6 +1028,8 @@ InferenceProfiler::Measure(
           std::chrono::system_clock::now().time_since_epoch())
           .count();
   previous_window_end_ns_ = window_end_ns;
+
+  metrics_manager_->SwapMetrics(status_summary.metrics_per_timestamp);
 
   // Get server status and then print report on difference between
   // before and after status.
