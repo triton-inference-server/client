@@ -130,6 +130,9 @@ class TritonLoader : public tc::InferenceServerClient {
 
   Error UnregisterAllSharedMemory();
 
+  TRITONSERVER_Error* ErrorNew(
+      TRITONSERVER_Error_Code code, const char* message);
+
   bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
   bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
   TRITONSERVER_Error* DeleteInferRequest(

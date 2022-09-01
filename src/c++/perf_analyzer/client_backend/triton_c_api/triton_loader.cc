@@ -28,6 +28,7 @@
   triton::perfanalyzer::clientbackend::tritoncapi::TritonLoader
 
 #include "triton_loader.h"
+
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <sys/stat.h>
@@ -112,6 +113,17 @@ ResponseAlloc(
     } else {
       // It is in shared memory
       AllocPayload::OutputInfo* output_info = output_map_it->second;
+      if (byte_size > output_info->byte_size_) {
+        return TritonLoader::GetSingleton()->ErrorNew(
+            TRITONSERVER_ERROR_INTERNAL,
+            std::string(
+                "shared memory size specified with the request for output '" +
+                std::string(tensor_name) + "' (" +
+                std::to_string(output_info->byte_size_) +
+                " bytes) should be at least " + std::to_string(byte_size) +
+                " bytes to hold the results")
+                .c_str());
+      }
       *actual_memory_type = output_info->memory_type_;
       *actual_memory_type_id = output_info->device_id_;
       *buffer = output_info->base_;
@@ -202,6 +214,7 @@ FolderExists(const std::string& path)
   }
 }
 }  // namespace
+
 Error
 TritonLoader::Create(
     const std::string& triton_server_path,
@@ -1225,6 +1238,12 @@ TritonLoader::UnregisterAllSharedMemory()
   RETURN_IF_ERROR(shm_manager_->UnregisterAll(TRITONSERVER_MEMORY_GPU));
   RETURN_IF_ERROR(shm_manager_->UnregisterAll(TRITONSERVER_MEMORY_GPU));
   return Error::Success;
+}
+
+TRITONSERVER_Error*
+TritonLoader::ErrorNew(TRITONSERVER_Error_Code code, const char* message)
+{
+  return error_new_fn_(code, message);
 }
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
