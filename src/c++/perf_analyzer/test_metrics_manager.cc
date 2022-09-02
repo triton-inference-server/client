@@ -46,20 +46,7 @@ class TestMetricsManager : public MetricsManager {
     MetricsManager::CheckForMetricIntervalTooShort(remainder, duration);
   }
 
-  bool& has_given_missing_metrics_warning_()
-  {
-    return MetricsManager::has_given_missing_metrics_warning_;
-  }
-
-  bool& has_given_metric_interval_warning_()
-  {
-    return MetricsManager::has_given_metric_interval_warning_;
-  }
-
-  uint64_t& metrics_interval_ms_()
-  {
-    return MetricsManager::metrics_interval_ms_;
-  }
+  uint64_t& metrics_interval_ms_{MetricsManager::metrics_interval_ms_};
 };
 
 TEST_CASE("testing the CheckForMissingMetrics function")
@@ -110,13 +97,12 @@ TEST_CASE("testing the CheckForMissingMetrics function")
   }
 
   std::cerr.rdbuf(old_cerr);
-  tmm.has_given_missing_metrics_warning_() = false;
 }
 
 TEST_CASE("testing the CheckForMetricIntervalTooShort function")
 {
   TestMetricsManager tmm{};
-  tmm.metrics_interval_ms_() = 5;
+  tmm.metrics_interval_ms_ = 5;
   std::stringstream captured_cerr;
   std::streambuf* old_cerr{std::cerr.rdbuf(captured_cerr.rdbuf())};
 
@@ -163,7 +149,6 @@ TEST_CASE("testing the CheckForMetricIntervalTooShort function")
   }
 
   std::cerr.rdbuf(old_cerr);
-  tmm.has_given_metric_interval_warning_() = false;
 }
 
 }}  // namespace triton::perfanalyzer
