@@ -1631,11 +1631,17 @@ PerfAnalyzer::Run(int argc, char** argv)
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
   std::shared_ptr<cb::ClientBackendFactory> factory;
+  // FIXME: TMA-862 pass triton metrics url here
+  std::string triton_metrics_url{"localhost:8002/metrics"};
+  if (const char* triton_metrics_url_c_str{std::getenv("TRITON_METRICS_URL")}) {
+    triton_metrics_url = triton_metrics_url_c_str;
+  }
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, ssl_options, trace_options,
           compression_algorithm, http_headers, triton_server_path,
-          model_repository_path, memory_type, extra_verbose, &factory),
+          model_repository_path, memory_type, extra_verbose, triton_metrics_url,
+          &factory),
       "failed to create client factory");
 
   std::unique_ptr<cb::ClientBackend> backend;
@@ -1795,12 +1801,19 @@ PerfAnalyzer::Run(int argc, char** argv)
   }
 
   std::unique_ptr<pa::InferenceProfiler> profiler;
+  // FIXME: TMA-783 pass triton metrics interval here
+  uint64_t triton_metrics_interval_ms{1000};
+  if (const char* triton_metrics_interval_ms_c_str{
+          std::getenv("TRITON_METRICS_INTERVAL")}) {
+    triton_metrics_interval_ms = std::stoull(triton_metrics_interval_ms_c_str);
+  }
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
           verbose, stability_threshold, measurement_window_ms, max_trials,
           percentile, latency_threshold_ms, protocol, parser,
           std::move(backend), std::move(manager), &profiler,
-          measurement_request_count, measurement_mode, mpi_driver),
+          measurement_request_count, measurement_mode, mpi_driver,
+          triton_metrics_interval_ms),
       "failed to create profiler");
 
   // pre-run report
