@@ -47,6 +47,7 @@ set(
   inference_profiler.cc
   report_writer.cc
   mpi_utils.cc
+  metrics_manager.cc
 )
 
 set(
@@ -64,6 +65,8 @@ set(
   mpi_utils.h
   doctest.h
   constants.h
+  metrics.h
+  metrics_manager.h
 )
 
 add_executable(
@@ -140,6 +143,8 @@ add_executable(
   mock_inference_profiler.h
   test_inference_profiler.cc
   test_model_parser.cc
+  test_metrics_manager.cc
+  client_backend/triton/test_triton_client_backend.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 
