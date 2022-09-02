@@ -79,7 +79,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->trace_options, params_->compression_algorithm,
           params_->http_headers, params_->triton_server_path,
           params_->model_repository_path, params_->memory_type,
-          params_->extra_verbose, &factory),
+          params_->extra_verbose, params_->metrics_url, &factory),
       "failed to create client factory");
 
   FAIL_IF_ERR(
@@ -259,7 +259,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->percentile, params_->latency_threshold_ms, params_->protocol,
           parser_, std::move(backend_), std::move(manager), &profiler_,
           params_->measurement_request_count, params_->measurement_mode,
-          params_->mpi_driver),
+          params_->mpi_driver, params_->metrics_interval_ms),
       "failed to create profiler");
 }
 

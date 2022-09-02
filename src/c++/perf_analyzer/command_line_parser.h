@@ -106,6 +106,8 @@ struct PerfAnalyzerParameters {
   std::string filename{""};
   std::shared_ptr<MPIDriver> mpi_driver;
   std::string memory_type{"system"};  // currently not used, to be removed
+  std::string metrics_url{"localhost:8002/metrics"};
+  uint64_t metrics_interval_ms{1000};
 
   // Return true if targeting concurrency
   //

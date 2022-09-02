@@ -119,12 +119,13 @@ ClientBackendFactory::Create(
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& memory_type,
-    const bool verbose, std::shared_ptr<ClientBackendFactory>* factory)
+    const bool verbose, const std::string& metrics_url,
+    std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
       kind, url, protocol, ssl_options, trace_options, compression_algorithm,
       http_headers, triton_server_path, model_repository_path, memory_type,
-      verbose));
+      verbose, metrics_url));
   return Error::Success;
 }
 
@@ -135,7 +136,7 @@ ClientBackendFactory::CreateClientBackend(
   RETURN_IF_CB_ERROR(ClientBackend::Create(
       kind_, url_, protocol_, ssl_options_, trace_options_,
       compression_algorithm_, http_headers_, verbose_, triton_server_path,
-      model_repository_path_, memory_type_, client_backend));
+      model_repository_path_, memory_type_, metrics_url_, client_backend));
   return Error::Success;
 }
 
@@ -151,6 +152,7 @@ ClientBackend::Create(
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& memory_type,
+    const std::string& metrics_url,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<ClientBackend> local_backend;
@@ -158,7 +160,7 @@ ClientBackend::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
         url, protocol, ssl_options, trace_options,
         BackendToGrpcType(compression_algorithm), http_headers, verbose,
-        &local_backend));
+        metrics_url, &local_backend));
   }
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
@@ -281,6 +283,15 @@ ClientBackend::ModelInferenceStatistics(
   return Error(
       "client backend of kind " + BackendKindToString(kind_) +
           " does not support ModelInferenceStatistics API",
+      pa::GENERIC_ERROR);
+}
+
+Error
+ClientBackend::Metrics(triton::perfanalyzer::Metrics& metrics)
+{
+  return Error(
+      "client backend of kind " + BackendKindToString(kind_) +
+          " does not support Metrics API",
       pa::GENERIC_ERROR);
 }
 
