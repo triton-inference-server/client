@@ -1251,8 +1251,7 @@ InferenceServerHttpClient::UpdateTraceSettings(
   {
     for (const auto& pr : settings) {
       if (pr.second.empty()) {
-        request_json.Add(
-            pr.first.c_str(), std::move(triton::common::TritonJson::Value()));
+        request_json.Add(pr.first.c_str(), triton::common::TritonJson::Value());
       } else {
         if (pr.first == "trace_level") {
           triton::common::TritonJson::Value level_json(
