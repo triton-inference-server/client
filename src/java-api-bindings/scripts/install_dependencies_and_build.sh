@@ -35,11 +35,11 @@ Installs Maven, Java JDK and builds Tritonserver Java bindings
 -c|--core-tag              Tag for core repo, defaut is: "main"
 -j|--jar-install-path      Path to install the bindings .jar
 --javacpp-branch           Javacpp-presets git path, default https://github.com/bytedeco/javacpp-presets.git
---javacpp-branch-tag       Javacpp-presets branch tag, default "master"
+--javacpp-tag              Javacpp-presets branch tag, default "master"
 "
 
 # Get all options:
-OPTS=$(getopt -o ht:b:v:c:j: --long help,triton-home,build-home:,maven-version:,core-tag:jar-install-path:,--javacpp-branch:,--javacpp-branch-tag: -- "$@")
+OPTS=$(getopt -l ht:b:v:c:j:,help,triton-home,build-home:,maven-version:,core-tag:,jar-install-path:,javacpp-branch:,javacpp-tag: -- "$@")
 
 TRITON_HOME="/opt/tritonserver"
 BUILD_HOME="/tmp/build"
@@ -54,7 +54,7 @@ for OPTS; do
     case "$OPTS" in
         -h|--help)
         printf "%s\\n" "$USAGE"
-        return 0
+        exit
         ;;
         -t|--triton-home)
         TRITON_HOME=$2
@@ -86,7 +86,7 @@ for OPTS; do
         echo "Javacpp-presets branch set to: ${JAVACPP_BRANCH}"
         shift 2
         ;;
-        --javacpp-branch-tag) 
+        --javacpp-tag) 
         JAVACPP_BRANCH_TAG=$2
         echo "Javacpp-presets branch tag set to: ${JAVACPP_BRANCH_TAG}"
         shift 2
