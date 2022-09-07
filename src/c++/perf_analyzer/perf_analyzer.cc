@@ -301,6 +301,9 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
   std::cerr << "\t--log-frequency" << std::endl;
+  std::cerr << "\t--collect-metrics" << std::endl;
+  std::cerr << "\t--metrics-url" << std::endl;
+  std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
@@ -797,6 +800,24 @@ Usage(char** argv, const std::string& msg = std::string())
                    "will include additional information.",
                    18)
             << std::endl;
+  std::cerr << FormatMessage(
+                   " --collect-metrics: Enables collection of server-side "
+                   "inference server metrics. Outputs metrics in the csv file "
+                   "generated with the -f option.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-url: The URL to query for server-side inference "
+                   "server metrics.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-interval: How often in milliseconds, within "
+                   "each measurement window, to query for server-side "
+                   "inference server metrics.",
+                   18)
+            << std::endl;
+
   exit(pa::GENERIC_ERROR);
 }
 
@@ -879,6 +900,18 @@ PerfAnalyzer::Run(int argc, char** argv)
   // Enable MPI option for using MPI functionality with multi-model mode.
   bool enable_mpi = false;
 
+  // Enable collection of server-side metrics from inference server.
+  bool should_collect_metrics{false};
+
+  // The URL to query for server-side inference server metrics.
+  std::string metrics_url{"localhost:8002/metrics"};
+  bool metrics_url_specified{false};
+
+  // How often, within each measurement window, to query for server-side
+  // inference server metrics.
+  uint64_t metrics_interval_ms{1000};
+  bool metrics_interval_ms_specified{false};
+
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
       {"streaming", 0, 0, 0},
@@ -930,6 +963,9 @@ PerfAnalyzer::Run(int argc, char** argv)
       {"trace-rate", 1, 0, 46},
       {"trace-count", 1, 0, 47},
       {"log-frequency", 1, 0, 48},
+      {"collect-metrics", 0, 0, 49},
+      {"metrics-url", 1, 0, 50},
+      {"metrics-interval", 1, 0, 51},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1357,6 +1393,20 @@ PerfAnalyzer::Run(int argc, char** argv)
         trace_options["log_frequency"] = {optarg};
         break;
       }
+      case 49: {
+        should_collect_metrics = true;
+        break;
+      }
+      case 50: {
+        metrics_url = optarg;
+        metrics_url_specified = true;
+        break;
+      }
+      case 51: {
+        metrics_interval_ms = std::stoull(optarg);
+        metrics_interval_ms_specified = true;
+        break;
+      }
       case 'v':
         extra_verbose = verbose;
         verbose = true;
@@ -1628,19 +1678,36 @@ PerfAnalyzer::Run(int argc, char** argv)
     protocol = cb::ProtocolType::UNKNOWN;
   }
 
+  if (should_collect_metrics && kind != cb::BackendKind::TRITON) {
+    Usage(
+        argv,
+        "Server-side metric collection is only supported with Triton client "
+        "backend.");
+  }
+
+  if (metrics_url_specified && should_collect_metrics == false) {
+    Usage(
+        argv,
+        "Must specify --collect-metrics when using the --metrics-url option.");
+  }
+
+  if (metrics_interval_ms_specified && should_collect_metrics == false) {
+    Usage(
+        argv,
+        "Must specify --collect-metrics when using the --metrics-interval "
+        "option.");
+  } else if (metrics_interval_ms == 0) {
+    Usage(argv, "Metrics interval must be larger than 0 milliseconds.");
+  }
+
   // trap SIGINT to allow threads to exit gracefully
   signal(SIGINT, pa::SignalHandler);
   std::shared_ptr<cb::ClientBackendFactory> factory;
-  // FIXME: TMA-862 pass triton metrics url here
-  std::string triton_metrics_url{"localhost:8002/metrics"};
-  if (const char* triton_metrics_url_c_str{std::getenv("TRITON_METRICS_URL")}) {
-    triton_metrics_url = triton_metrics_url_c_str;
-  }
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           kind, url, protocol, ssl_options, trace_options,
           compression_algorithm, http_headers, triton_server_path,
-          model_repository_path, memory_type, extra_verbose, triton_metrics_url,
+          model_repository_path, memory_type, extra_verbose, metrics_url,
           &factory),
       "failed to create client factory");
 
@@ -1801,19 +1868,13 @@ PerfAnalyzer::Run(int argc, char** argv)
   }
 
   std::unique_ptr<pa::InferenceProfiler> profiler;
-  // FIXME: TMA-783 pass triton metrics interval here
-  uint64_t triton_metrics_interval_ms{1000};
-  if (const char* triton_metrics_interval_ms_c_str{
-          std::getenv("TRITON_METRICS_INTERVAL")}) {
-    triton_metrics_interval_ms = std::stoull(triton_metrics_interval_ms_c_str);
-  }
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
           verbose, stability_threshold, measurement_window_ms, max_trials,
           percentile, latency_threshold_ms, protocol, parser,
           std::move(backend), std::move(manager), &profiler,
           measurement_request_count, measurement_mode, mpi_driver,
-          triton_metrics_interval_ms),
+          metrics_interval_ms, should_collect_metrics),
       "failed to create profiler");
 
   // pre-run report

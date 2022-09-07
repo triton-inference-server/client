@@ -376,13 +376,15 @@ InferenceProfiler::Create(
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
-    std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms)
+    std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
+    const bool should_collect_metrics)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
-      measurement_mode, mpi_driver, metrics_interval_ms));
+      measurement_mode, mpi_driver, metrics_interval_ms,
+      should_collect_metrics));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -397,14 +399,15 @@ InferenceProfiler::InferenceProfiler(
     std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-    const uint64_t metrics_interval_ms)
+    const uint64_t metrics_interval_ms, const bool should_collect_metrics)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
       protocol_(protocol), parser_(parser), profile_backend_(profile_backend),
       manager_(std::move(manager)),
       measurement_request_count_(measurement_request_count),
-      measurement_mode_(measurement_mode), mpi_driver_(mpi_driver)
+      measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
+      should_collect_metrics_(should_collect_metrics)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -422,8 +425,10 @@ InferenceProfiler::InferenceProfiler(
     include_lib_stats_ = true;
     include_server_stats_ = false;
   }
-  metrics_manager_ =
-      std::make_shared<MetricsManager>(profile_backend, metrics_interval_ms);
+  if (should_collect_metrics_) {
+    metrics_manager_ =
+        std::make_shared<MetricsManager>(profile_backend, metrics_interval_ms);
+  }
 }
 
 cb::Error
@@ -649,7 +654,9 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
-  metrics_manager_->StopQueryingMetrics();
+  if (should_collect_metrics_) {
+    metrics_manager_->StopQueryingMetrics();
+  }
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
@@ -959,17 +966,19 @@ InferenceProfiler::MergePerfStatusReports(
   RETURN_IF_ERROR(
       SummarizeLatency(summary_status.client_stats.latencies, summary_status));
 
-  std::vector<std::reference_wrapper<const Metrics>> all_metrics{};
-  std::for_each(
-      perf_status_reports.begin(), perf_status_reports.end(),
-      [&all_metrics](const PerfStatus& p) {
-        std::for_each(
-            p.metrics.begin(), p.metrics.end(),
-            [&all_metrics](const Metrics& m) { all_metrics.push_back(m); });
-      });
-  Metrics merged_metrics{};
-  RETURN_IF_ERROR(MergeMetrics(all_metrics, merged_metrics));
-  summary_status.metrics.push_back(std::move(merged_metrics));
+  if (should_collect_metrics_) {
+    std::vector<std::reference_wrapper<const Metrics>> all_metrics{};
+    std::for_each(
+        perf_status_reports.begin(), perf_status_reports.end(),
+        [&all_metrics](const PerfStatus& p) {
+          std::for_each(
+              p.metrics.begin(), p.metrics.end(),
+              [&all_metrics](const Metrics& m) { all_metrics.push_back(m); });
+        });
+    Metrics merged_metrics{};
+    RETURN_IF_ERROR(MergeMetrics(all_metrics, merged_metrics));
+    summary_status.metrics.push_back(std::move(merged_metrics));
+  }
 
   return cb::Error::Success;
 }
@@ -1009,7 +1018,9 @@ InferenceProfiler::Measure(
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
-    metrics_manager_->StartQueryingMetrics();
+    if (should_collect_metrics_) {
+      metrics_manager_->StartQueryingMetrics();
+    }
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
@@ -1019,11 +1030,13 @@ InferenceProfiler::Measure(
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
 
-  try {
-    metrics_manager_->CheckQueryingStatus();
-  }
-  catch (const std::exception& e) {
-    return cb::Error(e.what(), pa::GENERIC_ERROR);
+  if (should_collect_metrics_) {
+    try {
+      metrics_manager_->CheckQueryingStatus();
+    }
+    catch (const std::exception& e) {
+      return cb::Error(e.what(), pa::GENERIC_ERROR);
+    }
   }
 
   if (!is_count_based) {
@@ -1046,7 +1059,9 @@ InferenceProfiler::Measure(
           .count();
   previous_window_end_ns_ = window_end_ns;
 
-  metrics_manager_->SwapMetrics(status_summary.metrics);
+  if (should_collect_metrics_) {
+    metrics_manager_->SwapMetrics(status_summary.metrics);
+  }
 
   // Get server status and then print report on difference between
   // before and after status.
