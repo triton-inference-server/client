@@ -108,6 +108,10 @@ MetricsManager::CheckForMissingMetrics(const Metrics& metrics)
     std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric."
               << std::endl;
   }
+  if (metrics.gpu_memory_total_bytes_per_gpu.empty()) {
+    std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_total_bytes' metric."
+              << std::endl;
+  }
   has_given_missing_metrics_warning_ = true;
 }
 
@@ -143,11 +147,11 @@ MetricsManager::CheckQueryingStatus()
 }
 
 void
-MetricsManager::SwapMetrics(std::vector<Metrics>& metrics)
+MetricsManager::GetLatestMetrics(std::vector<Metrics>& metrics)
 {
   if (metrics.empty() == false) {
     throw std::runtime_error(
-        "MetricsManager::SwapMetrics() must be passed an empty vector.");
+        "MetricsManager::GetLatestMetrics() must be passed an empty vector.");
   }
   std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
   metrics_.swap(metrics);

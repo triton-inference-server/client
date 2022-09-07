@@ -61,6 +61,7 @@ TEST_CASE("testing the CheckForMissingMetrics function")
     metrics.gpu_utilization_per_gpu["gpu0"] = 0.5;
     metrics.gpu_power_usage_per_gpu["gpu0"] = 50.0;
     metrics.gpu_memory_used_bytes_per_gpu["gpu0"] = 1000;
+    metrics.gpu_memory_total_bytes_per_gpu["gpu0"] = 10000;
     tmm.CheckForMissingMetrics(metrics);
     CHECK(captured_cerr.str() == "");
   }
@@ -70,6 +71,7 @@ TEST_CASE("testing the CheckForMissingMetrics function")
     metrics.gpu_utilization_per_gpu["gpu0"] = 0.5;
     metrics.gpu_power_usage_per_gpu["gpu0"] = 50.0;
     metrics.gpu_memory_used_bytes_per_gpu["gpu0"] = 1000;
+    metrics.gpu_memory_total_bytes_per_gpu["gpu0"] = 10000;
     tmm.CheckForMissingMetrics(metrics);
     tmm.CheckForMissingMetrics(metrics);
     CHECK(captured_cerr.str() == "");
@@ -82,7 +84,8 @@ TEST_CASE("testing the CheckForMissingMetrics function")
         captured_cerr.str() ==
         "WARNING: Unable to parse 'nv_gpu_utilization' metric.\n"
         "WARNING: Unable to parse 'nv_gpu_power_usage' metric.\n"
-        "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric.\n");
+        "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric.\n"
+        "WARNING: Unable to parse 'nv_gpu_memory_total_bytes' metric.\n");
   }
 
   SUBCASE("all metrics missing, called twice, printed once")
@@ -93,7 +96,8 @@ TEST_CASE("testing the CheckForMissingMetrics function")
         captured_cerr.str() ==
         "WARNING: Unable to parse 'nv_gpu_utilization' metric.\n"
         "WARNING: Unable to parse 'nv_gpu_power_usage' metric.\n"
-        "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric.\n");
+        "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric.\n"
+        "WARNING: Unable to parse 'nv_gpu_memory_total_bytes' metric.\n");
   }
 
   std::cerr.rdbuf(old_cerr);

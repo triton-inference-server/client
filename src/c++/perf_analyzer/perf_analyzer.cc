@@ -1685,6 +1685,12 @@ PerfAnalyzer::Run(int argc, char** argv)
         "backend.");
   }
 
+  if (should_collect_metrics && verbose_csv == false) {
+    Usage(
+        argv,
+        "Must specify --verbose-csv when using the --collect-metrics option.");
+  }
+
   if (metrics_url_specified && should_collect_metrics == false) {
     Usage(
         argv,
@@ -1696,7 +1702,9 @@ PerfAnalyzer::Run(int argc, char** argv)
         argv,
         "Must specify --collect-metrics when using the --metrics-interval "
         "option.");
-  } else if (metrics_interval_ms == 0) {
+  }
+
+  if (metrics_interval_ms_specified && metrics_interval_ms == 0) {
     Usage(argv, "Metrics interval must be larger than 0 milliseconds.");
   }
 

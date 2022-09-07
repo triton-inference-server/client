@@ -57,8 +57,9 @@ class MetricsManager {
   /// Checks if background thread threw exception and propogates it if so
   void CheckQueryingStatus();
 
-  /// Swaps the the currently collected metrics with an empty external vector
-  void SwapMetrics(std::vector<Metrics>& metrics_per_timestamp);
+  /// Puts the latest-collected metrics from background thread into vector
+  /// output parameter to be used by main thread
+  void GetLatestMetrics(std::vector<Metrics>& metrics_per_timestamp);
 
   /// Ends the background thread
   void StopQueryingMetrics();

@@ -967,6 +967,7 @@ InferenceProfiler::MergePerfStatusReports(
       SummarizeLatency(summary_status.client_stats.latencies, summary_status));
 
   if (should_collect_metrics_) {
+    // Put all Metric objects in a flat vector so they're easier to merge
     std::vector<std::reference_wrapper<const Metrics>> all_metrics{};
     std::for_each(
         perf_status_reports.begin(), perf_status_reports.end(),
@@ -975,6 +976,7 @@ InferenceProfiler::MergePerfStatusReports(
               p.metrics.begin(), p.metrics.end(),
               [&all_metrics](const Metrics& m) { all_metrics.push_back(m); });
         });
+
     Metrics merged_metrics{};
     RETURN_IF_ERROR(MergeMetrics(all_metrics, merged_metrics));
     summary_status.metrics.push_back(std::move(merged_metrics));
@@ -1060,7 +1062,7 @@ InferenceProfiler::Measure(
   previous_window_end_ns_ = window_end_ns;
 
   if (should_collect_metrics_) {
-    metrics_manager_->SwapMetrics(status_summary.metrics);
+    metrics_manager_->GetLatestMetrics(status_summary.metrics);
   }
 
   // Get server status and then print report on difference between
@@ -1459,15 +1461,23 @@ InferenceProfiler::MergeMetrics(
   std::vector<std::reference_wrapper<const std::map<std::string, uint64_t>>>
       gpu_memory_used_bytes_per_gpu_maps{};
 
+  // Maps from each metric collection mapping gpu uuid to gpu memory total bytes
+  std::vector<std::reference_wrapper<const std::map<std::string, uint64_t>>>
+      gpu_memory_total_bytes_per_gpu_maps{};
+
+  // Put all metric maps in vector so they're easier to aggregate
   std::for_each(
       all_metrics.begin(), all_metrics.end(),
       [&gpu_utilization_per_gpu_maps, &gpu_power_usage_per_gpu_maps,
-       &gpu_memory_used_bytes_per_gpu_maps](
+       &gpu_memory_used_bytes_per_gpu_maps,
+       &gpu_memory_total_bytes_per_gpu_maps](
           const std::reference_wrapper<const Metrics> m) {
         gpu_utilization_per_gpu_maps.push_back(m.get().gpu_utilization_per_gpu);
         gpu_power_usage_per_gpu_maps.push_back(m.get().gpu_power_usage_per_gpu);
         gpu_memory_used_bytes_per_gpu_maps.push_back(
             m.get().gpu_memory_used_bytes_per_gpu);
+        gpu_memory_total_bytes_per_gpu_maps.push_back(
+            m.get().gpu_memory_total_bytes_per_gpu);
       });
 
   GetMetricAveragePerGPU<double>(
@@ -1477,6 +1487,9 @@ InferenceProfiler::MergeMetrics(
   GetMetricMaxPerGPU<uint64_t>(
       gpu_memory_used_bytes_per_gpu_maps,
       merged_metrics.gpu_memory_used_bytes_per_gpu);
+  GetMetricFirstPerGPU<uint64_t>(
+      gpu_memory_total_bytes_per_gpu_maps,
+      merged_metrics.gpu_memory_total_bytes_per_gpu);
 
   return cb::Error::Success;
 }
