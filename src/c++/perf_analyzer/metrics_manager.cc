@@ -62,11 +62,7 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
     Metrics metrics{};
     clientbackend::Error err{client_backend_->Metrics(metrics)};
     if (err.IsOk() == false) {
-      // FIXME: this custom logic enables PA in C API mode, remove in TMA-775
-      if (err.Message() !=
-          "client backend of kind TRITON_C_API does not support Metrics API") {
-        throw std::runtime_error(err.Message());
-      }
+      throw std::runtime_error(err.Message());
     }
 
     CheckForMissingMetrics(metrics);
