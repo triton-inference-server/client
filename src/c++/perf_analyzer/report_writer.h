@@ -61,7 +61,7 @@ class ReportWriter {
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
-      std::unique_ptr<ReportWriter>* writer);
+      std::unique_ptr<ReportWriter>* writer, const bool should_collect_metrics);
 
   void GenerateReport();
 
@@ -70,7 +70,8 @@ class ReportWriter {
       const std::string& filename, const bool target_concurrency,
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
-      const std::shared_ptr<ModelParser>& parser);
+      const std::shared_ptr<ModelParser>& parser,
+      const bool should_collect_metrics);
 
 
   const std::string& filename_;
@@ -80,6 +81,7 @@ class ReportWriter {
   const int32_t percentile_;
   std::vector<pa::PerfStatus> summary_;
   const std::shared_ptr<ModelParser>& parser_;
+  const bool should_collect_metrics_{false};
 };
 
 }}  // namespace triton::perfanalyzer
