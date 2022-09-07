@@ -808,13 +808,13 @@ Usage(char** argv, const std::string& msg = std::string())
             << std::endl;
   std::cerr << FormatMessage(
                    " --metrics-url: The URL to query for server-side inference "
-                   "server metrics.",
+                   "server metrics. Default is 'localhost:8002/metrics'.",
                    18)
             << std::endl;
   std::cerr << FormatMessage(
                    " --metrics-interval: How often in milliseconds, within "
                    "each measurement window, to query for server-side "
-                   "inference server metrics.",
+                   "inference server metrics. Default is 1000.",
                    18)
             << std::endl;
 
