@@ -150,6 +150,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
   std::cerr << "\t--log-frequency" << std::endl;
+  std::cerr << "\t--collect-metrics" << std::endl;
+  std::cerr << "\t--metrics-url" << std::endl;
+  std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
@@ -646,6 +649,23 @@ CLParser::Usage(const std::string& msg)
                    "will include additional information.",
                    18)
             << std::endl;
+  std::cerr << FormatMessage(
+                   " --collect-metrics: Enables collection of server-side "
+                   "inference server metrics. Outputs metrics in the csv file "
+                   "generated with the -f option.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-url: The URL to query for server-side inference "
+                   "server metrics. Default is 'localhost:8002/metrics'.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-interval: How often in milliseconds, within "
+                   "each measurement window, to query for server-side "
+                   "inference server metrics. Default is 1000.",
+                   18)
+            << std::endl;
   exit(GENERIC_ERROR);
 }
 
@@ -706,6 +726,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"trace-rate", 1, 0, 46},
       {"trace-count", 1, 0, 47},
       {"log-frequency", 1, 0, 48},
+      {"collect-metrics", 0, 0, 49},
+      {"metrics-url", 1, 0, 50},
+      {"metrics-interval", 1, 0, 51},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1128,6 +1151,20 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->trace_options["log_frequency"] = {optarg};
         break;
       }
+      case 49: {
+        params_->should_collect_metrics = true;
+        break;
+      }
+      case 50: {
+        params_->metrics_url = optarg;
+        params_->metrics_url_specified = true;
+        break;
+      }
+      case 51: {
+        params_->metrics_interval_ms = std::stoull(optarg);
+        params_->metrics_interval_ms_specified = true;
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1401,6 +1438,28 @@ CLParser::VerifyOptions()
       throw PerfAnalyzerException(GENERIC_ERROR);
     }
     params_->protocol = cb::ProtocolType::UNKNOWN;
+  }
+
+  if (params_->should_collect_metrics &&
+      params_->kind != cb::BackendKind::TRITON) {
+    Usage(
+        "Server-side metric collection is only supported with Triton client "
+        "backend.");
+  }
+
+  if (params_->metrics_url_specified &&
+      params_->should_collect_metrics == false) {
+    Usage(
+        "Must specify --collect-metrics when using the --metrics-url option.");
+  }
+
+  if (params_->metrics_interval_ms_specified &&
+      params_->should_collect_metrics == false) {
+    Usage(
+        "Must specify --collect-metrics when using the --metrics-interval "
+        "option.");
+  } else if (params_->metrics_interval_ms == 0) {
+    Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 }
 

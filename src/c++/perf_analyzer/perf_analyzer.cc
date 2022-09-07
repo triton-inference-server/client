@@ -259,7 +259,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->percentile, params_->latency_threshold_ms, params_->protocol,
           parser_, std::move(backend_), std::move(manager), &profiler_,
           params_->measurement_request_count, params_->measurement_mode,
-          params_->mpi_driver, params_->metrics_interval_ms),
+          params_->mpi_driver, params_->metrics_interval_ms,
+          params_->should_collect_metrics),
       "failed to create profiler");
 }
 
