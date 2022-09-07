@@ -25,9 +25,13 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <deque>
+#include <functional>
+#include <map>
 #include <memory>
+#include <string>
 #include <thread>
 #include <tuple>
 #include <vector>
@@ -520,6 +524,69 @@ class InferenceProfiler {
   cb::Error MergeServerSideStats(
       std::vector<ServerSideStats>& server_side_stats,
       ServerSideStats& server_side_summary);
+
+  /// \param all_metrics Individual metrics from all intervals from stable
+  /// passes.
+  /// \param merged_metrics Output merged metrics from all intervals from stable
+  /// passes.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error MergeMetrics(
+      const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
+      Metrics& merged_metrics);
+
+  template <typename T>
+  void GetMetricAveragePerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    std::map<std::string, size_t> metric_count_per_gpu{};
+
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = 0;
+          metric_count_per_gpu[gpu_uuid] = 0;
+        }
+
+        output_metric_map[gpu_uuid] += metric;
+        metric_count_per_gpu[gpu_uuid]++;
+      }
+    }
+
+    for (auto& output_metric : output_metric_map) {
+      const auto& gpu_uuid{output_metric.first};
+      auto& metric{output_metric.second};
+      const auto& metric_count{metric_count_per_gpu[gpu_uuid]};
+      if (metric_count > 0) {
+        metric /= metric_count;
+      }
+    }
+  }
+
+  template <typename T>
+  void GetMetricMaxPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = 0;
+        }
+
+        output_metric_map[gpu_uuid] =
+            std::max(output_metric_map[gpu_uuid], metric);
+      }
+    }
+  }
 
   bool verbose_;
   uint64_t measurement_window_ms_;
