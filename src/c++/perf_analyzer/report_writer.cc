@@ -217,24 +217,25 @@ ReportWriter::GenerateReport()
         }
         ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
         ofs << std::to_string(avg_response_wait_time_us) << ",";
-
-        // only one entry in the metrics vector stored in status
-        // since these entries are already aggregated for a concurrency
-        assert(status.metrics.size() == 1);
-        auto& gpu_util_map = status.metrics[0].gpu_utilization_per_gpu;
-        auto& gpu_power_usage_map = status.metrics[0].gpu_power_usage_per_gpu;
-        auto& gpu_mem_usage_map =
-            status.metrics[0].gpu_memory_used_bytes_per_gpu;
-        for (auto& metric : gpu_util_map) {
-          ofs << metric.first << ":" << metric.second << ";";
-        }
-        ofs << ",";
-        for (auto& metric : gpu_power_usage_map) {
-          ofs << metric.first << ":" << metric.second << ";";
-        }
-        ofs << ",";
-        for (auto& metric : gpu_mem_usage_map) {
-          ofs << metric.first << ":" << metric.second << ";";
+        if (should_collect_metrics_) {
+          // only one entry in the metrics vector stored in status
+          // since these entries are already aggregated for a concurrency
+          assert(status.metrics.size() == 1);
+          auto& gpu_util_map = status.metrics[0].gpu_utilization_per_gpu;
+          auto& gpu_power_usage_map = status.metrics[0].gpu_power_usage_per_gpu;
+          auto& gpu_mem_usage_map =
+              status.metrics[0].gpu_memory_used_bytes_per_gpu;
+          for (auto& metric : gpu_util_map) {
+            ofs << metric.first << ":" << metric.second << ";";
+          }
+          ofs << ",";
+          for (auto& metric : gpu_power_usage_map) {
+            ofs << metric.first << ":" << metric.second << ";";
+          }
+          ofs << ",";
+          for (auto& metric : gpu_mem_usage_map) {
+            ofs << metric.first << ":" << metric.second << ";";
+          }
         }
         ofs << ",";
       }
