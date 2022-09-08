@@ -104,6 +104,18 @@ ConcurrencyManager::ChangeConcurrencyLevel(
       }
     }
   }
+
+  // Reset the context stat data between concurrency runs
+  for (auto& thread_stat : threads_stat_) {
+    std::lock_guard<std::mutex> lock(thread_stat->mu_);
+    for (auto& context_stat : thread_stat->contexts_stat_) {
+      context_stat.completed_request_count = 0;
+      context_stat.cumulative_total_request_time_ns = 0;
+      context_stat.cumulative_send_time_ns = 0;
+      context_stat.cumulative_receive_time_ns = 0;
+    }
+  }
+
   // Always prefer to create new threads if the maximum limit has not been met
   while ((concurrent_request_count > threads_.size()) &&
          (threads_.size() < max_threads_)) {

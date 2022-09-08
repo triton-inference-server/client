@@ -994,11 +994,11 @@ InferenceProfiler::Measure(
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
+    start_status = std::map<cb::ModelIdentifier, cb::ModelStatistics>();
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
     // Need to zero out start stats when window start is 0
-    start_status = std::map<cb::ModelIdentifier, cb::ModelStatistics>();
     start_stat = cb::InferStat();
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
   }
