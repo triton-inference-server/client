@@ -301,7 +301,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
   std::cerr << "\t--log-frequency" << std::endl;
-  std::cerr << "\t--collect-gpu-metrics" << std::endl;
+  std::cerr << "\t--collect-metrics" << std::endl;
   std::cerr << "\t--metrics-url" << std::endl;
   std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
@@ -801,7 +801,7 @@ Usage(char** argv, const std::string& msg = std::string())
                    18)
             << std::endl;
   std::cerr << FormatMessage(
-                   " --collect-gpu-metrics: Enables collection of server-side "
+                   " --collect-metrics: Enables collection of server-side "
                    "inference server metrics. Outputs metrics in the csv file "
                    "generated with the -f option.",
                    18)
@@ -963,7 +963,7 @@ PerfAnalyzer::Run(int argc, char** argv)
       {"trace-rate", required_argument, 0, 46},
       {"trace-count", required_argument, 0, 47},
       {"log-frequency", required_argument, 0, 48},
-      {"collect-gpu-metrics", no_argument, 0, 49},
+      {"collect-metrics", no_argument, 0, 49},
       {"metrics-url", required_argument, 0, 50},
       {"metrics-interval", required_argument, 0, 51},
       {0, 0, 0, 0}};
@@ -1694,14 +1694,14 @@ PerfAnalyzer::Run(int argc, char** argv)
   if (metrics_url_specified && should_collect_metrics == false) {
     Usage(
         argv,
-        "Must specify --collect-gpu-metrics when using the --metrics-url "
+        "Must specify --collect-metrics when using the --metrics-url "
         "option.");
   }
 
   if (metrics_interval_ms_specified && should_collect_metrics == false) {
     Usage(
         argv,
-        "Must specify --collect-gpu-metrics when using the --metrics-interval "
+        "Must specify --collect-metrics when using the --metrics-interval "
         "option.");
   }
 
