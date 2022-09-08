@@ -62,11 +62,7 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
     Metrics metrics{};
     clientbackend::Error err{client_backend_->Metrics(metrics)};
     if (err.IsOk() == false) {
-      // FIXME: this custom logic enables PA in C API mode, remove in TMA-775
-      if (err.Message() !=
-          "client backend of kind TRITON_C_API does not support Metrics API") {
-        throw std::runtime_error(err.Message());
-      }
+      throw std::runtime_error(err.Message());
     }
 
     CheckForMissingMetrics(metrics);
@@ -99,16 +95,23 @@ MetricsManager::CheckForMissingMetrics(const Metrics& metrics)
   if (metrics.gpu_utilization_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_utilization' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
   if (metrics.gpu_power_usage_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_power_usage' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
   if (metrics.gpu_memory_used_bytes_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
-  has_given_missing_metrics_warning_ = true;
+  if (metrics.gpu_memory_total_bytes_per_gpu.empty()) {
+    std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_total_bytes' metric."
+              << std::endl;
+    has_given_missing_metrics_warning_ = true;
+  }
 }
 
 void
@@ -128,8 +131,8 @@ MetricsManager::CheckForMetricIntervalTooShort(
               << "ms). Please try a larger querying interval "
                  "via `--triton-metrics-interval`."
               << std::endl;
+    has_given_metric_interval_warning_ = true;
   }
-  has_given_metric_interval_warning_ = true;
 }
 
 void
@@ -143,11 +146,11 @@ MetricsManager::CheckQueryingStatus()
 }
 
 void
-MetricsManager::SwapMetrics(std::vector<Metrics>& metrics)
+MetricsManager::GetLatestMetrics(std::vector<Metrics>& metrics)
 {
   if (metrics.empty() == false) {
     throw std::runtime_error(
-        "MetricsManager::SwapMetrics() must be passed an empty vector.");
+        "MetricsManager::GetLatestMetrics() must be passed an empty vector.");
   }
   std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
   metrics_.swap(metrics);
