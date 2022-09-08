@@ -433,6 +433,9 @@ TritonClientBackend::ParseAndStoreMetrics(
   ParseAndStoreMetric<uint64_t>(
       metrics_endpoint_text, "nv_gpu_memory_used_bytes",
       metrics.gpu_memory_used_bytes_per_gpu);
+  ParseAndStoreMetric<uint64_t>(
+      metrics_endpoint_text, "nv_gpu_memory_total_bytes",
+      metrics.gpu_memory_total_bytes_per_gpu);
 }
 
 Error

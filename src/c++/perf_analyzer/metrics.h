@@ -38,6 +38,7 @@ struct Metrics {
   std::map<std::string, double> gpu_utilization_per_gpu{};
   std::map<std::string, double> gpu_power_usage_per_gpu{};
   std::map<std::string, uint64_t> gpu_memory_used_bytes_per_gpu{};
+  std::map<std::string, uint64_t> gpu_memory_total_bytes_per_gpu{};
 };
 
 }}  // namespace triton::perfanalyzer

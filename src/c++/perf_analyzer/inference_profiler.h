@@ -589,6 +589,24 @@ class InferenceProfiler {
     }
   }
 
+  template <typename T>
+  void GetMetricFirstPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = metric;
+        }
+      }
+    }
+  }
+
   bool verbose_;
   uint64_t measurement_window_ms_;
   uint64_t measurement_request_count_;

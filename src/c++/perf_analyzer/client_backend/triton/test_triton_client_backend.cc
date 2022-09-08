@@ -51,158 +51,90 @@ TEST_CASE("testing the ParseAndStoreMetric function")
 
   SUBCASE("nv_gpu_utilization metric")
   {
-    std::map<std::string, double> gpu_utilization_per_gpu{};
-    const std::string metric_id{"nv_gpu_utilization"};
-
-    SUBCASE("single-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
-# HELP nv_gpu_utilization GPU utilization rate [0.0 - 1.0)
-# TYPE nv_gpu_utilization gauge
-nv_gpu_utilization{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 0.41
-    )"};
-      ttcb.ParseAndStoreMetric<double>(
-          metrics_endpoint_text, metric_id, gpu_utilization_per_gpu);
-      CHECK(gpu_utilization_per_gpu.size() == 1);
-      CHECK(
-          gpu_utilization_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_utilization_per_gpu.end());
-      CHECK(
-          gpu_utilization_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
-          doctest::Approx(0.41));
-    }
-
-    SUBCASE("multi-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
+    const std::string metrics_endpoint_text{R"(
 # HELP nv_gpu_utilization GPU utilization rate [0.0 - 1.0)
 # TYPE nv_gpu_utilization gauge
 nv_gpu_utilization{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 0.41
 nv_gpu_utilization{gpu_uuid="GPU-00000000-0000-0000-0000-000000000001"} 0.77
     )"};
-      ttcb.ParseAndStoreMetric<double>(
-          metrics_endpoint_text, metric_id, gpu_utilization_per_gpu);
-      CHECK(gpu_utilization_per_gpu.size() == 2);
-      CHECK(
-          gpu_utilization_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_utilization_per_gpu.end());
-      CHECK(
-          gpu_utilization_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000001") !=
-          gpu_utilization_per_gpu.end());
-      CHECK(
-          gpu_utilization_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
-          doctest::Approx(0.41));
-      CHECK(
-          gpu_utilization_per_gpu["GPU-00000000-0000-0000-0000-000000000001"] ==
-          doctest::Approx(0.77));
-    }
+    const std::string metric_id{"nv_gpu_utilization"};
+    std::map<std::string, double> gpu_utilization_per_gpu{};
+
+    ttcb.ParseAndStoreMetric<double>(
+        metrics_endpoint_text, metric_id, gpu_utilization_per_gpu);
+    CHECK(gpu_utilization_per_gpu.size() == 2);
+    CHECK(
+        gpu_utilization_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
+        doctest::Approx(0.41));
+    CHECK(
+        gpu_utilization_per_gpu["GPU-00000000-0000-0000-0000-000000000001"] ==
+        doctest::Approx(0.77));
   }
 
   SUBCASE("nv_gpu_power_usage metric")
   {
-    std::map<std::string, double> gpu_power_usage_per_gpu{};
-    const std::string metric_id{"nv_gpu_power_usage"};
-
-    SUBCASE("single-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
-# HELP nv_gpu_power_usage GPU power usage in watts
-# TYPE nv_gpu_power_usage gauge
-nv_gpu_power_usage{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 81.619
-    )"};
-      ttcb.ParseAndStoreMetric<double>(
-          metrics_endpoint_text, metric_id, gpu_power_usage_per_gpu);
-      CHECK(gpu_power_usage_per_gpu.size() == 1);
-      CHECK(
-          gpu_power_usage_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_power_usage_per_gpu.end());
-      CHECK(
-          gpu_power_usage_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
-          doctest::Approx(81.619));
-    }
-
-    SUBCASE("multi-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
+    const std::string metrics_endpoint_text{R"(
 # HELP nv_gpu_power_usage GPU power usage in watts
 # TYPE nv_gpu_power_usage gauge
 nv_gpu_power_usage{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 81.619
 nv_gpu_power_usage{gpu_uuid="GPU-00000000-0000-0000-0000-000000000001"} 99.217
     )"};
-      ttcb.ParseAndStoreMetric<double>(
-          metrics_endpoint_text, metric_id, gpu_power_usage_per_gpu);
-      CHECK(gpu_power_usage_per_gpu.size() == 2);
-      CHECK(
-          gpu_power_usage_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_power_usage_per_gpu.end());
-      CHECK(
-          gpu_power_usage_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000001") !=
-          gpu_power_usage_per_gpu.end());
-      CHECK(
-          gpu_power_usage_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
-          doctest::Approx(81.619));
-      CHECK(
-          gpu_power_usage_per_gpu["GPU-00000000-0000-0000-0000-000000000001"] ==
-          doctest::Approx(99.217));
-    }
+    const std::string metric_id{"nv_gpu_power_usage"};
+    std::map<std::string, double> gpu_power_usage_per_gpu{};
+
+    ttcb.ParseAndStoreMetric<double>(
+        metrics_endpoint_text, metric_id, gpu_power_usage_per_gpu);
+    CHECK(gpu_power_usage_per_gpu.size() == 2);
+    CHECK(
+        gpu_power_usage_per_gpu["GPU-00000000-0000-0000-0000-000000000000"] ==
+        doctest::Approx(81.619));
+    CHECK(
+        gpu_power_usage_per_gpu["GPU-00000000-0000-0000-0000-000000000001"] ==
+        doctest::Approx(99.217));
   }
 
   SUBCASE("nv_gpu_memory_used_bytes metric")
   {
-    std::map<std::string, uint64_t> gpu_memory_used_bytes_per_gpu{};
+    const std::string metrics_endpoint_text{R"(
+# HELP nv_gpu_memory_used_bytes GPU used memory, in bytes
+# TYPE nv_gpu_memory_used_bytes gauge
+nv_gpu_memory_used_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 50000000
+nv_gpu_memory_used_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000001"} 75000000
+    )"};
     const std::string metric_id{"nv_gpu_memory_used_bytes"};
+    std::map<std::string, uint64_t> gpu_memory_used_bytes_per_gpu{};
 
-    SUBCASE("single-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
-# HELP nv_gpu_memory_used_bytes GPU used memory, in bytes
-# TYPE nv_gpu_memory_used_bytes gauge
-nv_gpu_memory_used_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 1392508928.000000
-    )"};
-      ttcb.ParseAndStoreMetric<uint64_t>(
-          metrics_endpoint_text, metric_id, gpu_memory_used_bytes_per_gpu);
-      CHECK(gpu_memory_used_bytes_per_gpu.size() == 1);
-      CHECK(
-          gpu_memory_used_bytes_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_memory_used_bytes_per_gpu.end());
-      CHECK(
-          gpu_memory_used_bytes_per_gpu
-              ["GPU-00000000-0000-0000-0000-000000000000"] == 1392508928);
-    }
+    ttcb.ParseAndStoreMetric<uint64_t>(
+        metrics_endpoint_text, metric_id, gpu_memory_used_bytes_per_gpu);
+    CHECK(gpu_memory_used_bytes_per_gpu.size() == 2);
+    CHECK(
+        gpu_memory_used_bytes_per_gpu
+            ["GPU-00000000-0000-0000-0000-000000000000"] == 50000000);
+    CHECK(
+        gpu_memory_used_bytes_per_gpu
+            ["GPU-00000000-0000-0000-0000-000000000001"] == 75000000);
+  }
 
-    SUBCASE("multi-GPU")
-    {
-      const std::string metrics_endpoint_text{R"(
-# HELP nv_gpu_memory_used_bytes GPU used memory, in bytes
-# TYPE nv_gpu_memory_used_bytes gauge
-nv_gpu_memory_used_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 1392508928.000000
-nv_gpu_memory_used_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000001"} 629417335.000000
+  SUBCASE("nv_gpu_memory_total_bytes metric")
+  {
+    const std::string metrics_endpoint_text{R"(
+# HELP nv_gpu_memory_total_bytes GPU total memory, in bytes
+# TYPE nv_gpu_memory_total_bytes gauge
+nv_gpu_memory_total_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000000"} 1000000000
+nv_gpu_memory_total_bytes{gpu_uuid="GPU-00000000-0000-0000-0000-000000000001"} 2000000000
     )"};
-      ttcb.ParseAndStoreMetric<uint64_t>(
-          metrics_endpoint_text, metric_id, gpu_memory_used_bytes_per_gpu);
-      CHECK(gpu_memory_used_bytes_per_gpu.size() == 2);
-      CHECK(
-          gpu_memory_used_bytes_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000000") !=
-          gpu_memory_used_bytes_per_gpu.end());
-      CHECK(
-          gpu_memory_used_bytes_per_gpu.find(
-              "GPU-00000000-0000-0000-0000-000000000001") !=
-          gpu_memory_used_bytes_per_gpu.end());
-      CHECK(
-          gpu_memory_used_bytes_per_gpu
-              ["GPU-00000000-0000-0000-0000-000000000000"] == 1392508928);
-      CHECK(
-          gpu_memory_used_bytes_per_gpu
-              ["GPU-00000000-0000-0000-0000-000000000001"] == 629417335);
-    }
+    const std::string metric_id{"nv_gpu_memory_total_bytes"};
+    std::map<std::string, uint64_t> gpu_memory_total_bytes_per_gpu{};
+
+    ttcb.ParseAndStoreMetric<uint64_t>(
+        metrics_endpoint_text, metric_id, gpu_memory_total_bytes_per_gpu);
+    CHECK(gpu_memory_total_bytes_per_gpu.size() == 2);
+    CHECK(
+        gpu_memory_total_bytes_per_gpu
+            ["GPU-00000000-0000-0000-0000-000000000000"] == 1000000000);
+    CHECK(
+        gpu_memory_total_bytes_per_gpu
+            ["GPU-00000000-0000-0000-0000-000000000001"] == 2000000000);
   }
 }
 

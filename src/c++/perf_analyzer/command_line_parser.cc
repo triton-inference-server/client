@@ -1447,6 +1447,11 @@ CLParser::VerifyOptions()
         "backend.");
   }
 
+  if (params_->should_collect_metrics && params_->verbose_csv == false) {
+    Usage(
+        "Must specify --verbose-csv when using the --collect-metrics option.");
+  }
+
   if (params_->metrics_url_specified &&
       params_->should_collect_metrics == false) {
     Usage(
@@ -1458,7 +1463,9 @@ CLParser::VerifyOptions()
     Usage(
         "Must specify --collect-metrics when using the --metrics-interval "
         "option.");
-  } else if (params_->metrics_interval_ms == 0) {
+  }
+
+  if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 }

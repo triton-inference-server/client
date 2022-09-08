@@ -119,6 +119,16 @@ class TestInferenceProfiler : public InferenceProfiler {
     InferenceProfiler::GetMetricMaxPerGPU<T>(
         input_metric_maps, output_metric_map);
   }
+
+  template <typename T>
+  void GetMetricFirstPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    InferenceProfiler::GetMetricFirstPerGPU<T>(
+        input_metric_maps, output_metric_map);
+  }
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -389,6 +399,9 @@ TEST_CASE("testing the MergeMetrics function")
     metrics_1.gpu_memory_used_bytes_per_gpu["gpu0"] = 10000;
     metrics_2.gpu_memory_used_bytes_per_gpu["gpu0"] = 12000;
 
+    metrics_1.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
+    metrics_2.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
+
     const std::vector<std::reference_wrapper<const Metrics>> all_metrics{
         metrics_1, metrics_2};
 
@@ -396,6 +409,7 @@ TEST_CASE("testing the MergeMetrics function")
     CHECK(merged_metrics.gpu_utilization_per_gpu.size() == 1);
     CHECK(merged_metrics.gpu_power_usage_per_gpu.size() == 1);
     CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu.size() == 1);
     CHECK(
         merged_metrics.gpu_utilization_per_gpu["gpu0"] ==
         doctest::Approx(0.485));
@@ -403,9 +417,10 @@ TEST_CASE("testing the MergeMetrics function")
         merged_metrics.gpu_power_usage_per_gpu["gpu0"] ==
         doctest::Approx(77.25));
     CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu["gpu0"] == 12000);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu["gpu0"] == 100000);
   }
 
-  SUBCASE("missing power usage metric")
+  SUBCASE("missing multiple metrics")
   {
     metrics_1.gpu_utilization_per_gpu["gpu0"] = 0.45;
     metrics_2.gpu_utilization_per_gpu["gpu0"] = 0.52;
@@ -420,6 +435,7 @@ TEST_CASE("testing the MergeMetrics function")
     CHECK(merged_metrics.gpu_utilization_per_gpu.size() == 1);
     CHECK(merged_metrics.gpu_power_usage_per_gpu.size() == 0);
     CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu.size() == 0);
     CHECK(
         merged_metrics.gpu_utilization_per_gpu["gpu0"] ==
         doctest::Approx(0.485));
@@ -483,7 +499,6 @@ TEST_CASE("testing the GetMetricMaxPerGPU function")
         std::reference_wrapper<const std::map<std::string, uint64_t>>>
         all_metrics{metric_1, metric_2, metric_3};
 
-
     tip.GetMetricMaxPerGPU<uint64_t>(all_metrics, metric_maxes);
 
     CHECK(metric_maxes.size() == 2);
@@ -500,12 +515,51 @@ TEST_CASE("testing the GetMetricMaxPerGPU function")
         std::reference_wrapper<const std::map<std::string, uint64_t>>>
         all_metrics{metric_1, metric_2, metric_3};
 
-
     tip.GetMetricMaxPerGPU<uint64_t>(all_metrics, metric_maxes);
 
     CHECK(metric_maxes.size() == 2);
     CHECK(metric_maxes["gpu0"] == 15);
     CHECK(metric_maxes["gpu1"] == 55);
+  }
+}
+
+TEST_CASE("testing the GetMetricFirstPerGPU function")
+{
+  TestInferenceProfiler tip{};
+  std::map<std::string, uint64_t> metric_firsts{};
+
+  SUBCASE("all GPUs present")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}, {"gpu1", 55}},
+        metric_2{{"gpu0", 12}, {"gpu1", 84}},
+        metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricFirstPerGPU<uint64_t>(all_metrics, metric_firsts);
+
+    CHECK(metric_firsts.size() == 2);
+    CHECK(metric_firsts["gpu0"] == 10);
+    CHECK(metric_firsts["gpu1"] == 55);
+  }
+
+  SUBCASE("missing one GPU from one metric")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}},
+        metric_2{{"gpu0", 12}, {"gpu1", 84}},
+        metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricFirstPerGPU<uint64_t>(all_metrics, metric_firsts);
+
+    CHECK(metric_firsts.size() == 2);
+    CHECK(metric_firsts["gpu0"] == 10);
+    CHECK(metric_firsts["gpu1"] == 84);
   }
 }
 
