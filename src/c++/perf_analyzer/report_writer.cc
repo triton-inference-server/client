@@ -53,7 +53,8 @@ ReportWriter::ReportWriter(
     const std::string& filename, const bool target_concurrency,
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
-    const std::shared_ptr<ModelParser>& parser)
+    const std::shared_ptr<ModelParser>& parser,
+    const bool should_collect_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
       include_server_stats_(include_server_stats), percentile_(percentile),
@@ -215,8 +216,27 @@ ReportWriter::GenerateReport()
           ofs << avg_latency_us << ",";
         }
         ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
-        ofs << std::to_string(avg_response_wait_time_us);
-        // Add new metric data here
+        ofs << std::to_string(avg_response_wait_time_us) << ",";
+
+        // only one entry in the metrics vector stored in status
+        // since these entries are already aggregated for a concurrency
+        assert(status.metrics.size() == 1);
+        auto& gpu_util_map = status.metrics[0].gpu_utilization_per_gpu;
+        auto& gpu_power_usage_map = status.metrics[0].gpu_power_usage_per_gpu;
+        auto& gpu_mem_usage_map =
+            status.metrics[0].gpu_memory_used_bytes_per_gpu;
+        for (auto& metric : gpu_util_map) {
+          ofs << metric.first << ":" << metric.second << ";";
+        }
+        ofs << ",";
+        for (auto& metric : gpu_power_usage_map) {
+          ofs << metric.first << ":" << metric.second << ";";
+        }
+        ofs << ",";
+        for (auto& metric : gpu_mem_usage_map) {
+          ofs << metric.first << ":" << metric.second << ";";
+        }
+        ofs << ",";
       }
       ofs << std::endl;
     }
