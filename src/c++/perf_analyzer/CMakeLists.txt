@@ -144,6 +144,7 @@ add_executable(
   test_inference_profiler.cc
   test_model_parser.cc
   test_metrics_manager.cc
+  test_report_writer.cc
   client_backend/triton/test_triton_client_backend.cc
   $<TARGET_OBJECTS:json-utils-library>
 )

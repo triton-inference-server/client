@@ -32,6 +32,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestReportWriter;
+#endif
+
 //==============================================================================
 /// ReportWriter is a helper class to generate csv files from the profiled data.
 ///
@@ -65,6 +69,12 @@ class ReportWriter {
 
   void GenerateReport();
 
+  /// Output gpu metrics to a stream
+  /// \param ofs A stream to output the csv data
+  /// \param status The PerfStatus object containing the metrics for a
+  /// particular concurrency or request rate
+  void WriteGpuMetrics(std::ostream& ofs, pa::PerfStatus& status);
+
  private:
   ReportWriter(
       const std::string& filename, const bool target_concurrency,
@@ -74,14 +84,21 @@ class ReportWriter {
       const bool should_collect_metrics);
 
 
-  const std::string& filename_;
-  const bool target_concurrency_;
-  const bool include_server_stats_;
-  const bool verbose_csv_;
-  const int32_t percentile_;
-  std::vector<pa::PerfStatus> summary_;
-  const std::shared_ptr<ModelParser>& parser_;
-  const bool should_collect_metrics_{false};
+  const std::string& filename_{""};
+  const bool target_concurrency_{true};
+  const bool include_server_stats_{true};
+  const bool verbose_csv_{true};
+  const int32_t percentile_{90};
+  std::vector<pa::PerfStatus> summary_{};
+  const std::shared_ptr<ModelParser>& parser_{nullptr};
+  const bool should_collect_metrics_{true};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestReportWriter;
+
+ private:
+  ReportWriter() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
