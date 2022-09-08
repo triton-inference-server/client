@@ -95,20 +95,23 @@ MetricsManager::CheckForMissingMetrics(const Metrics& metrics)
   if (metrics.gpu_utilization_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_utilization' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
   if (metrics.gpu_power_usage_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_power_usage' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
   if (metrics.gpu_memory_used_bytes_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_used_bytes' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
   if (metrics.gpu_memory_total_bytes_per_gpu.empty()) {
     std::cerr << "WARNING: Unable to parse 'nv_gpu_memory_total_bytes' metric."
               << std::endl;
+    has_given_missing_metrics_warning_ = true;
   }
-  has_given_missing_metrics_warning_ = true;
 }
 
 void
@@ -128,8 +131,8 @@ MetricsManager::CheckForMetricIntervalTooShort(
               << "ms). Please try a larger querying interval "
                  "via `--triton-metrics-interval`."
               << std::endl;
+    has_given_metric_interval_warning_ = true;
   }
-  has_given_metric_interval_warning_ = true;
 }
 
 void
