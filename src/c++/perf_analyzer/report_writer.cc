@@ -98,10 +98,10 @@ ReportWriter::GenerateReport()
       ofs << "request/response,";
       ofs << "response wait,";
       if (should_collect_metrics_) {
-        ofs << "Avg GPU utilizations,";
-        ofs << "Avg GPU Power Usages,";
-        ofs << "Max GPU Memory Usages,";
-        ofs << "Total GPU Memory Usages";
+        ofs << "Avg GPU Utilization,";
+        ofs << "Avg GPU Power Usage,";
+        ofs << "Max GPU Memory Usage,";
+        ofs << "Total GPU Memory";
       }
     }
     ofs << std::endl;
