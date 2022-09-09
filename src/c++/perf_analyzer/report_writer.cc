@@ -218,7 +218,12 @@ ReportWriter::GenerateReport()
         ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
         ofs << std::to_string(avg_response_wait_time_us) << ",";
         if (should_collect_metrics_) {
-          WriteGpuMetrics(ofs, status);
+          if (status.metrics.size() == 1) {
+            WriteGpuMetrics(ofs, status.metrics[0]);
+          } else {
+            throw std::runtime_error(
+                "There should only be one entry in the metrics vector.");
+          }
         }
       }
       ofs << std::endl;
@@ -349,24 +354,26 @@ ReportWriter::GenerateReport()
 }
 
 void
-ReportWriter::WriteGpuMetrics(std::ostream& ofs, pa::PerfStatus& status)
+ReportWriter::WriteGpuMetrics(std::ostream& ofs, Metrics& metric)
 {
-  // only one entry in the metrics vector stored in status
-  // since these entries are already aggregated for a concurrency
-  assert(status.metrics.size() == 1);
-  auto& gpu_util_map = status.metrics[0].gpu_utilization_per_gpu;
-  auto& gpu_power_usage_map = status.metrics[0].gpu_power_usage_per_gpu;
-  auto& gpu_mem_usage_map = status.metrics[0].gpu_memory_used_bytes_per_gpu;
-  for (auto& metric : gpu_util_map) {
-    ofs << metric.first << ":" << metric.second << ";";
+  auto& gpu_util_map = metric.gpu_utilization_per_gpu;
+  auto& gpu_power_usage_map = metric.gpu_power_usage_per_gpu;
+  auto& gpu_mem_usage_map = metric.gpu_memory_used_bytes_per_gpu;
+  auto& gpu_total_mem_map = metric.gpu_memory_total_bytes_per_gpu;
+  for (auto& entry : gpu_util_map) {
+    ofs << entry.first << ":" << entry.second << ";";
   }
   ofs << ",";
-  for (auto& metric : gpu_power_usage_map) {
-    ofs << metric.first << ":" << metric.second << ";";
+  for (auto& entry : gpu_power_usage_map) {
+    ofs << entry.first << ":" << entry.second << ";";
   }
   ofs << ",";
-  for (auto& metric : gpu_mem_usage_map) {
-    ofs << metric.first << ":" << metric.second << ";";
+  for (auto& entry : gpu_mem_usage_map) {
+    ofs << entry.first << ":" << entry.second << ";";
+  }
+  ofs << ",";
+  for (auto& entry : gpu_total_mem_map) {
+    ofs << entry.first << ":" << entry.second << ";";
   }
   ofs << ",";
 }

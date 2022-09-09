@@ -71,9 +71,9 @@ class ReportWriter {
 
   /// Output gpu metrics to a stream
   /// \param ofs A stream to output the csv data
-  /// \param status The PerfStatus object containing the metrics for a
-  /// particular concurrency or request rate
-  void WriteGpuMetrics(std::ostream& ofs, pa::PerfStatus& status);
+  /// \param metric The metric container for a particular concurrency or request
+  /// rate
+  void WriteGpuMetrics(std::ostream& ofs, Metrics& metric);
 
  private:
   ReportWriter(

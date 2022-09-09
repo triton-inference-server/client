@@ -32,64 +32,61 @@ namespace triton { namespace perfanalyzer {
 
 class TestReportWriter {
  public:
-  static void WriteGpuMetrics(std::ostream& ofs, pa::PerfStatus& status)
+  static void WriteGpuMetrics(std::ostream& ofs, Metrics& metric)
   {
     ReportWriter rw{};
-    rw.WriteGpuMetrics(ofs, status);
+    rw.WriteGpuMetrics(ofs, metric);
   }
 };
 
 TEST_CASE("testing WriteGpuMetrics")
 {
   // Single Gpu setup
-  PerfStatus s1{};
-  Metrics m1{};
-  m1.gpu_utilization_per_gpu.insert(std::pair<std::string, double>("a", 1.0));
-  m1.gpu_power_usage_per_gpu.insert(std::pair<std::string, double>("a", 2.2));
-  m1.gpu_memory_used_bytes_per_gpu.insert(
-      std::pair<std::string, uint64_t>("a", 3));
-  s1.metrics.push_back(m1);
+  Metrics m{};
+  m.gpu_utilization_per_gpu["a"] = 1.0;
+  m.gpu_power_usage_per_gpu["a"] = 2.2;
+  m.gpu_memory_used_bytes_per_gpu["a"] = 3;
+  m.gpu_memory_total_bytes_per_gpu["a"] = 4;
 
   SUBCASE("single gpu complete output")
   {
     std::ostringstream actual_output{};
-    TestReportWriter::WriteGpuMetrics(actual_output, s1);
-    std::string expected_output{"a:1;,a:2.2;,a:3;,"};
+    TestReportWriter::WriteGpuMetrics(actual_output, m);
+    std::string expected_output{"a:1;,a:2.2;,a:3;,a:4;,"};
     CHECK(actual_output.str() == expected_output);
   }
 
   SUBCASE("single gpu missing data")
   {
-    s1.metrics[0].gpu_power_usage_per_gpu.erase("a");
+    m.gpu_power_usage_per_gpu.erase("a");
     std::ostringstream actual_output{};
-    TestReportWriter::WriteGpuMetrics(actual_output, s1);
-    std::string expected_output{"a:1;,,a:3;,"};
+    TestReportWriter::WriteGpuMetrics(actual_output, m);
+    std::string expected_output{"a:1;,,a:3;,a:4;,"};
     CHECK(actual_output.str() == expected_output);
   }
 
   // Multi Gpu setup
-  s1.metrics.clear();
-  m1.gpu_utilization_per_gpu.insert(std::pair<std::string, double>("z", 100.0));
-  m1.gpu_power_usage_per_gpu.insert(std::pair<std::string, double>("z", 222.2));
-  m1.gpu_memory_used_bytes_per_gpu.insert(
-      std::pair<std::string, uint64_t>("z", 45));
-  s1.metrics.push_back(m1);
+  m.gpu_utilization_per_gpu["z"] = 100.0;
+  m.gpu_power_usage_per_gpu["z"] = 222.2;
+  m.gpu_memory_used_bytes_per_gpu["z"] = 45;
+  m.gpu_memory_total_bytes_per_gpu["z"] = 89;
 
   SUBCASE("multi gpu complete output")
   {
     std::ostringstream actual_output{};
-    TestReportWriter::WriteGpuMetrics(actual_output, s1);
-    std::string expected_output{"a:1;z:100;,a:2.2;z:222.2;,a:3;z:45;,"};
+    TestReportWriter::WriteGpuMetrics(actual_output, m);
+    std::string expected_output{
+        "a:1;z:100;,a:2.2;z:222.2;,a:3;z:45;,a:4;z:89;,"};
     CHECK(actual_output.str() == expected_output);
   }
 
   SUBCASE("multi gpu missing data")
   {
-    s1.metrics[0].gpu_utilization_per_gpu.erase("z");
-    s1.metrics[0].gpu_power_usage_per_gpu.erase("a");
+    m.gpu_utilization_per_gpu.erase("z");
+    m.gpu_power_usage_per_gpu.erase("a");
     std::ostringstream actual_output{};
-    TestReportWriter::WriteGpuMetrics(actual_output, s1);
-    std::string expected_output{"a:1;,z:222.2;,a:3;z:45;,"};
+    TestReportWriter::WriteGpuMetrics(actual_output, m);
+    std::string expected_output{"a:1;,z:222.2;,a:3;z:45;,a:4;z:89;,"};
     CHECK(actual_output.str() == expected_output);
   }
 }
