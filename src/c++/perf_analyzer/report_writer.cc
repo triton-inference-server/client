@@ -25,9 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "report_writer.h"
-
 #include <algorithm>
 #include <fstream>
+#include "constants.h"
+#include "perf_analyzer_exception.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -221,8 +222,9 @@ ReportWriter::GenerateReport()
           if (status.metrics.size() == 1) {
             WriteGpuMetrics(ofs, status.metrics[0]);
           } else {
-            throw std::runtime_error(
-                "There should only be one entry in the metrics vector.");
+            std::cerr << "There should only be one entry in the metrics vector."
+                      << std::endl;
+            throw PerfAnalyzerException(GENERIC_ERROR);
           }
         }
       }

@@ -28,6 +28,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <utility>
+#include "constants.h"
+#include "perf_analyzer_exception.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -62,7 +64,8 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
     Metrics metrics{};
     clientbackend::Error err{client_backend_->Metrics(metrics)};
     if (err.IsOk() == false) {
-      throw std::runtime_error(err.Message());
+      std::cerr << err.Message() << std::endl;
+      throw PerfAnalyzerException(err.Err());
     }
 
     CheckForMissingMetrics(metrics);
@@ -149,8 +152,10 @@ void
 MetricsManager::GetLatestMetrics(std::vector<Metrics>& metrics)
 {
   if (metrics.empty() == false) {
-    throw std::runtime_error(
-        "MetricsManager::GetLatestMetrics() must be passed an empty vector.");
+    std::cerr
+        << "MetricsManager::GetLatestMetrics() must be passed an empty vector."
+        << std::endl;
+    throw PerfAnalyzerException(GENERIC_ERROR);
   }
   std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
   metrics_.swap(metrics);

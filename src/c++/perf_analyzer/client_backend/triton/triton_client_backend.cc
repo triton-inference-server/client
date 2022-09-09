@@ -29,6 +29,8 @@
 #include <curl/curl.h>
 #include <regex>
 #include <stdexcept>
+#include "../../constants.h"
+#include "../../perf_analyzer_exception.h"
 #include "json_utils.h"
 
 namespace {
@@ -386,7 +388,9 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
 {
   CURL* curl{curl_easy_init()};
   if (curl == nullptr) {
-    throw std::runtime_error("Error calling curl_easy_init()");
+    std::cerr << "Error calling curl_easy_init()" << std::endl;
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        triton::perfanalyzer::GENERIC_ERROR);
   }
 
   const auto metrics_response_handler{
@@ -405,15 +409,19 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
   CURLcode res{curl_easy_perform(curl)};
 
   if (res != CURLE_OK) {
-    throw std::runtime_error(
-        "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
+    std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res)
+              << std::endl;
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        triton::perfanalyzer::GENERIC_ERROR);
   }
 
   long response_code{0};
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
   if (response_code != 200) {
-    throw std::runtime_error("Metrics endpoint curling did not succeed.");
+    std::cerr << "Metrics endpoint curling did not succeed." << std::endl;
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        triton::perfanalyzer::GENERIC_ERROR);
   }
 
   curl_easy_cleanup(curl);
