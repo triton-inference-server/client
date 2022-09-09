@@ -222,9 +222,9 @@ ReportWriter::GenerateReport()
           if (status.metrics.size() == 1) {
             WriteGpuMetrics(ofs, status.metrics[0]);
           } else {
-            std::cerr << "There should only be one entry in the metrics vector."
-                      << std::endl;
-            throw PerfAnalyzerException(GENERIC_ERROR);
+            throw PerfAnalyzerException(
+                "There should only be one entry in the metrics vector.",
+                GENERIC_ERROR);
           }
         }
       }

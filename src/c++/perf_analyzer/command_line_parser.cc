@@ -652,7 +652,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --collect-metrics: Enables collection of server-side "
                    "inference server metrics. Outputs metrics in the csv file "
-                   "generated with the -f option.",
+                   "generated with the -f option. Must enable `--verbose-csv` "
+                   "option to use the `--collect-metrics`.",
                    18)
             << std::endl;
   std::cerr << FormatMessage(

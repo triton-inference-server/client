@@ -64,8 +64,7 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
     Metrics metrics{};
     clientbackend::Error err{client_backend_->Metrics(metrics)};
     if (err.IsOk() == false) {
-      std::cerr << err.Message() << std::endl;
-      throw PerfAnalyzerException(err.Err());
+      throw PerfAnalyzerException(err.Message(), err.Err());
     }
 
     CheckForMissingMetrics(metrics);
@@ -152,10 +151,9 @@ void
 MetricsManager::GetLatestMetrics(std::vector<Metrics>& metrics)
 {
   if (metrics.empty() == false) {
-    std::cerr
-        << "MetricsManager::GetLatestMetrics() must be passed an empty vector."
-        << std::endl;
-    throw PerfAnalyzerException(GENERIC_ERROR);
+    throw PerfAnalyzerException(
+        "MetricsManager::GetLatestMetrics() must be passed an empty vector.",
+        GENERIC_ERROR);
   }
   std::lock_guard<std::mutex> metrics_lock{metrics_mutex_};
   metrics_.swap(metrics);

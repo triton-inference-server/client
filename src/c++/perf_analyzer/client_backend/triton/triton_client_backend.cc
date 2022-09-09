@@ -377,7 +377,7 @@ TritonClientBackend::Metrics(triton::perfanalyzer::Metrics& metrics)
     AccessMetricsEndpoint(metrics_endpoint_text);
     ParseAndStoreMetrics(metrics_endpoint_text, metrics);
   }
-  catch (const std::exception& e) {
+  catch (const PerfAnalyzerException& e) {
     return Error(e.what(), pa::GENERIC_ERROR);
   }
   return Error::Success;
@@ -388,9 +388,8 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
 {
   CURL* curl{curl_easy_init()};
   if (curl == nullptr) {
-    std::cerr << "Error calling curl_easy_init()" << std::endl;
     throw triton::perfanalyzer::PerfAnalyzerException(
-        triton::perfanalyzer::GENERIC_ERROR);
+        "Error calling curl_easy_init()", triton::perfanalyzer::GENERIC_ERROR);
   }
 
   const auto metrics_response_handler{
@@ -409,9 +408,8 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
   CURLcode res{curl_easy_perform(curl)};
 
   if (res != CURLE_OK) {
-    std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res)
-              << std::endl;
     throw triton::perfanalyzer::PerfAnalyzerException(
+        "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)),
         triton::perfanalyzer::GENERIC_ERROR);
   }
 
@@ -419,8 +417,8 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
   if (response_code != 200) {
-    std::cerr << "Metrics endpoint curling did not succeed." << std::endl;
     throw triton::perfanalyzer::PerfAnalyzerException(
+        "Metrics endpoint curling did not succeed.",
         triton::perfanalyzer::GENERIC_ERROR);
   }
 
