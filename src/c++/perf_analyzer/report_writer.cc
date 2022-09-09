@@ -38,11 +38,11 @@ ReportWriter::Create(
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<ReportWriter>* writer, const bool should_collect_metrics)
+    std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
       filename, target_concurrency, summary, verbose_csv, include_server_stats,
-      percentile, parser, should_collect_metrics));
+      percentile, parser, should_output_metrics));
 
   *writer = std::move(local_writer);
 
@@ -54,11 +54,11 @@ ReportWriter::ReportWriter(
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
-    const bool should_collect_metrics)
+    const bool should_output_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
       include_server_stats_(include_server_stats), percentile_(percentile),
-      parser_(parser), should_collect_metrics_(should_collect_metrics)
+      parser_(parser), should_output_metrics_(should_output_metrics)
 {
 }
 
@@ -97,7 +97,7 @@ ReportWriter::GenerateReport()
       }
       ofs << "request/response,";
       ofs << "response wait,";
-      if (should_collect_metrics_) {
+      if (should_output_metrics_) {
         ofs << "Avg GPU Utilization,";
         ofs << "Avg GPU Power Usage,";
         ofs << "Max GPU Memory Usage,";
@@ -217,7 +217,7 @@ ReportWriter::GenerateReport()
         }
         ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
         ofs << std::to_string(avg_response_wait_time_us) << ",";
-        if (should_collect_metrics_) {
+        if (should_output_metrics_) {
           if (status.metrics.size() == 1) {
             WriteGpuMetrics(ofs, status.metrics[0]);
           } else {
@@ -354,7 +354,7 @@ ReportWriter::GenerateReport()
 }
 
 void
-ReportWriter::WriteGpuMetrics(std::ostream& ofs, Metrics& metric)
+ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
 {
   auto& gpu_util_map = metric.gpu_utilization_per_gpu;
   auto& gpu_power_usage_map = metric.gpu_power_usage_per_gpu;

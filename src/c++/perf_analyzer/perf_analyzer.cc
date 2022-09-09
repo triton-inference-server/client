@@ -1694,8 +1694,7 @@ PerfAnalyzer::Run(int argc, char** argv)
   if (metrics_url_specified && should_collect_metrics == false) {
     Usage(
         argv,
-        "Must specify --collect-metrics when using the --metrics-url "
-        "option.");
+        "Must specify --collect-metrics when using the --metrics-url option.");
   }
 
   if (metrics_interval_ms_specified && should_collect_metrics == false) {
