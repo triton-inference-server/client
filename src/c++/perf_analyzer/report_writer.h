@@ -25,12 +25,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <ostream>
 #include "client_backend/client_backend.h"
 #include "inference_profiler.h"
+#include "metrics.h"
 #include "model_parser.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestReportWriter;
+#endif
 
 //==============================================================================
 /// ReportWriter is a helper class to generate csv files from the profiled data.
@@ -54,32 +60,48 @@ class ReportWriter {
   /// \param parser The ModelParse object which holds all the details about the
   /// model.
   /// \param writer Returns a new ReportWriter object.
-  /// \return cb::Error object indicating success or
-  /// failure.
+  /// \param should_output_metrics Whether server-side inference server metrics
+  /// should be output.
+  /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const std::string& filename, const bool target_concurrency,
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
-      std::unique_ptr<ReportWriter>* writer);
+      std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics);
 
   void GenerateReport();
+
+  /// Output gpu metrics to a stream
+  /// \param ofs A stream to output the csv data
+  /// \param metric The metric container for a particular concurrency or request
+  /// rate
+  void WriteGpuMetrics(std::ostream& ofs, const Metrics& metric);
 
  private:
   ReportWriter(
       const std::string& filename, const bool target_concurrency,
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
-      const std::shared_ptr<ModelParser>& parser);
+      const std::shared_ptr<ModelParser>& parser,
+      const bool should_output_metrics);
 
 
-  const std::string& filename_;
-  const bool target_concurrency_;
-  const bool include_server_stats_;
-  const bool verbose_csv_;
-  const int32_t percentile_;
-  std::vector<pa::PerfStatus> summary_;
-  const std::shared_ptr<ModelParser>& parser_;
+  const std::string& filename_{""};
+  const bool target_concurrency_{true};
+  const bool include_server_stats_{true};
+  const bool verbose_csv_{true};
+  const int32_t percentile_{90};
+  std::vector<pa::PerfStatus> summary_{};
+  const std::shared_ptr<ModelParser>& parser_{nullptr};
+  const bool should_output_metrics_{false};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestReportWriter;
+
+ protected:
+  ReportWriter() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
