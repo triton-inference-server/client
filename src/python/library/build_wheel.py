@@ -34,6 +34,7 @@ import subprocess
 import sys
 from distutils.dir_util import copy_tree
 from tempfile import mkstemp
+import sys
 
 
 def fail_if(p, msg):

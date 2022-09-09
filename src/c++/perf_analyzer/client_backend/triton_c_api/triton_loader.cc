@@ -288,6 +288,9 @@ TritonLoader::StartTriton()
           server_options, model_repository_path_.c_str()),
       "setting model repository path");
   RETURN_IF_TRITONSERVER_ERROR(
+      set_cuda_memory_pool_byte_size_(server_options, 0, 1073741824),
+      "setting cuda memory pool byte size failed.");
+  RETURN_IF_TRITONSERVER_ERROR(
       set_log_verbose_fn_(server_options, verbose_level_),
       "setting verbose logging level");
   RETURN_IF_TRITONSERVER_ERROR(
@@ -586,6 +589,7 @@ TritonLoader::LoadServerLibrary()
 
   TritonSeverUnloadModelFn_t umfn;
   TritonSeverSetLogInfoFn_t slifn;
+  TritonServerSetCudaMemoryPoolByteSizeFn_t scmpbsfn;
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ApiVersion", false /* optional */,
@@ -612,6 +616,9 @@ TritonLoader::LoadServerLibrary()
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerOptionsSetMinSupportedComputeCapability",
       false /* optional */, reinterpret_cast<void**>(&smsccfn)));
+  RETURN_IF_ERROR(GetEntrypoint(
+      dlhandle_, "TRITONSERVER_ServerOptionsSetCudaMemoryPoolByteSize",
+      false /* optional */, reinterpret_cast<void**>(&scmpbsfn)));
 
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_ServerNew", false /* optional */,
@@ -813,6 +820,7 @@ TritonLoader::LoadServerLibrary()
 
   unload_model_fn_ = umfn;
   set_log_info_fn_ = slifn;
+  set_cuda_memory_pool_byte_size_ = scmpbsfn;
 
   return Error::Success;
 }
@@ -944,6 +952,11 @@ TritonLoader::Infer(
     }
   }
 
+  const char* cid = nullptr;
+  RETURN_IF_TRITONSERVER_ERROR(
+      request_id_fn_(irequest, &cid), "Failed to get request id");
+  std::string id = cid;
+
   // Perform inference...
   timer.CaptureTimestamp(tc::RequestTimers::Kind::SEND_START);
   auto p = new std::promise<TRITONSERVER_InferenceResponse*>();
@@ -973,10 +986,7 @@ TritonLoader::Infer(
   if (!err.IsOk()) {
     std::cerr << "Failed to update context stat: " << err << std::endl;
   }
-  const char* cid;
-  RETURN_IF_TRITONSERVER_ERROR(
-      request_id_fn_(irequest, &cid), "Failed to get request id");
-  std::string id(cid);
+
   InferResult::Create(result, err, id);
 
   // CleanUp the response allocators

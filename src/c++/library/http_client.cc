@@ -1897,6 +1897,7 @@ InferenceServerHttpClient::AsyncTransfer()
       // wake up if an async request has been generated
       return !this->ongoing_async_requests_.empty();
     });
+    std::cout << "Hello " << std::endl;
 
     curl_multi_perform(multi_handle_, &place_holder);
     while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
