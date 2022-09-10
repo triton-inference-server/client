@@ -23,37 +23,22 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
 #pragma once
 
-#include <exception>
+#include <cstdint>
+#include <map>
 #include <string>
 
 namespace triton { namespace perfanalyzer {
 
-// Perf Exception error class
-//
-class PerfAnalyzerException : public std::exception {
- public:
-  PerfAnalyzerException(uint32_t error) : error_(error) {}
-
-  PerfAnalyzerException(const std::string& message, uint32_t error)
-      : message_(message), error_(error)
-  {
-  }
-
-  virtual const char* what() const throw()
-  {
-    std::string msg =
-        "Perf Error " + std::to_string(error_) + " thrown:\n" + message_;
-    return msg.c_str();
-  }
-
-  inline int GetError() const { return error_; }
-
- private:
-  const std::string message_{""};
-  uint32_t error_;
+/// Struct that holds server-side metrics for the inference server.
+/// The keys for each map are GPU UUIDs and the values are described in the
+/// variable names.
+struct Metrics {
+  std::map<std::string, double> gpu_utilization_per_gpu{};
+  std::map<std::string, double> gpu_power_usage_per_gpu{};
+  std::map<std::string, uint64_t> gpu_memory_used_bytes_per_gpu{};
+  std::map<std::string, uint64_t> gpu_memory_total_bytes_per_gpu{};
 };
 
 }}  // namespace triton::perfanalyzer

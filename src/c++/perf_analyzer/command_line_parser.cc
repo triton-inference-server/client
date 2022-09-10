@@ -150,6 +150,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
   std::cerr << "\t--log-frequency" << std::endl;
+  std::cerr << "\t--collect-metrics" << std::endl;
+  std::cerr << "\t--metrics-url" << std::endl;
+  std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
@@ -646,6 +649,24 @@ CLParser::Usage(const std::string& msg)
                    "will include additional information.",
                    18)
             << std::endl;
+  std::cerr << FormatMessage(
+                   " --collect-metrics: Enables collection of server-side "
+                   "inference server metrics. Outputs metrics in the csv file "
+                   "generated with the -f option. Must enable `--verbose-csv` "
+                   "option to use the `--collect-metrics`.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-url: The URL to query for server-side inference "
+                   "server metrics. Default is 'localhost:8002/metrics'.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --metrics-interval: How often in milliseconds, within "
+                   "each measurement window, to query for server-side "
+                   "inference server metrics. Default is 1000.",
+                   18)
+            << std::endl;
   exit(GENERIC_ERROR);
 }
 
@@ -657,55 +678,58 @@ CLParser::ParseCommandLine(int argc, char** argv)
 
   // {name, has_arg, *flag, val}
   static struct option long_options[] = {
-      {"streaming", 0, 0, 0},
-      {"max-threads", 1, 0, 1},
-      {"sequence-length", 1, 0, 2},
-      {"percentile", 1, 0, 3},
-      {"data-directory", 1, 0, 4},
-      {"shape", 1, 0, 5},
-      {"measurement-interval", 1, 0, 6},
-      {"concurrency-range", 1, 0, 7},
-      {"latency-threshold", 1, 0, 8},
-      {"stability-percentage", 1, 0, 9},
-      {"max-trials", 1, 0, 10},
-      {"input-data", 1, 0, 11},
-      {"string-length", 1, 0, 12},
-      {"string-data", 1, 0, 13},
-      {"async", 0, 0, 14},
-      {"sync", 0, 0, 15},
-      {"request-rate-range", 1, 0, 16},
-      {"num-of-sequences", 1, 0, 17},
-      {"binary-search", 0, 0, 18},
-      {"request-distribution", 1, 0, 19},
-      {"request-intervals", 1, 0, 20},
-      {"shared-memory", 1, 0, 21},
-      {"output-shared-memory-size", 1, 0, 22},
-      {"service-kind", 1, 0, 23},
-      {"model-signature-name", 1, 0, 24},
-      {"grpc-compression-algorithm", 1, 0, 25},
-      {"measurement-mode", 1, 0, 26},
-      {"measurement-request-count", 1, 0, 27},
-      {"triton-server-directory", 1, 0, 28},
-      {"model-repository", 1, 0, 29},
-      {"sequence-id-range", 1, 0, 30},
-      {"ssl-grpc-use-ssl", 0, 0, 31},
-      {"ssl-grpc-root-certifications-file", 1, 0, 32},
-      {"ssl-grpc-private-key-file", 1, 0, 33},
-      {"ssl-grpc-certificate-chain-file", 1, 0, 34},
-      {"ssl-https-verify-peer", 1, 0, 35},
-      {"ssl-https-verify-host", 1, 0, 36},
-      {"ssl-https-ca-certificates-file", 1, 0, 37},
-      {"ssl-https-client-certificate-file", 1, 0, 38},
-      {"ssl-https-client-certificate-type", 1, 0, 39},
-      {"ssl-https-private-key-file", 1, 0, 40},
-      {"ssl-https-private-key-type", 1, 0, 41},
-      {"verbose-csv", 0, 0, 42},
-      {"enable-mpi", 0, 0, 43},
-      {"trace-file", 1, 0, 44},
-      {"trace-level", 1, 0, 45},
-      {"trace-rate", 1, 0, 46},
-      {"trace-count", 1, 0, 47},
-      {"log-frequency", 1, 0, 48},
+      {"streaming", no_argument, 0, 0},
+      {"max-threads", required_argument, 0, 1},
+      {"sequence-length", required_argument, 0, 2},
+      {"percentile", required_argument, 0, 3},
+      {"data-directory", required_argument, 0, 4},
+      {"shape", required_argument, 0, 5},
+      {"measurement-interval", required_argument, 0, 6},
+      {"concurrency-range", required_argument, 0, 7},
+      {"latency-threshold", required_argument, 0, 8},
+      {"stability-percentage", required_argument, 0, 9},
+      {"max-trials", required_argument, 0, 10},
+      {"input-data", required_argument, 0, 11},
+      {"string-length", required_argument, 0, 12},
+      {"string-data", required_argument, 0, 13},
+      {"async", no_argument, 0, 14},
+      {"sync", no_argument, 0, 15},
+      {"request-rate-range", required_argument, 0, 16},
+      {"num-of-sequences", required_argument, 0, 17},
+      {"binary-search", no_argument, 0, 18},
+      {"request-distribution", required_argument, 0, 19},
+      {"request-intervals", required_argument, 0, 20},
+      {"shared-memory", required_argument, 0, 21},
+      {"output-shared-memory-size", required_argument, 0, 22},
+      {"service-kind", required_argument, 0, 23},
+      {"model-signature-name", required_argument, 0, 24},
+      {"grpc-compression-algorithm", required_argument, 0, 25},
+      {"measurement-mode", required_argument, 0, 26},
+      {"measurement-request-count", required_argument, 0, 27},
+      {"triton-server-directory", required_argument, 0, 28},
+      {"model-repository", required_argument, 0, 29},
+      {"sequence-id-range", required_argument, 0, 30},
+      {"ssl-grpc-use-ssl", no_argument, 0, 31},
+      {"ssl-grpc-root-certifications-file", required_argument, 0, 32},
+      {"ssl-grpc-private-key-file", required_argument, 0, 33},
+      {"ssl-grpc-certificate-chain-file", required_argument, 0, 34},
+      {"ssl-https-verify-peer", required_argument, 0, 35},
+      {"ssl-https-verify-host", required_argument, 0, 36},
+      {"ssl-https-ca-certificates-file", required_argument, 0, 37},
+      {"ssl-https-client-certificate-file", required_argument, 0, 38},
+      {"ssl-https-client-certificate-type", required_argument, 0, 39},
+      {"ssl-https-private-key-file", required_argument, 0, 40},
+      {"ssl-https-private-key-type", required_argument, 0, 41},
+      {"verbose-csv", no_argument, 0, 42},
+      {"enable-mpi", no_argument, 0, 43},
+      {"trace-file", required_argument, 0, 44},
+      {"trace-level", required_argument, 0, 45},
+      {"trace-rate", required_argument, 0, 46},
+      {"trace-count", required_argument, 0, 47},
+      {"log-frequency", required_argument, 0, 48},
+      {"collect-metrics", no_argument, 0, 49},
+      {"metrics-url", required_argument, 0, 50},
+      {"metrics-interval", required_argument, 0, 51},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1128,6 +1152,20 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->trace_options["log_frequency"] = {optarg};
         break;
       }
+      case 49: {
+        params_->should_collect_metrics = true;
+        break;
+      }
+      case 50: {
+        params_->metrics_url = optarg;
+        params_->metrics_url_specified = true;
+        break;
+      }
+      case 51: {
+        params_->metrics_interval_ms = std::stoull(optarg);
+        params_->metrics_interval_ms_specified = true;
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1401,6 +1439,35 @@ CLParser::VerifyOptions()
       throw PerfAnalyzerException(GENERIC_ERROR);
     }
     params_->protocol = cb::ProtocolType::UNKNOWN;
+  }
+
+  if (params_->should_collect_metrics &&
+      params_->kind != cb::BackendKind::TRITON) {
+    Usage(
+        "Server-side metric collection is only supported with Triton client "
+        "backend.");
+  }
+
+  if (params_->should_collect_metrics && params_->verbose_csv == false) {
+    Usage(
+        "Must specify --verbose-csv when using the --collect-metrics option.");
+  }
+
+  if (params_->metrics_url_specified &&
+      params_->should_collect_metrics == false) {
+    Usage(
+        "Must specify --collect-metrics when using the --metrics-url option.");
+  }
+
+  if (params_->metrics_interval_ms_specified &&
+      params_->should_collect_metrics == false) {
+    Usage(
+        "Must specify --collect-metrics when using the --metrics-interval "
+        "option.");
+  }
+
+  if (params_->metrics_interval_ms == 0) {
+    Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 }
 

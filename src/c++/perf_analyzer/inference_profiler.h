@@ -25,13 +25,21 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
 #include <deque>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
 #include <thread>
 #include <tuple>
-
+#include <vector>
 #include "concurrency_manager.h"
 #include "constants.h"
 #include "custom_load_manager.h"
+#include "metrics.h"
+#include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
 #include "request_rate_manager.h"
@@ -143,7 +151,7 @@ struct PerfStatus {
   size_t batch_size;
   ServerSideStats server_stats;
   ClientSideStats client_stats;
-
+  std::vector<Metrics> metrics{};
   bool on_sequence_model;
 
   // placeholder for the latency value that is used for conditional checking
@@ -198,18 +206,21 @@ class InferenceProfiler {
   /// using "count_windows" mode.
   /// \param measurement_mode The measurement mode to use for windows.
   /// \param mpi_driver The driver class for MPI operations.
-  /// \return cb::Error object indicating success or
-  /// failure.
+  /// \param metrics_interval_ms The interval at which the server-side metrics
+  /// \param should_collect_metrics Whether server-side inference server metrics
+  /// should be collected.
+  /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
       const uint64_t measurement_window_ms, const size_t max_trials,
       const int64_t percentile, const uint64_t latency_threshold_ms,
       const cb::ProtocolType protocol, std::shared_ptr<ModelParser>& parser,
-      std::unique_ptr<cb::ClientBackend> profile_backend,
+      std::shared_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager,
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
-      std::shared_ptr<MPIDriver> mpi_driver);
+      std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
+      const bool should_collect_metrics);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -287,9 +298,10 @@ class InferenceProfiler {
       const bool extra_percentile, const size_t percentile,
       const uint64_t latency_threshold_ms, const cb::ProtocolType protocol,
       std::shared_ptr<ModelParser>& parser,
-      std::unique_ptr<cb::ClientBackend> profile_backend,
+      std::shared_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-      MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver);
+      MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
+      const uint64_t metrics_interval_ms, const bool should_collect_metrics);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -514,6 +526,87 @@ class InferenceProfiler {
       std::vector<ServerSideStats>& server_side_stats,
       ServerSideStats& server_side_summary);
 
+  /// \param all_metrics Individual metrics from all intervals from stable
+  /// passes.
+  /// \param merged_metrics Output merged metrics from all intervals from stable
+  /// passes.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error MergeMetrics(
+      const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
+      Metrics& merged_metrics);
+
+  template <typename T>
+  void GetMetricAveragePerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    std::map<std::string, size_t> metric_count_per_gpu{};
+
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = 0;
+          metric_count_per_gpu[gpu_uuid] = 0;
+        }
+
+        output_metric_map[gpu_uuid] += metric;
+        metric_count_per_gpu[gpu_uuid]++;
+      }
+    }
+
+    for (auto& output_metric : output_metric_map) {
+      const auto& gpu_uuid{output_metric.first};
+      auto& metric{output_metric.second};
+      const auto& metric_count{metric_count_per_gpu[gpu_uuid]};
+      if (metric_count > 0) {
+        metric /= metric_count;
+      }
+    }
+  }
+
+  template <typename T>
+  void GetMetricMaxPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = 0;
+        }
+
+        output_metric_map[gpu_uuid] =
+            std::max(output_metric_map[gpu_uuid], metric);
+      }
+    }
+  }
+
+  template <typename T>
+  void GetMetricFirstPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    for (const auto& input_metric_map : input_metric_maps) {
+      for (const auto& input_metric : input_metric_map.get()) {
+        const auto& gpu_uuid{input_metric.first};
+        const auto& metric{input_metric.second};
+
+        if (output_metric_map.find(gpu_uuid) == output_metric_map.end()) {
+          output_metric_map[gpu_uuid] = metric;
+        }
+      }
+    }
+  }
+
   bool verbose_;
   uint64_t measurement_window_ms_;
   uint64_t measurement_request_count_;
@@ -528,7 +621,7 @@ class InferenceProfiler {
   int64_t model_version_;
 
   std::shared_ptr<ModelParser> parser_;
-  std::unique_ptr<cb::ClientBackend> profile_backend_;
+  std::shared_ptr<cb::ClientBackend> profile_backend_;
   std::unique_ptr<LoadManager> manager_;
   LoadParams load_parameters_;
 
@@ -547,6 +640,12 @@ class InferenceProfiler {
 
   /// Client side statistics from the previous measurement window
   cb::InferStat prev_client_side_stats_;
+
+  /// Metrics manager that collects server-side metrics periodically
+  std::shared_ptr<MetricsManager> metrics_manager_{nullptr};
+
+  /// Whether server-side inference server metrics should be collected.
+  bool should_collect_metrics_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;

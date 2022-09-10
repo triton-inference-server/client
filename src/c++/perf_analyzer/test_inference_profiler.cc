@@ -30,7 +30,7 @@
 
 namespace triton { namespace perfanalyzer {
 
-class TestInferenceProfiler {
+class TestInferenceProfiler : public InferenceProfiler {
  public:
   static void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
@@ -92,6 +92,43 @@ class TestInferenceProfiler {
     bool is_stable = ip.DetermineStability(ls);
     return ip.IsDoneProfiling(ls, &is_stable);
   };
+
+  cb::Error MergeMetrics(
+      const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
+      Metrics& merged_metrics)
+  {
+    return InferenceProfiler::MergeMetrics(all_metrics, merged_metrics);
+  }
+
+  template <typename T>
+  void GetMetricAveragePerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    InferenceProfiler::GetMetricAveragePerGPU<T>(
+        input_metric_maps, output_metric_map);
+  }
+
+  template <typename T>
+  void GetMetricMaxPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    InferenceProfiler::GetMetricMaxPerGPU<T>(
+        input_metric_maps, output_metric_map);
+  }
+
+  template <typename T>
+  void GetMetricFirstPerGPU(
+      const std::vector<std::reference_wrapper<const std::map<std::string, T>>>&
+          input_metric_maps,
+      std::map<std::string, T>& output_metric_map)
+  {
+    InferenceProfiler::GetMetricFirstPerGPU<T>(
+        input_metric_maps, output_metric_map);
+  }
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -343,6 +380,186 @@ TEST_CASE("testing the GetMeanAndStdDev function")
         TestInferenceProfiler::GetMeanAndStdDev(latencies);
     CHECK(avg_latency_ns == 100);
     CHECK(std_dev_latency_us == UINT64_MAX);
+  }
+}
+
+TEST_CASE("testing the MergeMetrics function")
+{
+  TestInferenceProfiler tip{};
+  Metrics metrics_1{}, metrics_2{}, merged_metrics{};
+
+  SUBCASE("all metrics present")
+  {
+    metrics_1.gpu_utilization_per_gpu["gpu0"] = 0.45;
+    metrics_2.gpu_utilization_per_gpu["gpu0"] = 0.52;
+
+    metrics_1.gpu_power_usage_per_gpu["gpu0"] = 70.0;
+    metrics_2.gpu_power_usage_per_gpu["gpu0"] = 84.5;
+
+    metrics_1.gpu_memory_used_bytes_per_gpu["gpu0"] = 10000;
+    metrics_2.gpu_memory_used_bytes_per_gpu["gpu0"] = 12000;
+
+    metrics_1.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
+    metrics_2.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
+
+    const std::vector<std::reference_wrapper<const Metrics>> all_metrics{
+        metrics_1, metrics_2};
+
+    tip.MergeMetrics(all_metrics, merged_metrics);
+    CHECK(merged_metrics.gpu_utilization_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_power_usage_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu.size() == 1);
+    CHECK(
+        merged_metrics.gpu_utilization_per_gpu["gpu0"] ==
+        doctest::Approx(0.485));
+    CHECK(
+        merged_metrics.gpu_power_usage_per_gpu["gpu0"] ==
+        doctest::Approx(77.25));
+    CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu["gpu0"] == 12000);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu["gpu0"] == 100000);
+  }
+
+  SUBCASE("missing multiple metrics")
+  {
+    metrics_1.gpu_utilization_per_gpu["gpu0"] = 0.45;
+    metrics_2.gpu_utilization_per_gpu["gpu0"] = 0.52;
+
+    metrics_1.gpu_memory_used_bytes_per_gpu["gpu0"] = 10000;
+    metrics_2.gpu_memory_used_bytes_per_gpu["gpu0"] = 12000;
+
+    const std::vector<std::reference_wrapper<const Metrics>> all_metrics{
+        metrics_1, metrics_2};
+
+    tip.MergeMetrics(all_metrics, merged_metrics);
+    CHECK(merged_metrics.gpu_utilization_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_power_usage_per_gpu.size() == 0);
+    CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu.size() == 1);
+    CHECK(merged_metrics.gpu_memory_total_bytes_per_gpu.size() == 0);
+    CHECK(
+        merged_metrics.gpu_utilization_per_gpu["gpu0"] ==
+        doctest::Approx(0.485));
+    CHECK(merged_metrics.gpu_memory_used_bytes_per_gpu["gpu0"] == 12000);
+  }
+}
+
+TEST_CASE("testing the GetMetricAveragePerGPU function")
+{
+  TestInferenceProfiler tip{};
+  std::map<std::string, double> metric_averages{};
+
+  SUBCASE("all GPUs present")
+  {
+    const std::map<std::string, double> metric_1{{"gpu0", 0.45},
+                                                 {"gpu1", 0.23}},
+        metric_2{{"gpu0", 0.52}, {"gpu1", 0.27}},
+        metric_3{{"gpu0", 0.56}, {"gpu1", 0.30}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, double>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricAveragePerGPU<double>(all_metrics, metric_averages);
+
+    CHECK(metric_averages.size() == 2);
+    CHECK(metric_averages["gpu0"] == doctest::Approx(0.51));
+    CHECK(metric_averages["gpu1"] == doctest::Approx(0.26666));
+  }
+
+  SUBCASE("missing one GPU from one metric")
+  {
+    const std::map<std::string, double> metric_1{{"gpu0", 0.45},
+                                                 {"gpu1", 0.23}},
+        metric_2{{"gpu0", 0.52}}, metric_3{{"gpu0", 0.56}, {"gpu1", 0.30}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, double>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricAveragePerGPU<double>(all_metrics, metric_averages);
+
+    CHECK(metric_averages.size() == 2);
+    CHECK(metric_averages["gpu0"] == doctest::Approx(0.51));
+    CHECK(metric_averages["gpu1"] == doctest::Approx(0.265));
+  }
+}
+
+TEST_CASE("testing the GetMetricMaxPerGPU function")
+{
+  TestInferenceProfiler tip{};
+  std::map<std::string, uint64_t> metric_maxes{};
+
+  SUBCASE("all GPUs present")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}, {"gpu1", 55}},
+        metric_2{{"gpu0", 12}, {"gpu1", 84}},
+        metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricMaxPerGPU<uint64_t>(all_metrics, metric_maxes);
+
+    CHECK(metric_maxes.size() == 2);
+    CHECK(metric_maxes["gpu0"] == 15);
+    CHECK(metric_maxes["gpu1"] == 84);
+  }
+
+  SUBCASE("missing one GPU from one metric")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}, {"gpu1", 55}},
+        metric_2{{"gpu0", 12}}, metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricMaxPerGPU<uint64_t>(all_metrics, metric_maxes);
+
+    CHECK(metric_maxes.size() == 2);
+    CHECK(metric_maxes["gpu0"] == 15);
+    CHECK(metric_maxes["gpu1"] == 55);
+  }
+}
+
+TEST_CASE("testing the GetMetricFirstPerGPU function")
+{
+  TestInferenceProfiler tip{};
+  std::map<std::string, uint64_t> metric_firsts{};
+
+  SUBCASE("all GPUs present")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}, {"gpu1", 55}},
+        metric_2{{"gpu0", 12}, {"gpu1", 84}},
+        metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricFirstPerGPU<uint64_t>(all_metrics, metric_firsts);
+
+    CHECK(metric_firsts.size() == 2);
+    CHECK(metric_firsts["gpu0"] == 10);
+    CHECK(metric_firsts["gpu1"] == 55);
+  }
+
+  SUBCASE("missing one GPU from one metric")
+  {
+    const std::map<std::string, uint64_t> metric_1{{"gpu0", 10}},
+        metric_2{{"gpu0", 12}, {"gpu1", 84}},
+        metric_3{{"gpu0", 15}, {"gpu1", 47}};
+
+    const std::vector<
+        std::reference_wrapper<const std::map<std::string, uint64_t>>>
+        all_metrics{metric_1, metric_2, metric_3};
+
+    tip.GetMetricFirstPerGPU<uint64_t>(all_metrics, metric_firsts);
+
+    CHECK(metric_firsts.size() == 2);
+    CHECK(metric_firsts["gpu0"] == 10);
+    CHECK(metric_firsts["gpu1"] == 84);
   }
 }
 

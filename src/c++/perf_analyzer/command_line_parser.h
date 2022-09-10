@@ -107,6 +107,18 @@ struct PerfAnalyzerParameters {
   std::shared_ptr<MPIDriver> mpi_driver;
   std::string memory_type{"system"};  // currently not used, to be removed
 
+  // Enable collection of server-side metrics from inference server.
+  bool should_collect_metrics{false};
+
+  // The URL to query for server-side inference server metrics.
+  std::string metrics_url{"localhost:8002/metrics"};
+  bool metrics_url_specified{false};
+
+  // How often, within each measurement window, to query for server-side
+  // inference server metrics.
+  uint64_t metrics_interval_ms{1000};
+  bool metrics_interval_ms_specified{false};
+
   // Return true if targeting concurrency
   //
   bool targeting_concurrency() const

@@ -30,6 +30,8 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
+#include <stdexcept>
+#include "client_backend/client_backend.h"
 #include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
@@ -372,17 +374,19 @@ InferenceProfiler::Create(
     const uint64_t measurement_window_ms, const size_t max_trials,
     const int64_t percentile, const uint64_t latency_threshold_ms_,
     const cb::ProtocolType protocol, std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<cb::ClientBackend> profile_backend,
+    std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager,
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
-    std::shared_ptr<MPIDriver> mpi_driver)
+    std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
+    const bool should_collect_metrics)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
-      std::move(profile_backend), std::move(manager), measurement_request_count,
-      measurement_mode, mpi_driver));
+      profile_backend, std::move(manager), measurement_request_count,
+      measurement_mode, mpi_driver, metrics_interval_ms,
+      should_collect_metrics));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -394,17 +398,18 @@ InferenceProfiler::InferenceProfiler(
     const bool extra_percentile, const size_t percentile,
     const uint64_t latency_threshold_ms_, const cb::ProtocolType protocol,
     std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<cb::ClientBackend> profile_backend,
+    std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
-    MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver)
+    MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
+    const uint64_t metrics_interval_ms, const bool should_collect_metrics)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
-      protocol_(protocol), parser_(parser),
-      profile_backend_(std::move(profile_backend)),
+      protocol_(protocol), parser_(parser), profile_backend_(profile_backend),
       manager_(std::move(manager)),
       measurement_request_count_(measurement_request_count),
-      measurement_mode_(measurement_mode), mpi_driver_(mpi_driver)
+      measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
+      should_collect_metrics_(should_collect_metrics)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -421,6 +426,10 @@ InferenceProfiler::InferenceProfiler(
   } else {
     include_lib_stats_ = true;
     include_server_stats_ = false;
+  }
+  if (should_collect_metrics_) {
+    metrics_manager_ =
+        std::make_shared<MetricsManager>(profile_backend, metrics_interval_ms);
   }
 }
 
@@ -647,6 +656,9 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
+  if (should_collect_metrics_) {
+    metrics_manager_->StopQueryingMetrics();
+  }
 
   // return the appropriate error which might have occured in the
   // stability_window for its proper handling.
@@ -956,6 +968,22 @@ InferenceProfiler::MergePerfStatusReports(
   RETURN_IF_ERROR(
       SummarizeLatency(summary_status.client_stats.latencies, summary_status));
 
+  if (should_collect_metrics_) {
+    // Put all Metric objects in a flat vector so they're easier to merge
+    std::vector<std::reference_wrapper<const Metrics>> all_metrics{};
+    std::for_each(
+        perf_status_reports.begin(), perf_status_reports.end(),
+        [&all_metrics](const PerfStatus& p) {
+          std::for_each(
+              p.metrics.begin(), p.metrics.end(),
+              [&all_metrics](const Metrics& m) { all_metrics.push_back(m); });
+        });
+
+    Metrics merged_metrics{};
+    RETURN_IF_ERROR(MergeMetrics(all_metrics, merged_metrics));
+    summary_status.metrics.push_back(std::move(merged_metrics));
+  }
+
   return cb::Error::Success;
 }
 
@@ -994,6 +1022,9 @@ InferenceProfiler::Measure(
     window_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
+    if (should_collect_metrics_) {
+      metrics_manager_->StartQueryingMetrics();
+    }
     if (include_server_stats_) {
       RETURN_IF_ERROR(GetServerSideStatus(&start_status));
     }
@@ -1001,6 +1032,15 @@ InferenceProfiler::Measure(
     start_status = std::map<cb::ModelIdentifier, cb::ModelStatistics>();
     start_stat = cb::InferStat();
     RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&start_stat));
+  }
+
+  if (should_collect_metrics_) {
+    try {
+      metrics_manager_->CheckQueryingStatus();
+    }
+    catch (const std::exception& e) {
+      return cb::Error(e.what(), pa::GENERIC_ERROR);
+    }
   }
 
   if (!is_count_based) {
@@ -1022,6 +1062,10 @@ InferenceProfiler::Measure(
           std::chrono::system_clock::now().time_since_epoch())
           .count();
   previous_window_end_ns_ = window_end_ns;
+
+  if (should_collect_metrics_) {
+    metrics_manager_->GetLatestMetrics(status_summary.metrics);
+  }
 
   // Get server status and then print report on difference between
   // before and after status.
@@ -1401,4 +1445,55 @@ InferenceProfiler::AllMPIRanksAreStable(bool current_rank_stability)
 
   return all_stable;
 }
+
+cb::Error
+InferenceProfiler::MergeMetrics(
+    const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
+    Metrics& merged_metrics)
+{
+  // Maps from each metric collection mapping gpu uuid to gpu utilization
+  std::vector<std::reference_wrapper<const std::map<std::string, double>>>
+      gpu_utilization_per_gpu_maps{};
+
+  // Maps from each metric collection mapping gpu uuid to gpu power usage
+  std::vector<std::reference_wrapper<const std::map<std::string, double>>>
+      gpu_power_usage_per_gpu_maps{};
+
+  // Maps from each metric collection mapping gpu uuid to gpu memory used bytes
+  std::vector<std::reference_wrapper<const std::map<std::string, uint64_t>>>
+      gpu_memory_used_bytes_per_gpu_maps{};
+
+  // Maps from each metric collection mapping gpu uuid to gpu memory total bytes
+  std::vector<std::reference_wrapper<const std::map<std::string, uint64_t>>>
+      gpu_memory_total_bytes_per_gpu_maps{};
+
+  // Put all metric maps in vector so they're easier to aggregate
+  std::for_each(
+      all_metrics.begin(), all_metrics.end(),
+      [&gpu_utilization_per_gpu_maps, &gpu_power_usage_per_gpu_maps,
+       &gpu_memory_used_bytes_per_gpu_maps,
+       &gpu_memory_total_bytes_per_gpu_maps](
+          const std::reference_wrapper<const Metrics> m) {
+        gpu_utilization_per_gpu_maps.push_back(m.get().gpu_utilization_per_gpu);
+        gpu_power_usage_per_gpu_maps.push_back(m.get().gpu_power_usage_per_gpu);
+        gpu_memory_used_bytes_per_gpu_maps.push_back(
+            m.get().gpu_memory_used_bytes_per_gpu);
+        gpu_memory_total_bytes_per_gpu_maps.push_back(
+            m.get().gpu_memory_total_bytes_per_gpu);
+      });
+
+  GetMetricAveragePerGPU<double>(
+      gpu_utilization_per_gpu_maps, merged_metrics.gpu_utilization_per_gpu);
+  GetMetricAveragePerGPU<double>(
+      gpu_power_usage_per_gpu_maps, merged_metrics.gpu_power_usage_per_gpu);
+  GetMetricMaxPerGPU<uint64_t>(
+      gpu_memory_used_bytes_per_gpu_maps,
+      merged_metrics.gpu_memory_used_bytes_per_gpu);
+  GetMetricFirstPerGPU<uint64_t>(
+      gpu_memory_total_bytes_per_gpu_maps,
+      merged_metrics.gpu_memory_total_bytes_per_gpu);
+
+  return cb::Error::Success;
+}
+
 }}  // namespace triton::perfanalyzer

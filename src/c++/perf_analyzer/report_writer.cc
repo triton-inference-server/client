@@ -25,9 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "report_writer.h"
-
 #include <algorithm>
 #include <fstream>
+#include "constants.h"
+#include "perf_analyzer_exception.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -38,11 +39,11 @@ ReportWriter::Create(
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<ReportWriter>* writer)
+    std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
       filename, target_concurrency, summary, verbose_csv, include_server_stats,
-      percentile, parser));
+      percentile, parser, should_output_metrics));
 
   *writer = std::move(local_writer);
 
@@ -53,11 +54,12 @@ ReportWriter::ReportWriter(
     const std::string& filename, const bool target_concurrency,
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
-    const std::shared_ptr<ModelParser>& parser)
+    const std::shared_ptr<ModelParser>& parser,
+    const bool should_output_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
       include_server_stats_(include_server_stats), percentile_(percentile),
-      parser_(parser)
+      parser_(parser), should_output_metrics_(should_output_metrics)
 {
 }
 
@@ -95,7 +97,13 @@ ReportWriter::GenerateReport()
         ofs << "Avg latency,";
       }
       ofs << "request/response,";
-      ofs << "response wait";
+      ofs << "response wait,";
+      if (should_output_metrics_) {
+        ofs << "Avg GPU Utilization,";
+        ofs << "Avg GPU Power Usage,";
+        ofs << "Max GPU Memory Usage,";
+        ofs << "Total GPU Memory";
+      }
     }
     ofs << std::endl;
 
@@ -209,7 +217,16 @@ ReportWriter::GenerateReport()
           ofs << avg_latency_us << ",";
         }
         ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
-        ofs << std::to_string(avg_response_wait_time_us);
+        ofs << std::to_string(avg_response_wait_time_us) << ",";
+        if (should_output_metrics_) {
+          if (status.metrics.size() == 1) {
+            WriteGpuMetrics(ofs, status.metrics[0]);
+          } else {
+            throw PerfAnalyzerException(
+                "There should only be one entry in the metrics vector.",
+                GENERIC_ERROR);
+          }
+        }
       }
       ofs << std::endl;
     }
@@ -336,6 +353,31 @@ ReportWriter::GenerateReport()
       }
     }
   }
+}
+
+void
+ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
+{
+  auto& gpu_util_map = metric.gpu_utilization_per_gpu;
+  auto& gpu_power_usage_map = metric.gpu_power_usage_per_gpu;
+  auto& gpu_mem_usage_map = metric.gpu_memory_used_bytes_per_gpu;
+  auto& gpu_total_mem_map = metric.gpu_memory_total_bytes_per_gpu;
+  for (auto& entry : gpu_util_map) {
+    ofs << entry.first << ":" << entry.second << ";";
+  }
+  ofs << ",";
+  for (auto& entry : gpu_power_usage_map) {
+    ofs << entry.first << ":" << entry.second << ";";
+  }
+  ofs << ",";
+  for (auto& entry : gpu_mem_usage_map) {
+    ofs << entry.first << ":" << entry.second << ";";
+  }
+  ofs << ",";
+  for (auto& entry : gpu_total_mem_map) {
+    ofs << entry.first << ":" << entry.second << ";";
+  }
+  ofs << ",";
 }
 
 }}  // namespace triton::perfanalyzer
