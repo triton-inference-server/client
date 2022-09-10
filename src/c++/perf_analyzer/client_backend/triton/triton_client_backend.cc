@@ -26,6 +26,11 @@
 
 #include "triton_client_backend.h"
 
+#include <curl/curl.h>
+#include <regex>
+#include <stdexcept>
+#include "../../constants.h"
+#include "../../perf_analyzer_exception.h"
 #include "json_utils.h"
 
 namespace {
@@ -88,10 +93,12 @@ TritonClientBackend::Create(
     const std::map<std::string, std::vector<std::string>> trace_options,
     const grpc_compression_algorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
+    const std::string& metrics_url,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<TritonClientBackend> triton_client_backend(
-      new TritonClientBackend(protocol, compression_algorithm, http_headers));
+      new TritonClientBackend(
+          protocol, compression_algorithm, http_headers, metrics_url));
   if (protocol == ProtocolType::HTTP) {
     triton::client::HttpSslOptions http_ssl_options =
         ParseHttpSslOptions(ssl_options);
@@ -360,6 +367,81 @@ TritonClientBackend::ModelInferenceStatistics(
   }
 
   return Error::Success;
+}
+
+Error
+TritonClientBackend::Metrics(triton::perfanalyzer::Metrics& metrics)
+{
+  try {
+    std::string metrics_endpoint_text{""};
+    AccessMetricsEndpoint(metrics_endpoint_text);
+    ParseAndStoreMetrics(metrics_endpoint_text, metrics);
+  }
+  catch (const PerfAnalyzerException& e) {
+    return Error(e.what(), pa::GENERIC_ERROR);
+  }
+  return Error::Success;
+}
+
+void
+TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
+{
+  CURL* curl{curl_easy_init()};
+  if (curl == nullptr) {
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        "Error calling curl_easy_init()", triton::perfanalyzer::GENERIC_ERROR);
+  }
+
+  const auto metrics_response_handler{
+      [](char* ptr, size_t size, size_t nmemb, std::string* userdata) {
+        userdata->append(ptr, size * nmemb);
+        return size * nmemb;
+      }};
+
+  curl_easy_setopt(curl, CURLOPT_URL, metrics_url_.c_str());
+  curl_easy_setopt(
+      curl, CURLOPT_WRITEFUNCTION,
+      static_cast<size_t (*)(char*, size_t, size_t, std::string*)>(
+          metrics_response_handler));
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &metrics_endpoint_text);
+
+  CURLcode res{curl_easy_perform(curl)};
+
+  if (res != CURLE_OK) {
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)),
+        triton::perfanalyzer::GENERIC_ERROR);
+  }
+
+  long response_code{0};
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+  if (response_code != 200) {
+    throw triton::perfanalyzer::PerfAnalyzerException(
+        "Metrics endpoint curling did not succeed.",
+        triton::perfanalyzer::GENERIC_ERROR);
+  }
+
+  curl_easy_cleanup(curl);
+}
+
+void
+TritonClientBackend::ParseAndStoreMetrics(
+    const std::string& metrics_endpoint_text,
+    triton::perfanalyzer::Metrics& metrics)
+{
+  ParseAndStoreMetric<double>(
+      metrics_endpoint_text, "nv_gpu_utilization",
+      metrics.gpu_utilization_per_gpu);
+  ParseAndStoreMetric<double>(
+      metrics_endpoint_text, "nv_gpu_power_usage",
+      metrics.gpu_power_usage_per_gpu);
+  ParseAndStoreMetric<uint64_t>(
+      metrics_endpoint_text, "nv_gpu_memory_used_bytes",
+      metrics.gpu_memory_used_bytes_per_gpu);
+  ParseAndStoreMetric<uint64_t>(
+      metrics_endpoint_text, "nv_gpu_memory_total_bytes",
+      metrics.gpu_memory_total_bytes_per_gpu);
 }
 
 Error
