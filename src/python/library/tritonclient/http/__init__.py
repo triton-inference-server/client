@@ -1144,6 +1144,64 @@ class InferenceServerClient:
 
         return json.loads(content)
 
+    def register_cuda_virtual_memory(self,
+                                    name,
+                                    ipc_info,
+                                    device_id,
+                                    byte_size,
+                                    headers=None,
+                                    query_params=None):
+        """Request the server to register a system shared memory with the
+        following specification.
+
+        Parameters
+        ----------
+        name : str
+            The name of the region to register.
+        ipc_info : dict
+            The info required to communicate memory handles with other process.
+        device_id : int
+            The GPU device ID on which the cudaIPC handle was created.
+        byte_size : int
+            The size of the cuda shared memory region, in bytes.
+        headers: dict
+            Optional dictionary specifying additional
+            HTTP headers to include in the request
+        query_params: dict
+            Optional url query parameters to use in network
+            transaction
+
+        Raises
+        ------
+        InferenceServerException
+            If unable to register the specified cuda shared memory.
+
+        """
+        request_uri = "v2/cudasharedmemory/region/{}/register".format(
+            quote(name))
+
+        register_request = {
+            'cuda_vm_info' : {
+              # Client will have this unix socket open on sending request,
+              # Server will connect to this socket on receiving request to
+              # receive file descriptor for CUDA memory handle
+              'unix_socket_path': ipc_info.get("unix_socket_path", "")
+              # Keep structure extensible for future windows support?
+              # 'windows_info': {}
+            },
+            'device_id': device_id,
+            'byte_size': byte_size
+        }
+        request_body = json.dumps(register_request)
+
+        response = self._post(request_uri=request_uri,
+                              request_body=request_body,
+                              headers=headers,
+                              query_params=query_params)
+        _raise_if_error(response)
+        if self._verbose:
+            print("Registered cuda shared memory with name '{}'".format(name))
+
     def register_cuda_shared_memory(self,
                                     name,
                                     raw_handle,
