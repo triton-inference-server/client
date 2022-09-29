@@ -168,7 +168,6 @@ class RequestRateManager : public LoadManager {
   std::vector<std::chrono::nanoseconds> schedule_;
   std::chrono::steady_clock::time_point start_time_;
   bool execute_;
-
 };
 
 }}  // namespace triton::perfanalyzer

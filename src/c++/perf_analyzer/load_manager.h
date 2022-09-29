@@ -300,12 +300,6 @@ class LoadManager {
   // Use condition variable to pause/continue worker threads
   std::condition_variable wake_signal_;
   std::mutex wake_mutex_;
-
-#ifndef DOCTEST_CONFIG_DISABLE
- protected:
-  LoadManager() = default;
-#endif
-
 };
 
 }}  // namespace triton::perfanalyzer
