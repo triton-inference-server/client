@@ -273,7 +273,7 @@ class ClientBackendFactory {
 
   /// Create a ClientBackend.
   /// \param backend Returns a new Client backend object.
-  Error CreateClientBackend(std::unique_ptr<ClientBackend>* backend);
+  virtual Error CreateClientBackend(std::unique_ptr<ClientBackend>* backend);
 
  private:
   ClientBackendFactory(
@@ -306,6 +306,20 @@ class ClientBackendFactory {
   std::string memory_type_;
   const bool verbose_;
   const std::string metrics_url_{""};
+
+
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  ClientBackendFactory() : 
+    kind_(BackendKind()),
+    url_(""),
+    protocol_(ProtocolType()),
+    ssl_options_(SslOptionsBase()),
+    trace_options_(std::map<std::string, std::vector<std::string>>()),
+    compression_algorithm_(GrpcCompressionAlgorithm()),
+    verbose_(false) {}
+#endif
+
 };
 
 //

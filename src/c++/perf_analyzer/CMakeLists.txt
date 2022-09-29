@@ -147,6 +147,7 @@ add_executable(
   test_model_parser.cc
   test_metrics_manager.cc
   test_report_writer.cc
+  test_request_rate_manager.cc
   client_backend/triton/test_triton_client_backend.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
@@ -155,7 +156,7 @@ add_executable(
 # input argv cases in the CommandLineParser unit test
 #
 set_target_properties(perf_analyzer_unit_tests 
-  PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
+  PROPERTIES COMPILE_FLAGS "-Wno-write-strings -fprofile-arcs -ftest-coverage")
 
 target_link_libraries(
   perf_analyzer_unit_tests
@@ -163,6 +164,7 @@ target_link_libraries(
     gmock
     client-backend-library
     -lb64
+    gcov
 )
 
 target_include_directories(
