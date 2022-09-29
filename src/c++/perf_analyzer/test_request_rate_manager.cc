@@ -24,122 +24,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "doctest.h"
 #include "command_line_parser.h"
-#include "client_backend.h"
 #include "common.h"
+#include "doctest.h"
+#include "mock_client_backend.h"
+#include "mock_model_parser.h"
 #include "request_rate_manager.h"
 
-namespace tc = triton::client;
 namespace cb = triton::perfanalyzer::clientbackend;
-namespace pa = triton::perfanalyzer;
 
 namespace triton { namespace perfanalyzer {
-
-struct MockClientStats {
-  public:
-    size_t num_infer_calls{0};
-    size_t num_async_infer_calls{0};
-    size_t num_async_stream_infer_calls{0};
-    size_t num_start_stream_calls{0};
-
-    std::vector<std::chrono::time_point<std::chrono::system_clock>> request_timestamps;
-};
-
-class MockInferResult : public cb::InferResult {
-  public: 
-    MockInferResult(const cb::InferOptions& options): req_id_{options.request_id_} {}
-
-    cb::Error Id(std::string* id) const override { *id = req_id_; return cb::Error::Success; }
-    cb::Error RequestStatus() const override { return cb::Error::Success; }
-    cb::Error RawData(const std::string& output_name, const uint8_t** buf, size_t* byte_size) const override { return cb::Error::Success; }
-  
-  private:
-    std::string req_id_;
-};
-
-class MockModelParser : public pa::ModelParser {
- public:
-  MockModelParser(bool is_sequence_model) : pa::ModelParser(cb::BackendKind::TRITON) {
-    if (is_sequence_model) {
-      scheduler_type_ = pa::ModelParser::SEQUENCE;
-    }
-  }
-};
-
-class MockClientBackend : public cb::ClientBackend {
-  public:
-    MockClientBackend(MockClientStats* stats) {
-      stats_ = stats;
-    }
-
-    cb::Error Infer(cb::InferResult** result, 
-                    const cb::InferOptions& options, 
-                    const std::vector<cb::InferInput*>& inputs, 
-                    const std::vector<const cb::InferRequestedOutput*>& outputs) override 
-    {
-      CaptureRequestTime();
-      stats_->num_infer_calls++;
-      return cb::Error::Success;
-    }
-
-    cb::Error AsyncInfer(cb::OnCompleteFn callback, 
-                         const cb::InferOptions& options,
-                         const std::vector<cb::InferInput*>& inputs,
-                         const std::vector<const cb::InferRequestedOutput*>& outputs) override {
-      CaptureRequestTime();
-      stats_->num_async_infer_calls++;
-      cb::InferResult* result = new MockInferResult(options);
-
-      callback(result);
-      return cb::Error::Success;
-    }
-
-    cb::Error AsyncStreamInfer(const cb::InferOptions& options, 
-                               const std::vector<cb::InferInput*>& inputs,
-                               const std::vector<const cb::InferRequestedOutput*>& outputs) {
-      CaptureRequestTime();
-      stats_->num_async_stream_infer_calls++;
-      cb::InferResult* result = new MockInferResult(options);
-      stream_callback_(result);
-      return cb::Error::Success;
-    }
-
-    cb::Error StartStream(cb::OnCompleteFn callback, bool enable_stats) {
-      stats_->num_start_stream_calls++;
-      stream_callback_ = callback;
-      return cb::Error::Success;
-    }
-
-    cb::Error ClientInferStat(cb::InferStat* a) override 
-    {
-      return cb::Error::Success;
-    }
-
-  private:
-    MockClientStats* stats_;
-    cb::OnCompleteFn stream_callback_;
-
-    void CaptureRequestTime() {
-      auto time = std::chrono::system_clock::now();
-      stats_->request_timestamps.push_back(time);
-    }
-};
-
-class MockClientBackendFactory : public cb::ClientBackendFactory {
-  public:
-    MockClientBackendFactory(MockClientStats* stats) {
-      stats_ = stats;
-    }
-
-    cb::Error CreateClientBackend(std::unique_ptr<cb::ClientBackend>* backend) override {
-      std::unique_ptr<MockClientBackend> mock_backend(new MockClientBackend(stats_));
-      *backend = std::move(mock_backend);
-      return cb::Error::Success;
-    }
-  private:
-    MockClientStats* stats_;
-};
 
 class TestRequestRateManager {
   public:
@@ -151,16 +45,15 @@ class TestRequestRateManager {
       early_exit = false;
     }
 
-    void Run(PerfAnalyzerParameters params, bool is_sequence_model = false) {
+    void Run(PerfAnalyzerParameters params, std::vector<int> request_rates = std::vector<int>{20, 100}, uint32_t duration_ms=500, bool is_sequence_model = false) {
 
-      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<MockClientBackendFactory>(&stats_);
-      std::shared_ptr<pa::ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
+      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(&stats_);
+      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
 
-      std::unique_ptr<pa::LoadManager> manager;
+      std::unique_ptr<LoadManager> manager;
       CreateManager(params, factory, parser, &manager);
 
-      std::vector<int> request_rates{20, 100};
-      std::chrono::milliseconds duration  = std::chrono::milliseconds(2000);
+      std::chrono::milliseconds duration  = std::chrono::milliseconds(duration_ms);
 
       bool first = true;
       for (auto request_rate : request_rates) {
@@ -180,8 +73,8 @@ class TestRequestRateManager {
 
     void CheckCallCounts(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
 
-      MockClientStats stats = GetStats();
-      MockClientStats expected_stats = GetExpectedStats(params, request_rate, duration, first_call);
+      cb::MockClientStats stats = GetStats();
+      cb::MockClientStats expected_stats = GetExpectedStats(params, request_rate, duration, first_call);
 
       // Allow 20% slop in the infer call numbers, as we can't guarentee the exact amount of 
       // time we allow the threads to run before capturing the stats
@@ -229,17 +122,17 @@ class TestRequestRateManager {
     }
 
     void ResetStats() {
-      stats_ = MockClientStats();
+      stats_ = cb::MockClientStats();
     }
 
-    MockClientStats stats_;
+    cb::MockClientStats stats_;
 
-    MockClientStats GetStats() {
+    cb::MockClientStats GetStats() {
       return stats_;
     }
 
-    MockClientStats GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
-      MockClientStats expected_stats;
+    cb::MockClientStats GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
+      cb::MockClientStats expected_stats;
 
       auto time_in_seconds = duration.count() / std::chrono::milliseconds(1000).count();
       auto num_expected_requests = request_rate * time_in_seconds;
@@ -299,9 +192,9 @@ class TestRequestRateManager {
 
     void CreateManager(PerfAnalyzerParameters params, 
                        std::shared_ptr<cb::ClientBackendFactory> factory,
-                       std::shared_ptr<pa::ModelParser> parser,
+                       std::shared_ptr<ModelParser> parser,
                        std::unique_ptr<LoadManager>* manager) {
-      pa::RequestRateManager::Create(
+      RequestRateManager::Create(
         params.async, params.streaming, params.measurement_window_ms,
         params.request_distribution, params.batch_size,
         params.max_threads, params.num_of_sequences,
@@ -379,7 +272,7 @@ TEST_CASE("request_rate_sequence") {
   PerfAnalyzerParameters params;
   params.streaming = false;
   params.async = false;
-  trrm.Run(params, true);
+  trrm.Run(params, {100}, 1000, true);
 }
 
 TEST_CASE("test_poisson_distribution") {
