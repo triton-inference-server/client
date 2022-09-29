@@ -47,12 +47,7 @@ class TestRequestRateManager {
 
     void Run(PerfAnalyzerParameters params, std::vector<int> request_rates = std::vector<int>{20, 100}, uint32_t duration_ms=500, bool is_sequence_model = false) {
 
-      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(&stats_);
-      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
-
-      std::unique_ptr<LoadManager> manager;
-      CreateManager(params, factory, parser, &manager);
-
+      std::unique_ptr<LoadManager> manager = CreateManager(params, is_sequence_model);
       std::chrono::milliseconds duration  = std::chrono::milliseconds(duration_ms);
 
       bool first = true;
@@ -134,7 +129,7 @@ class TestRequestRateManager {
     cb::MockClientStats GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
       cb::MockClientStats expected_stats;
 
-      auto time_in_seconds = duration.count() / std::chrono::milliseconds(1000).count();
+      double time_in_seconds = duration.count() / static_cast<double>(std::chrono::milliseconds(1000).count());
       auto num_expected_requests = request_rate * time_in_seconds;
 
       if (params.async) {
@@ -190,10 +185,12 @@ class TestRequestRateManager {
       return variance;
     }
 
-    void CreateManager(PerfAnalyzerParameters params, 
-                       std::shared_ptr<cb::ClientBackendFactory> factory,
-                       std::shared_ptr<ModelParser> parser,
-                       std::unique_ptr<LoadManager>* manager) {
+    std::unique_ptr<LoadManager> CreateManager(PerfAnalyzerParameters params, bool is_sequence_model) {
+
+      std::unique_ptr<LoadManager> manager;
+      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(&stats_);
+      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
+
       RequestRateManager::Create(
         params.async, params.streaming, params.measurement_window_ms,
         params.request_distribution, params.batch_size,
@@ -202,7 +199,9 @@ class TestRequestRateManager {
         params.string_data, params.zero_input, params.user_data,
         params.shared_memory_type, params.output_shm_size,
         params.start_sequence_id, params.sequence_id_range, parser,
-        factory, manager);
+        factory, &manager);
+
+      return manager;
     }    
 };
 
