@@ -156,7 +156,7 @@ add_executable(
 # input argv cases in the CommandLineParser unit test
 #
 set_target_properties(perf_analyzer_unit_tests 
-  PROPERTIES COMPILE_FLAGS "-Wno-write-strings -fprofile-arcs -ftest-coverage")
+  PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
 
 target_link_libraries(
   perf_analyzer_unit_tests
@@ -164,7 +164,6 @@ target_link_libraries(
     gmock
     client-backend-library
     -lb64
-    gcov
 )
 
 target_include_directories(
