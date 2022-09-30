@@ -346,6 +346,12 @@ TEST_CASE("request_rate_tiny_window") {
   params.request_distribution = CONSTANT;
   params.measurement_window_ms = 10;
 
+  SUBCASE("one_thread") {
+    params.max_threads = 1;
+  }
+  SUBCASE("odd_threads") {
+    params.max_threads = 9;
+  }
   trrm.TestDistribution(params);
 }
 
@@ -358,24 +364,6 @@ TEST_CASE("request_rate_multiple") {
   trrm.TestMultipleRequestRate(params);
 }
 
-
-TEST_CASE("request_rate_max_threads_1") {
-  TestRequestRateManager trrm{};
-  PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = false;
-  params.max_threads = 1;
-  trrm.Run(params);
-}
-
-TEST_CASE("request_rate_max_threads_10") {
-  TestRequestRateManager trrm{};
-  PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = false;
-  params.max_threads = 10;
-  trrm.Run(params);
-}
 
 // FIXME -- check sequence IDs?
 TEST_CASE("request_rate_sequence") {
