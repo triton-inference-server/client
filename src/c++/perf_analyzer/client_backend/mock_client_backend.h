@@ -43,17 +43,30 @@ class MockInferResult : public InferResult {
 
 class MockClientStats {
   public:
+    enum ReqType {SYNC, ASYNC, ASYNC_STREAM};
+    struct SeqStatus {
+      bool live = false;
+    };
+
     size_t num_infer_calls{0};
     size_t num_async_infer_calls{0};
     size_t num_async_stream_infer_calls{0};
     size_t num_start_stream_calls{0};
 
     std::vector<std::chrono::time_point<std::chrono::system_clock>> request_timestamps;
+    std::map<uint64_t, SeqStatus> sequence_statuses;
 
-    void CaptureRequestTime() {
+    void CaptureRequest(ReqType type, 
+                        const InferOptions& options,
+                        const std::vector<InferInput*>& inputs,
+                        const std::vector<const InferRequestedOutput*>& outputs) {
+
       std::lock_guard<std::mutex> lock(mtx_);
       auto time = std::chrono::system_clock::now();
       request_timestamps.push_back(time);
+
+      UpdateCallCount(type);
+      UpdateSeqStatus(options);
     }   
 
     void Reset() {
@@ -63,10 +76,36 @@ class MockClientStats {
       num_start_stream_calls = 0;
       request_timestamps.clear();
     }
-    
+
   private:    
     std::mutex mtx_;
 
+    void UpdateCallCount(ReqType type) {
+      if (type == SYNC) {
+        num_infer_calls++;
+      }
+      else if (type == ASYNC) {
+        num_async_infer_calls++;
+      }
+      else {
+        num_async_stream_infer_calls++;
+      }
+    }
+
+    void UpdateSeqStatus(const InferOptions& options) {
+      if (options.sequence_id_ != 0) {
+        SeqStatus& status = sequence_statuses[options.sequence_id_];
+
+        if (status.live == false) {
+          CHECK(options.sequence_start_ == true);
+          status.live = true;
+        }
+        if (options.sequence_end_) {
+          CHECK(status.live == true);
+          status.live = false;
+        }
+      }
+    }
 };
 
 class MockClientBackend : public ClientBackend {
@@ -80,8 +119,7 @@ class MockClientBackend : public ClientBackend {
                     const std::vector<InferInput*>& inputs, 
                     const std::vector<const InferRequestedOutput*>& outputs) override 
     {
-      stats_->CaptureRequestTime();
-      stats_->num_infer_calls++;
+      stats_->CaptureRequest(MockClientStats::ReqType::SYNC, options, inputs, outputs);
       return Error::Success;
     }
 
@@ -89,8 +127,7 @@ class MockClientBackend : public ClientBackend {
                          const InferOptions& options,
                          const std::vector<InferInput*>& inputs,
                          const std::vector<const InferRequestedOutput*>& outputs) override {
-      stats_->CaptureRequestTime();
-      stats_->num_async_infer_calls++;
+      stats_->CaptureRequest(MockClientStats::ReqType::ASYNC, options, inputs, outputs);
       InferResult* result = new MockInferResult(options);
 
       callback(result);
@@ -100,8 +137,7 @@ class MockClientBackend : public ClientBackend {
     Error AsyncStreamInfer(const InferOptions& options, 
                                const std::vector<InferInput*>& inputs,
                                const std::vector<const InferRequestedOutput*>& outputs) {
-      stats_->CaptureRequestTime();
-      stats_->num_async_stream_infer_calls++;
+      stats_->CaptureRequest(MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
       InferResult* result = new MockInferResult(options);
       stream_callback_(result);
       return Error::Success;

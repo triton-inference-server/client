@@ -94,21 +94,19 @@ class TestRequestRateManager {
       }
     }
 
-    void Run(PerfAnalyzerParameters params, std::vector<int> request_rates = std::vector<int>{20, 100}, uint32_t duration_ms=500, bool is_sequence_model = false) {
-
+    /// Test sequence handling
+    void TestSequences(PerfAnalyzerParameters params) {
+      bool is_sequence_model=true;
       std::unique_ptr<LoadManager> manager = CreateManager(params, is_sequence_model);
-      std::chrono::milliseconds duration  = std::chrono::milliseconds(duration_ms);
 
-      bool first = true;
-      for (auto request_rate : request_rates) {
-        dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
-        ResetStats();
-        std::this_thread::sleep_for(duration);
-        Check(params, request_rate, duration, first);
-        first = false;
-      }
+      double request_rate = 200;
+      auto sleep_time = std::chrono::milliseconds(100);
+
+      dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
+      std::this_thread::sleep_for(sleep_time);
+
+      CheckSequences(params);
     }
-
 
   private:
     std::shared_ptr<cb::MockClientStats> stats_;
@@ -121,43 +119,40 @@ class TestRequestRateManager {
       stats_->Reset();
     }
 
-    std::unique_ptr<LoadManager> CreateManager(PerfAnalyzerParameters params, bool is_sequence_model=false) {
 
-      std::unique_ptr<LoadManager> manager;
-      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(stats_);
-      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
+    void CheckInferType(PerfAnalyzerParameters params) {
+      auto stats = GetStats();
 
-      RequestRateManager::Create(
-        params.async, params.streaming, params.measurement_window_ms,
-        params.request_distribution, params.batch_size,
-        params.max_threads, params.num_of_sequences,
-        params.sequence_length, params.string_length,
-        params.string_data, params.zero_input, params.user_data,
-        params.shared_memory_type, params.output_shm_size,
-        params.start_sequence_id, params.sequence_id_range, parser,
-        factory, &manager);
-
-      return manager;
-    }        
-
-    void Check(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
-      CheckCallCounts(params, request_rate, duration, first_call);
-      CheckCallDistribution(params.request_distribution, request_rate);
-    }
-
-    void CheckCallCounts(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
-
-      std::shared_ptr<cb::MockClientStats> stats = GetStats();
-      std::shared_ptr<cb::MockClientStats> expected_stats = GetExpectedStats(params, request_rate, duration, first_call);
-
-      // Allow 20% slop in the infer call numbers, as we can't guarentee the exact amount of 
-      // time we allow the threads to run before capturing the stats
-      //
-      CHECK(stats->num_start_stream_calls == expected_stats->num_start_stream_calls);
-      CHECK(stats->num_infer_calls == doctest::Approx(expected_stats->num_infer_calls).epsilon(0.20));
-      CHECK(stats->num_async_infer_calls == doctest::Approx(expected_stats->num_async_infer_calls).epsilon(0.20));
-      CHECK(stats->num_async_stream_infer_calls == doctest::Approx(expected_stats->num_async_stream_infer_calls).epsilon(0.20));
-    }
+      if (params.async) {
+        if (params.streaming) {
+          CHECK(stats->num_infer_calls == 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls > 0);
+          CHECK(stats->num_start_stream_calls > 0);
+        }
+        else {
+          CHECK(stats->num_infer_calls == 0);
+          CHECK(stats->num_async_infer_calls > 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls == 0);          
+        }
+      }
+      else {
+        if (params.streaming) {
+          CHECK(stats->num_infer_calls > 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls > 0);
+        }
+        else {
+          CHECK(stats->num_infer_calls > 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls == 0);
+        }
+      }
+    }    
+    
 
     void CheckCallDistribution(Distribution request_distribution, int request_rate) {
       auto timestamps = GetStats()->request_timestamps;
@@ -196,36 +191,9 @@ class TestRequestRateManager {
       }
     }
 
-    std::shared_ptr<cb::MockClientStats> GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
-      std::shared_ptr<cb::MockClientStats> expected_stats = std::make_shared<cb::MockClientStats>();
-
-      double time_in_seconds = duration.count() / static_cast<double>(std::chrono::milliseconds(1000).count());
-      auto num_expected_requests = request_rate * time_in_seconds;
-
-      if (params.async) {
-        if (params.streaming) {
-          expected_stats->num_start_stream_calls = params.max_threads;
-          expected_stats->num_async_stream_infer_calls = num_expected_requests;
-        }
-        else {
-          expected_stats->num_async_infer_calls = num_expected_requests;
-        }
-      }
-      else {
-        expected_stats->num_infer_calls =  num_expected_requests;
-        if (params.streaming) {
-          expected_stats->num_start_stream_calls = params.max_threads;
-        }
-      }
-
-      // Only the first pass is expected to call StartStream(). After that
-      // the threads are reused
-      //
-      if (!first_call) {
-        expected_stats->num_start_stream_calls = 0;
-      }
-
-      return expected_stats;
+    void CheckSequences(PerfAnalyzerParameters params) {
+      // TODO: Add actual checks
+      auto stats = GetStats();
     }
 
     std::vector<int64_t> GatherTimeBetweenRequests(std::vector<std::chrono::time_point<std::chrono::system_clock>> timestamps) {
@@ -255,38 +223,24 @@ class TestRequestRateManager {
       return variance;
     }
 
-    void CheckInferType(PerfAnalyzerParameters params) {
-      auto stats = GetStats();
+    std::unique_ptr<LoadManager> CreateManager(PerfAnalyzerParameters params, bool is_sequence_model=false) {
 
-      if (params.async) {
-        if (params.streaming) {
-          CHECK(stats->num_infer_calls == 0);
-          CHECK(stats->num_async_infer_calls == 0);
-          CHECK(stats->num_async_stream_infer_calls > 0);
-          CHECK(stats->num_start_stream_calls > 0);
-        }
-        else {
-          CHECK(stats->num_infer_calls == 0);
-          CHECK(stats->num_async_infer_calls > 0);
-          CHECK(stats->num_async_stream_infer_calls == 0);
-          CHECK(stats->num_start_stream_calls == 0);          
-        }
-      }
-      else {
-        if (params.streaming) {
-          CHECK(stats->num_infer_calls > 0);
-          CHECK(stats->num_async_infer_calls == 0);
-          CHECK(stats->num_async_stream_infer_calls == 0);
-          CHECK(stats->num_start_stream_calls > 0);
-        }
-        else {
-          CHECK(stats->num_infer_calls > 0);
-          CHECK(stats->num_async_infer_calls == 0);
-          CHECK(stats->num_async_stream_infer_calls == 0);
-          CHECK(stats->num_start_stream_calls == 0);
-        }
-      }
-    }    
+      std::unique_ptr<LoadManager> manager;
+      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(stats_);
+      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
+
+      RequestRateManager::Create(
+        params.async, params.streaming, params.measurement_window_ms,
+        params.request_distribution, params.batch_size,
+        params.max_threads, params.num_of_sequences,
+        params.sequence_length, params.string_length,
+        params.string_data, params.zero_input, params.user_data,
+        params.shared_memory_type, params.output_shm_size,
+        params.start_sequence_id, params.sequence_id_range, parser,
+        factory, &manager);
+
+      return manager;
+    }        
 
 };
 
@@ -364,14 +318,20 @@ TEST_CASE("request_rate_multiple") {
   trrm.TestMultipleRequestRate(params);
 }
 
-
-// FIXME -- check sequence IDs?
+/// Check that the inference requests for sequences
+/// follow all rules and parameters
+///
 TEST_CASE("request_rate_sequence") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = false;
-  trrm.Run(params, {100}, 1000, true);
+  /// TODO: Params to test/tweak:
+  /// num_of_sequences
+  /// seq_length
+  /// start_seq_id
+  /// seq_id_range
+  
+  params.sequence_length = 3;
+  trrm.TestSequences(params);
 }
 
 
