@@ -69,14 +69,11 @@ class TestRequestRateManager {
 
     /// Test that the inference distribution is as expected
     ///
-    void TestDistribution(PerfAnalyzerParameters params) {
-
-      double request_rate = 500;
-      auto sleep_time = std::chrono::milliseconds(2000);
+    void TestDistribution(PerfAnalyzerParameters params, uint request_rate, uint duration_ms) {
 
       std::unique_ptr<LoadManager> manager = CreateManager(params);
       dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
-      std::this_thread::sleep_for(sleep_time);
+      std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
 
       CheckCallDistribution(params.request_distribution, request_rate);
     }    
@@ -278,6 +275,8 @@ TEST_CASE("request_rate_infer_type") {
 TEST_CASE("request_rate_distribution") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
+  uint request_rate = 500;
+  uint duration_ms = 1000;
 
   SUBCASE("constant") {
     params.request_distribution = CONSTANT;
@@ -285,7 +284,7 @@ TEST_CASE("request_rate_distribution") {
   SUBCASE("poisson") {
     params.request_distribution = POISSON;
   }
-  trrm.TestDistribution(params);
+  trrm.TestDistribution(params, request_rate, duration_ms);
 }
 
 /// Check that the request distribution is correct
@@ -298,6 +297,9 @@ TEST_CASE("request_rate_tiny_window") {
   PerfAnalyzerParameters params;
   params.request_distribution = CONSTANT;
   params.measurement_window_ms = 10;
+  uint request_rate = 500;
+  uint duration_ms = 1000;
+
 
   SUBCASE("one_thread") {
     params.max_threads = 1;
@@ -305,7 +307,7 @@ TEST_CASE("request_rate_tiny_window") {
   SUBCASE("odd_threads") {
     params.max_threads = 9;
   }
-  trrm.TestDistribution(params);
+  trrm.TestDistribution(params, request_rate, duration_ms);
 }
 
 /// Check that the schedule properly handles mid-test
