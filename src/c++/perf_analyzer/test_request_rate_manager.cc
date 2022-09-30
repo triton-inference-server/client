@@ -35,6 +35,8 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+/// Class to test the RequestRateManager
+///
 class TestRequestRateManager {
   public:
     TestRequestRateManager() {
@@ -78,7 +80,6 @@ class TestRequestRateManager {
       CheckCallDistribution(params.request_distribution, request_rate);
     }    
 
-
     /// Test that the schedule is properly update after calling ChangeRequestRate
     ///
     void TestMultipleRequestRate(PerfAnalyzerParameters params) {
@@ -119,7 +120,6 @@ class TestRequestRateManager {
       stats_->Reset();
     }
 
-
     void CheckInferType(PerfAnalyzerParameters params) {
       auto stats = GetStats();
 
@@ -153,7 +153,6 @@ class TestRequestRateManager {
       }
     }    
     
-
     void CheckCallDistribution(Distribution request_distribution, int request_rate) {
       auto timestamps = GetStats()->request_timestamps;
       std::vector<int64_t> time_delays = GatherTimeBetweenRequests(timestamps);
@@ -329,7 +328,7 @@ TEST_CASE("request_rate_sequence") {
   /// seq_length
   /// start_seq_id
   /// seq_id_range
-  
+
   params.sequence_length = 3;
   trrm.TestSequences(params);
 }

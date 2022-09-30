@@ -29,6 +29,8 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
+/// Mock class of an InferResult
+///
 class MockInferResult : public InferResult {
   public: 
     MockInferResult(const InferOptions& options): req_id_{options.request_id_} {}
@@ -41,6 +43,8 @@ class MockInferResult : public InferResult {
     std::string req_id_;
 };
 
+/// Class to track statistics of MockClientBackend
+/// 
 class MockClientStats {
   public:
     enum ReqType {SYNC, ASYNC, ASYNC_STREAM};
@@ -108,6 +112,8 @@ class MockClientStats {
     }
 };
 
+/// Mock implementation of ClientBackend interface
+///
 class MockClientBackend : public ClientBackend {
   public:
     MockClientBackend(std::shared_ptr<MockClientStats> stats) {
@@ -159,7 +165,9 @@ class MockClientBackend : public ClientBackend {
     OnCompleteFn stream_callback_;
 };
 
-
+/// Mock factory that always creates a MockClientBackend instead
+/// of a real backend
+///
 class MockClientBackendFactory : public ClientBackendFactory {
   public:
     MockClientBackendFactory(std::shared_ptr<MockClientStats> stats) {

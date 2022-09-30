@@ -33,6 +33,9 @@ namespace triton { namespace perfanalyzer {
 ///
 class TestPerfUtils {
   public:
+    /// Given a distributionType and request rate, confirm that request pattern matches
+    /// what is expected.
+    /// 
     static void TestDistribution(Distribution distributionType, uint32_t request_rate) {
         std::mt19937 schedule_rng;
         std::vector<int64_t> delays;
@@ -98,7 +101,8 @@ class TestPerfUtils {
     }
 };
 
-
+/// Test all distributions across various request rates
+///
 TEST_CASE("test_distribution") {
     std::vector<Distribution> distTypes{CONSTANT, POISSON};
     std::vector<uint32_t> requestRates{10,100,1000,10000};
