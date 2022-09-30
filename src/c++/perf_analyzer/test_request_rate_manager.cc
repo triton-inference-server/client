@@ -43,6 +43,55 @@ class TestRequestRateManager {
       // (aka every unit test)
       //
       early_exit = false;
+
+      stats_ = std::make_shared<cb::MockClientStats>();
+    }
+
+    /// Test that the correct Infer function is called in the backend
+    ///
+    void TestInferType(bool is_async, bool is_streaming) {
+      PerfAnalyzerParameters params;
+      params.async = is_async;
+      params.streaming = is_streaming;
+
+      double request_rate = 50;
+      auto sleep_time = std::chrono::milliseconds(100);
+
+      std::unique_ptr<LoadManager> manager = CreateManager(params);
+      dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
+      std::this_thread::sleep_for(sleep_time);
+
+      CheckInferType(params);
+    }
+
+    /// Test that the inference distribution is as expected
+    ///
+    void TestDistribution(PerfAnalyzerParameters params) {
+
+      double request_rate = 500;
+      auto sleep_time = std::chrono::milliseconds(2000);
+
+      std::unique_ptr<LoadManager> manager = CreateManager(params);
+      dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
+      std::this_thread::sleep_for(sleep_time);
+
+      CheckCallDistribution(params.request_distribution, request_rate);
+    }    
+
+
+    /// Test that the schedule is properly update after calling ChangeRequestRate
+    ///
+    void TestMultipleRequestRate(PerfAnalyzerParameters params) {
+      std::vector<double> request_rates = {50, 200};
+      auto sleep_time = std::chrono::milliseconds(500);
+
+      std::unique_ptr<LoadManager> manager = CreateManager(params);
+      for (auto request_rate : request_rates) {
+        dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
+        ResetStats();
+        std::this_thread::sleep_for(sleep_time);
+        CheckCallDistribution(params.request_distribution, request_rate);
+      }
     }
 
     void Run(PerfAnalyzerParameters params, std::vector<int> request_rates = std::vector<int>{20, 100}, uint32_t duration_ms=500, bool is_sequence_model = false) {
@@ -60,7 +109,37 @@ class TestRequestRateManager {
       }
     }
 
+
   private:
+    std::shared_ptr<cb::MockClientStats> stats_;
+
+    std::shared_ptr<cb::MockClientStats> GetStats() {
+      return stats_;
+    }
+
+    void ResetStats() {
+      stats_->Reset();
+    }
+
+    std::unique_ptr<LoadManager> CreateManager(PerfAnalyzerParameters params, bool is_sequence_model=false) {
+
+      std::unique_ptr<LoadManager> manager;
+      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(stats_);
+      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
+
+      RequestRateManager::Create(
+        params.async, params.streaming, params.measurement_window_ms,
+        params.request_distribution, params.batch_size,
+        params.max_threads, params.num_of_sequences,
+        params.sequence_length, params.string_length,
+        params.string_data, params.zero_input, params.user_data,
+        params.shared_memory_type, params.output_shm_size,
+        params.start_sequence_id, params.sequence_id_range, parser,
+        factory, &manager);
+
+      return manager;
+    }        
+
     void Check(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
       CheckCallCounts(params, request_rate, duration, first_call);
       CheckCallDistribution(params.request_distribution, request_rate);
@@ -68,83 +147,74 @@ class TestRequestRateManager {
 
     void CheckCallCounts(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
 
-      cb::MockClientStats stats = GetStats();
-      cb::MockClientStats expected_stats = GetExpectedStats(params, request_rate, duration, first_call);
+      std::shared_ptr<cb::MockClientStats> stats = GetStats();
+      std::shared_ptr<cb::MockClientStats> expected_stats = GetExpectedStats(params, request_rate, duration, first_call);
 
       // Allow 20% slop in the infer call numbers, as we can't guarentee the exact amount of 
       // time we allow the threads to run before capturing the stats
       //
-      CHECK(stats.num_start_stream_calls == expected_stats.num_start_stream_calls);
-      CHECK(stats.num_infer_calls == doctest::Approx(expected_stats.num_infer_calls).epsilon(0.20));
-      CHECK(stats.num_async_infer_calls == doctest::Approx(expected_stats.num_async_infer_calls).epsilon(0.20));
-      CHECK(stats.num_async_stream_infer_calls == doctest::Approx(expected_stats.num_async_stream_infer_calls).epsilon(0.20));
+      CHECK(stats->num_start_stream_calls == expected_stats->num_start_stream_calls);
+      CHECK(stats->num_infer_calls == doctest::Approx(expected_stats->num_infer_calls).epsilon(0.20));
+      CHECK(stats->num_async_infer_calls == doctest::Approx(expected_stats->num_async_infer_calls).epsilon(0.20));
+      CHECK(stats->num_async_stream_infer_calls == doctest::Approx(expected_stats->num_async_stream_infer_calls).epsilon(0.20));
     }
 
     void CheckCallDistribution(Distribution request_distribution, int request_rate) {
-      std::vector<int64_t> time_delays = GatherTimeBetweenRequests(GetStats().request_timestamps);
+      auto timestamps = GetStats()->request_timestamps;
+      std::vector<int64_t> time_delays = GatherTimeBetweenRequests(timestamps);
 
       double delay_average = CalculateAverage(time_delays);
       double delay_variance = CalculateVariance(time_delays, delay_average);
 
-      double expected_delay_average = std::chrono::milliseconds(1000).count() / static_cast<double>(request_rate);
+      std::chrono::nanoseconds ns_in_one_second = std::chrono::seconds(1);
+      double expected_delay_average = ns_in_one_second.count() / static_cast<double>(request_rate);
 
       if (request_distribution == POISSON) {
-        // With such a small sample size for a poisson distribution, we might be far off.
-        // Allow 25% slop
-        //
-        CHECK(delay_average == doctest::Approx(expected_delay_average).epsilon(0.25));
-
         // By definition, variance == average for Poisson.
-        // Allow 10% slop
         //
-        CHECK(delay_variance == doctest::Approx(delay_average).epsilon(0.10));        
+        // With such a small sample size for a poisson distribution, there will be noise.
+        // Allow 5% slop
+        //
+        CHECK(delay_average == doctest::Approx(expected_delay_average).epsilon(0.05));
+        CHECK(delay_variance == doctest::Approx(delay_average).epsilon(0.05));        
       }
       else if (request_distribution == CONSTANT) {
-
-        // Constant should be pretty tight. Allowing 10% slop since the same size is so small
-        //
-        CHECK(delay_average == doctest::Approx(expected_delay_average).epsilon(0.10));        
-
         // constant should in theory have 0 variance, but with thread timing
         // there is obviously some noise. 
-        // Make sure it is less than 1 (millisecond)
         //
-        CHECK_LT(delay_variance, 1);
+        // Allow it to be at most 5% of average
+        //
+        auto max_allowed_delay_variance = 0.05 * delay_average;
+
+        // Constant should be pretty tight. Allowing 1% slop there is noise in the thread scheduling
+        //
+        CHECK(delay_average == doctest::Approx(expected_delay_average).epsilon(0.01));        
+        CHECK_LT(delay_variance, max_allowed_delay_variance);
       }
       else {
         CHECK(true == false);
       }
     }
 
-    void ResetStats() {
-      stats_ = cb::MockClientStats();
-    }
-
-    cb::MockClientStats stats_;
-
-    cb::MockClientStats GetStats() {
-      return stats_;
-    }
-
-    cb::MockClientStats GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
-      cb::MockClientStats expected_stats;
+    std::shared_ptr<cb::MockClientStats> GetExpectedStats(PerfAnalyzerParameters params, int request_rate, std::chrono::milliseconds duration, bool first_call) {
+      std::shared_ptr<cb::MockClientStats> expected_stats = std::make_shared<cb::MockClientStats>();
 
       double time_in_seconds = duration.count() / static_cast<double>(std::chrono::milliseconds(1000).count());
       auto num_expected_requests = request_rate * time_in_seconds;
 
       if (params.async) {
         if (params.streaming) {
-          expected_stats.num_start_stream_calls = params.max_threads;
-          expected_stats.num_async_stream_infer_calls = num_expected_requests;
+          expected_stats->num_start_stream_calls = params.max_threads;
+          expected_stats->num_async_stream_infer_calls = num_expected_requests;
         }
         else {
-          expected_stats.num_async_infer_calls = num_expected_requests;
+          expected_stats->num_async_infer_calls = num_expected_requests;
         }
       }
       else {
-        expected_stats.num_infer_calls =  num_expected_requests;
+        expected_stats->num_infer_calls =  num_expected_requests;
         if (params.streaming) {
-          expected_stats.num_start_stream_calls = params.max_threads;
+          expected_stats->num_start_stream_calls = params.max_threads;
         }
       }
 
@@ -152,7 +222,7 @@ class TestRequestRateManager {
       // the threads are reused
       //
       if (!first_call) {
-        expected_stats.num_start_stream_calls = 0;
+        expected_stats->num_start_stream_calls = 0;
       }
 
       return expected_stats;
@@ -165,8 +235,8 @@ class TestRequestRateManager {
 
       for (size_t i = 1; i < timestamps.size(); i++) {
         auto diff = timestamps[i] - timestamps[i-1];
-        std::chrono::milliseconds diff_ms = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
-        time_between_requests.push_back(diff_ms.count());
+        std::chrono::nanoseconds diff_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(diff);
+        time_between_requests.push_back(diff_ns.count());
       }
       return time_between_requests;
     }
@@ -185,67 +255,109 @@ class TestRequestRateManager {
       return variance;
     }
 
-    std::unique_ptr<LoadManager> CreateManager(PerfAnalyzerParameters params, bool is_sequence_model) {
+    void CheckInferType(PerfAnalyzerParameters params) {
+      auto stats = GetStats();
 
-      std::unique_ptr<LoadManager> manager;
-      std::shared_ptr<cb::ClientBackendFactory> factory = std::make_shared<cb::MockClientBackendFactory>(&stats_);
-      std::shared_ptr<ModelParser> parser = std::make_shared<MockModelParser>(is_sequence_model);
-
-      RequestRateManager::Create(
-        params.async, params.streaming, params.measurement_window_ms,
-        params.request_distribution, params.batch_size,
-        params.max_threads, params.num_of_sequences,
-        params.sequence_length, params.string_length,
-        params.string_data, params.zero_input, params.user_data,
-        params.shared_memory_type, params.output_shm_size,
-        params.start_sequence_id, params.sequence_id_range, parser,
-        factory, &manager);
-
-      return manager;
+      if (params.async) {
+        if (params.streaming) {
+          CHECK(stats->num_infer_calls == 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls > 0);
+          CHECK(stats->num_start_stream_calls > 0);
+        }
+        else {
+          CHECK(stats->num_infer_calls == 0);
+          CHECK(stats->num_async_infer_calls > 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls == 0);          
+        }
+      }
+      else {
+        if (params.streaming) {
+          CHECK(stats->num_infer_calls > 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls > 0);
+        }
+        else {
+          CHECK(stats->num_infer_calls > 0);
+          CHECK(stats->num_async_infer_calls == 0);
+          CHECK(stats->num_async_stream_infer_calls == 0);
+          CHECK(stats->num_start_stream_calls == 0);
+        }
+      }
     }    
+
 };
 
-TEST_CASE("request_rate_no_stream_no_async") {
+
+/// Check that the correct inference function calls
+/// are used given different param values for async and stream
+///
+TEST_CASE("request_rate_infer_type") {
   TestRequestRateManager trrm{};
-  PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = false;
-  trrm.Run(params);
+  bool async;
+  bool stream;
+
+  SUBCASE("async_stream") {
+    async=true;
+    stream=true;
+  }
+  SUBCASE("async_no_stream") {
+    async=true;
+    stream=false;
+  }
+  SUBCASE("no_async_stream") {
+    async=false;
+    stream=true;
+  }
+  SUBCASE("no_async_no_stream") {
+    async=false;
+    stream=false;
+  }
+
+  trrm.TestInferType(async, stream);
 }
 
-
-TEST_CASE("request_rate_no_stream_no_async_poisson") {
+/// Check that the request distribution is correct for
+/// different Distribution types
+/// 
+TEST_CASE("request_rate_distribution") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = false;
-  params.request_distribution = POISSON;
-  trrm.Run(params);
+
+  SUBCASE("constant") {
+    params.request_distribution = CONSTANT;
+  }
+  SUBCASE("poisson") {
+    params.request_distribution = POISSON;
+  }
+  trrm.TestDistribution(params);
 }
 
-TEST_CASE("request_rate_stream_no_async") {
+/// Check that the request distribution is correct
+/// for the case where the measurement window is tiny
+/// and thus the code will loop through the schedule
+/// many times
+///
+TEST_CASE("request_rate_tiny_window") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
-  params.streaming = true;
-  params.async = false;
-  trrm.Run(params);
+  params.request_distribution = CONSTANT;
+  params.measurement_window_ms = 10;
+
+  trrm.TestDistribution(params);
 }
 
-TEST_CASE("request_rate_no_stream_async") {
+/// Check that the schedule properly handles mid-test
+/// update to the request rate
+///
+TEST_CASE("request_rate_multiple") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
-  params.streaming = false;
-  params.async = true;
-  trrm.Run(params);
+  trrm.TestMultipleRequestRate(params);
 }
 
-TEST_CASE("request_rate_stream_async") {
-  TestRequestRateManager trrm{};
-  PerfAnalyzerParameters params;
-  params.streaming = true;
-  params.async = true;
-  trrm.Run(params);
-}
 
 TEST_CASE("request_rate_max_threads_1") {
   TestRequestRateManager trrm{};

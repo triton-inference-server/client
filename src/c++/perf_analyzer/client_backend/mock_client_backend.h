@@ -41,7 +41,7 @@ class MockInferResult : public InferResult {
     std::string req_id_;
 };
 
-struct MockClientStats {
+class MockClientStats {
   public:
     size_t num_infer_calls{0};
     size_t num_async_infer_calls{0};
@@ -49,11 +49,29 @@ struct MockClientStats {
     size_t num_start_stream_calls{0};
 
     std::vector<std::chrono::time_point<std::chrono::system_clock>> request_timestamps;
+
+    void CaptureRequestTime() {
+      std::lock_guard<std::mutex> lock(mtx_);
+      auto time = std::chrono::system_clock::now();
+      request_timestamps.push_back(time);
+    }   
+
+    void Reset() {
+      num_infer_calls = 0;
+      num_async_infer_calls = 0;
+      num_async_stream_infer_calls = 0;
+      num_start_stream_calls = 0;
+      request_timestamps.clear();
+    }
+    
+  private:    
+    std::mutex mtx_;
+
 };
 
 class MockClientBackend : public ClientBackend {
   public:
-    MockClientBackend(MockClientStats* stats) {
+    MockClientBackend(std::shared_ptr<MockClientStats> stats) {
       stats_ = stats;
     }
 
@@ -62,7 +80,7 @@ class MockClientBackend : public ClientBackend {
                     const std::vector<InferInput*>& inputs, 
                     const std::vector<const InferRequestedOutput*>& outputs) override 
     {
-      CaptureRequestTime();
+      stats_->CaptureRequestTime();
       stats_->num_infer_calls++;
       return Error::Success;
     }
@@ -71,7 +89,7 @@ class MockClientBackend : public ClientBackend {
                          const InferOptions& options,
                          const std::vector<InferInput*>& inputs,
                          const std::vector<const InferRequestedOutput*>& outputs) override {
-      CaptureRequestTime();
+      stats_->CaptureRequestTime();
       stats_->num_async_infer_calls++;
       InferResult* result = new MockInferResult(options);
 
@@ -82,7 +100,7 @@ class MockClientBackend : public ClientBackend {
     Error AsyncStreamInfer(const InferOptions& options, 
                                const std::vector<InferInput*>& inputs,
                                const std::vector<const InferRequestedOutput*>& outputs) {
-      CaptureRequestTime();
+      stats_->CaptureRequestTime();
       stats_->num_async_stream_infer_calls++;
       InferResult* result = new MockInferResult(options);
       stream_callback_(result);
@@ -101,19 +119,14 @@ class MockClientBackend : public ClientBackend {
     }
 
   private:
-    MockClientStats* stats_;
+    std::shared_ptr<MockClientStats> stats_;
     OnCompleteFn stream_callback_;
-
-    void CaptureRequestTime() {
-      auto time = std::chrono::system_clock::now();
-      stats_->request_timestamps.push_back(time);
-    }
 };
 
 
 class MockClientBackendFactory : public ClientBackendFactory {
   public:
-    MockClientBackendFactory(MockClientStats* stats) {
+    MockClientBackendFactory(std::shared_ptr<MockClientStats> stats) {
       stats_ = stats;
     }
 
@@ -123,7 +136,7 @@ class MockClientBackendFactory : public ClientBackendFactory {
       return Error::Success;
     }
   private:
-    MockClientStats* stats_;
+    std::shared_ptr<MockClientStats> stats_;
 };
 
 }}}

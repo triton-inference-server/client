@@ -503,6 +503,8 @@ InferenceProfiler::Profile(
 
   RETURN_IF_ERROR(dynamic_cast<RequestRateManager*>(manager_.get())
                       ->ChangeRequestRate(request_rate));
+  std::cout << "Request Rate: " << request_rate
+            << " inference requests per seconds" << std::endl;
 
   err = ProfileHelper(false /*clean_starts*/, status_summary, &is_stable);
   if (err.IsOk()) {

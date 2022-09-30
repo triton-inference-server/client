@@ -125,16 +125,14 @@ RequestRateManager::GenerateSchedule(const double request_rate)
     return;
   }
   schedule_.clear();
-  schedule_.emplace_back(0);
+
+  std::chrono::nanoseconds next_timestamp(0);
 
   std::mt19937 schedule_rng;
-  while (schedule_.back() < *gen_duration_) {
-    std::chrono::nanoseconds next_timestamp(
-        schedule_.back() + distribution(schedule_rng));
-    schedule_.emplace_back(next_timestamp);
+  while (next_timestamp < *gen_duration_) {
+    schedule_.emplace_back(next_timestamp);    
+    next_timestamp = schedule_.back() + distribution(schedule_rng);
   }
-  std::cout << "Request Rate: " << request_rate
-            << " inference requests per seconds" << std::endl;
 }
 
 void
