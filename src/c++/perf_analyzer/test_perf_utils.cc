@@ -26,6 +26,7 @@
 
 #include "doctest.h"
 #include "perf_utils.h"
+#include "test_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -36,27 +37,27 @@ class TestPerfUtils {
     /// Given a distributionType and request rate, confirm that request pattern matches
     /// what is expected.
     /// 
-    static void TestDistribution(Distribution distributionType, uint32_t request_rate) {
+    static void TestDistribution(Distribution distribution_type, uint32_t request_rate) {
         std::mt19937 schedule_rng;
         std::vector<int64_t> delays;
 
         double avg, variance;
         double expected_avg, expected_variance;
 
-        auto distFunc = GetDistributionFunction(distributionType, request_rate);
+        auto dist_func = GetDistributionFunction(distribution_type, request_rate);
         
         for (int i = 0; i < 100000; i++) {
-            auto delay = distFunc(schedule_rng);
+            auto delay = dist_func(schedule_rng);
             delays.push_back(delay.count());
         }
 
         avg = CalculateAverage(delays);
         variance = CalculateVariance(delays, avg);
 
-        std::chrono::nanoseconds nsInOneSecond = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)); 
-        expected_avg = nsInOneSecond.count() / request_rate;
+        std::chrono::nanoseconds ns_in_one_second = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)); 
+        expected_avg = ns_in_one_second.count() / request_rate;
         
-        if (distributionType == CONSTANT) {
+        if (distribution_type == CONSTANT) {
             expected_variance = 0;
         }
         else {
@@ -70,20 +71,6 @@ class TestPerfUtils {
 
 
   private:
-
-    static double CalculateAverage(std::vector<int64_t> values) {
-      double avg = std::accumulate(values.begin(), values.end(), 0.0) / values.size();
-      return avg;
-    }
-
-    static double CalculateVariance(std::vector<int64_t> values, double average) {
-      double tmp = 0;
-      for (auto value : values) {
-        tmp += (value - average) * (value - average) / values.size();
-      }
-      double variance = sqrt(tmp);
-      return variance;
-    }
 
     static std::function<std::chrono::nanoseconds(std::mt19937&)> GetDistributionFunction(Distribution type, uint32_t request_rate) {
         std::function<std::chrono::nanoseconds(std::mt19937&)> distributionFunction;

@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,17 +26,29 @@
 
 #pragma once
 
-#include "model_parser.h"
+#include <cmath>
+#include <cstdint>
+#include <numeric>
+#include <vector>
 
-namespace triton { namespace perfanalyzer { 
+namespace triton { namespace perfanalyzer {
 
-class MockModelParser : public ModelParser {
- public:
-  MockModelParser(bool is_sequence_model) : ModelParser(clientbackend::BackendKind::TRITON) {
-    if (is_sequence_model) {
-      scheduler_type_ = ModelParser::SEQUENCE;
+/// Calculate the average of a vector of integers
+///
+static double CalculateAverage(const std::vector<int64_t>& values) {
+    double avg = std::accumulate(values.begin(), values.end(), 0.0) / values.size();
+    return avg;
+}
+
+/// Calculate the variance of a vector of integers
+///
+static double CalculateVariance(const std::vector<int64_t>& values, double average) {
+    double tmp = 0;
+    for (auto value : values) {
+        tmp += (value - average) * (value - average) / values.size();
     }
-  }
-};
+    double variance = std::sqrt(tmp);
+    return variance;
+}
 
 }}

@@ -30,6 +30,7 @@
 #include "mock_client_backend.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
+#include "test_utils.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
@@ -96,6 +97,7 @@ class TestRequestRateManager {
     }
 
     /// Test sequence handling
+    ///
     void TestSequences(PerfAnalyzerParameters params) {
       bool is_sequence_model=true;
       std::unique_ptr<LoadManager> manager = CreateManager(params, is_sequence_model);
@@ -186,7 +188,7 @@ class TestRequestRateManager {
         CHECK_LT(delay_variance, max_allowed_delay_variance);
       }
       else {
-        CHECK(true == false);
+        throw std::invalid_argument("Unexpected distribution type");
       }
     }
 
@@ -195,10 +197,8 @@ class TestRequestRateManager {
       auto stats = GetStats();
     }
 
-    std::vector<int64_t> GatherTimeBetweenRequests(std::vector<std::chrono::time_point<std::chrono::system_clock>> timestamps) {
+    std::vector<int64_t> GatherTimeBetweenRequests(const std::vector<std::chrono::time_point<std::chrono::system_clock>>& timestamps) {
       std::vector<int64_t> time_between_requests;
-
-      sort(timestamps.begin(), timestamps.end());
 
       for (size_t i = 1; i < timestamps.size(); i++) {
         auto diff = timestamps[i] - timestamps[i-1];

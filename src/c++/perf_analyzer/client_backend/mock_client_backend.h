@@ -24,6 +24,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
+
 #include "client_backend.h"
 #include <chrono>
 
@@ -47,7 +49,8 @@ class MockInferResult : public InferResult {
 /// 
 class MockClientStats {
   public:
-    enum ReqType {SYNC, ASYNC, ASYNC_STREAM};
+    enum class ReqType {SYNC, ASYNC, ASYNC_STREAM};
+
     struct SeqStatus {
       bool live = false;
     };
@@ -85,10 +88,10 @@ class MockClientStats {
     std::mutex mtx_;
 
     void UpdateCallCount(ReqType type) {
-      if (type == SYNC) {
+      if (type == ReqType::SYNC) {
         num_infer_calls++;
       }
-      else if (type == ASYNC) {
+      else if (type == ReqType::ASYNC) {
         num_async_infer_calls++;
       }
       else {
@@ -100,6 +103,8 @@ class MockClientStats {
       if (options.sequence_id_ != 0) {
         SeqStatus& status = sequence_statuses[options.sequence_id_];
 
+        // FIXME one more check around starting a live seq
+        // change to assert(?)
         if (status.live == false) {
           CHECK(options.sequence_start_ == true);
           status.live = true;
@@ -150,6 +155,7 @@ class MockClientBackend : public ClientBackend {
     }
 
     Error StartStream(OnCompleteFn callback, bool enable_stats) {
+      // FIXME don't reach into class. Call fn, use mutex
       stats_->num_start_stream_calls++;
       stream_callback_ = callback;
       return Error::Success;
