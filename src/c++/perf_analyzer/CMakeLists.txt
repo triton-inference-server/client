@@ -142,11 +142,16 @@ add_executable(
   ${PERF_ANALYZER_UNIT_TESTS_SRCS}
   ${PERF_ANALYZER_UNIT_TESTS_HDRS}
   mock_inference_profiler.h
+  mock_model_parser.h
+  test_utils.h
+  client_backend/mock_client_backend.h  
   test_inference_profiler.cc
   test_command_line_parser.cc
   test_model_parser.cc
   test_metrics_manager.cc
+  test_perf_utils.cc
   test_report_writer.cc
+  test_request_rate_manager.cc
   client_backend/triton/test_triton_client_backend.cc
   $<TARGET_OBJECTS:json-utils-library>
 )

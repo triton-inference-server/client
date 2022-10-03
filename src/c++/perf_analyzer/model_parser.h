@@ -160,6 +160,9 @@ class ModelParser {
     return composing_models_map_;
   }
 
+ protected:
+  ModelSchedulerType scheduler_type_;
+
  private:
   cb::Error GetEnsembleSchedulerType(
       const rapidjson::Document& config, const std::string& model_version,
@@ -183,7 +186,6 @@ class ModelParser {
   std::string model_name_;
   std::string model_version_;
   std::string model_signature_name_;
-  ModelSchedulerType scheduler_type_;
   size_t max_batch_size_;
   bool is_decoupled_;
   bool response_cache_enabled_;

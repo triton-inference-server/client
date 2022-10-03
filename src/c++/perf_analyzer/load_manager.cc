@@ -217,7 +217,7 @@ LoadManager::LoadManager(
 {
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
-       (parser->SchedulerType() == ModelParser::ENSEMBLE_SEQUENCE));
+       (parser_->SchedulerType() == ModelParser::ENSEMBLE_SEQUENCE));
 
   data_loader_.reset(new DataLoader(batch_size));
 }
