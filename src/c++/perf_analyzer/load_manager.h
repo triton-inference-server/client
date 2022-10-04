@@ -189,14 +189,15 @@ class LoadManager {
       const InferContext& ctx, const cb::InferResult* result_ptr);
 
   void SetInferSequenceOptions(
-      const uint32_t seq_id, std::unique_ptr<cb::InferOptions>& options);
-  void InitNewSequence(int sequence_id);
+      const uint32_t seq_stat_id, std::unique_ptr<cb::InferOptions>& options);
+  void InitNewSequence(int seq_stat_id);
+  uint64_t GetNextSeqId(int seq_stat_id);
 
   /// Generate random sequence length based on 'offset_ratio' and
   /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'
   /// \param offset_ratio The offset ratio of the generated length
   /// \return random sequence length
-  size_t GetRandomLength(double offset_ratio);
+  size_t GetRandomSequenceLength(double offset_ratio);
 
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
@@ -290,7 +291,9 @@ class LoadManager {
   };
 
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
-  std::atomic<uint64_t> next_seq_id_;
+
+  // Current sequence id (for issuing new sequences)
+  std::atomic<uint64_t> curr_seq_id_;
 
   // Worker threads that loads the server with inferences
   std::vector<std::thread> threads_;

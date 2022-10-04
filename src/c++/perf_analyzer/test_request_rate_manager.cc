@@ -100,7 +100,7 @@ class TestRequestRateManager {
       std::unique_ptr<LoadManager> manager = CreateManager(params, is_sequence_model);
 
       double request_rate = 200;
-      auto sleep_time = std::chrono::milliseconds(100);
+      auto sleep_time = std::chrono::milliseconds(500);
 
       dynamic_cast<RequestRateManager*>(manager.get())->ChangeRequestRate(request_rate);
       std::this_thread::sleep_for(sleep_time);
@@ -190,8 +190,30 @@ class TestRequestRateManager {
     }
 
     void CheckSequences(PerfAnalyzerParameters params) {
-      // TODO: Add actual checks
       auto stats = GetStats();
+      
+      // Make sure all seq IDs are within range
+      //
+      for (auto seq_id : stats->sequence_status.used_seq_ids) {
+        CHECK(seq_id >= params.start_sequence_id);
+        CHECK(seq_id <= params.start_sequence_id + params.sequence_id_range);
+      }
+
+      // Make sure that we had the correct number of concurrently live sequences
+      //
+      // If the sequence length is only 1 then there is nothing to check because there 
+      // are never any overlapping requests -- they always immediately exit
+      //
+      if (params.sequence_length != 1) {
+        CHECK(params.num_of_sequences == stats->sequence_status.max_live_seq_count);
+      }
+
+      // Make sure that the length of each sequence is as expected
+      // (The code explicitly has a 20% slop, so that is what we are checking)
+      //
+      for (auto len : stats->sequence_status.seq_lengths) {
+        CHECK(len == doctest::Approx(params.sequence_length).epsilon(0.20));
+      }
     }
 
     std::vector<int64_t> GatherTimeBetweenRequests(const std::vector<std::chrono::time_point<std::chrono::system_clock>>& timestamps) {
@@ -325,14 +347,51 @@ TEST_CASE("request_rate_multiple") {
 TEST_CASE("request_rate_sequence") {
   TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
-  /// TODO: Params to test/tweak:
-  /// num_of_sequences
-  /// seq_length
-  /// start_seq_id
-  /// seq_id_range
-
+  
+  // Generally we want short sequences for testing 
+  // so we can hit the corner cases more often
+  //
   params.sequence_length = 3;
+  
+  // TODO: Params to test/tweak:
+  // num_of_sequences
+  //    number of active sequences at once
+  // seq_length
+  //    Random length within GetRandomSequenceLength()
+  // start_sequence_id - Where the numbering should start. Default=1
+  //    Used by loadmanager::initnewsequence
+  // sequence_id_range
+  //    This is how many sequence ids there are (?)
+
+  SUBCASE("Normal") {
+  }
+  SUBCASE("sequence IDs 1") {
+    params.start_sequence_id = 1;
+    params.sequence_id_range = 5;
+  }
+  SUBCASE("sequence IDs 2") {
+    params.start_sequence_id = 17;
+    params.sequence_id_range = 8;
+  }
+  SUBCASE("num_of_sequences 1") {
+    params.num_of_sequences = 1;
+  }
+  SUBCASE("num_of_sequences 10") {
+    params.num_of_sequences = 10;
+    // Make sequences longer so we actually get 10 in flight at a time
+    params.sequence_length = 8;
+  }
+  SUBCASE("sequence_length 1") {
+    params.sequence_length = 1;
+  }
+  SUBCASE("sequence_length 10") {
+    params.sequence_length = 10;
+  }
+
+
+
   trrm.TestSequences(params);
+  
 }
 
 

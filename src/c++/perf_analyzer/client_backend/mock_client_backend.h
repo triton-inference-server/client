@@ -52,7 +52,31 @@ class MockClientStats {
     enum class ReqType {SYNC, ASYNC, ASYNC_STREAM};
 
     struct SeqStatus {
-      bool live = false;
+      std::set<uint64_t> used_seq_ids;
+      std::map<uint64_t, uint32_t> live_seq_ids_to_length;
+      uint32_t max_live_seq_count = 0;
+      std::vector<uint64_t> seq_lengths;
+
+      bool IsSeqLive(uint64_t seq_id) {
+        return (live_seq_ids_to_length.find(seq_id) != live_seq_ids_to_length.end());
+      }
+      void HandleSeqStart(uint64_t seq_id) {
+        used_seq_ids.insert(seq_id);
+        live_seq_ids_to_length[seq_id] = 0;
+        if (live_seq_ids_to_length.size() > max_live_seq_count) {
+          max_live_seq_count = live_seq_ids_to_length.size();
+        }        
+      }
+      void HandleSeqEnd(uint64_t seq_id) {
+        uint32_t len = live_seq_ids_to_length[seq_id];
+        seq_lengths.push_back(len);
+        auto it=live_seq_ids_to_length.find(seq_id);
+        live_seq_ids_to_length.erase(it);
+      }
+
+      void HandleSeqRequest(uint64_t seq_id) {
+        live_seq_ids_to_length[seq_id]++;
+      }
     };
 
     size_t num_infer_calls{0};
@@ -61,7 +85,7 @@ class MockClientStats {
     size_t num_start_stream_calls{0};
 
     std::vector<std::chrono::time_point<std::chrono::system_clock>> request_timestamps;
-    std::map<uint64_t, SeqStatus> sequence_statuses;
+    SeqStatus sequence_status;
 
     void CaptureRequest(ReqType type, 
                         const InferOptions& options,
@@ -75,6 +99,12 @@ class MockClientStats {
       UpdateCallCount(type);
       UpdateSeqStatus(options);
     }   
+
+    void CaptureStreamStart() {
+      std::lock_guard<std::mutex> lock(mtx_);
+      num_start_stream_calls++;
+    }
+
 
     void Reset() {
       num_infer_calls = 0;
@@ -100,21 +130,30 @@ class MockClientStats {
     }
 
     void UpdateSeqStatus(const InferOptions& options) {
+      // Seq ID of 0 is reserved for "not a sequence"
+      //
       if (options.sequence_id_ != 0) {
-        SeqStatus& status = sequence_statuses[options.sequence_id_];
-
-        // FIXME one more check around starting a live seq
-        // change to assert(?)
-        if (status.live == false) {
-          CHECK(options.sequence_start_ == true);
-          status.live = true;
+        // If a sequence ID is not live, it must be starting
+        if (!sequence_status.IsSeqLive(options.sequence_id_)) {
+          REQUIRE(options.sequence_start_ == true);
         }
+
+        // If a new sequence is starting, that sequence ID must not already be live
+        if (options.sequence_start_ == true) {
+          REQUIRE(sequence_status.IsSeqLive(options.sequence_id_) == false);
+          sequence_status.HandleSeqStart(options.sequence_id_);
+        }
+
+        sequence_status.HandleSeqRequest(options.sequence_id_);
+
+        // If a sequence is ending, it must be live
         if (options.sequence_end_) {
-          CHECK(status.live == true);
-          status.live = false;
+          REQUIRE(sequence_status.IsSeqLive(options.sequence_id_) == true);
+          sequence_status.HandleSeqEnd(options.sequence_id_);
         }
       }
     }
+
 };
 
 /// Mock implementation of ClientBackend interface
@@ -155,8 +194,7 @@ class MockClientBackend : public ClientBackend {
     }
 
     Error StartStream(OnCompleteFn callback, bool enable_stats) {
-      // FIXME don't reach into class. Call fn, use mutex
-      stats_->num_start_stream_calls++;
+      stats_->CaptureStreamStart();
       stream_callback_ = callback;
       return Error::Success;
     }
