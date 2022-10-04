@@ -189,9 +189,10 @@ class LoadManager {
       const InferContext& ctx, const cb::InferResult* result_ptr);
 
   void SetInferSequenceOptions(
-      const uint32_t seq_stat_id, std::unique_ptr<cb::InferOptions>& options);
-  void InitNewSequence(int seq_stat_id);
-  uint64_t GetNextSeqId(int seq_stat_id);
+      const uint32_t seq_stat_index,
+      std::unique_ptr<cb::InferOptions>& options);
+  void InitNewSequence(int seq_stat_index);
+  uint64_t GetNextSeqId(int seq_stat_index);
 
   /// Generate random sequence length based on 'offset_ratio' and
   /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'

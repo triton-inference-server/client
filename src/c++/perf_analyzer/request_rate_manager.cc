@@ -263,7 +263,7 @@ RequestRateManager::Infer(
 
     thread_config->is_paused_ = false;
 
-    uint32_t seq_stat_id = 0;
+    uint32_t seq_stat_index = 0;
 
     // Sleep if required
     std::chrono::steady_clock::time_point now =
@@ -304,24 +304,24 @@ RequestRateManager::Infer(
 
     if (on_sequence_model_) {
       // Select one of the sequence at random for this request
-      seq_stat_id = rand() % sequence_stat_.size();
+      seq_stat_index = rand() % sequence_stat_.size();
       // Need lock to protect the order of dispatch across worker threads.
       // This also helps in reporting the realistic latencies.
-      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_id]->mtx_);
+      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
       if (!early_exit) {
-        SetInferSequenceOptions(seq_stat_id, ctx->options_);
+        SetInferSequenceOptions(seq_stat_index, ctx->options_);
 
         // Update the inputs if required
         if (using_json_data_) {
           int step_id = data_loader_->GetTotalSteps(
-                            sequence_stat_[seq_stat_id]->data_stream_id_) -
-                        sequence_stat_[seq_stat_id]->remaining_queries_;
+                            sequence_stat_[seq_stat_index]->data_stream_id_) -
+                        sequence_stat_[seq_stat_index]->remaining_queries_;
           thread_stat->status_ = UpdateInputs(
               ctx->inputs_, ctx->valid_inputs_,
-              sequence_stat_[seq_stat_id]->data_stream_id_, step_id);
+              sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
           if (thread_stat->status_.IsOk()) {
             thread_stat->status_ = UpdateValidationOutputs(
-                ctx->outputs_, sequence_stat_[seq_stat_id]->data_stream_id_,
+                ctx->outputs_, sequence_stat_[seq_stat_index]->data_stream_id_,
                 step_id, ctx->expected_outputs_);
           }
           if (!thread_stat->status_.IsOk()) {
@@ -332,7 +332,7 @@ RequestRateManager::Infer(
         Request(
             ctx, request_id++, delayed, callback_func, async_req_map,
             thread_stat);
-        sequence_stat_[seq_stat_id]->remaining_queries_--;
+        sequence_stat_[seq_stat_index]->remaining_queries_--;
       }
     } else {
       Request(
