@@ -822,14 +822,16 @@ void
 LoadManager::SetInferSequenceOptions(
     const uint32_t seq_stat_id, std::unique_ptr<cb::InferOptions>& options)
 {
-  options->sequence_start_ = (sequence_stat_[seq_stat_id]->remaining_queries_ == 0);
+  options->sequence_start_ =
+      (sequence_stat_[seq_stat_id]->remaining_queries_ == 0);
 
   // New sequence must be intialized before setting the id.
   if (options->sequence_start_) {
     InitNewSequence(seq_stat_id);
   }
   options->sequence_id_ = sequence_stat_[seq_stat_id]->seq_id_;
-  options->sequence_end_ = (sequence_stat_[seq_stat_id]->remaining_queries_ == 1);
+  options->sequence_end_ =
+      (sequence_stat_[seq_stat_id]->remaining_queries_ == 1);
 }
 
 void
@@ -850,9 +852,12 @@ LoadManager::InitNewSequence(int seq_stat_id)
   }
 }
 
-uint64_t LoadManager::GetNextSeqId(int seq_stat_id) {
+uint64_t
+LoadManager::GetNextSeqId(int seq_stat_id)
+{
   uint64_t old_seq_id = sequence_stat_[seq_stat_id]->seq_id_;
-  uint64_t next_seq_id = curr_seq_id_++ % sequence_id_range_ + start_sequence_id_;
+  uint64_t next_seq_id =
+      curr_seq_id_++ % sequence_id_range_ + start_sequence_id_;
 
   // If the next sequence ID is still in use, reuse the same sequence ID
   // that this sequence_stat used last time

@@ -130,7 +130,7 @@ RequestRateManager::GenerateSchedule(const double request_rate)
 
   std::mt19937 schedule_rng;
   while (next_timestamp < *gen_duration_) {
-    schedule_.emplace_back(next_timestamp);    
+    schedule_.emplace_back(next_timestamp);
     next_timestamp = schedule_.back() + distribution(schedule_rng);
   }
 }
@@ -321,8 +321,8 @@ RequestRateManager::Infer(
               sequence_stat_[seq_stat_id]->data_stream_id_, step_id);
           if (thread_stat->status_.IsOk()) {
             thread_stat->status_ = UpdateValidationOutputs(
-                ctx->outputs_, sequence_stat_[seq_stat_id]->data_stream_id_, step_id,
-                ctx->expected_outputs_);
+                ctx->outputs_, sequence_stat_[seq_stat_id]->data_stream_id_,
+                step_id, ctx->expected_outputs_);
           }
           if (!thread_stat->status_.IsOk()) {
             return;
