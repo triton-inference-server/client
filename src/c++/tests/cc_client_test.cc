@@ -123,7 +123,7 @@ class ClientTest : public ::testing::Test {
 
   tc::Error LoadModel(
       const std::string& model_name, const std::string& config,
-      const std::map<std::string, std::vector<char>>& files);
+      const std::map<std::string, std::vector<char>>& files = {});
 
   std::string model_name_;
   std::unique_ptr<ClientType> client_;
@@ -1282,6 +1282,42 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
   ASSERT_TRUE(err.IsOk()) << "Expect LoadModel() succeed: " << err.Message();
   // check that the model with original name is changed
   for (const auto& vr : expected_override_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Sanity check readiness of the different named model
+  for (const auto& vr : expected_override_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, override_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second)
+        << "expect model " << override_name << " version " << vr.first
+        << " readiness: " << vr.second;
+  }
+
+  // Request to load the model with override config in original name
+  // Send the config with wrong format
+  config =
+      "\"parameters\": {\"config\": {{\"backend\":\"onnxruntime\", "
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}}}";
+  err = this->LoadModel(model_name, config);
+  ASSERT_FALSE(err.IsOk()) << "Expect LoadModel() to fail";
+
+  // Send the config with the correct format
+  config =
+      "{\"backend\":\"onnxruntime\", "
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}";
+  err = this->LoadModel(model_name, config);
+
+  // check that the model with original name is changed
+  expected_version_ready = {{"1", false}, {"2", true}, {"3", false}};
+  for (const auto& vr : expected_version_ready) {
     bool ready = false;
     err = this->client_->IsModelReady(&ready, model_name, vr.first);
     ASSERT_TRUE(err.IsOk())
