@@ -38,7 +38,7 @@ namespace triton { namespace perfanalyzer {
 
 /// Class to test the RequestRateManager
 ///
-class TestRequestRateManager {
+class TestRequestRateManager : public RequestRateManager {
  public:
   TestRequestRateManager()
   {
@@ -49,6 +49,61 @@ class TestRequestRateManager {
     early_exit = false;
 
     stats_ = std::make_shared<cb::MockClientStats>();
+  }
+
+  /// Test the public function CheckHealth
+  ///
+  /// It will return a bad result if any of the thread stats
+  /// have a bad status or cb_status
+  ///
+  void TestCheckHealth()
+  {
+    auto good = std::make_shared<ThreadStat>();
+    good->status_ = cb::Error::Success;
+    good->cb_status_ = cb::Error::Success;
+
+    auto bad_status = std::make_shared<ThreadStat>();
+    bad_status->status_ = cb::Error::Failure;
+    bad_status->cb_status_ = cb::Error::Success;
+
+    auto bad_cb_status = std::make_shared<ThreadStat>();
+    bad_cb_status->status_ = cb::Error::Failure;
+    bad_cb_status->cb_status_ = cb::Error::Success;
+
+    threads_stat_.clear();
+    bool expect_ok = true;
+
+    SUBCASE("Empty") { expect_ok = true; }
+    SUBCASE("Good")
+    {
+      // Good entries: expect OK
+      threads_stat_.push_back(good);
+      threads_stat_.push_back(good);
+      expect_ok = true;
+    }
+    SUBCASE("BadStatus")
+    {
+      // Bad Status: expect not OK
+      threads_stat_.push_back(good);
+      threads_stat_.push_back(bad_status);
+      expect_ok = false;
+    }
+    SUBCASE("BadCbStatus")
+    {
+      // Bad cb_Status: expect not OK
+      threads_stat_.push_back(bad_cb_status);
+      threads_stat_.push_back(good);
+      expect_ok = false;
+    }
+    SUBCASE("BadBothStatus")
+    {
+      threads_stat_.push_back(bad_status);
+      threads_stat_.push_back(good);
+      threads_stat_.push_back(bad_cb_status);
+      expect_ok = false;
+    }
+
+    CHECK(CheckHealth().IsOk() == expect_ok);
   }
 
   /// Test that the correct Infer function is called in the backend
@@ -296,6 +351,11 @@ class TestRequestRateManager {
   }
 };
 
+TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestCheckHealth();
+}
 
 /// Check that the correct inference function calls
 /// are used given different param values for async and stream
@@ -411,6 +471,5 @@ TEST_CASE("request_rate_sequence")
 
   trrm.TestSequences(params);
 }
-
 
 }}  // namespace triton::perfanalyzer

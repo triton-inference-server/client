@@ -31,6 +31,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestRequestRateManager;
+#endif
+
 //==============================================================================
 /// RequestRateManager is a helper class to send inference requests to
 /// inference server in accordance with a Poisson distribution. This
@@ -168,6 +172,13 @@ class RequestRateManager : public LoadManager {
   std::vector<std::chrono::nanoseconds> schedule_;
   std::chrono::steady_clock::time_point start_time_;
   bool execute_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestRequestRateManager;
+
+ protected:
+  RequestRateManager() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
