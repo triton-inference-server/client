@@ -374,16 +374,6 @@ TEST_CASE("request_rate_sequence")
   //
   params.sequence_length = 3;
 
-  // TODO: Params to test/tweak:
-  // num_of_sequences
-  //    number of active sequences at once
-  // seq_length
-  //    Random length within GetRandomSequenceLength()
-  // start_sequence_id - Where the numbering should start. Default=1
-  //    Used by loadmanager::initnewsequence
-  // sequence_id_range
-  //    This is how many sequence ids there are (?)
-
   SUBCASE("Normal") {}
   SUBCASE("sequence IDs 1")
   {
@@ -404,7 +394,6 @@ TEST_CASE("request_rate_sequence")
   }
   SUBCASE("sequence_length 1") { params.sequence_length = 1; }
   SUBCASE("sequence_length 10") { params.sequence_length = 10; }
-
 
   trrm.TestSequences(params);
 }
