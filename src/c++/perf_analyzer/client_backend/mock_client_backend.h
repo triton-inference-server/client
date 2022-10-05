@@ -121,6 +121,7 @@ class MockClientStats {
 
   void Reset()
   {
+    std::lock_guard<std::mutex> lock(mtx_);
     num_infer_calls = 0;
     num_async_infer_calls = 0;
     num_async_stream_infer_calls = 0;

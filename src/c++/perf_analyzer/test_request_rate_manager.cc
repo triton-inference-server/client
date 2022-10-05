@@ -67,6 +67,10 @@ class TestRequestRateManager {
         ->ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(sleep_time);
 
+    // Kill the manager to stop any more requests
+    //
+    manager.reset();
+
     CheckInferType(params);
   }
 
@@ -79,6 +83,10 @@ class TestRequestRateManager {
     dynamic_cast<RequestRateManager*>(manager.get())
         ->ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+
+    // Kill the manager to stop any more requests
+    //
+    manager.reset();
 
     CheckCallDistribution(params.request_distribution, request_rate);
   }
@@ -115,6 +123,12 @@ class TestRequestRateManager {
         ->ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(sleep_time);
 
+    // FIXME - it would be nice to call manager.reset() here
+    // before checking the results to explicitly stop the load manager from
+    // sending any more requests. However, the result is that all partially
+    // completed sequences are immediately finished, which results in a number
+    // of sequences being shorter than 'expected'.
+    //
     CheckSequences(params);
   }
 
