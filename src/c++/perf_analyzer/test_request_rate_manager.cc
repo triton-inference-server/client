@@ -267,6 +267,55 @@ class TestRequestRateManager : public RequestRateManager {
   }
 
 
+  /// Test the public function CountCollectedRequests
+  ///
+  /// It will count all timestamps in the thread_stats (and not modify
+  /// the thread_stats in any way)
+  ///
+  void TestCountCollectedRequests()
+  {
+    using time_point = std::chrono::time_point<std::chrono::system_clock>;
+    using ns = std::chrono::nanoseconds;
+    auto timestamp1 =
+        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
+    auto timestamp2 =
+        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
+    auto timestamp3 =
+        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+
+    SUBCASE("No threads") { CHECK(CountCollectedRequests() == 0); }
+    SUBCASE("One thread")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->request_timestamps_.push_back(timestamp1);
+      stat1->request_timestamps_.push_back(timestamp2);
+      stat1->request_timestamps_.push_back(timestamp3);
+      threads_stat_.push_back(stat1);
+
+      CHECK(stat1->request_timestamps_.size() == 3);
+      CHECK(CountCollectedRequests() == 3);
+      CHECK(stat1->request_timestamps_.size() == 3);
+    }
+    SUBCASE("Multiple threads")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->request_timestamps_.push_back(timestamp2);
+
+      auto stat2 = std::make_shared<ThreadStat>();
+      stat2->request_timestamps_.push_back(timestamp1);
+      stat2->request_timestamps_.push_back(timestamp3);
+
+      threads_stat_.push_back(stat1);
+      threads_stat_.push_back(stat2);
+
+      CHECK(stat1->request_timestamps_.size() == 1);
+      CHECK(stat2->request_timestamps_.size() == 2);
+      CHECK(CountCollectedRequests() == 3);
+      CHECK(stat1->request_timestamps_.size() == 1);
+      CHECK(stat2->request_timestamps_.size() == 2);
+    }
+  }
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType(bool is_async, bool is_streaming)
@@ -532,6 +581,15 @@ TEST_CASE(
   TestRequestRateManager trrm{};
   trrm.TestGetAccumulatedClientStat();
 }
+
+TEST_CASE(
+    "request_rate_count_collected_requests: Test the public function "
+    "CountCollectedRequests()")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestCountCollectedRequests();
+}
+
 
 /// Check that the correct inference function calls
 /// are used given different param values for async and stream
