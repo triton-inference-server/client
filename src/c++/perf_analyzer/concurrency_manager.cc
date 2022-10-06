@@ -161,7 +161,7 @@ ConcurrencyManager::Infer(
     std::shared_ptr<ConcurrencyManager::ThreadConfig> thread_config)
 {
   std::vector<std::unique_ptr<InferContext>> ctxs;
-  uint32_t seq_id = 0, ctx_id = 0;
+  uint32_t seq_stat_index = 0, ctx_id = 0;
   std::queue<int> free_ctx_ids;
 
   // Reserve the vectors in case of sequence models. In non-sequence or
@@ -237,27 +237,28 @@ ConcurrencyManager::Infer(
     }
 
     for (size_t ctx_id = 0; ctx_id < ctxs.size(); ++ctx_id) {
-      size_t seq_id = offset + ctx_id;
+      size_t seq_stat_index = offset + ctx_id;
 
-      std::lock_guard<std::mutex> guard(sequence_stat_[seq_id]->mtx_);
+      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
       // Complete the sequence if there are remaining queries
-      while (sequence_stat_[seq_id]->remaining_queries_ != 0) {
-        SetInferSequenceOptions(seq_id, ctxs[ctx_id]->options_);
+      while (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+        SetInferSequenceOptions(seq_stat_index, ctxs[ctx_id]->options_);
 
         // Update the inputs if required
         if (using_json_data_) {
           int step_id = data_loader_->GetTotalSteps(
-                            sequence_stat_[seq_id]->data_stream_id_) -
-                        sequence_stat_[seq_id]->remaining_queries_;
+                            sequence_stat_[seq_stat_index]->data_stream_id_) -
+                        sequence_stat_[seq_stat_index]->remaining_queries_;
 
           RETURN_IF_ERROR(UpdateInputs(
               ctxs[ctx_id]->inputs_, ctxs[ctx_id]->valid_inputs_,
-              sequence_stat_[seq_id]->data_stream_id_, step_id));
+              sequence_stat_[seq_stat_index]->data_stream_id_, step_id));
           RETURN_IF_ERROR(UpdateValidationOutputs(
-              ctxs[ctx_id]->outputs_, sequence_stat_[seq_id]->data_stream_id_,
-              step_id, ctxs[ctx_id]->expected_outputs_));
+              ctxs[ctx_id]->outputs_,
+              sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
+              ctxs[ctx_id]->expected_outputs_));
         }
-        sequence_stat_[seq_id]->remaining_queries_--;
+        sequence_stat_[seq_stat_index]->remaining_queries_--;
 
         if (async_) {
           ctxs[ctx_id]->options_->request_id_ = "0";
@@ -399,32 +400,33 @@ ConcurrencyManager::Infer(
           ctx_id = free_ctx_ids.front();
           free_ctx_ids.pop();
         }
-        seq_id = offset + ctx_id;
+        seq_stat_index = offset + ctx_id;
 
         {
-          std::lock_guard<std::mutex> guard(sequence_stat_[seq_id]->mtx_);
-          SetInferSequenceOptions(seq_id, ctxs[ctx_id]->options_);
+          std::lock_guard<std::mutex> guard(
+              sequence_stat_[seq_stat_index]->mtx_);
+          SetInferSequenceOptions(seq_stat_index, ctxs[ctx_id]->options_);
 
           // Update the inputs if required
           if (using_json_data_) {
             int step_id = data_loader_->GetTotalSteps(
-                              sequence_stat_[seq_id]->data_stream_id_) -
-                          sequence_stat_[seq_id]->remaining_queries_;
+                              sequence_stat_[seq_stat_index]->data_stream_id_) -
+                          sequence_stat_[seq_stat_index]->remaining_queries_;
 
             thread_stat->status_ = UpdateInputs(
                 ctxs[ctx_id]->inputs_, ctxs[ctx_id]->valid_inputs_,
-                sequence_stat_[seq_id]->data_stream_id_, step_id);
+                sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
             if (thread_stat->status_.IsOk()) {
               thread_stat->status_ = UpdateValidationOutputs(
                   ctxs[ctx_id]->outputs_,
-                  sequence_stat_[seq_id]->data_stream_id_, step_id,
+                  sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
                   ctxs[ctx_id]->expected_outputs_);
             }
             if (!thread_stat->status_.IsOk()) {
               return;
             }
           }
-          sequence_stat_[seq_id]->remaining_queries_--;
+          sequence_stat_[seq_stat_index]->remaining_queries_--;
         }
       }
       if (async_) {

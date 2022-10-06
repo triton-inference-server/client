@@ -213,7 +213,7 @@ LoadManager::LoadManager(
       shared_memory_type_(shared_memory_type),
       output_shm_size_(output_shm_size), start_sequence_id_(start_sequence_id),
       sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
-      using_json_data_(false), using_shared_memory_(false), next_seq_id_(1)
+      using_json_data_(false), using_shared_memory_(false), curr_seq_id_(0)
 {
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
@@ -820,39 +820,59 @@ LoadManager::SetInputsSharedMemory(
 
 void
 LoadManager::SetInferSequenceOptions(
-    const uint32_t seq_id, std::unique_ptr<cb::InferOptions>& options)
+    const uint32_t seq_stat_index, std::unique_ptr<cb::InferOptions>& options)
 {
-  options->sequence_start_ = (sequence_stat_[seq_id]->remaining_queries_ == 0);
+  options->sequence_start_ =
+      (sequence_stat_[seq_stat_index]->remaining_queries_ == 0);
 
   // New sequence must be intialized before setting the id.
   if (options->sequence_start_) {
-    InitNewSequence(seq_id);
+    InitNewSequence(seq_stat_index);
   }
-  options->sequence_id_ = sequence_stat_[seq_id]->seq_id_;
-  options->sequence_end_ = (sequence_stat_[seq_id]->remaining_queries_ == 1);
+  options->sequence_id_ = sequence_stat_[seq_stat_index]->seq_id_;
+  options->sequence_end_ =
+      (sequence_stat_[seq_stat_index]->remaining_queries_ == 1);
 }
 
 void
-LoadManager::InitNewSequence(int sequence_id)
+LoadManager::InitNewSequence(int seq_stat_index)
 {
-  sequence_stat_[sequence_id]->seq_id_ =
-      next_seq_id_++ % sequence_id_range_ + start_sequence_id_;
+  sequence_stat_[seq_stat_index]->seq_id_ = GetNextSeqId(seq_stat_index);
   if (!using_json_data_) {
-    size_t new_length = GetRandomLength(0.2);
-    sequence_stat_[sequence_id]->remaining_queries_ =
+    size_t new_length = GetRandomSequenceLength(0.2);
+    sequence_stat_[seq_stat_index]->remaining_queries_ =
         new_length == 0 ? 1 : new_length;
   } else {
     // Selecting next available data stream based on uniform distribution.
-    sequence_stat_[sequence_id]->data_stream_id_ =
+    sequence_stat_[seq_stat_index]->data_stream_id_ =
         distribution_(rng_generator_);
-    sequence_stat_[sequence_id]->remaining_queries_ =
+    sequence_stat_[seq_stat_index]->remaining_queries_ =
         data_loader_->GetTotalSteps(
-            sequence_stat_[sequence_id]->data_stream_id_);
+            sequence_stat_[seq_stat_index]->data_stream_id_);
   }
 }
 
+uint64_t
+LoadManager::GetNextSeqId(int seq_stat_index)
+{
+  uint64_t old_seq_id = sequence_stat_[seq_stat_index]->seq_id_;
+  uint64_t next_seq_id =
+      curr_seq_id_++ % sequence_id_range_ + start_sequence_id_;
+
+  // If the next sequence ID is still in use, reuse the same sequence ID
+  // that this sequence_stat used last time
+  //
+  for (uint i = 0; i < sequence_stat_.size(); i++) {
+    if (next_seq_id == sequence_stat_[i]->seq_id_) {
+      next_seq_id = old_seq_id;
+      break;
+    }
+  }
+  return next_seq_id;
+}
+
 size_t
-LoadManager::GetRandomLength(double offset_ratio)
+LoadManager::GetRandomSequenceLength(double offset_ratio)
 {
   int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
                       sequence_length_;

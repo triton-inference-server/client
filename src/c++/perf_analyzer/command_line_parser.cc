@@ -1033,7 +1033,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
         }
         catch (const std::invalid_argument& ia) {
-          Usage("failed to parse concurrency range: " + std::string(optarg));
+          Usage("failed to parse sequence-id-range: " + std::string(optarg));
         }
         break;
       }

@@ -538,6 +538,73 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
+  SUBCASE("Option : --sequence-id-range")
+  {
+    SUBCASE("One arg")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
+                          "53"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->start_sequence_id = 53;
+      exp->sequence_id_range = UINT32_MAX;
+      CHECK_PARAMS(act, exp);
+    }
+    SUBCASE("Two args")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
+                          "53:67"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->start_sequence_id = 53;
+      exp->sequence_id_range = 14;
+      CHECK_PARAMS(act, exp);
+    }
+    SUBCASE("Three args")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
+                          "53:67:92"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "option sequence-id-range can have maximum of two elements");
+    }
+    SUBCASE("Not a number")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
+                          "BAD"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "failed to parse sequence-id-range: BAD");
+    }
+    SUBCASE("Not a number 2")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
+                          "53:BAD"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "failed to parse sequence-id-range: 53:BAD");
+    }
+  }
+
+
   SUBCASE("Option : --shape")
   {
     SUBCASE("expected input, single shape")
