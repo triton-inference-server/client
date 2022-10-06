@@ -106,6 +106,84 @@ class TestRequestRateManager : public RequestRateManager {
     CHECK(CheckHealth().IsOk() == expect_ok);
   }
 
+  /// Test the public function SwapTimestamps
+  ///
+  /// It will gather all timestamps from the thread_stats
+  /// and return them, and clear the thread_stats timestamps
+  ///
+  void TestSwapTimeStamps()
+  {
+    using time_point = std::chrono::time_point<std::chrono::system_clock>;
+    using ns = std::chrono::nanoseconds;
+    auto timestamp1 =
+        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
+    auto timestamp2 =
+        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
+    auto timestamp3 =
+        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+
+    TimestampVector source_timestamps;
+
+    SUBCASE("No threads")
+    {
+      auto ret = SwapTimestamps(source_timestamps);
+      CHECK(source_timestamps.size() == 0);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("Source has timestamps")
+    {
+      // Any timestamps in the vector passed in to Swaptimestamps will
+      // be dropped on the floor
+      //
+      source_timestamps.push_back(timestamp1);
+      auto ret = SwapTimestamps(source_timestamps);
+      CHECK(source_timestamps.size() == 0);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("One thread")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->request_timestamps_.push_back(timestamp1);
+      stat1->request_timestamps_.push_back(timestamp2);
+      stat1->request_timestamps_.push_back(timestamp3);
+      threads_stat_.push_back(stat1);
+
+      CHECK(stat1->request_timestamps_.size() == 3);
+      auto ret = SwapTimestamps(source_timestamps);
+      CHECK(stat1->request_timestamps_.size() == 0);
+
+      REQUIRE(source_timestamps.size() == 3);
+      CHECK(source_timestamps[0] == timestamp1);
+      CHECK(source_timestamps[1] == timestamp2);
+      CHECK(source_timestamps[2] == timestamp3);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("Multiple threads")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->request_timestamps_.push_back(timestamp2);
+
+      auto stat2 = std::make_shared<ThreadStat>();
+      stat2->request_timestamps_.push_back(timestamp1);
+      stat2->request_timestamps_.push_back(timestamp3);
+
+      threads_stat_.push_back(stat1);
+      threads_stat_.push_back(stat2);
+
+      CHECK(stat1->request_timestamps_.size() == 1);
+      CHECK(stat2->request_timestamps_.size() == 2);
+      auto ret = SwapTimestamps(source_timestamps);
+      CHECK(stat1->request_timestamps_.size() == 0);
+      CHECK(stat2->request_timestamps_.size() == 0);
+
+      REQUIRE(source_timestamps.size() == 3);
+      CHECK(source_timestamps[0] == timestamp2);
+      CHECK(source_timestamps[1] == timestamp1);
+      CHECK(source_timestamps[2] == timestamp3);
+      CHECK(ret.IsOk() == true);
+    }
+  }
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType(bool is_async, bool is_streaming)
@@ -355,6 +433,13 @@ TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
 {
   TestRequestRateManager trrm{};
   trrm.TestCheckHealth();
+}
+
+TEST_CASE(
+    "request_rate_swap_timestamps: Test the public function SwapTimeStamps")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestSwapTimeStamps();
 }
 
 /// Check that the correct inference function calls
