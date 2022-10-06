@@ -67,8 +67,8 @@ class TestRequestRateManager : public RequestRateManager {
     bad_status->cb_status_ = cb::Error::Success;
 
     auto bad_cb_status = std::make_shared<ThreadStat>();
-    bad_cb_status->status_ = cb::Error::Failure;
-    bad_cb_status->cb_status_ = cb::Error::Success;
+    bad_cb_status->status_ = cb::Error::Success;
+    bad_cb_status->cb_status_ = cb::Error::Failure;
 
     threads_stat_.clear();
     bool expect_ok = true;
