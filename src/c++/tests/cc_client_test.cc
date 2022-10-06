@@ -1300,24 +1300,28 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
         << "expect model " << override_name << " version " << vr.first
         << " readiness: " << vr.second;
   }
+}
 
-  // Request to load the model with override config in original name
+TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
+{
+  // Request to load the model with override config
+  std::string model_name("onnx_int32_int32_int32");
+  std::vector<std::pair<std::string, bool>> original_version_ready{{"2", true},
+                                                                   {"3", true}};
+  std::vector<std::pair<std::string, bool>> expected_version_ready{
+      {"2", true}, {"3", false}};
+  tc::Error err = tc::Error::Success;
+
   // Send the config with wrong format
-  config =
+  std::string config(
       "\"parameters\": {\"config\": {{\"backend\":\"onnxruntime\", "
-      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}}}";
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}}}");
+
   err = this->LoadModel(model_name, config);
   ASSERT_FALSE(err.IsOk()) << "Expect LoadModel() to fail";
 
-  // Send the config with the correct format
-  config =
-      "{\"backend\":\"onnxruntime\", "
-      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}";
-  err = this->LoadModel(model_name, config);
-
-  // check that the model with original name is changed
-  expected_version_ready = {{"1", false}, {"2", true}, {"3", false}};
-  for (const auto& vr : expected_version_ready) {
+  // The model should not be changed after a failed LoadModel request
+  for (const auto& vr : original_version_ready) {
     bool ready = false;
     err = this->client_->IsModelReady(&ready, model_name, vr.first);
     ASSERT_TRUE(err.IsOk())
@@ -1326,15 +1330,20 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
                                 << vr.first << " readiness: " << vr.second;
   }
 
-  // Sanity check readiness of the different named model
-  for (const auto& vr : expected_override_version_ready) {
+  // Send the config with correct format
+  config =
+      "{\"backend\":\"onnxruntime\", "
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}";
+  err = this->LoadModel(model_name, config);
+
+  // The model should be changed after a successful LoadModel request
+  for (const auto& vr : expected_version_ready) {
     bool ready = false;
-    err = this->client_->IsModelReady(&ready, override_name, vr.first);
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
     ASSERT_TRUE(err.IsOk())
         << "failed to get version readiness: " << err.Message();
-    ASSERT_EQ(ready, vr.second)
-        << "expect model " << override_name << " version " << vr.first
-        << " readiness: " << vr.second;
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
   }
 }
 
@@ -1612,7 +1621,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     AsyncInferMultiDifferentOptions, AsyncInferMultiOneOption,
     AsyncInferMultiOneOutput, AsyncInferMultiNoOutput,
     AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs,
-    LoadWithFileOverride);
+    LoadWithFileOverride, LoadWithConfigOverride);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(GRPC, ClientTest, tc::InferenceServerGrpcClient);
 INSTANTIATE_TYPED_TEST_SUITE_P(HTTP, ClientTest, tc::InferenceServerHttpClient);
