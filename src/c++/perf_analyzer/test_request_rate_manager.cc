@@ -184,6 +184,89 @@ class TestRequestRateManager : public RequestRateManager {
     }
   }
 
+  /// Test the public function GetAccumulatedClientStat
+  ///
+  /// It will accumulate all contexts_stat data from all threads_stat
+  ///
+  void TestGetAccumulatedClientStat()
+  {
+    cb::InferStat result_stat;
+    // auto stat1 = std::make_shared<ThreadStat>();
+    // stat1->contexts_stat_.completed_request_count = 5;
+
+    SUBCASE("No threads")
+    {
+      auto ret = GetAccumulatedClientStat(&result_stat);
+      CHECK(result_stat.completed_request_count == 0);
+      CHECK(result_stat.cumulative_total_request_time_ns == 0);
+      CHECK(result_stat.cumulative_send_time_ns == 0);
+      CHECK(result_stat.cumulative_receive_time_ns == 0);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("One thread one context stat")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->contexts_stat_.push_back(cb::InferStat());
+      stat1->contexts_stat_[0].completed_request_count = 2;
+      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
+      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
+      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
+      threads_stat_.push_back(stat1);
+
+      auto ret = GetAccumulatedClientStat(&result_stat);
+      CHECK(result_stat.completed_request_count == 2);
+      CHECK(result_stat.cumulative_total_request_time_ns == 3);
+      CHECK(result_stat.cumulative_send_time_ns == 4);
+      CHECK(result_stat.cumulative_receive_time_ns == 5);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("Multiple thread multiple contexts")
+    {
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->contexts_stat_.push_back(cb::InferStat());
+      stat1->contexts_stat_.push_back(cb::InferStat());
+      stat1->contexts_stat_[0].completed_request_count = 2;
+      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
+      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
+      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
+      stat1->contexts_stat_[1].completed_request_count = 3;
+      stat1->contexts_stat_[1].cumulative_total_request_time_ns = 4;
+      stat1->contexts_stat_[1].cumulative_send_time_ns = 5;
+      stat1->contexts_stat_[1].cumulative_receive_time_ns = 6;
+      threads_stat_.push_back(stat1);
+
+      auto stat2 = std::make_shared<ThreadStat>();
+      stat2->contexts_stat_.push_back(cb::InferStat());
+      stat2->contexts_stat_.push_back(cb::InferStat());
+      stat2->contexts_stat_[0].completed_request_count = 7;
+      stat2->contexts_stat_[0].cumulative_total_request_time_ns = 8;
+      stat2->contexts_stat_[0].cumulative_send_time_ns = 9;
+      stat2->contexts_stat_[0].cumulative_receive_time_ns = 10;
+      stat2->contexts_stat_[1].completed_request_count = 11;
+      stat2->contexts_stat_[1].cumulative_total_request_time_ns = 12;
+      stat2->contexts_stat_[1].cumulative_send_time_ns = 13;
+      stat2->contexts_stat_[1].cumulative_receive_time_ns = 14;
+      threads_stat_.push_back(stat2);
+
+      auto ret = GetAccumulatedClientStat(&result_stat);
+      // 2 + 3 + 7 + 11
+      //
+      CHECK(result_stat.completed_request_count == 23);
+      // 3 + 4 + 8 + 12
+      //
+      CHECK(result_stat.cumulative_total_request_time_ns == 27);
+      // 4 + 5 + 9 + 13
+      //
+      CHECK(result_stat.cumulative_send_time_ns == 31);
+      // 5 + 6 + 10 + 14
+      //
+      CHECK(result_stat.cumulative_receive_time_ns == 35);
+
+      CHECK(ret.IsOk() == true);
+    }
+  }
+
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType(bool is_async, bool is_streaming)
@@ -436,10 +519,18 @@ TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
 }
 
 TEST_CASE(
-    "request_rate_swap_timestamps: Test the public function SwapTimeStamps")
+    "request_rate_swap_timestamps: Test the public function SwapTimeStamps()")
 {
   TestRequestRateManager trrm{};
   trrm.TestSwapTimeStamps();
+}
+
+TEST_CASE(
+    "request_rate_get_accumulated_client_stat: Test the public function "
+    "GetAccumulatedClientStat()")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestGetAccumulatedClientStat();
 }
 
 /// Check that the correct inference function calls
