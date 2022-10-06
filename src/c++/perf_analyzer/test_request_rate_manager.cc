@@ -344,6 +344,76 @@ class TestRequestRateManager : public RequestRateManager {
     CHECK(manager->BatchSize() == expected_value);
   }
 
+  /// Test the public function ResetWorkers()
+  ///
+  /// It pauses and restarts the workers, but the most important and observable
+  /// effects are the following:
+  ///   - if threads_ is empty, it will populate threads_, threads_stat_, and
+  ///   threads_config_ based on max_threads_
+  ///   - each thread config has its index reset to its ID
+  ///   - each thread config has its rounds set to 0
+  ///   - start_time_ is updated with a new timestamp
+  ///
+  void TestResetWorkers()
+  {
+    // Set up the schedule, factory, and parser to avoid seg faults
+    //
+    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
+    parser_ = std::make_shared<MockModelParser>(false);
+    gen_duration_.reset(new std::chrono::nanoseconds(1000 * 1000));
+    GenerateSchedule(1);
+
+    // Set a dummy "start" time to confirm that it is updated
+    //
+    using time_point = std::chrono::_V2::steady_clock::time_point;
+    using ns = std::chrono::nanoseconds;
+    auto old_time = time_point(ns(5));
+    start_time_ = old_time;
+
+    SUBCASE("max threads 0")
+    {
+      // If max threads is 0, nothing happens other than updating
+      // the start time
+      //
+      max_threads_ = 0;
+      CHECK(start_time_ == old_time);
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 0);
+      CHECK(threads_stat_.size() == 0);
+      CHECK(threads_.size() == 0);
+    }
+    SUBCASE("max threads 3, multiple calls")
+    {
+      // First call will populate threads/config/stat
+      //
+      max_threads_ = 3;
+      CHECK(start_time_ == old_time);
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 3);
+      CHECK(threads_stat_.size() == 3);
+      CHECK(threads_.size() == 3);
+
+      // Second call will reset thread_config values
+      //
+      for (auto& thread_config : threads_config_) {
+        thread_config->index_ = 99;
+        thread_config->rounds_ = 17;
+      }
+      old_time = start_time_;
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 3);
+      CHECK(threads_stat_.size() == 3);
+      CHECK(threads_.size() == 3);
+      for (auto& thread_config : threads_config_) {
+        CHECK(thread_config->index_ == thread_config->id_);
+        CHECK(thread_config->rounds_ == 0);
+      }
+    }
+  }
+
 
   /// Test that the correct Infer function is called in the backend
   ///
@@ -623,6 +693,12 @@ TEST_CASE("request_rate_batch_size: Test the public function BatchSize()")
 {
   TestRequestRateManager trrm{};
   trrm.TestBatchSize();
+}
+
+TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls
