@@ -70,7 +70,7 @@ if __name__ == '__main__':
         config = "\"parameters\": {\"config\": {{\"max_batch_size\": \"16\"}}}"
         triton_client.load_model(model_name, config=config)
     except InferenceServerException as e:
-        if "invalid value for config:" not in e.message():
+        if "failed to load" not in e.message():
             sys.exit(1)
     else:
         print("Expect error occurs for invald override config.")
