@@ -266,7 +266,6 @@ class TestRequestRateManager : public RequestRateManager {
     }
   }
 
-
   /// Test the public function CountCollectedRequests
   ///
   /// It will count all timestamps in the thread_stats (and not modify
@@ -315,6 +314,36 @@ class TestRequestRateManager : public RequestRateManager {
       CHECK(stat2->request_timestamps_.size() == 2);
     }
   }
+
+  /// Test the public function BatchSize
+  ///
+  /// It will just return the value passed in from the constructor
+  ///
+  void TestBatchSize()
+  {
+    PerfAnalyzerParameters params;
+    int expected_value;
+
+    SUBCASE("batch size 0")
+    {
+      params.batch_size = 0;
+      expected_value = 0;
+    }
+    SUBCASE("batch size 1")
+    {
+      params.batch_size = 1;
+      expected_value = 1;
+    }
+    SUBCASE("batch size 4")
+    {
+      params.batch_size = 4;
+      expected_value = 4;
+    }
+    std::unique_ptr<LoadManager> manager = CreateManager(params);
+
+    CHECK(manager->BatchSize() == expected_value);
+  }
+
 
   /// Test that the correct Infer function is called in the backend
   ///
@@ -590,6 +619,11 @@ TEST_CASE(
   trrm.TestCountCollectedRequests();
 }
 
+TEST_CASE("request_rate_batch_size: Test the public function BatchSize()")
+{
+  TestRequestRateManager trrm{};
+  trrm.TestBatchSize();
+}
 
 /// Check that the correct inference function calls
 /// are used given different param values for async and stream
