@@ -62,7 +62,7 @@ The provided client libraries are:
 
 There are also many example applications that show how to use these
 libraries. Many of these examples use models from the [example model
-repository](https://github.com/triton-inference-server/server/blob/master/docs/quickstart.md#create-a-model-repository).
+repository](https://github.com/triton-inference-server/server/blob/main/docs/getting_started/quickstart.md#create-a-model-repository).
 
 * C++ and Python versions of *image_client*, an example application
   that uses the C++ or Python client library to execute image
@@ -137,7 +137,7 @@ The components of the install packages are:
 * utils [ linux distribution will include `shared_memory` and `cuda_shared_memory`]
 
 The Linux version of the package also includes the
-[perf_analyzer](https://github.com/triton-inference-server/server/blob/master/docs/perf_analyzer.md)
+[perf_analyzer](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/perf_analyzer.md)
 binary. The perf_analyzer binary is built on Ubuntu 20.04 and may not
 run on other Linux distributions. To run the perf_analyzer the
 following dependency must be installed:
@@ -284,7 +284,7 @@ the install directory.
 To build the clients you must install an appropriate C++ compiler and
 other dependencies required for the build. The easiest way to do this
 is to create the [Windows min Docker
-image](https://github.com/triton-inference-server/server/blob/master/docs/build.md#windows-10-min-container)
+image](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/build.md#windows-10-min-container)
 and the perform the build within a container launched from that image.
 
 ```
@@ -404,7 +404,7 @@ For Python client, look for the following options in [grpc/\_\_init\_\_.py](src/
 
 The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples
 demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the 
-[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#ssltls)
+[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#ssltls)
 
 #### Compression
 
@@ -429,7 +429,7 @@ There is also a [C++](src/c%2B%2B/examples/simple_grpc_keepalive_client.cc) and
 [Python](src/python/examples/simple_grpc_keepalive_client.py) example
 demonstrating how to setup these parameters on the client-side. For information
 on the corresponding server-side parameters, refer to the 
-[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#grpc-keepalive)
+[server documentation](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#grpc-keepalive)
 
 #### Custom GRPC Channel Arguments
 
@@ -467,7 +467,7 @@ the features that they illustrate.
 Some frameworks support tensors where each element in the tensor is
 variable-length binary data. Each element can hold a string or an
 arbitrary sequence of bytes. On the client this datatype is BYTES (see
-[Datatypes](https://github.com/triton-inference-server/server/blob/master/docs/model_configuration.md#datatypes)
+[Datatypes](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#datatypes)
 for information on supported datatypes).
 
 The Python client library uses numpy to represent input and output
@@ -523,7 +523,7 @@ set and destroy CUDA shared memory.
 ### Client API for Stateful Models
 
 When performing inference using a [stateful
-model](https://github.com/triton-inference-server/server/blob/master/docs/architecture.md#stateful-models),
+model](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#stateful-models),
 a client must identify which inference requests belong to the same
 sequence and also when a sequence starts and ends.
 
@@ -553,14 +553,14 @@ Triton that is serving one or more image classification models. The
 image_client application requires that the model have a single image
 input and produce a single classification output. If you don't have a
 model repository with image classification models see
-[QuickStart](https://github.com/triton-inference-server/server/blob/master/docs/quickstart.md)
+[QuickStart](https://github.com/triton-inference-server/server/blob/main/docs/getting_started/quickstart.md)
 for instructions on how to create one.
 
 Once Triton is running you can use the image_client application to
 send inference requests. You can specify a single image or a directory
 holding images. Here we send a request for the inception_graphdef
 model for an image from the
-[qa/images](https://github.com/triton-inference-server/server/tree/master/qa/images).
+[qa/images](https://github.com/triton-inference-server/server/tree/main/qa/images).
 
 ```bash
 $ image_client -m inception_graphdef -s INCEPTION qa/images/mug.jpg
