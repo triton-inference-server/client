@@ -51,6 +51,17 @@ class TestRequestRateManager : public RequestRateManager {
     stats_ = std::make_shared<cb::MockClientStats>();
   }
 
+  // Mock out most of the complicated Infer code
+  //
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    if (!execute_) {
+      thread_config->is_paused_ = true;
+    }
+  }
+
   /// Test the public function CheckHealth
   ///
   /// It will return a bad result if any of the thread stats
@@ -360,15 +371,11 @@ class TestRequestRateManager : public RequestRateManager {
     //
     factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
     parser_ = std::make_shared<MockModelParser>(false);
-    gen_duration_.reset(new std::chrono::nanoseconds(1000 * 1000));
-    GenerateSchedule(1);
 
-    // Set a dummy "start" time to confirm that it is updated
+    // Capture the existing start time so we can confirm it changes
     //
-    using time_point = std::chrono::_V2::steady_clock::time_point;
-    using ns = std::chrono::nanoseconds;
-    auto old_time = time_point(ns(5));
-    start_time_ = old_time;
+    start_time_ = std::chrono::steady_clock::now();
+    auto old_time = start_time_;
 
     SUBCASE("max threads 0")
     {

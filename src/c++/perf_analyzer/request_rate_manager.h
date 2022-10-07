@@ -145,7 +145,7 @@ class RequestRateManager : public LoadManager {
   /// Function for worker that sends inference requests.
   /// \param thread_stat Worker thread specific data.
   /// \param thread_config Worker thread configuration specific data.
-  void Infer(
+  virtual void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config);
 
