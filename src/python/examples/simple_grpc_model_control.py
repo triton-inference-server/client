@@ -66,6 +66,30 @@ if __name__ == '__main__':
         print('FAILED : Load Model')
         sys.exit(1)
 
+    # Request to load the model with override config in original name
+    # Send the config with wrong format
+    try:
+        config = "\"parameters\": {\"config\": {{\"max_batch_size\": \"16\"}}}"
+        triton_client.load_model(model_name, config=config)
+    except InferenceServerException as e:
+        if "failed to load" not in e.message():
+            sys.exit(1)
+    else:
+        print("Expect error occurs for invald override config.")
+        sys.exit(1)
+
+    # Send the config with the correct format
+    config = "{\"max_batch_size\":\"16\"}"
+    triton_client.load_model(model_name, config=config)
+
+    # Check that the model with original name is changed.
+    # The value of max_batch_size should be changed from "8" to "16".
+    updated_model_config = triton_client.get_model_config(model_name)
+    max_batch_size = updated_model_config.config.max_batch_size
+    if max_batch_size != 16:
+        print("Expect max_batch_size = 16, got: {}".format(max_batch_size))
+        sys.exit(1)
+
     triton_client.unload_model(model_name)
     if triton_client.is_model_ready(model_name):
         print('FAILED : Unload Model')

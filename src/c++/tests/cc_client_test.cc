@@ -123,7 +123,7 @@ class ClientTest : public ::testing::Test {
 
   tc::Error LoadModel(
       const std::string& model_name, const std::string& config,
-      const std::map<std::string, std::vector<char>>& files);
+      const std::map<std::string, std::vector<char>>& files = {});
 
   std::string model_name_;
   std::unique_ptr<ClientType> client_;
@@ -1302,6 +1302,51 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
   }
 }
 
+TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
+{
+  // Request to load the model with override config
+  std::string model_name("onnx_int32_int32_int32");
+  std::vector<std::pair<std::string, bool>> original_version_ready{{"2", true},
+                                                                   {"3", true}};
+  std::vector<std::pair<std::string, bool>> expected_version_ready{
+      {"2", true}, {"3", false}};
+  tc::Error err = tc::Error::Success;
+
+  // Send the config with wrong format
+  std::string config(
+      "\"parameters\": {\"config\": {{\"backend\":\"onnxruntime\", "
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}}}");
+
+  err = this->LoadModel(model_name, config);
+  ASSERT_FALSE(err.IsOk()) << "Expect LoadModel() to fail";
+
+  // The model should not be changed after a failed LoadModel request
+  for (const auto& vr : original_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+
+  // Send the config with correct format
+  config =
+      "{\"backend\":\"onnxruntime\", "
+      "\"version_policy\":{\"specific\":{\"versions\":[2]}}}";
+  err = this->LoadModel(model_name, config);
+
+  // The model should be changed after a successful LoadModel request
+  for (const auto& vr : expected_version_ready) {
+    bool ready = false;
+    err = this->client_->IsModelReady(&ready, model_name, vr.first);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to get version readiness: " << err.Message();
+    ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
+                                << vr.first << " readiness: " << vr.second;
+  }
+}
+
 TEST_F(HTTPTraceTest, HTTPUpdateTraceSettings)
 {
   // Update model and global trace settings in order, and expect the global
@@ -1576,7 +1621,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     AsyncInferMultiDifferentOptions, AsyncInferMultiOneOption,
     AsyncInferMultiOneOutput, AsyncInferMultiNoOutput,
     AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs,
-    LoadWithFileOverride);
+    LoadWithFileOverride, LoadWithConfigOverride);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(GRPC, ClientTest, tc::InferenceServerGrpcClient);
 INSTANTIATE_TYPED_TEST_SUITE_P(HTTP, ClientTest, tc::InferenceServerHttpClient);
