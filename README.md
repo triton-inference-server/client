@@ -414,7 +414,7 @@ For C++ client, see `compression_algorithm` parameter in the `Infer`, `AsyncInfe
 
 Similarly, for Python client, see `compression_algorithm` parameter in `infer`, `async_infer` and `start_stream` functions in [grpc/\_\_init\_\_.py](src/python/library/tritonclient/grpc/__init__.py).
 
-The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/inference_protocols.md#compression).
+The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples demonstrates how to configure compression for clients. For information on the corresponding server-side parameters, refer to the [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#compression).
 
 #### GRPC KeepAlive
 
