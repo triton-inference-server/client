@@ -202,8 +202,6 @@ class TestRequestRateManager : public RequestRateManager {
   void TestGetAccumulatedClientStat()
   {
     cb::InferStat result_stat;
-    // auto stat1 = std::make_shared<ThreadStat>();
-    // stat1->contexts_stat_.completed_request_count = 5;
 
     SUBCASE("No threads")
     {
@@ -229,6 +227,31 @@ class TestRequestRateManager : public RequestRateManager {
       CHECK(result_stat.cumulative_total_request_time_ns == 3);
       CHECK(result_stat.cumulative_send_time_ns == 4);
       CHECK(result_stat.cumulative_receive_time_ns == 5);
+      CHECK(ret.IsOk() == true);
+    }
+    SUBCASE("Existing data in function arg")
+    {
+      // If the input InferStat already has data in it,
+      // it will be included in the output result
+      //
+      result_stat.completed_request_count = 10;
+      result_stat.cumulative_total_request_time_ns = 10;
+      result_stat.cumulative_send_time_ns = 10;
+      result_stat.cumulative_receive_time_ns = 10;
+
+      auto stat1 = std::make_shared<ThreadStat>();
+      stat1->contexts_stat_.push_back(cb::InferStat());
+      stat1->contexts_stat_[0].completed_request_count = 2;
+      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
+      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
+      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
+      threads_stat_.push_back(stat1);
+
+      auto ret = GetAccumulatedClientStat(&result_stat);
+      CHECK(result_stat.completed_request_count == 12);
+      CHECK(result_stat.cumulative_total_request_time_ns == 13);
+      CHECK(result_stat.cumulative_send_time_ns == 14);
+      CHECK(result_stat.cumulative_receive_time_ns == 15);
       CHECK(ret.IsOk() == true);
     }
     SUBCASE("Multiple thread multiple contexts")
