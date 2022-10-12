@@ -225,6 +225,30 @@ TEST_CASE("test_check_window_for_stability")
     lp.stability_threshold = 0.1;
     CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
   }
+  SUBCASE("test stability window of 5")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0, 505.0, 515.0};
+    ls.latencies = {100, 104, 108, 102, 106};
+    lp.stability_window = 5;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
+  }
+  SUBCASE("test not stable in 5 but stable in 3")
+  {
+    ls.infer_per_sec = {1.0, 1000.0, 510.0, 505.0, 515.0};
+    ls.latencies = {100, 104, 108, 102, 106};
+    lp.stability_window = 5;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == false);
+  }
+  SUBCASE("test stability window of 2")
+  {
+    ls.infer_per_sec = {500.0, 1000.0, 1.0, 505.0, 515.0};
+    ls.latencies = {100, 104, 108, 102, 106};
+    lp.stability_window = 2;
+    lp.stability_threshold = 0.1;
+    CHECK(TestInferenceProfiler::TestCheckWindowForStability(ls, lp) == true);
+  }
 }
 
 TEST_CASE("test check within threshold")
