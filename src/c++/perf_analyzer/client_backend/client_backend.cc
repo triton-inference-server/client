@@ -118,22 +118,14 @@ ClientBackendFactory::Create(
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
-<<<<<<< HEAD
-    const std::string& model_repository_path, const std::string& memory_type,
-    const bool verbose, const std::string& metrics_url,
-=======
     const std::string& model_repository_path, const bool verbose,
->>>>>>> Add CUDA memory support to C-API
+    const std::string& metrics_url,
     std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
       kind, url, protocol, ssl_options, trace_options, compression_algorithm,
-<<<<<<< HEAD
-      http_headers, triton_server_path, model_repository_path, memory_type,
-      verbose, metrics_url));
-=======
-      http_headers, triton_server_path, model_repository_path, verbose));
->>>>>>> Add CUDA memory support to C-API
+      http_headers, triton_server_path, model_repository_path, verbose,
+      metrics_url));
   return Error::Success;
 }
 
@@ -144,11 +136,7 @@ ClientBackendFactory::CreateClientBackend(
   RETURN_IF_CB_ERROR(ClientBackend::Create(
       kind_, url_, protocol_, ssl_options_, trace_options_,
       compression_algorithm_, http_headers_, verbose_, triton_server_path,
-<<<<<<< HEAD
-      model_repository_path_, memory_type_, metrics_url_, client_backend));
-=======
-      model_repository_path_, client_backend));
->>>>>>> Add CUDA memory support to C-API
+      model_repository_path_, metrics_url_, client_backend));
   return Error::Success;
 }
 
@@ -169,12 +157,7 @@ ClientBackend::Create(
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,
-<<<<<<< HEAD
-    const std::string& model_repository_path, const std::string& memory_type,
-    const std::string& metrics_url,
-=======
-    const std::string& model_repository_path,
->>>>>>> Add CUDA memory support to C-API
+    const std::string& model_repository_path, const std::string& metrics_url,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<ClientBackend> local_backend;

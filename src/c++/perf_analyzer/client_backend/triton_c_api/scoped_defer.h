@@ -29,6 +29,7 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
+
 class ScopedDefer {
  public:
   ScopedDefer(std::function<void()> task);
@@ -40,4 +41,4 @@ class ScopedDefer {
   bool done_;
 };
 
-}}}}
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

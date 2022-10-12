@@ -271,8 +271,8 @@ LoadManager::InitManagerInputs(
 
 cb::Error
 LoadManager::CreateMemoryRegion(
-    std::string& shm_region_name, const SharedMemoryType& memory_type,
-    size_t byte_size, void** ptr)
+    const std::string& shm_region_name, const SharedMemoryType& memory_type,
+    const size_t byte_size, void** ptr)
 {
   if (memory_type == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
     if (factory_->Kind() ==
@@ -285,9 +285,7 @@ LoadManager::CreateMemoryRegion(
       int shm_fd_op;
       RETURN_IF_ERROR(
           backend_->CreateSharedMemoryRegion(shm_key, byte_size, &shm_fd_op));
-      RETURN_IF_ERROR(
-          backend_->MapSharedMemory(shm_fd_op, 0, byte_size, (void**)ptr));
-
+      RETURN_IF_ERROR(backend_->MapSharedMemory(shm_fd_op, 0, byte_size, ptr));
 
       RETURN_IF_ERROR(backend_->RegisterSystemSharedMemory(
           shm_region_name, shm_key, byte_size));
@@ -403,8 +401,7 @@ LoadManager::InitSharedMemory()
           if (batch1_bytesize != byte_size.back()) {
             return cb::Error(
                 "The shape tensors should be identical in a batch (mismatch "
-                "in "
-                "size)",
+                "in size)",
                 pa::GENERIC_ERROR);
           }
 
@@ -412,8 +409,7 @@ LoadManager::InitSharedMemory()
             if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
               return cb::Error(
                   "The shape tensors should be identical in a batch "
-                  "(mismatch "
-                  "in content)",
+                  "(mismatch in content)",
                   pa::GENERIC_ERROR);
             }
           }

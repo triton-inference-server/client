@@ -25,13 +25,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <triton/core/tritonserver.h>
 #include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>
-
 #include "../client_backend.h"
-#include "triton/core/tritonserver.h"
 
 #ifdef TRITON_ENABLE_GPU
 #include <cuda_runtime_api.h>
@@ -65,6 +64,7 @@ class SharedMemoryManager {
   /// \param name The name of the memory block.
   /// \param ptr The device pointer
   /// \param byte_size The size, in bytes of the block.
+  /// \return an Error indicating success or failure.
   Error RegisterSystemMemory(
       const std::string& name, void* ptr, const size_t byte_size);
 

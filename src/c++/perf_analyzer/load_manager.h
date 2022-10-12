@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <random>
 #include <thread>
+
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "perf_utils.h"
@@ -150,8 +151,8 @@ class LoadManager {
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.
   cb::Error CreateMemoryRegion(
-      std::string& shm_region_name, const SharedMemoryType& memory_type,
-      size_t byte_size, void** ptr);
+      const std::string& shm_region_name, const SharedMemoryType& memory_type,
+      const size_t byte_size, void** ptr);
 
   /// Helper function to prepare the InferContext for sending inference request.
   /// \param ctx The target InferContext object.

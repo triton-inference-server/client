@@ -50,4 +50,4 @@ ScopedDefer::~ScopedDefer()
   }
 }
 
-}}}}
+}}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

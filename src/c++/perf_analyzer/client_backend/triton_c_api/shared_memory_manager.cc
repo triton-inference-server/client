@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include "common.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -75,14 +76,13 @@ SharedMemoryManager::RegisterSystemMemory(
   // If name is already in shared_memory_map_ then return error saying already
   // registered
   if (shared_memory_map_.find(name) != shared_memory_map_.end()) {
-    return Error(
-        std::string("shared memory region '" + name + "' already in manager"));
+    return Error("shared memory region '" + name + "' already in manager");
   }
 
   shared_memory_map_.insert(std::make_pair(
-      name, std::unique_ptr<MemoryInfo>(new MemoryInfo(
+      name, std::make_unique<MemoryInfo>(
                 name, 0 /* offset */, byte_size, ptr, TRITONSERVER_MEMORY_CPU,
-                0 /* device id */))));
+                0 /* device id */)));
 
   return Error::Success;
 }
@@ -127,31 +127,28 @@ SharedMemoryManager::Unregister(
 Error
 SharedMemoryManager::UnregisterAll(TRITONSERVER_MemoryType memory_type)
 {
+  // Serialize all operations that write/read current shared memory regions
   std::lock_guard<std::mutex> lock(mu_);
   std::string error_message = "Failed to unregister the following ";
   std::vector<std::string> unregister_fails;
+
   if (memory_type == TRITONSERVER_MEMORY_CPU) {
-    // Serialize all operations that write/read current shared memory regions
     error_message += "system shared memory regions: ";
-    for (auto it = shared_memory_map_.cbegin(), next_it = it;
-         it != shared_memory_map_.cend(); it = next_it) {
-      ++next_it;
-      if (it->second->kind_ == TRITONSERVER_MEMORY_CPU) {
-        Error err = UnregisterHelper(it->first, memory_type);
+    for (auto& it : shared_memory_map_) {
+      if (it.second->kind_ == TRITONSERVER_MEMORY_CPU) {
+        Error err = UnregisterHelper(it.first, memory_type);
         if (!err.IsOk()) {
-          unregister_fails.push_back(it->first);
+          unregister_fails.push_back(it.first);
         }
       }
     }
   } else if (memory_type == TRITONSERVER_MEMORY_GPU) {
     error_message += "cuda shared memory regions: ";
-    for (auto it = shared_memory_map_.cbegin(), next_it = it;
-         it != shared_memory_map_.cend(); it = next_it) {
-      ++next_it;
-      if (it->second->kind_ == TRITONSERVER_MEMORY_GPU) {
-        Error err = UnregisterHelper(it->first, memory_type);
+    for (auto& it : shared_memory_map_) {
+      if (it.second->kind_ == TRITONSERVER_MEMORY_GPU) {
+        Error err = UnregisterHelper(it.first, memory_type);
         if (!err.IsOk()) {
-          unregister_fails.push_back(it->first);
+          unregister_fails.push_back(it.first);
         }
       }
     }
@@ -161,7 +158,6 @@ SharedMemoryManager::UnregisterAll(TRITONSERVER_MemoryType memory_type)
     for (auto unreg_fail : unregister_fails) {
       error_message += unreg_fail + " ,";
     }
-    std::cerr << error_message << std::endl;
     return Error(error_message);
   }
 
@@ -174,6 +170,10 @@ SharedMemoryManager::UnregisterHelper(
 {
   // Must hold the lock on register_mu_ while calling this function.
   auto it = shared_memory_map_.find(name);
+
+  if (it == shared_memory_map_.end()) {
+    return Error("Shared memory region " + name + " doesn't exist.");
+  }
 
   // Remove region information from shared_memory_map_
   shared_memory_map_.erase(it);

@@ -135,8 +135,9 @@ class TritonLoader : public tc::InferenceServerClient {
   TRITONSERVER_Error* ErrorNew(
       TRITONSERVER_Error_Code code, const char* message);
 
-  bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
-  bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
+  bool ModelIsLoaded() { return model_is_loaded_; }
+  bool ServerIsReady() { return server_is_ready_; }
+
   TRITONSERVER_Error* DeleteInferRequest(
       TRITONSERVER_InferenceRequest* irequest)
   {
@@ -395,7 +396,7 @@ class TritonLoader : public tc::InferenceServerClient {
     requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
     model_is_loaded_ = false;
     server_is_ready_ = false;
-    shm_manager_ = std::move(std::make_unique<SharedMemoryManager>());
+    shm_manager_ = std::make_unique<SharedMemoryManager>();
   }
 
   Error PopulateInternals(
@@ -499,18 +500,18 @@ class TritonLoader : public tc::InferenceServerClient {
   TritonSeverSetLogInfoFn_t set_log_info_fn_;
   TritonServerSetCudaMemoryPoolByteSizeFn_t set_cuda_memory_pool_byte_size_;
 
-  std::shared_ptr<TRITONSERVER_Server> server_;
-  std::string triton_server_path_;
-  const std::string server_library_path_ = "/lib/libtritonserver.so";
-  int verbose_level_;
-  TRITONSERVER_MemoryType requested_memory_type_;
-  bool enforce_memory_type_;
-  std::string model_repository_path_;
-  std::string model_name_;
-  int64_t model_version_;
-  bool model_is_loaded_;
-  bool server_is_ready_;
-  std::unique_ptr<SharedMemoryManager> shm_manager_;
+  std::shared_ptr<TRITONSERVER_Server> server_{nullptr};
+  std::string triton_server_path_{};
+  const std::string server_library_path_{"/lib/libtritonserver.so"};
+  int verbose_level_{0};
+  TRITONSERVER_MemoryType requested_memory_type_{TRITONSERVER_MEMORY_CPU};
+  bool enforce_memory_type_{false};
+  std::string model_repository_path_{""};
+  std::string model_name_{""};
+  int64_t model_version_{-1};
+  bool model_is_loaded_{false};
+  bool server_is_ready_{false};
+  std::unique_ptr<SharedMemoryManager> shm_manager_{nullptr};
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
