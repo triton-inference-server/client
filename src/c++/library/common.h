@@ -201,7 +201,7 @@ struct InferOptions {
   /// will handle the request using default setting for the model.
   uint64_t priority_;
   /// The timeout value for the request, in microseconds. If the request
-  /// cannot be completed within the time by the server can take a
+  /// cannot be completed within the time by the server. The server can take a
   /// model-specific action such as terminating the request. If not
   /// provided, the server will handle the request using default setting
   /// for the model.
