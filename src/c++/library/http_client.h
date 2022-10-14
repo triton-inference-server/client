@@ -29,6 +29,7 @@
 
 #include <map>
 #include <memory>
+#include <climits>
 #include "common.h"
 #include "ipc.h"
 
@@ -647,6 +648,8 @@ class InferenceServerHttpClient : public InferenceServerClient {
   // map to record ongoing asynchronous requests with pointer to easy handle
   // or tag id as key
   AsyncReqMap ongoing_async_requests_;
+  // shortest client timeout ms
+  int shortest_timeout_ms_ = INT_MAX;
 };
 
 }}  // namespace triton::client

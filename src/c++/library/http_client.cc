@@ -1804,6 +1804,12 @@ InferenceServerHttpClient::PreRunProcessing(
   if (options.client_timeout_ != 0) {
     uint64_t timeout_ms = (options.client_timeout_ / 1000);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout_ms);
+    shortest_timeout_ms_ = std::min(shortest_timeout_ms_, int(timeout_ms));
+  }
+
+  if (options.server_timeout_ != 0) {
+      uint64_t server_timeout_ms = options.server_timeout_ / 1000;
+      shortest_timeout_ms_ = std::min(shortest_timeout_ms_, int(server_timeout_ms));
   }
 
   if (verbose_) {
@@ -1904,7 +1910,7 @@ InferenceServerHttpClient::AsyncTransfer()
     if (mc == CURLM_OK) {
       // Wait for activity. Timeout should be capped by server_timeout_
       // of InferOptions
-      mc = curl_multi_poll(multi_handle_, NULL, 0, INT_MAX, &numfds);
+      mc = curl_multi_poll(multi_handle_, NULL, 0, shortest_timeout_ms_, &numfds);
       while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
         uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
         auto itr = ongoing_async_requests_.find(identifier);
