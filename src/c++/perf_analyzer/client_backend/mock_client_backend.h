@@ -26,8 +26,10 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <mutex>
+#include <thread>
 #include "client_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -95,6 +97,10 @@ class MockClientStats {
   size_t num_async_infer_calls{0};
   size_t num_async_stream_infer_calls{0};
   size_t num_start_stream_calls{0};
+
+  std::atomic<size_t> num_active_infer_calls{0};
+
+  std::chrono::milliseconds request_delay{0};
 
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       request_timestamps;
@@ -183,8 +189,15 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
+
+    std::this_thread::sleep_for(stats_->request_delay);
+
+    stats_->num_active_infer_calls--;
+
     return Error::Success;
   }
 
@@ -193,11 +206,21 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
-    InferResult* result = new MockInferResult(options);
 
-    callback(result);
+    std::thread([this, &options, callback]() {
+      std::this_thread::sleep_for(stats_->request_delay);
+
+      InferResult* result = new MockInferResult(options);
+      callback(result);
+
+      stats_->num_active_infer_calls--;
+    })
+        .detach();
+
     return Error::Success;
   }
 
@@ -205,10 +228,21 @@ class MockClientBackend : public ClientBackend {
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs)
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
-    InferResult* result = new MockInferResult(options);
-    stream_callback_(result);
+
+    std::thread([this, &options]() {
+      std::this_thread::sleep_for(stats_->request_delay);
+
+      InferResult* result = new MockInferResult(options);
+      stream_callback_(result);
+
+      stats_->num_active_infer_calls--;
+    })
+        .detach();
+
     return Error::Success;
   }
 

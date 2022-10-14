@@ -364,7 +364,7 @@ ConcurrencyManager::Infer(
     // matches the concurrency level
     // Non-sequence model is 'num_reqs' * 1 ctx
     // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs
-    while (total_ongoing_requests < (int)num_reqs) {
+    while (total_ongoing_requests < (int)num_reqs && early_exit == false) {
       // Update the inputs if required for non-sequence
       if (using_json_data_ && (!on_sequence_model_)) {
         int step_id = (thread_config->non_sequence_data_step_id_ %
