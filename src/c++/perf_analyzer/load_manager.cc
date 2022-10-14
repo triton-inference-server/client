@@ -93,19 +93,19 @@ LoadManager::~LoadManager()
                 << std::endl;
     }
     if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
-      for (auto region : shared_memory_regions_) {
+      for (auto& region : shared_memory_regions_) {
         if (factory_->Kind() !=
             triton::perfanalyzer::clientbackend::BackendKind::TRITON_C_API) {
           err = backend_->UnmapSharedMemory(
-              shared_memory_regions_[region.first].first,
-              shared_memory_regions_[region.first].second);
+              shared_memory_regions_[region.first].data_.get(),
+              shared_memory_regions_[region.first].byte_size_);
           if (!err.IsOk()) {
             std::cerr << "Unable to unmap shared memory with key ("
                       << region.first << "): Starting: "
                       << static_cast<void*>(
-                             shared_memory_regions_[region.first].first)
+                             shared_memory_regions_[region.first].data_.get())
                       << ", size: "
-                      << shared_memory_regions_[region.first].second
+                      << shared_memory_regions_[region.first].byte_size_
                       << std::endl;
           }
           err = backend_->UnlinkSharedMemoryRegion(region.first);
@@ -113,26 +113,8 @@ LoadManager::~LoadManager()
             std::cerr << "Unable to unlink shared memory with key: "
                       << region.first << std::endl;
           }
-        } else {
-          delete[] shared_memory_regions_[region.first].first;
         }
       }
-    } else if (shared_memory_type_ == SharedMemoryType::CUDA_SHARED_MEMORY) {
-#ifdef TRITON_ENABLE_GPU
-      for (auto region : shared_memory_regions_) {
-        cudaError_t cuda_err =
-            cudaFree(shared_memory_regions_[region.first].first);
-        if (cuda_err != cudaSuccess) {
-          std::cerr << "Unable to free cuda shared memory for " << region.first
-                    << ": Starting: "
-                    << static_cast<void*>(
-                           shared_memory_regions_[region.first].first)
-                    << ", size: " << shared_memory_regions_[region.first].second
-                    << " bytes, Details: " << cudaGetErrorString(cuda_err)
-                    << std::endl;
-        }
-      }
-#endif  // TRITON_ENABLE_GPU
     }
   }
 }
@@ -280,6 +262,15 @@ LoadManager::CreateMemoryRegion(
       *ptr = new uint8_t[byte_size];
       RETURN_IF_ERROR(
           backend_->RegisterSystemMemory(shm_region_name, *ptr, byte_size));
+
+      // Set free as the destructor.
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr),
+                  [](uint8_t* memory) { free(memory); }))));
     } else {
       std::string shm_key("/" + shm_region_name);
       int shm_fd_op;
@@ -289,6 +280,14 @@ LoadManager::CreateMemoryRegion(
 
       RETURN_IF_ERROR(backend_->RegisterSystemSharedMemory(
           shm_region_name, shm_key, byte_size));
+
+      // No-op destruction
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr), [](uint8_t* memory) {}))));
     }
   } else if (memory_type == SharedMemoryType::CUDA_SHARED_MEMORY) {
 #ifdef TRITON_ENABLE_GPU
@@ -305,11 +304,39 @@ LoadManager::CreateMemoryRegion(
         triton::perfanalyzer::clientbackend::BackendKind::TRITON_C_API) {
       RETURN_IF_ERROR(
           backend_->RegisterCudaMemory(shm_region_name, *ptr, byte_size));
+
+      // Set cudaFree as the destructor
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr),
+                  [shm_region_name, byte_size](uint8_t* memory) {
+                    cudaError_t cuda_err = cudaFree(memory);
+                    if (cuda_err != cudaSuccess) {
+                      std::cerr
+                          << "Unable to free cuda shared memory for "
+                          << shm_region_name
+                          << ": Starting: " << static_cast<void*>(memory)
+                          << ", size: " << byte_size
+                          << " bytes, Details: " << cudaGetErrorString(cuda_err)
+                          << std::endl;
+                    }
+                  }))));
     } else {
       cudaIpcMemHandle_t cuda_handle;
       RETURN_IF_ERROR(CreateCUDAIPCHandle(&cuda_handle, (void*)ptr));
       RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
           shm_region_name, cuda_handle, byte_size));
+
+      // No operation required for deleting the memory
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr), [](uint8_t* memory) {}))));
     }
 #endif  // TRITON_ENABLE_GPU
   } else {
@@ -317,9 +344,6 @@ LoadManager::CreateMemoryRegion(
         "CreateMemoryRegion called with invalid memory region type.",
         pa::GENERIC_ERROR);
   }
-
-  shared_memory_regions_[shm_region_name] =
-      std::pair<uint8_t*, size_t>(reinterpret_cast<uint8_t*>(*ptr), byte_size);
 
   return cb::Error::Success;
 }
@@ -546,7 +570,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
     ctx->valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
 
   for (const auto& output : *(parser_->Outputs())) {
@@ -558,7 +582,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
     ctx->outputs_.push_back(requested_output);
 
     RETURN_IF_ERROR(requested_output->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
 
   return cb::Error::Success;
@@ -817,7 +841,7 @@ LoadManager::SetInputsSharedMemory(
       input->SetShape(shape);
     }
     RETURN_IF_ERROR(input->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
   return cb::Error::Success;
 }
