@@ -608,7 +608,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->start_sequence_id = 53;
       exp->sequence_id_range = UINT32_MAX;
-      CHECK_PARAMS(act, exp);
     }
     SUBCASE("Two args")
     {
@@ -621,7 +620,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->start_sequence_id = 53;
       exp->sequence_id_range = 14;
-      CHECK_PARAMS(act, exp);
     }
     SUBCASE("Three args")
     {
@@ -634,6 +632,11 @@ TEST_CASE("Testing Command Line Parser")
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
           "option sequence-id-range can have maximum of two elements");
+
+      // It will get the final 2 values
+      //
+      exp->start_sequence_id = 67;
+      exp->sequence_id_range = 25;
     }
     SUBCASE("Not a number")
     {
@@ -658,6 +661,10 @@ TEST_CASE("Testing Command Line Parser")
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
           "failed to parse sequence-id-range: 53:BAD");
+
+      // It will get the valid value
+      //
+      exp->start_sequence_id = 53;
     }
   }
 
@@ -1045,34 +1052,6 @@ TEST_CASE("Testing Command Line Parser")
       exp->concurrency_range.step = 25;
       exp->latency_threshold_ms = 0;
     }
-
-    // TODO figure out how to setup an asynchronous sequence model
-    //
-    // SUBCASE("invalid condition - end is 0 for asynchronous sequence models")
-    // {
-    //   int argc = 7;
-    //   char* argv[argc] = {app_name,   "-m",
-    //                       model_name, "--concurrency-range",
-    //                       "100:0:25", "--async",
-    //                       "0"};
-
-    //   REQUIRE_NOTHROW(act = parser.parse(argc, argv));
-    //   CHECK(parser.usage_called());
-    //   CHECK_STRING(
-    //       "Usage Message", parser.get_usage_message(),
-    //       "The end of the search range and the latency limit can not be both
-    //       0
-    //       "
-    //       "(or 0.0) simultaneously");
-
-    //   exp->using_concurrency_range = true;
-    //   exp->concurrency_range.start = 100;
-    //   exp->concurrency_range.end = 0;
-    //   exp->concurrency_range.step = 25;
-    //   exp->latency_threshold_ms = 0;
-    //   //CHECK_PARAMS(act, exp);
-    //   optind = 1;
-    // }
   }
 
   SUBCASE("Option : --latency-threshold")
