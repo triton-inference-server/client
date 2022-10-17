@@ -50,7 +50,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-
 namespace {
 
 std::string
@@ -326,7 +325,8 @@ LoadManager::CreateMemoryRegion(
                   }))));
     } else {
       cudaIpcMemHandle_t cuda_handle;
-      RETURN_IF_ERROR(CreateCUDAIPCHandle(&cuda_handle, (void*)ptr));
+      RETURN_IF_ERROR(
+          CreateCUDAIPCHandle(&cuda_handle, reinterpret_cast<void*>(*ptr)));
       RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
           shm_region_name, cuda_handle, byte_size));
 
