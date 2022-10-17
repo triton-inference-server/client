@@ -1804,12 +1804,6 @@ InferenceServerHttpClient::PreRunProcessing(
   if (options.client_timeout_ != 0) {
     uint64_t timeout_ms = (options.client_timeout_ / 1000);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, timeout_ms);
-    shortest_timeout_ms_ = std::min(shortest_timeout_ms_, int(timeout_ms));
-  }
-
-  if (options.server_timeout_ != 0) {
-      uint64_t server_timeout_ms = options.server_timeout_ / 1000;
-      shortest_timeout_ms_ = std::min(shortest_timeout_ms_, int(server_timeout_ms));
   }
 
   if (verbose_) {
@@ -1910,49 +1904,56 @@ InferenceServerHttpClient::AsyncTransfer()
     if (mc == CURLM_OK) {
       // Wait for activity. Timeout should be capped by server_timeout_
       // of InferOptions
-      mc = curl_multi_poll(multi_handle_, NULL, 0, shortest_timeout_ms_, &numfds);
-      while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
-        uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
-        auto itr = ongoing_async_requests_.find(identifier);
-        // This shouldn't happen
-        if (itr == ongoing_async_requests_.end()) {
-          std::cerr
-              << "Unexpected error: received completed request that is not "
-                 "in the list of asynchronous requests"
-              << std::endl;
+      mc =
+          curl_multi_wait(multi_handle_, NULL, 0, CLIENT_WAIT_TIME_MS, &numfds);
+      if (mc == CURLM_OK) {
+        while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
+          uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
+          auto itr = ongoing_async_requests_.find(identifier);
+          // This shouldn't happen
+          if (itr == ongoing_async_requests_.end()) {
+            std::cerr
+                << "Unexpected error: received completed request that is not "
+                   "in the list of asynchronous requests"
+                << std::endl;
+            curl_multi_remove_handle(multi_handle_, msg->easy_handle);
+            curl_easy_cleanup(msg->easy_handle);
+            continue;
+          }
+
+          long http_code = 400;
+          if (msg->data.result == CURLE_OK) {
+            curl_easy_getinfo(
+                msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
+          } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+            http_code = 499;
+          }
+
+          request_list.emplace_back(itr->second);
+          ongoing_async_requests_.erase(itr);
           curl_multi_remove_handle(multi_handle_, msg->easy_handle);
           curl_easy_cleanup(msg->easy_handle);
-          continue;
-        }
 
-        long http_code = 400;
-        if (msg->data.result == CURLE_OK) {
-          curl_easy_getinfo(
-              msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
-        } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-          http_code = 499;
-        }
+          std::shared_ptr<HttpInferRequest> async_request = request_list.back();
+          async_request->http_code_ = http_code;
 
-        request_list.emplace_back(itr->second);
-        ongoing_async_requests_.erase(itr);
-        curl_multi_remove_handle(multi_handle_, msg->easy_handle);
-        curl_easy_cleanup(msg->easy_handle);
-
-        std::shared_ptr<HttpInferRequest> async_request = request_list.back();
-        async_request->http_code_ = http_code;
-
-        if (msg->msg != CURLMSG_DONE) {
-          // Something wrong happened.
-          std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
-                    << std::endl;
-        } else {
-          async_request->Timer().CaptureTimestamp(
-              RequestTimers::Kind::REQUEST_END);
-          Error err = UpdateInferStat(async_request->Timer());
-          if (!err.IsOk()) {
-            std::cerr << "Failed to update context stat: " << err << std::endl;
+          if (msg->msg != CURLMSG_DONE) {
+            // Something wrong happened.
+            std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
+                      << std::endl;
+          } else {
+            async_request->Timer().CaptureTimestamp(
+                RequestTimers::Kind::REQUEST_END);
+            Error err = UpdateInferStat(async_request->Timer());
+            if (!err.IsOk()) {
+              std::cerr << "Failed to update context stat: " << err
+                        << std::endl;
+            }
           }
         }
+      } else {
+        std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
+                  << std::endl;
       }
     } else {
       std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
