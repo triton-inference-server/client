@@ -169,6 +169,67 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
   CHECK_STRING(act->memory_type, exp->memory_type);
 }
 
+
+#define CHECK_INT_OPTION(option_name, exp_val)                             \
+  SUBCASE("valid value")                                                   \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "2000"};  \
+    CAPTURE(argv[3]);                                                      \
+    CAPTURE(argv[4]);                                                      \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(!parser.UsageCalled());                                          \
+    CAPTURE(parser.GetUsageMessage());                                     \
+                                                                           \
+    exp_val = 2000;                                                        \
+    CAPTURE(exp_val);                                                      \
+  }                                                                        \
+                                                                           \
+  SUBCASE("set to 0")                                                      \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "0"};     \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(!parser.UsageCalled());                                          \
+                                                                           \
+    exp_val = 0;                                                           \
+  }                                                                        \
+                                                                           \
+  SUBCASE("negative value")                                                \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "-2000"}; \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(!parser.UsageCalled());                                          \
+                                                                           \
+    exp_val = -2000;                                                       \
+  }                                                                        \
+                                                                           \
+  SUBCASE("floating point value")                                          \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "29.5"};  \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(!parser.UsageCalled());                                          \
+                                                                           \
+    exp_val = 29;                                                          \
+  }                                                                        \
+                                                                           \
+  SUBCASE("missing value")                                                 \
+  {                                                                        \
+    int argc = 4;                                                          \
+    char* argv[argc] = {app_name, "-m", model_name, option_name};          \
+                                                                           \
+    opterr = 0;                                                            \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(parser.UsageCalled());                                           \
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");           \
+  }
+
+
 TEST_CASE("Testing PerfAnalyzerParameters")
 {
   PAParamsPtr params(new PerfAnalyzerParameters{});
@@ -289,7 +350,8 @@ TEST_CASE("Testing Command Line Parser")
   char* model_name = "my_model";
   char* app_name = "test_perf_analyzer";
 
-  opterr = 0;  // Disable error output for GetOpt library
+  opterr = 1;  // Enable error output for GetOpt library
+  bool check_params = true;
 
   TestCLParser parser;  // Command Line parser under test
   PAParamsPtr act;      // Actual options parsed from parser
@@ -310,7 +372,6 @@ TEST_CASE("Testing Command Line Parser")
         "Usage Message", parser.GetUsageMessage(), "-m flag must be specified");
 
     exp->model_name = "";
-    CHECK_PARAMS(act, exp);
   }
 
   SUBCASE("with min parameters")
@@ -318,11 +379,8 @@ TEST_CASE("Testing Command Line Parser")
     int argc = 3;
     char* argv[argc] = {app_name, "-m", model_name};
 
-    PAParamsPtr act;
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     REQUIRE(!parser.UsageCalled());
-
-    CHECK_PARAMS(act, exp);
   }
 
   SUBCASE("Option : --streaming")
@@ -340,8 +398,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->model_name = "";
       exp->streaming = true;
-      // exp->max_threads = 16;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("with model")
@@ -360,7 +416,6 @@ TEST_CASE("Testing Command Line Parser")
           "streaming is only allowed with gRPC protocol");
 
       exp->streaming = true;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("with model last")
@@ -376,7 +431,6 @@ TEST_CASE("Testing Command Line Parser")
           "streaming is only allowed with gRPC protocol");
 
       exp->streaming = true;
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -392,7 +446,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->max_threads = 1;
       exp->max_threads_specified = true;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("set to max")
@@ -405,7 +458,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->max_threads = 65535;
       exp->max_threads_specified = true;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("missing value")
@@ -413,6 +465,8 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads"};
 
+      opterr = 0;  // Disable error output for GetOpt library for this case
+
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
 
@@ -422,8 +476,6 @@ TEST_CASE("Testing Command Line Parser")
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
-
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("bad value")
@@ -431,6 +483,8 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads", "bad"};
 
+      opterr = 0;  // Disable error output for GetOpt library for this case
+
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
 
@@ -440,8 +494,6 @@ TEST_CASE("Testing Command Line Parser")
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
-
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -457,7 +509,17 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->sequence_length = 2000;
-      CHECK_PARAMS(act, exp);
+    }
+
+    SUBCASE("set to 0")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--sequence-length", "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->sequence_length = 20;
     }
   }
 
@@ -472,7 +534,6 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->percentile = 25;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("set to 225 - overflow check")
@@ -487,7 +548,6 @@ TEST_CASE("Testing Command Line Parser")
           "percentile must be -1 for not reporting or in range (0, 100)");
 
       exp->percentile = 225;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("set to -1 - use average latency")
@@ -499,7 +559,6 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->percentile = -1;
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -515,7 +574,6 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->user_data.push_back("/usr/data");
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("call twice")
@@ -534,7 +592,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->user_data.push_back("/usr/data");
       exp->user_data.push_back("/another/dir");
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -551,7 +608,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->start_sequence_id = 53;
       exp->sequence_id_range = UINT32_MAX;
-      CHECK_PARAMS(act, exp);
     }
     SUBCASE("Two args")
     {
@@ -564,7 +620,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->start_sequence_id = 53;
       exp->sequence_id_range = 14;
-      CHECK_PARAMS(act, exp);
     }
     SUBCASE("Three args")
     {
@@ -577,6 +632,11 @@ TEST_CASE("Testing Command Line Parser")
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
           "option sequence-id-range can have maximum of two elements");
+
+      // It will get the final 2 values
+      //
+      exp->start_sequence_id = 67;
+      exp->sequence_id_range = 25;
     }
     SUBCASE("Not a number")
     {
@@ -601,6 +661,10 @@ TEST_CASE("Testing Command Line Parser")
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
           "failed to parse sequence-id-range: 53:BAD");
+
+      // It will get the valid value
+      //
+      exp->start_sequence_id = 53;
     }
   }
 
@@ -618,7 +682,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->input_shapes.emplace(
           std::string("input_name"), std::vector<int64_t>{1, 2, 3});
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("expected input, multiple shapes")
@@ -643,7 +706,6 @@ TEST_CASE("Testing Command Line Parser")
           std::string("alpha"), std::vector<int64_t>{10, 24});
       exp->input_shapes.emplace(
           std::string("beta"), std::vector<int64_t>{10, 200, 34, 15, 9000});
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("using negative dims")
@@ -659,7 +721,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->input_shapes.emplace(
           std::string("input_name"), std::vector<int64_t>{-1, 2, 3});
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("equals sign, not colon")
@@ -675,6 +736,8 @@ TEST_CASE("Testing Command Line Parser")
           act = parser.Parse(argc, argv),
           "basic_string::substr: __pos (which is 18) > this->size() (which is "
           "17)");
+
+      check_params = false;
     }
 
     SUBCASE("missing shape")
@@ -689,6 +752,8 @@ TEST_CASE("Testing Command Line Parser")
           act = parser.Parse(argc, argv),
           "basic_string::substr: __pos (which is 11) > this->size() (which is "
           "10)");
+
+      check_params = false;
     }
 
     SUBCASE("missing colon")
@@ -704,6 +769,8 @@ TEST_CASE("Testing Command Line Parser")
           act = parser.Parse(argc, argv),
           "basic_string::substr: __pos (which is 16) > this->size() (which is "
           "15)");
+
+      check_params = false;
     }
 
     SUBCASE("bad shapes - a,b,c")
@@ -720,7 +787,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->input_shapes.emplace(
           std::string("input_name"), std::vector<int64_t>{});
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("bad shapes - [1,2,3]")
@@ -737,7 +803,6 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->input_shapes.emplace(
           std::string("input_name"), std::vector<int64_t>{});
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -758,7 +823,6 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->measurement_window_ms = 500;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("set to -200")
@@ -780,7 +844,6 @@ TEST_CASE("Testing Command Line Parser")
       // becomes 18446744073709551416ULL, which is not what you would want.
       //
       exp->measurement_window_ms = -200;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("set to non-numeric value")
@@ -801,7 +864,6 @@ TEST_CASE("Testing Command Line Parser")
           "measurement window must be > 0 in msec");
 
       exp->measurement_window_ms = 0;
-      CHECK_PARAMS(act, exp);
     }
   }
 
@@ -820,7 +882,6 @@ TEST_CASE("Testing Command Line Parser")
       exp->concurrency_range.start = 100;
       exp->concurrency_range.end = 400;
       exp->concurrency_range.step = 10;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("only two options")
@@ -835,7 +896,6 @@ TEST_CASE("Testing Command Line Parser")
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
       exp->concurrency_range.end = 400;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("only one options")
@@ -851,13 +911,14 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
-      CHECK_PARAMS(act, exp);
     }
 
     SUBCASE("no options")
     {
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range"};
+
+      opterr = 0;  // Disable error output for GetOpt library for this case
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -867,141 +928,209 @@ TEST_CASE("Testing Command Line Parser")
       // to std::out
       //
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+    }
 
-      CHECK_PARAMS(act, exp);
+    SUBCASE("too many options")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "200:100:25:10"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "option concurrency-range can have maximum of three elements");
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 200;
+      exp->concurrency_range.end = 100;
+      exp->concurrency_range.step = 25;
+    }
+
+    SUBCASE("way too many options")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "200:100:25:10:20:30"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "option concurrency-range can have maximum of three elements");
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 200;
+      exp->concurrency_range.end = 100;
+      exp->concurrency_range.step = 25;
+    }
+
+    SUBCASE("wrong separator")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "100,400,10"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      // BUG: Should detect this and through an error. User will enter this and
+      // have no clue why the end and step sizes are not used correctly.
+      //
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 100;
+    }
+
+    SUBCASE("bad start value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "bad:400:10"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "failed to parse concurrency range: bad:400:10");
+
+      exp->using_concurrency_range = true;
+    }
+
+    SUBCASE("bad end value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "100:bad:10"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "failed to parse concurrency range: 100:bad:10");
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 100;
+    }
+
+    SUBCASE("bad step value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
+                          "100:400:bad"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "failed to parse concurrency range: 100:400:bad");
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 100;
+      exp->concurrency_range.end = 400;
+    }
+
+    SUBCASE("invalid condition - end and latency threshold are 0")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--concurrency-range",
+                          "100:0:25", "--latency-threshold",
+                          "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "The end of the search range and the latency limit can not be both 0 "
+          "(or 0.0) simultaneously");
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 100;
+      exp->concurrency_range.end = 0;
+      exp->concurrency_range.step = 25;
+      exp->latency_threshold_ms = 0;
     }
   }
 
-  SUBCASE("too many options")
+  SUBCASE("Option : --latency-threshold")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "200:100:25:10"};
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "option concurrency-range can have maximum of three elements");
-
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 200;
-    exp->concurrency_range.end = 100;
-    exp->concurrency_range.step = 25;
-    CHECK_PARAMS(act, exp);
+    CHECK_INT_OPTION("--latency-threshold", exp->latency_threshold_ms);
   }
 
-  SUBCASE("way too many options")
+  SUBCASE("Option : --stability-percentage")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "200:100:25:10:20:30"};
+    SUBCASE("valid value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
+                          "80"};
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "option concurrency-range can have maximum of three elements");
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
 
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 200;
-    exp->concurrency_range.end = 100;
-    exp->concurrency_range.step = 25;
-    CHECK_PARAMS(act, exp);
+      exp->stability_threshold = .8f;
+    }
+
+    SUBCASE("set to 0")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
+                          "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+    }
+
+    SUBCASE("negative value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
+                          "-20"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      // BUG: There should be some check for negative values
+      // This will be interpreted as threshold of 18446744073709549616 ms
+      //
+      exp->stability_threshold = -.2f;
+    }
+
+    SUBCASE("floating point value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
+                          "29.5"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->stability_threshold = .295f;
+    }
+
+    SUBCASE("missing value")
+    {
+      int argc = 4;
+      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage"};
+
+      opterr = 0;
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+    }
   }
 
-  SUBCASE("wrong separator")
+  SUBCASE("Option : --max-trials")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "100,400,10"};
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(!parser.UsageCalled());
-
-    // BUG: Should detect this and through an error. User will enter this and
-    // have no clue why the end and step sizes are not used correctly.
-    //
-
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 100;
-    CHECK_PARAMS(act, exp);
+    CHECK_INT_OPTION("--max-trials", exp->max_trials);
   }
 
-  SUBCASE("bad start value")
-  {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "bad:400:10"};
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "failed to parse concurrency range: bad:400:10");
-
-    exp->using_concurrency_range = true;
+  if (check_params) {
     CHECK_PARAMS(act, exp);
   }
-
-  SUBCASE("bad end value")
-  {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "100:bad:10"};
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "failed to parse concurrency range: 100:bad:10");
-
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 100;
-    CHECK_PARAMS(act, exp);
-  }
-
-  SUBCASE("bad step value")
-  {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                        "100:400:bad"};
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "failed to parse concurrency range: 100:400:bad");
-
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 100;
-    exp->concurrency_range.end = 400;
-    CHECK_PARAMS(act, exp);
-  }
-
-  SUBCASE("invalid condition - end and latency threshold are 0")
-  {
-    int argc = 7;
-    char* argv[argc] = {app_name,   "-m",
-                        model_name, "--concurrency-range",
-                        "100:0:25", "--latency-threshold",
-                        "0"};
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "The end of the search range and the latency limit can not be both 0 "
-        "(or 0.0) simultaneously");
-
-    exp->using_concurrency_range = true;
-    exp->concurrency_range.start = 100;
-    exp->concurrency_range.end = 0;
-    exp->concurrency_range.step = 25;
-    exp->latency_threshold_ms = 0;
-    CHECK_PARAMS(act, exp);
-  }
-
   optind = 1;  // Reset GotOpt index, needed to parse the next command line
 }
 }}  // namespace triton::perfanalyzer
