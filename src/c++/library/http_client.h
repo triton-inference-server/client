@@ -647,7 +647,7 @@ class InferenceServerHttpClient : public InferenceServerClient {
   // map to record ongoing asynchronous requests with pointer to easy handle
   // or tag id as key
   AsyncReqMap ongoing_async_requests_;
-
+  // Wait time before the client processes data
   static constexpr int CLIENT_WAIT_TIME_MS = 1000;
 };
 

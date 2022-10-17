@@ -1902,8 +1902,7 @@ InferenceServerHttpClient::AsyncTransfer()
     CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
     int numfds;
     if (mc == CURLM_OK) {
-      // Wait for activity. Timeout should be capped by server_timeout_
-      // of InferOptions
+      // Wait for activity up to CLIENT_WAIT_TIME_MS
       mc =
           curl_multi_wait(multi_handle_, NULL, 0, CLIENT_WAIT_TIME_MS, &numfds);
       if (mc == CURLM_OK) {
