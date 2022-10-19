@@ -106,9 +106,11 @@ class TritonCApiClientBackend : public ClientBackend {
       const std::string& model_name = "",
       const std::string& model_version = "") override;
 
+#ifdef TRITON_ENABLE_GPU
   /// See ClientBackend::RegisterCudaMemory
   Error RegisterCudaMemory(
       const std::string& name, void* handle, const size_t byte_size) override;
+#endif  // TRITON_ENABLE_GPU
 
   /// See ClientBackend::RegisterSystemMemory
   Error RegisterSystemMemory(

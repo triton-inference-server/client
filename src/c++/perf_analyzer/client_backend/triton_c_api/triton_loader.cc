@@ -1225,6 +1225,7 @@ TritonLoader::~TritonLoader()
   ClearHandles();
 }
 
+#ifdef TRITON_ENABLE_GPU
 Error
 TritonLoader::RegisterCudaMemory(
     const std::string& name, void* handle, const size_t byte_size)
@@ -1233,6 +1234,7 @@ TritonLoader::RegisterCudaMemory(
       name, handle, byte_size, 0 /* device id */));
   return Error::Success;
 }
+#endif  // TRITON_ENABLE_GPU
 
 Error
 TritonLoader::RegisterSystemMemory(
