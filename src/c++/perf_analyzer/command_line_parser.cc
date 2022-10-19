@@ -1420,9 +1420,6 @@ CLParser::VerifyOptions()
     if (!params_->targeting_concurrency()) {
       std::cerr << "Only target concurrency is supported by C API" << std::endl;
       throw PerfAnalyzerException(GENERIC_ERROR);
-    } else if (params_->shared_memory_type != NO_SHARED_MEMORY) {
-      std::cerr << "Shared memory not yet supported by C API" << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
     } else if (
         params_->triton_server_path.empty() ||
         params_->model_repository_path.empty() ||

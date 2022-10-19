@@ -27,6 +27,8 @@
 #include "load_manager.h"
 
 #include <algorithm>
+
+#include "client_backend/client_backend.h"
 #include "shm_utils.h"
 
 #ifdef TRITON_ENABLE_GPU
@@ -47,7 +49,6 @@
 #endif  // TRITON_ENABLE_GPU
 
 namespace triton { namespace perfanalyzer {
-
 
 namespace {
 
@@ -91,40 +92,28 @@ LoadManager::~LoadManager()
                 << std::endl;
     }
     if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
-      for (auto region : shared_memory_regions_) {
-        err = backend_->UnmapSharedMemory(
-            shared_memory_regions_[region.first].first,
-            shared_memory_regions_[region.first].second);
-        if (!err.IsOk()) {
-          std::cerr << "Unable to unmap shared memory with key ("
-                    << region.first << "): Starting: "
-                    << static_cast<void*>(
-                           shared_memory_regions_[region.first].first)
-                    << ", size: " << shared_memory_regions_[region.first].second
-                    << std::endl;
-        }
-        err = backend_->UnlinkSharedMemoryRegion(region.first);
-        if (!err.IsOk()) {
-          std::cerr << "Unable to unlink shared memory with key: "
-                    << region.first << std::endl;
-        }
-      }
-    } else if (shared_memory_type_ == SharedMemoryType::CUDA_SHARED_MEMORY) {
-#ifdef TRITON_ENABLE_GPU
-      for (auto region : shared_memory_regions_) {
-        cudaError_t cuda_err =
-            cudaFree(shared_memory_regions_[region.first].first);
-        if (cuda_err != cudaSuccess) {
-          std::cerr << "Unable to free cuda shared memory for " << region.first
-                    << ": Starting: "
-                    << static_cast<void*>(
-                           shared_memory_regions_[region.first].first)
-                    << ", size: " << shared_memory_regions_[region.first].second
-                    << " bytes, Details: " << cudaGetErrorString(cuda_err)
-                    << std::endl;
+      for (auto& region : shared_memory_regions_) {
+        if (factory_->Kind() !=
+            triton::perfanalyzer::clientbackend::BackendKind::TRITON_C_API) {
+          err = backend_->UnmapSharedMemory(
+              shared_memory_regions_[region.first].data_.get(),
+              shared_memory_regions_[region.first].byte_size_);
+          if (!err.IsOk()) {
+            std::cerr << "Unable to unmap shared memory with key ("
+                      << region.first << "): Starting: "
+                      << static_cast<void*>(
+                             shared_memory_regions_[region.first].data_.get())
+                      << ", size: "
+                      << shared_memory_regions_[region.first].byte_size_
+                      << std::endl;
+          }
+          err = backend_->UnlinkSharedMemoryRegion(region.first);
+          if (!err.IsOk()) {
+            std::cerr << "Unable to unlink shared memory with key: "
+                      << region.first << std::endl;
+          }
         }
       }
-#endif  // TRITON_ENABLE_GPU
     }
   }
 }
@@ -262,6 +251,104 @@ LoadManager::InitManagerInputs(
 }
 
 cb::Error
+LoadManager::CreateMemoryRegion(
+    const std::string& shm_region_name, const SharedMemoryType& memory_type,
+    const size_t byte_size, void** ptr)
+{
+  if (memory_type == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
+    if (factory_->Kind() ==
+        triton::perfanalyzer::clientbackend::BackendKind::TRITON_C_API) {
+      *ptr = new uint8_t[byte_size];
+      RETURN_IF_ERROR(
+          backend_->RegisterSystemMemory(shm_region_name, *ptr, byte_size));
+
+      // Set free as the destructor.
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr),
+                  [](uint8_t* memory) { free(memory); }))));
+    } else {
+      std::string shm_key("/" + shm_region_name);
+      int shm_fd_op;
+      RETURN_IF_ERROR(
+          backend_->CreateSharedMemoryRegion(shm_key, byte_size, &shm_fd_op));
+      RETURN_IF_ERROR(backend_->MapSharedMemory(shm_fd_op, 0, byte_size, ptr));
+
+      RETURN_IF_ERROR(backend_->RegisterSystemSharedMemory(
+          shm_region_name, shm_key, byte_size));
+
+      // No-op destruction
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr), [](uint8_t* memory) {}))));
+    }
+  } else if (memory_type == SharedMemoryType::CUDA_SHARED_MEMORY) {
+#ifdef TRITON_ENABLE_GPU
+    cudaError_t cuda_err = cudaMalloc((void**)ptr, byte_size);
+    if (cuda_err != cudaSuccess) {
+      return cb::Error(
+          "unable to allocate memory of " + std::to_string(byte_size) +
+              " bytes on gpu for output: " +
+              std::string(cudaGetErrorString(cuda_err)),
+          pa::GENERIC_ERROR);
+    }
+
+    if (factory_->Kind() ==
+        triton::perfanalyzer::clientbackend::BackendKind::TRITON_C_API) {
+      RETURN_IF_ERROR(
+          backend_->RegisterCudaMemory(shm_region_name, *ptr, byte_size));
+
+      // Set cudaFree as the destructor
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr),
+                  [shm_region_name, byte_size](uint8_t* memory) {
+                    cudaError_t cuda_err = cudaFree(memory);
+                    if (cuda_err != cudaSuccess) {
+                      std::cerr
+                          << "Unable to free cuda shared memory for "
+                          << shm_region_name
+                          << ": Starting: " << static_cast<void*>(memory)
+                          << ", size: " << byte_size
+                          << " bytes, Details: " << cudaGetErrorString(cuda_err)
+                          << std::endl;
+                    }
+                  }))));
+    } else {
+      cudaIpcMemHandle_t cuda_handle;
+      RETURN_IF_ERROR(
+          CreateCUDAIPCHandle(&cuda_handle, reinterpret_cast<void*>(*ptr)));
+      RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
+          shm_region_name, cuda_handle, byte_size));
+
+      // No operation required for deleting the memory
+      shared_memory_regions_.emplace(
+          std::piecewise_construct, std::forward_as_tuple(shm_region_name),
+          std::forward_as_tuple(SharedMemoryData(
+              byte_size,
+              std::unique_ptr<uint8_t, std::function<void(uint8_t*)>>(
+                  reinterpret_cast<uint8_t*>(*ptr), [](uint8_t* memory) {}))));
+    }
+#endif  // TRITON_ENABLE_GPU
+  } else {
+    return cb::Error(
+        "CreateMemoryRegion called with invalid memory region type.",
+        pa::GENERIC_ERROR);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
 LoadManager::InitSharedMemory()
 {
   using_shared_memory_ = true;
@@ -279,39 +366,9 @@ LoadManager::InitSharedMemory()
     uint8_t* output_shm_ptr;
     size_t alloc_size = batch1_bytesize * batch_size_;
     std::string region_name(TensorToRegionName(output.first));
-    if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
-      std::string shm_key("/" + region_name);
-      int shm_fd_op;
-      RETURN_IF_ERROR(
-          backend_->CreateSharedMemoryRegion(shm_key, alloc_size, &shm_fd_op));
-      RETURN_IF_ERROR(backend_->MapSharedMemory(
-          shm_fd_op, 0, alloc_size, (void**)&output_shm_ptr));
-
-      shared_memory_regions_[region_name] =
-          std::pair<uint8_t*, size_t>(output_shm_ptr, alloc_size);
-
-      RETURN_IF_ERROR(backend_->RegisterSystemSharedMemory(
-          region_name, shm_key, alloc_size));
-    } else {
-#ifdef TRITON_ENABLE_GPU
-      cudaError_t cuda_err = cudaMalloc((void**)&output_shm_ptr, alloc_size);
-      if (cuda_err != cudaSuccess) {
-        return cb::Error(
-            "unable to allocate memory of " + std::to_string(alloc_size) +
-                " bytes on gpu for output " + output.first + " : " +
-                std::string(cudaGetErrorString(cuda_err)),
-            pa::GENERIC_ERROR);
-      }
-      shared_memory_regions_[region_name] =
-          std::pair<uint8_t*, size_t>(output_shm_ptr, alloc_size);
-
-      cudaIpcMemHandle_t cuda_handle;
-      RETURN_IF_ERROR(CreateCUDAIPCHandle(&cuda_handle, (void*)output_shm_ptr));
-      // Using GPU with device id 0
-      RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
-          region_name, cuda_handle, alloc_size));
-#endif  // TRITON_ENABLE_GPU
-    }
+    RETURN_IF_ERROR(CreateMemoryRegion(
+        region_name, shared_memory_type_, alloc_size,
+        reinterpret_cast<void**>(&output_shm_ptr)));
   }
 
   for (const auto& input : *(parser_->Inputs())) {
@@ -367,16 +424,16 @@ LoadManager::InitSharedMemory()
               &data_ptr, &batch1_bytesize));
           if (batch1_bytesize != byte_size.back()) {
             return cb::Error(
-                "The shape tensors should be identical in a batch (mismatch in "
-                "size)",
+                "The shape tensors should be identical in a batch (mismatch "
+                "in size)",
                 pa::GENERIC_ERROR);
           }
 
           for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
             if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
               return cb::Error(
-                  "The shape tensors should be identical in a batch (mismatch "
-                  "in content)",
+                  "The shape tensors should be identical in a batch "
+                  "(mismatch in content)",
                   pa::GENERIC_ERROR);
             }
           }
@@ -387,18 +444,11 @@ LoadManager::InitSharedMemory()
         std::string region_name(
             TensorToRegionName(input.first) + "_" + std::to_string(i) + "_" +
             std::to_string(j));
-
         uint8_t* input_shm_ptr;
+        RETURN_IF_ERROR(CreateMemoryRegion(
+            region_name, shared_memory_type_, alloc_size,
+            reinterpret_cast<void**>(&input_shm_ptr)));
         if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
-          std::string shm_key("/" + region_name);
-          int shm_fd_ip;
-          RETURN_IF_ERROR(backend_->CreateSharedMemoryRegion(
-              shm_key, alloc_size, &shm_fd_ip));
-          RETURN_IF_ERROR(backend_->MapSharedMemory(
-              shm_fd_ip, 0, alloc_size, (void**)&input_shm_ptr));
-          shared_memory_regions_[region_name] =
-              std::pair<uint8_t*, size_t>(input_shm_ptr, alloc_size);
-
           // Populate the region with data
           size_t count = 0;
           size_t offset = 0;
@@ -408,24 +458,8 @@ LoadManager::InitSharedMemory()
             offset += byte_size[count];
             count++;
           }
-
-          // Register the region with triton
-          RETURN_IF_ERROR(backend_->RegisterSystemSharedMemory(
-              region_name, shm_key, alloc_size));
         } else {
 #ifdef TRITON_ENABLE_GPU
-          cudaError_t cuda_err = cudaMalloc((void**)&input_shm_ptr, alloc_size);
-          if (cuda_err != cudaSuccess) {
-            return cb::Error(
-                "unable to allocate memory of " + std::to_string(alloc_size) +
-                    "bytes on gpu for input " + region_name + " : " +
-                    std::string(cudaGetErrorString(cuda_err)),
-                pa::GENERIC_ERROR);
-          }
-
-          shared_memory_regions_[region_name] =
-              std::pair<uint8_t*, size_t>(input_shm_ptr, alloc_size);
-
           // Populate the region with data
           size_t count = 0;
           size_t offset = 0;
@@ -444,14 +478,6 @@ LoadManager::InitSharedMemory()
             offset += byte_size[count];
             count++;
           }
-
-          cudaIpcMemHandle_t cuda_handle;
-          RETURN_IF_ERROR(
-              CreateCUDAIPCHandle(&cuda_handle, (void*)input_shm_ptr));
-
-          // Register the region with triton
-          RETURN_IF_ERROR(backend_->RegisterCudaSharedMemory(
-              region_name, cuda_handle, alloc_size));
 #endif  // TRITON_ENABLE_GPU
         }
       }
@@ -544,7 +570,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
     ctx->valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
 
   for (const auto& output : *(parser_->Outputs())) {
@@ -556,7 +582,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
     ctx->outputs_.push_back(requested_output);
 
     RETURN_IF_ERROR(requested_output->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
 
   return cb::Error::Success;
@@ -776,14 +802,16 @@ LoadManager::SetInputs(
     }
 
     // If all optional inputs had data provided, this is a valid input. But if
-    // some inferences in the batch provided data for an optional input and some
-    // inferences did not, this is an invalid case and an error is thrown.
+    // some inferences in the batch provided data for an optional input and
+    // some inferences did not, this is an invalid case and an error is
+    // thrown.
     if (missing_data_cnt == 0) {
       valid_inputs.push_back(input);
     } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
       return cb::Error(
           "For batch sizes larger than 1, the same set of inputs must be "
-          "specified for each batch. You cannot use different set of optional "
+          "specified for each batch. You cannot use different set of "
+          "optional "
           "inputs for each individual batch.");
     }
   }
@@ -813,7 +841,7 @@ LoadManager::SetInputsSharedMemory(
       input->SetShape(shape);
     }
     RETURN_IF_ERROR(input->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].second));
+        region_name, shared_memory_regions_[region_name].byte_size_));
   }
   return cb::Error::Success;
 }
@@ -905,5 +933,4 @@ LoadManager::StopWorkerThreads()
     cnt++;
   }
 }
-
 }}  // namespace triton::perfanalyzer

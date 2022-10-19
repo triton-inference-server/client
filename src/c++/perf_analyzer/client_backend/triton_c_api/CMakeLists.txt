@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,14 +31,18 @@ set(
     triton_c_api_backend.cc
     shared_library.cc
     triton_loader.cc
+    shared_memory_manager.cc
+    scoped_defer.cc
 )
 
 set(
     TRITON_C_API_CLIENT_BACKEND_HDRS
     triton_c_api_backend.h
     shared_library.h
+    shared_memory_manager.h
     triton_loader.h
     c_api_infer_results.h
+    scoped_defer.h
 )
 
 add_library(

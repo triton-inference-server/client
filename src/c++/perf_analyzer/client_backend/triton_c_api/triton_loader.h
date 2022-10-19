@@ -25,17 +25,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
+
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
+
 #include "../client_backend.h"
 #include "common.h"
 #include "shared_library.h"
+#include "shared_memory_manager.h"
 #include "triton/core/tritonserver.h"
-
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
 
 // If TRITONSERVER error is non-OK, return the corresponding status.
 #define RETURN_IF_TRITONSERVER_ERROR(E, MSG)                                \
@@ -86,48 +88,62 @@ class TritonLoader : public tc::InferenceServerClient {
 
   static Error Create(
       const std::string& triton_server_path,
-      const std::string& model_repository_path, const std::string& memory_type,
-      bool verbose);
+      const std::string& model_repository_path, bool verbose);
 
-  static Error Delete();
-  static Error StartTriton(const std::string& memory_type);
+  Error Delete();
+  Error StartTriton();
 
-  static Error LoadModel(
+  Error LoadModel(
       const std::string& model_name, const std::string& model_version);
 
-  static Error ModelMetadata(rapidjson::Document* model_metadata);
+  Error ModelMetadata(rapidjson::Document* model_metadata);
 
-  static Error ModelConfig(rapidjson::Document* model_config);
+  Error ModelConfig(
+      rapidjson::Document* model_config, const std::string& model_name,
+      const std::string& model_version);
 
-  static Error ServerMetaData(rapidjson::Document* server_metadata);
+  Error ServerMetaData(rapidjson::Document* server_metadata);
 
-  static Error Infer(
+  Error Infer(
       const tc::InferOptions& options,
       const std::vector<tc::InferInput*>& inputs,
       const std::vector<const tc::InferRequestedOutput*>& outputs,
       InferResult** result);
 
-  static Error CleanUp(
+  Error CleanUp(
       TRITONSERVER_InferenceResponse* completed_response,
       TRITONSERVER_ResponseAllocator* allocator);
 
-  static Error ModelInferenceStatistics(
+  Error ModelInferenceStatistics(
       const std::string& model_name, const std::string& model_version,
       rapidjson::Document* infer_stat);
 
-  static Error ClientInferStat(tc::InferStat* infer_stat)
+  Error ClientInferStat(tc::InferStat* infer_stat)
   {
-    *infer_stat = GetSingleton()->infer_stat_;
+    *infer_stat = infer_stat_;
     return Error::Success;
   }
 
-  static bool ModelIsLoaded() { return GetSingleton()->model_is_loaded_; }
-  static bool ServerIsReady() { return GetSingleton()->server_is_ready_; }
-  static TRITONSERVER_Error* DeleteInferRequest(
+  Error RegisterCudaMemory(
+      const std::string& name, void* handle, const size_t byte_size);
+
+  Error RegisterSystemMemory(
+      const std::string& name, void* ptr, const size_t byte_size);
+
+  Error UnregisterAllSharedMemory();
+
+  TRITONSERVER_Error* ErrorNew(
+      TRITONSERVER_Error_Code code, const char* message);
+
+  bool ModelIsLoaded() { return model_is_loaded_; }
+  bool ServerIsReady() { return server_is_ready_; }
+
+  TRITONSERVER_Error* DeleteInferRequest(
       TRITONSERVER_InferenceRequest* irequest)
   {
-    return GetSingleton()->request_delete_fn_(irequest);
+    return request_delete_fn_(irequest);
   }
+  static TritonLoader* GetSingleton();
 
   // TRITONSERVER_ApiVersion
   typedef TRITONSERVER_Error* (*TritonServerApiVersionFn_t)(
@@ -145,12 +161,15 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_ServerOptionsSetBackendDirectory
   typedef TRITONSERVER_Error* (*TritonServerSetBackendDirFn_t)(
       TRITONSERVER_ServerOptions* options, const char* backend_dir);
+
   // TRITONSERVER_ServerOptionsSetRepoAgentDirectory
   typedef TRITONSERVER_Error* (*TritonServerSetRepoAgentDirFn_t)(
       TRITONSERVER_ServerOptions* options, const char* repoagent_dir);
+
   // TRITONSERVER_ServerOptionsSetStrictModelConfig
   typedef TRITONSERVER_Error* (*TritonServerSetStrictModelConfigFn_t)(
       TRITONSERVER_ServerOptions* options, bool strict);
+
   // TRITONSERVER_ServerOptionsSetMinSupportedComputeCapability
   typedef TRITONSERVER_Error* (
       *TritonServerSetMinSupportedComputeCapabilityFn_t)(
@@ -159,12 +178,15 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_ServerNew
   typedef TRITONSERVER_Error* (*TritonServerNewFn_t)(
       TRITONSERVER_Server** server, TRITONSERVER_ServerOptions* option);
+
   // TRITONSERVER_ServerOptionsDelete
   typedef TRITONSERVER_Error* (*TritonServerOptionsDeleteFn_t)(
       TRITONSERVER_ServerOptions* options);
+
   // TRITONSERVER_ServerDelete
   typedef TRITONSERVER_Error* (*TritonServerDeleteFn_t)(
       TRITONSERVER_Server* server);
+
   // TRITONSERVER_ServerIsLive
   typedef TRITONSERVER_Error* (*TritonServerIsLiveFn_t)(
       TRITONSERVER_Server* server, bool* live);
@@ -172,12 +194,15 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_ServerIsReady
   typedef TRITONSERVER_Error* (*TritonServerIsReadyFn_t)(
       TRITONSERVER_Server* server, bool* ready);
+
   // TRITONSERVER_ServerMetadata
   typedef TRITONSERVER_Error* (*TritonServerMetadataFn_t)(
       TRITONSERVER_Server* server, TRITONSERVER_Message** server_metadata);
+
   // TRITONSERVER_MessageSerializeToJson
   typedef TRITONSERVER_Error* (*TritonServerMessageSerializeToJsonFn_t)(
       TRITONSERVER_Message* message, const char** base, size_t* byte_size);
+
   // TRITONSERVER_MessageDelete
   typedef TRITONSERVER_Error* (*TritonServerMessageDeleteFn_t)(
       TRITONSERVER_Message* message);
@@ -186,16 +211,19 @@ class TritonLoader : public tc::InferenceServerClient {
   typedef TRITONSERVER_Error* (*TritonServerModelIsReadyFn_t)(
       TRITONSERVER_Server* server, const char* model_name,
       const int64_t model_version, bool* ready);
+
   // TRITONSERVER_ServerModelMetadata
   typedef TRITONSERVER_Error* (*TritonServerModelMetadataFn_t)(
       TRITONSERVER_Server* server, const char* model_name,
       const int64_t model_version, TRITONSERVER_Message** model_metadata);
+
   // TRITONSERVER_ResponseAllocatorNew
   typedef TRITONSERVER_Error* (*TritonServerResponseAllocatorNewFn_t)(
       TRITONSERVER_ResponseAllocator** allocator,
       TRITONSERVER_ResponseAllocatorAllocFn_t alloc_fn,
       TRITONSERVER_ResponseAllocatorReleaseFn_t release_fn,
       TRITONSERVER_ResponseAllocatorStartFn_t start_fn);
+
   // TRITONSERVER_InferenceRequestNew
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestNewFn_t)(
       TRITONSERVER_InferenceRequest** inference_request,
@@ -205,17 +233,20 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_InferenceRequestSetId
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char* id);
+
   // TRITONSERVER_InferenceRequestSetReleaseCallback
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestSetReleaseCallbackFn_t)(
       TRITONSERVER_InferenceRequest* inference_request,
       TRITONSERVER_InferenceRequestReleaseFn_t request_release_fn,
       void* request_release_userp);
+
   // TRITONSERVER_InferenceRequestAddInput
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestAddInputFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char* name,
       const TRITONSERVER_DataType datatype, const int64_t* shape,
       uint64_t dim_count);
+
   // TRITONSERVER_InferenceRequestAddRequestedOutput
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestAddRequestedOutputFn_t)(
@@ -227,6 +258,7 @@ class TritonLoader : public tc::InferenceServerClient {
       TRITONSERVER_InferenceRequest* inference_request, const char* name,
       const void* base, size_t byte_size, TRITONSERVER_MemoryType memory_type,
       int64_t memory_type_i);
+
   // TRITONSERVER_InferenceRequestSetResponseCallback
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestSetResponseCallbackFn_t)(
@@ -235,11 +267,13 @@ class TritonLoader : public tc::InferenceServerClient {
       void* response_allocator_userp,
       TRITONSERVER_InferenceResponseCompleteFn_t response_fn,
       void* response_userp);
+
   // TRITONSERVER_ServerInferAsync
   typedef TRITONSERVER_Error* (*TritonServerInferAsyncFn_t)(
       TRITONSERVER_Server* server,
       TRITONSERVER_InferenceRequest* inference_request,
       TRITONSERVER_InferenceTrace* trace);
+
   // TRITONSERVER_InferenceResponseError
   typedef TRITONSERVER_Error* (*TritonServerInferenceResponseErrorFn_t)(
       TRITONSERVER_InferenceResponse* inference_response);
@@ -247,13 +281,16 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_InferenceResponseDelete
   typedef TRITONSERVER_Error* (*TritonServerInferenceResponseDeleteFn_t)(
       TRITONSERVER_InferenceResponse* inference_response);
+
   // TRITONSERVER_InferenceRequestRemoveAllInputData
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestRemoveAllInputDataFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char* name);
+
   // TRITONSERVER_ResponseAllocatorDelete
   typedef TRITONSERVER_Error* (*TritonServerResponseAllocatorDeleteFn_t)(
       TRITONSERVER_ResponseAllocator* allocator);
+
   // TRITONSERVER_ErrorNew
   typedef TRITONSERVER_Error* (*TritonServerErrorNewFn_t)(
       TRITONSERVER_Error_Code code, const char* msg);
@@ -261,46 +298,57 @@ class TritonLoader : public tc::InferenceServerClient {
   // TRITONSERVER_MemoryTypeString
   typedef const char* (*TritonServerMemoryTypeStringFn_t)(
       TRITONSERVER_MemoryType memtype);
+
   // TRITONSERVER_InferenceResponseOutputCount
   typedef TRITONSERVER_Error* (*TritonServerInferenceResponseOutputCountFn_t)(
       TRITONSERVER_InferenceResponse* inference_response, uint32_t* count);
+
   // TRITONSERVER_DataTypeString
   typedef const char* (*TritonServerDataTypeStringFn_t)(
       TRITONSERVER_DataType datatype);
+
   // TRITONSERVER_ErrorMessage
   typedef const char* (*TritonServerErrorMessageFn_t)(
       TRITONSERVER_Error* error);
 
   // TRITONSERVER_ErrorDelete
   typedef void (*TritonServerErrorDeleteFn_t)(TRITONSERVER_Error* error);
+
   // TRITONSERVER_ErrorCodeString
   typedef const char* (*TritonServerErrorCodeToStringFn_t)(
       TRITONSERVER_Error* error);
+
   // TRITONSERVER_ServerModelConfig
   typedef TRITONSERVER_Error* (*TritonServerModelConfigFn_t)(
       TRITONSERVER_Server* server, const char* model_name,
       const int64_t model_version, const uint32_t config_version,
       TRITONSERVER_Message** model_config);
+
   // TRITONSERVER_InferenceRequestSetCorrelationId
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestSetCorrelationIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request,
       uint64_t correlation_id);
+
   // TRITONSERVER_InferenceRequestSetCorrelationId
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestSetStringCorrelationIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request,
       const char* correlation_id);
+
   // TRITONSERVER_InferenceRequestSetFlags
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetFlagsFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, uint32_t flags);
+
   // TRITONSERVER_InferenceRequestSetPriority
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetPriorityFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, uint32_t priority);
+
   // TRITONSERVER_InferenceRequestSetTimeoutMicroseconds
   typedef TRITONSERVER_Error* (
       *TritonServerInferenceRequestSetTimeoutMicrosecondsFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, uint64_t timeout_us);
+
   // TRITONSERVER_StringToDataType
   typedef TRITONSERVER_DataType (*TritonServerStringToDatatypeFn_t)(
       const char* dtype);
@@ -312,22 +360,31 @@ class TritonLoader : public tc::InferenceServerClient {
       uint64_t* dim_count, const void** base, size_t* byte_size,
       TRITONSERVER_MemoryType* memory_type, int64_t* memory_type_id,
       void** userp);
+
   // TRITONSERVER_InferenceRequestId
   typedef TRITONSERVER_Error* (*TritonServerRequestIdFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, const char** id);
+
   // TRITONSERVER_InferenceRequestDelete
   typedef TRITONSERVER_Error* (*TritonServerRequestDeleteFn_t)(
       TRITONSERVER_InferenceRequest* inference_request);
+
   // TRITONSERVER_ServerModelStatistics
   typedef TRITONSERVER_Error* (*TritonServerModelStatisticsFn_t)(
       TRITONSERVER_Server* server, const char* model_name,
       const int64_t model_version, TRITONSERVER_Message** model_stats);
+
   // TRITONSERVER_ServerUnloadModel
   typedef TRITONSERVER_Error* (*TritonSeverUnloadModelFn_t)(
       TRITONSERVER_Server* server, const char* model_name);
+
   // TRITONSERVER_ServerOptionsSetLogInfo
   typedef TRITONSERVER_Error* (*TritonSeverSetLogInfoFn_t)(
       TRITONSERVER_ServerOptions* options, bool log);
+
+  // TRITONSERVER_ServerOptionsSetCudaMemoryPoolByteSize
+  typedef TRITONSERVER_Error* (*TritonServerSetCudaMemoryPoolByteSizeFn_t)(
+      TRITONSERVER_ServerOptions* options, int gpu_device, uint64_t size);
 
  private:
   TritonLoader()
@@ -339,14 +396,12 @@ class TritonLoader : public tc::InferenceServerClient {
     requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
     model_is_loaded_ = false;
     server_is_ready_ = false;
+    shm_manager_ = std::make_unique<SharedMemoryManager>();
   }
 
   Error PopulateInternals(
       const std::string& triton_server_path,
-      const std::string& model_repository_path, const std::string& memory_type,
-      bool verbose);
-
-  static TritonLoader* GetSingleton();
+      const std::string& model_repository_path, bool verbose);
 
   /// Load all tritonserver.h functions onto triton_loader
   /// internal handles
@@ -357,7 +412,7 @@ class TritonLoader : public tc::InferenceServerClient {
   /// Check if file exists in the current directory
   /// \param filepath Path of library to check
   /// \return perfanalyzer::clientbackend::Error
-  static Error FileExists(std::string& filepath);
+  Error FileExists(std::string& filepath);
 
   Error InitializeRequest(
       const tc::InferOptions& options,
@@ -443,18 +498,20 @@ class TritonLoader : public tc::InferenceServerClient {
 
   TritonSeverUnloadModelFn_t unload_model_fn_;
   TritonSeverSetLogInfoFn_t set_log_info_fn_;
+  TritonServerSetCudaMemoryPoolByteSizeFn_t set_cuda_memory_pool_byte_size_;
 
-  std::shared_ptr<TRITONSERVER_Server> server_;
-  std::string triton_server_path_;
-  const std::string SERVER_LIBRARY_PATH = "/lib/libtritonserver.so";
-  int verbose_level_;
-  bool enforce_memory_type_;
-  std::string model_repository_path_;
-  std::string model_name_;
-  int64_t model_version_;
-  TRITONSERVER_memorytype_enum requested_memory_type_;
-  bool model_is_loaded_;
-  bool server_is_ready_;
+  std::shared_ptr<TRITONSERVER_Server> server_{nullptr};
+  std::string triton_server_path_{};
+  const std::string server_library_path_{"/lib/libtritonserver.so"};
+  int verbose_level_{0};
+  TRITONSERVER_MemoryType requested_memory_type_{TRITONSERVER_MEMORY_CPU};
+  bool enforce_memory_type_{false};
+  std::string model_repository_path_{""};
+  std::string model_name_{""};
+  int64_t model_version_{-1};
+  bool model_is_loaded_{false};
+  bool server_is_ready_{false};
+  std::unique_ptr<SharedMemoryManager> shm_manager_{nullptr};
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi

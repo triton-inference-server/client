@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <random>
 #include <thread>
+
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "perf_utils.h"
@@ -147,6 +148,12 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error InitSharedMemory();
 
+  /// Create a memory region.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error CreateMemoryRegion(
+      const std::string& shm_region_name, const SharedMemoryType& memory_type,
+      const size_t byte_size, void** ptr);
+
   /// Helper function to prepare the InferContext for sending inference request.
   /// \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.
@@ -252,9 +259,26 @@ class LoadManager {
   std::unique_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
+  // Holds information about the shared memory locations
+  struct SharedMemoryData {
+    SharedMemoryData(
+        size_t byte_size,
+        std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data)
+        : byte_size_(byte_size), data_(std::move(data))
+    {
+    }
+
+    SharedMemoryData() {}
+
+    // Byte size
+    size_t byte_size_;
+
+    // Unique pointer holding the shared memory data
+    std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
+  };
+
   // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, std::pair<uint8_t*, size_t>>
-      shared_memory_regions_;
+  std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
 
   // Holds the running status of the thread.
   struct ThreadStat {
