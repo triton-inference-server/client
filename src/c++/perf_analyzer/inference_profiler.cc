@@ -35,6 +35,56 @@
 #include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
+cb::Error
+ReportPrometheusMetrics(const Metrics& metrics)
+{
+  if (metrics.gpu_utilization_per_gpu.size() > 4 ||
+      metrics.gpu_power_usage_per_gpu.size() > 4 ||
+      metrics.gpu_memory_used_bytes_per_gpu.size() > 4 ||
+      metrics.gpu_memory_total_bytes_per_gpu.size() > 4) {
+    std::cout << "Too many GPUs on system to print out individual Prometheus "
+                 "metrics, use the CSV output feature to see metrics."
+              << std::endl;
+    return cb::Error::Success;
+  }
+
+  std::cout << "    Avg GPU Utilization:" << std::endl;
+  for (const auto& gpu_uuid_metric_pair : metrics.gpu_utilization_per_gpu) {
+    const auto gpu_uuid{gpu_uuid_metric_pair.first};
+    const auto metric{gpu_uuid_metric_pair.second};
+    std::cout << "      " << gpu_uuid << " : " << (metric * 100.0) << "%"
+              << std::endl;
+  }
+
+  std::cout << "    Avg GPU Power Usage:" << std::endl;
+  for (const auto& gpu_uuid_metric_pair : metrics.gpu_power_usage_per_gpu) {
+    const auto gpu_uuid{gpu_uuid_metric_pair.first};
+    const auto metric{gpu_uuid_metric_pair.second};
+    std::cout << "      " << gpu_uuid << " : " << metric << " watts"
+              << std::endl;
+  }
+
+  std::cout << "    Max GPU Memory Usage:" << std::endl;
+  for (const auto& gpu_uuid_metric_pair :
+       metrics.gpu_memory_used_bytes_per_gpu) {
+    const auto gpu_uuid{gpu_uuid_metric_pair.first};
+    const auto metric{gpu_uuid_metric_pair.second};
+    std::cout << "      " << gpu_uuid << " : " << metric << " bytes"
+              << std::endl;
+  }
+
+  std::cout << "    Total GPU Memory:" << std::endl;
+  for (const auto& gpu_uuid_metric_pair :
+       metrics.gpu_memory_total_bytes_per_gpu) {
+    const auto gpu_uuid{gpu_uuid_metric_pair.first};
+    const auto metric{gpu_uuid_metric_pair.second};
+    std::cout << "      " << gpu_uuid << " : " << metric << " bytes"
+              << std::endl;
+  }
+
+  return cb::Error::Success;
+}
+
 namespace {
 
 inline uint64_t
@@ -351,7 +401,8 @@ Report(
     const PerfStatus& summary, const int64_t percentile,
     const cb::ProtocolType protocol, const bool verbose,
     const bool include_lib_stats, const bool include_server_stats,
-    const std::shared_ptr<ModelParser>& parser)
+    const std::shared_ptr<ModelParser>& parser,
+    const bool should_collect_metrics)
 {
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
@@ -361,6 +412,11 @@ Report(
   if (include_server_stats) {
     std::cout << "  Server: " << std::endl;
     ReportServerSideStats(summary.server_stats, 1, parser);
+  }
+
+  if (should_collect_metrics) {
+    std::cout << "  Server Prometheus Metrics: " << std::endl;
+    ReportPrometheusMetrics(summary.metrics.front());
   }
 
   return cb::Error::Success;
@@ -475,7 +531,7 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_);
+          include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;
@@ -522,7 +578,7 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_);
+          include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;
@@ -566,7 +622,7 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_);
+          include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;

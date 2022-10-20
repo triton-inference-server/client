@@ -1438,16 +1438,18 @@ CLParser::VerifyOptions()
     params_->protocol = cb::ProtocolType::UNKNOWN;
   }
 
+  if (params_->should_collect_metrics && params_->enable_mpi) {
+    Usage(
+        "Cannot specify --collect-metrics when using the --enable-mpi "
+        "option. Server-size metric collection is only enabled when running "
+        "Perf Analyzer with a single model.");
+  }
+
   if (params_->should_collect_metrics &&
       params_->kind != cb::BackendKind::TRITON) {
     Usage(
         "Server-side metric collection is only supported with Triton client "
         "backend.");
-  }
-
-  if (params_->should_collect_metrics && params_->verbose_csv == false) {
-    Usage(
-        "Must specify --verbose-csv when using the --collect-metrics option.");
   }
 
   if (params_->metrics_url_specified &&

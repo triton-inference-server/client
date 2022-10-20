@@ -402,7 +402,7 @@ PerfAnalyzer::WriteReport()
           params_->filename, params_->targeting_concurrency(), summary_,
           params_->verbose_csv, profiler_->IncludeServerStats(),
           params_->percentile, parser_, &writer,
-          params_->should_collect_metrics),
+          params_->should_collect_metrics && params_->verbose_csv),
       "failed to create report writer");
 
   writer->GenerateReport();
