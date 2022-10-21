@@ -30,48 +30,16 @@
 #include "mock_client_backend.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
+#include "test_load_manager_base.h"
 #include "test_utils.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
-class TestLoadManager {
- public:
-  TestLoadManager(PerfAnalyzerParameters params, bool is_sequence_model)
-      : params_(params)
-  {
-    // Must reset this global flag every unit test.
-    // It gets set to true when we deconstruct any load manager
-    // (aka every unit test)
-    //
-    early_exit = false;
-
-    stats_ = std::make_shared<cb::MockClientStats>();
-    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
-    parser_ = std::make_shared<MockModelParser>(is_sequence_model);
-  }
-
-  const std::shared_ptr<ModelParser>& GetParser() { return parser_; }
-  const std::shared_ptr<cb::ClientBackendFactory>& GetFactory()
-  {
-    return factory_;
-  }
-
- protected:
-  PerfAnalyzerParameters params_;
-  std::shared_ptr<cb::ClientBackendFactory> factory_;
-  std::shared_ptr<ModelParser> parser_;
-  std::shared_ptr<cb::MockClientStats> stats_;
-
-  std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
-  void ResetStats() { stats_->Reset(); }
-};
-
-
 /// Class to test the RequestRateManager
 ///
-class TestRequestRateManager : public TestLoadManager,
+class TestRequestRateManager : public TestLoadManagerBase,
                                public RequestRateManager {
  public:
   ~TestRequestRateManager() = default;
@@ -79,7 +47,7 @@ class TestRequestRateManager : public TestLoadManager,
       PerfAnalyzerParameters params, bool is_sequence_model = false,
       bool use_mock_infer = false)
       : use_mock_infer_(use_mock_infer),
-        TestLoadManager(params, is_sequence_model),
+        TestLoadManagerBase(params, is_sequence_model),
         RequestRateManager(
             params.async, params.streaming, params.request_distribution,
             params.batch_size, params.measurement_window_ms, params.max_threads,
@@ -110,293 +78,6 @@ class TestRequestRateManager : public TestLoadManager,
   {
     if (!execute_) {
       thread_config->is_paused_ = true;
-    }
-  }
-
-  /// Test the public function CheckHealth
-  ///
-  /// It will return a bad result if any of the thread stats
-  /// have a bad status or cb_status
-  ///
-  void TestCheckHealth()
-  {
-    auto good = std::make_shared<ThreadStat>();
-    good->status_ = cb::Error::Success;
-    good->cb_status_ = cb::Error::Success;
-
-    auto bad_status = std::make_shared<ThreadStat>();
-    bad_status->status_ = cb::Error::Failure;
-    bad_status->cb_status_ = cb::Error::Success;
-
-    auto bad_cb_status = std::make_shared<ThreadStat>();
-    bad_cb_status->status_ = cb::Error::Success;
-    bad_cb_status->cb_status_ = cb::Error::Failure;
-
-    threads_stat_.clear();
-    bool expect_ok = true;
-
-    SUBCASE("Empty") { expect_ok = true; }
-    SUBCASE("Good")
-    {
-      // Good entries: expect OK
-      threads_stat_.push_back(good);
-      threads_stat_.push_back(good);
-      expect_ok = true;
-    }
-    SUBCASE("BadStatus")
-    {
-      // Bad Status: expect not OK
-      threads_stat_.push_back(good);
-      threads_stat_.push_back(bad_status);
-      expect_ok = false;
-    }
-    SUBCASE("BadCbStatus")
-    {
-      // Bad cb_Status: expect not OK
-      threads_stat_.push_back(bad_cb_status);
-      threads_stat_.push_back(good);
-      expect_ok = false;
-    }
-    SUBCASE("BadBothStatus")
-    {
-      threads_stat_.push_back(bad_status);
-      threads_stat_.push_back(good);
-      threads_stat_.push_back(bad_cb_status);
-      expect_ok = false;
-    }
-
-    CHECK(CheckHealth().IsOk() == expect_ok);
-  }
-
-  /// Test the public function SwapTimestamps
-  ///
-  /// It will gather all timestamps from the thread_stats
-  /// and return them, and clear the thread_stats timestamps
-  ///
-  void TestSwapTimeStamps()
-  {
-    using time_point = std::chrono::time_point<std::chrono::system_clock>;
-    using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
-
-    TimestampVector source_timestamps;
-
-    SUBCASE("No threads")
-    {
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(source_timestamps.size() == 0);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("Source has timestamps")
-    {
-      // Any timestamps in the vector passed in to Swaptimestamps will
-      // be dropped on the floor
-      //
-      source_timestamps.push_back(timestamp1);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(source_timestamps.size() == 0);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("One thread")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp1);
-      stat1->request_timestamps_.push_back(timestamp2);
-      stat1->request_timestamps_.push_back(timestamp3);
-      threads_stat_.push_back(stat1);
-
-      CHECK(stat1->request_timestamps_.size() == 3);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(stat1->request_timestamps_.size() == 0);
-
-      REQUIRE(source_timestamps.size() == 3);
-      CHECK(source_timestamps[0] == timestamp1);
-      CHECK(source_timestamps[1] == timestamp2);
-      CHECK(source_timestamps[2] == timestamp3);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("Multiple threads")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp2);
-
-      auto stat2 = std::make_shared<ThreadStat>();
-      stat2->request_timestamps_.push_back(timestamp1);
-      stat2->request_timestamps_.push_back(timestamp3);
-
-      threads_stat_.push_back(stat1);
-      threads_stat_.push_back(stat2);
-
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(stat1->request_timestamps_.size() == 0);
-      CHECK(stat2->request_timestamps_.size() == 0);
-
-      REQUIRE(source_timestamps.size() == 3);
-      CHECK(source_timestamps[0] == timestamp2);
-      CHECK(source_timestamps[1] == timestamp1);
-      CHECK(source_timestamps[2] == timestamp3);
-      CHECK(ret.IsOk() == true);
-    }
-  }
-
-  /// Test the public function GetAccumulatedClientStat
-  ///
-  /// It will accumulate all contexts_stat data from all threads_stat
-  ///
-  void TestGetAccumulatedClientStat()
-  {
-    cb::InferStat result_stat;
-
-    SUBCASE("No threads")
-    {
-      auto ret = GetAccumulatedClientStat(&result_stat);
-      CHECK(result_stat.completed_request_count == 0);
-      CHECK(result_stat.cumulative_total_request_time_ns == 0);
-      CHECK(result_stat.cumulative_send_time_ns == 0);
-      CHECK(result_stat.cumulative_receive_time_ns == 0);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("One thread one context stat")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->contexts_stat_.push_back(cb::InferStat());
-      stat1->contexts_stat_[0].completed_request_count = 2;
-      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
-      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
-      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
-      threads_stat_.push_back(stat1);
-
-      auto ret = GetAccumulatedClientStat(&result_stat);
-      CHECK(result_stat.completed_request_count == 2);
-      CHECK(result_stat.cumulative_total_request_time_ns == 3);
-      CHECK(result_stat.cumulative_send_time_ns == 4);
-      CHECK(result_stat.cumulative_receive_time_ns == 5);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("Existing data in function arg")
-    {
-      // If the input InferStat already has data in it,
-      // it will be included in the output result
-      //
-      result_stat.completed_request_count = 10;
-      result_stat.cumulative_total_request_time_ns = 10;
-      result_stat.cumulative_send_time_ns = 10;
-      result_stat.cumulative_receive_time_ns = 10;
-
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->contexts_stat_.push_back(cb::InferStat());
-      stat1->contexts_stat_[0].completed_request_count = 2;
-      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
-      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
-      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
-      threads_stat_.push_back(stat1);
-
-      auto ret = GetAccumulatedClientStat(&result_stat);
-      CHECK(result_stat.completed_request_count == 12);
-      CHECK(result_stat.cumulative_total_request_time_ns == 13);
-      CHECK(result_stat.cumulative_send_time_ns == 14);
-      CHECK(result_stat.cumulative_receive_time_ns == 15);
-      CHECK(ret.IsOk() == true);
-    }
-    SUBCASE("Multiple thread multiple contexts")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->contexts_stat_.push_back(cb::InferStat());
-      stat1->contexts_stat_.push_back(cb::InferStat());
-      stat1->contexts_stat_[0].completed_request_count = 2;
-      stat1->contexts_stat_[0].cumulative_total_request_time_ns = 3;
-      stat1->contexts_stat_[0].cumulative_send_time_ns = 4;
-      stat1->contexts_stat_[0].cumulative_receive_time_ns = 5;
-      stat1->contexts_stat_[1].completed_request_count = 3;
-      stat1->contexts_stat_[1].cumulative_total_request_time_ns = 4;
-      stat1->contexts_stat_[1].cumulative_send_time_ns = 5;
-      stat1->contexts_stat_[1].cumulative_receive_time_ns = 6;
-      threads_stat_.push_back(stat1);
-
-      auto stat2 = std::make_shared<ThreadStat>();
-      stat2->contexts_stat_.push_back(cb::InferStat());
-      stat2->contexts_stat_.push_back(cb::InferStat());
-      stat2->contexts_stat_[0].completed_request_count = 7;
-      stat2->contexts_stat_[0].cumulative_total_request_time_ns = 8;
-      stat2->contexts_stat_[0].cumulative_send_time_ns = 9;
-      stat2->contexts_stat_[0].cumulative_receive_time_ns = 10;
-      stat2->contexts_stat_[1].completed_request_count = 11;
-      stat2->contexts_stat_[1].cumulative_total_request_time_ns = 12;
-      stat2->contexts_stat_[1].cumulative_send_time_ns = 13;
-      stat2->contexts_stat_[1].cumulative_receive_time_ns = 14;
-      threads_stat_.push_back(stat2);
-
-      auto ret = GetAccumulatedClientStat(&result_stat);
-      // 2 + 3 + 7 + 11
-      //
-      CHECK(result_stat.completed_request_count == 23);
-      // 3 + 4 + 8 + 12
-      //
-      CHECK(result_stat.cumulative_total_request_time_ns == 27);
-      // 4 + 5 + 9 + 13
-      //
-      CHECK(result_stat.cumulative_send_time_ns == 31);
-      // 5 + 6 + 10 + 14
-      //
-      CHECK(result_stat.cumulative_receive_time_ns == 35);
-
-      CHECK(ret.IsOk() == true);
-    }
-  }
-
-  /// Test the public function CountCollectedRequests
-  ///
-  /// It will count all timestamps in the thread_stats (and not modify
-  /// the thread_stats in any way)
-  ///
-  void TestCountCollectedRequests()
-  {
-    using time_point = std::chrono::time_point<std::chrono::system_clock>;
-    using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
-
-    SUBCASE("No threads") { CHECK(CountCollectedRequests() == 0); }
-    SUBCASE("One thread")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp1);
-      stat1->request_timestamps_.push_back(timestamp2);
-      stat1->request_timestamps_.push_back(timestamp3);
-      threads_stat_.push_back(stat1);
-
-      CHECK(stat1->request_timestamps_.size() == 3);
-      CHECK(CountCollectedRequests() == 3);
-      CHECK(stat1->request_timestamps_.size() == 3);
-    }
-    SUBCASE("Multiple threads")
-    {
-      auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp2);
-
-      auto stat2 = std::make_shared<ThreadStat>();
-      stat2->request_timestamps_.push_back(timestamp1);
-      stat2->request_timestamps_.push_back(timestamp3);
-
-      threads_stat_.push_back(stat1);
-      threads_stat_.push_back(stat2);
-
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
-      CHECK(CountCollectedRequests() == 3);
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
     }
   }
 
@@ -518,37 +199,6 @@ class TestRequestRateManager : public TestLoadManager,
  private:
   bool use_mock_infer_;
 
-  void CheckInferType()
-  {
-    auto stats = GetStats();
-
-    if (params_.async) {
-      if (params_.streaming) {
-        CHECK(stats->num_infer_calls == 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls > 0);
-        CHECK(stats->num_start_stream_calls > 0);
-      } else {
-        CHECK(stats->num_infer_calls == 0);
-        CHECK(stats->num_async_infer_calls > 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls == 0);
-      }
-    } else {
-      if (params_.streaming) {
-        CHECK(stats->num_infer_calls > 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls > 0);
-      } else {
-        CHECK(stats->num_infer_calls > 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls == 0);
-      }
-    }
-  }
-
   void CheckCallDistribution(int request_rate)
   {
     auto request_distribution = params_.request_distribution;
@@ -593,48 +243,6 @@ class TestRequestRateManager : public TestLoadManager,
     }
   }
 
-  void CheckSequences()
-  {
-    auto stats = GetStats();
-
-    // Make sure all seq IDs are within range
-    //
-    for (auto seq_id : stats->sequence_status.used_seq_ids) {
-      CHECK(seq_id >= params_.start_sequence_id);
-      CHECK(seq_id <= params_.start_sequence_id + params_.sequence_id_range);
-    }
-
-    // Make sure that we had the correct number of concurrently live sequences
-    //
-    // If the sequence length is only 1 then there is nothing to check because
-    // there are never any overlapping requests -- they always immediately exit
-    //
-    if (params_.sequence_length != 1) {
-      CHECK(
-          params_.num_of_sequences ==
-          stats->sequence_status.max_live_seq_count);
-    }
-
-    // Make sure that the length of each sequence is as expected
-    // (The code explicitly has a 20% slop, so that is what we are checking)
-    //
-    auto num_sequences = params_.num_of_sequences;
-    auto num_values = stats->sequence_status.seq_lengths.size();
-    for (size_t i = 0; i < num_values; i++) {
-      auto len = stats->sequence_status.seq_lengths[i];
-
-      if (i + num_sequences < num_values) {
-        CHECK(len == doctest::Approx(params_.sequence_length).epsilon(0.20));
-      }
-      // The last instance of each sequence might be shorter than expected, as
-      // they may be terminated part way through
-      //
-      else {
-        CHECK(len <= doctest::Approx(params_.sequence_length).epsilon(0.20));
-      }
-    }
-  }
-
   std::vector<int64_t> GatherTimeBetweenRequests(
       const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
           timestamps)
@@ -649,65 +257,7 @@ class TestRequestRateManager : public TestLoadManager,
     }
     return time_between_requests;
   }
-
-  double CalculateAverage(std::vector<int64_t> values)
-  {
-    double avg =
-        std::accumulate(values.begin(), values.end(), 0.0) / values.size();
-    return avg;
-  }
-
-  double CalculateVariance(std::vector<int64_t> values, double average)
-  {
-    double tmp = 0;
-    for (auto value : values) {
-      tmp += (value - average) * (value - average) / values.size();
-    }
-    double variance = sqrt(tmp);
-    return variance;
-  }
 };
-
-TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
-{
-  TestRequestRateManager trrm(PerfAnalyzerParameters{});
-  trrm.TestCheckHealth();
-}
-
-TEST_CASE(
-    "request_rate_swap_timestamps: Test the public function SwapTimeStamps()")
-{
-  TestRequestRateManager trrm(PerfAnalyzerParameters{});
-  trrm.TestSwapTimeStamps();
-}
-
-TEST_CASE(
-    "request_rate_get_accumulated_client_stat: Test the public function "
-    "GetAccumulatedClientStat()")
-{
-  TestRequestRateManager trrm(PerfAnalyzerParameters{});
-  trrm.TestGetAccumulatedClientStat();
-}
-
-TEST_CASE(
-    "request_rate_count_collected_requests: Test the public function "
-    "CountCollectedRequests()")
-{
-  TestRequestRateManager trrm(PerfAnalyzerParameters{});
-  trrm.TestCountCollectedRequests();
-}
-
-TEST_CASE("request_rate_batch_size: Test the public function BatchSize()")
-{
-  PerfAnalyzerParameters params;
-
-  SUBCASE("batch size 0") { params.batch_size = 0; }
-  SUBCASE("batch size 1") { params.batch_size = 1; }
-  SUBCASE("batch size 4") { params.batch_size = 4; }
-
-  TestRequestRateManager trrm(params);
-  CHECK(trrm.BatchSize() == params.batch_size);
-}
 
 TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 {
