@@ -666,27 +666,6 @@ class TestRequestRateManager : public TestLoadManager,
     double variance = sqrt(tmp);
     return variance;
   }
-
-  std::unique_ptr<LoadManager> CreateManager(
-      PerfAnalyzerParameters params, bool is_sequence_model = false)
-  {
-    std::unique_ptr<LoadManager> manager;
-    std::shared_ptr<cb::ClientBackendFactory> factory =
-        std::make_shared<cb::MockClientBackendFactory>(stats_);
-    std::shared_ptr<ModelParser> parser =
-        std::make_shared<MockModelParser>(is_sequence_model);
-
-    RequestRateManager::Create(
-        params.async, params.streaming, params.measurement_window_ms,
-        params.request_distribution, params.batch_size, params.max_threads,
-        params.num_of_sequences, params.sequence_length, params.string_length,
-        params.string_data, params.zero_input, params.user_data,
-        params.shared_memory_type, params.output_shm_size,
-        params.start_sequence_id, params.sequence_id_range, parser, factory,
-        &manager);
-
-    return manager;
-  }
 };
 
 TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
