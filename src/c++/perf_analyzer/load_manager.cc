@@ -195,6 +195,8 @@ LoadManager::LoadManager(
     const size_t max_threads, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const size_t string_length, const std::string& string_data,
+    const bool zero_input, std::vector<std::string>& user_data,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
@@ -209,6 +211,14 @@ LoadManager::LoadManager(
        (parser_->SchedulerType() == ModelParser::ENSEMBLE_SEQUENCE));
 
   data_loader_.reset(new DataLoader(batch_size));
+
+  auto status =
+      InitManagerInputs(string_length, string_data, zero_input, user_data);
+  THROW_IF_ERROR(status, "Failed to init manager inputs");
+
+  if (shared_memory_type_ != SharedMemoryType::NO_SHARED_MEMORY) {
+    THROW_IF_ERROR(InitSharedMemory(), "Unable to init shared memory");
+  }
 }
 
 cb::Error

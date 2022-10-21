@@ -47,17 +47,7 @@ CustomLoadManager::Create(
       async, streaming, request_intervals_file, batch_size,
       measurement_window_ms, max_threads, num_of_sequences, sequence_length,
       shared_memory_type, output_shm_size, start_sequence_id, sequence_id_range,
-      parser, factory));
-
-  local_manager->threads_config_.reserve(max_threads);
-
-  RETURN_IF_ERROR(local_manager->InitManagerInputs(
-      string_length, string_data, zero_input, user_data));
-
-  if (local_manager->shared_memory_type_ !=
-      SharedMemoryType::NO_SHARED_MEMORY) {
-    RETURN_IF_ERROR(local_manager->InitSharedMemory());
-  }
+      string_length, string_data, zero_input, user_data, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -71,13 +61,16 @@ CustomLoadManager::CustomLoadManager(
     const uint32_t num_of_sequences, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const size_t string_length, const std::string& string_data,
+    const bool zero_input, std::vector<std::string>& user_data,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : RequestRateManager(
           async, streaming, Distribution::CUSTOM, batch_size,
           measurement_window_ms, max_threads, num_of_sequences, sequence_length,
           shared_memory_type, output_shm_size, start_sequence_id,
-          sequence_id_range, parser, factory),
+          sequence_id_range, string_length, string_data, zero_input, user_data,
+          parser, factory),
       request_intervals_file_(request_intervals_file)
 {
 }

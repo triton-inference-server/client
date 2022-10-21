@@ -128,7 +128,9 @@ class RequestRateManager : public LoadManager {
       const size_t max_threads, const uint32_t num_of_sequences,
       const size_t sequence_length, const SharedMemoryType shared_memory_type,
       const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const uint64_t sequence_id_range, const size_t string_length,
+      const std::string& string_data, const bool zero_input,
+      std::vector<std::string>& user_data,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 

@@ -53,17 +53,8 @@ ConcurrencyManager::Create(
   std::unique_ptr<ConcurrencyManager> local_manager(new ConcurrencyManager(
       async, streaming, batch_size, max_threads, max_concurrency,
       sequence_length, shared_memory_type, output_shm_size, start_sequence_id,
-      sequence_id_range, parser, factory));
-
-  local_manager->threads_config_.reserve(max_threads);
-
-  RETURN_IF_ERROR(local_manager->InitManagerInputs(
-      string_length, string_data, zero_input, user_data));
-
-  if (local_manager->shared_memory_type_ !=
-      SharedMemoryType::NO_SHARED_MEMORY) {
-    RETURN_IF_ERROR(local_manager->InitSharedMemory());
-  }
+      sequence_id_range, string_length, string_data, zero_input, user_data,
+      parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -75,13 +66,16 @@ ConcurrencyManager::ConcurrencyManager(
     const size_t max_threads, const size_t max_concurrency,
     const size_t sequence_length, const SharedMemoryType shared_memory_type,
     const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range,
+    const uint64_t sequence_id_range, const size_t string_length,
+    const std::string& string_data, const bool zero_input,
+    std::vector<std::string>& user_data,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, sequence_length,
           shared_memory_type, output_shm_size, start_sequence_id,
-          sequence_id_range, parser, factory),
+          sequence_id_range, string_length, string_data, zero_input, user_data,
+          parser, factory),
       execute_(true), max_concurrency_(max_concurrency)
 {
   if (on_sequence_model_) {
@@ -89,6 +83,8 @@ ConcurrencyManager::ConcurrencyManager(
       sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
+
+  threads_config_.reserve(max_threads);
 }
 
 cb::Error
