@@ -400,101 +400,66 @@ class TestRequestRateManager : public TestLoadManager,
     }
   }
 
-  /// Test the public function BatchSize
-  ///
-  /// It will just return the value passed in from the constructor
-  ///
-  void TestBatchSize()
-  {
-    PerfAnalyzerParameters params;
-    int expected_value;
-
-    SUBCASE("batch size 0")
-    {
-      params.batch_size = 0;
-      expected_value = 0;
-    }
-    SUBCASE("batch size 1")
-    {
-      params.batch_size = 1;
-      expected_value = 1;
-    }
-    SUBCASE("batch size 4")
-    {
-      params.batch_size = 4;
-      expected_value = 4;
-    }
-    std::unique_ptr<LoadManager> manager = CreateManager(params);
-
-    CHECK(manager->BatchSize() == expected_value);
-  }
-
   /// Test the public function ResetWorkers()
   ///
-  /// It pauses and restarts the workers, but the most important and observable
-  /// effects are the following:
+  /// ResetWorkers pauses and restarts the workers, but the most important and
+  /// observable effects are the following:
   ///   - if threads_ is empty, it will populate threads_, threads_stat_, and
   ///   threads_config_ based on max_threads_
   ///   - each thread config has its index reset to its ID
   ///   - each thread config has its rounds set to 0
   ///   - start_time_ is updated with a new timestamp
   ///
-  //  void TestResetWorkers()
-  //  {
-  //    // Set up the schedule, factory, and parser to avoid seg faults
-  //    //
-  //    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
-  //    parser_ = std::make_shared<MockModelParser>(false);
-  //
-  //    // Capture the existing start time so we can confirm it changes
-  //    //
-  //    start_time_ = std::chrono::steady_clock::now();
-  //    auto old_time = start_time_;
-  //
-  //    SUBCASE("max threads 0")
-  //    {
-  //      // If max threads is 0, nothing happens other than updating
-  //      // the start time
-  //      //
-  //      max_threads_ = 0;
-  //      CHECK(start_time_ == old_time);
-  //      ResetWorkers();
-  //      CHECK(start_time_ != old_time);
-  //      CHECK(threads_config_.size() == 0);
-  //      CHECK(threads_stat_.size() == 0);
-  //      CHECK(threads_.size() == 0);
-  //    }
-  //    SUBCASE("max threads 3, multiple calls")
-  //    {
-  //      // First call will populate threads/config/stat
-  //      //
-  //      max_threads_ = 3;
-  //      CHECK(start_time_ == old_time);
-  //      ResetWorkers();
-  //      CHECK(start_time_ != old_time);
-  //      CHECK(threads_config_.size() == 3);
-  //      CHECK(threads_stat_.size() == 3);
-  //      CHECK(threads_.size() == 3);
-  //
-  //      // Second call will reset thread_config values
-  //      //
-  //      for (auto& thread_config : threads_config_) {
-  //        thread_config->index_ = 99;
-  //        thread_config->rounds_ = 17;
-  //      }
-  //      old_time = start_time_;
-  //      ResetWorkers();
-  //      CHECK(start_time_ != old_time);
-  //      CHECK(threads_config_.size() == 3);
-  //      CHECK(threads_stat_.size() == 3);
-  //      CHECK(threads_.size() == 3);
-  //      for (auto& thread_config : threads_config_) {
-  //        CHECK(thread_config->index_ == thread_config->id_);
-  //        CHECK(thread_config->rounds_ == 0);
-  //      }
-  //    }
-  //  }
+  void TestResetWorkers()
+  {
+    // Capture the existing start time so we can confirm it changes
+    //
+    start_time_ = std::chrono::steady_clock::now();
+    auto old_time = start_time_;
 
+    SUBCASE("max threads 0")
+    {
+      // If max threads is 0, nothing happens other than updating
+      // the start time
+      //
+      max_threads_ = 0;
+      CHECK(start_time_ == old_time);
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 0);
+      CHECK(threads_stat_.size() == 0);
+      CHECK(threads_.size() == 0);
+    }
+    SUBCASE("max threads 3, multiple calls")
+    {
+      // First call will populate threads/config/stat
+      //
+      max_threads_ = 3;
+      CHECK(start_time_ == old_time);
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 3);
+      CHECK(threads_stat_.size() == 3);
+      CHECK(threads_.size() == 3);
+
+      // Second call will reset thread_config values
+      //
+      for (auto& thread_config : threads_config_) {
+        thread_config->index_ = 99;
+        thread_config->rounds_ = 17;
+      }
+      old_time = start_time_;
+      ResetWorkers();
+      CHECK(start_time_ != old_time);
+      CHECK(threads_config_.size() == 3);
+      CHECK(threads_stat_.size() == 3);
+      CHECK(threads_.size() == 3);
+      for (auto& thread_config : threads_config_) {
+        CHECK(thread_config->index_ == thread_config->id_);
+        CHECK(thread_config->rounds_ == 0);
+      }
+    }
+  }
 
   /// Test that the correct Infer function is called in the backend
   ///
@@ -726,16 +691,14 @@ class TestRequestRateManager : public TestLoadManager,
 
 TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
 {
-  PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
+  TestRequestRateManager trrm(PerfAnalyzerParameters{});
   trrm.TestCheckHealth();
 }
 
 TEST_CASE(
     "request_rate_swap_timestamps: Test the public function SwapTimeStamps()")
 {
-  PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
+  TestRequestRateManager trrm(PerfAnalyzerParameters{});
   trrm.TestSwapTimeStamps();
 }
 
@@ -743,8 +706,7 @@ TEST_CASE(
     "request_rate_get_accumulated_client_stat: Test the public function "
     "GetAccumulatedClientStat()")
 {
-  PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
+  TestRequestRateManager trrm(PerfAnalyzerParameters{});
   trrm.TestGetAccumulatedClientStat();
 }
 
@@ -752,24 +714,29 @@ TEST_CASE(
     "request_rate_count_collected_requests: Test the public function "
     "CountCollectedRequests()")
 {
-  PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
+  TestRequestRateManager trrm(PerfAnalyzerParameters{});
   trrm.TestCountCollectedRequests();
 }
 
 TEST_CASE("request_rate_batch_size: Test the public function BatchSize()")
 {
   PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
-  trrm.TestBatchSize();
+
+  SUBCASE("batch size 0") { params.batch_size = 0; }
+  SUBCASE("batch size 1") { params.batch_size = 1; }
+  SUBCASE("batch size 4") { params.batch_size = 4; }
+
+  TestRequestRateManager trrm(params);
+  CHECK(trrm.BatchSize() == params.batch_size);
 }
 
 TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 {
   PerfAnalyzerParameters params;
-  TestRequestRateManager trrm(params, false);
-  // FIXME
-  // trrm.TestResetWorkers();
+  bool is_sequence = false;
+  bool use_mock_infer = true;
+  TestRequestRateManager trrm(params, is_sequence, use_mock_infer);
+  trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls
