@@ -36,11 +36,10 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
-/// Class to test the RequestRateManager
-///
-class TestRequestRateManager : public RequestRateManager {
+class TestLoadManager {
  public:
-  TestRequestRateManager()
+  TestLoadManager(PerfAnalyzerParameters params, bool is_sequence_model)
+      : params_(params)
   {
     // Must reset this global flag every unit test.
     // It gets set to true when we deconstruct any load manager
@@ -49,13 +48,65 @@ class TestRequestRateManager : public RequestRateManager {
     early_exit = false;
 
     stats_ = std::make_shared<cb::MockClientStats>();
+    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
+    parser_ = std::make_shared<MockModelParser>(is_sequence_model);
+  }
+
+  const std::shared_ptr<ModelParser>& GetParser() { return parser_; }
+  const std::shared_ptr<cb::ClientBackendFactory>& GetFactory()
+  {
+    return factory_;
+  }
+
+ protected:
+  PerfAnalyzerParameters params_;
+  std::shared_ptr<cb::ClientBackendFactory> factory_;
+  std::shared_ptr<ModelParser> parser_;
+  std::shared_ptr<cb::MockClientStats> stats_;
+
+  std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
+  void ResetStats() { stats_->Reset(); }
+};
+
+
+/// Class to test the RequestRateManager
+///
+class TestRequestRateManager : public TestLoadManager,
+                               public RequestRateManager {
+ public:
+  ~TestRequestRateManager() = default;
+  TestRequestRateManager(
+      PerfAnalyzerParameters params, bool is_sequence_model = false,
+      bool use_mock_infer = false)
+      : use_mock_infer_(use_mock_infer),
+        TestLoadManager(params, is_sequence_model),
+        RequestRateManager(
+            params.async, params.streaming, params.request_distribution,
+            params.batch_size, params.measurement_window_ms, params.max_threads,
+            params.num_of_sequences, params.sequence_length,
+            params.shared_memory_type, params.output_shm_size,
+            params.start_sequence_id, params.sequence_id_range,
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data, GetParser(), GetFactory())
+  {
+  }
+
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    if (use_mock_infer_) {
+      return MockInfer(thread_stat, thread_config);
+    } else {
+      return RequestRateManager::Infer(thread_stat, thread_config);
+    }
   }
 
   // Mock out most of the complicated Infer code
   //
-  void Infer(
+  void MockInfer(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config)
   {
     if (!execute_) {
       thread_config->is_paused_ = true;
@@ -388,157 +439,126 @@ class TestRequestRateManager : public RequestRateManager {
   ///   - each thread config has its rounds set to 0
   ///   - start_time_ is updated with a new timestamp
   ///
-  void TestResetWorkers()
-  {
-    // Set up the schedule, factory, and parser to avoid seg faults
-    //
-    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
-    parser_ = std::make_shared<MockModelParser>(false);
-
-    // Capture the existing start time so we can confirm it changes
-    //
-    start_time_ = std::chrono::steady_clock::now();
-    auto old_time = start_time_;
-
-    SUBCASE("max threads 0")
-    {
-      // If max threads is 0, nothing happens other than updating
-      // the start time
-      //
-      max_threads_ = 0;
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 0);
-      CHECK(threads_stat_.size() == 0);
-      CHECK(threads_.size() == 0);
-    }
-    SUBCASE("max threads 3, multiple calls")
-    {
-      // First call will populate threads/config/stat
-      //
-      max_threads_ = 3;
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
-
-      // Second call will reset thread_config values
-      //
-      for (auto& thread_config : threads_config_) {
-        thread_config->index_ = 99;
-        thread_config->rounds_ = 17;
-      }
-      old_time = start_time_;
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
-      for (auto& thread_config : threads_config_) {
-        CHECK(thread_config->index_ == thread_config->id_);
-        CHECK(thread_config->rounds_ == 0);
-      }
-    }
-  }
+  //  void TestResetWorkers()
+  //  {
+  //    // Set up the schedule, factory, and parser to avoid seg faults
+  //    //
+  //    factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
+  //    parser_ = std::make_shared<MockModelParser>(false);
+  //
+  //    // Capture the existing start time so we can confirm it changes
+  //    //
+  //    start_time_ = std::chrono::steady_clock::now();
+  //    auto old_time = start_time_;
+  //
+  //    SUBCASE("max threads 0")
+  //    {
+  //      // If max threads is 0, nothing happens other than updating
+  //      // the start time
+  //      //
+  //      max_threads_ = 0;
+  //      CHECK(start_time_ == old_time);
+  //      ResetWorkers();
+  //      CHECK(start_time_ != old_time);
+  //      CHECK(threads_config_.size() == 0);
+  //      CHECK(threads_stat_.size() == 0);
+  //      CHECK(threads_.size() == 0);
+  //    }
+  //    SUBCASE("max threads 3, multiple calls")
+  //    {
+  //      // First call will populate threads/config/stat
+  //      //
+  //      max_threads_ = 3;
+  //      CHECK(start_time_ == old_time);
+  //      ResetWorkers();
+  //      CHECK(start_time_ != old_time);
+  //      CHECK(threads_config_.size() == 3);
+  //      CHECK(threads_stat_.size() == 3);
+  //      CHECK(threads_.size() == 3);
+  //
+  //      // Second call will reset thread_config values
+  //      //
+  //      for (auto& thread_config : threads_config_) {
+  //        thread_config->index_ = 99;
+  //        thread_config->rounds_ = 17;
+  //      }
+  //      old_time = start_time_;
+  //      ResetWorkers();
+  //      CHECK(start_time_ != old_time);
+  //      CHECK(threads_config_.size() == 3);
+  //      CHECK(threads_stat_.size() == 3);
+  //      CHECK(threads_.size() == 3);
+  //      for (auto& thread_config : threads_config_) {
+  //        CHECK(thread_config->index_ == thread_config->id_);
+  //        CHECK(thread_config->rounds_ == 0);
+  //      }
+  //    }
+  //  }
 
 
   /// Test that the correct Infer function is called in the backend
   ///
-  void TestInferType(bool is_async, bool is_streaming)
+  void TestInferType()
   {
-    PerfAnalyzerParameters params;
-    params.async = is_async;
-    params.streaming = is_streaming;
-
     double request_rate = 50;
     auto sleep_time = std::chrono::milliseconds(100);
 
-    std::unique_ptr<LoadManager> manager = CreateManager(params);
-    dynamic_cast<RequestRateManager*>(manager.get())
-        ->ChangeRequestRate(request_rate);
+    ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(sleep_time);
+    StopWorkerThreads();
 
-    // Kill the manager to stop any more requests
-    //
-    manager.reset();
-
-    CheckInferType(params);
+    CheckInferType();
   }
 
   /// Test that the inference distribution is as expected
   ///
-  void TestDistribution(
-      PerfAnalyzerParameters params, uint request_rate, uint duration_ms)
+  void TestDistribution(uint request_rate, uint duration_ms)
   {
-    std::unique_ptr<LoadManager> manager = CreateManager(params);
-    dynamic_cast<RequestRateManager*>(manager.get())
-        ->ChangeRequestRate(request_rate);
+    ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+    StopWorkerThreads();
 
-    // Kill the manager to stop any more requests
-    //
-    manager.reset();
-
-    CheckCallDistribution(params.request_distribution, request_rate);
+    CheckCallDistribution(request_rate);
   }
 
   /// Test that the schedule is properly update after calling ChangeRequestRate
   ///
-  void TestMultipleRequestRate(PerfAnalyzerParameters params)
+  void TestMultipleRequestRate()
   {
     std::vector<double> request_rates = {50, 200};
     auto sleep_time = std::chrono::milliseconds(500);
 
-    std::unique_ptr<LoadManager> manager = CreateManager(params);
     for (auto request_rate : request_rates) {
-      dynamic_cast<RequestRateManager*>(manager.get())
-          ->ChangeRequestRate(request_rate);
+      ChangeRequestRate(request_rate);
       ResetStats();
       std::this_thread::sleep_for(sleep_time);
-      CheckCallDistribution(params.request_distribution, request_rate);
+      CheckCallDistribution(request_rate);
     }
   }
 
   /// Test sequence handling
   ///
-  void TestSequences(PerfAnalyzerParameters params)
+  void TestSequences()
   {
-    bool is_sequence_model = true;
-    std::unique_ptr<LoadManager> manager =
-        CreateManager(params, is_sequence_model);
-
     double request_rate = 200;
     auto sleep_time = std::chrono::milliseconds(500);
 
-    dynamic_cast<RequestRateManager*>(manager.get())
-        ->ChangeRequestRate(request_rate);
+    ChangeRequestRate(request_rate);
     std::this_thread::sleep_for(sleep_time);
+    StopWorkerThreads();
 
-    // FIXME - it would be nice to call manager.reset() here
-    // before checking the results to explicitly stop the load manager from
-    // sending any more requests. However, the result is that all partially
-    // completed sequences are immediately finished, which results in a number
-    // of sequences being shorter than 'expected'.
-    //
-    CheckSequences(params);
+    CheckSequences();
   }
 
  private:
-  std::shared_ptr<cb::MockClientStats> stats_;
+  bool use_mock_infer_;
 
-  std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
-
-  void ResetStats() { stats_->Reset(); }
-
-  void CheckInferType(PerfAnalyzerParameters params)
+  void CheckInferType()
   {
     auto stats = GetStats();
 
-    if (params.async) {
-      if (params.streaming) {
+    if (params_.async) {
+      if (params_.streaming) {
         CHECK(stats->num_infer_calls == 0);
         CHECK(stats->num_async_infer_calls == 0);
         CHECK(stats->num_async_stream_infer_calls > 0);
@@ -550,7 +570,7 @@ class TestRequestRateManager : public RequestRateManager {
         CHECK(stats->num_start_stream_calls == 0);
       }
     } else {
-      if (params.streaming) {
+      if (params_.streaming) {
         CHECK(stats->num_infer_calls > 0);
         CHECK(stats->num_async_infer_calls == 0);
         CHECK(stats->num_async_stream_infer_calls == 0);
@@ -564,9 +584,10 @@ class TestRequestRateManager : public RequestRateManager {
     }
   }
 
-  void CheckCallDistribution(
-      Distribution request_distribution, int request_rate)
+  void CheckCallDistribution(int request_rate)
   {
+    auto request_distribution = params_.request_distribution;
+
     auto timestamps = GetStats()->request_timestamps;
     std::vector<int64_t> time_delays = GatherTimeBetweenRequests(timestamps);
 
@@ -607,15 +628,15 @@ class TestRequestRateManager : public RequestRateManager {
     }
   }
 
-  void CheckSequences(PerfAnalyzerParameters params)
+  void CheckSequences()
   {
     auto stats = GetStats();
 
     // Make sure all seq IDs are within range
     //
     for (auto seq_id : stats->sequence_status.used_seq_ids) {
-      CHECK(seq_id >= params.start_sequence_id);
-      CHECK(seq_id <= params.start_sequence_id + params.sequence_id_range);
+      CHECK(seq_id >= params_.start_sequence_id);
+      CHECK(seq_id <= params_.start_sequence_id + params_.sequence_id_range);
     }
 
     // Make sure that we had the correct number of concurrently live sequences
@@ -623,16 +644,29 @@ class TestRequestRateManager : public RequestRateManager {
     // If the sequence length is only 1 then there is nothing to check because
     // there are never any overlapping requests -- they always immediately exit
     //
-    if (params.sequence_length != 1) {
+    if (params_.sequence_length != 1) {
       CHECK(
-          params.num_of_sequences == stats->sequence_status.max_live_seq_count);
+          params_.num_of_sequences ==
+          stats->sequence_status.max_live_seq_count);
     }
 
     // Make sure that the length of each sequence is as expected
     // (The code explicitly has a 20% slop, so that is what we are checking)
     //
-    for (auto len : stats->sequence_status.seq_lengths) {
-      CHECK(len == doctest::Approx(params.sequence_length).epsilon(0.20));
+    auto num_sequences = params_.num_of_sequences;
+    auto num_values = stats->sequence_status.seq_lengths.size();
+    for (size_t i = 0; i < num_values; i++) {
+      auto len = stats->sequence_status.seq_lengths[i];
+
+      if (i + num_sequences < num_values) {
+        CHECK(len == doctest::Approx(params_.sequence_length).epsilon(0.20));
+      }
+      // The last instance of each sequence might be shorter than expected, as
+      // they may be terminated part way through
+      //
+      else {
+        CHECK(len <= doctest::Approx(params_.sequence_length).epsilon(0.20));
+      }
     }
   }
 
@@ -692,14 +726,16 @@ class TestRequestRateManager : public RequestRateManager {
 
 TEST_CASE("request_rate_check_health: Test the public function CheckHealth()")
 {
-  TestRequestRateManager trrm{};
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
   trrm.TestCheckHealth();
 }
 
 TEST_CASE(
     "request_rate_swap_timestamps: Test the public function SwapTimeStamps()")
 {
-  TestRequestRateManager trrm{};
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
   trrm.TestSwapTimeStamps();
 }
 
@@ -707,7 +743,8 @@ TEST_CASE(
     "request_rate_get_accumulated_client_stat: Test the public function "
     "GetAccumulatedClientStat()")
 {
-  TestRequestRateManager trrm{};
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
   trrm.TestGetAccumulatedClientStat();
 }
 
@@ -715,20 +752,24 @@ TEST_CASE(
     "request_rate_count_collected_requests: Test the public function "
     "CountCollectedRequests()")
 {
-  TestRequestRateManager trrm{};
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
   trrm.TestCountCollectedRequests();
 }
 
 TEST_CASE("request_rate_batch_size: Test the public function BatchSize()")
 {
-  TestRequestRateManager trrm{};
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
   trrm.TestBatchSize();
 }
 
 TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 {
-  TestRequestRateManager trrm{};
-  trrm.TestResetWorkers();
+  PerfAnalyzerParameters params;
+  TestRequestRateManager trrm(params, false);
+  // FIXME
+  // trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls
@@ -736,7 +777,6 @@ TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 ///
 TEST_CASE("request_rate_infer_type")
 {
-  TestRequestRateManager trrm{};
   bool async;
   bool stream;
 
@@ -761,7 +801,11 @@ TEST_CASE("request_rate_infer_type")
     stream = false;
   }
 
-  trrm.TestInferType(async, stream);
+  PerfAnalyzerParameters params;
+  params.async = async;
+  params.streaming = stream;
+  TestRequestRateManager trrm(params, false);
+  trrm.TestInferType();
 }
 
 /// Check that the request distribution is correct for
@@ -769,14 +813,15 @@ TEST_CASE("request_rate_infer_type")
 ///
 TEST_CASE("request_rate_distribution")
 {
-  TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
   uint request_rate = 500;
   uint duration_ms = 1000;
 
   SUBCASE("constant") { params.request_distribution = CONSTANT; }
   SUBCASE("poisson") { params.request_distribution = POISSON; }
-  trrm.TestDistribution(params, request_rate, duration_ms);
+
+  TestRequestRateManager trrm(params);
+  trrm.TestDistribution(request_rate, duration_ms);
 }
 
 /// Check that the request distribution is correct
@@ -786,7 +831,6 @@ TEST_CASE("request_rate_distribution")
 ///
 TEST_CASE("request_rate_tiny_window")
 {
-  TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
   params.request_distribution = CONSTANT;
   params.measurement_window_ms = 10;
@@ -796,7 +840,9 @@ TEST_CASE("request_rate_tiny_window")
 
   SUBCASE("one_thread") { params.max_threads = 1; }
   SUBCASE("odd_threads") { params.max_threads = 9; }
-  trrm.TestDistribution(params, request_rate, duration_ms);
+
+  TestRequestRateManager trrm(params);
+  trrm.TestDistribution(request_rate, duration_ms);
 }
 
 /// Check that the schedule properly handles mid-test
@@ -804,9 +850,8 @@ TEST_CASE("request_rate_tiny_window")
 ///
 TEST_CASE("request_rate_multiple")
 {
-  TestRequestRateManager trrm{};
-  PerfAnalyzerParameters params;
-  trrm.TestMultipleRequestRate(params);
+  TestRequestRateManager trrm(PerfAnalyzerParameters{});
+  trrm.TestMultipleRequestRate();
 }
 
 /// Check that the inference requests for sequences
@@ -814,7 +859,6 @@ TEST_CASE("request_rate_multiple")
 ///
 TEST_CASE("request_rate_sequence")
 {
-  TestRequestRateManager trrm{};
   PerfAnalyzerParameters params;
 
   // Generally we want short sequences for testing
@@ -843,7 +887,9 @@ TEST_CASE("request_rate_sequence")
   SUBCASE("sequence_length 1") { params.sequence_length = 1; }
   SUBCASE("sequence_length 10") { params.sequence_length = 10; }
 
-  trrm.TestSequences(params);
+  bool is_sequence_model = true;
+  TestRequestRateManager trrm(params, is_sequence_model);
+  trrm.TestSequences();
 }
 
 }}  // namespace triton::perfanalyzer

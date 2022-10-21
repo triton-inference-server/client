@@ -942,5 +942,6 @@ LoadManager::StopWorkerThreads()
     }
     cnt++;
   }
+  threads_.clear();
 }
 }}  // namespace triton::perfanalyzer
