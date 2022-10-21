@@ -38,6 +38,7 @@
 
 #include "../constants.h"
 #include "../metrics.h"
+#include "../perf_analyzer_exception.h"
 #include "ipc.h"
 
 namespace pa = triton::perfanalyzer;
@@ -69,6 +70,15 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
     }                                                              \
   }                                                                \
   while (false)
+
+#define THROW_IF_ERROR(S, MSG)                                          \
+  do {                                                                  \
+    triton::perfanalyzer::clientbackend::Error status__ = (S);          \
+    if (!status__.IsOk()) {                                             \
+      std::cerr << "error: " << (MSG) << ": " << status__ << std::endl; \
+      throw PerfAnalyzerException(GENERIC_ERROR);                       \
+    }                                                                   \
+  } while (false)
 
 //==============================================================================
 /// Error status reported by backends
