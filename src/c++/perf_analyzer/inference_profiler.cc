@@ -38,10 +38,11 @@ namespace triton { namespace perfanalyzer {
 cb::Error
 ReportPrometheusMetrics(const Metrics& metrics)
 {
-  if (metrics.gpu_utilization_per_gpu.size() > 4 ||
-      metrics.gpu_power_usage_per_gpu.size() > 4 ||
-      metrics.gpu_memory_used_bytes_per_gpu.size() > 4 ||
-      metrics.gpu_memory_total_bytes_per_gpu.size() > 4) {
+  const size_t max_num_gpus_in_stdout{16};
+  if (metrics.gpu_utilization_per_gpu.size() > max_num_gpus_in_stdout ||
+      metrics.gpu_power_usage_per_gpu.size() > max_num_gpus_in_stdout ||
+      metrics.gpu_memory_used_bytes_per_gpu.size() > max_num_gpus_in_stdout ||
+      metrics.gpu_memory_total_bytes_per_gpu.size() > max_num_gpus_in_stdout) {
     std::cout << "Too many GPUs on system to print out individual Prometheus "
                  "metrics, use the CSV output feature to see metrics."
               << std::endl;
