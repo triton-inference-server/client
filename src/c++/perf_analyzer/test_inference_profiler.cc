@@ -608,6 +608,9 @@ TEST_CASE("test the ReportPrometheusMetrics function")
     metrics.gpu_memory_total_bytes_per_gpu["gpu1"] = 100000;
 
     cb::Error result{ReportPrometheusMetrics(metrics)};
+
+    std::cout.rdbuf(old_cout);
+
     CHECK(result.Err() == SUCCESS);
     CHECK(
         captured_cout.str() ==
@@ -627,39 +630,25 @@ TEST_CASE("test the ReportPrometheusMetrics function")
 
   SUBCASE("too many GPUs")
   {
-    metrics.gpu_utilization_per_gpu["gpu0"] = 0.45;
-    metrics.gpu_utilization_per_gpu["gpu1"] = 0.52;
-    metrics.gpu_utilization_per_gpu["gpu2"] = 0.55;
-    metrics.gpu_utilization_per_gpu["gpu3"] = 0.71;
-    metrics.gpu_utilization_per_gpu["gpu4"] = 0.23;
-
-    metrics.gpu_power_usage_per_gpu["gpu0"] = 70.0;
-    metrics.gpu_power_usage_per_gpu["gpu1"] = 84.5;
-    metrics.gpu_power_usage_per_gpu["gpu2"] = 50.4;
-    metrics.gpu_power_usage_per_gpu["gpu3"] = 32.5;
-    metrics.gpu_power_usage_per_gpu["gpu4"] = 11.0;
-
-    metrics.gpu_memory_used_bytes_per_gpu["gpu0"] = 10000;
-    metrics.gpu_memory_used_bytes_per_gpu["gpu1"] = 12000;
-    metrics.gpu_memory_used_bytes_per_gpu["gpu2"] = 8000;
-    metrics.gpu_memory_used_bytes_per_gpu["gpu3"] = 14200;
-    metrics.gpu_memory_used_bytes_per_gpu["gpu4"] = 88000;
-
-    metrics.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
-    metrics.gpu_memory_total_bytes_per_gpu["gpu1"] = 150000;
-    metrics.gpu_memory_total_bytes_per_gpu["gpu2"] = 120000;
-    metrics.gpu_memory_total_bytes_per_gpu["gpu3"] = 110000;
-    metrics.gpu_memory_total_bytes_per_gpu["gpu4"] = 100000;
+    const size_t num_gpus{17};
+    for (size_t gpu_idx{0}; gpu_idx < num_gpus; gpu_idx++) {
+      const auto& gpu_key{"gpu" + std::to_string(gpu_idx)};
+      metrics.gpu_utilization_per_gpu[gpu_key] = 0.5;
+      metrics.gpu_power_usage_per_gpu[gpu_key] = 75.5;
+      metrics.gpu_memory_used_bytes_per_gpu[gpu_key] = 12500;
+      metrics.gpu_memory_total_bytes_per_gpu["gpu4"] = 150000;
+    }
 
     cb::Error result{ReportPrometheusMetrics(metrics)};
+
+    std::cout.rdbuf(old_cout);
+
     CHECK(result.Err() == SUCCESS);
     CHECK(
         captured_cout.str() ==
         "Too many GPUs on system to print out individual Prometheus metrics, "
         "use the CSV output feature to see metrics.\n");
   }
-
-  std::cout.rdbuf(old_cout);
 }
 
 }}  // namespace triton::perfanalyzer
