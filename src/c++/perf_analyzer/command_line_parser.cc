@@ -1445,11 +1445,6 @@ CLParser::VerifyOptions()
         "backend.");
   }
 
-  if (params_->should_collect_metrics && params_->verbose_csv == false) {
-    Usage(
-        "Must specify --verbose-csv when using the --collect-metrics option.");
-  }
-
   if (params_->metrics_url_specified &&
       params_->should_collect_metrics == false) {
     Usage(

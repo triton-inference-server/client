@@ -25,8 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "doctest.h"
+#include "inference_profiler.h"
 #include "mock_inference_profiler.h"
-
 
 namespace triton { namespace perfanalyzer {
 
@@ -584,6 +584,70 @@ TEST_CASE("testing the GetMetricFirstPerGPU function")
     CHECK(metric_firsts.size() == 2);
     CHECK(metric_firsts["gpu0"] == 10);
     CHECK(metric_firsts["gpu1"] == 84);
+  }
+}
+
+TEST_CASE("test the ReportPrometheusMetrics function")
+{
+  Metrics metrics{};
+  std::stringstream captured_cout;
+  std::streambuf* old_cout{std::cout.rdbuf(captured_cout.rdbuf())};
+
+  SUBCASE("regular output")
+  {
+    metrics.gpu_utilization_per_gpu["gpu0"] = 0.45;
+    metrics.gpu_utilization_per_gpu["gpu1"] = 0.52;
+
+    metrics.gpu_power_usage_per_gpu["gpu0"] = 70.0;
+    metrics.gpu_power_usage_per_gpu["gpu1"] = 84.5;
+
+    metrics.gpu_memory_used_bytes_per_gpu["gpu0"] = 10000;
+    metrics.gpu_memory_used_bytes_per_gpu["gpu1"] = 12000;
+
+    metrics.gpu_memory_total_bytes_per_gpu["gpu0"] = 100000;
+    metrics.gpu_memory_total_bytes_per_gpu["gpu1"] = 100000;
+
+    cb::Error result{ReportPrometheusMetrics(metrics)};
+
+    std::cout.rdbuf(old_cout);
+
+    CHECK(result.Err() == SUCCESS);
+    CHECK(
+        captured_cout.str() ==
+        "    Avg GPU Utilization:\n"
+        "      gpu0 : 45%\n"
+        "      gpu1 : 52%\n"
+        "    Avg GPU Power Usage:\n"
+        "      gpu0 : 70 watts\n"
+        "      gpu1 : 84.5 watts\n"
+        "    Max GPU Memory Usage:\n"
+        "      gpu0 : 10000 bytes\n"
+        "      gpu1 : 12000 bytes\n"
+        "    Total GPU Memory:\n"
+        "      gpu0 : 100000 bytes\n"
+        "      gpu1 : 100000 bytes\n");
+  }
+
+  SUBCASE("too many GPUs")
+  {
+    const size_t num_gpus{17};
+    for (size_t gpu_idx{0}; gpu_idx < num_gpus; gpu_idx++) {
+      const auto& gpu_key{"gpu" + std::to_string(gpu_idx)};
+      metrics.gpu_utilization_per_gpu[gpu_key] = 0.5;
+      metrics.gpu_power_usage_per_gpu[gpu_key] = 75.5;
+      metrics.gpu_memory_used_bytes_per_gpu[gpu_key] = 12500;
+      metrics.gpu_memory_total_bytes_per_gpu["gpu4"] = 150000;
+    }
+
+    cb::Error result{ReportPrometheusMetrics(metrics)};
+
+    std::cout.rdbuf(old_cout);
+
+    CHECK(result.Err() == SUCCESS);
+    CHECK(
+        captured_cout.str() ==
+        "Too many GPUs on system to print out individual Prometheus metrics, "
+        "use the CSV output feature to see metrics.\n");
   }
 }
 

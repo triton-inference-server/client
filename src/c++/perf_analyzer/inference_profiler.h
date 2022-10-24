@@ -158,6 +158,8 @@ struct PerfStatus {
   uint64_t stabilizing_latency_ns;
 };
 
+cb::Error ReportPrometheusMetrics(const Metrics& metrics);
+
 //==============================================================================
 /// A InferenceProfiler is a helper class that measures and summarizes the
 /// inference statistic under different concurrency level.
@@ -654,4 +656,5 @@ class InferenceProfiler {
   InferenceProfiler() = default;
 #endif
 };
+
 }}  // namespace triton::perfanalyzer

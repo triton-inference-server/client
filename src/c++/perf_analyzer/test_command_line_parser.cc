@@ -1127,6 +1127,74 @@ TEST_CASE("Testing Command Line Parser")
     CHECK_INT_OPTION("--max-trials", exp->max_trials);
   }
 
+  SUBCASE("Option : --collect-metrics")
+  {
+    SUBCASE("with --service-kind != triton")
+    {
+      int argc = 8;
+      char* argv[argc] = {
+          app_name,         "-m",        model_name, "--collect-metrics",
+          "--service-kind", "tfserving", "-i",       "grpc"};
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "Server-side metric collection is only supported with Triton client "
+          "backend.");
+
+      exp->kind = cb::BackendKind::TENSORFLOW_SERVING;
+      exp->url = "localhost:8500";
+      exp->batch_size = 0;
+      exp->protocol = cb::ProtocolType::GRPC;
+    }
+  }
+
+  SUBCASE("Option : --metrics-url")
+  {
+    // missing --collect-metrics
+    int argc = 5;
+    char* argv[argc] = {app_name, "-m", model_name, "--metrics-url",
+                        "localhost:8002/metrics"};
+
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+    CHECK(parser.UsageCalled());
+    CHECK_STRING(
+        "Usage Message", parser.GetUsageMessage(),
+        "Must specify --collect-metrics when using the --metrics-url option.");
+  }
+
+  SUBCASE("Option : --metrics-interval")
+  {
+    SUBCASE("missing --collect-metrics")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--metrics-interval",
+                          "1000"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "Must specify --collect-metrics when using the --metrics-interval "
+          "option.");
+    }
+
+    SUBCASE("metrics interval 0")
+    {
+      int argc = 6;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--collect-metrics", "--metrics-interval",
+          "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "Metrics interval must be larger than 0 milliseconds.");
+
+      exp->metrics_interval_ms = 0;
+    }
+  }
 
   if (check_params) {
     CHECK_PARAMS(act, exp);
