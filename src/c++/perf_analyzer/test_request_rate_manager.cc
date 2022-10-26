@@ -42,7 +42,6 @@ namespace triton { namespace perfanalyzer {
 class TestRequestRateManager : public TestLoadManagerBase,
                                public RequestRateManager {
  public:
-  ~TestRequestRateManager() = default;
   TestRequestRateManager(
       PerfAnalyzerParameters params, bool is_sequence_model = false,
       bool use_mock_infer = false)
