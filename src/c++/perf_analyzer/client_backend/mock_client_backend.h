@@ -27,6 +27,7 @@
 #pragma once
 
 #include <chrono>
+#include <mutex>
 #include "client_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {

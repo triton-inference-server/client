@@ -68,6 +68,7 @@ set(
   constants.h
   metrics.h
   metrics_manager.h
+  test_load_manager_base.h
 )
 
 add_executable(
@@ -147,6 +148,7 @@ add_executable(
   client_backend/mock_client_backend.h  
   test_inference_profiler.cc
   test_command_line_parser.cc
+  test_load_manager.cc
   test_model_parser.cc
   test_metrics_manager.cc
   test_perf_utils.cc
