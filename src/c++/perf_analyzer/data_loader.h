@@ -122,6 +122,10 @@ class DataLoader {
       const uint8_t** data_ptr, size_t* batch1_size);
 
  private:
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  DataLoader() = default;
+#endif
   /// Helper function to read data for the specified input from json
   /// \param step the DOM for current step
   /// \param inputs The pointer to the map holding the information about
@@ -135,9 +139,9 @@ class DataLoader {
       const int step_index, const bool is_input);
 
   // The batch_size_ for the data
-  size_t batch_size_;
+  size_t batch_size_{1};
   // The total number of data streams available.
-  size_t data_stream_cnt_;
+  size_t data_stream_cnt_{0};
   // A vector containing the supported step number for respective stream
   // ids.
   std::vector<size_t> step_num_;

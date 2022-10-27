@@ -29,10 +29,14 @@
 #include "common.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
+#include "mock_data_loader.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
+
+#include <future>
+#include <iostream>
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
@@ -196,18 +200,22 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences();
   }
 
+  std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
+  std::unique_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
+  bool& on_sequence_model_{LoadManager::on_sequence_model_};
+  bool& using_json_data_{LoadManager::using_json_data_};
+  bool& execute_{RequestRateManager::execute_};
+  std::vector<std::chrono::nanoseconds>& schedule_{
+      RequestRateManager::schedule_};
+
   struct ThreadStat : RequestRateManager::ThreadStat {
   };
-
   struct ThreadConfig : RequestRateManager::ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : RequestRateManager::ThreadConfig(index, stride)
     {
     }
   };
-
-  std::vector<std::chrono::nanoseconds>& schedule_{
-      RequestRateManager::schedule_};
 
  private:
   bool use_mock_infer_;
@@ -443,4 +451,143 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   }
 }
 
+/// Check custom json data to ensure that it is processed correctly
+///
+TEST_CASE("custom_json_data")
+{
+  PerfAnalyzerParameters params;
+
+  SUBCASE("non sequence model")
+  {
+    bool is_seq_model = false;
+    bool using_mock_infer = false;
+    TestRequestRateManager trrm{params, is_seq_model, using_mock_infer};
+    std::unique_ptr<MockDataLoader> mdl = std::make_unique<MockDataLoader>();
+    MockModelParser mmp{false};
+
+    auto thread_status = std::make_shared<TestRequestRateManager::ThreadStat>();
+    thread_status->status_ = cb::Error::Success;
+    thread_status->cb_status_ = cb::Error::Success;
+
+    auto thread_config =
+        std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0);
+    thread_config->non_sequence_data_step_id_ = 0;
+
+
+    std::string ss = R"(
+  {
+      "data" : [
+        {
+          "INPUT0" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+          "INPUT1" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+        },
+        {
+          "INPUT0" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+          "INPUT1" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+        },
+        {
+          "INPUT0" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+          "INPUT1" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+        },
+        {
+          "INPUT0" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+          "INPUT1" : [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+        }
+      ]
+  }
+  )";
+
+    mdl->ReadDataFromStr(mmp.Inputs(), mmp.Outputs(), ss);
+    trrm.data_loader_ = std::move(mdl);
+    trrm.using_json_data_ = true;
+    CHECK(trrm.on_sequence_model_ == false);
+    bool expect_ok = true;
+    trrm.execute_ = true;
+    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+    std::thread infer_thread(
+        &TestRequestRateManager::Infer, &trrm, thread_status, thread_config);
+    early_exit = true;
+    infer_thread.join();
+    CHECK(thread_status->status_.IsOk() == expect_ok);
+    CHECK(thread_config->non_sequence_data_step_id_ == 4);
+  }
+
+  /*
+   SUBCASE("sequence model")
+   {
+     bool is_seq_model = true;
+     bool using_mock_infer = false;
+     TestRequestRateManager trrm{params, is_seq_model, using_mock_infer};
+     std::unique_ptr<MockDataLoader> mdl = std::make_unique<MockDataLoader>();
+     MockModelParser mmp{false};
+
+     auto thread_status =
+   std::make_shared<TestRequestRateManager::ThreadStat>();
+     thread_status->status_ = cb::Error::Success;
+     thread_status->cb_status_ = cb::Error::Success;
+
+     auto thread_config =
+         std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0);
+     thread_config->non_sequence_data_step_id_ = 0;
+
+
+     std::string ss = R"(
+     {
+     "data" :
+       [
+         [
+           {
+             "INPUT" : ["1"]
+           },
+           {
+             "INPUT" : ["2"]
+           },
+           {
+             "INPUT" : ["3"]
+           },
+           {
+             "INPUT" : ["4"]
+           }
+         ],
+         [
+           {
+             "INPUT" : ["1"]
+           },
+           {
+             "INPUT" : ["1"]
+           },
+           {
+             "INPUT" : ["1"]
+           }
+         ],
+         [
+           {
+             "INPUT" : ["1"]
+           },
+           {
+             "INPUT" : ["1"]
+           }
+         ]
+       ]
+   }
+   )";
+
+     mdl->ReadDataFromStr(mmp.Inputs(), mmp.Outputs(), ss);
+     trrm.data_loader_ = std::move(mdl);
+     trrm.using_json_data_ = true;
+     CHECK(trrm.on_sequence_model_ == true);
+     bool expect_ok = true;
+     trrm.execute_ = true;
+     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+     std::thread infer_thread(
+         &TestRequestRateManager::Infer, &trrm, thread_status, thread_config);
+     std::this_thread::sleep_for(std::chrono::nanoseconds(5));
+     // early_exit = true;
+     infer_thread.join();
+
+     // CHECK(thread_status->status_.IsOk() == expect_ok);
+     CHECK(thread_config->non_sequence_data_step_id_ == 0);
+   }
+   */
+}
 }}  // namespace triton::perfanalyzer

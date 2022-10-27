@@ -37,6 +37,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestRequestRateManager;
+#endif
+
 class LoadManager {
  public:
   virtual ~LoadManager();
@@ -332,6 +336,8 @@ class LoadManager {
   std::mutex wake_mutex_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend TestRequestRateManager;
+
  protected:
   LoadManager() : start_sequence_id_(1), sequence_id_range_(UINT32_MAX){};
 #endif
