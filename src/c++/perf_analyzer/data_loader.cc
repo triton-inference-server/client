@@ -138,29 +138,40 @@ DataLoader::ReadDataFromJSON(
   char readBuffer[65536];
   rapidjson::FileReadStream fs(data_file, readBuffer, sizeof(readBuffer));
 
+  fclose(data_file);
+
   rapidjson::Document d{};
   const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
   d.ParseStream<parseFlags>(fs);
 
-  if (d.HasParseError()) {
-    std::cerr << "cb::Error  : " << d.GetParseError() << '\n'
-              << "Offset : " << d.GetErrorOffset() << '\n';
+  return ParseData(d, inputs, outputs);
+}
+
+cb::Error
+DataLoader::ParseData(
+    const rapidjson::Document& json,
+    const std::shared_ptr<ModelTensorMap>& inputs,
+    const std::shared_ptr<ModelTensorMap>& outputs)
+{
+  if (json.HasParseError()) {
+    std::cerr << "cb::Error  : " << json.GetParseError() << '\n'
+              << "Offset : " << json.GetErrorOffset() << '\n';
     return cb::Error(
         "failed to parse the specified json file for reading provided data",
         pa::GENERIC_ERROR);
   }
 
-  if (!d.HasMember("data")) {
+  if (!json.HasMember("data")) {
     return cb::Error(
         "The json file doesn't contain data field", pa::GENERIC_ERROR);
   }
 
-  const rapidjson::Value& streams = d["data"];
+  const rapidjson::Value& streams = json["data"];
 
   // Validation data is optional, once provided, it must align with 'data'
   const rapidjson::Value* out_streams = nullptr;
-  if (d.HasMember("validation_data")) {
-    out_streams = &d["validation_data"];
+  if (json.HasMember("validation_data")) {
+    out_streams = &json["validation_data"];
     if (out_streams->Size() != streams.Size()) {
       return cb::Error(
           "The 'validation_data' field doesn't align with 'data' field in the "
@@ -224,7 +235,6 @@ DataLoader::ReadDataFromJSON(
 
   max_non_sequence_step_id_ = std::max(1, (int)(step_num_[0] / batch_size_));
 
-  fclose(data_file);
   return cb::Error::Success;
 }
 

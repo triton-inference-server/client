@@ -23,25 +23,38 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "model_parser.h"
+#include "data_loader.h"
 
 namespace triton { namespace perfanalyzer {
 
-class MockModelParser : public ModelParser {
+class MockDataLoader : public DataLoader {
  public:
-  MockModelParser(bool is_sequence_model, bool is_decoupled_model)
-      : ModelParser(clientbackend::BackendKind::TRITON)
+  cb::Error GetInputData(
+      const ModelTensor& input, const int stream_id, const int step_id,
+      const uint8_t** data_ptr, size_t* batch1_size) override
   {
-    if (is_sequence_model) {
-      scheduler_type_ = ModelParser::SEQUENCE;
+    cb::Error result{DataLoader::GetInputData(
+        input, stream_id, step_id, data_ptr, batch1_size)};
+    if (*data_ptr != nullptr) {
+      recorded_inputs_.push_back(*reinterpret_cast<const uint32_t*>(*data_ptr));
     }
-    is_decoupled_ = is_decoupled_model;
+    return result;
   }
 
-  std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};
+  cb::Error ReadDataFromStr(
+      const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs)
+  {
+    rapidjson::Document d{};
+    const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
+    d.Parse<parseFlags>(str.c_str());
+
+    return ParseData(d, inputs, outputs);
+  };
+
+  std::vector<uint32_t> recorded_inputs_{};
 };
 
 }}  // namespace triton::perfanalyzer
