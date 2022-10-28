@@ -1388,53 +1388,42 @@ CLParser::VerifyOptions()
 
   if (params_->kind == cb::TENSORFLOW_SERVING) {
     if (params_->protocol != cb::ProtocolType::GRPC) {
-      std::cerr
-          << "perf_analyzer supports only grpc protocol for TensorFlow Serving."
-          << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
+      Usage(
+          "perf_analyzer supports only grpc protocol for TensorFlow Serving.");
     } else if (params_->streaming) {
-      std::cerr
-          << "perf_analyzer does not support streaming for TensorFlow Serving."
-          << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
+      Usage("perf_analyzer does not support streaming for TensorFlow Serving.");
     } else if (params_->async) {
-      std::cerr
-          << "perf_analyzer does not support async API for TensorFlow Serving."
-          << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
+      Usage("perf_analyzer does not support async API for TensorFlow Serving.");
     } else if (!params_->using_batch_size) {
       params_->batch_size = 0;
     }
   } else if (params_->kind == cb::TORCHSERVE) {
     if (params_->user_data.empty()) {
-      std::cerr << "--input-data should be provided with a json file with "
-                   "input data for torchserve"
-                << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
+      Usage(
+          "--input-data should be provided with a json file with "
+          "input data for torchserve");
     }
   }
 
   if (params_->kind == cb::BackendKind::TRITON_C_API) {
-    std::cout << " USING C API: only default functionalities supported "
-              << std::endl;
-    if (!params_->targeting_concurrency()) {
-      std::cerr << "Only target concurrency is supported by C API" << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
-    } else if (
-        params_->triton_server_path.empty() ||
-        params_->model_repository_path.empty() ||
-        params_->memory_type.empty()) {
-      std::cerr
-          << "Not enough information to create C API. /lib/libtritonserver.so "
-             "directory:"
-          << params_->triton_server_path
-          << " model repo:" << params_->model_repository_path
-          << " memory type:" << params_->memory_type << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
-    } else if (params_->async) {
-      std::cerr << "Async API not yet supported by C API" << std::endl;
-      throw PerfAnalyzerException(GENERIC_ERROR);
+    if (params_->triton_server_path.empty()) {
+      Usage(
+          "--triton-server-path should not be empty when using "
+          "service-kind=triton_c_api.");
     }
+
+    if (params_->model_repository_path.empty()) {
+      Usage(
+          "--model-repository should not be empty when using "
+          "service-kind=triton_c_api.");
+    }
+
+    if (params_->async) {
+      Usage(
+          "Async mode is not supported by triton_c_api service "
+          "kind.");
+    }
+
     params_->protocol = cb::ProtocolType::UNKNOWN;
   }
 

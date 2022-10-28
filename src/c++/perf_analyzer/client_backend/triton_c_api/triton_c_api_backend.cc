@@ -41,12 +41,18 @@ TritonCApiClientBackend::Create(
     const std::string& model_repository_path, const bool verbose,
     std::unique_ptr<ClientBackend>* client_backend)
 {
-  if (triton_server_path.empty() || model_repository_path.empty()) {
-    return Error(std::string(
-        "Unable to create Triton C-API client backend. /lib/libtritonserver.so "
-        "directory:" +
-        triton_server_path + " model repo:" + model_repository_path));
+  if (triton_server_path.empty()) {
+    return Error(
+        "--triton-server-path should not be empty when using "
+        "service-kind=triton_c_api.");
   }
+
+  if (model_repository_path.empty()) {
+    return Error(
+        "--model-repository should not be empty when using "
+        "service-kind=triton_c_api.");
+  }
+
   std::unique_ptr<TritonCApiClientBackend> triton_client_backend(
       new TritonCApiClientBackend());
   TritonLoader::Create(triton_server_path, model_repository_path, verbose);
