@@ -29,178 +29,111 @@
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_model_parser.h"
+#include "test_load_manager_base.h"
 
 namespace triton { namespace perfanalyzer {
 
-class TestConcurrencyManager {
+class TestConcurrencyManager : public TestLoadManagerBase,
+                               public ConcurrencyManager {
  public:
-  TestConcurrencyManager()
+  TestConcurrencyManager(
+      PerfAnalyzerParameters params, bool is_sequence_model = false,
+      bool use_mock_infer = false)
+      : use_mock_infer_(use_mock_infer),
+        TestLoadManagerBase(params, is_sequence_model),
+        ConcurrencyManager(
+            params.async, params.streaming, params.batch_size,
+            params.max_threads, params.max_concurrency, params.sequence_length,
+            params.shared_memory_type, params.output_shm_size,
+            params.start_sequence_id, params.sequence_id_range,
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data, GetParser(), GetFactory())
   {
-    // Must reset this global flag every unit test.
-    // It gets set to true when we deconstruct any load manager
-    // (aka every unit test)
-    //
-    early_exit = false;
+  }
 
-    stats_ = std::make_shared<cb::MockClientStats>();
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    if (use_mock_infer_) {
+      return MockInfer(thread_stat, thread_config);
+    } else {
+      return ConcurrencyManager::Infer(thread_stat, thread_config);
+    }
+  }
+
+  // Mock out most of the complicated Infer code
+  //
+  void MockInfer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config)
+  {
+    if (!execute_) {
+      thread_config->is_paused_ = true;
+    }
   }
 
   /// Test that the correct Infer function is called in the backend
   ///
-  void TestInferType(const PerfAnalyzerParameters& params)
+  void TestInferType()
   {
-    auto sleep_time = std::chrono::milliseconds(500);
+    // FIXME TMA-982: This delay is to avoid deadlock. Investigate why delay is
+    // needed.
+    stats_->request_delay = std::chrono::milliseconds(50);
 
-    std::unique_ptr<LoadManager> manager = CreateManager(params);
-    dynamic_cast<ConcurrencyManager*>(manager.get())
-        ->ChangeConcurrencyLevel(params.max_concurrency);
-    std::this_thread::sleep_for(sleep_time);
+    ChangeConcurrencyLevel(params_.max_concurrency);
 
-    CheckInferType(params);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    CheckInferType();
   }
 
   /// Test that the correct concurrency is maintained in the load manager
   ///
   void TestConcurrency(
-      const PerfAnalyzerParameters& params,
       std::chrono::milliseconds request_delay,
       std::chrono::milliseconds sleep_time)
   {
     stats_->request_delay = request_delay;
 
-    std::shared_ptr<LoadManager> manager = CreateManager(params);
-    dynamic_cast<ConcurrencyManager*>(manager.get())
-        ->ChangeConcurrencyLevel(params.max_concurrency);
+    ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(sleep_time);
 
-    CheckConcurrency(params);
+    CheckConcurrency();
   }
 
   /// Test sequence handling
   ///
-  void TestSequences(const PerfAnalyzerParameters& params)
+  void TestSequences()
   {
-    bool is_sequence_model = true;
-    std::unique_ptr<LoadManager> manager =
-        CreateManager(params, is_sequence_model);
-
     auto sleep_time = std::chrono::milliseconds(500);
 
-    dynamic_cast<ConcurrencyManager*>(manager.get())
-        ->ChangeConcurrencyLevel(params.max_concurrency);
+    ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(sleep_time);
 
-    CheckSequences(params);
+    CheckSequences();
   }
 
  private:
-  std::shared_ptr<cb::MockClientStats> stats_;
-
-  std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
-
-  void ResetStats() { stats_->Reset(); }
-
-  void CheckInferType(const PerfAnalyzerParameters& params)
+  void CheckConcurrency()
   {
-    auto stats = GetStats();
-
-    if (params.async) {
-      if (params.streaming) {
-        CHECK(stats->num_infer_calls == 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls > 0);
-        CHECK(stats->num_start_stream_calls > 0);
-      } else {
-        CHECK(stats->num_infer_calls == 0);
-        CHECK(stats->num_async_infer_calls > 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls == 0);
-      }
-    } else {
-      if (params.streaming) {
-        CHECK(stats->num_infer_calls > 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls > 0);
-      } else {
-        CHECK(stats->num_infer_calls > 0);
-        CHECK(stats->num_async_infer_calls == 0);
-        CHECK(stats->num_async_stream_infer_calls == 0);
-        CHECK(stats->num_start_stream_calls == 0);
-      }
-    }
-  }
-
-  void CheckConcurrency(const PerfAnalyzerParameters& params)
-  {
-    auto stats = GetStats();
-
-    if (params.max_concurrency < 4) {
-      CHECK(stats->num_active_infer_calls.load() == params.max_concurrency);
+    if (params_.max_concurrency < 4) {
+      CHECK(stats_->num_active_infer_calls.load() == params_.max_concurrency);
     } else {
       CHECK(
-          stats->num_active_infer_calls.load() ==
-          doctest::Approx(params.max_concurrency).epsilon(0.25));
+          stats_->num_active_infer_calls.load() ==
+          doctest::Approx(params_.max_concurrency).epsilon(0.25));
     }
   }
 
-  void CheckSequences(const PerfAnalyzerParameters& params)
-  {
-    auto stats = GetStats();
-
-    // Make sure all seq IDs are within range
-    //
-    for (auto seq_id : stats->sequence_status.used_seq_ids) {
-      CHECK(seq_id >= params.start_sequence_id);
-      CHECK(seq_id <= params.start_sequence_id + params.sequence_id_range);
-    }
-
-    // Make sure that we had the correct number of concurrently live sequences
-    //
-    // If the sequence length is only 1 then there is nothing to check because
-    // there are never any overlapping requests -- they always immediately exit
-    //
-    if (params.sequence_length != 1) {
-      CHECK(
-          stats->sequence_status.max_live_seq_count == params.max_concurrency);
-    }
-
-    // Make sure that the length of each sequence is as expected
-    // (The code explicitly has a 20% slop, so that is what we are checking)
-    //
-    for (auto len : stats->sequence_status.seq_lengths) {
-      CHECK(len == doctest::Approx(params.sequence_length).epsilon(0.20));
-    }
-  }
-
-  std::unique_ptr<LoadManager> CreateManager(
-      PerfAnalyzerParameters params, bool is_sequence_model = false)
-  {
-    std::unique_ptr<LoadManager> manager;
-    std::shared_ptr<cb::ClientBackendFactory> factory =
-        std::make_shared<cb::MockClientBackendFactory>(stats_);
-    std::shared_ptr<ModelParser> parser =
-        std::make_shared<MockModelParser>(is_sequence_model);
-
-    ConcurrencyManager::Create(
-        params.async, params.streaming, params.batch_size, params.max_threads,
-        params.max_concurrency, params.sequence_length, params.string_length,
-        params.string_data, params.zero_input, params.user_data,
-        params.shared_memory_type, params.output_shm_size,
-        params.start_sequence_id, params.sequence_id_range, parser, factory,
-        &manager);
-
-    return manager;
-  }
+  const bool use_mock_infer_{false};
 };
 
-/// Test that the correct concurrency is maintained in the load manager
+/// Test that the correct Infer function is called in the backend
 ///
 TEST_CASE("concurrency_infer_type")
 {
-  TestConcurrencyManager tcm{};
   PerfAnalyzerParameters params{};
-
   params.max_concurrency = 1;
 
   SUBCASE("async_streaming")
@@ -224,20 +157,19 @@ TEST_CASE("concurrency_infer_type")
     params.streaming = false;
   }
 
-  tcm.TestInferType(params);
+  TestConcurrencyManager tcm(params);
+  tcm.TestInferType();
 }
 
-/// Check that the corre
-/// are used given different param values for async and stream
+/// Test that the correct concurrency is maintained in the load manager
 ///
 TEST_CASE("concurrency_concurrency")
 {
-  TestConcurrencyManager tcm{};
   PerfAnalyzerParameters params{};
   std::chrono::milliseconds request_delay{50};
   std::chrono::milliseconds sleep_time{225};
 
-  SUBCASE("")
+  SUBCASE("sync, no-streaming, 1 concurrency, 1 thread")
   {
     params.forced_sync = true;
     params.async = false;
@@ -246,7 +178,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 1;
   }
 
-  SUBCASE("")
+  SUBCASE("sync, no-streaming, 4 concurrency, 4 threads")
   {
     params.forced_sync = true;
     params.async = false;
@@ -255,7 +187,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 4;
   }
 
-  SUBCASE("")
+  SUBCASE("async, no-streaming, 1 concurrency, 1 thread")
   {
     params.forced_sync = false;
     params.async = true;
@@ -264,7 +196,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 1;
   }
 
-  SUBCASE("")
+  SUBCASE("async, no-streaming, 4 concurrency, 1 thread")
   {
     params.forced_sync = false;
     params.async = true;
@@ -273,7 +205,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 1;
   }
 
-  SUBCASE("")
+  SUBCASE("async, no-streaming, 4 concurrency, 2 threads")
   {
     params.forced_sync = false;
     params.async = true;
@@ -282,7 +214,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 2;
   }
 
-  SUBCASE("")
+  SUBCASE("async, no-streaming, 4 concurrency, 4 threads")
   {
     params.forced_sync = false;
     params.async = true;
@@ -291,7 +223,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 4;
   }
 
-  SUBCASE("")
+  SUBCASE("async, streaming, 1 concurrency, 1 thread")
   {
     params.forced_sync = false;
     params.async = true;
@@ -300,7 +232,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 1;
   }
 
-  SUBCASE("")
+  SUBCASE("async, streaming, 4 concurrency, 1 thread")
   {
     params.forced_sync = false;
     params.async = true;
@@ -309,7 +241,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 1;
   }
 
-  SUBCASE("")
+  SUBCASE("async, streaming, 4 concurrency, 2 threads")
   {
     params.forced_sync = false;
     params.async = true;
@@ -318,7 +250,7 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 2;
   }
 
-  SUBCASE("")
+  SUBCASE("async, streaming, 4 concurrency, 4 threads")
   {
     params.forced_sync = false;
     params.async = true;
@@ -327,18 +259,16 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 4;
   }
 
-  tcm.TestConcurrency(params, request_delay, sleep_time);
+  TestConcurrencyManager tcm(params);
+  tcm.TestConcurrency(request_delay, sleep_time);
 }
 
-/// Check that the inference requests for sequences
-/// follow all rules and parameters
+/// Check that the inference requests for sequences follow all rules and
+/// parameters
 ///
 TEST_CASE("concurrency_sequence")
 {
-  TestConcurrencyManager tcm{};
   PerfAnalyzerParameters params{};
-
-  params.max_concurrency = 1;
 
   // Generally we want short sequences for testing
   // so we can hit the corner cases more often
@@ -366,7 +296,11 @@ TEST_CASE("concurrency_sequence")
   SUBCASE("sequence_length 1") { params.sequence_length = 1; }
   SUBCASE("sequence_length 10") { params.sequence_length = 10; }
 
-  tcm.TestSequences(params);
+  params.max_concurrency = params.num_of_sequences;
+
+  const bool is_sequence_model{true};
+  TestConcurrencyManager tcm(params, is_sequence_model);
+  tcm.TestSequences();
 }
 
 }}  // namespace triton::perfanalyzer

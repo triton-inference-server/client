@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -28,6 +28,10 @@
 #include "load_manager.h"
 
 namespace triton { namespace perfanalyzer {
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestConcurrencyManager;
+#endif
 
 //==============================================================================
 /// ConcurrencyManager is a helper class to send inference requests to inference
@@ -121,7 +125,7 @@ class ConcurrencyManager : public LoadManager {
   /// Function for worker that sends inference requests.
   /// \param thread_stat Worker thread status specific data.
   /// \param thread_config Worker thread configuration specific data.
-  void Infer(
+  virtual void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config);
 
@@ -132,6 +136,13 @@ class ConcurrencyManager : public LoadManager {
 
   size_t max_concurrency_;
   std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestConcurrencyManager;
+
+ protected:
+  ConcurrencyManager() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

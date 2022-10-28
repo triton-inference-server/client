@@ -30,6 +30,7 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+#include "../doctest.h"
 #include "client_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -93,10 +94,10 @@ class MockClientStats {
     void HandleSeqRequest(uint64_t seq_id) { live_seq_ids_to_length[seq_id]++; }
   };
 
-  size_t num_infer_calls{0};
-  size_t num_async_infer_calls{0};
-  size_t num_async_stream_infer_calls{0};
-  size_t num_start_stream_calls{0};
+  std::atomic<size_t> num_infer_calls{0};
+  std::atomic<size_t> num_async_infer_calls{0};
+  std::atomic<size_t> num_async_stream_infer_calls{0};
+  std::atomic<size_t> num_start_stream_calls{0};
 
   std::atomic<size_t> num_active_infer_calls{0};
 
@@ -211,15 +212,7 @@ class MockClientBackend : public ClientBackend {
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
 
-    std::thread([this, &options, callback]() {
-      std::this_thread::sleep_for(stats_->request_delay);
-
-      InferResult* result = new MockInferResult(options);
-      callback(result);
-
-      stats_->num_active_infer_calls--;
-    })
-        .detach();
+    LaunchAsyncMockRequest(options, callback);
 
     return Error::Success;
   }
@@ -233,15 +226,7 @@ class MockClientBackend : public ClientBackend {
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
 
-    std::thread([this, &options]() {
-      std::this_thread::sleep_for(stats_->request_delay);
-
-      InferResult* result = new MockInferResult(options);
-      stream_callback_(result);
-
-      stats_->num_active_infer_calls--;
-    })
-        .detach();
+    LaunchAsyncMockRequest(options, stream_callback_);
 
     return Error::Success;
   }
@@ -256,6 +241,20 @@ class MockClientBackend : public ClientBackend {
   Error ClientInferStat(InferStat* a) override { return Error::Success; }
 
  private:
+  void LaunchAsyncMockRequest(
+      const InferOptions& options, OnCompleteFn callback)
+  {
+    std::thread([this, &options, callback]() {
+      std::this_thread::sleep_for(stats_->request_delay);
+
+      InferResult* result = new MockInferResult(options);
+      callback(result);
+
+      stats_->num_active_infer_calls--;
+    })
+        .detach();
+  }
+
   std::shared_ptr<MockClientStats> stats_;
   OnCompleteFn stream_callback_;
 };
