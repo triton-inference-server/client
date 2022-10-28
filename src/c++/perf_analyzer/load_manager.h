@@ -336,7 +336,6 @@ class LoadManager {
   std::mutex wake_mutex_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend TestRequestRateManager;
 
  protected:
   LoadManager() : start_sequence_id_(1), sequence_id_range_(UINT32_MAX){};
