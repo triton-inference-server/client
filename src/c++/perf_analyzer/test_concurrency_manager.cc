@@ -79,7 +79,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   {
     // FIXME TMA-982: This delay is to avoid deadlock. Investigate why delay is
     // needed.
-    stats_->request_delay = std::chrono::milliseconds(50);
+    stats_->response_delay = std::chrono::milliseconds(50);
 
     ChangeConcurrencyLevel(params_.max_concurrency);
 
@@ -91,10 +91,10 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   /// Test that the correct concurrency is maintained in the load manager
   ///
   void TestConcurrency(
-      std::chrono::milliseconds request_delay,
+      std::chrono::milliseconds response_delay,
       std::chrono::milliseconds sleep_time)
   {
-    stats_->request_delay = request_delay;
+    stats_->response_delay = response_delay;
 
     ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(sleep_time);
@@ -118,10 +118,10 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   void CheckConcurrency()
   {
     if (params_.max_concurrency < 4) {
-      CHECK(stats_->num_active_infer_calls.load() == params_.max_concurrency);
+      CHECK(stats_->num_active_infer_calls == params_.max_concurrency);
     } else {
       CHECK(
-          stats_->num_active_infer_calls.load() ==
+          stats_->num_active_infer_calls ==
           doctest::Approx(params_.max_concurrency).epsilon(0.25));
     }
   }
@@ -166,7 +166,7 @@ TEST_CASE("concurrency_infer_type")
 TEST_CASE("concurrency_concurrency")
 {
   PerfAnalyzerParameters params{};
-  std::chrono::milliseconds request_delay{50};
+  std::chrono::milliseconds response_delay{50};
   std::chrono::milliseconds sleep_time{225};
 
   SUBCASE("sync, no-streaming, 1 concurrency, 1 thread")
@@ -260,7 +260,7 @@ TEST_CASE("concurrency_concurrency")
   }
 
   TestConcurrencyManager tcm(params);
-  tcm.TestConcurrency(request_delay, sleep_time);
+  tcm.TestConcurrency(response_delay, sleep_time);
 }
 
 /// Check that the inference requests for sequences follow all rules and

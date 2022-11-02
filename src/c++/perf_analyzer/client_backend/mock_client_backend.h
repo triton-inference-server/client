@@ -101,7 +101,7 @@ class MockClientStats {
 
   std::atomic<size_t> num_active_infer_calls{0};
 
-  std::chrono::milliseconds request_delay{0};
+  std::chrono::milliseconds response_delay{0};
 
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       request_timestamps;
@@ -195,7 +195,7 @@ class MockClientBackend : public ClientBackend {
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
 
-    std::this_thread::sleep_for(stats_->request_delay);
+    std::this_thread::sleep_for(stats_->response_delay);
 
     stats_->num_active_infer_calls--;
 
@@ -245,7 +245,7 @@ class MockClientBackend : public ClientBackend {
       const InferOptions& options, OnCompleteFn callback)
   {
     std::thread([this, &options, callback]() {
-      std::this_thread::sleep_for(stats_->request_delay);
+      std::this_thread::sleep_for(stats_->response_delay);
 
       InferResult* result = new MockInferResult(options);
       callback(result);
