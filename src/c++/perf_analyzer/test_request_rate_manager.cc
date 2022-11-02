@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <future>
 #include "command_line_parser.h"
 #include "common.h"
 #include "doctest.h"
@@ -194,6 +195,19 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     CheckSequences();
   }
+
+  struct ThreadStat : RequestRateManager::ThreadStat {
+  };
+
+  struct ThreadConfig : RequestRateManager::ThreadConfig {
+    ThreadConfig(uint32_t index, uint32_t stride)
+        : RequestRateManager::ThreadConfig(index, stride)
+    {
+    }
+  };
+
+  std::vector<std::chrono::nanoseconds>& schedule_{
+      RequestRateManager::schedule_};
 
  private:
   bool use_mock_infer_;
@@ -385,6 +399,28 @@ TEST_CASE("request_rate_sequence")
   bool is_sequence_model = true;
   TestRequestRateManager trrm(params, is_sequence_model);
   trrm.TestSequences();
+}
+
+TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
+{
+  PerfAnalyzerParameters params{};
+  params.streaming = true;
+
+  TestRequestRateManager trrm(params);
+  trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+
+  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
+      std::make_shared<TestRequestRateManager::ThreadStat>()};
+  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
+      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
+
+  std::future<void> infer_future{std::async(
+      &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+
+  early_exit = true;
+  infer_future.get();
+
+  CHECK(trrm.stats_->enable_stats == true);
 }
 
 }}  // namespace triton::perfanalyzer

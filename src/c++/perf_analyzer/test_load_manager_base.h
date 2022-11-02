@@ -125,11 +125,12 @@ class TestLoadManagerBase {
     }
   }
 
+  std::shared_ptr<cb::MockClientStats> stats_;
+
  protected:
   PerfAnalyzerParameters params_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
   std::shared_ptr<ModelParser> parser_;
-  std::shared_ptr<cb::MockClientStats> stats_;
 
   const std::shared_ptr<ModelParser>& GetParser() { return parser_; }
   const std::shared_ptr<cb::ClientBackendFactory>& GetFactory()
