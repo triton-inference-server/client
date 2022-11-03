@@ -271,6 +271,16 @@ PerfAnalyzer::PrerunReport()
   if (params_->kind == cb::BackendKind::TRITON || params_->using_batch_size) {
     std::cout << "  Batch size: " << params_->batch_size << std::endl;
   }
+  if (params_->kind == cb::BackendKind::TRITON_C_API) {
+    std::cout << "  Service Kind: Triton C-API" << std::endl;
+  } else if (params_->kind == cb::BackendKind::TRITON) {
+    std::cout << "  Service Kind: Triton" << std::endl;
+  } else if (params_->kind == cb::BackendKind::TORCHSERVE) {
+    std::cout << "  Service Kind: TorchServe" << std::endl;
+  } else if (params_->kind == cb::BackendKind::TENSORFLOW_SERVING) {
+    std::cout << "  Service Kind: TensorFlow Serving" << std::endl;
+  }
+
   if (params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
     std::cout << "  Using \"count_windows\" mode for stabilization"
               << std::endl;

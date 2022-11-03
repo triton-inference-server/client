@@ -78,7 +78,7 @@ struct PerfAnalyzerParameters {
       clientbackend::GrpcCompressionAlgorithm::COMPRESS_NONE;
   MeasurementMode measurement_mode = MeasurementMode::TIME_WINDOWS;
   uint64_t measurement_request_count = 50;
-  std::string triton_server_path;
+  std::string triton_server_path = "/opt/tritonserver";
   std::string model_repository_path;
   uint64_t start_sequence_id = 1;
   uint64_t sequence_id_range = UINT32_MAX;

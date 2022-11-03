@@ -276,7 +276,8 @@ TEST_CASE("Testing PerfAnalyzerParameters")
       clientbackend::GrpcCompressionAlgorithm::COMPRESS_NONE);
   CHECK(params->measurement_mode == MeasurementMode::TIME_WINDOWS);
   CHECK(params->measurement_request_count == 50);
-  CHECK_STRING("triton_server_path", params->triton_server_path, "");
+  CHECK_STRING(
+      "triton_server_path", params->triton_server_path, "/opt/tritonserver");
   CHECK_STRING("model_repository_path", params->model_repository_path, "");
   CHECK(params->start_sequence_id == 1);
   CHECK(params->sequence_id_range == UINT32_MAX);

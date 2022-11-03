@@ -140,14 +140,11 @@ ResponseRelease(
     size_t byte_size, TRITONSERVER_MemoryType memory_type,
     int64_t memory_type_id)
 {
-  std::string* name = nullptr;
   switch (memory_type) {
     case TRITONSERVER_MEMORY_CPU:
       free(buffer);
       break;
   }
-
-  delete name;
 
   return nullptr;  // Success
 }
@@ -187,7 +184,7 @@ GetModelVersionFromString(const std::string& version_string, int64_t* version)
   catch (std::exception& e) {
     return Error(
         std::string(
-            "failed to get model version from specified version string '" +
+            "Failed to get model version from specified version string '" +
             version_string + "' (details: " + e.what() +
             "), version should be an integral value > 0")
             .c_str());
@@ -221,17 +218,11 @@ TritonLoader::Create(
     const std::string& model_repository_path, bool verbose)
 {
   if (!GetSingleton()->ServerIsReady()) {
-    if (triton_server_path.empty() || model_repository_path.empty()) {
-      return Error("cannot load server, paths are empty");
-    }
     GetSingleton()->ClearHandles();
-    FAIL_IF_ERR(
-        GetSingleton()->PopulateInternals(
-            triton_server_path, model_repository_path, verbose),
-        "Populating internal variables");
-    FAIL_IF_ERR(
-        GetSingleton()->LoadServerLibrary(), "Loading Triton Server library");
-    FAIL_IF_ERR(GetSingleton()->StartTriton(), "Starting Triton Server");
+    RETURN_IF_ERROR(GetSingleton()->PopulateInternals(
+        triton_server_path, model_repository_path, verbose));
+    RETURN_IF_ERROR(GetSingleton()->LoadServerLibrary());
+    RETURN_IF_ERROR(GetSingleton()->StartTriton());
   }
 
   return Error::Success;
@@ -255,6 +246,7 @@ TritonLoader::PopulateInternals(
 {
   RETURN_IF_ERROR(FolderExists(triton_server_path));
   RETURN_IF_ERROR(FolderExists(model_repository_path));
+
   triton_server_path_ = triton_server_path;
   model_repository_path_ = model_repository_path;
   verbose_ = verbose;
@@ -523,9 +515,7 @@ TritonLoader::LoadServerLibrary()
 {
   std::string full_path = triton_server_path_ + server_library_path_;
   RETURN_IF_ERROR(FolderExists(full_path));
-  FAIL_IF_ERR(
-      OpenLibraryHandle(full_path, &dlhandle_),
-      "shared library loading library:" + full_path);
+  RETURN_IF_ERROR(OpenLibraryHandle(full_path, &dlhandle_));
 
   TritonServerApiVersionFn_t apifn;
   TritonServerOptionsNewFn_t onfn;
