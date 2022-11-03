@@ -26,8 +26,11 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <mutex>
+#include <thread>
+#include "../doctest.h"
 #include "client_backend.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
@@ -91,10 +94,14 @@ class MockClientStats {
     void HandleSeqRequest(uint64_t seq_id) { live_seq_ids_to_length[seq_id]++; }
   };
 
-  size_t num_infer_calls{0};
-  size_t num_async_infer_calls{0};
-  size_t num_async_stream_infer_calls{0};
-  size_t num_start_stream_calls{0};
+  std::atomic<size_t> num_infer_calls{0};
+  std::atomic<size_t> num_async_infer_calls{0};
+  std::atomic<size_t> num_async_stream_infer_calls{0};
+  std::atomic<size_t> num_start_stream_calls{0};
+
+  std::atomic<size_t> num_active_infer_calls{0};
+
+  std::chrono::milliseconds response_delay{0};
 
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       request_timestamps;
@@ -183,8 +190,15 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
+
+    std::this_thread::sleep_for(stats_->response_delay);
+
+    stats_->num_active_infer_calls--;
+
     return Error::Success;
   }
 
@@ -193,11 +207,13 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
-    InferResult* result = new MockInferResult(options);
 
-    callback(result);
+    LaunchAsyncMockRequest(options, callback);
+
     return Error::Success;
   }
 
@@ -205,10 +221,13 @@ class MockClientBackend : public ClientBackend {
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs)
   {
+    stats_->num_active_infer_calls++;
+
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
-    InferResult* result = new MockInferResult(options);
-    stream_callback_(result);
+
+    LaunchAsyncMockRequest(options, stream_callback_);
+
     return Error::Success;
   }
 
@@ -222,6 +241,20 @@ class MockClientBackend : public ClientBackend {
   Error ClientInferStat(InferStat* a) override { return Error::Success; }
 
  private:
+  void LaunchAsyncMockRequest(
+      const InferOptions& options, OnCompleteFn callback)
+  {
+    std::thread([this, &options, callback]() {
+      std::this_thread::sleep_for(stats_->response_delay);
+
+      InferResult* result = new MockInferResult(options);
+      callback(result);
+
+      stats_->num_active_infer_calls--;
+    })
+        .detach();
+  }
+
   std::shared_ptr<MockClientStats> stats_;
   OnCompleteFn stream_callback_;
 };
