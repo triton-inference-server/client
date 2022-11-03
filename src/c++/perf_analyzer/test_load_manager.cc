@@ -36,8 +36,10 @@ namespace triton { namespace perfanalyzer {
 class TestLoadManager : public TestLoadManagerBase, public LoadManager {
  public:
   ~TestLoadManager() = default;
-  TestLoadManager(PerfAnalyzerParameters params, bool is_sequence_model = false)
-      : TestLoadManagerBase(params, is_sequence_model),
+  TestLoadManager(
+      PerfAnalyzerParameters params, bool is_sequence_model = false,
+      bool is_decoupled_model = false)
+      : TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         LoadManager(
             params.async, params.streaming, params.batch_size,
             params.max_threads, params.sequence_length,

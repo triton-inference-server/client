@@ -103,7 +103,7 @@ class MockClientStats {
 
   std::chrono::milliseconds response_delay{0};
 
-  bool enable_stats{false};
+  bool start_stream_enable_stats_value{false};
 
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       request_timestamps;
@@ -236,7 +236,7 @@ class MockClientBackend : public ClientBackend {
   Error StartStream(OnCompleteFn callback, bool enable_stats)
   {
     stats_->CaptureStreamStart();
-    stats_->enable_stats = enable_stats;
+    stats_->start_stream_enable_stats_value = enable_stats;
     stream_callback_ = callback;
     return Error::Success;
   }

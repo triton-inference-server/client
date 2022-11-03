@@ -45,9 +45,9 @@ class TestRequestRateManager : public TestLoadManagerBase,
  public:
   TestRequestRateManager(
       PerfAnalyzerParameters params, bool is_sequence_model = false,
-      bool use_mock_infer = false)
+      bool is_decoupled_model = false, bool use_mock_infer = false)
       : use_mock_infer_(use_mock_infer),
-        TestLoadManagerBase(params, is_sequence_model),
+        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         RequestRateManager(
             params.async, params.streaming, params.request_distribution,
             params.batch_size, params.measurement_window_ms, params.max_threads,
@@ -276,8 +276,10 @@ TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 {
   PerfAnalyzerParameters params;
   bool is_sequence = false;
+  bool is_decoupled = false;
   bool use_mock_infer = true;
-  TestRequestRateManager trrm(params, is_sequence, use_mock_infer);
+  TestRequestRateManager trrm(
+      params, is_sequence, is_decoupled, use_mock_infer);
   trrm.TestResetWorkers();
 }
 
@@ -406,21 +408,38 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   PerfAnalyzerParameters params{};
   params.streaming = true;
 
-  TestRequestRateManager trrm(params);
-  trrm.schedule_.push_back(std::chrono::nanoseconds(1));
-
   std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
       std::make_shared<TestRequestRateManager::ThreadStat>()};
   std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
       std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
 
-  std::future<void> infer_future{std::async(
-      &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+  SUBCASE("enable_stats true")
+  {
+    TestRequestRateManager trrm(params);
+    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
-  early_exit = true;
-  infer_future.get();
+    std::future<void> infer_future{std::async(
+        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
 
-  CHECK(trrm.stats_->enable_stats == true);
+    early_exit = true;
+    infer_future.get();
+
+    CHECK(trrm.stats_->start_stream_enable_stats_value == true);
+  }
+
+  SUBCASE("enable_stats false")
+  {
+    TestRequestRateManager trrm(params, false, true);
+    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+
+    std::future<void> infer_future{std::async(
+        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+
+    early_exit = true;
+    infer_future.get();
+
+    CHECK(trrm.stats_->start_stream_enable_stats_value == false);
+  }
 }
 
 }}  // namespace triton::perfanalyzer

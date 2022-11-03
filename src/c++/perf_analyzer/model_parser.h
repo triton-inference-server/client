@@ -162,6 +162,7 @@ class ModelParser {
 
  protected:
   ModelSchedulerType scheduler_type_;
+  bool is_decoupled_;
 
  private:
   cb::Error GetEnsembleSchedulerType(
@@ -187,7 +188,6 @@ class ModelParser {
   std::string model_version_;
   std::string model_signature_name_;
   size_t max_batch_size_;
-  bool is_decoupled_;
   bool response_cache_enabled_;
 
 #ifndef DOCTEST_CONFIG_DISABLE

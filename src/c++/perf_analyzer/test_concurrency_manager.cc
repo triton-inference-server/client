@@ -38,9 +38,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
  public:
   TestConcurrencyManager(
       PerfAnalyzerParameters params, bool is_sequence_model = false,
-      bool use_mock_infer = false)
+      bool is_decoupled_model = false, bool use_mock_infer = false)
       : use_mock_infer_(use_mock_infer),
-        TestLoadManagerBase(params, is_sequence_model),
+        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         ConcurrencyManager(
             params.async, params.streaming, params.batch_size,
             params.max_threads, params.max_concurrency, params.sequence_length,

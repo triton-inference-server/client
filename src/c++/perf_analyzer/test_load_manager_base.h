@@ -38,7 +38,9 @@ namespace triton { namespace perfanalyzer {
 ///
 class TestLoadManagerBase {
  public:
-  TestLoadManagerBase(PerfAnalyzerParameters params, bool is_sequence_model)
+  TestLoadManagerBase(
+      PerfAnalyzerParameters params, bool is_sequence_model,
+      bool is_decoupled_model)
       : params_(params)
   {
     // Must reset this global flag every unit test.
@@ -49,7 +51,8 @@ class TestLoadManagerBase {
 
     stats_ = std::make_shared<cb::MockClientStats>();
     factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
-    parser_ = std::make_shared<MockModelParser>(is_sequence_model);
+    parser_ = std::make_shared<MockModelParser>(
+        is_sequence_model, is_decoupled_model);
   }
 
   void CheckInferType()
