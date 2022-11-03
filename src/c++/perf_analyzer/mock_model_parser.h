@@ -28,15 +28,18 @@
 
 #include "model_parser.h"
 
-namespace triton { namespace perfanalyzer { 
+namespace triton { namespace perfanalyzer {
 
 class MockModelParser : public ModelParser {
  public:
-  MockModelParser(bool is_sequence_model) : ModelParser(clientbackend::BackendKind::TRITON) {
+  MockModelParser(bool is_sequence_model, bool is_decoupled_model)
+      : ModelParser(clientbackend::BackendKind::TRITON)
+  {
     if (is_sequence_model) {
       scheduler_type_ = ModelParser::SEQUENCE;
     }
+    is_decoupled_ = is_decoupled_model;
   }
 };
 
-}}
+}}  // namespace triton::perfanalyzer

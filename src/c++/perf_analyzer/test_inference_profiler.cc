@@ -636,7 +636,7 @@ TEST_CASE("test the ReportPrometheusMetrics function")
       metrics.gpu_utilization_per_gpu[gpu_key] = 0.5;
       metrics.gpu_power_usage_per_gpu[gpu_key] = 75.5;
       metrics.gpu_memory_used_bytes_per_gpu[gpu_key] = 12500;
-      metrics.gpu_memory_total_bytes_per_gpu["gpu4"] = 150000;
+      metrics.gpu_memory_total_bytes_per_gpu[gpu_key] = 150000;
     }
 
     cb::Error result{ReportPrometheusMetrics(metrics)};
