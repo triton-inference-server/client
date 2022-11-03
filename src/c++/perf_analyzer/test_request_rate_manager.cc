@@ -429,7 +429,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 
   SUBCASE("enable_stats false")
   {
-    TestRequestRateManager trrm(params, false, true);
+    TestRequestRateManager trrm(
+        params, false /* is_decoupled */, true /* is_sequence */);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
     std::future<void> infer_future{std::async(
