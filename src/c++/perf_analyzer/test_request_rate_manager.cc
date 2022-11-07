@@ -460,7 +460,7 @@ TEST_CASE("custom_json_data")
     bool using_mock_infer = false;
     TestRequestRateManager trrm{params, is_seq_model, using_mock_infer};
     std::unique_ptr<MockDataLoader> mdl = std::make_unique<MockDataLoader>();
-    MockModelParser mmp{false};
+    MockModelParser mmp{false, false};
 
     auto thread_status = std::make_shared<TestRequestRateManager::ThreadStat>();
     thread_status->status_ = cb::Error::Success;
