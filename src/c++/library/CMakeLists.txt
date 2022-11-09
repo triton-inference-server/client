@@ -57,7 +57,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER OR TRITON_ENABLE_EXAMPLE
   )
   target_link_libraries(
     json-utils-library
-    PRIVATE:
+    PRIVATE
       client-common-library
   )
 endif()
@@ -71,7 +71,7 @@ add_library(
 )
 target_link_libraries(
   shm-utils-library
-  PRIVATE:
+  PRIVATE
     client-common-library
 )
 
@@ -229,7 +229,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
           PATTERN "third_party" EXCLUDE
       )
     endif() # NOT WIN32
-  
+
     install(
       DIRECTORY
         ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
