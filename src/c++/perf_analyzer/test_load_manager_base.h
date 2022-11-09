@@ -111,6 +111,9 @@ class TestLoadManagerBase {
   {
     auto stats = GetStats();
 
+    // Make sure no live sequences remain
+    CHECK(stats->sequence_status.live_seq_ids_to_length.size() == 0);
+
     // Make sure all seq IDs are within range
     //
     for (auto seq_id : stats->sequence_status.used_seq_ids) {
