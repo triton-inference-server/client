@@ -194,6 +194,7 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
+    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
 
@@ -211,6 +212,7 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
+    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
 
@@ -225,6 +227,7 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
+    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
 
@@ -241,13 +244,21 @@ class MockClientBackend : public ClientBackend {
     return Error::Success;
   }
 
-  Error ClientInferStat(InferStat* a) override { return Error::Success; }
+  Error ClientInferStat(InferStat* a) override
+  {
+    a->completed_request_count = local_req_count_;
+    return Error::Success;
+  }
 
  private:
   void LaunchAsyncMockRequest(
-      const InferOptions& options, OnCompleteFn callback)
+      const InferOptions& options_in, OnCompleteFn callback)
   {
-    std::thread([this, &options, callback]() {
+    // Make a local copy of the options, in case they are changed while we wait
+    //
+    InferOptions options = options_in;
+
+    std::thread([this, options, callback]() {
       std::this_thread::sleep_for(stats_->response_delay);
 
       InferResult* result = new MockInferResult(options);
@@ -257,6 +268,9 @@ class MockClientBackend : public ClientBackend {
     })
         .detach();
   }
+
+  // Total count of how many requests this client has handled
+  size_t local_req_count_ = 0;
 
   std::shared_ptr<MockClientStats> stats_;
   OnCompleteFn stream_callback_;
