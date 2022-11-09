@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,6 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "custom_load_manager.h"
+#include <fstream>
+#include "constants.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -109,6 +111,29 @@ CustomLoadManager::GetCustomRequestRate(double* request_rate)
 
   *request_rate =
       (custom_intervals_.size() * 1000 * 1000 * 1000) / (total_time_ns);
+  return cb::Error::Success;
+}
+
+cb::Error
+CustomLoadManager::ReadTimeIntervalsFile(
+    const std::string& path, std::vector<std::chrono::nanoseconds>* contents)
+{
+  std::ifstream in(path);
+  if (!in) {
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
+  }
+
+  std::string current_string;
+  while (std::getline(in, current_string)) {
+    std::chrono::nanoseconds curent_time_interval_ns(
+        std::stol(current_string) * 1000);
+    contents->push_back(curent_time_interval_ns);
+  }
+  in.close();
+
+  if (contents->size() == 0) {
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
+  }
   return cb::Error::Success;
 }
 
