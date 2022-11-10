@@ -1589,10 +1589,10 @@ InferenceServerHttpClient::InferMulti(
   int64_t max_output_idx = outputs.size() - 1;
   static std::vector<const InferRequestedOutput*> empty_outputs{};
   for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
-    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_options = options[(std::min)(max_option_idx, i)];
     const auto& request_output = (max_output_idx == -1)
                                      ? empty_outputs
-                                     : outputs[std::min(max_output_idx, i)];
+                                     : outputs[(std::min)(max_output_idx, i)];
 
     results->emplace_back();
     err = Infer(
@@ -1639,10 +1639,10 @@ InferenceServerHttpClient::AsyncInferMulti(
   std::shared_ptr<std::vector<InferResult*>> responses(
       new std::vector<InferResult*>(inputs.size()));
   for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
-    const auto& request_options = options[std::min(max_option_idx, i)];
+    const auto& request_options = options[(std::min)(max_option_idx, i)];
     const auto& request_output = (max_output_idx == -1)
                                      ? empty_outputs
-                                     : outputs[std::min(max_output_idx, i)];
+                                     : outputs[(std::min)(max_output_idx, i)];
 
     OnCompleteFn cb = [response_counter, responses, i,
                        callback](InferResult* result) {
