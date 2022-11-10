@@ -92,6 +92,12 @@ class MockClientStats {
     }
 
     void HandleSeqRequest(uint64_t seq_id) { live_seq_ids_to_length[seq_id]++; }
+    void Reset()
+    {
+      used_seq_ids.clear();
+      max_live_seq_count = 0;
+      seq_lengths.clear();
+    }
   };
 
   std::atomic<size_t> num_infer_calls{0};
@@ -137,6 +143,7 @@ class MockClientStats {
     num_async_stream_infer_calls = 0;
     num_start_stream_calls = 0;
     request_timestamps.clear();
+    sequence_status.Reset();
   }
 
  private:

@@ -131,6 +131,10 @@ class TestConcurrencyManager : public TestLoadManagerBase,
         stats.completed_request_count ==
         doctest::Approx(expected_count1).epsilon(0.10));
 
+    PauseWorkers();
+    CheckSequences(concurrency1);
+    ResetStats();
+
     // Run and check request rate 2
     //
     ChangeConcurrencyLevel(concurrency2);
@@ -146,7 +150,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     //
     StopWorkerThreads();
 
-    CheckSequences(true /* is_concurrency_manager */);
+    CheckSequences(concurrency2);
   }
 
  private:

@@ -187,10 +187,17 @@ class TestRequestRateManager : public TestLoadManagerBase,
   void TestSequences()
   {
     stats_->response_delay = std::chrono::milliseconds(10);
+    double request_rate1 = 100;
+    double request_rate2 = 200;
+
+    // A single sequence can't maintain the above rates
+    //
+    if (params_.num_of_sequences == 1) {
+      request_rate1 = 50;
+      request_rate2 = 100;
+    }
 
     auto stats = cb::InferStat();
-    double request_rate1 = 50;
-    double request_rate2 = 100;
     int sleep_ms = 500;
     double num_seconds = sleep_ms / 1000;
 
@@ -210,8 +217,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
         doctest::Approx(expected_count1).epsilon(0.10));
 
     PauseWorkers();
-    CheckSequences(false /* is_concurrency_manager */);
-
+    CheckSequences(params_.num_of_sequences);
+    ResetStats();
 
     // Run and check request rate 2
     //
@@ -228,7 +235,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     //
     StopWorkerThreads();
 
-    CheckSequences(false /* is_concurrency_manager */);
+    CheckSequences(params_.num_of_sequences);
   }
 
   struct ThreadStat : RequestRateManager::ThreadStat {

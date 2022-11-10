@@ -247,6 +247,23 @@ RequestRateManager::Infer(
   do {
     // Should wait till main thread signals execution start
     if (!execute_) {
+      if (on_sequence_model_) {
+        // Finish off all the ongoing sequences for graceful exit
+        for (size_t i = thread_config->id_; i < sequence_stat_.size();
+             i += thread_config->stride_) {
+          std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
+          sequence_stat_[i]->paused_ = true;
+          if (sequence_stat_[i]->remaining_queries_ != 0) {
+            ctx->options_->sequence_start_ = false;
+            ctx->options_->sequence_end_ = true;
+            ctx->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+            Request(
+                ctx, request_id++, false /* delayed */, callback_func,
+                async_req_map, thread_stat);
+            sequence_stat_[i]->remaining_queries_ = 0;
+          }
+        }
+      }
       // Ensures the clean measurements after thread is woken up.
       while (ctx->inflight_request_cnt_ != 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -255,6 +272,14 @@ RequestRateManager::Infer(
       thread_config->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
       wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+
+      if (on_sequence_model_) {
+        for (size_t i = thread_config->id_; i < sequence_stat_.size();
+             i += thread_config->stride_) {
+          std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
+          sequence_stat_[i]->paused_ = false;
+        }
+      }
     }
 
     thread_config->is_paused_ = false;
@@ -304,7 +329,7 @@ RequestRateManager::Infer(
       // Need lock to protect the order of dispatch across worker threads.
       // This also helps in reporting the realistic latencies.
       std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-      if (!early_exit) {
+      if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
         SetInferSequenceOptions(seq_stat_index, ctx->options_);
 
         // Update the inputs if required
@@ -342,6 +367,7 @@ RequestRateManager::Infer(
         for (size_t i = thread_config->id_; i < sequence_stat_.size();
              i += thread_config->stride_) {
           std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
+          sequence_stat_[i]->paused_ = true;
           if (sequence_stat_[i]->remaining_queries_ != 0) {
             ctx->options_->sequence_start_ = false;
             ctx->options_->sequence_end_ = true;

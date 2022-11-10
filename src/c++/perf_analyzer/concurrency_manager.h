@@ -122,6 +122,10 @@ class ConcurrencyManager : public LoadManager {
     bool is_paused_;
   };
 
+  void PauseWorkers();
+  void BalanceThreads(size_t concurrent_request_count);
+  void ResumeWorkers();
+
   /// Function for worker that sends inference requests.
   /// \param thread_stat Worker thread status specific data.
   /// \param thread_config Worker thread configuration specific data.
