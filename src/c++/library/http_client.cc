@@ -48,6 +48,7 @@ extern "C" {
 
 #ifdef _WIN32
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
+#define NOMINMAX
 #endif  //_WIN32
 
 namespace triton { namespace client {
@@ -538,7 +539,7 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
   }
 
   while (!data_buffers_.empty() && size > 0) {
-    const size_t csz = (std::min)(data_buffers_.front().second, size);
+    const size_t csz = std::min(data_buffers_.front().second, size);
     if (csz > 0) {
       const uint8_t* input_ptr = data_buffers_.front().first;
       std::copy(input_ptr, input_ptr + csz, buf);
@@ -1589,10 +1590,10 @@ InferenceServerHttpClient::InferMulti(
   int64_t max_output_idx = outputs.size() - 1;
   static std::vector<const InferRequestedOutput*> empty_outputs{};
   for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
-    const auto& request_options = options[(std::min)(max_option_idx, i)];
+    const auto& request_options = options[std::min(max_option_idx, i)];
     const auto& request_output = (max_output_idx == -1)
                                      ? empty_outputs
-                                     : outputs[(std::min)(max_output_idx, i)];
+                                     : outputs[std::min(max_output_idx, i)];
 
     results->emplace_back();
     err = Infer(
@@ -1639,10 +1640,10 @@ InferenceServerHttpClient::AsyncInferMulti(
   std::shared_ptr<std::vector<InferResult*>> responses(
       new std::vector<InferResult*>(inputs.size()));
   for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
-    const auto& request_options = options[(std::min)(max_option_idx, i)];
+    const auto& request_options = options[std::min(max_option_idx, i)];
     const auto& request_output = (max_output_idx == -1)
                                      ? empty_outputs
-                                     : outputs[(std::min)(max_output_idx, i)];
+                                     : outputs[std::min(max_output_idx, i)];
 
     OnCompleteFn cb = [response_counter, responses, i,
                        callback](InferResult* result) {
