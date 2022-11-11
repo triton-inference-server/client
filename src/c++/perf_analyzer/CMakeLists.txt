@@ -104,6 +104,18 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
     client-backend-library
     PUBLIC TRITON_ENABLE_PERF_ANALYZER_C_API=1
   )
+
+  # Gperftools
+  #
+  link_directories(/usr/local/lib)
+  LIST(APPEND CMAKE_MODULE_PATH "${repo-common_SOURCE_DIR}/cmake")
+  find_package(Gperftools REQUIRED)
+
+  target_link_libraries(
+    perf_analyzer
+    PRIVATE
+      tcmalloc
+  )
 endif()
 
 if(TRITON_ENABLE_PERF_ANALYZER_TFS)
