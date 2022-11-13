@@ -1852,6 +1852,17 @@ class InferInput:
         else:
             self._raw_content = input_tensor.tobytes()
 
+    def set_data_from_numpy(self, raw_content):
+        """Set the tensor data from the specified bytes for
+        input associated with this object.
+
+        Parameters
+        ----------
+        input_tensor : bytes
+            The tensor data in bytes format
+        """
+        self._raw_content = raw_content
+
     def set_shared_memory(self, region_name, byte_size, offset=0):
         """Set the tensor data from the specified shared memory region.
 

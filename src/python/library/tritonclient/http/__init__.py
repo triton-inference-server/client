@@ -140,7 +140,7 @@ class InferenceServerClient:
     Parameters
     ----------
     url : str
-        The inference server name, port and optional base path 
+        The inference server name, port and optional base path
         in the following format: host:port/<base-path>, e.g.
         'localhost:8000'.
 
@@ -1300,7 +1300,7 @@ class InferenceServerClient:
         Int
             The byte size of the inference request header in the request body.
             Returns None if the whole request body constitutes the request header.
-            
+
 
         Raises
         ------
@@ -1335,7 +1335,7 @@ class InferenceServerClient:
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
-        
+
         Returns
         -------
         InferResult
@@ -1868,6 +1868,17 @@ class InferInput:
                 self._raw_data = input_tensor.tobytes()
             self._parameters['binary_data_size'] = len(self._raw_data)
 
+    def set_data_from_numpy(self, raw_content):
+        """Set the tensor data from the specified bytes for
+        input associated with this object.
+
+        Parameters
+        ----------
+        input_tensor : bytes
+            The tensor data in bytes format
+        """
+        self._raw_content = raw_content
+
     def set_shared_memory(self, region_name, byte_size, offset=0):
         """Set the tensor data from the specified shared memory region.
 
@@ -2104,7 +2115,7 @@ class InferResult:
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
-        
+
         Returns
         -------
         InferResult
