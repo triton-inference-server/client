@@ -1868,13 +1868,13 @@ class InferInput:
                 self._raw_data = input_tensor.tobytes()
             self._parameters['binary_data_size'] = len(self._raw_data)
 
-    def set_data_from_numpy(self, raw_content):
+    def set_data_from_bytes(self, raw_content):
         """Set the tensor data from the specified bytes for
         input associated with this object.
 
         Parameters
         ----------
-        input_tensor : bytes
+        raw_content : bytes
             The tensor data in bytes format
         """
         self._raw_content = raw_content
