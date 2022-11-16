@@ -134,7 +134,7 @@ class TestLoadManagerBase {
     // Make sure that the length of each sequence is as expected
     //
     // All but X of them should be within 20% (The code explicitly has a 20%
-    // slop) of the requested sequence length, where X is the number for
+    // slop) of the requested sequence length, where X is the number of
     // sequences (This is due to the shutdown of sequences at the end that will
     // create shorter than expected sequences)
     //

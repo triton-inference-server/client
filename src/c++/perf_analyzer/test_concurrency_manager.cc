@@ -131,7 +131,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
         stats.completed_request_count ==
         doctest::Approx(expected_count1).epsilon(0.10));
 
-    PauseWorkers();
+    PauseSequenceWorkers();
     CheckSequences(concurrency1);
     ResetStats();
 

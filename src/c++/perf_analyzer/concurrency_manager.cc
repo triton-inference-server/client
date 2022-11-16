@@ -91,16 +91,16 @@ cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
     const size_t concurrent_request_count)
 {
-  PauseWorkers();
-  BalanceThreads(concurrent_request_count);
-  ResumeWorkers();
+  PauseSequenceWorkers();
+  ReconfigThreads(concurrent_request_count);
+  ResumeSequenceWorkers();
 
   std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
   return cb::Error::Success;
 }
 
 void
-ConcurrencyManager::PauseWorkers()
+ConcurrencyManager::PauseSequenceWorkers()
 {
   if (on_sequence_model_) {
     execute_ = false;
@@ -114,7 +114,7 @@ ConcurrencyManager::PauseWorkers()
 }
 
 void
-ConcurrencyManager::BalanceThreads(const size_t concurrent_request_count)
+ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   while ((concurrent_request_count > threads_.size()) &&
@@ -153,7 +153,7 @@ ConcurrencyManager::BalanceThreads(const size_t concurrent_request_count)
 }
 
 void
-ConcurrencyManager::ResumeWorkers()
+ConcurrencyManager::ResumeSequenceWorkers()
 {
   if (on_sequence_model_) {
     execute_ = true;

@@ -94,6 +94,10 @@ class MockClientStats {
     void HandleSeqRequest(uint64_t seq_id) { live_seq_ids_to_length[seq_id]++; }
     void Reset()
     {
+      // Note that live_seq_ids_to_length is explicitly not reset here.
+      // This is because we always want to maintain the true status of
+      // live sequences
+
       used_seq_ids.clear();
       max_live_seq_count = 0;
       seq_lengths.clear();
