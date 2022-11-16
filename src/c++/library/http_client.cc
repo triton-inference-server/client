@@ -37,6 +37,10 @@
 #include <iostream>
 #include "http_client.h"
 
+#ifdef _WIN32
+#undef min
+#endif
+
 extern "C" {
 #include "cencode.h"
 }
