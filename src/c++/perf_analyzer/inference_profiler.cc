@@ -648,6 +648,11 @@ InferenceProfiler::ProfileHelper(
   all_timestamps_.clear();
   previous_window_end_ns_ = 0;
 
+  // Start with a fresh empty timestamp vector in the manager
+  //
+  TimestampVector empty_timestamps;
+  RETURN_IF_ERROR(manager_->SwapTimestamps(empty_timestamps));
+
   do {
     PerfStatus status_summary;
     RETURN_IF_ERROR(manager_->CheckHealth());
