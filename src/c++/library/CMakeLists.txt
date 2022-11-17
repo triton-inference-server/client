@@ -246,6 +246,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
+  find_package(ZLIB REQUIRED)
   #
   # libhttpclient.so and libhttpclient_static.a
   #
@@ -293,6 +294,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       httpclient_static
       PRIVATE triton-common-json
       PRIVATE CURL::libcurl
+      PRIVATE ZLIB::ZLIB
       PUBLIC Threads::Threads
   )
 
