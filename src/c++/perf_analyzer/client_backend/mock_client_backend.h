@@ -255,9 +255,9 @@ class MockClientBackend : public ClientBackend {
     return Error::Success;
   }
 
-  Error ClientInferStat(InferStat* a) override
+  Error ClientInferStat(InferStat* infer_stat) override
   {
-    a->completed_request_count = local_req_count_;
+    infer_stat->completed_request_count = local_req_count_;
     return Error::Success;
   }
 
