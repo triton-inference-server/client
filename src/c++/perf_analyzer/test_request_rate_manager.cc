@@ -199,11 +199,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     auto stats = cb::InferStat();
     int sleep_ms = 500;
-    double num_seconds = sleep_ms / 1000;
+    double num_seconds = double(sleep_ms) / 1000;
 
     auto sleep_time = std::chrono::milliseconds(sleep_ms);
-    size_t expected_count1 = 0.5 * request_rate1;
-    size_t expected_count2 = 0.5 * request_rate2 + expected_count1;
+    size_t expected_count1 = num_seconds * request_rate1;
+    size_t expected_count2 = num_seconds * request_rate2 + expected_count1;
 
     // Run and check request rate 1
     //
@@ -218,6 +218,17 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     PauseWorkers();
     CheckSequences(params_.num_of_sequences);
+
+    // Make sure that the client and the manager are in agreement on the request
+    // count in between rates
+    //
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    int client_total_requests = stats_->num_async_infer_calls +
+                                stats_->num_async_stream_infer_calls +
+                                stats_->num_infer_calls;
+    CHECK(stats.completed_request_count == client_total_requests);
+
     ResetStats();
 
     // Run and check request rate 2

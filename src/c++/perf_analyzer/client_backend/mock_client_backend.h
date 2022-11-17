@@ -205,12 +205,12 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
-    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
 
     std::this_thread::sleep_for(stats_->response_delay);
 
+    local_completed_req_count_++;
     stats_->num_active_infer_calls--;
 
     return Error::Success;
@@ -223,7 +223,6 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
-    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
 
@@ -238,7 +237,6 @@ class MockClientBackend : public ClientBackend {
   {
     stats_->num_active_infer_calls++;
 
-    local_req_count_++;
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
 
@@ -257,7 +255,7 @@ class MockClientBackend : public ClientBackend {
 
   Error ClientInferStat(InferStat* infer_stat) override
   {
-    infer_stat->completed_request_count = local_req_count_;
+    infer_stat->completed_request_count = local_completed_req_count_;
     return Error::Success;
   }
 
@@ -266,6 +264,7 @@ class MockClientBackend : public ClientBackend {
   {
     std::thread([this, options, callback]() {
       std::this_thread::sleep_for(stats_->response_delay);
+      local_completed_req_count_++;
 
       InferResult* result = new MockInferResult(options);
       callback(result);
@@ -275,8 +274,8 @@ class MockClientBackend : public ClientBackend {
         .detach();
   }
 
-  // Total count of how many requests this client has handled
-  size_t local_req_count_ = 0;
+  // Total count of how many requests this client has handled and finished
+  size_t local_completed_req_count_ = 0;
 
   std::shared_ptr<MockClientStats> stats_;
   OnCompleteFn stream_callback_;

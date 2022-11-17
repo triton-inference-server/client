@@ -314,6 +314,12 @@ ConcurrencyManager::Infer(
         while (total_ongoing_requests != 0) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
+        // Make sure all threads are in sync with the client's stats
+        //
+        for (size_t i = 0; i < ctxs.size(); ++i) {
+          ctxs[i]->infer_backend_->ClientInferStat(
+              &(thread_stat->contexts_stat_[i]));
+        }
         // Reconstruct 'free_ctx_ids' because complete_ongoing_sequence_func()
         // has destructive side affects
         free_ctx_ids = std::queue<int>();
