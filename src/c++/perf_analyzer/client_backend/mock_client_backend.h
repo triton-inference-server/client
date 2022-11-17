@@ -262,13 +262,8 @@ class MockClientBackend : public ClientBackend {
   }
 
  private:
-  void LaunchAsyncMockRequest(
-      const InferOptions& options_in, OnCompleteFn callback)
+  void LaunchAsyncMockRequest(const InferOptions options, OnCompleteFn callback)
   {
-    // Make a local copy of the options, in case they are changed while we wait
-    //
-    InferOptions options = options_in;
-
     std::thread([this, options, callback]() {
       std::this_thread::sleep_for(stats_->response_delay);
 
