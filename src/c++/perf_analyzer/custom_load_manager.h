@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,9 +25,17 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <chrono>
+#include <string>
+#include <vector>
+#include "client_backend/client_backend.h"
 #include "request_rate_manager.h"
 
 namespace triton { namespace perfanalyzer {
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestCustomLoadManager;
+#endif
 
 //==============================================================================
 /// CustomLoadManager is a helper class to send inference requests to
@@ -102,8 +110,22 @@ class CustomLoadManager : public RequestRateManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
+  /// Reads the time intervals file and stores intervals in vector
+  /// \param path Filesystem path of the time intervals file.
+  /// \param contents Output intervals vector.
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error ReadTimeIntervalsFile(
+      const std::string& path, std::vector<std::chrono::nanoseconds>* contents);
+
   std::string request_intervals_file_;
   std::vector<std::chrono::nanoseconds> custom_intervals_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestCustomLoadManager;
+
+ protected:
+  CustomLoadManager() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
