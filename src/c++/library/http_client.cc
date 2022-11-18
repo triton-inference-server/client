@@ -48,6 +48,7 @@ extern "C" {
 
 #ifdef _WIN32
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
+#undef min  // NOMINMAX did not resolve std::min compile error
 #endif  //_WIN32
 
 namespace triton { namespace client {
@@ -538,7 +539,7 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
   }
 
   while (!data_buffers_.empty() && size > 0) {
-    const size_t csz = (std::min)(data_buffers_.front().second, size);
+    const size_t csz = std::min(data_buffers_.front().second, size);
     if (csz > 0) {
       const uint8_t* input_ptr = data_buffers_.front().first;
       std::copy(input_ptr, input_ptr + csz, buf);
