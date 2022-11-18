@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <algorithm>
 #include "command_line_parser.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
@@ -53,6 +54,26 @@ class TestLoadManagerBase {
     factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
     parser_ = std::make_shared<MockModelParser>(
         is_sequence_model, is_decoupled_model);
+  }
+
+  // Set up all combinations of parameters for sequence testing
+  //
+  static PerfAnalyzerParameters GetSequenceTestParams()
+  {
+    PerfAnalyzerParameters params;
+    bool is_async;
+
+    SUBCASE("Async sequence")
+    {
+      is_async = true;
+      params = GetSequenceTestParamsHelper(is_async);
+    }
+    SUBCASE("Sync sequence")
+    {
+      is_async = false;
+      params = GetSequenceTestParamsHelper(is_async);
+    }
+    return params;
   }
 
   void CheckInferType()
@@ -86,9 +107,12 @@ class TestLoadManagerBase {
     }
   }
 
-  void CheckSequences()
+  void CheckSequences(uint64_t expected_num_seq)
   {
     auto stats = GetStats();
+
+    // Make sure no live sequences remain
+    CHECK(stats->sequence_status.live_seq_ids_to_length.size() == 0);
 
     // Make sure all seq IDs are within range
     //
@@ -103,29 +127,32 @@ class TestLoadManagerBase {
     // there are never any overlapping requests -- they always immediately exit
     //
     if (params_.sequence_length != 1) {
-      CHECK(
-          params_.num_of_sequences ==
-          stats->sequence_status.max_live_seq_count);
+      expected_num_seq = std::min(expected_num_seq, params_.sequence_id_range);
+      CHECK(expected_num_seq == stats->sequence_status.max_live_seq_count);
     }
 
     // Make sure that the length of each sequence is as expected
-    // (The code explicitly has a 20% slop, so that is what we are checking)
     //
-    auto num_sequences = params_.num_of_sequences;
+    // All but X of them should be within 20% (The code explicitly has a 20%
+    // slop) of the requested sequence length, where X is the number of
+    // sequences (This is due to the shutdown of sequences at the end that will
+    // create shorter than expected sequences)
+    //
     auto num_values = stats->sequence_status.seq_lengths.size();
+    auto max_len = params_.sequence_length * 1.2;
+    auto min_len = params_.sequence_length * 0.8;
+    auto num_allowed_to_be_below_min_len = expected_num_seq;
+    auto num_below_min_len = 0;
+
     for (size_t i = 0; i < num_values; i++) {
       auto len = stats->sequence_status.seq_lengths[i];
 
-      if (i + num_sequences < num_values) {
-        CHECK(len == doctest::Approx(params_.sequence_length).epsilon(0.20));
-      }
-      // The last instance of each sequence might be shorter than expected, as
-      // they may be terminated part way through
-      //
-      else {
-        CHECK(len <= doctest::Approx(params_.sequence_length).epsilon(0.20));
+      CHECK(len <= max_len);
+      if (len < min_len) {
+        num_below_min_len++;
       }
     }
+    CHECK(num_below_min_len <= num_allowed_to_be_below_min_len);
   }
 
   std::shared_ptr<cb::MockClientStats> stats_;
@@ -142,6 +169,42 @@ class TestLoadManagerBase {
   }
   std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
   void ResetStats() { stats_->Reset(); }
+
+  static PerfAnalyzerParameters GetSequenceTestParamsHelper(bool is_async)
+  {
+    PerfAnalyzerParameters params;
+
+    params.async = is_async;
+
+    // Generally we want short sequences for testing
+    // so we can hit the corner cases more often
+    //
+    params.sequence_length = 4;
+    params.max_concurrency = 8;
+    params.max_threads = 8;
+
+    SUBCASE("Normal") {}
+    SUBCASE("sequence IDs test 1")
+    {
+      params.start_sequence_id = 1;
+      params.sequence_id_range = 3;
+    }
+    SUBCASE("sequence IDs test 2")
+    {
+      params.start_sequence_id = 17;
+      params.sequence_id_range = 8;
+    }
+    SUBCASE("num_of_sequences 1") { params.num_of_sequences = 1; }
+    SUBCASE("num_of_sequences 8")
+    {
+      params.num_of_sequences = 8;
+      // Make sequences long so we actually get 8 in flight at a time
+      params.sequence_length = 20;
+    }
+    SUBCASE("sequence_length 1") { params.sequence_length = 1; }
+    SUBCASE("sequence_length 10") { params.sequence_length = 10; }
+    return params;
+  }
 };
 
 }}  // namespace triton::perfanalyzer

@@ -91,7 +91,18 @@ cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
     const size_t concurrent_request_count)
 {
-  if (on_sequence_model_ && async_) {
+  PauseSequenceWorkers();
+  ReconfigThreads(concurrent_request_count);
+  ResumeSequenceWorkers();
+
+  std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
+  return cb::Error::Success;
+}
+
+void
+ConcurrencyManager::PauseSequenceWorkers()
+{
+  if (on_sequence_model_) {
     execute_ = false;
     // Wait to see all threads are paused.
     for (auto& thread_config : threads_config_) {
@@ -100,6 +111,11 @@ ConcurrencyManager::ChangeConcurrencyLevel(
       }
     }
   }
+}
+
+void
+ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
+{
   // Always prefer to create new threads if the maximum limit has not been met
   while ((concurrent_request_count > threads_.size()) &&
          (threads_.size() < max_threads_)) {
@@ -134,17 +150,19 @@ ConcurrencyManager::ChangeConcurrencyLevel(
       active_threads_++;
     }
   }
+}
 
-  if (on_sequence_model_ && async_) {
+void
+ConcurrencyManager::ResumeSequenceWorkers()
+{
+  if (on_sequence_model_) {
     execute_ = true;
   }
 
   // Make sure all threads will check their updated concurrency level
   wake_signal_.notify_all();
-
-  std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
-  return cb::Error::Success;
 }
+
 
 // Function for worker threads.
 // If the model is non-sequence model, each worker uses only one context
@@ -223,7 +241,7 @@ ConcurrencyManager::Infer(
   // Note that 'free_ctx_ids' must be reconstruct after the call because
   // this function doesn't utilize 'free_ctx_ids' in the same way as in main
   // loop
-  const auto complete_onging_sequence_func = [&]() {
+  const auto complete_ongoing_sequence_func = [&]() {
     if (!on_sequence_model_) {
       return cb::Error::Success;
     }
@@ -238,6 +256,7 @@ ConcurrencyManager::Infer(
       std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
       // Complete the sequence if there are remaining queries
       while (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+        sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
         SetInferSequenceOptions(seq_stat_index, ctxs[ctx_id]->options_);
 
         // Update the inputs if required
@@ -285,17 +304,17 @@ ConcurrencyManager::Infer(
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
-    if (on_sequence_model_ && async_) {
+    if (on_sequence_model_) {
       if (!execute_) {
         // Ensures the clean exit of the sequences
-        auto status = complete_onging_sequence_func();
+        auto status = complete_ongoing_sequence_func();
         if (thread_stat->status_.IsOk()) {
           thread_stat->status_ = status;
         }
         while (total_ongoing_requests != 0) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
-        // Reconstruct 'free_ctx_ids' because complete_onging_sequence_func()
+        // Reconstruct 'free_ctx_ids' because complete_ongoing_sequence_func()
         // has destructive side affects
         free_ctx_ids = std::queue<int>();
         for (size_t i = 0; i < ctxs.size(); ++i) {
@@ -507,16 +526,14 @@ ConcurrencyManager::Infer(
     }
 
     if (early_exit || (!thread_stat->cb_status_.IsOk())) {
-      if (async_) {
-        // Wait for all callbacks to complete.
-        // Loop to ensure all the inflight requests have been completed.
-        auto status = complete_onging_sequence_func();
-        if (thread_stat->status_.IsOk()) {
-          thread_stat->status_ = status;
-        }
-        while (total_ongoing_requests != 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
+      // Wait for all callbacks to complete.
+      // Loop to ensure all the inflight requests have been completed.
+      auto status = complete_ongoing_sequence_func();
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = status;
+      }
+      while (total_ongoing_requests != 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
       // end loop
       break;

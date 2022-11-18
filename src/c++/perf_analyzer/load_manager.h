@@ -307,6 +307,9 @@ class LoadManager {
         : seq_id_(seq_id), data_stream_id_(0), remaining_queries_(0)
     {
     }
+    // If paused, no more requests should be sent other than a single request to
+    // finish the active sequence
+    bool paused_ = false;
     // The unique correlation id allocated to the sequence
     uint64_t seq_id_;
     // The data stream id providing data for the sequence

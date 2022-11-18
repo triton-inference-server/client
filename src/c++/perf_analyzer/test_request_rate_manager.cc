@@ -186,14 +186,56 @@ class TestRequestRateManager : public TestLoadManagerBase,
   ///
   void TestSequences()
   {
-    double request_rate = 200;
-    auto sleep_time = std::chrono::milliseconds(500);
+    stats_->response_delay = std::chrono::milliseconds(10);
+    double request_rate1 = 100;
+    double request_rate2 = 200;
 
-    ChangeRequestRate(request_rate);
+    // A single sequence can't maintain the above rates
+    //
+    if (params_.num_of_sequences == 1) {
+      request_rate1 = 50;
+      request_rate2 = 100;
+    }
+
+    auto stats = cb::InferStat();
+    int sleep_ms = 500;
+    double num_seconds = sleep_ms / 1000;
+
+    auto sleep_time = std::chrono::milliseconds(sleep_ms);
+    size_t expected_count1 = 0.5 * request_rate1;
+    size_t expected_count2 = 0.5 * request_rate2 + expected_count1;
+
+    // Run and check request rate 1
+    //
+    ChangeRequestRate(request_rate1);
     std::this_thread::sleep_for(sleep_time);
+
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    CHECK(
+        stats.completed_request_count ==
+        doctest::Approx(expected_count1).epsilon(0.10));
+
+    PauseWorkers();
+    CheckSequences(params_.num_of_sequences);
+    ResetStats();
+
+    // Run and check request rate 2
+    //
+    ChangeRequestRate(request_rate2);
+    std::this_thread::sleep_for(sleep_time);
+
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    CHECK(
+        stats.completed_request_count ==
+        doctest::Approx(expected_count2).epsilon(0.10));
+
+    // Stop all threads and make sure everything is as expected
+    //
     StopWorkerThreads();
 
-    CheckSequences();
+    CheckSequences(params_.num_of_sequences);
   }
 
   struct ThreadStat : RequestRateManager::ThreadStat {
@@ -370,34 +412,7 @@ TEST_CASE("request_rate_multiple")
 ///
 TEST_CASE("request_rate_sequence")
 {
-  PerfAnalyzerParameters params;
-
-  // Generally we want short sequences for testing
-  // so we can hit the corner cases more often
-  //
-  params.sequence_length = 3;
-
-  SUBCASE("Normal") {}
-  SUBCASE("sequence IDs 1")
-  {
-    params.start_sequence_id = 1;
-    params.sequence_id_range = 5;
-  }
-  SUBCASE("sequence IDs 2")
-  {
-    params.start_sequence_id = 17;
-    params.sequence_id_range = 8;
-  }
-  SUBCASE("num_of_sequences 1") { params.num_of_sequences = 1; }
-  SUBCASE("num_of_sequences 10")
-  {
-    params.num_of_sequences = 10;
-    // Make sequences longer so we actually get 10 in flight at a time
-    params.sequence_length = 8;
-  }
-  SUBCASE("sequence_length 1") { params.sequence_length = 1; }
-  SUBCASE("sequence_length 10") { params.sequence_length = 10; }
-
+  PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
   bool is_sequence_model = true;
   TestRequestRateManager trrm(params, is_sequence_model);
   trrm.TestSequences();

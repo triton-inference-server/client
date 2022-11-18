@@ -122,6 +122,19 @@ class ConcurrencyManager : public LoadManager {
     bool is_paused_;
   };
 
+  // Pause all worker threads that are working on sequences
+  //
+  void PauseSequenceWorkers();
+
+  // Create new threads (if necessary), and then reconfigure all worker threads
+  // to handle the new concurrent request count
+  //
+  void ReconfigThreads(size_t concurrent_request_count);
+
+  // Restart all worker threads that were working on sequences
+  //
+  void ResumeSequenceWorkers();
+
   /// Function for worker that sends inference requests.
   /// \param thread_stat Worker thread status specific data.
   /// \param thread_config Worker thread configuration specific data.

@@ -106,12 +106,51 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   ///
   void TestSequences()
   {
-    auto sleep_time = std::chrono::milliseconds(500);
+    int delay_ms = 10;
+    stats_->response_delay = std::chrono::milliseconds(delay_ms);
 
-    ChangeConcurrencyLevel(params_.max_concurrency);
+    auto stats = cb::InferStat();
+    double concurrency1 = params_.max_concurrency / 2;
+    double concurrency2 = params_.max_concurrency;
+    int sleep_ms = 500;
+    double num_seconds = sleep_ms / 1000;
+
+    auto sleep_time = std::chrono::milliseconds(sleep_ms);
+    size_t expected_count1 = sleep_ms * concurrency1 / delay_ms;
+    size_t expected_count2 =
+        sleep_ms * concurrency2 / delay_ms + expected_count1;
+
+    // Run and check request rate 1
+    //
+    ChangeConcurrencyLevel(concurrency1);
     std::this_thread::sleep_for(sleep_time);
 
-    CheckSequences();
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    CHECK(
+        stats.completed_request_count ==
+        doctest::Approx(expected_count1).epsilon(0.10));
+
+    PauseSequenceWorkers();
+    CheckSequences(concurrency1);
+    ResetStats();
+
+    // Run and check request rate 2
+    //
+    ChangeConcurrencyLevel(concurrency2);
+    std::this_thread::sleep_for(sleep_time);
+
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    CHECK(
+        stats.completed_request_count ==
+        doctest::Approx(expected_count2).epsilon(0.10));
+
+    // Stop all threads and make sure everything is as expected
+    //
+    StopWorkerThreads();
+
+    CheckSequences(concurrency2);
   }
 
  private:
@@ -268,36 +307,7 @@ TEST_CASE("concurrency_concurrency")
 ///
 TEST_CASE("concurrency_sequence")
 {
-  PerfAnalyzerParameters params{};
-
-  // Generally we want short sequences for testing
-  // so we can hit the corner cases more often
-  //
-  params.sequence_length = 3;
-
-  SUBCASE("Normal") {}
-  SUBCASE("sequence IDs 1")
-  {
-    params.start_sequence_id = 1;
-    params.sequence_id_range = 5;
-  }
-  SUBCASE("sequence IDs 2")
-  {
-    params.start_sequence_id = 17;
-    params.sequence_id_range = 8;
-  }
-  SUBCASE("num_of_sequences 1") { params.num_of_sequences = 1; }
-  SUBCASE("num_of_sequences 10")
-  {
-    params.num_of_sequences = 10;
-    // Make sequences longer so we actually get 10 in flight at a time
-    params.sequence_length = 8;
-  }
-  SUBCASE("sequence_length 1") { params.sequence_length = 1; }
-  SUBCASE("sequence_length 10") { params.sequence_length = 10; }
-
-  params.max_concurrency = params.num_of_sequences;
-
+  PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
   const bool is_sequence_model{true};
   TestConcurrencyManager tcm(params, is_sequence_model);
   tcm.TestSequences();
