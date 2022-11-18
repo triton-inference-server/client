@@ -48,7 +48,7 @@ extern "C" {
 
 #ifdef _WIN32
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
-#define NOMINMAX
+#undef min
 #endif  //_WIN32
 
 namespace triton { namespace client {
