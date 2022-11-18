@@ -113,7 +113,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     double concurrency1 = params_.max_concurrency / 2;
     double concurrency2 = params_.max_concurrency;
     int sleep_ms = 500;
-    double num_seconds = sleep_ms / 1000;
 
     auto sleep_time = std::chrono::milliseconds(sleep_ms);
     size_t expected_count1 = sleep_ms * concurrency1 / delay_ms;
@@ -133,6 +132,17 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 
     PauseSequenceWorkers();
     CheckSequences(concurrency1);
+
+    // Make sure that the client and the manager are in agreement on the request
+    // count in between rates
+    //
+    stats = cb::InferStat();
+    GetAccumulatedClientStat(&stats);
+    int client_total_requests = stats_->num_async_infer_calls +
+                                stats_->num_async_stream_infer_calls +
+                                stats_->num_infer_calls;
+    CHECK(stats.completed_request_count == client_total_requests);
+
     ResetStats();
 
     // Run and check request rate 2
