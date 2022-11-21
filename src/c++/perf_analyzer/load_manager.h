@@ -258,9 +258,12 @@ class LoadManager {
   std::default_random_engine rng_generator_;
   std::uniform_int_distribution<uint64_t> distribution_;
 
-  std::unique_ptr<DataLoader> data_loader_;
+  // FIXME unique vs shared
+  std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
+  // FIXME
+ public:
   // Holds information about the shared memory locations
   struct SharedMemoryData {
     SharedMemoryData(
@@ -279,9 +282,12 @@ class LoadManager {
     std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
   };
 
+ protected:
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
 
+  // FIXME
+ public:
   // Holds the running status of the thread.
   struct ThreadStat {
     ThreadStat() {}
@@ -301,6 +307,7 @@ class LoadManager {
     std::mutex mu_;
   };
 
+ public:  // FIXME
   // Holds the status of the inflight sequence
   struct SequenceStat {
     SequenceStat(uint64_t seq_id)
@@ -320,6 +327,7 @@ class LoadManager {
     std::mutex mtx_;
   };
 
+ protected:
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
 
   // Current sequence id (for issuing new sequences)

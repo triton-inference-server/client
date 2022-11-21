@@ -105,6 +105,8 @@ class ConcurrencyManager : public LoadManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
+  // FIXME
+ public:
   struct ThreadConfig {
     ThreadConfig(size_t thread_id)
         : thread_id_(thread_id), concurrency_(0),
@@ -122,6 +124,7 @@ class ConcurrencyManager : public LoadManager {
     bool is_paused_;
   };
 
+ private:
   // Pause all worker threads that are working on sequences
   //
   void PauseSequenceWorkers();
@@ -134,13 +137,6 @@ class ConcurrencyManager : public LoadManager {
   // Restart all worker threads that were working on sequences
   //
   void ResumeSequenceWorkers();
-
-  /// Function for worker that sends inference requests.
-  /// \param thread_stat Worker thread status specific data.
-  /// \param thread_config Worker thread configuration specific data.
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
 
   // The number of worker threads with non-zero concurrencies
   size_t active_threads_;
