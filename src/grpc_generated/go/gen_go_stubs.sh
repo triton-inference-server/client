@@ -25,14 +25,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Local
-PACKAGE_PATH="nvidia_inferenceserver"
-# Or add to GOPATH and remove "./" from import path in grpc_simple_client.go
-#PACKAGE_PATH="${GOPATH}/src/nvidia_inferenceserver"
+PACKAGE="grpc-client"
 
-mkdir -p ${PACKAGE_PATH}
+# Clean up before
+rm -rf ./core
 
 # Get the proto files from the common repo
 mkdir core && cp common/protobuf/*.proto core/.
-# Requires protoc and protoc-gen-go plugin: https://github.com/golang/protobuf#installation
-protoc -I core --go_out=plugins=grpc:${PACKAGE_PATH} core/*.proto
+
+for i in ./core/*.proto
+do 
+  # https://developers.google.com/protocol-buffers/docs/reference/go-generated#package
+  echo "option go_package = \"./${PACKAGE}\";" >> $i
+done
+
+# Requires protoc and protoc-gen-go plugin: https://grpc.io/docs/protoc-installation/
+protoc -I core --go-grpc_out="./" --go_out="./" core/*.proto
