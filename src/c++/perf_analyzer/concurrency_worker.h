@@ -29,12 +29,19 @@
 #include <queue>
 #include <random>
 
-#include "concurrency_manager.h"
+#include "concurrency_manager.h"  // FIXME shouldn't need this
 #include "model_parser.h"
 
 namespace triton { namespace perfanalyzer {
 
 ///  FIXME
+// Worker maintains concurrency in different ways.
+// For sequence models, multiple contexts must be created for multiple
+// concurrent sequences.
+// For non-sequence models, one context can send out multiple requests
+// at the same time. Thus it uses one single context as every infer context
+// creates a worker thread implicitly.
+//
 class ConcurrencyWorker {
  public:
   ~ConcurrencyWorker();
@@ -68,7 +75,7 @@ class ConcurrencyWorker {
   {
   }
 
-  // FIXME underscores. Likely should be in constructor?
+  // FIXME What should be in constructor, and what here?
   void Infer(
       std::shared_ptr<ConcurrencyManager::ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyManager::ThreadConfig> thread_config);
@@ -110,7 +117,7 @@ class ConcurrencyWorker {
   size_t& active_threads_;
   bool& execute_;
 
-  // FIXME - remove these functions from LoadManager
+  // FIXME - all of these functions should be part of a shared base class!
 
   /// Helper function to prepare the LoadManager::InferContext for sending
   /// inference request. \param ctx The target LoadManager::InferContext object.
@@ -158,6 +165,7 @@ class ConcurrencyWorker {
       std::unique_ptr<cb::InferOptions>& options);
   void InitNewSequence(int seq_stat_index);
   uint64_t GetNextSeqId(int seq_stat_index);
+
   /// Generate random sequence length based on 'offset_ratio' and
   /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'
   /// \param offset_ratio The offset ratio of the generated length

@@ -117,25 +117,19 @@ void
 ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
 {
   // Always prefer to create new threads if the maximum limit has not been met
+  //
+  // While operating in synchronous mode, each context can send only one
+  // request at a time, hence the number of worker threads should be equal to
+  // the requested concurrency levels.
+  //
   while ((concurrent_request_count > threads_.size()) &&
          (threads_.size() < max_threads_)) {
     // Launch new thread for inferencing
     threads_stat_.emplace_back(new ThreadStat());
     threads_config_.emplace_back(new ThreadConfig(threads_config_.size()));
 
-    // Worker maintains concurrency in different ways.
-    // For sequence models, multiple contexts must be created for multiple
-    // concurrent sequences.
-    // For non-sequence models, one context can send out multiple requests
-    // at the same time. Thus it uses one single context as every infer context
-    // creates a worker thread implicitly.
-    // While operating in synchronous mode, each context can send only one
-    // request at a time, hence the number of worker threads should be equal to
-    // the requested concurrency levels.
-
-    // FIXME START HERE I probably need to NEW this object?
     // FIXME -- i'll need to track and delete it?
-    ConcurrencyWorker* fixme = new ConcurrencyWorker(
+    ConcurrencyWorker* worker = new ConcurrencyWorker(
         parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
         start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
         max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
@@ -143,7 +137,7 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
         active_threads_, execute_, curr_seq_id_);
 
     threads_.emplace_back(
-        &ConcurrencyWorker::Infer, fixme, threads_stat_.back(),
+        &ConcurrencyWorker::Infer, worker, threads_stat_.back(),
         threads_config_.back());
   }
 

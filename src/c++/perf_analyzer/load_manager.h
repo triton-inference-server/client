@@ -156,85 +156,8 @@ class LoadManager {
       const std::string& shm_region_name, const SharedMemoryType& memory_type,
       const size_t byte_size, void** ptr);
 
-  /// Helper function to prepare the InferContext for sending inference request.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferContext* ctx);
-
-  /// Helper function to prepare the InferContext for sending inference
-  /// request in shared memory.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
-
-  /// Updates the input data to use for inference request
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, int stream_index,
-      int step_index);
-
-  /// Updates the expected output data to use for inference request. Empty
-  /// vector will be returned if there is no expected output associated to the
-  /// step.
-  /// \param outputs The vector of outputs to get the expected data
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \param data The vector of pointer and size of the expected outputs
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateValidationOutputs(
-      const std::vector<const cb::InferRequestedOutput*>& outputs,
-      int stream_index, int step_index,
-      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
-
-  cb::Error ValidateOutputs(
-      const InferContext& ctx, const cb::InferResult* result_ptr);
-
-  void SetInferSequenceOptions(
-      const uint32_t seq_stat_index,
-      std::unique_ptr<cb::InferOptions>& options);
-  void InitNewSequence(int seq_stat_index);
-  uint64_t GetNextSeqId(int seq_stat_index);
-
-  /// Generate random sequence length based on 'offset_ratio' and
-  /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'
-  /// \param offset_ratio The offset ratio of the generated length
-  /// \return random sequence length
-  size_t GetRandomSequenceLength(double offset_ratio);
-
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
-
- private:
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
 
  protected:
   bool async_;
