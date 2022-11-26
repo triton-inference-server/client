@@ -52,18 +52,6 @@ namespace triton { namespace perfanalyzer {
 
 namespace {
 
-std::string
-TensorToRegionName(std::string name)
-{
-  // Remove slashes from the name, if any.
-  name.erase(
-      std::remove_if(
-          name.begin(), name.end(),
-          [](const char& c) { return ((c == '/') || (c == '\\')); }),
-      name.end());
-  return name;
-}
-
 #ifdef TRITON_ENABLE_GPU
 cb::Error
 CreateCUDAIPCHandle(
