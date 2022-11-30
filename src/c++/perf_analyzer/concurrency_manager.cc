@@ -137,17 +137,22 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
         threads_config_.back());
   }
 
-  // Compute the new concurrency level for each thread (take floor)
-  // and spread the remaining value
-  size_t avg_concurrency = concurrent_request_count / threads_.size();
-  size_t threads_add_one = concurrent_request_count % threads_.size();
+  {
+    // Make sure all threads are reconfigured before they are woken up
+    std::lock_guard<std::mutex> lock(wake_mutex_);
 
-  active_threads_ = 0;
-  for (size_t i = 0; i < threads_stat_.size(); i++) {
-    threads_config_[i]->concurrency_ =
-        avg_concurrency + (i < threads_add_one ? 1 : 0);
-    if (threads_config_[i]->concurrency_) {
-      active_threads_++;
+    // Compute the new concurrency level for each thread (take floor)
+    // and spread the remaining value
+    size_t avg_concurrency = concurrent_request_count / threads_.size();
+    size_t threads_add_one = concurrent_request_count % threads_.size();
+
+    active_threads_ = 0;
+    for (size_t i = 0; i < threads_stat_.size(); i++) {
+      threads_config_[i]->concurrency_ =
+          avg_concurrency + (i < threads_add_one ? 1 : 0);
+      if (threads_config_[i]->concurrency_) {
+        active_threads_++;
+      }
     }
   }
 }
