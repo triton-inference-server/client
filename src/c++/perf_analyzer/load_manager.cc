@@ -188,8 +188,6 @@ LoadManager::LoadManager(
     const size_t max_threads, const size_t sequence_length,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-    const size_t string_length, const std::string& string_data,
-    const bool zero_input, std::vector<std::string>& user_data,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
@@ -202,8 +200,14 @@ LoadManager::LoadManager(
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
        (parser_->SchedulerType() == ModelParser::ENSEMBLE_SEQUENCE));
+}
 
-  data_loader_.reset(new DataLoader(batch_size));
+void
+LoadManager::InitManager(
+    const size_t string_length, const std::string& string_data,
+    const bool zero_input, std::vector<std::string>& user_data)
+{
+  data_loader_.reset(new DataLoader(batch_size_));
 
   auto status =
       InitManagerInputs(string_length, string_data, zero_input, user_data);
@@ -451,40 +455,51 @@ LoadManager::InitSharedMemory()
         RETURN_IF_ERROR(CreateMemoryRegion(
             region_name, shared_memory_type_, alloc_size,
             reinterpret_cast<void**>(&input_shm_ptr)));
-        if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
-          // Populate the region with data
-          size_t count = 0;
-          size_t offset = 0;
-          size_t max_count = input.second.is_shape_tensor_ ? 1 : batch_size_;
-          while (count < max_count) {
-            memcpy(input_shm_ptr + offset, data_ptrs[count], byte_size[count]);
-            offset += byte_size[count];
-            count++;
-          }
-        } else {
-#ifdef TRITON_ENABLE_GPU
-          // Populate the region with data
-          size_t count = 0;
-          size_t offset = 0;
-          size_t max_count = input.second.is_shape_tensor_ ? 1 : batch_size_;
-          while (count < max_count) {
-            cudaError_t cuda_err = cudaMemcpy(
-                (void*)(input_shm_ptr + offset), (void*)data_ptrs[count],
-                byte_size[count], cudaMemcpyHostToDevice);
-            if (cuda_err != cudaSuccess) {
-              return cb::Error(
-                  "Failed to copy data to cuda shared memory for " +
-                      region_name + " : " +
-                      std::string(cudaGetErrorString(cuda_err)),
-                  pa::GENERIC_ERROR);
-            }
-            offset += byte_size[count];
-            count++;
-          }
-#endif  // TRITON_ENABLE_GPU
-        }
+        RETURN_IF_ERROR(CopySharedMemory(
+            input_shm_ptr, data_ptrs, byte_size, input.second.is_shape_tensor_,
+            region_name));
       }
     }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+LoadManager::CopySharedMemory(
+    uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+    std::vector<size_t>& byte_size, bool is_shape_tensor,
+    std::string& region_name)
+{
+  if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
+    // Populate the region with data
+    size_t count = 0;
+    size_t offset = 0;
+    size_t max_count = is_shape_tensor ? 1 : batch_size_;
+    while (count < max_count) {
+      memcpy(input_shm_ptr + offset, data_ptrs[count], byte_size[count]);
+      offset += byte_size[count];
+      count++;
+    }
+  } else {
+#ifdef TRITON_ENABLE_GPU
+    // Populate the region with data
+    size_t count = 0;
+    size_t offset = 0;
+    size_t max_count = is_shape_tensor ? 1 : batch_size_;
+    while (count < max_count) {
+      cudaError_t cuda_err = cudaMemcpy(
+          (void*)(input_shm_ptr + offset), (void*)data_ptrs[count],
+          byte_size[count], cudaMemcpyHostToDevice);
+      if (cuda_err != cudaSuccess) {
+        return cb::Error(
+            "Failed to copy data to cuda shared memory for " + region_name +
+                " : " + std::string(cudaGetErrorString(cuda_err)),
+            pa::GENERIC_ERROR);
+      }
+      offset += byte_size[count];
+      count++;
+    }
+#endif  // TRITON_ENABLE_GPU
   }
   return cb::Error::Success;
 }
