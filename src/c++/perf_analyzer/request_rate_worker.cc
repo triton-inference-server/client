@@ -34,11 +34,6 @@
 namespace triton { namespace perfanalyzer {
 
 
-RequestRateWorker::~RequestRateWorker()
-{
-  // FIXME
-}
-
 // FIXME comment correct??
 // Function for worker threads.
 // If the model is non-sequence model, each worker uses only one context

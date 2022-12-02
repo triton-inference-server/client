@@ -146,7 +146,7 @@ RequestRateManager::PauseWorkers()
           new ThreadConfig(threads_.size(), max_threads_));
 
       // FIXME I will need to track
-      RequestRateWorker* worker = new RequestRateWorker(
+      auto worker = std::make_shared<RequestRateWorker>(
           parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
           start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
           max_threads_, using_json_data_, streaming_, shared_memory_type_,

@@ -44,7 +44,7 @@ namespace triton { namespace perfanalyzer {
 //
 class ConcurrencyWorker : public Worker {
  public:
-  ~ConcurrencyWorker();
+  ~ConcurrencyWorker() = default;
   ConcurrencyWorker(ConcurrencyWorker&) = delete;
 
   ConcurrencyWorker(

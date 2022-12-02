@@ -33,11 +33,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-ConcurrencyWorker::~ConcurrencyWorker()
-{
-  // FIXME
-}
-
 // Function for worker threads.
 // If the model is non-sequence model, each worker uses only one context
 // to maintain concurrency assigned to worker.

@@ -128,8 +128,7 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     threads_stat_.emplace_back(new ThreadStat());
     threads_config_.emplace_back(new ThreadConfig(threads_config_.size()));
 
-    // FIXME -- i'll need to track and delete it?
-    ConcurrencyWorker* worker = new ConcurrencyWorker(
+    auto worker = std::make_shared<ConcurrencyWorker>(
         parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
         start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
         max_concurrency_, using_json_data_, streaming_, shared_memory_type_,

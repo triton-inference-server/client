@@ -34,7 +34,7 @@ namespace triton { namespace perfanalyzer {
 ///  FIXME
 class RequestRateWorker : public Worker {
  public:
-  ~RequestRateWorker();
+  ~RequestRateWorker() = default;
   RequestRateWorker(RequestRateWorker&) = delete;
 
   RequestRateWorker(
