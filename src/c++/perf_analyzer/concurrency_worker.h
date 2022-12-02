@@ -29,7 +29,7 @@
 #include <queue>
 #include <random>
 
-#include "concurrency_manager.h"  // FIXME shouldn't need this
+#include "concurrency_manager.h"  // FIXME shouldn't need this? It is only for the threadconfig
 #include "worker.h"
 
 namespace triton { namespace perfanalyzer {
@@ -48,9 +48,9 @@ class ConcurrencyWorker : public Worker {
   ConcurrencyWorker(ConcurrencyWorker&) = delete;
 
   ConcurrencyWorker(
-      const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
+      const std::shared_ptr<cb::ClientBackendFactory> factory,
       const size_t sequence_length, const uint64_t start_sequence_id,
       const uint64_t sequence_id_range, const bool on_sequence_model,
       const bool async, const size_t max_concurrency,
@@ -63,39 +63,25 @@ class ConcurrencyWorker : public Worker {
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
       : Worker(
-            parser, data_loader, sequence_stat, backend_kind,
-            shared_memory_type, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution),
-        factory_(factory), on_sequence_model_(on_sequence_model), async_(async),
-        max_concurrency_(max_concurrency), streaming_(streaming),
-        threads_config_(threads_config), wake_signal_(wake_signal),
-        wake_mutex_(wake_mutex), active_threads_(active_threads),
-        execute_(execute)
+            parser, data_loader, factory, sequence_stat, backend_kind,
+            shared_memory_type, on_sequence_model, async, streaming, batch_size,
+            using_json_data, sequence_length, start_sequence_id,
+            sequence_id_range, curr_seq_id, distribution, wake_signal,
+            wake_mutex, execute),
+        max_concurrency_(max_concurrency), threads_config_(threads_config),
+        active_threads_(active_threads)
   {
   }
 
-  // FIXME What should be in constructor, and what here?
   void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyManager::ThreadConfig> thread_config);
 
  private:
-  // FIXME -- should come into constructor? Also, same name as function
-  // variables?
-  const std::shared_ptr<cb::ClientBackendFactory>& factory_;
-
-  const bool on_sequence_model_;
-  const bool async_;
   const size_t max_concurrency_;
-  const bool streaming_;
-
-  // FIXME -- these need to be a reference? Should not be member variable?
+  size_t& active_threads_;
   std::vector<std::shared_ptr<ConcurrencyManager::ThreadConfig>>&
       threads_config_;
-  std::condition_variable& wake_signal_;
-  std::mutex& wake_mutex_;
-  size_t& active_threads_;
-  bool& execute_;
 };
 
 }}  // namespace triton::perfanalyzer

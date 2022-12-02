@@ -26,10 +26,12 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
+
 #include "data_loader.h"
 #include "model_parser.h"
-#include "perf_utils.h"  // FIXME -- only for the cb namespace define?
+//#include "perf_utils.h"  // FIXME -- only for the cb namespace define?
 
 namespace triton { namespace perfanalyzer {
 
@@ -140,33 +142,39 @@ struct AsyncRequestProperties {
 };
 
 
-// FIXME -- base class. Needs to be abstract?
+// FIXME -- base class
 //
 class Worker {
- public:
+ protected:
   Worker(
-      const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
+      const std::shared_ptr<cb::ClientBackendFactory> factory,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       cb::BackendKind backend_kind, const SharedMemoryType shared_memory_type,
+      const bool on_sequence_model, const bool async, const bool streaming,
       const int32_t batch_size, const bool using_json_data,
       const size_t sequence_length, const uint64_t start_sequence_id,
       const uint64_t sequence_id_range, std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution)
-      : parser_(parser), data_loader_(data_loader),
+      std::uniform_int_distribution<uint64_t>& distribution,
+      std::condition_variable& wake_signal, std::mutex& wake_mutex,
+      bool& execute)
+      : parser_(parser), data_loader_(data_loader), factory_(factory),
         sequence_stat_(sequence_stat), backend_kind_(backend_kind),
-        shared_memory_type_(shared_memory_type), batch_size_(batch_size),
+        shared_memory_type_(shared_memory_type),
+        on_sequence_model_(on_sequence_model), async_(async),
+        streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), sequence_length_(sequence_length),
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
-        distribution_(distribution)
+        distribution_(distribution), wake_signal_(wake_signal),
+        wake_mutex_(wake_mutex), execute_(execute)
   {
   }
 
   ~Worker() = default;
   Worker(Worker&) = delete;
 
- protected:
   /// Helper function to prepare the InferContext for sending
   /// inference request. \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.
@@ -243,7 +251,6 @@ class Worker {
       const std::vector<cb::InferInput*>& inputs, const int stream_index,
       const int step_index);
 
-  // FIXME private?
  protected:
   // Map from shared memory key to its starting address and size
   // FIXME -- does this need to be shared amongst all threads? Reference?
@@ -262,10 +269,18 @@ class Worker {
   const uint64_t sequence_id_range_;
   const size_t sequence_length_;
 
-  // FIXME -- shared pointer reference??
-  const std::shared_ptr<ModelParser>& parser_;
+  const std::shared_ptr<ModelParser> parser_;
 
   std::uniform_int_distribution<uint64_t>& distribution_;
+
+  const std::shared_ptr<cb::ClientBackendFactory> factory_;
+  const bool on_sequence_model_;
+  const bool async_;
+  const bool streaming_;
+  std::condition_variable& wake_signal_;
+  std::mutex& wake_mutex_;
+  bool& execute_;
+
   std::default_random_engine rng_generator_;
 };
 

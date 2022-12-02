@@ -26,7 +26,7 @@
 #pragma once
 
 #include "model_parser.h"
-#include "request_rate_manager.h"  // FIXME shouldn't need parent?
+#include "request_rate_manager.h"  // FIXME shouldn't need parent? Only for threadconfig?
 #include "worker.h"
 
 namespace triton { namespace perfanalyzer {
@@ -38,16 +38,14 @@ class RequestRateWorker : public Worker {
   RequestRateWorker(RequestRateWorker&) = delete;
 
   RequestRateWorker(
-      const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
+      const std::shared_ptr<cb::ClientBackendFactory> factory,
       const size_t sequence_length, const uint64_t start_sequence_id,
       const uint64_t sequence_id_range, const bool on_sequence_model,
       const bool async, const size_t max_threads, const bool using_json_data,
       const bool streaming, const SharedMemoryType shared_memory_type,
       const int32_t batch_size,
-      std::vector<std::shared_ptr<RequestRateManager::ThreadConfig>>&
-          threads_config,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute, std::atomic<uint64_t>& curr_seq_id,
@@ -56,39 +54,22 @@ class RequestRateWorker : public Worker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : Worker(
-            parser, data_loader, sequence_stat, backend_kind,
-            shared_memory_type, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution),
-        factory_(factory), on_sequence_model_(on_sequence_model), async_(async),
-        max_threads_(max_threads), streaming_(streaming),
-        threads_config_(threads_config), wake_signal_(wake_signal),
-        wake_mutex_(wake_mutex), execute_(execute), start_time_(start_time),
-        schedule_(schedule), gen_duration_(gen_duration)
+            parser, data_loader, factory, sequence_stat, backend_kind,
+            shared_memory_type, on_sequence_model, async, streaming, batch_size,
+            using_json_data, sequence_length, start_sequence_id,
+            sequence_id_range, curr_seq_id, distribution, wake_signal,
+            wake_mutex, execute),
+        max_threads_(max_threads), start_time_(start_time), schedule_(schedule),
+        gen_duration_(gen_duration)
   {
   }
 
-  // FIXME underscores. Likely should be in constructor?
   void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<RequestRateManager::ThreadConfig> thread_config);
 
  private:
-  // FIXME -- should come into constructor? Also, same name as function
-  // variables?
-  // FIXME -- shared pointer reference??
-  const std::shared_ptr<cb::ClientBackendFactory>& factory_;
-
-  const bool on_sequence_model_;
-  const bool async_;
-  const bool streaming_;
   const size_t max_threads_;
-
-  // FIXME -- these need to be a reference? Should not be member variable?
-  std::vector<std::shared_ptr<RequestRateManager::ThreadConfig>>&
-      threads_config_;
-  std::condition_variable& wake_signal_;
-  std::mutex& wake_mutex_;
-  bool& execute_;
   std::chrono::steady_clock::time_point& start_time_;
   std::vector<std::chrono::nanoseconds>& schedule_;
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
