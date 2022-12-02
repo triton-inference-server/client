@@ -76,15 +76,16 @@ class ConcurrencyWorker : public Worker {
       const SharedMemoryType shared_memory_type, const int32_t batch_size,
       std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
+      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
       : Worker(
-            parser, data_loader, factory, sequence_stat, backend_kind,
-            shared_memory_type, on_sequence_model, async, streaming, batch_size,
-            using_json_data, sequence_length, start_sequence_id,
-            sequence_id_range, curr_seq_id, distribution, wake_signal,
-            wake_mutex, execute),
+            parser, data_loader, factory, sequence_stat, shared_memory_regions,
+            backend_kind, shared_memory_type, on_sequence_model, async,
+            streaming, batch_size, using_json_data, sequence_length,
+            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
+            wake_signal, wake_mutex, execute),
         max_concurrency_(max_concurrency), threads_config_(threads_config),
         active_threads_(active_threads)
   {
@@ -96,7 +97,9 @@ class ConcurrencyWorker : public Worker {
 
  private:
   const size_t max_concurrency_;
+  // TODO REFACTOR can we decouple this thread from the total count of threads?
   size_t& active_threads_;
+  // TODO REFACTOR can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 };
 

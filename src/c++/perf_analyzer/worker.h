@@ -150,17 +150,20 @@ class Worker {
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      cb::BackendKind backend_kind, const SharedMemoryType shared_memory_type,
-      const bool on_sequence_model, const bool async, const bool streaming,
-      const int32_t batch_size, const bool using_json_data,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, std::atomic<uint64_t>& curr_seq_id,
+      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
+      const cb::BackendKind backend_kind,
+      const SharedMemoryType shared_memory_type, const bool on_sequence_model,
+      const bool async, const bool streaming, const int32_t batch_size,
+      const bool using_json_data, const size_t sequence_length,
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute)
       : parser_(parser), data_loader_(data_loader), factory_(factory),
-        sequence_stat_(sequence_stat), backend_kind_(backend_kind),
-        shared_memory_type_(shared_memory_type),
+        sequence_stat_(sequence_stat),
+        shared_memory_regions_(shared_memory_regions),
+        backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
         streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), sequence_length_(sequence_length),
@@ -251,35 +254,46 @@ class Worker {
       const int step_index);
 
  protected:
-  // Map from shared memory key to its starting address and size
-  // FIXME -- does this need to be shared amongst all threads? Reference?
-  std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
+  // TODO REFACTOR all sequence related code should be in a single class. We
+  // shouldn't have to have a shared uint64 reference passed to all threads
+  // Current sequence id (for issuing new sequences)
+  std::atomic<uint64_t>& curr_seq_id_;
 
+  // TODO REFACTOR this created in load manager init in one case. Can we
+  // decouple? Used to pick among multiple data streams
+  std::uniform_int_distribution<uint64_t>& distribution_;
+
+  // TODO REFACTOR is there a better way to do threading than to pass the same
+  // cv/mutex into every thread by reference?
+  // Used to wake up this thread if it has been put to sleep
+  std::condition_variable& wake_signal_;
+  std::mutex& wake_mutex_;
+
+  // TODO REFACTOR is there a better way to communicate this than a shared bool
+  // reference?
+  // Used to pause execution of this thread
+  bool& execute_;
+
+  // Map from shared memory key to its starting address and size
+  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
+  // Sequence stats for all sequences
   std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
   std::shared_ptr<DataLoader> data_loader_;
-  cb::BackendKind backend_kind_;  // FIXME changed from unique_ptr of backend_
+  const std::shared_ptr<ModelParser> parser_;
+  const std::shared_ptr<cb::ClientBackendFactory> factory_;
+
+  const cb::BackendKind backend_kind_;
   const SharedMemoryType shared_memory_type_;
+  const bool on_sequence_model_;
+  const bool async_;
+  const bool streaming_;
   const int32_t batch_size_;
   const bool using_json_data_;
-  // Current sequence id (for issuing new sequences)
-  std::atomic<uint64_t>&
-      curr_seq_id_;  // FIXME -- this needs to be shared across?
   const uint64_t start_sequence_id_;
   const uint64_t sequence_id_range_;
   const size_t sequence_length_;
 
-  const std::shared_ptr<ModelParser> parser_;
-
-  std::uniform_int_distribution<uint64_t>& distribution_;
-
-  const std::shared_ptr<cb::ClientBackendFactory> factory_;
-  const bool on_sequence_model_;
-  const bool async_;
-  const bool streaming_;
-  std::condition_variable& wake_signal_;
-  std::mutex& wake_mutex_;
-  bool& execute_;
-
+ private:
   std::default_random_engine rng_generator_;
 };
 

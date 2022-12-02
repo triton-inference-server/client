@@ -132,11 +132,9 @@ class LoadManager {
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
- protected:
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
 
- protected:
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
 
   // Current sequence id (for issuing new sequences)

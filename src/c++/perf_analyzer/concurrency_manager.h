@@ -106,7 +106,6 @@ class ConcurrencyManager : public LoadManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
- private:
   // Pause all worker threads that are working on sequences
   //
   void PauseSequenceWorkers();
