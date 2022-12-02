@@ -30,7 +30,13 @@
 
 namespace triton { namespace perfanalyzer {
 
-///  FIXME document class
+/// Worker thread for RequestRateManager
+///
+/// If the model is non-sequence model, each worker uses only one context
+/// to maintain concurrency assigned to worker.
+/// If the model is sequence model, each worker has to use multiples contexts
+/// to maintain (sequence) concurrency assigned to worker.
+///
 class RequestRateWorker : public Worker {
  public:
   ~RequestRateWorker() = default;

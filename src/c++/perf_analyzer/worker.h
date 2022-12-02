@@ -141,8 +141,8 @@ struct AsyncRequestProperties {
 };
 
 
-// FIXME -- base class documentation
-//
+/// Abstract base class for worker threads
+///
 class Worker {
  protected:
   Worker(

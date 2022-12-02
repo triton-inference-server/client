@@ -33,14 +33,16 @@
 
 namespace triton { namespace perfanalyzer {
 
-///  FIXME comment
-// Worker maintains concurrency in different ways.
-// For sequence models, multiple contexts must be created for multiple
-// concurrent sequences.
-// For non-sequence models, one context can send out multiple requests
-// at the same time. Thus it uses one single context as every infer context
-// creates a worker thread implicitly.
-//
+/// Worker thread for the ConcurrencyManager
+///
+/// The worker maintains concurrency in different ways:
+///   For sequence models, multiple contexts must be created for multiple
+///   concurrent sequences.
+///
+///   For non-sequence models, one context can send out multiple requests
+///   at the same time. Thus it uses one single context as every infer context
+///   creates a worker thread implicitly.
+///
 class ConcurrencyWorker : public Worker {
  public:
   ~ConcurrencyWorker() = default;

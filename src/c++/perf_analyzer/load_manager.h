@@ -129,7 +129,6 @@ class LoadManager {
 
   std::uniform_int_distribution<uint64_t> distribution_;
 
-  // FIXME unique vs shared
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
