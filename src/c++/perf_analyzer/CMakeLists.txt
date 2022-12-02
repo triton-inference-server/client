@@ -42,8 +42,9 @@ set(
   load_manager.cc
   data_loader.cc
   concurrency_manager.cc
-  concurrency_worker.cc
   request_rate_manager.cc
+  worker.cc
+  concurrency_worker.cc
   request_rate_worker.cc
   custom_load_manager.cc
   inference_profiler.cc
@@ -61,10 +62,11 @@ set(
   load_manager.h
   data_loader.h
   concurrency_manager.h
-  concurrency_worker.h
   request_rate_manager.h
-  request_rate_worker.h
   custom_load_manager.h
+  worker.h
+  request_rate_worker.h
+  concurrency_worker.h
   inference_profiler.h
   report_writer.h
   mpi_utils.h

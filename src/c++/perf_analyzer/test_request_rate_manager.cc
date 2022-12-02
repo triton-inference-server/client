@@ -227,9 +227,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences(params_.num_of_sequences);
   }
 
-  struct ThreadStat : RequestRateManager::ThreadStat {
-  };
-
   struct ThreadConfig : RequestRateManager::ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : RequestRateManager::ThreadConfig(index, stride)

@@ -152,7 +152,7 @@ RequestRateManager::PauseWorkers()
           max_threads_, using_json_data_, streaming_, shared_memory_type_,
           batch_size_, threads_config_, sequence_stat_, wake_signal_,
           wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
-          gen_duration_);
+          gen_duration_, distribution_);
 
       threads_.emplace_back(
           &RequestRateWorker::Infer, fixme, threads_stat_.back(),
