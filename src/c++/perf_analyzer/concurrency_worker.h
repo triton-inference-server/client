@@ -29,12 +29,11 @@
 #include <queue>
 #include <random>
 
-#include "concurrency_manager.h"  // FIXME shouldn't need this? It is only for the threadconfig
 #include "worker.h"
 
 namespace triton { namespace perfanalyzer {
 
-///  FIXME
+///  FIXME comment
 // Worker maintains concurrency in different ways.
 // For sequence models, multiple contexts must be created for multiple
 // concurrent sequences.
@@ -47,6 +46,23 @@ class ConcurrencyWorker : public Worker {
   ~ConcurrencyWorker() = default;
   ConcurrencyWorker(ConcurrencyWorker&) = delete;
 
+  struct ThreadConfig {
+    ThreadConfig(size_t thread_id)
+        : thread_id_(thread_id), concurrency_(0),
+          non_sequence_data_step_id_(thread_id), is_paused_(false)
+    {
+    }
+
+    // ID of corresponding worker thread
+    size_t thread_id_;
+    // The concurrency level that the worker should produce
+    size_t concurrency_;
+    // The current data step id in case of non-sequence model
+    size_t non_sequence_data_step_id_;
+    // Whether or not the thread is issuing new inference requests
+    bool is_paused_;
+  };
+
   ConcurrencyWorker(
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
@@ -56,8 +72,7 @@ class ConcurrencyWorker : public Worker {
       const bool async, const size_t max_concurrency,
       const bool using_json_data, const bool streaming,
       const SharedMemoryType shared_memory_type, const int32_t batch_size,
-      std::vector<std::shared_ptr<ConcurrencyManager::ThreadConfig>>&
-          threads_config,
+      std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
@@ -75,13 +90,12 @@ class ConcurrencyWorker : public Worker {
 
   void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ConcurrencyManager::ThreadConfig> thread_config);
+      std::shared_ptr<ThreadConfig> thread_config);
 
  private:
   const size_t max_concurrency_;
   size_t& active_threads_;
-  std::vector<std::shared_ptr<ConcurrencyManager::ThreadConfig>>&
-      threads_config_;
+  std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 };
 
 }}  // namespace triton::perfanalyzer

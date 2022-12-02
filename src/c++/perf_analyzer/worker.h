@@ -31,7 +31,6 @@
 
 #include "data_loader.h"
 #include "model_parser.h"
-//#include "perf_utils.h"  // FIXME -- only for the cb namespace define?
 
 namespace triton { namespace perfanalyzer {
 
@@ -142,7 +141,7 @@ struct AsyncRequestProperties {
 };
 
 
-// FIXME -- base class
+// FIXME -- base class documentation
 //
 class Worker {
  protected:

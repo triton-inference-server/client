@@ -25,10 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#include <thread>
 
 #include "client_backend/client_backend.h"
 #include "concurrency_worker.h"
-#include "data_loader.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
@@ -41,7 +41,7 @@ namespace triton { namespace perfanalyzer {
 void
 ConcurrencyWorker::Infer(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<ConcurrencyManager::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   std::vector<std::unique_ptr<InferContext>> ctxs;
   uint32_t seq_stat_index = 0, ctx_id = 0;

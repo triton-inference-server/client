@@ -26,16 +26,30 @@
 #pragma once
 
 #include "model_parser.h"
-#include "request_rate_manager.h"  // FIXME shouldn't need parent? Only for threadconfig?
 #include "worker.h"
 
 namespace triton { namespace perfanalyzer {
 
-///  FIXME
+///  FIXME document class
 class RequestRateWorker : public Worker {
  public:
   ~RequestRateWorker() = default;
   RequestRateWorker(RequestRateWorker&) = delete;
+
+  struct ThreadConfig {
+    ThreadConfig(uint32_t index, uint32_t stride)
+        : index_(index), id_(index), stride_(stride), is_paused_(false),
+          rounds_(0), non_sequence_data_step_id_(index)
+    {
+    }
+
+    uint32_t index_;
+    uint32_t id_;
+    uint32_t stride_;
+    bool is_paused_;
+    uint64_t rounds_;
+    int non_sequence_data_step_id_;
+  };
 
   RequestRateWorker(
       const std::shared_ptr<ModelParser> parser,
@@ -66,7 +80,7 @@ class RequestRateWorker : public Worker {
 
   void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateManager::ThreadConfig> thread_config);
+      std::shared_ptr<ThreadConfig> thread_config);
 
  private:
   const size_t max_threads_;

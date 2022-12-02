@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#include <thread>
 
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
@@ -43,7 +44,7 @@ namespace triton { namespace perfanalyzer {
 void
 RequestRateWorker::Infer(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<RequestRateManager::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   std::shared_ptr<InferContext> ctx(new InferContext());
   thread_stat->status_ = factory_->CreateClientBackend(&(ctx->infer_backend_));

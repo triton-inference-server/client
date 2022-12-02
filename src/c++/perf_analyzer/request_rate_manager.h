@@ -26,8 +26,8 @@
 #pragma once
 
 #include <condition_variable>
-#include <thread>
 #include "load_manager.h"
+#include "request_rate_worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -106,23 +106,6 @@ class RequestRateManager : public LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error ResetWorkers() override;
 
-  // FIXME
- public:
-  struct ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : index_(index), id_(index), stride_(stride), is_paused_(false),
-          rounds_(0), non_sequence_data_step_id_(index)
-    {
-    }
-
-    uint32_t index_;
-    uint32_t id_;
-    uint32_t stride_;
-    bool is_paused_;
-    uint64_t rounds_;
-    int non_sequence_data_step_id_;
-  };
-
  protected:
   RequestRateManager(
       const bool async, const bool streaming, Distribution request_distribution,
@@ -146,7 +129,7 @@ class RequestRateManager : public LoadManager {
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
 
-  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
   Distribution request_distribution_;

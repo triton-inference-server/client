@@ -25,7 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "request_rate_manager.h"
-#include "request_rate_worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -143,9 +142,8 @@ RequestRateManager::PauseWorkers()
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
       threads_config_.emplace_back(
-          new ThreadConfig(threads_.size(), max_threads_));
+          new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
 
-      // FIXME I will need to track
       auto worker = std::make_shared<RequestRateWorker>(
           parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
           start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,

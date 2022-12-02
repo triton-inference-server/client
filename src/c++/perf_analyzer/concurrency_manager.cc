@@ -26,7 +26,6 @@
 
 #include "concurrency_manager.h"
 #include <queue>
-#include "concurrency_worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -126,7 +125,8 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
          (threads_.size() < max_threads_)) {
     // Launch new thread for inferencing
     threads_stat_.emplace_back(new ThreadStat());
-    threads_config_.emplace_back(new ThreadConfig(threads_config_.size()));
+    threads_config_.emplace_back(
+        new ConcurrencyWorker::ThreadConfig(threads_config_.size()));
 
     auto worker = std::make_shared<ConcurrencyWorker>(
         parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
