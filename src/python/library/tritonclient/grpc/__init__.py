@@ -1588,8 +1588,8 @@ class InferenceServerClient:
             ownership of these objects will be given to the user. The
             'error' would be None for a successful inference.
         stream_timeout : float
-            Optional stream timeout. The stream will be closed once the
-            specified timeout expires.
+            Optional stream timeout (in seconds). The stream will be closed 
+            once the specified timeout expires.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
@@ -1694,7 +1694,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This does not stop the grpc stream itself.
 
         Raises
         ------
