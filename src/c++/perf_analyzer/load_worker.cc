@@ -27,13 +27,13 @@
 #include <algorithm>
 
 #include "client_backend/client_backend.h"
+#include "load_worker.h"
 #include "perf_utils.h"
-#include "worker.h"
 
 namespace triton { namespace perfanalyzer {
 
 cb::Error
-Worker::PrepareInfer(InferContext* ctx)
+LoadWorker::PrepareInfer(InferContext* ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -88,7 +88,7 @@ Worker::PrepareInfer(InferContext* ctx)
 }
 
 cb::Error
-Worker::PrepareSharedMemoryInfer(InferContext* ctx)
+LoadWorker::PrepareSharedMemoryInfer(InferContext* ctx)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -135,7 +135,7 @@ Worker::PrepareSharedMemoryInfer(InferContext* ctx)
 }
 
 cb::Error
-Worker::UpdateInputs(
+LoadWorker::UpdateInputs(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, int stream_index,
     int step_index)
@@ -167,7 +167,7 @@ Worker::UpdateInputs(
 }
 
 cb::Error
-Worker::UpdateValidationOutputs(
+LoadWorker::UpdateValidationOutputs(
     const std::vector<const cb::InferRequestedOutput*>& outputs,
     int stream_index, int step_index,
     std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
@@ -220,7 +220,7 @@ Worker::UpdateValidationOutputs(
 }
 
 cb::Error
-Worker::ValidateOutputs(
+LoadWorker::ValidateOutputs(
     const InferContext& ctx, const cb::InferResult* result_ptr)
 {
   // Validate output if set
@@ -252,7 +252,7 @@ Worker::ValidateOutputs(
 
 
 cb::Error
-Worker::SetInputs(
+LoadWorker::SetInputs(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
     const int step_index)
@@ -366,7 +366,7 @@ Worker::SetInputs(
 }
 
 cb::Error
-Worker::SetInputsSharedMemory(
+LoadWorker::SetInputsSharedMemory(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
     const int step_index)
 {
@@ -394,7 +394,7 @@ Worker::SetInputsSharedMemory(
 }
 
 void
-Worker::SetInferSequenceOptions(
+LoadWorker::SetInferSequenceOptions(
     const uint32_t seq_stat_index, std::unique_ptr<cb::InferOptions>& options)
 {
   options->sequence_start_ =
@@ -410,7 +410,7 @@ Worker::SetInferSequenceOptions(
 }
 
 void
-Worker::InitNewSequence(int seq_stat_index)
+LoadWorker::InitNewSequence(int seq_stat_index)
 {
   sequence_stat_[seq_stat_index]->seq_id_ = GetNextSeqId(seq_stat_index);
   if (!using_json_data_) {
@@ -428,7 +428,7 @@ Worker::InitNewSequence(int seq_stat_index)
 }
 
 uint64_t
-Worker::GetNextSeqId(int seq_stat_index)
+LoadWorker::GetNextSeqId(int seq_stat_index)
 {
   uint64_t old_seq_id = sequence_stat_[seq_stat_index]->seq_id_;
   uint64_t next_seq_id =
@@ -447,7 +447,7 @@ Worker::GetNextSeqId(int seq_stat_index)
 }
 
 size_t
-Worker::GetRandomSequenceLength(double offset_ratio)
+LoadWorker::GetRandomSequenceLength(double offset_ratio)
 {
   int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
                       sequence_length_;

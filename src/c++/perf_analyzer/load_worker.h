@@ -143,9 +143,9 @@ struct AsyncRequestProperties {
 
 /// Abstract base class for worker threads
 ///
-class Worker {
+class LoadWorker {
  protected:
-  Worker(
+  LoadWorker(
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -174,8 +174,8 @@ class Worker {
   {
   }
 
-  ~Worker() = default;
-  Worker(Worker&) = delete;
+  ~LoadWorker() = default;
+  LoadWorker(LoadWorker&) = delete;
 
   /// Helper function to prepare the InferContext for sending
   /// inference request. \param ctx The target InferContext object.

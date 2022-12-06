@@ -43,7 +43,7 @@ set(
   data_loader.cc
   concurrency_manager.cc
   request_rate_manager.cc
-  worker.cc
+  load_worker.cc
   concurrency_worker.cc
   request_rate_worker.cc
   custom_load_manager.cc
@@ -64,7 +64,7 @@ set(
   concurrency_manager.h
   request_rate_manager.h
   custom_load_manager.h
-  worker.h
+  load_worker.h
   request_rate_worker.h
   concurrency_worker.h
   inference_profiler.h

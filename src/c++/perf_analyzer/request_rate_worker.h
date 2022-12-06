@@ -25,8 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include "load_worker.h"
 #include "model_parser.h"
-#include "worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -37,7 +37,7 @@ namespace triton { namespace perfanalyzer {
 /// If the model is sequence model, each worker has to use multiples contexts
 /// to maintain (sequence) concurrency assigned to worker.
 ///
-class RequestRateWorker : public Worker {
+class RequestRateWorker : public LoadWorker {
  public:
   ~RequestRateWorker() = default;
   RequestRateWorker(RequestRateWorker&) = delete;
@@ -74,7 +74,7 @@ class RequestRateWorker : public Worker {
       std::vector<std::chrono::nanoseconds>& schedule,
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
-      : Worker(
+      : LoadWorker(
             parser, data_loader, factory, sequence_stat, shared_memory_regions,
             backend_kind, shared_memory_type, on_sequence_model, async,
             streaming, batch_size, using_json_data, sequence_length,

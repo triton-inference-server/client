@@ -29,7 +29,7 @@
 #include <queue>
 #include <random>
 
-#include "worker.h"
+#include "load_worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -43,7 +43,7 @@ namespace triton { namespace perfanalyzer {
 ///   at the same time. Thus it uses one single context as every infer context
 ///   creates a worker thread implicitly.
 ///
-class ConcurrencyWorker : public Worker {
+class ConcurrencyWorker : public LoadWorker {
  public:
   ~ConcurrencyWorker() = default;
   ConcurrencyWorker(ConcurrencyWorker&) = delete;
@@ -80,7 +80,7 @@ class ConcurrencyWorker : public Worker {
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
-      : Worker(
+      : LoadWorker(
             parser, data_loader, factory, sequence_stat, shared_memory_regions,
             backend_kind, shared_memory_type, on_sequence_model, async,
             streaming, batch_size, using_json_data, sequence_length,
