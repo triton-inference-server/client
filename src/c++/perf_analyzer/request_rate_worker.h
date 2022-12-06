@@ -30,18 +30,10 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// Worker thread for RequestRateManager
+/// Interface for RequestRateWorker
 ///
-/// If the model is non-sequence model, each worker uses only one context
-/// to maintain concurrency assigned to worker.
-/// If the model is sequence model, each worker has to use multiples contexts
-/// to maintain (sequence) concurrency assigned to worker.
-///
-class RequestRateWorker : public LoadWorker {
+class IRequestRateWorker {
  public:
-  ~RequestRateWorker() = default;
-  RequestRateWorker(RequestRateWorker&) = delete;
-
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : index_(index), id_(index), stride_(stride), is_paused_(false),
@@ -56,6 +48,24 @@ class RequestRateWorker : public LoadWorker {
     uint64_t rounds_;
     int non_sequence_data_step_id_;
   };
+
+  virtual void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) = 0;
+};
+
+/// Worker thread for RequestRateManager
+///
+/// If the model is non-sequence model, each worker uses only one context
+/// to maintain concurrency assigned to worker.
+/// If the model is sequence model, each worker has to use multiples contexts
+/// to maintain (sequence) concurrency assigned to worker.
+///
+class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
+ public:
+  ~RequestRateWorker() = default;
+  RequestRateWorker(RequestRateWorker&) = delete;
+
 
   RequestRateWorker(
       const std::shared_ptr<ModelParser> parser,
@@ -87,7 +97,7 @@ class RequestRateWorker : public LoadWorker {
 
   void Infer(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
+      std::shared_ptr<ThreadConfig> thread_config) override;
 
  private:
   const size_t max_threads_;

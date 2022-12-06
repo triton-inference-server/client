@@ -119,6 +119,9 @@ class ConcurrencyManager : public LoadManager {
   //
   void ResumeSequenceWorkers();
 
+  // Makes a new worker
+  virtual std::shared_ptr<IConcurrencyWorker> MakeWorker();
+
   // The number of worker threads with non-zero concurrencies
   size_t active_threads_;
 

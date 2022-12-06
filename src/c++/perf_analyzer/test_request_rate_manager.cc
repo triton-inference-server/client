@@ -38,6 +38,18 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+class MockRequestRateWorker : public IRequestRateWorker {
+ public:
+  MockRequestRateWorker() = default;
+
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    thread_config->is_paused_ = true;
+  }
+};
+
 /// Class to test the RequestRateManager
 ///
 class TestRequestRateManager : public TestLoadManagerBase,
@@ -58,6 +70,16 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.user_data, GetParser(), GetFactory())
   {
   }
+
+  std::shared_ptr<IRequestRateWorker> MakeWorker() override
+  {
+    if (use_mock_infer_) {
+      return std::make_shared<MockRequestRateWorker>();
+    } else {
+      return RequestRateManager::MakeWorker();
+    }
+  }
+
 
   /// Test the public function ResetWorkers()
   ///
@@ -301,8 +323,7 @@ TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
   bool use_mock_infer = true;
   TestRequestRateManager trrm(
       params, is_sequence, is_decoupled, use_mock_infer);
-  // FIXME! Need to support mocking out the worker
-  // trrm.TestResetWorkers();
+  trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls

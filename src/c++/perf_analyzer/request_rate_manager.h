@@ -129,6 +129,9 @@ class RequestRateManager : public LoadManager {
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
 
+  // Makes a new worker
+  virtual std::shared_ptr<IRequestRateWorker> MakeWorker();
+
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;

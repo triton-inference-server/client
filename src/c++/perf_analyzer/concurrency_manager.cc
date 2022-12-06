@@ -128,16 +128,10 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     threads_config_.emplace_back(
         new ConcurrencyWorker::ThreadConfig(threads_config_.size()));
 
-    auto worker = std::make_shared<ConcurrencyWorker>(
-        parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
-        start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
-        max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
-        batch_size_, threads_config_, sequence_stat_, shared_memory_regions_,
-        wake_signal_, wake_mutex_, active_threads_, execute_, curr_seq_id_,
-        distribution_);
+    auto worker = MakeWorker();
 
     threads_.emplace_back(
-        &ConcurrencyWorker::Infer, worker, threads_stat_.back(),
+        &IConcurrencyWorker::Infer, worker, threads_stat_.back(),
         threads_config_.back());
   }
 
@@ -170,6 +164,18 @@ ConcurrencyManager::ResumeSequenceWorkers()
 
   // Make sure all threads will check their updated concurrency level
   wake_signal_.notify_all();
+}
+
+std::shared_ptr<IConcurrencyWorker>
+ConcurrencyManager::MakeWorker()
+{
+  return std::make_shared<ConcurrencyWorker>(
+      parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
+      start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
+      max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
+      batch_size_, threads_config_, sequence_stat_, shared_memory_regions_,
+      wake_signal_, wake_mutex_, active_threads_, execute_, curr_seq_id_,
+      distribution_);
 }
 
 }}  // namespace triton::perfanalyzer
