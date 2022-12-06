@@ -419,44 +419,44 @@ TEST_CASE("request_rate_sequence")
   trrm.TestSequences();
 }
 
-// FIXME how to revive these with Infer gone?
-// TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
-//{
-//  PerfAnalyzerParameters params{};
-//  params.streaming = true;
-//
-//  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
-//      std::make_shared<TestRequestRateManager::ThreadStat>()};
-//  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-//      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
-//
-//  SUBCASE("enable_stats true")
-//  {
-//    TestRequestRateManager trrm(params);
-//    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
-//
-//    std::future<void> infer_future{std::async(
-//        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
-//
-//    early_exit = true;
-//    infer_future.get();
-//
-//    CHECK(trrm.stats_->start_stream_enable_stats_value == true);
-//  }
-//
-//  SUBCASE("enable_stats false")
-//  {
-//    TestRequestRateManager trrm(
-//        params, false /* is_sequence */, true /* is_decoupled */);
-//    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
-//
-//    std::future<void> infer_future{std::async(
-//        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
-//
-//    early_exit = true;
-//    infer_future.get();
-//
-//    CHECK(trrm.stats_->start_stream_enable_stats_value == false);
-//  }
-//}
+TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
+{
+  PerfAnalyzerParameters params{};
+  params.streaming = true;
+
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
+
+  SUBCASE("enable_stats true")
+  {
+    TestRequestRateManager trrm(params);
+    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+
+    auto worker = trrm.MakeWorker();
+    std::future<void> infer_future{std::async(
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+
+    early_exit = true;
+    infer_future.get();
+
+    CHECK(trrm.stats_->start_stream_enable_stats_value == true);
+  }
+
+  SUBCASE("enable_stats false")
+  {
+    TestRequestRateManager trrm(
+        params, false /* is_sequence */, true /* is_decoupled */);
+    trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+
+    auto worker = trrm.MakeWorker();
+    std::future<void> infer_future{std::async(
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+
+    early_exit = true;
+    infer_future.get();
+
+    CHECK(trrm.stats_->start_stream_enable_stats_value == false);
+  }
+}
 }}  // namespace triton::perfanalyzer
