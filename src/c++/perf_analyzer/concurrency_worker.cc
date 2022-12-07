@@ -41,8 +41,40 @@ namespace triton { namespace perfanalyzer {
 void
 ConcurrencyWorker::Infer()
 {
-  uint32_t seq_stat_index = 0, ctx_id = 0;
+  reserve_contexts();
 
+  // run inferencing until receiving exit signal to maintain server load.
+  do {
+    handle_execute_off();
+
+    if (handle_no_concurrency()) {
+      return;
+    }
+
+    create_contexts_as_necessary();
+
+    if (!thread_stat_->status_.IsOk()) {
+      return;
+    }
+
+    send_infer_requests();
+
+    if (!thread_stat_->status_.IsOk()) {
+      return;
+    }
+
+    wait_for_responses();
+
+    if (handle_exit_conditions()) {
+      return;
+    }
+
+  } while (true);
+}
+
+void
+ConcurrencyWorker::reserve_contexts()
+{
   // Reserve the vectors in case of sequence models. In non-sequence or
   // synchronous mode only one context will be opened hence no need of
   // reserving.
@@ -50,245 +82,14 @@ ConcurrencyWorker::Infer()
     thread_stat_->contexts_stat_.reserve(max_concurrency_);
     ctxs_.reserve(max_concurrency_);
   }
+}
 
-  uint64_t request_id = 0;
-
-  // run inferencing until receiving exit signal to maintain server load.
-  do {
-    if (on_sequence_model_) {
-      if (!execute_) {
-        // Ensures the clean exit of the sequences
-        auto status = complete_ongoing_sequence_func();
-        if (thread_stat_->status_.IsOk()) {
-          thread_stat_->status_ = status;
-        }
-        while (total_ongoing_requests_ != 0) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        // Make sure all threads are in sync with the client's stats
-        //
-        for (size_t i = 0; i < ctxs_.size(); ++i) {
-          ctxs_[i]->infer_backend_->ClientInferStat(
-              &(thread_stat_->contexts_stat_[i]));
-        }
-        // Reconstruct 'free_ctx_ids_' because complete_ongoing_sequence_func()
-        // has destructive side affects
-        free_ctx_ids_ = std::queue<int>();
-        for (size_t i = 0; i < ctxs_.size(); ++i) {
-          free_ctx_ids_.push(i);
-        }
-        // Wait if no request should be sent and it is not exiting
-        thread_config_->is_paused_ = true;
-        std::unique_lock<std::mutex> lock(wake_mutex_);
-        wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
-      }
-    }
-
-    thread_config_->is_paused_ = false;
-
-    // Only interact with synchronous mechanism if the worker should wait
-    if (thread_config_->concurrency_ == 0) {
-      // Wait if no request should be sent and it is not exiting
-      std::unique_lock<std::mutex> lock(wake_mutex_);
-      // FIXME this was waiting on thread_config before
-      wake_signal_.wait(lock, [this]() {
-        return early_exit || (thread_config_->concurrency_ > 0);
-      });
-      // Stop executing if concurrency is 0 and early exit is requested
-      if (early_exit && thread_config_->concurrency_ == 0) {
-        break;
-      }
-    }
-
-    size_t num_reqs = thread_config_->concurrency_;
-
-    // If the model is non-sequence model, use one InferContext to
-    // maintain concurrency for this thread.
-    size_t active_ctx_cnt = on_sequence_model_ ? num_reqs : 1;
-
-    while (active_ctx_cnt > ctxs_.size()) {
-      {
-        std::lock_guard<std::mutex> lock(cb_mtx_);
-        free_ctx_ids_.push(ctxs_.size());
-      }
-      ctxs_.emplace_back(new InferContext());
-      thread_stat_->status_ =
-          factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
-      ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
-      ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
-      ctxs_.back()->options_->model_signature_name_ =
-          parser_->ModelSignatureName();
-      thread_stat_->contexts_stat_.emplace_back();
-      if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-        thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
-      } else {
-        thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
-      }
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
-      if (streaming_) {
-        // Decoupled models should not collect client side statistics
-        thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
-            async_callback_func_, (!parser_->IsDecoupled()));
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
-      }
-    }
-
-    // Create async requests such that the number of ongoing requests
-    // matches the concurrency level
-    // Non-sequence model is 'num_reqs' * 1 ctx
-    // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
-    while (total_ongoing_requests_ < (int)num_reqs && early_exit == false) {
-      // Update the inputs if required for non-sequence
-      if (using_json_data_ && (!on_sequence_model_)) {
-        int step_id = (thread_config_->non_sequence_data_step_id_ %
-                       data_loader_->GetTotalStepsNonSequence()) *
-                      batch_size_;
-        thread_config_->non_sequence_data_step_id_ += active_threads_;
-        // There will be only one ctx in non-sequence case
-        thread_stat_->status_ = UpdateInputs(
-            ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
-        if (thread_stat_->status_.IsOk()) {
-          thread_stat_->status_ = UpdateValidationOutputs(
-              ctxs_[ctx_id]->outputs_, 0, step_id,
-              ctxs_[ctx_id]->expected_outputs_);
-        }
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
-      }
-
-      if (on_sequence_model_) {
-        size_t offset = 0;
-        for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-          offset += threads_config_[i]->concurrency_;
-        }
-
-        // Find the next available context id to use for this request
-        {
-          std::lock_guard<std::mutex> lk(cb_mtx_);
-          ctx_id = free_ctx_ids_.front();
-          free_ctx_ids_.pop();
-        }
-        seq_stat_index = offset + ctx_id;
-
-        {
-          std::lock_guard<std::mutex> guard(
-              sequence_stat_[seq_stat_index]->mtx_);
-          SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
-
-          // Update the inputs if required
-          if (using_json_data_) {
-            int step_id = data_loader_->GetTotalSteps(
-                              sequence_stat_[seq_stat_index]->data_stream_id_) -
-                          sequence_stat_[seq_stat_index]->remaining_queries_;
-
-            thread_stat_->status_ = UpdateInputs(
-                ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
-                sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
-            if (thread_stat_->status_.IsOk()) {
-              thread_stat_->status_ = UpdateValidationOutputs(
-                  ctxs_[ctx_id]->outputs_,
-                  sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
-                  ctxs_[ctx_id]->expected_outputs_);
-            }
-            if (!thread_stat_->status_.IsOk()) {
-              return;
-            }
-          }
-          sequence_stat_[seq_stat_index]->remaining_queries_--;
-        }
-      }
-      if (async_) {
-        ctxs_[ctx_id]->options_->request_id_ = std::to_string(request_id++);
-        {
-          std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-          auto it = async_req_map_
-                        .emplace(
-                            ctxs_[ctx_id]->options_->request_id_,
-                            AsyncRequestProperties())
-                        .first;
-          it->second.start_time_ = std::chrono::system_clock::now();
-          it->second.ctx_id_ = ctx_id;
-          it->second.sequence_end_ = ctxs_[ctx_id]->options_->sequence_end_;
-        }
-        if (streaming_) {
-          thread_stat_->status_ =
-              ctxs_[ctx_id]->infer_backend_->AsyncStreamInfer(
-                  *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
-                  ctxs_[ctx_id]->outputs_);
-        } else {
-          thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->AsyncInfer(
-              async_callback_func_, *(ctxs_[ctx_id]->options_),
-              ctxs_[ctx_id]->valid_inputs_, ctxs_[ctx_id]->outputs_);
-        }
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
-      } else {
-        std::chrono::time_point<std::chrono::system_clock> start_time_sync,
-            end_time_sync;
-        start_time_sync = std::chrono::system_clock::now();
-        cb::InferResult* results = nullptr;
-        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->Infer(
-            &results, *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
-            ctxs_[ctx_id]->outputs_);
-        if (results != nullptr) {
-          if (thread_stat_->status_.IsOk()) {
-            thread_stat_->status_ = ValidateOutputs(*ctxs_[ctx_id], results);
-          }
-          delete results;
-        }
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
-        end_time_sync = std::chrono::system_clock::now();
-        {
-          // Add the request timestamp to thread Timestamp vector with proper
-          // locking
-          std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-          thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-              start_time_sync, end_time_sync,
-              ctxs_[ctx_id]->options_->sequence_end_, false /* delayed */));
-          thread_stat_->status_ =
-              ctxs_[ctx_id]->infer_backend_->ClientInferStat(
-                  &(thread_stat_->contexts_stat_[ctx_id]));
-          if (!thread_stat_->status_.IsOk()) {
-            return;
-          }
-        }
-        {
-          std::lock_guard<std::mutex> lock(cb_mtx_);
-          free_ctx_ids_.push(ctx_id);
-        }
-      }
-      total_ongoing_requests_++;
-    }
-
-    if (async_) {
-      {
-        // If async, then wait for signal from callback.
-        std::unique_lock<std::mutex> lk(cb_mtx_);
-        // FIXME was waiting on notified before?
-        cb_cv_.wait(lk, [this] {
-          if (notified_) {
-            notified_ = false;
-            return true;
-          }
-          return false;
-        });
-      }
-    } else {
-      // If synchronous, then all the requests have already been completed.
-      total_ongoing_requests_ = 0;
-    }
-
-    if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
-      // Wait for all callbacks to complete.
-      // Loop to ensure all the inflight requests have been completed.
+void
+ConcurrencyWorker::handle_execute_off()
+{
+  if (on_sequence_model_) {
+    if (!execute_) {
+      // Ensures the clean exit of the sequences
       auto status = complete_ongoing_sequence_func();
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = status;
@@ -296,11 +97,261 @@ ConcurrencyWorker::Infer()
       while (total_ongoing_requests_ != 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
-      // end loop
-      break;
+      // Make sure all threads are in sync with the client's stats
+      //
+      for (size_t i = 0; i < ctxs_.size(); ++i) {
+        ctxs_[i]->infer_backend_->ClientInferStat(
+            &(thread_stat_->contexts_stat_[i]));
+      }
+      // Reconstruct 'free_ctx_ids_' because complete_ongoing_sequence_func()
+      // has destructive side affects
+      free_ctx_ids_ = std::queue<int>();
+      for (size_t i = 0; i < ctxs_.size(); ++i) {
+        free_ctx_ids_.push(i);
+      }
+      // Wait if no request should be sent and it is not exiting
+      thread_config_->is_paused_ = true;
+      std::unique_lock<std::mutex> lock(wake_mutex_);
+      wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
     }
-  } while (true);
+  }
+  thread_config_->is_paused_ = false;
 }
+
+bool
+ConcurrencyWorker::handle_no_concurrency()
+{
+  // Only interact with synchronous mechanism if the worker should wait
+  if (thread_config_->concurrency_ == 0) {
+    // Wait if no request should be sent and it is not exiting
+    std::unique_lock<std::mutex> lock(wake_mutex_);
+    // FIXME this was waiting on thread_config before
+    wake_signal_.wait(lock, [this]() {
+      return early_exit || (thread_config_->concurrency_ > 0);
+    });
+    // Stop executing if concurrency is 0 and early exit is requested
+    if (early_exit && thread_config_->concurrency_ == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void
+ConcurrencyWorker::create_contexts_as_necessary()
+{
+  // If the model is non-sequence model, use one InferContext to
+  // maintain concurrency for this thread.
+  size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
+
+  while (active_ctx_cnt > ctxs_.size()) {
+    {
+      std::lock_guard<std::mutex> lock(cb_mtx_);
+      free_ctx_ids_.push(ctxs_.size());
+    }
+    ctxs_.emplace_back(new InferContext());
+    thread_stat_->status_ =
+        factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
+    ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
+    ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
+    ctxs_.back()->options_->model_signature_name_ =
+        parser_->ModelSignatureName();
+    thread_stat_->contexts_stat_.emplace_back();
+    if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+      thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
+    } else {
+      thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
+    }
+    if (!thread_stat_->status_.IsOk()) {
+      return;
+    }
+    if (streaming_) {
+      // Decoupled models should not collect client side statistics
+      thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
+          async_callback_func_, (!parser_->IsDecoupled()));
+      if (!thread_stat_->status_.IsOk()) {
+        return;
+      }
+    }
+  }
+}
+
+void
+ConcurrencyWorker::send_infer_requests()
+{
+  uint32_t seq_stat_index = 0, ctx_id = 0;
+  uint64_t request_id = 0;
+
+  // Create async requests such that the number of ongoing requests
+  // matches the concurrency level
+  // Non-sequence model is 'num_reqs' * 1 ctx
+  // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
+  while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
+         early_exit == false) {
+    // Update the inputs if required for non-sequence
+    if (using_json_data_ && (!on_sequence_model_)) {
+      int step_id = (thread_config_->non_sequence_data_step_id_ %
+                     data_loader_->GetTotalStepsNonSequence()) *
+                    batch_size_;
+      thread_config_->non_sequence_data_step_id_ += active_threads_;
+      // There will be only one ctx in non-sequence case
+      thread_stat_->status_ = UpdateInputs(
+          ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
+      if (thread_stat_->status_.IsOk()) {
+        thread_stat_->status_ = UpdateValidationOutputs(
+            ctxs_[ctx_id]->outputs_, 0, step_id,
+            ctxs_[ctx_id]->expected_outputs_);
+      }
+      if (!thread_stat_->status_.IsOk()) {
+        return;
+      }
+    }
+
+    if (on_sequence_model_) {
+      size_t offset = 0;
+      for (size_t i = 0; i < thread_config_->thread_id_; i++) {
+        offset += threads_config_[i]->concurrency_;
+      }
+
+      // Find the next available context id to use for this request
+      {
+        std::lock_guard<std::mutex> lk(cb_mtx_);
+        ctx_id = free_ctx_ids_.front();
+        free_ctx_ids_.pop();
+      }
+      seq_stat_index = offset + ctx_id;
+
+      {
+        std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+        SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+        // Update the inputs if required
+        if (using_json_data_) {
+          int step_id = data_loader_->GetTotalSteps(
+                            sequence_stat_[seq_stat_index]->data_stream_id_) -
+                        sequence_stat_[seq_stat_index]->remaining_queries_;
+
+          thread_stat_->status_ = UpdateInputs(
+              ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
+              sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
+          if (thread_stat_->status_.IsOk()) {
+            thread_stat_->status_ = UpdateValidationOutputs(
+                ctxs_[ctx_id]->outputs_,
+                sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
+                ctxs_[ctx_id]->expected_outputs_);
+          }
+          if (!thread_stat_->status_.IsOk()) {
+            return;
+          }
+        }
+        sequence_stat_[seq_stat_index]->remaining_queries_--;
+      }
+    }
+    if (async_) {
+      ctxs_[ctx_id]->options_->request_id_ = std::to_string(request_id++);
+      {
+        std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+        auto it = async_req_map_
+                      .emplace(
+                          ctxs_[ctx_id]->options_->request_id_,
+                          AsyncRequestProperties())
+                      .first;
+        it->second.start_time_ = std::chrono::system_clock::now();
+        it->second.ctx_id_ = ctx_id;
+        it->second.sequence_end_ = ctxs_[ctx_id]->options_->sequence_end_;
+      }
+      if (streaming_) {
+        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->AsyncStreamInfer(
+            *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
+            ctxs_[ctx_id]->outputs_);
+      } else {
+        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->AsyncInfer(
+            async_callback_func_, *(ctxs_[ctx_id]->options_),
+            ctxs_[ctx_id]->valid_inputs_, ctxs_[ctx_id]->outputs_);
+      }
+      if (!thread_stat_->status_.IsOk()) {
+        return;
+      }
+    } else {
+      std::chrono::time_point<std::chrono::system_clock> start_time_sync,
+          end_time_sync;
+      start_time_sync = std::chrono::system_clock::now();
+      cb::InferResult* results = nullptr;
+      thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->Infer(
+          &results, *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
+          ctxs_[ctx_id]->outputs_);
+      if (results != nullptr) {
+        if (thread_stat_->status_.IsOk()) {
+          thread_stat_->status_ = ValidateOutputs(*ctxs_[ctx_id], results);
+        }
+        delete results;
+      }
+      if (!thread_stat_->status_.IsOk()) {
+        return;
+      }
+      end_time_sync = std::chrono::system_clock::now();
+      {
+        // Add the request timestamp to thread Timestamp vector with proper
+        // locking
+        std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
+            start_time_sync, end_time_sync,
+            ctxs_[ctx_id]->options_->sequence_end_, false /* delayed */));
+        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->ClientInferStat(
+            &(thread_stat_->contexts_stat_[ctx_id]));
+        if (!thread_stat_->status_.IsOk()) {
+          return;
+        }
+      }
+      {
+        std::lock_guard<std::mutex> lock(cb_mtx_);
+        free_ctx_ids_.push(ctx_id);
+      }
+    }
+    total_ongoing_requests_++;
+  }
+}
+
+void
+ConcurrencyWorker::wait_for_responses()
+{
+  if (async_) {
+    {
+      // If async, then wait for signal from callback.
+      std::unique_lock<std::mutex> lk(cb_mtx_);
+      // FIXME was waiting on notified before?
+      cb_cv_.wait(lk, [this] {
+        if (notified_) {
+          notified_ = false;
+          return true;
+        }
+        return false;
+      });
+    }
+  } else {
+    // If synchronous, then all the requests have already been completed.
+    total_ongoing_requests_ = 0;
+  }
+}
+
+bool
+ConcurrencyWorker::handle_exit_conditions()
+{
+  if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
+    // Wait for all callbacks to complete.
+    // Loop to ensure all the inflight requests have been completed.
+    auto status = complete_ongoing_sequence_func();
+    if (thread_stat_->status_.IsOk()) {
+      thread_stat_->status_ = status;
+    }
+    while (total_ongoing_requests_ != 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    return true;
+  }
+  return false;
+}
+
 
 void
 ConcurrencyWorker::async_callback_func_impl(cb::InferResult* result)

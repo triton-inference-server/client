@@ -142,6 +142,28 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
       &ConcurrencyWorker::async_callback_func_impl, this,
       std::placeholders::_1);
+
+  // Reserve vector size for contexts
+  void reserve_contexts();
+
+  // Handle the case where execute_ is false
+  void handle_execute_off();
+
+  // Handle the case where this thread is configured to do nothing
+  // Returns true if an exit condition was met
+  bool handle_no_concurrency();
+
+  // Create and populate contexts if needed
+  void create_contexts_as_necessary();
+
+  // Send out the desired concurrency of requests
+  void send_infer_requests();
+
+  void wait_for_responses();
+
+  // Detect and handle the case where this thread needs to exit
+  // Returns true if an exit condition was met
+  bool handle_exit_conditions();
 };
 
 }}  // namespace triton::perfanalyzer
