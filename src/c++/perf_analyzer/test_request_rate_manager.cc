@@ -38,6 +38,18 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+class MockRequestRateWorker : public IRequestRateWorker {
+ public:
+  MockRequestRateWorker() = default;
+
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    thread_config->is_paused_ = true;
+  }
+};
+
 /// Class to test the RequestRateManager
 ///
 class TestRequestRateManager : public TestLoadManagerBase,
@@ -59,27 +71,15 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
+  std::shared_ptr<IRequestRateWorker> MakeWorker() override
   {
     if (use_mock_infer_) {
-      return MockInfer(thread_stat, thread_config);
+      return std::make_shared<MockRequestRateWorker>();
     } else {
-      return RequestRateManager::Infer(thread_stat, thread_config);
+      return RequestRateManager::MakeWorker();
     }
   }
 
-  // Mock out most of the complicated Infer code
-  //
-  void MockInfer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config)
-  {
-    if (!execute_) {
-      thread_config->is_paused_ = true;
-    }
-  }
 
   /// Test the public function ResetWorkers()
   ///
@@ -248,16 +248,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     CheckSequences(params_.num_of_sequences);
   }
-
-  struct ThreadStat : RequestRateManager::ThreadStat {
-  };
-
-  struct ThreadConfig : RequestRateManager::ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : RequestRateManager::ThreadConfig(index, stride)
-    {
-    }
-  };
 
   std::vector<std::chrono::nanoseconds>& schedule_{
       RequestRateManager::schedule_};
@@ -434,18 +424,18 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   PerfAnalyzerParameters params{};
   params.streaming = true;
 
-  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
-      std::make_shared<TestRequestRateManager::ThreadStat>()};
-  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
 
   SUBCASE("enable_stats true")
   {
     TestRequestRateManager trrm(params);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
+    auto worker = trrm.MakeWorker();
     std::future<void> infer_future{std::async(
-        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
 
     early_exit = true;
     infer_future.get();
@@ -459,8 +449,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
         params, false /* is_sequence */, true /* is_decoupled */);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
+    auto worker = trrm.MakeWorker();
     std::future<void> infer_future{std::async(
-        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
 
     early_exit = true;
     infer_future.get();
@@ -468,5 +459,4 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
     CHECK(trrm.stats_->start_stream_enable_stats_value == false);
   }
 }
-
 }}  // namespace triton::perfanalyzer

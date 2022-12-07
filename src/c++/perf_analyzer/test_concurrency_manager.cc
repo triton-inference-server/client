@@ -38,9 +38,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
  public:
   TestConcurrencyManager(
       PerfAnalyzerParameters params, bool is_sequence_model = false,
-      bool is_decoupled_model = false, bool use_mock_infer = false)
-      : use_mock_infer_(use_mock_infer),
-        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
+      bool is_decoupled_model = false)
+      : TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         ConcurrencyManager(
             params.async, params.streaming, params.batch_size,
             params.max_threads, params.max_concurrency, params.sequence_length,
@@ -49,28 +48,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
             params.string_length, params.string_data, params.zero_input,
             params.user_data, GetParser(), GetFactory())
   {
-  }
-
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
-  {
-    if (use_mock_infer_) {
-      return MockInfer(thread_stat, thread_config);
-    } else {
-      return ConcurrencyManager::Infer(thread_stat, thread_config);
-    }
-  }
-
-  // Mock out most of the complicated Infer code
-  //
-  void MockInfer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config)
-  {
-    if (!execute_) {
-      thread_config->is_paused_ = true;
-    }
   }
 
   /// Test that the correct Infer function is called in the backend
@@ -174,8 +151,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
           doctest::Approx(params_.max_concurrency).epsilon(0.25));
     }
   }
-
-  const bool use_mock_infer_{false};
 };
 
 /// Test that the correct Infer function is called in the backend

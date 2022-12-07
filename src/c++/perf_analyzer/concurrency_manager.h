@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include "concurrency_worker.h"
 #include "load_manager.h"
 
 namespace triton { namespace perfanalyzer {
@@ -105,23 +106,6 @@ class ConcurrencyManager : public LoadManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
-  struct ThreadConfig {
-    ThreadConfig(size_t thread_id)
-        : thread_id_(thread_id), concurrency_(0),
-          non_sequence_data_step_id_(thread_id), is_paused_(false)
-    {
-    }
-
-    // ID of corresponding worker thread
-    size_t thread_id_;
-    // The concurrency level that the worker should produce
-    size_t concurrency_;
-    // The current data step id in case of non-sequence model
-    size_t non_sequence_data_step_id_;
-    // Whether or not the thread is issuing new inference requests
-    bool is_paused_;
-  };
-
   // Pause all worker threads that are working on sequences
   //
   void PauseSequenceWorkers();
@@ -135,12 +119,8 @@ class ConcurrencyManager : public LoadManager {
   //
   void ResumeSequenceWorkers();
 
-  /// Function for worker that sends inference requests.
-  /// \param thread_stat Worker thread status specific data.
-  /// \param thread_config Worker thread configuration specific data.
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
+  // Makes a new worker
+  virtual std::shared_ptr<IConcurrencyWorker> MakeWorker();
 
   // The number of worker threads with non-zero concurrencies
   size_t active_threads_;
@@ -148,7 +128,7 @@ class ConcurrencyManager : public LoadManager {
   bool execute_;
 
   size_t max_concurrency_;
-  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<ConcurrencyWorker::ThreadConfig>> threads_config_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestConcurrencyManager;
