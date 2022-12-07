@@ -155,6 +155,9 @@ std::string ShapeVecToString(
 // Returns the string containing the shape tensor values
 std::string ShapeTensorValuesToString(const int* data_ptr, const int count);
 
+// Remove slashes from tensor name, if any
+std::string TensorToRegionName(std::string name);
+
 // Returns the request schedule distribution generator with the specified
 // request rate.
 template <Distribution distribution>

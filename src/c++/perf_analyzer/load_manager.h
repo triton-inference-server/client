@@ -32,8 +32,8 @@
 
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
+#include "load_worker.h"
 #include "perf_utils.h"
-
 
 namespace triton { namespace perfanalyzer {
 
@@ -71,57 +71,6 @@ class LoadManager {
   /// Count the number of requests collected until now.
   uint64_t CountCollectedRequests();
 
-  /// Wraps the information required to send an inference to the
-  /// server
-  struct InferContext {
-    explicit InferContext() : inflight_request_cnt_(0) {}
-    InferContext(InferContext&&) = delete;
-    InferContext(const InferContext&) = delete;
-    ~InferContext()
-    {
-      for (const auto input : inputs_) {
-        delete input;
-      }
-      for (const auto output : outputs_) {
-        delete output;
-      }
-    }
-    // The backend to communicate with the server
-    std::unique_ptr<cb::ClientBackend> infer_backend_;
-    // The vector of pointers to InferInput objects for all possible inputs,
-    // potentially including optional inputs with no provided data.
-    std::vector<cb::InferInput*> inputs_;
-    // The vector of pointers to InferInput objects to be
-    // used for inference request.
-    std::vector<cb::InferInput*> valid_inputs_;
-    // The vector of pointers to InferRequestedOutput objects
-    // to be used with the inference request.
-    std::vector<const cb::InferRequestedOutput*> outputs_;
-    // If not empty, the expected output data in the same order as 'outputs_'
-    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>
-        expected_outputs_;
-    // The InferOptions object holding the details of the
-    // inference.
-    std::unique_ptr<cb::InferOptions> options_;
-    // The total number of inference in-flight.
-    std::atomic<size_t> inflight_request_cnt_;
-  };
-
-  /// The properties of an asynchronous request required in
-  /// the callback to effectively interpret the response.
-  struct AsyncRequestProperties {
-    AsyncRequestProperties() : sequence_end_(false), delayed_(true) {}
-    // The id of in the inference context which was used to
-    // send this request.
-    uint32_t ctx_id_;
-    // The timestamp of when the request was started.
-    std::chrono::time_point<std::chrono::system_clock> start_time_;
-    // Whether or not the request is at the end of a sequence.
-    bool sequence_end_;
-    // Whether or not the request is delayed as per schedule.
-    bool delayed_;
-  };
-
  protected:
   LoadManager(
       const bool async, const bool streaming, const int32_t batch_size,
@@ -156,97 +105,8 @@ class LoadManager {
       const std::string& shm_region_name, const SharedMemoryType& memory_type,
       const size_t byte_size, void** ptr);
 
-  /// Helper function to prepare the InferContext for sending inference request.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferContext* ctx);
-
-  /// Helper function to prepare the InferContext for sending inference
-  /// request in shared memory.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
-
-  /// Updates the input data to use for inference request
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, int stream_index,
-      int step_index);
-
-  /// Updates the expected output data to use for inference request. Empty
-  /// vector will be returned if there is no expected output associated to the
-  /// step.
-  /// \param outputs The vector of outputs to get the expected data
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \param data The vector of pointer and size of the expected outputs
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateValidationOutputs(
-      const std::vector<const cb::InferRequestedOutput*>& outputs,
-      int stream_index, int step_index,
-      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
-
-  cb::Error ValidateOutputs(
-      const InferContext& ctx, const cb::InferResult* result_ptr);
-
-  void SetInferSequenceOptions(
-      const uint32_t seq_stat_index,
-      std::unique_ptr<cb::InferOptions>& options);
-  void InitNewSequence(int seq_stat_index);
-  uint64_t GetNextSeqId(int seq_stat_index);
-
-  /// Generate random sequence length based on 'offset_ratio' and
-  /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'
-  /// \param offset_ratio The offset ratio of the generated length
-  /// \return random sequence length
-  size_t GetRandomSequenceLength(double offset_ratio);
-
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
-
-  /// Creates inference input object
-  /// \param infer_input Output parameter storing newly created inference input
-  /// \param kind Backend kind
-  /// \param name Name of inference input
-  /// \param dims Shape of inference input
-  /// \param datatype Data type of inference input
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype);
-
- private:
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
 
  protected:
   bool async_;
@@ -267,70 +127,13 @@ class LoadManager {
   bool using_json_data_;
   bool using_shared_memory_;
 
-  std::default_random_engine rng_generator_;
   std::uniform_int_distribution<uint64_t> distribution_;
 
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
-  // Holds information about the shared memory locations
-  struct SharedMemoryData {
-    SharedMemoryData(
-        size_t byte_size,
-        std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data)
-        : byte_size_(byte_size), data_(std::move(data))
-    {
-    }
-
-    SharedMemoryData() {}
-
-    // Byte size
-    size_t byte_size_;
-
-    // Unique pointer holding the shared memory data
-    std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
-  };
-
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
-
-  // Holds the running status of the thread.
-  struct ThreadStat {
-    ThreadStat() {}
-
-    // The status of the worker thread
-    cb::Error status_;
-    // The status of the callback thread for async requests
-    cb::Error cb_status_;
-    // The statistics of the InferContext
-    std::vector<cb::InferStat> contexts_stat_;
-    // The concurrency level that the worker should produce
-    size_t concurrency_;
-    // A vector of request timestamps <start_time, end_time>
-    // Request latency will be end_time - start_time
-    TimestampVector request_timestamps_;
-    // A lock to protect thread data
-    std::mutex mu_;
-  };
-
-  // Holds the status of the inflight sequence
-  struct SequenceStat {
-    SequenceStat(uint64_t seq_id)
-        : seq_id_(seq_id), data_stream_id_(0), remaining_queries_(0)
-    {
-    }
-    // If paused, no more requests should be sent other than a single request to
-    // finish the active sequence
-    bool paused_ = false;
-    // The unique correlation id allocated to the sequence
-    uint64_t seq_id_;
-    // The data stream id providing data for the sequence
-    uint64_t data_stream_id_;
-    // The number of queries remaining to complete the sequence
-    size_t remaining_queries_;
-    // A lock to protect sequence data
-    std::mutex mtx_;
-  };
 
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
 
