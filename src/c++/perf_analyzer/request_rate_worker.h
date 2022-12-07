@@ -63,9 +63,6 @@ class IRequestRateWorker {
 ///
 class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
  public:
-  virtual ~RequestRateWorker() = default;
-
-
   RequestRateWorker(
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,

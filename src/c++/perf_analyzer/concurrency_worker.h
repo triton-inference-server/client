@@ -75,8 +75,6 @@ class IConcurrencyWorker {
 ///
 class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
  public:
-  virtual ~ConcurrencyWorker() = default;
-
   ConcurrencyWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
