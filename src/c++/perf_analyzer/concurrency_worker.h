@@ -58,9 +58,8 @@ class IConcurrencyWorker {
     bool is_paused_;
   };
 
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) = 0;
+  // Main inferencing loop for the worker
+  virtual void Infer() = 0;
 };
 
 
@@ -79,6 +78,8 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   virtual ~ConcurrencyWorker() = default;
 
   ConcurrencyWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -99,14 +100,13 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
             streaming, batch_size, using_json_data, sequence_length,
             start_sequence_id, sequence_id_range, curr_seq_id, distribution,
             wake_signal, wake_mutex, execute),
+        thread_stat_(thread_stat), thread_config_(thread_config),
         max_concurrency_(max_concurrency), threads_config_(threads_config),
         active_threads_(active_threads)
   {
   }
 
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
+  void Infer();
 
  private:
   const size_t max_concurrency_;

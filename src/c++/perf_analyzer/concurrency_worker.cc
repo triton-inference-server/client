@@ -39,14 +39,8 @@ namespace triton { namespace perfanalyzer {
 // If the model is sequence model, each worker has to use multiples contexts
 // to maintain (sequence) concurrency assigned to worker.
 void
-ConcurrencyWorker::Infer(
-    std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<ThreadConfig> thread_config)
+ConcurrencyWorker::Infer()
 {
-  // FIXME why not just in constructor now?
-  thread_stat_ = thread_stat;
-  thread_config_ = thread_config;
-
   uint32_t seq_stat_index = 0, ctx_id = 0;
 
   // Reserve the vectors in case of sequence models. In non-sequence or
