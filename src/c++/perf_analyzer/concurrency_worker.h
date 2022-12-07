@@ -75,8 +75,7 @@ class IConcurrencyWorker {
 ///
 class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
  public:
-  ~ConcurrencyWorker() = default;
-  ConcurrencyWorker(ConcurrencyWorker&) = delete;
+  virtual ~ConcurrencyWorker() = default;
 
   ConcurrencyWorker(
       const std::shared_ptr<ModelParser> parser,

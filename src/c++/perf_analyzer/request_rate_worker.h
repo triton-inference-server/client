@@ -63,8 +63,7 @@ class IRequestRateWorker {
 ///
 class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
  public:
-  ~RequestRateWorker() = default;
-  RequestRateWorker(RequestRateWorker&) = delete;
+  virtual ~RequestRateWorker() = default;
 
 
   RequestRateWorker(

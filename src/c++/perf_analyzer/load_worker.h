@@ -174,11 +174,11 @@ class LoadWorker {
   {
   }
 
-  ~LoadWorker() = default;
-  LoadWorker(LoadWorker&) = delete;
+  virtual ~LoadWorker() = default;
 
   /// Helper function to prepare the InferContext for sending
-  /// inference request. \param ctx The target InferContext object.
+  /// inference request.
+  /// \param ctx The target InferContext object.
   /// \return cb::Error object indicating success or failure.
   cb::Error PrepareInfer(InferContext* ctx);
 
