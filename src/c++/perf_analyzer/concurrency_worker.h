@@ -104,7 +104,7 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   {
   }
 
-  void Infer();
+  void Infer() override;
 
  private:
   const size_t max_concurrency_;
