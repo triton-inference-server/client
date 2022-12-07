@@ -40,14 +40,16 @@ namespace triton { namespace perfanalyzer {
 
 class MockRequestRateWorker : public IRequestRateWorker {
  public:
-  MockRequestRateWorker() = default;
-
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
+  MockRequestRateWorker(
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
+      : thread_config_(thread_config)
   {
-    thread_config->is_paused_ = true;
   }
+
+  void Infer() override { thread_config_->is_paused_ = true; }
+
+ private:
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config_;
 };
 
 /// Class to test the RequestRateManager
@@ -71,12 +73,14 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  std::shared_ptr<IRequestRateWorker> MakeWorker() override
+  std::shared_ptr<IRequestRateWorker> MakeWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
     if (use_mock_infer_) {
-      return std::make_shared<MockRequestRateWorker>();
+      return std::make_shared<MockRequestRateWorker>(thread_config);
     } else {
-      return RequestRateManager::MakeWorker();
+      return RequestRateManager::MakeWorker(thread_stat, thread_config);
     }
   }
 
@@ -433,9 +437,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
     TestRequestRateManager trrm(params);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
-    auto worker = trrm.MakeWorker();
-    std::future<void> infer_future{std::async(
-        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+    auto worker = trrm.MakeWorker(thread_stat, thread_config);
+    std::future<void> infer_future{
+        std::async(&IRequestRateWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();
@@ -449,9 +453,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
         params, false /* is_sequence */, true /* is_decoupled */);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
-    auto worker = trrm.MakeWorker();
-    std::future<void> infer_future{std::async(
-        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+    auto worker = trrm.MakeWorker(thread_stat, thread_config);
+    std::future<void> infer_future{
+        std::async(&IRequestRateWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();

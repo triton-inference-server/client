@@ -134,12 +134,12 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   // Callback function for handling asynchronous requests
   void async_callback_func_impl(cb::InferResult* result);
 
-  cb::Error complete_ongoing_sequence_func();
-
-  // Function pointer to the callback function implementation
+  // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
       &ConcurrencyWorker::async_callback_func_impl, this,
       std::placeholders::_1);
+
+  cb::Error complete_ongoing_sequence_func();
 
   // Reserve vector size for contexts
   void reserve_contexts();
