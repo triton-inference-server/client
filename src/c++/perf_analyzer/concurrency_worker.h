@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <queue>
 #include <random>
@@ -113,6 +114,34 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   size_t& active_threads_;
   // TODO REFACTOR can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
+
+  // All of the Inference contexts for this worker
+  std::vector<std::unique_ptr<InferContext>> ctxs_;
+
+  std::queue<int> free_ctx_ids_;
+
+  std::atomic<int> total_ongoing_requests_{0};
+
+  std::shared_ptr<ThreadStat> thread_stat_;
+  std::shared_ptr<ThreadConfig> thread_config_;
+
+  // request_id to start timestamp map
+  std::map<std::string, AsyncRequestProperties> async_req_map_;
+
+  // Variables used to signal async request completion
+  bool notified_ = false;
+  std::mutex cb_mtx_;
+  std::condition_variable cb_cv_;
+
+  // Callback function for handling asynchronous requests
+  void async_callback_func_impl(cb::InferResult* result);
+
+  cb::Error complete_ongoing_sequence_func();
+
+  // Function pointer to the callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &ConcurrencyWorker::async_callback_func_impl, this,
+      std::placeholders::_1);
 };
 
 }}  // namespace triton::perfanalyzer
