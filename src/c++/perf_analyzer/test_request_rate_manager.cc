@@ -39,6 +39,59 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+class TestRequestRateWorker : public RequestRateWorker {
+ public:
+  TestRequestRateWorker(
+      const std::shared_ptr<ModelParser> parser,
+      std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
+      const std::shared_ptr<cb::ClientBackendFactory> factory,
+      const size_t sequence_length, const uint64_t start_sequence_id,
+      const uint64_t sequence_id_range, const bool on_sequence_model,
+      const bool async, const size_t max_threads, const bool using_json_data,
+      const bool streaming, const SharedMemoryType shared_memory_type,
+      const int32_t batch_size,
+      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
+      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
+      std::condition_variable& wake_signal, std::mutex& wake_mutex,
+      bool& execute, std::atomic<uint64_t>& curr_seq_id,
+      std::chrono::steady_clock::time_point& start_time,
+      std::vector<std::chrono::nanoseconds>& schedule,
+      std::shared_ptr<std::chrono::nanoseconds> gen_duration,
+      std::uniform_int_distribution<uint64_t>& distribution)
+      : RequestRateWorker(
+            parser, data_loader, backend_kind, factory, sequence_length,
+            start_sequence_id, sequence_id_range, on_sequence_model, async,
+            max_threads, using_json_data, streaming, shared_memory_type,
+            batch_size, sequence_stat, shared_memory_regions, wake_signal,
+            wake_mutex, execute, curr_seq_id, start_time, schedule,
+            gen_duration, distribution)
+  {
+  }
+
+  /// Mock out the InferInput object
+  ///
+  cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype) override
+  {
+    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
+    return cb::Error::Success;
+  }
+};
+
+class MockRequestRateWorker : public IRequestRateWorker {
+ public:
+  MockRequestRateWorker() = default;
+
+  void Infer(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config) override
+  {
+    thread_config->is_paused_ = true;
+  }
+};
+
 /// Class to test the RequestRateManager
 ///
 class TestRequestRateManager : public TestLoadManagerBase,
@@ -60,37 +113,19 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
+  std::shared_ptr<IRequestRateWorker> MakeWorker() override
   {
     if (use_mock_infer_) {
-      return MockInfer(thread_stat, thread_config);
+      return std::make_shared<MockRequestRateWorker>();
     } else {
-      return RequestRateManager::Infer(thread_stat, thread_config);
+      return std::make_shared<TestRequestRateWorker>(
+          parser_, data_loader_, backend_->Kind(), RequestRateManager::factory_,
+          sequence_length_, start_sequence_id_, sequence_id_range_,
+          on_sequence_model_, async_, max_threads_, using_json_data_,
+          streaming_, shared_memory_type_, batch_size_, sequence_stat_,
+          shared_memory_regions_, wake_signal_, wake_mutex_, execute_,
+          curr_seq_id_, start_time_, schedule_, gen_duration_, distribution_);
     }
-  }
-
-  // Mock out most of the complicated Infer code
-  //
-  void MockInfer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config)
-  {
-    if (!execute_) {
-      thread_config->is_paused_ = true;
-    }
-  }
-
-  /// Mock out the InferInput object
-  ///
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
   }
 
   /// Test the public function ResetWorkers()
@@ -268,21 +303,13 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& batch_size_{LoadManager::batch_size_};
   std::vector<std::chrono::nanoseconds>& schedule_{
       RequestRateManager::schedule_};
-  std::unique_ptr<std::chrono::nanoseconds>& gen_duration_{
+  std::shared_ptr<std::chrono::nanoseconds>& gen_duration_{
       RequestRateManager::gen_duration_};
   std::chrono::steady_clock::time_point& start_time_{
       RequestRateManager::start_time_};
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
-  struct ThreadStat : RequestRateManager::ThreadStat {
-  };
-  struct ThreadConfig : RequestRateManager::ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : RequestRateManager::ThreadConfig(index, stride)
-    {
-    }
-  };
 
  private:
   bool use_mock_infer_;
@@ -456,18 +483,18 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   PerfAnalyzerParameters params{};
   params.streaming = true;
 
-  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
-      std::make_shared<TestRequestRateManager::ThreadStat>()};
-  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
 
   SUBCASE("enable_stats true")
   {
     TestRequestRateManager trrm(params);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
+    auto worker = trrm.MakeWorker();
     std::future<void> infer_future{std::async(
-        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
 
     early_exit = true;
     infer_future.get();
@@ -481,8 +508,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
         params, false /* is_sequence */, true /* is_decoupled */);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
+    auto worker = trrm.MakeWorker();
     std::future<void> infer_future{std::async(
-        &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
 
     early_exit = true;
     infer_future.get();
@@ -524,10 +552,9 @@ TEST_CASE(
     )"};
   mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
 
-  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
-      std::make_shared<TestRequestRateManager::ThreadStat>()};
-  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 1)};
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<IRequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<IRequestRateWorker::ThreadConfig>(0, 1)};
 
   trrm.parser_ = mmp;
   trrm.data_loader_ = mdl;
@@ -558,8 +585,9 @@ TEST_CASE(
     trrm.streaming_ = true;
   }
 
+  auto worker = trrm.MakeWorker();
   std::future<void> infer_future{std::async(
-      &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+      &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
 
   std::this_thread::sleep_for(std::chrono::milliseconds(14));
 

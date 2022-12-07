@@ -400,6 +400,18 @@ ShapeTensorValuesToString(const int* data_ptr, const int count)
   return str;
 }
 
+std::string
+TensorToRegionName(std::string name)
+{
+  // Remove slashes from the name, if any.
+  name.erase(
+      std::remove_if(
+          name.begin(), name.end(),
+          [](const char& c) { return ((c == '/') || (c == '\\')); }),
+      name.end());
+  return name;
+}
+
 template <>
 std::function<std::chrono::nanoseconds(std::mt19937&)>
 ScheduleDistribution<Distribution::POISSON>(const double request_rate)

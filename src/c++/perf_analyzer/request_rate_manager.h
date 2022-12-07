@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2022, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
 #pragma once
 
 #include <condition_variable>
-#include <thread>
 #include "load_manager.h"
+#include "request_rate_worker.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -107,21 +107,6 @@ class RequestRateManager : public LoadManager {
   cb::Error ResetWorkers() override;
 
  protected:
-  struct ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : index_(index), id_(index), stride_(stride), is_paused_(false),
-          rounds_(0), non_sequence_data_step_id_(index)
-    {
-    }
-
-    uint32_t index_;
-    uint32_t id_;
-    uint32_t stride_;
-    bool is_paused_;
-    uint64_t rounds_;
-    int non_sequence_data_step_id_;
-  };
-
   RequestRateManager(
       const bool async, const bool streaming, Distribution request_distribution,
       const int32_t batch_size, const uint64_t measurement_window_ms,
@@ -144,32 +129,12 @@ class RequestRateManager : public LoadManager {
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
 
-  /// Function for worker that sends inference requests.
-  /// \param thread_stat Worker thread specific data.
-  /// \param thread_config Worker thread configuration specific data.
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
+  // Makes a new worker
+  virtual std::shared_ptr<IRequestRateWorker> MakeWorker();
 
-  /// A helper function to issue inference request to the server.
-  /// \param context InferContext to use for sending the request.
-  /// \param request_id The unique id to be associated with the request.
-  /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param callback_func The callback function to use with asynchronous
-  /// request.
-  /// \param async_req_map The map from ongoing request_id to the
-  /// request information needed to correctly interpret the details.
-  /// \param thread_stat The runnning status of the worker thread
-  void Request(
-      std::shared_ptr<InferContext> context, const uint64_t request_id,
-      const bool delayed, cb::OnCompleteFn callback_func,
-      std::shared_ptr<std::map<std::string, AsyncRequestProperties>>
-          async_req_map,
-      std::shared_ptr<ThreadStat> thread_stat);
+  std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
-  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
-
-  std::unique_ptr<std::chrono::nanoseconds> gen_duration_;
+  std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
   Distribution request_distribution_;
   std::vector<std::chrono::nanoseconds> schedule_;
   std::chrono::steady_clock::time_point start_time_;

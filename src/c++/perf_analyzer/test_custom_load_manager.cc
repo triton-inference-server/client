@@ -38,7 +38,7 @@ namespace triton { namespace perfanalyzer {
 
 class TestCustomLoadManager : public CustomLoadManager {
  public:
-  std::unique_ptr<std::chrono::nanoseconds>& gen_duration_{
+  std::shared_ptr<std::chrono::nanoseconds>& gen_duration_{
       RequestRateManager::gen_duration_};
   std::vector<std::chrono::nanoseconds>& schedule_{
       RequestRateManager::schedule_};
