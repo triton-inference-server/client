@@ -520,7 +520,7 @@ LoadManager::PrepareInfer(InferContext* ctx)
     }
 
     cb::InferInput* infer_input;
-    RETURN_IF_ERROR(cb::InferInput::Create(
+    RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_->Kind(), input.first, shape,
         input.second.datatype_));
     ctx->inputs_.push_back(infer_input);
@@ -575,7 +575,7 @@ LoadManager::PrepareSharedMemoryInfer(InferContext* ctx)
     }
 
     cb::InferInput* infer_input;
-    RETURN_IF_ERROR(cb::InferInput::Create(
+    RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_->Kind(), input.first, shape,
         input.second.datatype_));
     ctx->inputs_.push_back(infer_input);
@@ -949,4 +949,14 @@ LoadManager::StopWorkerThreads()
   }
   threads_.clear();
 }
+
+cb::Error
+LoadManager::CreateInferInput(
+    cb::InferInput** infer_input, const cb::BackendKind kind,
+    const std::string& name, const std::vector<int64_t>& dims,
+    const std::string& datatype)
+{
+  return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
+}
+
 }}  // namespace triton::perfanalyzer
