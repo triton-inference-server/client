@@ -212,6 +212,11 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
+  virtual cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype);
+
  private:
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects for all

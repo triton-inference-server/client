@@ -82,6 +82,18 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
+  // Mock out the InferInput object
+  //
+  cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype) override
+  {
+    cb::InferInput* tmp = new cb::MockInferInput(kind, name, dims, datatype);
+    *infer_input = tmp;
+    return cb::Error::Success;
+  }
+
   /// Test the public function ResetWorkers()
   ///
   /// ResetWorkers pauses and restarts the workers, but the most important and
