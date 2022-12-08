@@ -258,7 +258,7 @@ class LoadManager {
   std::default_random_engine rng_generator_;
   std::uniform_int_distribution<uint64_t> distribution_;
 
-  std::unique_ptr<DataLoader> data_loader_;
+  std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
   // Holds information about the shared memory locations

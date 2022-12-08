@@ -33,6 +33,7 @@ namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
 class TestModelParser;
+class MockModelParser;
 #endif
 
 struct ModelTensor {
@@ -192,6 +193,7 @@ class ModelParser {
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestModelParser;
+  friend MockModelParser;
 
  private:
   ModelParser() = default;

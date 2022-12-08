@@ -146,6 +146,7 @@ add_executable(
   mock_model_parser.h
   test_utils.h
   client_backend/mock_client_backend.h  
+  mock_data_loader.h
   test_inference_profiler.cc
   test_command_line_parser.cc
   test_load_manager.cc

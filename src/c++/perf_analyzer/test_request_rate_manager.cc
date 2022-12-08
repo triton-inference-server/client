@@ -29,6 +29,7 @@
 #include "common.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
+#include "mock_data_loader.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
@@ -249,18 +250,21 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences(params_.num_of_sequences);
   }
 
+  std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
+  std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
+  bool& using_json_data_{LoadManager::using_json_data_};
+  bool& execute_{RequestRateManager::execute_};
+  std::vector<std::chrono::nanoseconds>& schedule_{
+      RequestRateManager::schedule_};
+
   struct ThreadStat : RequestRateManager::ThreadStat {
   };
-
   struct ThreadConfig : RequestRateManager::ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : RequestRateManager::ThreadConfig(index, stride)
     {
     }
   };
-
-  std::vector<std::chrono::nanoseconds>& schedule_{
-      RequestRateManager::schedule_};
 
  private:
   bool use_mock_infer_;
@@ -467,6 +471,60 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 
     CHECK(trrm.stats_->start_stream_enable_stats_value == false);
   }
+}
+
+TEST_CASE(
+    "custom_json_data: Check custom json data to ensure that it is processed "
+    "correctly")
+{
+  PerfAnalyzerParameters params{};
+  TestRequestRateManager trrm{params};
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(false, false)};
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT0";
+  model_tensor.shape_ = {1};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+  const std::string json_str{R"(
+{
+  "data": [
+    {
+      "INPUT0": [2000000000]
+    }
+  ]
+}
+    )"};
+  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  trrm.parser_ = mmp;
+  trrm.data_loader_ = mdl;
+  trrm.using_json_data_ = true;
+  trrm.execute_ = true;
+  trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+
+  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
+      std::make_shared<TestRequestRateManager::ThreadStat>()};
+  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
+      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
+
+  std::future<void> infer_future{std::async(
+      &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+
+  early_exit = true;
+  infer_future.get();
+
+  std::cout << "mdl->recorded_inputs_.size(): " << mdl->recorded_inputs_.size()
+            << std::endl;
+
+  REQUIRE(mdl->recorded_inputs_.size() > 0);
+  CHECK(mdl->recorded_inputs_[0] == 2000000000);
 }
 
 }}  // namespace triton::perfanalyzer
