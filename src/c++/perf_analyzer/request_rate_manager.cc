@@ -146,7 +146,7 @@ RequestRateManager::PauseWorkers()
 
       auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
 
-      threads_.emplace_back(&IRequestRateWorker::Infer, worker);
+      threads_.emplace_back(&IWorker::Infer, worker);
     }
   }
 
@@ -175,7 +175,7 @@ RequestRateManager::ResumeWorkers()
   wake_signal_.notify_all();
 }
 
-std::shared_ptr<IRequestRateWorker>
+std::shared_ptr<IWorker>
 RequestRateManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
