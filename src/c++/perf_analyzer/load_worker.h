@@ -30,6 +30,7 @@
 #include <mutex>
 
 #include "data_loader.h"
+#include "iworker.h"
 #include "model_parser.h"
 
 namespace triton { namespace perfanalyzer {
@@ -81,8 +82,6 @@ struct ThreadStat {
   cb::Error cb_status_;
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
-  // The concurrency level that the worker should produce
-  size_t concurrency_;
   // A vector of request timestamps <start_time, end_time>
   // Request latency will be end_time - start_time
   TimestampVector request_timestamps_;
@@ -143,9 +142,10 @@ struct AsyncRequestProperties {
 
 /// Abstract base class for worker threads
 ///
-class LoadWorker {
+class LoadWorker : public IWorker {
  protected:
   LoadWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -160,8 +160,8 @@ class LoadWorker {
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute)
-      : parser_(parser), data_loader_(data_loader), factory_(factory),
-        sequence_stat_(sequence_stat),
+      : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
+        factory_(factory), sequence_stat_(sequence_stat),
         shared_memory_regions_(shared_memory_regions),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
@@ -254,25 +254,31 @@ class LoadWorker {
       const int step_index);
 
  protected:
-  // TODO REFACTOR all sequence related code should be in a single class. We
-  // shouldn't have to have a shared uint64 reference passed to all threads
-  // Current sequence id (for issuing new sequences)
+  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
+  // class. We shouldn't have to have a shared uint64 reference passed to all
+  // threads Current sequence id (for issuing new sequences)
   std::atomic<uint64_t>& curr_seq_id_;
 
-  // TODO REFACTOR this created in load manager init in one case. Can we
-  // decouple? Used to pick among multiple data streams
+  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
+  // we decouple? Used to pick among multiple data streams. Note this probably
+  // gets absorbed into the new sequence class when it is created
   std::uniform_int_distribution<uint64_t>& distribution_;
 
-  // TODO REFACTOR is there a better way to do threading than to pass the same
-  // cv/mutex into every thread by reference?
-  // Used to wake up this thread if it has been put to sleep
+  // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
+  // the same cv/mutex into every thread by reference? Used to wake up this
+  // thread if it has been put to sleep
   std::condition_variable& wake_signal_;
   std::mutex& wake_mutex_;
 
-  // TODO REFACTOR is there a better way to communicate this than a shared bool
-  // reference?
-  // Used to pause execution of this thread
+  // TODO REFACTOR TMA-1017 is there a better way to communicate this than a
+  // shared bool reference? Used to pause execution of this thread
   bool& execute_;
+
+  // Stats for this thread
+  std::shared_ptr<ThreadStat> thread_stat_;
+
+  // request_id to start timestamp map
+  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
