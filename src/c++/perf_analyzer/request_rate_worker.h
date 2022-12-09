@@ -49,9 +49,7 @@ class IRequestRateWorker {
     int non_sequence_data_step_id_;
   };
 
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) = 0;
+  virtual void Infer() = 0;
 };
 
 /// Worker thread for RequestRateManager
@@ -63,10 +61,9 @@ class IRequestRateWorker {
 ///
 class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
  public:
-  virtual ~RequestRateWorker() = default;
-
-
   RequestRateWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -89,14 +86,13 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
             streaming, batch_size, using_json_data, sequence_length,
             start_sequence_id, sequence_id_range, curr_seq_id, distribution,
             wake_signal, wake_mutex, execute),
+        thread_stat_(thread_stat), thread_config_(thread_config),
         max_threads_(max_threads), start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)
   {
   }
 
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override;
+  void Infer() override;
 
  private:
   const size_t max_threads_;
@@ -106,6 +102,41 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
   // self-calculate where it should be?
   std::vector<std::chrono::nanoseconds>& schedule_;
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
+
+  std::shared_ptr<ThreadStat> thread_stat_;
+  std::shared_ptr<ThreadConfig> thread_config_;
+
+  // request_id to start timestamp map
+  std::map<std::string, AsyncRequestProperties> async_req_map_;
+
+  // Callback function for handling asynchronous requests
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
+
+  InferContext ctx_;
+
+  uint64_t request_id_ = 0;
+
+  // Function pointer to the async callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &RequestRateWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+
+  // Create and initialize the inference context
+  void CreateContext();
+
+  void HandleExecuteOff();
+
+  // Sleep until it is time for the next part of the schedule
+  // Returns true if the request was delayed
+  bool SleepIfNecessary();
+
+  // Send a single infer request.
+  // Input boolean indicates if the request was delayed from the original
+  // schedule
+  void SendInferRequest(bool delayed);
+
+  // Detect and handle the case where this thread needs to exit
+  // Returns true if an exit condition was met
+  bool HandleExitConditions();
 
   /// A helper function to issue inference request to the server.
   /// \param context InferContext to use for sending the request.
@@ -117,10 +148,9 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
   /// request information needed to correctly interpret the details.
   /// \param thread_stat The runnning status of the worker thread
   void Request(
-      std::shared_ptr<InferContext> context, const uint64_t request_id,
-      const bool delayed, cb::OnCompleteFn callback_func,
-      std::shared_ptr<std::map<std::string, AsyncRequestProperties>>
-          async_req_map,
+      InferContext& context, const uint64_t request_id, const bool delayed,
+      cb::OnCompleteFn callback_func,
+      std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
 };
 

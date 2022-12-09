@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <queue>
 #include <random>
@@ -57,9 +58,8 @@ class IConcurrencyWorker {
     bool is_paused_;
   };
 
-  virtual void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) = 0;
+  // Main inferencing loop for the worker
+  virtual void Infer() = 0;
 };
 
 
@@ -75,9 +75,9 @@ class IConcurrencyWorker {
 ///
 class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
  public:
-  virtual ~ConcurrencyWorker() = default;
-
   ConcurrencyWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -98,14 +98,13 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
             streaming, batch_size, using_json_data, sequence_length,
             start_sequence_id, sequence_id_range, curr_seq_id, distribution,
             wake_signal, wake_mutex, execute),
+        thread_stat_(thread_stat), thread_config_(thread_config),
         max_concurrency_(max_concurrency), threads_config_(threads_config),
         active_threads_(active_threads)
   {
   }
 
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config);
+  void Infer() override;
 
  private:
   const size_t max_concurrency_;
@@ -113,6 +112,55 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   size_t& active_threads_;
   // TODO REFACTOR can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
+
+  // All of the Inference contexts for this worker
+  std::vector<std::unique_ptr<InferContext>> ctxs_;
+
+  std::queue<int> free_ctx_ids_;
+
+  std::atomic<int> total_ongoing_requests_{0};
+
+  std::shared_ptr<ThreadStat> thread_stat_;
+  std::shared_ptr<ThreadConfig> thread_config_;
+
+  // request_id to start timestamp map
+  std::map<std::string, AsyncRequestProperties> async_req_map_;
+
+  // Variables used to signal async request completion
+  bool notified_ = false;
+  std::mutex cb_mtx_;
+  std::condition_variable cb_cv_;
+
+  // Callback function for handling asynchronous requests
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
+
+  // Function pointer to the async callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &ConcurrencyWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+
+  cb::Error CompleteOngoingSequences();
+
+  // Reserve vector size for contexts
+  void ReserveContexts();
+
+  // Handle the case where execute_ is false
+  void HandleExecuteOff();
+
+  // Handle the case where this thread is configured to do nothing
+  // Returns true if an exit condition was met
+  bool HandleNoConcurrency();
+
+  // Create and populate contexts if needed
+  void CreateContextsAsNecessary();
+
+  // Send out the desired concurrency of requests
+  void SendInferRequests();
+
+  void WaitForResponses();
+
+  // Detect and handle the case where this thread needs to exit
+  // Returns true if an exit condition was met
+  bool HandleExitConditions();
 };
 
 }}  // namespace triton::perfanalyzer
