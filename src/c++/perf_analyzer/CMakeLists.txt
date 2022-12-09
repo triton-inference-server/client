@@ -64,6 +64,7 @@ set(
   concurrency_manager.h
   request_rate_manager.h
   custom_load_manager.h
+  iworker.h
   load_worker.h
   request_rate_worker.h
   concurrency_worker.h

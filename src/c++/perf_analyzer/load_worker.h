@@ -30,6 +30,7 @@
 #include <mutex>
 
 #include "data_loader.h"
+#include "iworker.h"
 #include "model_parser.h"
 
 namespace triton { namespace perfanalyzer {
@@ -143,7 +144,7 @@ struct AsyncRequestProperties {
 
 /// Abstract base class for worker threads
 ///
-class LoadWorker {
+class LoadWorker : public IWorker {
  protected:
   LoadWorker(
       const std::shared_ptr<ModelParser> parser,

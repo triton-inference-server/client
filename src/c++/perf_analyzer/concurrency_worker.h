@@ -34,12 +34,17 @@
 
 namespace triton { namespace perfanalyzer {
 
-// TODO REFACTOR combine IConcurrencyWorker and IRequestRateWorker interfaces
-// (must first combine threadconfigs)
-
-/// Interface for ConcurrencyWorker
+/// Worker thread for the ConcurrencyManager
 ///
-class IConcurrencyWorker {
+/// The worker maintains concurrency in different ways:
+///   For sequence models, multiple contexts must be created for multiple
+///   concurrent sequences.
+///
+///   For non-sequence models, one context can send out multiple requests
+///   at the same time. Thus it uses one single context as every infer context
+///   creates a worker thread implicitly.
+///
+class ConcurrencyWorker : public LoadWorker {
  public:
   struct ThreadConfig {
     ThreadConfig(size_t thread_id)
@@ -58,23 +63,6 @@ class IConcurrencyWorker {
     bool is_paused_;
   };
 
-  // Main inferencing loop for the worker
-  virtual void Infer() = 0;
-};
-
-
-/// Worker thread for the ConcurrencyManager
-///
-/// The worker maintains concurrency in different ways:
-///   For sequence models, multiple contexts must be created for multiple
-///   concurrent sequences.
-///
-///   For non-sequence models, one context can send out multiple requests
-///   at the same time. Thus it uses one single context as every infer context
-///   creates a worker thread implicitly.
-///
-class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
- public:
   ConcurrencyWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,

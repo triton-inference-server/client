@@ -30,9 +30,14 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// Interface for RequestRateWorker
+/// Worker thread for RequestRateManager
 ///
-class IRequestRateWorker {
+/// If the model is non-sequence model, each worker uses only one context
+/// to maintain concurrency assigned to worker.
+/// If the model is sequence model, each worker has to use multiples contexts
+/// to maintain (sequence) concurrency assigned to worker.
+///
+class RequestRateWorker : public LoadWorker {
  public:
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
@@ -49,18 +54,6 @@ class IRequestRateWorker {
     int non_sequence_data_step_id_;
   };
 
-  virtual void Infer() = 0;
-};
-
-/// Worker thread for RequestRateManager
-///
-/// If the model is non-sequence model, each worker uses only one context
-/// to maintain concurrency assigned to worker.
-/// If the model is sequence model, each worker has to use multiples contexts
-/// to maintain (sequence) concurrency assigned to worker.
-///
-class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
- public:
   RequestRateWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
