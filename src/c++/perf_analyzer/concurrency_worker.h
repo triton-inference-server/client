@@ -34,12 +34,17 @@
 
 namespace triton { namespace perfanalyzer {
 
-// TODO REFACTOR combine IConcurrencyWorker and IRequestRateWorker interfaces
-// (must first combine threadconfigs)
-
-/// Interface for ConcurrencyWorker
+/// Worker thread for the ConcurrencyManager
 ///
-class IConcurrencyWorker {
+/// The worker maintains concurrency in different ways:
+///   For sequence models, multiple contexts must be created for multiple
+///   concurrent sequences.
+///
+///   For non-sequence models, one context can send out multiple requests
+///   at the same time. Thus it uses one single context as every infer context
+///   creates a worker thread implicitly.
+///
+class ConcurrencyWorker : public LoadWorker {
  public:
   struct ThreadConfig {
     ThreadConfig(size_t thread_id)
@@ -58,23 +63,6 @@ class IConcurrencyWorker {
     bool is_paused_;
   };
 
-  // Main inferencing loop for the worker
-  virtual void Infer() = 0;
-};
-
-
-/// Worker thread for the ConcurrencyManager
-///
-/// The worker maintains concurrency in different ways:
-///   For sequence models, multiple contexts must be created for multiple
-///   concurrent sequences.
-///
-///   For non-sequence models, one context can send out multiple requests
-///   at the same time. Thus it uses one single context as every infer context
-///   creates a worker thread implicitly.
-///
-class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
- public:
   ConcurrencyWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
@@ -93,14 +81,13 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
-            parser, data_loader, factory, sequence_stat, shared_memory_regions,
-            backend_kind, shared_memory_type, on_sequence_model, async,
-            streaming, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
-            wake_signal, wake_mutex, execute),
-        thread_stat_(thread_stat), thread_config_(thread_config),
-        max_concurrency_(max_concurrency), threads_config_(threads_config),
-        active_threads_(active_threads)
+            thread_stat, parser, data_loader, factory, sequence_stat,
+            shared_memory_regions, backend_kind, shared_memory_type,
+            on_sequence_model, async, streaming, batch_size, using_json_data,
+            sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
+            distribution, wake_signal, wake_mutex, execute),
+        thread_config_(thread_config), max_concurrency_(max_concurrency),
+        threads_config_(threads_config), active_threads_(active_threads)
   {
   }
 
@@ -108,9 +95,10 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
 
  private:
   const size_t max_concurrency_;
-  // TODO REFACTOR can we decouple this thread from the total count of threads?
+  // TODO REFACTOR TMA-1020 can we decouple this thread from the total count of
+  // threads?
   size_t& active_threads_;
-  // TODO REFACTOR can we decouple this thread from every other thread?
+  // TODO REFACTOR TMA-1020 can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 
   // All of the Inference contexts for this worker
@@ -120,11 +108,7 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
 
   std::atomic<int> total_ongoing_requests_{0};
 
-  std::shared_ptr<ThreadStat> thread_stat_;
   std::shared_ptr<ThreadConfig> thread_config_;
-
-  // request_id to start timestamp map
-  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Variables used to signal async request completion
   bool notified_ = false;

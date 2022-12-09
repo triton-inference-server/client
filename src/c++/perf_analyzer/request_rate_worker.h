@@ -30,9 +30,14 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// Interface for RequestRateWorker
+/// Worker thread for RequestRateManager
 ///
-class IRequestRateWorker {
+/// If the model is non-sequence model, each worker uses only one context
+/// to maintain concurrency assigned to worker.
+/// If the model is sequence model, each worker has to use multiples contexts
+/// to maintain (sequence) concurrency assigned to worker.
+///
+class RequestRateWorker : public LoadWorker {
  public:
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
@@ -49,18 +54,6 @@ class IRequestRateWorker {
     int non_sequence_data_step_id_;
   };
 
-  virtual void Infer() = 0;
-};
-
-/// Worker thread for RequestRateManager
-///
-/// If the model is non-sequence model, each worker uses only one context
-/// to maintain concurrency assigned to worker.
-/// If the model is sequence model, each worker has to use multiples contexts
-/// to maintain (sequence) concurrency assigned to worker.
-///
-class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
- public:
   RequestRateWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
@@ -81,13 +74,13 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
-            parser, data_loader, factory, sequence_stat, shared_memory_regions,
-            backend_kind, shared_memory_type, on_sequence_model, async,
-            streaming, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
-            wake_signal, wake_mutex, execute),
-        thread_stat_(thread_stat), thread_config_(thread_config),
-        max_threads_(max_threads), start_time_(start_time), schedule_(schedule),
+            thread_stat, parser, data_loader, factory, sequence_stat,
+            shared_memory_regions, backend_kind, shared_memory_type,
+            on_sequence_model, async, streaming, batch_size, using_json_data,
+            sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
+            distribution, wake_signal, wake_mutex, execute),
+        thread_config_(thread_config), max_threads_(max_threads),
+        start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)
   {
   }
@@ -97,17 +90,13 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
  private:
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
-  // TODO REFACTOR - why can't we just pass every thread its own personal
+  // TODO REFACTOR TMA-1018 why can't we just pass every thread its own personal
   // schedule instead of passing in the full schedule and making each thread
   // self-calculate where it should be?
   std::vector<std::chrono::nanoseconds>& schedule_;
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
 
-  std::shared_ptr<ThreadStat> thread_stat_;
   std::shared_ptr<ThreadConfig> thread_config_;
-
-  // request_id to start timestamp map
-  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
