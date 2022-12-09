@@ -74,13 +74,13 @@ class RequestRateWorker : public LoadWorker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
-            parser, data_loader, factory, sequence_stat, shared_memory_regions,
-            backend_kind, shared_memory_type, on_sequence_model, async,
-            streaming, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
-            wake_signal, wake_mutex, execute),
-        thread_stat_(thread_stat), thread_config_(thread_config),
-        max_threads_(max_threads), start_time_(start_time), schedule_(schedule),
+            thread_stat, parser, data_loader, factory, sequence_stat,
+            shared_memory_regions, backend_kind, shared_memory_type,
+            on_sequence_model, async, streaming, batch_size, using_json_data,
+            sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
+            distribution, wake_signal, wake_mutex, execute),
+        thread_config_(thread_config), max_threads_(max_threads),
+        start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)
   {
   }
@@ -96,11 +96,7 @@ class RequestRateWorker : public LoadWorker {
   std::vector<std::chrono::nanoseconds>& schedule_;
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
 
-  std::shared_ptr<ThreadStat> thread_stat_;
   std::shared_ptr<ThreadConfig> thread_config_;
-
-  // request_id to start timestamp map
-  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);

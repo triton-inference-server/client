@@ -82,8 +82,6 @@ struct ThreadStat {
   cb::Error cb_status_;
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
-  // The concurrency level that the worker should produce
-  size_t concurrency_;
   // A vector of request timestamps <start_time, end_time>
   // Request latency will be end_time - start_time
   TimestampVector request_timestamps_;
@@ -147,6 +145,7 @@ struct AsyncRequestProperties {
 class LoadWorker : public IWorker {
  protected:
   LoadWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -161,8 +160,8 @@ class LoadWorker : public IWorker {
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute)
-      : parser_(parser), data_loader_(data_loader), factory_(factory),
-        sequence_stat_(sequence_stat),
+      : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
+        factory_(factory), sequence_stat_(sequence_stat),
         shared_memory_regions_(shared_memory_regions),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
@@ -274,6 +273,12 @@ class LoadWorker : public IWorker {
   // TODO REFACTOR TMA-1017 is there a better way to communicate this than a
   // shared bool reference? Used to pause execution of this thread
   bool& execute_;
+
+  // Stats for this thread
+  std::shared_ptr<ThreadStat> thread_stat_;
+
+  // request_id to start timestamp map
+  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
