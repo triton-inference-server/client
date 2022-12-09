@@ -144,11 +144,9 @@ RequestRateManager::PauseWorkers()
       threads_config_.emplace_back(
           new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
 
-      auto worker = MakeWorker();
+      auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
 
-      threads_.emplace_back(
-          &IRequestRateWorker::Infer, worker, threads_stat_.back(),
-          threads_config_.back());
+      threads_.emplace_back(&IRequestRateWorker::Infer, worker);
     }
   }
 
@@ -178,14 +176,16 @@ RequestRateManager::ResumeWorkers()
 }
 
 std::shared_ptr<IRequestRateWorker>
-RequestRateManager::MakeWorker()
+RequestRateManager::MakeWorker(
+    std::shared_ptr<ThreadStat> thread_stat,
+    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
 {
   return std::make_shared<RequestRateWorker>(
-      parser_, data_loader_, backend_->Kind(), factory_, sequence_length_,
-      start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
-      max_threads_, using_json_data_, streaming_, shared_memory_type_,
-      batch_size_, sequence_stat_, shared_memory_regions_, wake_signal_,
-      wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
+      thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
+      factory_, sequence_length_, start_sequence_id_, sequence_id_range_,
+      on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+      shared_memory_type_, batch_size_, sequence_stat_, shared_memory_regions_,
+      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
       gen_duration_, distribution_);
 }
 
