@@ -132,36 +132,35 @@ class ConcurrencyWorker : public LoadWorker, public IConcurrencyWorker {
   std::condition_variable cb_cv_;
 
   // Callback function for handling asynchronous requests
-  void async_callback_func_impl(cb::InferResult* result);
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
 
   // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &ConcurrencyWorker::async_callback_func_impl, this,
-      std::placeholders::_1);
+      &ConcurrencyWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
-  cb::Error complete_ongoing_sequence_func();
+  cb::Error CompleteOngoingSequences();
 
   // Reserve vector size for contexts
-  void reserve_contexts();
+  void ReserveContexts();
 
   // Handle the case where execute_ is false
-  void handle_execute_off();
+  void HandleExecuteOff();
 
   // Handle the case where this thread is configured to do nothing
   // Returns true if an exit condition was met
-  bool handle_no_concurrency();
+  bool HandleNoConcurrency();
 
   // Create and populate contexts if needed
-  void create_contexts_as_necessary();
+  void CreateContextsAsNecessary();
 
   // Send out the desired concurrency of requests
-  void send_infer_requests();
+  void SendInferRequests();
 
-  void wait_for_responses();
+  void WaitForResponses();
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
-  bool handle_exit_conditions();
+  bool HandleExitConditions();
 };
 
 }}  // namespace triton::perfanalyzer

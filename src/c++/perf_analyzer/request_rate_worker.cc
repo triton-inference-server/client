@@ -37,20 +37,20 @@ namespace triton { namespace perfanalyzer {
 void
 RequestRateWorker::Infer()
 {
-  create_context();
+  CreateContext();
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
-    handle_execute_off();
+    HandleExecuteOff();
 
-    bool is_delayed = sleep_if_necessary();
+    bool is_delayed = SleepIfNecessary();
 
-    send_infer_request(is_delayed);
+    SendInferRequest(is_delayed);
 
-    if (handle_exit_conditions()) {
+    if (HandleExitConditions()) {
       return;
     }
 
@@ -58,7 +58,7 @@ RequestRateWorker::Infer()
 }
 
 void
-RequestRateWorker::create_context()
+RequestRateWorker::CreateContext()
 {
   thread_stat_->status_ = factory_->CreateClientBackend(&(ctx_.infer_backend_));
   ctx_.options_.reset(new cb::InferOptions(parser_->ModelName()));
@@ -87,7 +87,7 @@ RequestRateWorker::create_context()
 }
 
 void
-RequestRateWorker::handle_execute_off()
+RequestRateWorker::HandleExecuteOff()
 {
   // Should wait till main thread signals execution start
   if (!execute_) {
@@ -130,7 +130,7 @@ RequestRateWorker::handle_execute_off()
 }
 
 bool
-RequestRateWorker::sleep_if_necessary()
+RequestRateWorker::SleepIfNecessary()
 {
   // Sleep if required
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -155,7 +155,7 @@ RequestRateWorker::sleep_if_necessary()
 }
 
 void
-RequestRateWorker::send_infer_request(bool delayed)
+RequestRateWorker::SendInferRequest(bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_ && (!on_sequence_model_)) {
@@ -214,7 +214,7 @@ RequestRateWorker::send_infer_request(bool delayed)
 }
 
 bool
-RequestRateWorker::handle_exit_conditions()
+RequestRateWorker::HandleExitConditions()
 {
   if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
     if (on_sequence_model_) {
@@ -310,7 +310,7 @@ RequestRateWorker::Request(
 }
 
 void
-RequestRateWorker::async_callback_func_impl(cb::InferResult* result)
+RequestRateWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {

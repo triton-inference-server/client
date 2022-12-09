@@ -41,31 +41,31 @@ namespace triton { namespace perfanalyzer {
 void
 ConcurrencyWorker::Infer()
 {
-  reserve_contexts();
+  ReserveContexts();
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
-    handle_execute_off();
+    HandleExecuteOff();
 
-    if (handle_no_concurrency()) {
+    if (HandleNoConcurrency()) {
       return;
     }
 
-    create_contexts_as_necessary();
+    CreateContextsAsNecessary();
 
     if (!thread_stat_->status_.IsOk()) {
       return;
     }
 
-    send_infer_requests();
+    SendInferRequests();
 
     if (!thread_stat_->status_.IsOk()) {
       return;
     }
 
-    wait_for_responses();
+    WaitForResponses();
 
-    if (handle_exit_conditions()) {
+    if (HandleExitConditions()) {
       return;
     }
 
@@ -73,7 +73,7 @@ ConcurrencyWorker::Infer()
 }
 
 void
-ConcurrencyWorker::reserve_contexts()
+ConcurrencyWorker::ReserveContexts()
 {
   // Reserve the vectors in case of sequence models. In non-sequence or
   // synchronous mode only one context will be opened hence no need of
@@ -85,12 +85,12 @@ ConcurrencyWorker::reserve_contexts()
 }
 
 void
-ConcurrencyWorker::handle_execute_off()
+ConcurrencyWorker::HandleExecuteOff()
 {
   if (on_sequence_model_) {
     if (!execute_) {
       // Ensures the clean exit of the sequences
-      auto status = complete_ongoing_sequence_func();
+      auto status = CompleteOngoingSequences();
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = status;
       }
@@ -103,7 +103,7 @@ ConcurrencyWorker::handle_execute_off()
         ctxs_[i]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[i]));
       }
-      // Reconstruct 'free_ctx_ids_' because complete_ongoing_sequence_func()
+      // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
       free_ctx_ids_ = std::queue<int>();
       for (size_t i = 0; i < ctxs_.size(); ++i) {
@@ -119,13 +119,12 @@ ConcurrencyWorker::handle_execute_off()
 }
 
 bool
-ConcurrencyWorker::handle_no_concurrency()
+ConcurrencyWorker::HandleNoConcurrency()
 {
   // Only interact with synchronous mechanism if the worker should wait
   if (thread_config_->concurrency_ == 0) {
     // Wait if no request should be sent and it is not exiting
     std::unique_lock<std::mutex> lock(wake_mutex_);
-    // FIXME this was waiting on thread_config before
     wake_signal_.wait(lock, [this]() {
       return early_exit || (thread_config_->concurrency_ > 0);
     });
@@ -138,7 +137,7 @@ ConcurrencyWorker::handle_no_concurrency()
 }
 
 void
-ConcurrencyWorker::create_contexts_as_necessary()
+ConcurrencyWorker::CreateContextsAsNecessary()
 {
   // If the model is non-sequence model, use one InferContext to
   // maintain concurrency for this thread.
@@ -177,7 +176,7 @@ ConcurrencyWorker::create_contexts_as_necessary()
 }
 
 void
-ConcurrencyWorker::send_infer_requests()
+ConcurrencyWorker::SendInferRequests()
 {
   uint32_t seq_stat_index = 0, ctx_id = 0;
   uint64_t request_id = 0;
@@ -313,13 +312,12 @@ ConcurrencyWorker::send_infer_requests()
 }
 
 void
-ConcurrencyWorker::wait_for_responses()
+ConcurrencyWorker::WaitForResponses()
 {
   if (async_) {
     {
       // If async, then wait for signal from callback.
       std::unique_lock<std::mutex> lk(cb_mtx_);
-      // FIXME was waiting on notified before?
       cb_cv_.wait(lk, [this] {
         if (notified_) {
           notified_ = false;
@@ -335,12 +333,12 @@ ConcurrencyWorker::wait_for_responses()
 }
 
 bool
-ConcurrencyWorker::handle_exit_conditions()
+ConcurrencyWorker::HandleExitConditions()
 {
   if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
     // Wait for all callbacks to complete.
     // Loop to ensure all the inflight requests have been completed.
-    auto status = complete_ongoing_sequence_func();
+    auto status = CompleteOngoingSequences();
     if (thread_stat_->status_.IsOk()) {
       thread_stat_->status_ = status;
     }
@@ -354,7 +352,7 @@ ConcurrencyWorker::handle_exit_conditions()
 
 
 void
-ConcurrencyWorker::async_callback_func_impl(cb::InferResult* result)
+ConcurrencyWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   uint32_t ctx_id = 0;
   std::shared_ptr<cb::InferResult> result_ptr(result);
@@ -399,7 +397,7 @@ ConcurrencyWorker::async_callback_func_impl(cb::InferResult* result)
 // this function doesn't utilize 'free_ctx_ids_' in the same way as in main
 // loop
 cb::Error
-ConcurrencyWorker::complete_ongoing_sequence_func()
+ConcurrencyWorker::CompleteOngoingSequences()
 {
   if (!on_sequence_model_) {
     return cb::Error::Success;

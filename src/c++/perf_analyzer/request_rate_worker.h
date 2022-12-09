@@ -110,7 +110,7 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
   std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   // Callback function for handling asynchronous requests
-  void async_callback_func_impl(cb::InferResult* result);
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
 
   InferContext ctx_;
 
@@ -118,26 +118,25 @@ class RequestRateWorker : public LoadWorker, public IRequestRateWorker {
 
   // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &RequestRateWorker::async_callback_func_impl, this,
-      std::placeholders::_1);
+      &RequestRateWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
   // Create and initialize the inference context
-  void create_context();
+  void CreateContext();
 
-  void handle_execute_off();
+  void HandleExecuteOff();
 
   // Sleep until it is time for the next part of the schedule
   // Returns true if the request was delayed
-  bool sleep_if_necessary();
+  bool SleepIfNecessary();
 
   // Send a single infer request.
   // Input boolean indicates if the request was delayed from the original
   // schedule
-  void send_infer_request(bool delayed);
+  void SendInferRequest(bool delayed);
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
-  bool handle_exit_conditions();
+  bool HandleExitConditions();
 
   /// A helper function to issue inference request to the server.
   /// \param context InferContext to use for sending the request.
