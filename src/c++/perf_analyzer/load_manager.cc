@@ -174,6 +174,11 @@ LoadManager::CountCollectedRequests()
 cb::Error
 LoadManager::GetAccumulatedClientStat(cb::InferStat* contexts_stat)
 {
+  contexts_stat->completed_request_count = 0;
+  contexts_stat->cumulative_receive_time_ns = 0;
+  contexts_stat->cumulative_send_time_ns = 0;
+  contexts_stat->cumulative_total_request_time_ns = 0;
+
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
     for (auto& context_stat : thread_stat->contexts_stat_) {
