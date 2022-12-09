@@ -42,6 +42,8 @@ namespace triton { namespace perfanalyzer {
 class TestRequestRateWorker : public RequestRateWorker {
  public:
   TestRequestRateWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -59,12 +61,12 @@ class TestRequestRateWorker : public RequestRateWorker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : RequestRateWorker(
-            parser, data_loader, backend_kind, factory, sequence_length,
-            start_sequence_id, sequence_id_range, on_sequence_model, async,
-            max_threads, using_json_data, streaming, shared_memory_type,
-            batch_size, sequence_stat, shared_memory_regions, wake_signal,
-            wake_mutex, execute, curr_seq_id, start_time, schedule,
-            gen_duration, distribution)
+            thread_stat, thread_config, parser, data_loader, backend_kind,
+            factory, sequence_length, start_sequence_id, sequence_id_range,
+            on_sequence_model, async, max_threads, using_json_data, streaming,
+            shared_memory_type, batch_size, sequence_stat,
+            shared_memory_regions, wake_signal, wake_mutex, execute,
+            curr_seq_id, start_time, schedule, gen_duration, distribution)
   {
   }
 
@@ -82,14 +84,16 @@ class TestRequestRateWorker : public RequestRateWorker {
 
 class MockRequestRateWorker : public IRequestRateWorker {
  public:
-  MockRequestRateWorker() = default;
-
-  void Infer(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config) override
+  MockRequestRateWorker(
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
+      : thread_config_(thread_config)
   {
-    thread_config->is_paused_ = true;
   }
+
+  void Infer() override { thread_config_->is_paused_ = true; }
+
+ private:
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config_;
 };
 
 /// Class to test the RequestRateManager
@@ -113,18 +117,21 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  std::shared_ptr<IRequestRateWorker> MakeWorker() override
+  std::shared_ptr<IRequestRateWorker> MakeWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
     if (use_mock_infer_) {
-      return std::make_shared<MockRequestRateWorker>();
+      return std::make_shared<MockRequestRateWorker>(thread_config);
     } else {
       return std::make_shared<TestRequestRateWorker>(
-          parser_, data_loader_, backend_->Kind(), RequestRateManager::factory_,
-          sequence_length_, start_sequence_id_, sequence_id_range_,
-          on_sequence_model_, async_, max_threads_, using_json_data_,
-          streaming_, shared_memory_type_, batch_size_, sequence_stat_,
-          shared_memory_regions_, wake_signal_, wake_mutex_, execute_,
-          curr_seq_id_, start_time_, schedule_, gen_duration_, distribution_);
+          thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
+          RequestRateManager::factory_, sequence_length_, start_sequence_id_,
+          sequence_id_range_, on_sequence_model_, async_, max_threads_,
+          using_json_data_, streaming_, shared_memory_type_, batch_size_,
+          sequence_stat_, shared_memory_regions_, wake_signal_, wake_mutex_,
+          execute_, curr_seq_id_, start_time_, schedule_, gen_duration_,
+          distribution_);
     }
   }
 
@@ -492,9 +499,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
     TestRequestRateManager trrm(params);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
-    auto worker = trrm.MakeWorker();
-    std::future<void> infer_future{std::async(
-        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+    auto worker = trrm.MakeWorker(thread_stat, thread_config);
+    std::future<void> infer_future{
+        std::async(&IRequestRateWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();
@@ -508,9 +515,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
         params, false /* is_sequence */, true /* is_decoupled */);
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
-    auto worker = trrm.MakeWorker();
-    std::future<void> infer_future{std::async(
-        &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+    auto worker = trrm.MakeWorker(thread_stat, thread_config);
+    std::future<void> infer_future{
+        std::async(&IRequestRateWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();
@@ -585,9 +592,9 @@ TEST_CASE(
     trrm.streaming_ = true;
   }
 
-  auto worker = trrm.MakeWorker();
-  std::future<void> infer_future{std::async(
-      &IRequestRateWorker::Infer, worker, thread_stat, thread_config)};
+  auto worker = trrm.MakeWorker(thread_stat, thread_config);
+  std::future<void> infer_future{
+      std::async(&IRequestRateWorker::Infer, worker)};
 
   std::this_thread::sleep_for(std::chrono::milliseconds(14));
 

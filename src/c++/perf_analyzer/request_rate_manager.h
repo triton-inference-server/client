@@ -130,7 +130,9 @@ class RequestRateManager : public LoadManager {
   void ResumeWorkers();
 
   // Makes a new worker
-  virtual std::shared_ptr<IRequestRateWorker> MakeWorker();
+  virtual std::shared_ptr<IRequestRateWorker> MakeWorker(
+      std::shared_ptr<ThreadStat>,
+      std::shared_ptr<RequestRateWorker::ThreadConfig>);
 
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
