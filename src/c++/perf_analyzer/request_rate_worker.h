@@ -90,7 +90,7 @@ class RequestRateWorker : public LoadWorker {
  private:
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
-  // TODO REFACTOR - why can't we just pass every thread its own personal
+  // TODO REFACTOR TMA-1018 why can't we just pass every thread its own personal
   // schedule instead of passing in the full schedule and making each thread
   // self-calculate where it should be?
   std::vector<std::chrono::nanoseconds>& schedule_;

@@ -255,24 +255,24 @@ class LoadWorker : public IWorker {
       const int step_index);
 
  protected:
-  // TODO REFACTOR all sequence related code should be in a single class. We
-  // shouldn't have to have a shared uint64 reference passed to all threads
-  // Current sequence id (for issuing new sequences)
+  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
+  // class. We shouldn't have to have a shared uint64 reference passed to all
+  // threads Current sequence id (for issuing new sequences)
   std::atomic<uint64_t>& curr_seq_id_;
 
-  // TODO REFACTOR this created in load manager init in one case. Can we
-  // decouple? Used to pick among multiple data streams
+  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
+  // we decouple? Used to pick among multiple data streams. Note this probably
+  // gets absorbed into the new sequence class when it is created
   std::uniform_int_distribution<uint64_t>& distribution_;
 
-  // TODO REFACTOR is there a better way to do threading than to pass the same
-  // cv/mutex into every thread by reference?
-  // Used to wake up this thread if it has been put to sleep
+  // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
+  // the same cv/mutex into every thread by reference? Used to wake up this
+  // thread if it has been put to sleep
   std::condition_variable& wake_signal_;
   std::mutex& wake_mutex_;
 
-  // TODO REFACTOR is there a better way to communicate this than a shared bool
-  // reference?
-  // Used to pause execution of this thread
+  // TODO REFACTOR TMA-1017 is there a better way to communicate this than a
+  // shared bool reference? Used to pause execution of this thread
   bool& execute_;
 
   // Map from shared memory key to its starting address and size

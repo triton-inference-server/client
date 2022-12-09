@@ -96,9 +96,10 @@ class ConcurrencyWorker : public LoadWorker {
 
  private:
   const size_t max_concurrency_;
-  // TODO REFACTOR can we decouple this thread from the total count of threads?
+  // TODO REFACTOR TMA-1020 can we decouple this thread from the total count of
+  // threads?
   size_t& active_threads_;
-  // TODO REFACTOR can we decouple this thread from every other thread?
+  // TODO REFACTOR TMA-1020 can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 
   // All of the Inference contexts for this worker
