@@ -82,7 +82,7 @@ class TestRequestRateWorker : public RequestRateWorker {
   }
 };
 
-class MockRequestRateWorker : public IRequestRateWorker {
+class MockRequestRateWorker : public IWorker {
  public:
   MockRequestRateWorker(
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
@@ -117,7 +117,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  std::shared_ptr<IRequestRateWorker> MakeWorker(
+  std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
@@ -500,8 +500,7 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
     auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    std::future<void> infer_future{
-        std::async(&IRequestRateWorker::Infer, worker)};
+    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();
@@ -516,8 +515,7 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
     trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
     auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    std::future<void> infer_future{
-        std::async(&IRequestRateWorker::Infer, worker)};
+    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
     early_exit = true;
     infer_future.get();
@@ -560,8 +558,8 @@ TEST_CASE(
   mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<IRequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<IRequestRateWorker::ThreadConfig>(0, 1)};
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
   trrm.parser_ = mmp;
   trrm.data_loader_ = mdl;
@@ -593,8 +591,7 @@ TEST_CASE(
   }
 
   auto worker = trrm.MakeWorker(thread_stat, thread_config);
-  std::future<void> infer_future{
-      std::async(&IRequestRateWorker::Infer, worker)};
+  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   std::this_thread::sleep_for(std::chrono::milliseconds(14));
 

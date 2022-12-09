@@ -130,7 +130,7 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
 
     auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
 
-    threads_.emplace_back(&IConcurrencyWorker::Infer, worker);
+    threads_.emplace_back(&IWorker::Infer, worker);
   }
 
   {
@@ -164,7 +164,7 @@ ConcurrencyManager::ResumeSequenceWorkers()
   wake_signal_.notify_all();
 }
 
-std::shared_ptr<IConcurrencyWorker>
+std::shared_ptr<IWorker>
 ConcurrencyManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
     std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config)
