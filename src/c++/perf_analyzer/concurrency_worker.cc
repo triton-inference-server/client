@@ -225,10 +225,18 @@ ConcurrencyWorker::SendInferRequest()
       sequence_stat_[seq_stat_index]->remaining_queries_--;
     }
   }
+  bool is_delayed = false;
   Request(
-      ctxs_[ctx_id], ctx_id, request_id++, async_callback_func_, async_req_map_,
-      thread_stat_);
+      ctxs_[ctx_id], ctx_id, request_id++, is_delayed, async_callback_func_,
+      async_req_map_, thread_stat_);
 
+  // FIXME we are clearly pushing and not popping in some cases
+  if (!async_) {
+    {
+      std::lock_guard<std::mutex> lock(cb_mtx_);
+      free_ctx_ids_.push(ctx_id);
+    }
+  }
   total_ongoing_requests_++;
 }
 
@@ -268,10 +276,15 @@ ConcurrencyWorker::UpdateSeqJsonData(
 void
 ConcurrencyWorker::Request(
     std::shared_ptr<InferContext> context, const uint32_t ctx_id,
-    const uint64_t request_id, cb::OnCompleteFn callback_func,
+    const uint64_t request_id, const bool delayed,
+    cb::OnCompleteFn callback_func,
     std::map<std::string, AsyncRequestProperties>& async_req_map,
     std::shared_ptr<ThreadStat> thread_stat)
 {
+  if (!thread_stat->status_.IsOk()) {
+    return;
+  }
+
   if (async_) {
     context->options_->request_id_ = std::to_string(request_id);
     {
@@ -283,6 +296,7 @@ ConcurrencyWorker::Request(
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.ctx_id_ = ctx_id;
       it->second.sequence_end_ = context->options_->sequence_end_;
+      it->second.delayed_ = delayed;
     }
     if (streaming_) {
       thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
@@ -292,6 +306,7 @@ ConcurrencyWorker::Request(
           callback_func, *(context->options_), context->valid_inputs_,
           context->outputs_);
     }
+    context->inflight_request_cnt_++;
   } else {
     std::chrono::time_point<std::chrono::system_clock> start_time_sync,
         end_time_sync;
@@ -316,16 +331,12 @@ ConcurrencyWorker::Request(
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       thread_stat->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, context->options_->sequence_end_,
-          false /* delayed */));
+          delayed));
       thread_stat->status_ = context->infer_backend_->ClientInferStat(
           &(thread_stat->contexts_stat_[ctx_id]));
       if (!thread_stat->status_.IsOk()) {
         return;
       }
-    }
-    {
-      std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctx_id);
     }
   }
 }
@@ -393,6 +404,8 @@ ConcurrencyWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         ctx_id = it->second.ctx_id_;
         ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
+        // FIXME used by this class
+        ctxs_[ctx_id]->inflight_request_cnt_--;
         thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }

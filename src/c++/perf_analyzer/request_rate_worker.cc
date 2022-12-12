@@ -104,8 +104,11 @@ RequestRateWorker::HandleExecuteOff()
           ctx_->options_->sequence_start_ = false;
           ctx_->options_->sequence_end_ = true;
           ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+
+          bool is_delayed = false;
+          uint32_t ctx_id = 0;
           Request(
-              ctx_, request_id_++, false /* delayed */, async_callback_func_,
+              ctx_, ctx_id, request_id_++, is_delayed, async_callback_func_,
               async_req_map_, thread_stat_);
           sequence_stat_[i]->remaining_queries_ = 0;
         }
@@ -160,14 +163,16 @@ RequestRateWorker::SleepIfNecessary()
 void
 RequestRateWorker::SendInferRequest(bool delayed)
 {
+  uint32_t ctx_id = 0;
+
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
       UpdateJsonData();
     }
     Request(
-        ctx_, request_id_++, delayed, async_callback_func_, async_req_map_,
-        thread_stat_);
+        ctx_, ctx_id, request_id_++, delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
   } else {
     // Select one of the sequence at random for this request
     uint32_t seq_stat_index = rand() % sequence_stat_.size();
@@ -185,8 +190,8 @@ RequestRateWorker::SendInferRequest(bool delayed)
       sequence_stat_[seq_stat_index]->remaining_queries_--;
 
       Request(
-          ctx_, request_id_++, delayed, async_callback_func_, async_req_map_,
-          thread_stat_);
+          ctx_, ctx_id, request_id_++, delayed, async_callback_func_,
+          async_req_map_, thread_stat_);
     }
   }
 }
@@ -234,8 +239,11 @@ RequestRateWorker::HandleExitConditions()
           ctx_->options_->sequence_start_ = false;
           ctx_->options_->sequence_end_ = true;
           ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+
+          bool is_delayed = false;
+          uint32_t ctx_id = 0;
           Request(
-              ctx_, request_id_++, false /* delayed */, async_callback_func_,
+              ctx_, ctx_id, request_id_++, is_delayed, async_callback_func_,
               async_req_map_, thread_stat_);
           sequence_stat_[i]->remaining_queries_ = 0;
         }
@@ -254,8 +262,9 @@ RequestRateWorker::HandleExitConditions()
 
 void
 RequestRateWorker::Request(
-    std::shared_ptr<InferContext> context, const uint64_t request_id,
-    const bool delayed, cb::OnCompleteFn callback_func,
+    std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+    const uint64_t request_id, const bool delayed,
+    cb::OnCompleteFn callback_func,
     std::map<std::string, AsyncRequestProperties>& async_req_map,
     std::shared_ptr<ThreadStat> thread_stat)
 {
@@ -272,6 +281,7 @@ RequestRateWorker::Request(
               .emplace(context->options_->request_id_, AsyncRequestProperties())
               .first;
       it->second.start_time_ = std::chrono::system_clock::now();
+      it->second.ctx_id_ = ctx_id;
       it->second.sequence_end_ = context->options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
@@ -282,9 +292,6 @@ RequestRateWorker::Request(
       thread_stat->status_ = context->infer_backend_->AsyncInfer(
           callback_func, *(context->options_), context->valid_inputs_,
           context->outputs_);
-    }
-    if (!thread_stat->status_.IsOk()) {
-      return;
     }
     context->inflight_request_cnt_++;
   } else {
@@ -313,7 +320,7 @@ RequestRateWorker::Request(
           start_time_sync, end_time_sync, context->options_->sequence_end_,
           delayed));
       thread_stat->status_ = context->infer_backend_->ClientInferStat(
-          &(thread_stat->contexts_stat_[0]));
+          &(thread_stat->contexts_stat_[ctx_id]));
       if (!thread_stat->status_.IsOk()) {
         return;
       }
