@@ -101,9 +101,6 @@ class ConcurrencyWorker : public LoadWorker {
   // TODO REFACTOR TMA-1020 can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 
-  // All of the Inference contexts for this worker
-  std::vector<std::shared_ptr<InferContext>> ctxs_;
-
   std::queue<int> free_ctx_ids_;
 
   std::atomic<int> total_ongoing_requests_{0};
@@ -115,14 +112,7 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
-  // Callback function for handling asynchronous requests
-  void AsyncCallbackFuncImpl(cb::InferResult* result);
-
-  // Function pointer to the async callback function implementation
-  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &ConcurrencyWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
-
-  void AsyncCallbackFinalize(uint32_t ctx_id);
+  void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
   cb::Error CompleteOngoingSequences();
 

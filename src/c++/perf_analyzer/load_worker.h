@@ -271,6 +271,16 @@ class LoadWorker : public IWorker {
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
 
+  // Callback function for handling asynchronous requests
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
+
+  // Code to execute at the end of the async callback function
+  virtual void AsyncCallbackFinalize(uint32_t ctx_id) {}
+
+  // Function pointer to the async callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &LoadWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+
 
   // TODO REFACTOR TMA-1019 all sequence related code should be in a single
   // class. We shouldn't have to have a shared uint64 reference passed to all
@@ -291,6 +301,9 @@ class LoadWorker : public IWorker {
   // TODO REFACTOR TMA-1017 is there a better way to communicate this than a
   // shared bool reference? Used to pause execution of this thread
   bool& execute_;
+
+  // All of the Inference contexts for this worker
+  std::vector<std::shared_ptr<InferContext>> ctxs_;
 
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;

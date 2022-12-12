@@ -267,34 +267,4 @@ RequestRateWorker::HandleExitConditions()
   return false;
 }
 
-void
-RequestRateWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
-{
-  uint32_t ctx_id = 0;
-  std::shared_ptr<cb::InferResult> result_ptr(result);
-  if (thread_stat_->cb_status_.IsOk()) {
-    // Add the request timestamp to thread Timestamp vector with
-    // proper locking
-    std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-    thread_stat_->cb_status_ = result_ptr->RequestStatus();
-    if (thread_stat_->cb_status_.IsOk()) {
-      std::chrono::time_point<std::chrono::system_clock> end_time_async;
-      end_time_async = std::chrono::system_clock::now();
-      std::string request_id;
-      thread_stat_->cb_status_ = result_ptr->Id(&request_id);
-      const auto& it = async_req_map_.find(request_id);
-      if (it != async_req_map_.end()) {
-        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-            it->second.start_time_, end_time_async, it->second.sequence_end_,
-            it->second.delayed_));
-        ctx_id = it->second.ctx_id_;
-        ctxs_[ctx_id]->infer_backend_->ClientInferStat(
-            &(thread_stat_->contexts_stat_[ctx_id]));
-        ctxs_[ctx_id]->inflight_request_cnt_--;
-        thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
-        async_req_map_.erase(request_id);
-      }
-    }
-  }
-}
 }}  // namespace triton::perfanalyzer

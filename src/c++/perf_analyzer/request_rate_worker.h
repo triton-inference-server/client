@@ -98,16 +98,7 @@ class RequestRateWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  // Callback function for handling asynchronous requests
-  void AsyncCallbackFuncImpl(cb::InferResult* result);
-
-  std::vector<std::shared_ptr<InferContext>> ctxs_;
-
   uint64_t request_id_ = 0;
-
-  // Function pointer to the async callback function implementation
-  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &RequestRateWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
   // Create and initialize the inference context
   void CreateContext();
