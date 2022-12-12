@@ -141,6 +141,12 @@ class RequestRateWorker : public LoadWorker {
       cb::OnCompleteFn callback_func,
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
+
+  /// Update inputs based on custom json data for the given sequence
+  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
+
+  /// Update inputs based on custom json data
+  void UpdateJsonData();
 };
 
 

@@ -157,24 +157,15 @@ RequestRateWorker::SleepIfNecessary()
 void
 RequestRateWorker::SendInferRequest(bool delayed)
 {
-  // Update the inputs if required
-  if (using_json_data_ && (!on_sequence_model_)) {
-    int step_id = (thread_config_->non_sequence_data_step_id_ %
-                   data_loader_->GetTotalStepsNonSequence()) *
-                  batch_size_;
-    thread_config_->non_sequence_data_step_id_ += max_threads_;
-    thread_stat_->status_ =
-        UpdateInputs(ctx_.inputs_, ctx_.valid_inputs_, 0, step_id);
-    if (thread_stat_->status_.IsOk()) {
-      thread_stat_->status_ = UpdateValidationOutputs(
-          ctx_.outputs_, 0, step_id, ctx_.expected_outputs_);
+  if (!on_sequence_model_) {
+    // Update the inputs if required
+    if (using_json_data_) {
+      UpdateJsonData();
     }
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
-  }
-
-  if (on_sequence_model_) {
+    Request(
+        ctx_, request_id_++, delayed, async_callback_func_, async_req_map_,
+        thread_stat_);
+  } else {
     // Select one of the sequence at random for this request
     uint32_t seq_stat_index = rand() % sequence_stat_.size();
     // Need lock to protect the order of dispatch across worker threads.
@@ -185,31 +176,44 @@ RequestRateWorker::SendInferRequest(bool delayed)
 
       // Update the inputs if required
       if (using_json_data_) {
-        int step_id = data_loader_->GetTotalSteps(
-                          sequence_stat_[seq_stat_index]->data_stream_id_) -
-                      sequence_stat_[seq_stat_index]->remaining_queries_;
-        thread_stat_->status_ = UpdateInputs(
-            ctx_.inputs_, ctx_.valid_inputs_,
-            sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
-        if (thread_stat_->status_.IsOk()) {
-          thread_stat_->status_ = UpdateValidationOutputs(
-              ctx_.outputs_, sequence_stat_[seq_stat_index]->data_stream_id_,
-              step_id, ctx_.expected_outputs_);
-        }
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
+        UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
       }
+
+      sequence_stat_[seq_stat_index]->remaining_queries_--;
 
       Request(
           ctx_, request_id_++, delayed, async_callback_func_, async_req_map_,
           thread_stat_);
-      sequence_stat_[seq_stat_index]->remaining_queries_--;
     }
-  } else {
-    Request(
-        ctx_, request_id_++, delayed, async_callback_func_, async_req_map_,
-        thread_stat_);
+  }
+}
+
+void
+RequestRateWorker::UpdateJsonData()
+{
+  int step_id = (thread_config_->non_sequence_data_step_id_ %
+                 data_loader_->GetTotalStepsNonSequence()) *
+                batch_size_;
+  thread_config_->non_sequence_data_step_id_ += max_threads_;
+  thread_stat_->status_ =
+      UpdateInputs(ctx_.inputs_, ctx_.valid_inputs_, 0, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctx_.outputs_, 0, step_id, ctx_.expected_outputs_);
+  }
+}
+
+void
+RequestRateWorker::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
+{
+  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
+                seq_stat->remaining_queries_;
+  thread_stat_->status_ = UpdateInputs(
+      ctx_.inputs_, ctx_.valid_inputs_, seq_stat->data_stream_id_, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctx_.outputs_, seq_stat->data_stream_id_, step_id,
+        ctx_.expected_outputs_);
   }
 }
 
@@ -249,15 +253,19 @@ void
 RequestRateWorker::Request(
     InferContext& context, const uint64_t request_id, const bool delayed,
     cb::OnCompleteFn callback_func,
-    std::map<std::string, AsyncRequestProperties>& async_req_map_,
-    std::shared_ptr<ThreadStat> thread_stat_)
+    std::map<std::string, AsyncRequestProperties>& async_req_map,
+    std::shared_ptr<ThreadStat> thread_stat)
 {
+  if (!thread_stat->status_.IsOk()) {
+    return;
+  }
+
   if (async_) {
     context.options_->request_id_ = std::to_string(request_id);
     {
-      std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
       auto it =
-          async_req_map_
+          async_req_map
               .emplace(context.options_->request_id_, AsyncRequestProperties())
               .first;
       it->second.start_time_ = std::chrono::system_clock::now();
@@ -265,14 +273,14 @@ RequestRateWorker::Request(
       it->second.delayed_ = delayed;
     }
     if (streaming_) {
-      thread_stat_->status_ = context.infer_backend_->AsyncStreamInfer(
+      thread_stat->status_ = context.infer_backend_->AsyncStreamInfer(
           *(context.options_), context.valid_inputs_, context.outputs_);
     } else {
-      thread_stat_->status_ = context.infer_backend_->AsyncInfer(
+      thread_stat->status_ = context.infer_backend_->AsyncInfer(
           callback_func, *(context.options_), context.valid_inputs_,
           context.outputs_);
     }
-    if (!thread_stat_->status_.IsOk()) {
+    if (!thread_stat->status_.IsOk()) {
       return;
     }
     context.inflight_request_cnt_++;
@@ -281,28 +289,28 @@ RequestRateWorker::Request(
         end_time_sync;
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    thread_stat_->status_ = context.infer_backend_->Infer(
+    thread_stat->status_ = context.infer_backend_->Infer(
         &results, *(context.options_), context.valid_inputs_, context.outputs_);
     if (results != nullptr) {
-      if (thread_stat_->status_.IsOk()) {
-        thread_stat_->status_ = ValidateOutputs(context, results);
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(context, results);
       }
       delete results;
     }
-    if (!thread_stat_->status_.IsOk()) {
+    if (!thread_stat->status_.IsOk()) {
       return;
     }
     end_time_sync = std::chrono::system_clock::now();
     {
       // Add the request timestamp to thread Timestamp vector with proper
       // locking
-      std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-      thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      thread_stat->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, context.options_->sequence_end_,
           delayed));
-      thread_stat_->status_ = context.infer_backend_->ClientInferStat(
-          &(thread_stat_->contexts_stat_[0]));
-      if (!thread_stat_->status_.IsOk()) {
+      thread_stat->status_ = context.infer_backend_->ClientInferStat(
+          &(thread_stat->contexts_stat_[0]));
+      if (!thread_stat->status_.IsOk()) {
         return;
       }
     }
@@ -339,5 +347,4 @@ RequestRateWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
   }
   ctx_.inflight_request_cnt_--;
 }
-
 }}  // namespace triton::perfanalyzer
