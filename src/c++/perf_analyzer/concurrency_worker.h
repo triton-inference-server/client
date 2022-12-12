@@ -122,6 +122,8 @@ class ConcurrencyWorker : public LoadWorker {
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
       &ConcurrencyWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
+  void AsyncCallbackFinalize(uint32_t ctx_id);
+
   cb::Error CompleteOngoingSequences();
 
   // Reserve vector size for contexts

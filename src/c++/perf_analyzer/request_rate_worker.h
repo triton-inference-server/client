@@ -101,7 +101,7 @@ class RequestRateWorker : public LoadWorker {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
-  std::shared_ptr<InferContext> ctx_;
+  std::vector<std::shared_ptr<InferContext>> ctxs_;
 
   uint64_t request_id_ = 0;
 
@@ -128,10 +128,11 @@ class RequestRateWorker : public LoadWorker {
   bool HandleExitConditions();
 
   /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
+  void UpdateSeqJsonData(
+      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 
   /// Update inputs based on custom json data
-  void UpdateJsonData();
+  void UpdateJsonData(const uint32_t ctx_id);
 };
 
 

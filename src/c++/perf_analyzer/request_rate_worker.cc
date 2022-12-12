@@ -60,20 +60,20 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CreateContext()
 {
-  ctx_ = std::make_shared<InferContext>();
+  ctxs_.emplace_back(new InferContext);
 
   thread_stat_->status_ =
-      factory_->CreateClientBackend(&(ctx_->infer_backend_));
-  ctx_->options_.reset(new cb::InferOptions(parser_->ModelName()));
-  ctx_->options_->model_version_ = parser_->ModelVersion();
-  ctx_->options_->model_signature_name_ = parser_->ModelSignatureName();
+      factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
+  ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
+  ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
+  ctxs_.back()->options_->model_signature_name_ = parser_->ModelSignatureName();
 
   thread_stat_->contexts_stat_.emplace_back();
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    thread_stat_->status_ = PrepareInfer(ctx_.get());
+    thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
   } else {
-    thread_stat_->status_ = PrepareSharedMemoryInfer(ctx_.get());
+    thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
   }
   if (!thread_stat_->status_.IsOk()) {
     return;
@@ -81,7 +81,7 @@ RequestRateWorker::CreateContext()
 
   if (streaming_) {
     // Decoupled models should not collect client side statistics
-    thread_stat_->status_ = ctx_->infer_backend_->StartStream(
+    thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
         async_callback_func_, (!parser_->IsDecoupled()));
     if (!thread_stat_->status_.IsOk()) {
       return;
@@ -92,6 +92,9 @@ RequestRateWorker::CreateContext()
 void
 RequestRateWorker::HandleExecuteOff()
 {
+  // FIXME
+  uint32_t ctx_id = 0;
+
   // Should wait till main thread signals execution start
   if (!execute_) {
     if (on_sequence_model_) {
@@ -101,21 +104,21 @@ RequestRateWorker::HandleExecuteOff()
         std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
         sequence_stat_[i]->paused_ = true;
         if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctx_->options_->sequence_start_ = false;
-          ctx_->options_->sequence_end_ = true;
-          ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+          ctxs_[ctx_id]->options_->sequence_start_ = false;
+          ctxs_[ctx_id]->options_->sequence_end_ = true;
+          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
 
           bool is_delayed = false;
           uint32_t ctx_id = 0;
           Request(
-              ctx_, ctx_id, request_id_++, is_delayed, async_callback_func_,
-              async_req_map_, thread_stat_);
+              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
+              async_callback_func_, async_req_map_, thread_stat_);
           sequence_stat_[i]->remaining_queries_ = 0;
         }
       }
     }
     // Ensures the clean measurements after thread is woken up.
-    while (ctx_->inflight_request_cnt_ != 0) {
+    while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     // Wait if no request should be sent and it is not exiting
@@ -168,10 +171,10 @@ RequestRateWorker::SendInferRequest(bool delayed)
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateJsonData();
+      UpdateJsonData(ctx_id);
     }
     Request(
-        ctx_, ctx_id, request_id_++, delayed, async_callback_func_,
+        ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
         async_req_map_, thread_stat_);
   } else {
     // Select one of the sequence at random for this request
@@ -180,54 +183,59 @@ RequestRateWorker::SendInferRequest(bool delayed)
     // This also helps in reporting the realistic latencies.
     std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
     if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-      SetInferSequenceOptions(seq_stat_index, ctx_->options_);
+      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
 
       // Update the inputs if required
       if (using_json_data_) {
-        UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
       }
 
       sequence_stat_[seq_stat_index]->remaining_queries_--;
 
       Request(
-          ctx_, ctx_id, request_id_++, delayed, async_callback_func_,
+          ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
           async_req_map_, thread_stat_);
     }
   }
 }
 
 void
-RequestRateWorker::UpdateJsonData()
+RequestRateWorker::UpdateJsonData(const uint32_t ctx_id)
 {
   int step_id = (thread_config_->non_sequence_data_step_id_ %
                  data_loader_->GetTotalStepsNonSequence()) *
                 batch_size_;
   thread_config_->non_sequence_data_step_id_ += max_threads_;
-  thread_stat_->status_ =
-      UpdateInputs(ctx_->inputs_, ctx_->valid_inputs_, 0, step_id);
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        ctx_->outputs_, 0, step_id, ctx_->expected_outputs_);
+        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
   }
 }
 
 void
-RequestRateWorker::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
+RequestRateWorker::UpdateSeqJsonData(
+    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
 {
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
   thread_stat_->status_ = UpdateInputs(
-      ctx_->inputs_, ctx_->valid_inputs_, seq_stat->data_stream_id_, step_id);
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
+      seq_stat->data_stream_id_, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        ctx_->outputs_, seq_stat->data_stream_id_, step_id,
-        ctx_->expected_outputs_);
+        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
+        ctxs_[ctx_id]->expected_outputs_);
   }
 }
 
 bool
 RequestRateWorker::HandleExitConditions()
 {
+  // FIXME
+  uint32_t ctx_id = 0;
+
   if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
     if (on_sequence_model_) {
       // Finish off all the ongoing sequences for graceful exit
@@ -236,22 +244,21 @@ RequestRateWorker::HandleExitConditions()
         std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
         sequence_stat_[i]->paused_ = true;
         if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctx_->options_->sequence_start_ = false;
-          ctx_->options_->sequence_end_ = true;
-          ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+          ctxs_[ctx_id]->options_->sequence_start_ = false;
+          ctxs_[ctx_id]->options_->sequence_end_ = true;
+          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
 
           bool is_delayed = false;
-          uint32_t ctx_id = 0;
           Request(
-              ctx_, ctx_id, request_id_++, is_delayed, async_callback_func_,
-              async_req_map_, thread_stat_);
+              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
+              async_callback_func_, async_req_map_, thread_stat_);
           sequence_stat_[i]->remaining_queries_ = 0;
         }
       }
     }
     if (async_) {
       // Loop to ensure all the inflight requests have been completed.
-      while (ctx_->inflight_request_cnt_ != 0) {
+      while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
     }
@@ -281,10 +288,10 @@ RequestRateWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
             it->second.start_time_, end_time_async, it->second.sequence_end_,
             it->second.delayed_));
         ctx_id = it->second.ctx_id_;
-        ctx_->infer_backend_->ClientInferStat(
+        ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        ctx_->inflight_request_cnt_--;
-        thread_stat_->cb_status_ = ValidateOutputs(*ctx_, result);
+        ctxs_[ctx_id]->inflight_request_cnt_--;
+        thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }
     }

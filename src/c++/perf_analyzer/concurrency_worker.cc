@@ -336,13 +336,19 @@ ConcurrencyWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         ctx_id = it->second.ctx_id_;
         ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        // FIXME used by this class
+        // FIXME not used by this class
         ctxs_[ctx_id]->inflight_request_cnt_--;
         thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }
     }
   }
+  AsyncCallbackFinalize(ctx_id);
+}
+
+void
+ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
+{
   // avoid competition over 'cb_mtx_'
   {
     std::lock_guard<std::mutex> lk(cb_mtx_);
