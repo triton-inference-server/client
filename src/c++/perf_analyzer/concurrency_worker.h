@@ -149,13 +149,6 @@ class ConcurrencyWorker : public LoadWorker {
   void UpdateSeqJsonData(
       const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 
-  void Request(
-      std::shared_ptr<InferContext> context, const uint32_t ctx_id,
-      const uint64_t request_id, const bool delayed,
-      cb::OnCompleteFn callback_func,
-      std::map<std::string, AsyncRequestProperties>& async_req_map,
-      std::shared_ptr<ThreadStat> thread_stat);
-
   void WaitForResponses();
 
   // Detect and handle the case where this thread needs to exit

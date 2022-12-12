@@ -127,23 +127,6 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if an exit condition was met
   bool HandleExitConditions();
 
-  /// A helper function to issue inference request to the server.
-  /// \param context InferContext to use for sending the request.
-  /// \param context_id The ID of the context
-  /// \param request_id The unique id to be associated with the request.
-  /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param callback_func The callback function to use with asynchronous
-  /// request.
-  /// \param async_req_map The map from ongoing request_id to the
-  /// request information needed to correctly interpret the details.
-  /// \param thread_stat The runnning status of the worker thread
-  void Request(
-      std::shared_ptr<InferContext> context, const uint32_t ctx_id,
-      const uint64_t request_id, const bool delayed,
-      cb::OnCompleteFn callback_func,
-      std::map<std::string, AsyncRequestProperties>& async_req_map,
-      std::shared_ptr<ThreadStat> thread_stat);
-
   /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
 

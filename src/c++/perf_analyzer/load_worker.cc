@@ -457,4 +457,73 @@ LoadWorker::GetRandomSequenceLength(double offset_ratio)
   return sequence_length_ + random_offset;
 }
 
+
+void
+LoadWorker::Request(
+    std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+    const uint64_t request_id, const bool delayed,
+    cb::OnCompleteFn callback_func,
+    std::map<std::string, AsyncRequestProperties>& async_req_map,
+    std::shared_ptr<ThreadStat> thread_stat)
+{
+  if (!thread_stat->status_.IsOk()) {
+    return;
+  }
+
+  if (async_) {
+    context->options_->request_id_ = std::to_string(request_id);
+    {
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      auto it =
+          async_req_map
+              .emplace(context->options_->request_id_, AsyncRequestProperties())
+              .first;
+      it->second.start_time_ = std::chrono::system_clock::now();
+      it->second.ctx_id_ = ctx_id;
+      it->second.sequence_end_ = context->options_->sequence_end_;
+      it->second.delayed_ = delayed;
+    }
+    if (streaming_) {
+      thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
+          *(context->options_), context->valid_inputs_, context->outputs_);
+    } else {
+      thread_stat->status_ = context->infer_backend_->AsyncInfer(
+          callback_func, *(context->options_), context->valid_inputs_,
+          context->outputs_);
+    }
+    context->inflight_request_cnt_++;
+  } else {
+    std::chrono::time_point<std::chrono::system_clock> start_time_sync,
+        end_time_sync;
+    start_time_sync = std::chrono::system_clock::now();
+    cb::InferResult* results = nullptr;
+    thread_stat->status_ = context->infer_backend_->Infer(
+        &results, *(context->options_), context->valid_inputs_,
+        context->outputs_);
+    if (results != nullptr) {
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(*context, results);
+      }
+      delete results;
+    }
+    if (!thread_stat->status_.IsOk()) {
+      return;
+    }
+    end_time_sync = std::chrono::system_clock::now();
+    {
+      // Add the request timestamp to thread Timestamp vector with proper
+      // locking
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      thread_stat->request_timestamps_.emplace_back(std::make_tuple(
+          start_time_sync, end_time_sync, context->options_->sequence_end_,
+          delayed));
+      thread_stat->status_ = context->infer_backend_->ClientInferStat(
+          &(thread_stat->contexts_stat_[ctx_id]));
+      if (!thread_stat->status_.IsOk()) {
+        return;
+      }
+    }
+  }
+}
+
 }}  // namespace triton::perfanalyzer
