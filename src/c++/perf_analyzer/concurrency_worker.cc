@@ -178,136 +178,155 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::SendInferRequests()
 {
-  uint32_t seq_stat_index = 0, ctx_id = 0;
-  uint64_t request_id = 0;
-
   // Create async requests such that the number of ongoing requests
   // matches the concurrency level
   // Non-sequence model is 'num_reqs' * 1 ctx
   // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
          early_exit == false) {
-    // Update the inputs if required for non-sequence
-    if (using_json_data_ && (!on_sequence_model_)) {
-      int step_id = (thread_config_->non_sequence_data_step_id_ %
-                     data_loader_->GetTotalStepsNonSequence()) *
-                    batch_size_;
-      thread_config_->non_sequence_data_step_id_ += active_threads_;
-      // There will be only one ctx in non-sequence case
-      thread_stat_->status_ = UpdateInputs(
-          ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
-      if (thread_stat_->status_.IsOk()) {
-        thread_stat_->status_ = UpdateValidationOutputs(
-            ctxs_[ctx_id]->outputs_, 0, step_id,
-            ctxs_[ctx_id]->expected_outputs_);
-      }
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
+    SendInferRequest();
+  }
+}
+
+void
+ConcurrencyWorker::SendInferRequest()
+{
+  uint32_t seq_stat_index = 0, ctx_id = 0;
+  uint64_t request_id = 0;
+
+  // Update the inputs if required for non-sequence
+  if (using_json_data_ && (!on_sequence_model_)) {
+    // FIXME ctx_id will always be 0
+    UpdateJsonData(ctx_id);
+  }
+
+  if (on_sequence_model_) {
+    size_t offset = 0;
+    for (size_t i = 0; i < thread_config_->thread_id_; i++) {
+      offset += threads_config_[i]->concurrency_;
     }
 
-    if (on_sequence_model_) {
-      size_t offset = 0;
-      for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-        offset += threads_config_[i]->concurrency_;
-      }
-
-      // Find the next available context id to use for this request
-      {
-        std::lock_guard<std::mutex> lk(cb_mtx_);
-        ctx_id = free_ctx_ids_.front();
-        free_ctx_ids_.pop();
-      }
-      seq_stat_index = offset + ctx_id;
-
-      {
-        std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-        SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
-
-        // Update the inputs if required
-        if (using_json_data_) {
-          int step_id = data_loader_->GetTotalSteps(
-                            sequence_stat_[seq_stat_index]->data_stream_id_) -
-                        sequence_stat_[seq_stat_index]->remaining_queries_;
-
-          thread_stat_->status_ = UpdateInputs(
-              ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
-              sequence_stat_[seq_stat_index]->data_stream_id_, step_id);
-          if (thread_stat_->status_.IsOk()) {
-            thread_stat_->status_ = UpdateValidationOutputs(
-                ctxs_[ctx_id]->outputs_,
-                sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
-                ctxs_[ctx_id]->expected_outputs_);
-          }
-          if (!thread_stat_->status_.IsOk()) {
-            return;
-          }
-        }
-        sequence_stat_[seq_stat_index]->remaining_queries_--;
-      }
+    // Find the next available context id to use for this request
+    {
+      std::lock_guard<std::mutex> lk(cb_mtx_);
+      ctx_id = free_ctx_ids_.front();
+      free_ctx_ids_.pop();
     }
-    if (async_) {
-      ctxs_[ctx_id]->options_->request_id_ = std::to_string(request_id++);
-      {
-        std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-        auto it = async_req_map_
-                      .emplace(
-                          ctxs_[ctx_id]->options_->request_id_,
-                          AsyncRequestProperties())
-                      .first;
-        it->second.start_time_ = std::chrono::system_clock::now();
-        it->second.ctx_id_ = ctx_id;
-        it->second.sequence_end_ = ctxs_[ctx_id]->options_->sequence_end_;
+    seq_stat_index = offset + ctx_id;
+
+    {
+      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+      // Update the inputs if required
+      if (using_json_data_) {
+        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
       }
-      if (streaming_) {
-        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->AsyncStreamInfer(
-            *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
-            ctxs_[ctx_id]->outputs_);
-      } else {
-        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->AsyncInfer(
-            async_callback_func_, *(ctxs_[ctx_id]->options_),
-            ctxs_[ctx_id]->valid_inputs_, ctxs_[ctx_id]->outputs_);
-      }
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
+      sequence_stat_[seq_stat_index]->remaining_queries_--;
+    }
+  }
+  Request(
+      ctxs_[ctx_id], ctx_id, request_id++, async_callback_func_, async_req_map_,
+      thread_stat_);
+
+  total_ongoing_requests_++;
+}
+
+void
+ConcurrencyWorker::UpdateJsonData(const uint32_t ctx_id)
+{
+  int step_id = (thread_config_->non_sequence_data_step_id_ %
+                 data_loader_->GetTotalStepsNonSequence()) *
+                batch_size_;
+  thread_config_->non_sequence_data_step_id_ += active_threads_;
+  // There will be only one ctx in non-sequence case
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
+void
+ConcurrencyWorker::UpdateSeqJsonData(
+    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
+{
+  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
+                seq_stat->remaining_queries_;
+
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
+      seq_stat->data_stream_id_, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
+        ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
+void
+ConcurrencyWorker::Request(
+    std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+    const uint64_t request_id, cb::OnCompleteFn callback_func,
+    std::map<std::string, AsyncRequestProperties>& async_req_map,
+    std::shared_ptr<ThreadStat> thread_stat)
+{
+  if (async_) {
+    context->options_->request_id_ = std::to_string(request_id);
+    {
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      auto it =
+          async_req_map
+              .emplace(context->options_->request_id_, AsyncRequestProperties())
+              .first;
+      it->second.start_time_ = std::chrono::system_clock::now();
+      it->second.ctx_id_ = ctx_id;
+      it->second.sequence_end_ = context->options_->sequence_end_;
+    }
+    if (streaming_) {
+      thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
+          *(context->options_), context->valid_inputs_, context->outputs_);
     } else {
-      std::chrono::time_point<std::chrono::system_clock> start_time_sync,
-          end_time_sync;
-      start_time_sync = std::chrono::system_clock::now();
-      cb::InferResult* results = nullptr;
-      thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->Infer(
-          &results, *(ctxs_[ctx_id]->options_), ctxs_[ctx_id]->valid_inputs_,
-          ctxs_[ctx_id]->outputs_);
-      if (results != nullptr) {
-        if (thread_stat_->status_.IsOk()) {
-          thread_stat_->status_ = ValidateOutputs(*ctxs_[ctx_id], results);
-        }
-        delete results;
+      thread_stat->status_ = context->infer_backend_->AsyncInfer(
+          callback_func, *(context->options_), context->valid_inputs_,
+          context->outputs_);
+    }
+  } else {
+    std::chrono::time_point<std::chrono::system_clock> start_time_sync,
+        end_time_sync;
+    start_time_sync = std::chrono::system_clock::now();
+    cb::InferResult* results = nullptr;
+    thread_stat->status_ = context->infer_backend_->Infer(
+        &results, *(context->options_), context->valid_inputs_,
+        context->outputs_);
+    if (results != nullptr) {
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(*context, results);
       }
-      if (!thread_stat_->status_.IsOk()) {
+      delete results;
+    }
+    if (!thread_stat->status_.IsOk()) {
+      return;
+    }
+    end_time_sync = std::chrono::system_clock::now();
+    {
+      // Add the request timestamp to thread Timestamp vector with proper
+      // locking
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      thread_stat->request_timestamps_.emplace_back(std::make_tuple(
+          start_time_sync, end_time_sync, context->options_->sequence_end_,
+          false /* delayed */));
+      thread_stat->status_ = context->infer_backend_->ClientInferStat(
+          &(thread_stat->contexts_stat_[ctx_id]));
+      if (!thread_stat->status_.IsOk()) {
         return;
       }
-      end_time_sync = std::chrono::system_clock::now();
-      {
-        // Add the request timestamp to thread Timestamp vector with proper
-        // locking
-        std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-            start_time_sync, end_time_sync,
-            ctxs_[ctx_id]->options_->sequence_end_, false /* delayed */));
-        thread_stat_->status_ = ctxs_[ctx_id]->infer_backend_->ClientInferStat(
-            &(thread_stat_->contexts_stat_[ctx_id]));
-        if (!thread_stat_->status_.IsOk()) {
-          return;
-        }
-      }
-      {
-        std::lock_guard<std::mutex> lock(cb_mtx_);
-        free_ctx_ids_.push(ctx_id);
-      }
     }
-    total_ongoing_requests_++;
+    {
+      std::lock_guard<std::mutex> lock(cb_mtx_);
+      free_ctx_ids_.push(ctx_id);
+    }
   }
 }
 

@@ -102,7 +102,7 @@ class ConcurrencyWorker : public LoadWorker {
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 
   // All of the Inference contexts for this worker
-  std::vector<std::unique_ptr<InferContext>> ctxs_;
+  std::vector<std::shared_ptr<InferContext>> ctxs_;
 
   std::queue<int> free_ctx_ids_;
 
@@ -139,6 +139,21 @@ class ConcurrencyWorker : public LoadWorker {
 
   // Send out the desired concurrency of requests
   void SendInferRequests();
+
+  // Send out a single request
+  void SendInferRequest();
+
+  /// Update inputs based on custom json data
+  void UpdateJsonData(const uint32_t ctx_id);
+
+  void UpdateSeqJsonData(
+      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
+
+  void Request(
+      std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+      const uint64_t request_id, cb::OnCompleteFn callback_func,
+      std::map<std::string, AsyncRequestProperties>& async_req_map,
+      std::shared_ptr<ThreadStat> thread_stat);
 
   void WaitForResponses();
 

@@ -60,17 +60,20 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CreateContext()
 {
-  thread_stat_->status_ = factory_->CreateClientBackend(&(ctx_.infer_backend_));
-  ctx_.options_.reset(new cb::InferOptions(parser_->ModelName()));
-  ctx_.options_->model_version_ = parser_->ModelVersion();
-  ctx_.options_->model_signature_name_ = parser_->ModelSignatureName();
+  ctx_ = std::make_shared<InferContext>();
+
+  thread_stat_->status_ =
+      factory_->CreateClientBackend(&(ctx_->infer_backend_));
+  ctx_->options_.reset(new cb::InferOptions(parser_->ModelName()));
+  ctx_->options_->model_version_ = parser_->ModelVersion();
+  ctx_->options_->model_signature_name_ = parser_->ModelSignatureName();
 
   thread_stat_->contexts_stat_.emplace_back();
 
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    thread_stat_->status_ = PrepareInfer(&ctx_);
+    thread_stat_->status_ = PrepareInfer(ctx_.get());
   } else {
-    thread_stat_->status_ = PrepareSharedMemoryInfer(&ctx_);
+    thread_stat_->status_ = PrepareSharedMemoryInfer(ctx_.get());
   }
   if (!thread_stat_->status_.IsOk()) {
     return;
@@ -78,7 +81,7 @@ RequestRateWorker::CreateContext()
 
   if (streaming_) {
     // Decoupled models should not collect client side statistics
-    thread_stat_->status_ = ctx_.infer_backend_->StartStream(
+    thread_stat_->status_ = ctx_->infer_backend_->StartStream(
         async_callback_func_, (!parser_->IsDecoupled()));
     if (!thread_stat_->status_.IsOk()) {
       return;
@@ -98,9 +101,9 @@ RequestRateWorker::HandleExecuteOff()
         std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
         sequence_stat_[i]->paused_ = true;
         if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctx_.options_->sequence_start_ = false;
-          ctx_.options_->sequence_end_ = true;
-          ctx_.options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+          ctx_->options_->sequence_start_ = false;
+          ctx_->options_->sequence_end_ = true;
+          ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
           Request(
               ctx_, request_id_++, false /* delayed */, async_callback_func_,
               async_req_map_, thread_stat_);
@@ -109,7 +112,7 @@ RequestRateWorker::HandleExecuteOff()
       }
     }
     // Ensures the clean measurements after thread is woken up.
-    while (ctx_.inflight_request_cnt_ != 0) {
+    while (ctx_->inflight_request_cnt_ != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     // Wait if no request should be sent and it is not exiting
@@ -172,7 +175,7 @@ RequestRateWorker::SendInferRequest(bool delayed)
     // This also helps in reporting the realistic latencies.
     std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
     if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-      SetInferSequenceOptions(seq_stat_index, ctx_.options_);
+      SetInferSequenceOptions(seq_stat_index, ctx_->options_);
 
       // Update the inputs if required
       if (using_json_data_) {
@@ -196,10 +199,10 @@ RequestRateWorker::UpdateJsonData()
                 batch_size_;
   thread_config_->non_sequence_data_step_id_ += max_threads_;
   thread_stat_->status_ =
-      UpdateInputs(ctx_.inputs_, ctx_.valid_inputs_, 0, step_id);
+      UpdateInputs(ctx_->inputs_, ctx_->valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        ctx_.outputs_, 0, step_id, ctx_.expected_outputs_);
+        ctx_->outputs_, 0, step_id, ctx_->expected_outputs_);
   }
 }
 
@@ -209,11 +212,11 @@ RequestRateWorker::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
   thread_stat_->status_ = UpdateInputs(
-      ctx_.inputs_, ctx_.valid_inputs_, seq_stat->data_stream_id_, step_id);
+      ctx_->inputs_, ctx_->valid_inputs_, seq_stat->data_stream_id_, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        ctx_.outputs_, seq_stat->data_stream_id_, step_id,
-        ctx_.expected_outputs_);
+        ctx_->outputs_, seq_stat->data_stream_id_, step_id,
+        ctx_->expected_outputs_);
   }
 }
 
@@ -228,9 +231,9 @@ RequestRateWorker::HandleExitConditions()
         std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
         sequence_stat_[i]->paused_ = true;
         if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctx_.options_->sequence_start_ = false;
-          ctx_.options_->sequence_end_ = true;
-          ctx_.options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+          ctx_->options_->sequence_start_ = false;
+          ctx_->options_->sequence_end_ = true;
+          ctx_->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
           Request(
               ctx_, request_id_++, false /* delayed */, async_callback_func_,
               async_req_map_, thread_stat_);
@@ -240,7 +243,7 @@ RequestRateWorker::HandleExitConditions()
     }
     if (async_) {
       // Loop to ensure all the inflight requests have been completed.
-      while (ctx_.inflight_request_cnt_ != 0) {
+      while (ctx_->inflight_request_cnt_ != 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
     }
@@ -251,8 +254,8 @@ RequestRateWorker::HandleExitConditions()
 
 void
 RequestRateWorker::Request(
-    InferContext& context, const uint64_t request_id, const bool delayed,
-    cb::OnCompleteFn callback_func,
+    std::shared_ptr<InferContext> context, const uint64_t request_id,
+    const bool delayed, cb::OnCompleteFn callback_func,
     std::map<std::string, AsyncRequestProperties>& async_req_map,
     std::shared_ptr<ThreadStat> thread_stat)
 {
@@ -261,39 +264,40 @@ RequestRateWorker::Request(
   }
 
   if (async_) {
-    context.options_->request_id_ = std::to_string(request_id);
+    context->options_->request_id_ = std::to_string(request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       auto it =
           async_req_map
-              .emplace(context.options_->request_id_, AsyncRequestProperties())
+              .emplace(context->options_->request_id_, AsyncRequestProperties())
               .first;
       it->second.start_time_ = std::chrono::system_clock::now();
-      it->second.sequence_end_ = context.options_->sequence_end_;
+      it->second.sequence_end_ = context->options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
     if (streaming_) {
-      thread_stat->status_ = context.infer_backend_->AsyncStreamInfer(
-          *(context.options_), context.valid_inputs_, context.outputs_);
+      thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
+          *(context->options_), context->valid_inputs_, context->outputs_);
     } else {
-      thread_stat->status_ = context.infer_backend_->AsyncInfer(
-          callback_func, *(context.options_), context.valid_inputs_,
-          context.outputs_);
+      thread_stat->status_ = context->infer_backend_->AsyncInfer(
+          callback_func, *(context->options_), context->valid_inputs_,
+          context->outputs_);
     }
     if (!thread_stat->status_.IsOk()) {
       return;
     }
-    context.inflight_request_cnt_++;
+    context->inflight_request_cnt_++;
   } else {
     std::chrono::time_point<std::chrono::system_clock> start_time_sync,
         end_time_sync;
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    thread_stat->status_ = context.infer_backend_->Infer(
-        &results, *(context.options_), context.valid_inputs_, context.outputs_);
+    thread_stat->status_ = context->infer_backend_->Infer(
+        &results, *(context->options_), context->valid_inputs_,
+        context->outputs_);
     if (results != nullptr) {
       if (thread_stat->status_.IsOk()) {
-        thread_stat->status_ = ValidateOutputs(context, results);
+        thread_stat->status_ = ValidateOutputs(*context, results);
       }
       delete results;
     }
@@ -306,9 +310,9 @@ RequestRateWorker::Request(
       // locking
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       thread_stat->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, context.options_->sequence_end_,
+          start_time_sync, end_time_sync, context->options_->sequence_end_,
           delayed));
-      thread_stat->status_ = context.infer_backend_->ClientInferStat(
+      thread_stat->status_ = context->infer_backend_->ClientInferStat(
           &(thread_stat->contexts_stat_[0]));
       if (!thread_stat->status_.IsOk()) {
         return;
@@ -336,15 +340,15 @@ RequestRateWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
             it->second.start_time_, end_time_async, it->second.sequence_end_,
             it->second.delayed_));
-        ctx_.infer_backend_->ClientInferStat(
+        ctx_->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[0]));
-        thread_stat_->cb_status_ = ValidateOutputs(ctx_, result);
+        thread_stat_->cb_status_ = ValidateOutputs(*ctx_, result);
         async_req_map_.erase(request_id);
       } else {
         return;
       }
     }
   }
-  ctx_.inflight_request_cnt_--;
+  ctx_->inflight_request_cnt_--;
 }
 }}  // namespace triton::perfanalyzer

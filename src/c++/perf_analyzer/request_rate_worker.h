@@ -101,7 +101,7 @@ class RequestRateWorker : public LoadWorker {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
-  InferContext ctx_;
+  std::shared_ptr<InferContext> ctx_;
 
   uint64_t request_id_ = 0;
 
@@ -137,8 +137,8 @@ class RequestRateWorker : public LoadWorker {
   /// request information needed to correctly interpret the details.
   /// \param thread_stat The runnning status of the worker thread
   void Request(
-      InferContext& context, const uint64_t request_id, const bool delayed,
-      cb::OnCompleteFn callback_func,
+      std::shared_ptr<InferContext> context, const uint64_t request_id,
+      const bool delayed, cb::OnCompleteFn callback_func,
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
 
