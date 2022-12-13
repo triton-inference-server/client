@@ -171,7 +171,9 @@ RequestRateWorker::SendInferRequest(bool delayed)
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateJsonData(ctx_id, max_threads_);
+      UpdateJsonData(
+          std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
+          max_threads_);
     }
     Request(
         ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
@@ -196,38 +198,6 @@ RequestRateWorker::SendInferRequest(bool delayed)
           ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
           async_req_map_, thread_stat_);
     }
-  }
-}
-
-void
-RequestRateWorker::UpdateJsonData(
-    const uint32_t ctx_id, const size_t num_threads)
-{
-  int step_id = (thread_config_->non_sequence_data_step_id_ %
-                 data_loader_->GetTotalStepsNonSequence()) *
-                batch_size_;
-  thread_config_->non_sequence_data_step_id_ += num_threads;
-  thread_stat_->status_ = UpdateInputs(
-      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
-  if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = UpdateValidationOutputs(
-        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
-  }
-}
-
-void
-RequestRateWorker::UpdateSeqJsonData(
-    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
-{
-  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
-                seq_stat->remaining_queries_;
-  thread_stat_->status_ = UpdateInputs(
-      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
-      seq_stat->data_stream_id_, step_id);
-  if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = UpdateValidationOutputs(
-        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
-        ctxs_[ctx_id]->expected_outputs_);
   }
 }
 

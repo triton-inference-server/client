@@ -39,10 +39,10 @@ namespace triton { namespace perfanalyzer {
 ///
 class RequestRateWorker : public LoadWorker {
  public:
-  struct ThreadConfig {
+  struct ThreadConfig : public DataStepIdTracker {
     ThreadConfig(uint32_t index, uint32_t stride)
-        : index_(index), id_(index), stride_(stride), is_paused_(false),
-          rounds_(0), non_sequence_data_step_id_(index)
+        : DataStepIdTracker(index), index_(index), id_(index), stride_(stride),
+          is_paused_(false), rounds_(0)
     {
     }
 
@@ -51,7 +51,6 @@ class RequestRateWorker : public LoadWorker {
     uint32_t stride_;
     bool is_paused_;
     uint64_t rounds_;
-    int non_sequence_data_step_id_;
   };
 
   RequestRateWorker(
@@ -117,13 +116,6 @@ class RequestRateWorker : public LoadWorker {
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();
-
-  /// Update inputs based on custom json data
-  void UpdateJsonData(const uint32_t ctx_id, const size_t num_threads);
-
-  /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(
-      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 };
 
 

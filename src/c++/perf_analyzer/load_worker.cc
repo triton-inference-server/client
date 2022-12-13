@@ -559,4 +559,37 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
   AsyncCallbackFinalize(ctx_id);
 }
 
+void
+LoadWorker::UpdateJsonData(
+    std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
+    const size_t num_threads)
+{
+  size_t curr_step_id = step_id_tracker->GetDataStepId();
+  int step_id =
+      (curr_step_id % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
+  step_id_tracker->SetDataStepId(curr_step_id + num_threads);
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
+void
+LoadWorker::UpdateSeqJsonData(
+    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
+{
+  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
+                seq_stat->remaining_queries_;
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
+      seq_stat->data_stream_id_, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
+        ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
 }}  // namespace triton::perfanalyzer

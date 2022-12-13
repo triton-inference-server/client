@@ -35,6 +35,18 @@
 
 namespace triton { namespace perfanalyzer {
 
+// Tracks the data step ID for non-sequences
+class DataStepIdTracker {
+ public:
+  DataStepIdTracker(size_t data_step_id) : data_step_id_(data_step_id) {}
+
+  size_t GetDataStepId() { return data_step_id_; }
+  void SetDataStepId(size_t data_step_id) { data_step_id_ = data_step_id; }
+
+ private:
+  size_t data_step_id_;
+};
+
 // Holds information about the shared memory locations
 struct SharedMemoryData {
   SharedMemoryData(
@@ -281,6 +293,14 @@ class LoadWorker : public IWorker {
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
       &LoadWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
+  /// Update inputs based on custom json data
+  void UpdateJsonData(
+      std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
+      const size_t num_threads);
+
+  /// Update inputs based on custom json data for the given sequence
+  void UpdateSeqJsonData(
+      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 
   // TODO REFACTOR TMA-1019 all sequence related code should be in a single
   // class. We shouldn't have to have a shared uint64 reference passed to all

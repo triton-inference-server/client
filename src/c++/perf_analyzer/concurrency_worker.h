@@ -34,6 +34,7 @@
 
 namespace triton { namespace perfanalyzer {
 
+
 /// Worker thread for the ConcurrencyManager
 ///
 /// The worker maintains concurrency in different ways:
@@ -46,10 +47,10 @@ namespace triton { namespace perfanalyzer {
 ///
 class ConcurrencyWorker : public LoadWorker {
  public:
-  struct ThreadConfig {
+  struct ThreadConfig : public DataStepIdTracker {
     ThreadConfig(size_t thread_id)
-        : thread_id_(thread_id), concurrency_(0),
-          non_sequence_data_step_id_(thread_id), is_paused_(false)
+        : DataStepIdTracker(thread_id), thread_id_(thread_id), concurrency_(0),
+          is_paused_(false)
     {
     }
 
@@ -57,8 +58,6 @@ class ConcurrencyWorker : public LoadWorker {
     size_t thread_id_;
     // The concurrency level that the worker should produce
     size_t concurrency_;
-    // The current data step id in case of non-sequence model
-    size_t non_sequence_data_step_id_;
     // Whether or not the thread is issuing new inference requests
     bool is_paused_;
   };
@@ -134,13 +133,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   // Send out a single request
   void SendInferRequest();
-
-  /// Update inputs based on custom json data
-  void UpdateJsonData(const uint32_t ctx_id, const size_t num_threads);
-
-  /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(
-      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 
   void WaitForResponses();
 
