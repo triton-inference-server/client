@@ -94,7 +94,7 @@ class DataLoader {
   /// \param data Returns the pointer to the data for the requested input.
   /// \param batch1_size Returns the size of the input data in bytes.
   /// Returns error object indicating status
-  virtual cb::Error GetInputData(
+  cb::Error GetInputData(
       const ModelTensor& input, const int stream_id, const int step_id,
       const uint8_t** data_ptr, size_t* batch1_size);
 

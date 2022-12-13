@@ -82,8 +82,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
-  // Mock out the InferInput object
-  //
+  /// Mock out the InferInput object
+  ///
   cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
       const std::string& name, const std::vector<int64_t>& dims,

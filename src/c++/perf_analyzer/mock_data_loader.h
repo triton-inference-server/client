@@ -29,7 +29,7 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// @brief  Mock DataLoader class used for testing to allow JSON data to be read
+/// Mock DataLoader class used for testing to allow JSON data to be read
 /// from string, rather than file.
 ///
 class MockDataLoader : public DataLoader {
