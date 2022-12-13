@@ -89,8 +89,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype) override
   {
-    cb::InferInput* tmp = new cb::MockInferInput(kind, name, dims, datatype);
-    *infer_input = tmp;
+    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
     return cb::Error::Success;
   }
 
@@ -266,6 +265,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
   bool& execute_{RequestRateManager::execute_};
+  size_t& batch_size_{LoadManager::batch_size_};
   std::vector<std::chrono::nanoseconds>& schedule_{
       RequestRateManager::schedule_};
 
@@ -509,6 +509,9 @@ TEST_CASE(
   "data": [
     {
       "INPUT0": [2000000000]
+    },
+    {
+      "INPUT0": [2000000001]
     }
   ]
 }
@@ -519,6 +522,7 @@ TEST_CASE(
   trrm.data_loader_ = mdl;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
+  trrm.batch_size_ = 2;
   trrm.schedule_.push_back(std::chrono::nanoseconds(1));
 
   std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
@@ -532,11 +536,13 @@ TEST_CASE(
   early_exit = true;
   infer_future.get();
 
-  std::cout << "mdl->recorded_inputs_.size(): " << mdl->recorded_inputs_.size()
-            << std::endl;
+  const std::vector<const uint8_t*>& recorded_inputs{
+      static_cast<cb::MockInferInput*>(trrm.stats_->recorded_inputs[0])
+          ->recorded_inputs_};
 
-  REQUIRE(mdl->recorded_inputs_.size() > 0);
-  CHECK(mdl->recorded_inputs_[0] == 2000000000);
+  REQUIRE(trrm.stats_->recorded_inputs.size() > 0);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1]) == 2000000000);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2]) == 2000000001);
 }
 
 }}  // namespace triton::perfanalyzer

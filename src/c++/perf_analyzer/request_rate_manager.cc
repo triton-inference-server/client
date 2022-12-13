@@ -361,7 +361,6 @@ RequestRateManager::Infer(
           thread_stat);
     }
 
-    std::cout << "made one pass" << std::endl;
     if (early_exit || (!thread_stat->cb_status_.IsOk())) {
       if (on_sequence_model_) {
         // Finish off all the ongoing sequences for graceful exit

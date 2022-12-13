@@ -35,51 +35,36 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
+/// Mock class of an InferInput
+///
 class MockInferInput : public InferInput {
  public:
   MockInferInput(
       const BackendKind kind, const std::string& name,
       const std::vector<int64_t>& dims, const std::string& datatype)
-      : InferInput(kind, name, datatype), dims_{dims}
+      : InferInput(kind, name, datatype), dims_(dims)
   {
   }
 
   const std::vector<int64_t>& Shape() const override { return dims_; }
 
-  virtual Error SetShape(const std::vector<int64_t>& dims)
+  Error Reset() override { return cb::Error::Success; }
+
+  Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
-    // FIXME need to implement?
+    recorded_inputs_.push_back(input);
     return cb::Error::Success;
   }
 
-  virtual Error Reset()
+  Error SetSharedMemory(
+      const std::string& name, size_t byte_size, size_t offset = 0) const
   {
-    // FIXME need to implement
-    return cb::Error::Success;
+    throw std::runtime_error(
+        "MockInferInput::SetSharedMemory() not implemented.");
   }
 
-  virtual Error AppendRaw(const uint8_t* input, size_t input_byte_size)
-  {
-    num_append_raw_calls_++;
-
-    // FIXME need to implement to capture data
-    return cb::Error::Success;
-  }
-
-  virtual Error SetSharedMemory(
-      const std::string& name, size_t byte_size, size_t offset = 0)
-  {
-    num_set_shared_memory_calls_++;
-
-    // FIXME need to implement
-    return cb::Error::Success;
-  }
-
-  int num_append_raw_calls_ = 0;
-  int num_set_shared_memory_calls_ = 0;
-
- private:
-  const std::vector<int64_t>& dims_;
+  const std::vector<int64_t> dims_{};
+  std::vector<const uint8_t*> recorded_inputs_{};
 };
 
 /// Mock class of an InferResult
@@ -166,19 +151,13 @@ class MockClientStats {
       request_timestamps;
   SeqStatus sequence_status;
 
+  std::vector<InferInput*> recorded_inputs{};
+
   void CaptureRequest(
       ReqType type, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs)
   {
-    for (auto i : inputs) {
-      MockInferInput* mii = reinterpret_cast<MockInferInput*>(i);
-      std::cout << "YES MOCK! num_append_raw_calls is "
-                << mii->num_append_raw_calls_
-                << " and num_set_shared_memory_calls_ is "
-                << mii->num_set_shared_memory_calls_ << std::endl;
-    }
-
     std::lock_guard<std::mutex> lock(mtx_);
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
@@ -267,6 +246,9 @@ class MockClientBackend : public ClientBackend {
 
     local_completed_req_count_++;
     stats_->num_active_infer_calls--;
+
+    stats_->recorded_inputs.insert(
+        stats_->recorded_inputs.end(), inputs.begin(), inputs.end());
 
     return Error::Success;
   }

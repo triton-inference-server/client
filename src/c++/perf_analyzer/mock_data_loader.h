@@ -30,23 +30,10 @@
 namespace triton { namespace perfanalyzer {
 
 /// @brief  Mock DataLoader class used for testing to allow JSON data to be read
-/// from string, rather than file, and to record inputs read from JSON for
-/// testing verification purposes.
+/// from string, rather than file.
 ///
 class MockDataLoader : public DataLoader {
  public:
-  cb::Error GetInputData(
-      const ModelTensor& input, const int stream_id, const int step_id,
-      const uint8_t** data_ptr, size_t* batch1_size) override
-  {
-    cb::Error result{DataLoader::GetInputData(
-        input, stream_id, step_id, data_ptr, batch1_size)};
-    if (*data_ptr != nullptr) {
-      recorded_inputs_.push_back(*reinterpret_cast<const uint32_t*>(*data_ptr));
-    }
-    return result;
-  }
-
   cb::Error ReadDataFromStr(
       const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
       const std::shared_ptr<ModelTensorMap>& outputs)
@@ -57,8 +44,6 @@ class MockDataLoader : public DataLoader {
 
     return ParseData(d, inputs, outputs);
   };
-
-  std::vector<uint32_t> recorded_inputs_{};
 };
 
 }}  // namespace triton::perfanalyzer
