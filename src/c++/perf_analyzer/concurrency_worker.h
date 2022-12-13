@@ -136,8 +136,9 @@ class ConcurrencyWorker : public LoadWorker {
   void SendInferRequest();
 
   /// Update inputs based on custom json data
-  void UpdateJsonData(const uint32_t ctx_id);
+  void UpdateJsonData(const uint32_t ctx_id, const size_t num_threads);
 
+  /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(
       const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
 

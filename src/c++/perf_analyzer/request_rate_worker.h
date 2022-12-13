@@ -118,12 +118,12 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if an exit condition was met
   bool HandleExitConditions();
 
+  /// Update inputs based on custom json data
+  void UpdateJsonData(const uint32_t ctx_id, const size_t num_threads);
+
   /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(
       const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
-
-  /// Update inputs based on custom json data
-  void UpdateJsonData(const uint32_t ctx_id);
 };
 
 

@@ -171,7 +171,7 @@ RequestRateWorker::SendInferRequest(bool delayed)
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateJsonData(ctx_id);
+      UpdateJsonData(ctx_id, max_threads_);
     }
     Request(
         ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
@@ -200,12 +200,13 @@ RequestRateWorker::SendInferRequest(bool delayed)
 }
 
 void
-RequestRateWorker::UpdateJsonData(const uint32_t ctx_id)
+RequestRateWorker::UpdateJsonData(
+    const uint32_t ctx_id, const size_t num_threads)
 {
   int step_id = (thread_config_->non_sequence_data_step_id_ %
                  data_loader_->GetTotalStepsNonSequence()) *
                 batch_size_;
-  thread_config_->non_sequence_data_step_id_ += max_threads_;
+  thread_config_->non_sequence_data_step_id_ += num_threads;
   thread_stat_->status_ = UpdateInputs(
       ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {

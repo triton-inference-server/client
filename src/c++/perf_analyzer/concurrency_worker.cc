@@ -196,8 +196,7 @@ ConcurrencyWorker::SendInferRequest()
 
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
-    // FIXME ctx_id will always be 0
-    UpdateJsonData(ctx_id);
+    UpdateJsonData(ctx_id, active_threads_);
   }
 
   if (on_sequence_model_) {
@@ -241,12 +240,13 @@ ConcurrencyWorker::SendInferRequest()
 }
 
 void
-ConcurrencyWorker::UpdateJsonData(const uint32_t ctx_id)
+ConcurrencyWorker::UpdateJsonData(
+    const uint32_t ctx_id, const size_t num_threads)
 {
   int step_id = (thread_config_->non_sequence_data_step_id_ %
                  data_loader_->GetTotalStepsNonSequence()) *
                 batch_size_;
-  thread_config_->non_sequence_data_step_id_ += active_threads_;
+  thread_config_->non_sequence_data_step_id_ += num_threads;
   // There will be only one ctx in non-sequence case
   thread_stat_->status_ = UpdateInputs(
       ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
