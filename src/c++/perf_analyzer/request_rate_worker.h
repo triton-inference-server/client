@@ -97,6 +97,9 @@ class RequestRateWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
+  // Request Rate Worker only ever has a single context
+  uint32_t ctx_id_ = 0;
+
   uint64_t request_id_ = 0;
 
   // Create and initialize the inference context
@@ -108,10 +111,10 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  // Send a single infer request.
+  // Prepare and Send a single infer request.
   // Input boolean indicates if the request was delayed from the original
   // schedule
-  void SendInferRequest(bool delayed);
+  void PrepAndSendInferRequest(bool delayed);
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met

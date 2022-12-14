@@ -276,7 +276,7 @@ class LoadWorker : public IWorker {
   /// \param async_req_map The map from ongoing request_id to the
   /// request information needed to correctly interpret the details.
   /// \param thread_stat The runnning status of the worker thread
-  void Request(
+  void SendRequest(
       std::shared_ptr<InferContext> context, const uint32_t ctx_id,
       const uint64_t request_id, const bool delayed,
       cb::OnCompleteFn callback_func,

@@ -57,7 +57,7 @@ ConcurrencyWorker::Infer()
       return;
     }
 
-    SendInferRequests();
+    PrepAndSendInferRequests();
 
     if (!thread_stat_->status_.IsOk()) {
       return;
@@ -176,7 +176,7 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 }
 
 void
-ConcurrencyWorker::SendInferRequests()
+ConcurrencyWorker::PrepAndSendInferRequests()
 {
   // Create async requests such that the number of ongoing requests
   // matches the concurrency level
@@ -184,12 +184,12 @@ ConcurrencyWorker::SendInferRequests()
   // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
          early_exit == false) {
-    SendInferRequest();
+    PrepAndSendInferRequest();
   }
 }
 
 void
-ConcurrencyWorker::SendInferRequest()
+ConcurrencyWorker::PrepAndSendInferRequest()
 {
   uint32_t seq_stat_index = 0, ctx_id = 0;
   uint64_t request_id = 0;
@@ -227,11 +227,11 @@ ConcurrencyWorker::SendInferRequest()
     }
   }
   bool is_delayed = false;
-  Request(
+  SendRequest(
       ctxs_[ctx_id], ctx_id, request_id++, is_delayed, async_callback_func_,
       async_req_map_, thread_stat_);
 
-  // FIXME we are clearly pushing and not popping in some cases
+  // FIXME TMA-1023 we are clearly pushing and not popping in some cases
   if (!async_) {
     {
       std::lock_guard<std::mutex> lock(cb_mtx_);

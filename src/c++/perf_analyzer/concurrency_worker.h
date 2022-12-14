@@ -128,11 +128,11 @@ class ConcurrencyWorker : public LoadWorker {
   // Create and populate contexts if needed
   void CreateContextsAsNecessary();
 
-  // Send out the desired concurrency of requests
-  void SendInferRequests();
+  // Prepare and Send out the desired concurrency of requests
+  void PrepAndSendInferRequests();
 
-  // Send out a single request
-  void SendInferRequest();
+  // Prepare and Send out a single request
+  void PrepAndSendInferRequest();
 
   void WaitForResponses();
 
