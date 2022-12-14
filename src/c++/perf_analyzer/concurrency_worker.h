@@ -34,6 +34,7 @@
 
 namespace triton { namespace perfanalyzer {
 
+
 /// Worker thread for the ConcurrencyManager
 ///
 /// The worker maintains concurrency in different ways:
@@ -46,10 +47,10 @@ namespace triton { namespace perfanalyzer {
 ///
 class ConcurrencyWorker : public LoadWorker {
  public:
-  struct ThreadConfig {
+  struct ThreadConfig : public DataStepIdTracker {
     ThreadConfig(size_t thread_id)
-        : thread_id_(thread_id), concurrency_(0),
-          non_sequence_data_step_id_(thread_id), is_paused_(false)
+        : DataStepIdTracker(thread_id), thread_id_(thread_id), concurrency_(0),
+          is_paused_(false)
     {
     }
 
@@ -57,8 +58,6 @@ class ConcurrencyWorker : public LoadWorker {
     size_t thread_id_;
     // The concurrency level that the worker should produce
     size_t concurrency_;
-    // The current data step id in case of non-sequence model
-    size_t non_sequence_data_step_id_;
     // Whether or not the thread is issuing new inference requests
     bool is_paused_;
   };
@@ -101,9 +100,6 @@ class ConcurrencyWorker : public LoadWorker {
   // TODO REFACTOR TMA-1020 can we decouple this thread from every other thread?
   std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
 
-  // All of the Inference contexts for this worker
-  std::vector<std::unique_ptr<InferContext>> ctxs_;
-
   std::queue<int> free_ctx_ids_;
 
   std::atomic<int> total_ongoing_requests_{0};
@@ -115,12 +111,7 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
-  // Callback function for handling asynchronous requests
-  void AsyncCallbackFuncImpl(cb::InferResult* result);
-
-  // Function pointer to the async callback function implementation
-  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &ConcurrencyWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+  void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
   cb::Error CompleteOngoingSequences();
 
@@ -137,8 +128,11 @@ class ConcurrencyWorker : public LoadWorker {
   // Create and populate contexts if needed
   void CreateContextsAsNecessary();
 
-  // Send out the desired concurrency of requests
-  void SendInferRequests();
+  // Prepare and Send out the desired concurrency of requests
+  void PrepAndSendInferRequests();
+
+  // Prepare and Send out a single request
+  void PrepAndSendInferRequest();
 
   void WaitForResponses();
 

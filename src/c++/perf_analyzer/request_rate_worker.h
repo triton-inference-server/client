@@ -39,10 +39,10 @@ namespace triton { namespace perfanalyzer {
 ///
 class RequestRateWorker : public LoadWorker {
  public:
-  struct ThreadConfig {
+  struct ThreadConfig : public DataStepIdTracker {
     ThreadConfig(uint32_t index, uint32_t stride)
-        : index_(index), id_(index), stride_(stride), is_paused_(false),
-          rounds_(0), non_sequence_data_step_id_(index)
+        : DataStepIdTracker(index), index_(index), id_(index), stride_(stride),
+          is_paused_(false), rounds_(0)
     {
     }
 
@@ -51,7 +51,6 @@ class RequestRateWorker : public LoadWorker {
     uint32_t stride_;
     bool is_paused_;
     uint64_t rounds_;
-    int non_sequence_data_step_id_;
   };
 
   RequestRateWorker(
@@ -98,16 +97,8 @@ class RequestRateWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  // Callback function for handling asynchronous requests
-  void AsyncCallbackFuncImpl(cb::InferResult* result);
-
-  InferContext ctx_;
-
-  uint64_t request_id_ = 0;
-
-  // Function pointer to the async callback function implementation
-  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &RequestRateWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+  // Request Rate Worker only ever has a single context
+  uint32_t ctx_id_ = 0;
 
   // Create and initialize the inference context
   void CreateContext();
@@ -118,29 +109,18 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  // Send a single infer request.
+  // Prepare and Send a single infer request.
   // Input boolean indicates if the request was delayed from the original
   // schedule
-  void SendInferRequest(bool delayed);
+  void PrepAndSendInferRequest(bool delayed);
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();
 
-  /// A helper function to issue inference request to the server.
-  /// \param context InferContext to use for sending the request.
-  /// \param request_id The unique id to be associated with the request.
-  /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param callback_func The callback function to use with asynchronous
-  /// request.
-  /// \param async_req_map The map from ongoing request_id to the
-  /// request information needed to correctly interpret the details.
-  /// \param thread_stat The runnning status of the worker thread
-  void Request(
-      InferContext& context, const uint64_t request_id, const bool delayed,
-      cb::OnCompleteFn callback_func,
-      std::map<std::string, AsyncRequestProperties>& async_req_map,
-      std::shared_ptr<ThreadStat> thread_stat);
+  // Empty function (request rate worker doesn't need to finalize
+  // anything here)
+  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
 };
 
 
