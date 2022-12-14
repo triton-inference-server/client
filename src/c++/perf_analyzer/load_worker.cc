@@ -457,4 +457,139 @@ LoadWorker::GetRandomSequenceLength(double offset_ratio)
   return sequence_length_ + random_offset;
 }
 
+
+void
+LoadWorker::SendRequest(
+    std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+    const uint64_t request_id, const bool delayed,
+    cb::OnCompleteFn callback_func,
+    std::map<std::string, AsyncRequestProperties>& async_req_map,
+    std::shared_ptr<ThreadStat> thread_stat)
+{
+  if (!thread_stat->status_.IsOk()) {
+    return;
+  }
+
+  if (async_) {
+    context->options_->request_id_ = std::to_string(request_id);
+    {
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      auto it =
+          async_req_map
+              .emplace(context->options_->request_id_, AsyncRequestProperties())
+              .first;
+      it->second.start_time_ = std::chrono::system_clock::now();
+      it->second.ctx_id_ = ctx_id;
+      it->second.sequence_end_ = context->options_->sequence_end_;
+      it->second.delayed_ = delayed;
+    }
+    if (streaming_) {
+      thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
+          *(context->options_), context->valid_inputs_, context->outputs_);
+    } else {
+      thread_stat->status_ = context->infer_backend_->AsyncInfer(
+          callback_func, *(context->options_), context->valid_inputs_,
+          context->outputs_);
+    }
+    context->inflight_request_cnt_++;
+  } else {
+    std::chrono::time_point<std::chrono::system_clock> start_time_sync,
+        end_time_sync;
+    start_time_sync = std::chrono::system_clock::now();
+    cb::InferResult* results = nullptr;
+    thread_stat->status_ = context->infer_backend_->Infer(
+        &results, *(context->options_), context->valid_inputs_,
+        context->outputs_);
+    if (results != nullptr) {
+      if (thread_stat->status_.IsOk()) {
+        thread_stat->status_ = ValidateOutputs(*context, results);
+      }
+      delete results;
+    }
+    if (!thread_stat->status_.IsOk()) {
+      return;
+    }
+    end_time_sync = std::chrono::system_clock::now();
+    {
+      // Add the request timestamp to thread Timestamp vector with proper
+      // locking
+      std::lock_guard<std::mutex> lock(thread_stat->mu_);
+      thread_stat->request_timestamps_.emplace_back(std::make_tuple(
+          start_time_sync, end_time_sync, context->options_->sequence_end_,
+          delayed));
+      thread_stat->status_ = context->infer_backend_->ClientInferStat(
+          &(thread_stat->contexts_stat_[ctx_id]));
+      if (!thread_stat->status_.IsOk()) {
+        return;
+      }
+    }
+  }
+}
+
+void
+LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
+{
+  uint32_t ctx_id = 0;
+  std::shared_ptr<cb::InferResult> result_ptr(result);
+  if (thread_stat_->cb_status_.IsOk()) {
+    // Add the request timestamp to thread Timestamp vector with
+    // proper locking
+    std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+    thread_stat_->cb_status_ = result_ptr->RequestStatus();
+    if (thread_stat_->cb_status_.IsOk()) {
+      std::chrono::time_point<std::chrono::system_clock> end_time_async;
+      end_time_async = std::chrono::system_clock::now();
+      std::string request_id;
+      thread_stat_->cb_status_ = result_ptr->Id(&request_id);
+      const auto& it = async_req_map_.find(request_id);
+      if (it != async_req_map_.end()) {
+        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
+            it->second.start_time_, end_time_async, it->second.sequence_end_,
+            it->second.delayed_));
+        ctx_id = it->second.ctx_id_;
+        ctxs_[ctx_id]->infer_backend_->ClientInferStat(
+            &(thread_stat_->contexts_stat_[ctx_id]));
+        // FIXME not used by conc_worker
+        ctxs_[ctx_id]->inflight_request_cnt_--;
+        thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
+        async_req_map_.erase(request_id);
+      }
+    }
+  }
+  AsyncCallbackFinalize(ctx_id);
+}
+
+void
+LoadWorker::UpdateJsonData(
+    std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
+    const size_t num_threads)
+{
+  size_t curr_step_id = step_id_tracker->GetDataStepId();
+  int step_id =
+      (curr_step_id % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
+  step_id_tracker->SetDataStepId(curr_step_id + num_threads);
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
+void
+LoadWorker::UpdateSeqJsonData(
+    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
+{
+  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
+                seq_stat->remaining_queries_;
+  thread_stat_->status_ = UpdateInputs(
+      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
+      seq_stat->data_stream_id_, step_id);
+  if (thread_stat_->status_.IsOk()) {
+    thread_stat_->status_ = UpdateValidationOutputs(
+        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
+        ctxs_[ctx_id]->expected_outputs_);
+  }
+}
+
 }}  // namespace triton::perfanalyzer
