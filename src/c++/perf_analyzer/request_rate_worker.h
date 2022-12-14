@@ -117,6 +117,10 @@ class RequestRateWorker : public LoadWorker {
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();
+
+  // Empty function (request rate worker doesn't need to finalize
+  // anything here)
+  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
 };
 
 

@@ -287,7 +287,7 @@ class LoadWorker : public IWorker {
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
   // Code to execute at the end of the async callback function
-  virtual void AsyncCallbackFinalize(uint32_t ctx_id) {}
+  virtual void AsyncCallbackFinalize(uint32_t ctx_id) = 0;
 
   // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(

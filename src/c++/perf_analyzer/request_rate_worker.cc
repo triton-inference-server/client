@@ -60,7 +60,7 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CreateContext()
 {
-  ctxs_.emplace_back(new InferContext);
+  ctxs_.push_back(std::make_shared<InferContext>());
 
   thread_stat_->status_ =
       factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
