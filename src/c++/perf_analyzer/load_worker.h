@@ -331,6 +331,8 @@ class LoadWorker : public IWorker {
   // request_id to start timestamp map
   std::map<std::string, AsyncRequestProperties> async_req_map_;
 
+  uint64_t request_id_ = 0;
+
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
   // Sequence stats for all sequences

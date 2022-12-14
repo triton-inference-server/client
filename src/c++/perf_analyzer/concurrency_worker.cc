@@ -192,7 +192,6 @@ void
 ConcurrencyWorker::PrepAndSendInferRequest()
 {
   uint32_t seq_stat_index = 0, ctx_id = 0;
-  uint64_t request_id = 0;
 
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
@@ -228,7 +227,7 @@ ConcurrencyWorker::PrepAndSendInferRequest()
   }
   bool is_delayed = false;
   SendRequest(
-      ctxs_[ctx_id], ctx_id, request_id++, is_delayed, async_callback_func_,
+      ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
       async_req_map_, thread_stat_);
 
   // FIXME TMA-1023 we are clearly pushing and not popping in some cases

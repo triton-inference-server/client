@@ -100,8 +100,6 @@ class RequestRateWorker : public LoadWorker {
   // Request Rate Worker only ever has a single context
   uint32_t ctx_id_ = 0;
 
-  uint64_t request_id_ = 0;
-
   // Create and initialize the inference context
   void CreateContext();
 
