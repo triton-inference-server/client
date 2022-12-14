@@ -1370,7 +1370,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This is only used for dynamically batched models.
         client_timeout : float
             The maximum end-to-end time, in seconds, the request is allowed
             to take. The client will abort request and raise
@@ -1499,7 +1499,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This is only used for dynamically batched models.
         client_timeout : float
             The maximum end-to-end time, in seconds, the request is allowed
             to take. The client will abort request and provide
@@ -1694,7 +1694,8 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This does not stop the grpc stream itself.
+            for the model. This does not stop the grpc stream itself and
+            is only used for dynamically batched models.
 
         Raises
         ------

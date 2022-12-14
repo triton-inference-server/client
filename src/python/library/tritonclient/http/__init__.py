@@ -1291,7 +1291,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This is only used for dynamically batched models.
 
         Returns
         -------
@@ -1406,7 +1406,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This is only used for dynamically batched models.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
@@ -1555,7 +1555,7 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This is only used for dynamically batched models.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request
