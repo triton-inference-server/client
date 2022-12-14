@@ -35,6 +35,18 @@
 
 namespace triton { namespace perfanalyzer {
 
+// Tracks the data step ID for non-sequences
+class DataStepIdTracker {
+ public:
+  DataStepIdTracker(size_t data_step_id) : data_step_id_(data_step_id) {}
+
+  size_t GetDataStepId() { return data_step_id_; }
+  void SetDataStepId(size_t data_step_id) { data_step_id_ = data_step_id; }
+
+ private:
+  size_t data_step_id_;
+};
+
 // Holds information about the shared memory locations
 struct SharedMemoryData {
   SharedMemoryData(
@@ -266,6 +278,42 @@ class LoadWorker : public IWorker {
       const int step_index);
 
  protected:
+  /// A helper function to issue inference request to the server.
+  /// \param context InferContext to use for sending the request.
+  /// \param context_id The ID of the context
+  /// \param request_id The unique id to be associated with the request.
+  /// \param delayed Whether the request fell behind its scheduled time.
+  /// \param callback_func The callback function to use with asynchronous
+  /// request.
+  /// \param async_req_map The map from ongoing request_id to the
+  /// request information needed to correctly interpret the details.
+  /// \param thread_stat The runnning status of the worker thread
+  void SendRequest(
+      std::shared_ptr<InferContext> context, const uint32_t ctx_id,
+      const uint64_t request_id, const bool delayed,
+      cb::OnCompleteFn callback_func,
+      std::map<std::string, AsyncRequestProperties>& async_req_map,
+      std::shared_ptr<ThreadStat> thread_stat);
+
+  // Callback function for handling asynchronous requests
+  void AsyncCallbackFuncImpl(cb::InferResult* result);
+
+  // Code to execute at the end of the async callback function
+  virtual void AsyncCallbackFinalize(uint32_t ctx_id) = 0;
+
+  // Function pointer to the async callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &LoadWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+
+  /// Update inputs based on custom json data
+  void UpdateJsonData(
+      std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
+      const size_t num_threads);
+
+  /// Update inputs based on custom json data for the given sequence
+  void UpdateSeqJsonData(
+      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
+
   // TODO REFACTOR TMA-1019 all sequence related code should be in a single
   // class. We shouldn't have to have a shared uint64 reference passed to all
   // threads Current sequence id (for issuing new sequences)
@@ -286,11 +334,16 @@ class LoadWorker : public IWorker {
   // shared bool reference? Used to pause execution of this thread
   bool& execute_;
 
+  // All of the Inference contexts for this worker
+  std::vector<std::shared_ptr<InferContext>> ctxs_;
+
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
 
   // request_id to start timestamp map
   std::map<std::string, AsyncRequestProperties> async_req_map_;
+
+  uint64_t request_id_ = 0;
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
