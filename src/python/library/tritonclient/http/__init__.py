@@ -1291,7 +1291,9 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This option is only respected by the model that is 
+            configured with dynamic batching. See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
 
         Returns
         -------
@@ -1406,7 +1408,9 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This option is only respected by the model that is 
+            configured with dynamic batching. See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
@@ -1555,7 +1559,9 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model.
+            for the model. This option is only respected by the model that is 
+            configured with dynamic batching. See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request

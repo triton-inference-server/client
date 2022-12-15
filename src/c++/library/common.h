@@ -204,7 +204,9 @@ struct InferOptions {
   /// cannot be completed within the time by the server. The server can take a
   /// model-specific action such as terminating the request. If not
   /// provided, the server will handle the request using default setting
-  /// for the model.
+  /// for the model. This option is only respected by the model that is
+  /// configured with dynamic batching. See here for more details:
+  /// https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
   uint64_t server_timeout_;
   // The maximum end-to-end time, in microseconds, the request is allowed
   // to take. Note the HTTP library only offer the precision upto

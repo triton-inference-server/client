@@ -35,20 +35,25 @@ namespace triton { namespace perfanalyzer {
 
 /// Calculate the average of a vector of integers
 ///
-static double CalculateAverage(const std::vector<int64_t>& values) {
-    double avg = std::accumulate(values.begin(), values.end(), 0.0) / values.size();
-    return avg;
+static double
+CalculateAverage(const std::vector<int64_t>& values)
+{
+  double avg =
+      std::accumulate(values.begin(), values.end(), 0.0) / values.size();
+  return avg;
 }
 
 /// Calculate the variance of a vector of integers
 ///
-static double CalculateVariance(const std::vector<int64_t>& values, double average) {
-    double tmp = 0;
-    for (auto value : values) {
-        tmp += (value - average) * (value - average) / values.size();
-    }
-    double variance = std::sqrt(tmp);
-    return variance;
+static double
+CalculateVariance(const std::vector<int64_t>& values, double average)
+{
+  double tmp = 0;
+  for (auto value : values) {
+    tmp += (value - average) * (value - average) / values.size();
+  }
+  double variance = std::sqrt(tmp);
+  return variance;
 }
 
-}}
+}}  // namespace triton::perfanalyzer

@@ -4488,7 +4488,7 @@ wildcmp(const char* str, const char* wild, bool caseSensitive)
 }
 
 //// C string hash function (djb2) - taken from
-///http://www.cse.yorku.ca/~oz/hash.html
+/// http://www.cse.yorku.ca/~oz/hash.html
 // unsigned hashStr(unsigned const char* str) {
 //    unsigned long hash = 5381;
 //    char          c;
@@ -6220,7 +6220,8 @@ fulltext_log_assert_to_stream(std::ostream& s, const AssertData& rb)
                      : "did NOT throw at all!")
       << Color::Cyan << rb.m_exception << "\n";
   } else if (rb.m_at & assertType::is_throws_with) {  //! OCLINT bitwise
-                                                      //! operator in conditional
+                                                      //! operator in
+                                                      //! conditional
     s << Color::Cyan << assertString(rb.m_at) << "( " << rb.m_expr << ", \""
       << rb.m_exception_string << "\" ) " << Color::None
       << (rb.m_threw ? (!rb.m_failed ? "threw as expected!"
@@ -7689,8 +7690,8 @@ Context::run()
 #ifndef DOCTEST_CONFIG_NO_EXCEPTIONS
         try {
 #endif  // DOCTEST_CONFIG_NO_EXCEPTIONS
-          // MSVC 2015 diagnoses fatalConditionHandler as unused (because
-          // reset() is a static method)
+        // MSVC 2015 diagnoses fatalConditionHandler as unused (because
+        // reset() is a static method)
           DOCTEST_MSVC_SUPPRESS_WARNING_WITH_PUSH(
               4101)  // unreferenced local variable
           FatalConditionHandler fatalConditionHandler;  // Handle signals
