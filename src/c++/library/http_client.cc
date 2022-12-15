@@ -30,8 +30,8 @@
 
 #include <curl/curl.h>
 #include <zlib.h>
-#include <climits>
 #include <atomic>
+#include <climits>
 #include <cstdint>
 #include <deque>
 #include <iostream>
@@ -49,7 +49,7 @@ extern "C" {
 #ifdef _WIN32
 #define strncasecmp(x, y, z) _strnicmp(x, y, z)
 #undef min  // NOMINMAX did not resolve std::min compile error
-#endif  //_WIN32
+#endif      //_WIN32
 
 namespace triton { namespace client {
 
@@ -1905,8 +1905,7 @@ InferenceServerHttpClient::AsyncTransfer()
     if (mc == CURLM_OK) {
       // Wait for activity. If there are no descripters in the multi_handle_
       // then curl_multi_wait will return immediately
-      mc =
-          curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
+      mc = curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
       if (mc == CURLM_OK) {
         while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
           uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);

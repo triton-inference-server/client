@@ -186,8 +186,8 @@ async def main(FLAGS):
 
     # Infer with incorrect model name
     try:
-        (await test_infer(triton_client, "wrong_model_name",
-                                     input0_data, input1_data)).get_response()
+        (await test_infer(triton_client, "wrong_model_name", input0_data,
+                          input1_data)).get_response()
         print("expected error message for wrong model name")
         sys.exit(1)
     except InferenceServerException as ex:

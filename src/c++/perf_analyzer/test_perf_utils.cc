@@ -33,72 +33,75 @@ namespace triton { namespace perfanalyzer {
 /// Helper class to test perf_utils.cc
 ///
 class TestPerfUtils {
-  public:
-    /// Given a distributionType and request rate, confirm that request pattern matches
-    /// what is expected.
-    /// 
-    static void TestDistribution(Distribution distribution_type, uint32_t request_rate) {
-        std::mt19937 schedule_rng;
-        std::vector<int64_t> delays;
+ public:
+  /// Given a distributionType and request rate, confirm that request pattern
+  /// matches what is expected.
+  ///
+  static void TestDistribution(
+      Distribution distribution_type, uint32_t request_rate)
+  {
+    std::mt19937 schedule_rng;
+    std::vector<int64_t> delays;
 
-        double avg, variance;
-        double expected_avg, expected_variance;
+    double avg, variance;
+    double expected_avg, expected_variance;
 
-        auto dist_func = GetDistributionFunction(distribution_type, request_rate);
-        
-        for (int i = 0; i < 100000; i++) {
-            auto delay = dist_func(schedule_rng);
-            delays.push_back(delay.count());
-        }
+    auto dist_func = GetDistributionFunction(distribution_type, request_rate);
 
-        avg = CalculateAverage(delays);
-        variance = CalculateVariance(delays, avg);
-
-        std::chrono::nanoseconds ns_in_one_second = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)); 
-        expected_avg = ns_in_one_second.count() / request_rate;
-        
-        if (distribution_type == CONSTANT) {
-            expected_variance = 0;
-        }
-        else {
-            // By definition, variance = mean for poisson
-            expected_variance = expected_avg;
-        }
-
-        CHECK(avg == doctest::Approx(expected_avg).epsilon(0.005));
-        CHECK(variance == doctest::Approx(expected_variance).epsilon(0.005));
+    for (int i = 0; i < 100000; i++) {
+      auto delay = dist_func(schedule_rng);
+      delays.push_back(delay.count());
     }
 
+    avg = CalculateAverage(delays);
+    variance = CalculateVariance(delays, avg);
 
-  private:
+    std::chrono::nanoseconds ns_in_one_second =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::seconds(1));
+    expected_avg = ns_in_one_second.count() / request_rate;
 
-    static std::function<std::chrono::nanoseconds(std::mt19937&)> GetDistributionFunction(Distribution type, uint32_t request_rate) {
-        std::function<std::chrono::nanoseconds(std::mt19937&)> distributionFunction;
-
-        if (type == CONSTANT) {
-            distributionFunction = ScheduleDistribution<CONSTANT>(request_rate);
-        }
-        else if (type == POISSON) {
-            distributionFunction = ScheduleDistribution<POISSON>(request_rate);
-        }
-        else {
-            throw std::invalid_argument("Unexpected distribution type");
-        }
-        return distributionFunction;
+    if (distribution_type == CONSTANT) {
+      expected_variance = 0;
+    } else {
+      // By definition, variance = mean for poisson
+      expected_variance = expected_avg;
     }
+
+    CHECK(avg == doctest::Approx(expected_avg).epsilon(0.005));
+    CHECK(variance == doctest::Approx(expected_variance).epsilon(0.005));
+  }
+
+
+ private:
+  static std::function<std::chrono::nanoseconds(std::mt19937&)>
+  GetDistributionFunction(Distribution type, uint32_t request_rate)
+  {
+    std::function<std::chrono::nanoseconds(std::mt19937&)> distributionFunction;
+
+    if (type == CONSTANT) {
+      distributionFunction = ScheduleDistribution<CONSTANT>(request_rate);
+    } else if (type == POISSON) {
+      distributionFunction = ScheduleDistribution<POISSON>(request_rate);
+    } else {
+      throw std::invalid_argument("Unexpected distribution type");
+    }
+    return distributionFunction;
+  }
 };
 
 /// Test all distributions across various request rates
 ///
-TEST_CASE("test_distribution") {
-    std::vector<Distribution> distTypes{CONSTANT, POISSON};
-    std::vector<uint32_t> requestRates{10,100,1000,10000};
+TEST_CASE("test_distribution")
+{
+  std::vector<Distribution> distTypes{CONSTANT, POISSON};
+  std::vector<uint32_t> requestRates{10, 100, 1000, 10000};
 
-    for (auto dist : distTypes) {
-        for (auto rate : requestRates) {
-            TestPerfUtils::TestDistribution(dist, rate);
-        }
+  for (auto dist : distTypes) {
+    for (auto rate : requestRates) {
+      TestPerfUtils::TestDistribution(dist, rate);
     }
+  }
 }
 
-}}
+}}  // namespace triton::perfanalyzer

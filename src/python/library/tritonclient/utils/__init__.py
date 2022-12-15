@@ -216,10 +216,10 @@ def serialize_byte_tensor(input_tensor):
     # actual element bytes. All elements are concatenated together in row-major
     # order.
 
-    if (input_tensor.dtype != np.object_) and (input_tensor.dtype.type
-                                              != np.bytes_):
+    if (input_tensor.dtype != np.object_) and (input_tensor.dtype.type !=
+                                               np.bytes_):
         raise_error("cannot serialize bytes tensor: invalid datatype")
-    
+
     flattened_ls = []
     # 'C' order is row-major.
     for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
@@ -239,7 +239,7 @@ def serialize_byte_tensor(input_tensor):
     flattened_array = np.asarray(flattened, dtype=np.object_)
     if not flattened_array.flags['C_CONTIGUOUS']:
         flattened_array = np.ascontiguousarray(flattened_array,
-                                                dtype=np.object_)
+                                               dtype=np.object_)
     return flattened_array
 
 
@@ -303,7 +303,7 @@ def serialize_bf16_tensor(input_tensor):
 
     if (input_tensor.dtype != np.float32):
         raise_error("cannot serialize bf16 tensor: invalid datatype")
-    
+
     flattened_ls = []
     # 'C' order is row-major.
     for obj in np.nditer(input_tensor, flags=["refs_ok"], order='C'):
@@ -314,7 +314,7 @@ def serialize_bf16_tensor(input_tensor):
     flattened_array = np.asarray(flattened, dtype=np.object_)
     if not flattened_array.flags['C_CONTIGUOUS']:
         flattened_array = np.ascontiguousarray(flattened_array,
-                                                dtype=np.object_)
+                                               dtype=np.object_)
     return flattened_array
 
 
