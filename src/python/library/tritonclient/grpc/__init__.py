@@ -1370,7 +1370,9 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This is only used for dynamically batched models.
+            for the model. This option is only respected by the model that is 
+            configured with dynamic batching. See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         client_timeout : float
             The maximum end-to-end time, in seconds, the request is allowed
             to take. The client will abort request and raise
@@ -1499,8 +1501,9 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This is only used for dynamically batched models.
-        client_timeout : float
+            for the model. This option is only respected by the model that is 
+            configured with dynamic batching. See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
             The maximum end-to-end time, in seconds, the request is allowed
             to take. The client will abort request and provide
             error with message "Deadline Exceeded" in the callback when the
@@ -1694,9 +1697,10 @@ class InferenceServerClient:
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This does not stop the grpc stream itself and
-            is only used for dynamically batched models.
-
+            for the model. This does not stop the grpc stream itself and is only 
+            respected by the model that is configured with dynamic batching. 
+            See here for more details: 
+            https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         Raises
         ------
         InferenceServerException
