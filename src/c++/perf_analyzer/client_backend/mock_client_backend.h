@@ -48,7 +48,11 @@ class MockInferInput : public InferInput {
 
   const std::vector<int64_t>& Shape() const override { return dims_; }
 
-  Error Reset() override { return cb::Error::Success; }
+  Error Reset() override
+  {
+    recorded_inputs_.clear();
+    return cb::Error::Success;
+  }
 
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
@@ -151,7 +155,7 @@ class MockClientStats {
       request_timestamps;
   SeqStatus sequence_status;
 
-  std::vector<InferInput*> recorded_inputs{};
+  std::vector<std::vector<const uint8_t*>> recorded_inputs{};
 
   void CaptureRequest(
       ReqType type, const InferOptions& options,
@@ -161,6 +165,11 @@ class MockClientStats {
     std::lock_guard<std::mutex> lock(mtx_);
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
+
+    for (const auto& input : inputs) {
+      recorded_inputs.push_back(
+          static_cast<const MockInferInput*>(input)->recorded_inputs_);
+    }
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);
@@ -246,9 +255,6 @@ class MockClientBackend : public ClientBackend {
 
     local_completed_req_count_++;
     stats_->num_active_infer_calls--;
-
-    stats_->recorded_inputs.insert(
-        stats_->recorded_inputs.end(), inputs.begin(), inputs.end());
 
     return Error::Success;
   }

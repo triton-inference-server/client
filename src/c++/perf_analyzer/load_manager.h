@@ -212,12 +212,12 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
-  /// Wrapper method for calling InferInput::Create().
-  /// \param infer_input Forwarded to InferInput::Create().
-  /// \param kind Forwarded to InferInput::Create().
-  /// \param name Forwarded to InferInput::Create().
-  /// \param dims Forwarded to InferInput::Create().
-  /// \param datatype Forwarded to InferInput::Create().
+  /// Creates inference input object
+  /// \param infer_input Output parameter storing newly created inference input
+  /// \param kind Backend kind
+  /// \param name Name of inference input
+  /// \param dims Shape of inference input
+  /// \param datatype Data type of inference input
   /// \return cb::Error object indicating success or failure.
   virtual cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,

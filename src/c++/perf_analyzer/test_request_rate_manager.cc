@@ -268,6 +268,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& batch_size_{LoadManager::batch_size_};
   std::vector<std::chrono::nanoseconds>& schedule_{
       RequestRateManager::schedule_};
+  std::unique_ptr<std::chrono::nanoseconds>& gen_duration_{
+      RequestRateManager::gen_duration_};
+  std::chrono::steady_clock::time_point& start_time_{
+      RequestRateManager::start_time_};
+  size_t& max_threads_{LoadManager::max_threads_};
 
   struct ThreadStat : RequestRateManager::ThreadStat {
   };
@@ -522,27 +527,35 @@ TEST_CASE(
   trrm.data_loader_ = mdl;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
-  trrm.batch_size_ = 2;
-  trrm.schedule_.push_back(std::chrono::nanoseconds(1));
+  trrm.batch_size_ = 1;
+  trrm.max_threads_ = 1;
+  trrm.schedule_.push_back(std::chrono::microseconds(0));
+  trrm.schedule_.push_back(std::chrono::microseconds(500));
+  trrm.schedule_.push_back(std::chrono::microseconds(1000));
+  trrm.schedule_.push_back(std::chrono::microseconds(1500));
+  trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(1500000);
+  trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
       std::make_shared<TestRequestRateManager::ThreadStat>()};
   std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 0)};
+      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 1)};
 
   std::future<void> infer_future{std::async(
       &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
 
+  std::this_thread::sleep_for(std::chrono::microseconds(1250));
+
   early_exit = true;
   infer_future.get();
 
-  const std::vector<const uint8_t*>& recorded_inputs{
-      static_cast<cb::MockInferInput*>(trrm.stats_->recorded_inputs[0])
-          ->recorded_inputs_};
+  const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() > 0);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1]) == 2000000000);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2]) == 2000000001);
+  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0]) == 2000000000);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0]) == 2000000001);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0]) == 2000000000);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0]) == 2000000001);
 }
 
 }}  // namespace triton::perfanalyzer
