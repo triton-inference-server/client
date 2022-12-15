@@ -94,9 +94,7 @@ ConcurrencyWorker::HandleExecuteOff()
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = status;
       }
-      while (total_ongoing_requests_ != 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      }
+      WaitForOngoingRequests();
       // Make sure all threads are in sync with the client's stats
       //
       for (size_t i = 0; i < ctxs_.size(); ++i) {
@@ -272,9 +270,7 @@ ConcurrencyWorker::HandleExitConditions()
     if (thread_stat_->status_.IsOk()) {
       thread_stat_->status_ = status;
     }
-    while (total_ongoing_requests_ != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+    WaitForOngoingRequests();
     return true;
   }
   return false;
@@ -364,4 +360,13 @@ ConcurrencyWorker::CompleteOngoingSequences()
   return cb::Error::Success;
 }
 
+void
+ConcurrencyWorker::WaitForOngoingRequests()
+{
+  {
+    while (total_ongoing_requests_ != 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+  }
+}
 }}  // namespace triton::perfanalyzer
