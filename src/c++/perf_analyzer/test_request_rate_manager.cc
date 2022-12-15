@@ -273,7 +273,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
   std::chrono::steady_clock::time_point& start_time_{
       RequestRateManager::start_time_};
   size_t& max_threads_{LoadManager::max_threads_};
-
+  bool& async_{LoadManager::async_};
+  bool& streaming_{LoadManager::streaming_};
   struct ThreadStat : RequestRateManager::ThreadStat {
   };
   struct ThreadConfig : RequestRateManager::ThreadConfig {
@@ -523,28 +524,44 @@ TEST_CASE(
     )"};
   mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
 
+  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
+      std::make_shared<TestRequestRateManager::ThreadStat>()};
+  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
+      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 1)};
+
   trrm.parser_ = mmp;
   trrm.data_loader_ = mdl;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
-  trrm.schedule_.push_back(std::chrono::microseconds(0));
-  trrm.schedule_.push_back(std::chrono::microseconds(500));
-  trrm.schedule_.push_back(std::chrono::microseconds(1000));
-  trrm.schedule_.push_back(std::chrono::microseconds(1500));
-  trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(1500000);
+  trrm.schedule_.push_back(std::chrono::milliseconds(4));
+  trrm.schedule_.push_back(std::chrono::milliseconds(8));
+  trrm.schedule_.push_back(std::chrono::milliseconds(12));
+  trrm.schedule_.push_back(std::chrono::milliseconds(16));
+  trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
-  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
-      std::make_shared<TestRequestRateManager::ThreadStat>()};
-  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
-      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 1)};
+  SUBCASE("sync non-streaming")
+  {
+    trrm.async_ = false;
+    trrm.streaming_ = false;
+  }
+  SUBCASE("async non-streaming")
+  {
+    trrm.async_ = true;
+    trrm.streaming_ = false;
+  }
+  SUBCASE("async streaming")
+  {
+    trrm.async_ = true;
+    trrm.streaming_ = true;
+  }
 
   std::future<void> infer_future{std::async(
       &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
 
-  std::this_thread::sleep_for(std::chrono::microseconds(1250));
+  std::this_thread::sleep_for(std::chrono::milliseconds(14));
 
   early_exit = true;
   infer_future.get();
@@ -552,10 +569,22 @@ TEST_CASE(
   const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
   REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0]) == 2000000000);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0]) == 2000000001);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0]) == 2000000000);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0]) == 2000000001);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
+      2000000000);
+  CHECK(recorded_inputs[0][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
+      2000000001);
+  CHECK(recorded_inputs[1][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
+      2000000000);
+  CHECK(recorded_inputs[2][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
+      2000000001);
+  CHECK(recorded_inputs[3][0].second == 4);
 }
 
 }}  // namespace triton::perfanalyzer

@@ -56,7 +56,7 @@ class MockInferInput : public InferInput {
 
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
-    recorded_inputs_.push_back(input);
+    recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
     return cb::Error::Success;
   }
 
@@ -68,7 +68,7 @@ class MockInferInput : public InferInput {
   }
 
   const std::vector<int64_t> dims_{};
-  std::vector<const uint8_t*> recorded_inputs_{};
+  std::vector<std::pair<const uint8_t*, size_t>> recorded_inputs_{};
 };
 
 /// Mock class of an InferResult
@@ -155,7 +155,7 @@ class MockClientStats {
       request_timestamps;
   SeqStatus sequence_status;
 
-  std::vector<std::vector<const uint8_t*>> recorded_inputs{};
+  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
 
   void CaptureRequest(
       ReqType type, const InferOptions& options,
