@@ -94,21 +94,13 @@ ConcurrencyWorker::HandleExecuteOff()
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = status;
       }
-      while (total_ongoing_requests_ != 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      }
-      // Make sure all threads are in sync with the client's stats
-      //
-      for (size_t i = 0; i < ctxs_.size(); ++i) {
-        ctxs_[i]->infer_backend_->ClientInferStat(
-            &(thread_stat_->contexts_stat_[i]));
-      }
+      WaitForOngoingRequests();
+      SyncClientStats();
+
       // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
-      free_ctx_ids_ = std::queue<int>();
-      for (size_t i = 0; i < ctxs_.size(); ++i) {
-        free_ctx_ids_.push(i);
-      }
+      ResetFreeCtxIds();
+
       // Wait if no request should be sent and it is not exiting
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
@@ -144,36 +136,9 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
   while (active_ctx_cnt > ctxs_.size()) {
-    {
-      std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctxs_.size());
-    }
-    ctxs_.push_back(std::make_shared<InferContext>());
-
-    thread_stat_->status_ =
-        factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
-    ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
-    ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
-    ctxs_.back()->options_->model_signature_name_ =
-        parser_->ModelSignatureName();
-    thread_stat_->contexts_stat_.emplace_back();
-    if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-      thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
-    } else {
-      thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
-    }
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
-    if (streaming_) {
-      // Decoupled models should not collect client side statistics
-      thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
-          async_callback_func_, (!parser_->IsDecoupled()));
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
-    }
+    CreateContext();
   }
+  ResetFreeCtxIds();
 }
 
 void
@@ -192,7 +157,7 @@ ConcurrencyWorker::PrepAndSendInferRequests()
 void
 ConcurrencyWorker::PrepAndSendInferRequest()
 {
-  uint32_t seq_stat_index = 0, ctx_id = 0;
+  uint32_t ctx_id = GetCtxId();
 
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
@@ -202,18 +167,7 @@ ConcurrencyWorker::PrepAndSendInferRequest()
   }
 
   if (on_sequence_model_) {
-    size_t offset = 0;
-    for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-      offset += threads_config_[i]->concurrency_;
-    }
-
-    // Find the next available context id to use for this request
-    {
-      std::lock_guard<std::mutex> lk(cb_mtx_);
-      ctx_id = free_ctx_ids_.front();
-      free_ctx_ids_.pop();
-    }
-    seq_stat_index = offset + ctx_id;
+    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
 
     {
       std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
@@ -272,9 +226,7 @@ ConcurrencyWorker::HandleExitConditions()
     if (thread_stat_->status_.IsOk()) {
       thread_stat_->status_ = status;
     }
-    while (total_ongoing_requests_ != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+    WaitForOngoingRequests();
     return true;
   }
   return false;
@@ -296,8 +248,6 @@ ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
   cb_cv_.notify_all();
 }
 
-// Specify the function as lambda here to work around the possible callback
-// lifecycle issue when making this a class member function.
 // Note that 'free_ctx_ids_' must be reconstruct after the call because
 // this function doesn't utilize 'free_ctx_ids_' in the same way as in main
 // loop
@@ -307,13 +257,9 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (!on_sequence_model_) {
     return cb::Error::Success;
   }
-  size_t offset = 0;
-  for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-    offset += threads_config_[i]->concurrency_;
-  }
 
   for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-    size_t seq_stat_index = offset + ctx_id;
+    size_t seq_stat_index = GetSeqStatIndex(ctx_id);
 
     std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
     // Complete the sequence if there are remaining queries
@@ -362,6 +308,63 @@ ConcurrencyWorker::CompleteOngoingSequences()
     }
   }
   return cb::Error::Success;
+}
+
+void
+ConcurrencyWorker::WaitForOngoingRequests()
+{
+  while (total_ongoing_requests_ != 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+}
+
+void
+ConcurrencyWorker::SyncClientStats()
+{
+  // Make sure all threads are in sync with the client's stats
+  //
+  for (size_t i = 0; i < ctxs_.size(); ++i) {
+    ctxs_[i]->infer_backend_->ClientInferStat(
+        &(thread_stat_->contexts_stat_[i]));
+  }
+}
+
+void
+ConcurrencyWorker::ResetFreeCtxIds()
+{
+  std::lock_guard<std::mutex> lock(cb_mtx_);
+  free_ctx_ids_ = std::queue<int>();
+  for (size_t i = 0; i < ctxs_.size(); ++i) {
+    free_ctx_ids_.push(i);
+  }
+}
+
+uint32_t
+ConcurrencyWorker::GetSeqStatIndex(uint32_t ctx_id)
+{
+  size_t offset = 0;
+  for (size_t i = 0; i < thread_config_->thread_id_; i++) {
+    offset += threads_config_[i]->concurrency_;
+  }
+
+  return (offset + ctx_id);
+}
+
+uint32_t
+ConcurrencyWorker::GetCtxId()
+{
+  uint32_t ctx_id;
+  if (on_sequence_model_) {
+    // Find the next available context id to use for this request
+    {
+      std::lock_guard<std::mutex> lk(cb_mtx_);
+      ctx_id = free_ctx_ids_.front();
+      free_ctx_ids_.pop();
+    }
+  } else {
+    ctx_id = 0;
+  }
+  return ctx_id;
 }
 
 }}  // namespace triton::perfanalyzer
