@@ -23,25 +23,27 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "model_parser.h"
+#include "data_loader.h"
 
 namespace triton { namespace perfanalyzer {
 
-class MockModelParser : public ModelParser {
+/// Mock DataLoader class used for testing to allow JSON data to be read
+/// from string, rather than file.
+///
+class MockDataLoader : public DataLoader {
  public:
-  MockModelParser(bool is_sequence_model, bool is_decoupled_model)
-      : ModelParser(clientbackend::BackendKind::TRITON)
+  cb::Error ReadDataFromStr(
+      const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs)
   {
-    if (is_sequence_model) {
-      scheduler_type_ = ModelParser::SEQUENCE;
-    }
-    is_decoupled_ = is_decoupled_model;
-  }
+    rapidjson::Document d{};
+    const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
+    d.Parse<parseFlags>(str.c_str());
 
-  std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};
+    return ParseData(d, inputs, outputs);
+  };
 };
 
 }}  // namespace triton::perfanalyzer

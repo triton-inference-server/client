@@ -35,6 +35,42 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
+/// Mock class of an InferInput
+///
+class MockInferInput : public InferInput {
+ public:
+  MockInferInput(
+      const BackendKind kind, const std::string& name,
+      const std::vector<int64_t>& dims, const std::string& datatype)
+      : InferInput(kind, name, datatype), dims_(dims)
+  {
+  }
+
+  const std::vector<int64_t>& Shape() const override { return dims_; }
+
+  Error Reset() override
+  {
+    recorded_inputs_.clear();
+    return cb::Error::Success;
+  }
+
+  Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
+  {
+    recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
+    return cb::Error::Success;
+  }
+
+  Error SetSharedMemory(
+      const std::string& name, size_t byte_size, size_t offset = 0) const
+  {
+    throw std::runtime_error(
+        "MockInferInput::SetSharedMemory() not implemented.");
+  }
+
+  const std::vector<int64_t> dims_{};
+  std::vector<std::pair<const uint8_t*, size_t>> recorded_inputs_{};
+};
+
 /// Mock class of an InferResult
 ///
 class MockInferResult : public InferResult {
@@ -119,6 +155,8 @@ class MockClientStats {
       request_timestamps;
   SeqStatus sequence_status;
 
+  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
+
   void CaptureRequest(
       ReqType type, const InferOptions& options,
       const std::vector<InferInput*>& inputs,
@@ -127,6 +165,11 @@ class MockClientStats {
     std::lock_guard<std::mutex> lock(mtx_);
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
+
+    for (const auto& input : inputs) {
+      recorded_inputs.push_back(
+          static_cast<const MockInferInput*>(input)->recorded_inputs_);
+    }
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);

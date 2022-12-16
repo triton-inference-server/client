@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -121,6 +121,17 @@ class DataLoader {
       const std::string& output_name, const int stream_id, const int step_id,
       const uint8_t** data_ptr, size_t* batch1_size);
 
+ protected:
+  /// Parses the input and output data from the json document
+  /// \param inputs The input tensors of a model
+  /// \param outputs The output tensors of a model
+  /// \param json The json document containing the raw json inputs/outputs
+  /// \return Returns error object indicating status
+  cb::Error ParseData(
+      const rapidjson::Document& json,
+      const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs);
+
  private:
   /// Helper function to read data for the specified input from json
   /// \param step the DOM for current step
@@ -135,9 +146,9 @@ class DataLoader {
       const int step_index, const bool is_input);
 
   // The batch_size_ for the data
-  size_t batch_size_;
+  size_t batch_size_{1};
   // The total number of data streams available.
-  size_t data_stream_cnt_;
+  size_t data_stream_cnt_{0};
   // A vector containing the supported step number for respective stream
   // ids.
   std::vector<size_t> step_num_;
@@ -155,6 +166,11 @@ class DataLoader {
   // Placeholder for generated input data, which will be used for all inputs
   // except string
   std::vector<uint8_t> input_buf_;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  DataLoader() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

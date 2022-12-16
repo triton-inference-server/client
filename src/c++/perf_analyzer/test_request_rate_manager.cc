@@ -29,6 +29,7 @@
 #include "common.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
+#include "mock_data_loader.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
@@ -79,6 +80,17 @@ class TestRequestRateManager : public TestLoadManagerBase,
     if (!execute_) {
       thread_config->is_paused_ = true;
     }
+  }
+
+  /// Mock out the InferInput object
+  ///
+  cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype) override
+  {
+    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
+    return cb::Error::Success;
   }
 
   /// Test the public function ResetWorkers()
@@ -249,18 +261,28 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences(params_.num_of_sequences);
   }
 
+  std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
+  std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
+  bool& using_json_data_{LoadManager::using_json_data_};
+  bool& execute_{RequestRateManager::execute_};
+  size_t& batch_size_{LoadManager::batch_size_};
+  std::vector<std::chrono::nanoseconds>& schedule_{
+      RequestRateManager::schedule_};
+  std::unique_ptr<std::chrono::nanoseconds>& gen_duration_{
+      RequestRateManager::gen_duration_};
+  std::chrono::steady_clock::time_point& start_time_{
+      RequestRateManager::start_time_};
+  size_t& max_threads_{LoadManager::max_threads_};
+  bool& async_{LoadManager::async_};
+  bool& streaming_{LoadManager::streaming_};
   struct ThreadStat : RequestRateManager::ThreadStat {
   };
-
   struct ThreadConfig : RequestRateManager::ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : RequestRateManager::ThreadConfig(index, stride)
     {
     }
   };
-
-  std::vector<std::chrono::nanoseconds>& schedule_{
-      RequestRateManager::schedule_};
 
  private:
   bool use_mock_infer_;
@@ -467,6 +489,102 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 
     CHECK(trrm.stats_->start_stream_enable_stats_value == false);
   }
+}
+
+TEST_CASE(
+    "custom_json_data: Check custom json data to ensure that it is processed "
+    "correctly")
+{
+  PerfAnalyzerParameters params{};
+  TestRequestRateManager trrm{params};
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(false, false)};
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT0";
+  model_tensor.shape_ = {1};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+  const std::string json_str{R"(
+{
+  "data": [
+    {
+      "INPUT0": [2000000000]
+    },
+    {
+      "INPUT0": [2000000001]
+    }
+  ]
+}
+    )"};
+  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  std::shared_ptr<TestRequestRateManager::ThreadStat> thread_stat{
+      std::make_shared<TestRequestRateManager::ThreadStat>()};
+  std::shared_ptr<TestRequestRateManager::ThreadConfig> thread_config{
+      std::make_shared<TestRequestRateManager::ThreadConfig>(0, 1)};
+
+  trrm.parser_ = mmp;
+  trrm.data_loader_ = mdl;
+  trrm.using_json_data_ = true;
+  trrm.execute_ = true;
+  trrm.batch_size_ = 1;
+  trrm.max_threads_ = 1;
+  trrm.schedule_.push_back(std::chrono::milliseconds(4));
+  trrm.schedule_.push_back(std::chrono::milliseconds(8));
+  trrm.schedule_.push_back(std::chrono::milliseconds(12));
+  trrm.schedule_.push_back(std::chrono::milliseconds(16));
+  trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
+  trrm.start_time_ = std::chrono::steady_clock::now();
+
+  SUBCASE("sync non-streaming")
+  {
+    trrm.async_ = false;
+    trrm.streaming_ = false;
+  }
+  SUBCASE("async non-streaming")
+  {
+    trrm.async_ = true;
+    trrm.streaming_ = false;
+  }
+  SUBCASE("async streaming")
+  {
+    trrm.async_ = true;
+    trrm.streaming_ = true;
+  }
+
+  std::future<void> infer_future{std::async(
+      &TestRequestRateManager::Infer, &trrm, thread_stat, thread_config)};
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(14));
+
+  early_exit = true;
+  infer_future.get();
+
+  const auto& recorded_inputs{trrm.stats_->recorded_inputs};
+
+  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
+      2000000000);
+  CHECK(recorded_inputs[0][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
+      2000000001);
+  CHECK(recorded_inputs[1][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
+      2000000000);
+  CHECK(recorded_inputs[2][0].second == 4);
+  CHECK(
+      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
+      2000000001);
+  CHECK(recorded_inputs[3][0].second == 4);
 }
 
 }}  // namespace triton::perfanalyzer

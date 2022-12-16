@@ -212,6 +212,18 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
+  /// Creates inference input object
+  /// \param infer_input Output parameter storing newly created inference input
+  /// \param kind Backend kind
+  /// \param name Name of inference input
+  /// \param dims Shape of inference input
+  /// \param datatype Data type of inference input
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype);
+
  private:
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects for all
@@ -258,7 +270,7 @@ class LoadManager {
   std::default_random_engine rng_generator_;
   std::uniform_int_distribution<uint64_t> distribution_;
 
-  std::unique_ptr<DataLoader> data_loader_;
+  std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
 
   // Holds information about the shared memory locations
