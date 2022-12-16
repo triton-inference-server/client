@@ -160,6 +160,32 @@ class ConcurrencyWorker : public LoadWorker {
       free_ctx_ids_.push(i);
     }
   }
+
+  uint32_t GetSeqStatIndex(uint32_t ctx_id)
+  {
+    size_t offset = 0;
+    for (size_t i = 0; i < thread_config_->thread_id_; i++) {
+      offset += threads_config_[i]->concurrency_;
+    }
+
+    return (offset + ctx_id);
+  }
+
+  uint32_t GetCtxId()
+  {
+    uint32_t ctx_id;
+    if (on_sequence_model_) {
+      // Find the next available context id to use for this request
+      {
+        std::lock_guard<std::mutex> lk(cb_mtx_);
+        ctx_id = free_ctx_ids_.front();
+        free_ctx_ids_.pop();
+      }
+    } else {
+      ctx_id = 0;
+    }
+    return ctx_id;
+  }
 };
 
 }}  // namespace triton::perfanalyzer

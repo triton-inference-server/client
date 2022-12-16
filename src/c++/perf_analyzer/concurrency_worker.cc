@@ -181,7 +181,7 @@ ConcurrencyWorker::PrepAndSendInferRequests()
 void
 ConcurrencyWorker::PrepAndSendInferRequest()
 {
-  uint32_t seq_stat_index = 0, ctx_id = 0;
+  uint32_t ctx_id = GetCtxId();
 
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
@@ -191,18 +191,7 @@ ConcurrencyWorker::PrepAndSendInferRequest()
   }
 
   if (on_sequence_model_) {
-    size_t offset = 0;
-    for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-      offset += threads_config_[i]->concurrency_;
-    }
-
-    // Find the next available context id to use for this request
-    {
-      std::lock_guard<std::mutex> lk(cb_mtx_);
-      ctx_id = free_ctx_ids_.front();
-      free_ctx_ids_.pop();
-    }
-    seq_stat_index = offset + ctx_id;
+    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
 
     {
       std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
@@ -283,8 +272,6 @@ ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
   cb_cv_.notify_all();
 }
 
-// Specify the function as lambda here to work around the possible callback
-// lifecycle issue when making this a class member function.
 // Note that 'free_ctx_ids_' must be reconstruct after the call because
 // this function doesn't utilize 'free_ctx_ids_' in the same way as in main
 // loop
@@ -294,13 +281,9 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (!on_sequence_model_) {
     return cb::Error::Success;
   }
-  size_t offset = 0;
-  for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-    offset += threads_config_[i]->concurrency_;
-  }
 
   for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-    size_t seq_stat_index = offset + ctx_id;
+    size_t seq_stat_index = GetSeqStatIndex(ctx_id);
 
     std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
     // Complete the sequence if there are remaining queries
