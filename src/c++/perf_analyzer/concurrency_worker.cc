@@ -136,31 +136,7 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
   while (active_ctx_cnt > ctxs_.size()) {
-    ctxs_.push_back(std::make_shared<InferContext>());
-
-    thread_stat_->status_ =
-        factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
-    ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
-    ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
-    ctxs_.back()->options_->model_signature_name_ =
-        parser_->ModelSignatureName();
-    thread_stat_->contexts_stat_.emplace_back();
-    if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-      thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
-    } else {
-      thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
-    }
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
-    if (streaming_) {
-      // Decoupled models should not collect client side statistics
-      thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
-          async_callback_func_, (!parser_->IsDecoupled()));
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
-    }
+    CreateContext();
   }
   ResetFreeCtxIds();
 }
