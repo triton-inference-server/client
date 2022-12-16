@@ -142,50 +142,13 @@ class ConcurrencyWorker : public LoadWorker {
 
   void WaitForOngoingRequests();
 
-  void SyncClientStats()
-  {
-    // Make sure all threads are in sync with the client's stats
-    //
-    for (size_t i = 0; i < ctxs_.size(); ++i) {
-      ctxs_[i]->infer_backend_->ClientInferStat(
-          &(thread_stat_->contexts_stat_[i]));
-    }
-  }
+  void SyncClientStats();
 
-  void ResetFreeCtxIds()
-  {
-    std::lock_guard<std::mutex> lock(cb_mtx_);
-    free_ctx_ids_ = std::queue<int>();
-    for (size_t i = 0; i < ctxs_.size(); ++i) {
-      free_ctx_ids_.push(i);
-    }
-  }
+  void ResetFreeCtxIds();
 
-  uint32_t GetSeqStatIndex(uint32_t ctx_id)
-  {
-    size_t offset = 0;
-    for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-      offset += threads_config_[i]->concurrency_;
-    }
+  uint32_t GetSeqStatIndex(uint32_t ctx_id);
 
-    return (offset + ctx_id);
-  }
-
-  uint32_t GetCtxId()
-  {
-    uint32_t ctx_id;
-    if (on_sequence_model_) {
-      // Find the next available context id to use for this request
-      {
-        std::lock_guard<std::mutex> lk(cb_mtx_);
-        ctx_id = free_ctx_ids_.front();
-        free_ctx_ids_.pop();
-      }
-    } else {
-      ctx_id = 0;
-    }
-    return ctx_id;
-  }
+  uint32_t GetCtxId();
 };
 
 }}  // namespace triton::perfanalyzer
