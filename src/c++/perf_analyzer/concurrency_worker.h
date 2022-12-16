@@ -141,6 +141,25 @@ class ConcurrencyWorker : public LoadWorker {
   bool HandleExitConditions();
 
   void WaitForOngoingRequests();
+
+  void SyncClientStats()
+  {
+    // Make sure all threads are in sync with the client's stats
+    //
+    for (size_t i = 0; i < ctxs_.size(); ++i) {
+      ctxs_[i]->infer_backend_->ClientInferStat(
+          &(thread_stat_->contexts_stat_[i]));
+    }
+  }
+
+  void ResetFreeCtxIds()
+  {
+    std::lock_guard<std::mutex> lock(cb_mtx_);
+    free_ctx_ids_ = std::queue<int>();
+    for (size_t i = 0; i < ctxs_.size(); ++i) {
+      free_ctx_ids_.push(i);
+    }
+  }
 };
 
 }}  // namespace triton::perfanalyzer

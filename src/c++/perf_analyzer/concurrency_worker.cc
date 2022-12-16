@@ -95,18 +95,12 @@ ConcurrencyWorker::HandleExecuteOff()
         thread_stat_->status_ = status;
       }
       WaitForOngoingRequests();
-      // Make sure all threads are in sync with the client's stats
-      //
-      for (size_t i = 0; i < ctxs_.size(); ++i) {
-        ctxs_[i]->infer_backend_->ClientInferStat(
-            &(thread_stat_->contexts_stat_[i]));
-      }
+      SyncClientStats();
+
       // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
-      free_ctx_ids_ = std::queue<int>();
-      for (size_t i = 0; i < ctxs_.size(); ++i) {
-        free_ctx_ids_.push(i);
-      }
+      ResetFreeCtxIds();
+
       // Wait if no request should be sent and it is not exiting
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
@@ -142,10 +136,6 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
   while (active_ctx_cnt > ctxs_.size()) {
-    {
-      std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctxs_.size());
-    }
     ctxs_.push_back(std::make_shared<InferContext>());
 
     thread_stat_->status_ =
@@ -172,6 +162,7 @@ ConcurrencyWorker::CreateContextsAsNecessary()
       }
     }
   }
+  ResetFreeCtxIds();
 }
 
 void
