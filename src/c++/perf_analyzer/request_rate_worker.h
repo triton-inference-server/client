@@ -98,10 +98,9 @@ class RequestRateWorker : public LoadWorker {
   std::shared_ptr<ThreadConfig> thread_config_;
 
   // Request Rate Worker only ever has a single context
-  uint32_t ctx_id_ = 0;
+  uint32_t GetCtxId() { return 0; }
 
-  // Create and initialize the inference context
-  void CreateContext();
+  uint32_t GetSeqStatIndex() { return (rand() % sequence_stat_.size()); }
 
   void HandleExecuteOff();
 

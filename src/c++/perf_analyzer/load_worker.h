@@ -278,6 +278,9 @@ class LoadWorker : public IWorker {
       const int step_index);
 
  protected:
+  // Create and initialize a new context
+  void CreateContext();
+
   /// A helper function to issue inference request to the server.
   /// \param context InferContext to use for sending the request.
   /// \param context_id The ID of the context
