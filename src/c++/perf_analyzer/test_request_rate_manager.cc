@@ -317,6 +317,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
+  std::uniform_int_distribution<uint64_t>& distribution_{
+      LoadManager::distribution_};
 
  private:
   bool use_mock_infer_;
@@ -529,7 +531,39 @@ TEST_CASE(
     "correctly")
 {
   PerfAnalyzerParameters params{};
-  TestRequestRateManager trrm{params};
+  bool is_sequence_model{false};
+
+  const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
+    SUBCASE("sync non-streaming")
+    {
+      async = false;
+      streaming = false;
+    }
+    SUBCASE("async non-streaming")
+    {
+      async = true;
+      streaming = false;
+    }
+    SUBCASE("async streaming")
+    {
+      async = true;
+      streaming = true;
+    }
+  }};
+
+  SUBCASE("non-sequence")
+  {
+    is_sequence_model = false;
+    ParameterizeAsyncAndStreaming(params.async, params.streaming);
+  }
+  SUBCASE("sequence")
+  {
+    is_sequence_model = true;
+    params.num_of_sequences = 1;
+    ParameterizeAsyncAndStreaming(params.async, params.streaming);
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
 
   std::shared_ptr<MockModelParser> mmp{
       std::make_shared<MockModelParser>(false, false)};
@@ -572,28 +606,14 @@ TEST_CASE(
   trrm.schedule_.push_back(std::chrono::milliseconds(12));
   trrm.schedule_.push_back(std::chrono::milliseconds(16));
   trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
+  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
+      0, mdl->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
-  SUBCASE("sync non-streaming")
-  {
-    trrm.async_ = false;
-    trrm.streaming_ = false;
-  }
-  SUBCASE("async non-streaming")
-  {
-    trrm.async_ = true;
-    trrm.streaming_ = false;
-  }
-  SUBCASE("async streaming")
-  {
-    trrm.async_ = true;
-    trrm.streaming_ = true;
-  }
-
-  auto worker = trrm.MakeWorker(thread_stat, thread_config);
+  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(14));
+  std::this_thread::sleep_for(std::chrono::milliseconds(18));
 
   early_exit = true;
   infer_future.get();
