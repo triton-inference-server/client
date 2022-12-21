@@ -320,15 +320,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
   std::uniform_int_distribution<uint64_t>& distribution_{
       LoadManager::distribution_};
 
-  struct ThreadStat : RequestRateManager::ThreadStat {
-  };
-  struct ThreadConfig : RequestRateManager::ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : RequestRateManager::ThreadConfig(index, stride)
-    {
-    }
-  };
-
  private:
   bool use_mock_infer_;
 
@@ -541,8 +532,6 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
   bool is_sequence_model{false};
-  bool async{false};
-  bool streaming{false};
 
   const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
     SUBCASE("sync non-streaming")
@@ -565,13 +554,13 @@ TEST_CASE(
   SUBCASE("non-sequence")
   {
     is_sequence_model = false;
-    ParameterizeAsyncAndStreaming(async, streaming);
+    ParameterizeAsyncAndStreaming(params.async, params.streaming);
   }
   SUBCASE("sequence")
   {
     is_sequence_model = true;
     params.num_of_sequences = 1;
-    ParameterizeAsyncAndStreaming(async, streaming);
+    ParameterizeAsyncAndStreaming(params.async, params.streaming);
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -623,6 +612,8 @@ TEST_CASE(
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(18));
 
   early_exit = true;
   infer_future.get();
