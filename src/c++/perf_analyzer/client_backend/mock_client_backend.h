@@ -51,13 +51,13 @@ class MockInferInput : public InferInput {
   Error Reset() override
   {
     recorded_inputs_.clear();
-    return cb::Error::Success;
+    return Error::Success;
   }
 
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
     recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
-    return cb::Error::Success;
+    return Error::Success;
   }
 
   Error SetSharedMemory(
