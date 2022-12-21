@@ -138,11 +138,11 @@ DataLoader::ReadDataFromJSON(
   char readBuffer[65536];
   rapidjson::FileReadStream fs(data_file, readBuffer, sizeof(readBuffer));
 
-  fclose(data_file);
-
   rapidjson::Document d{};
   const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
   d.ParseStream<parseFlags>(fs);
+
+  fclose(data_file);
 
   return ParseData(d, inputs, outputs);
 }
