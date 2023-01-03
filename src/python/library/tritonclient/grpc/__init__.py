@@ -25,6 +25,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 try:
+    from packaging import version
+    import warnings
     from google.protobuf.json_format import MessageToJson
     import grpc
     import base64
@@ -35,7 +37,9 @@ try:
     import struct
 except ModuleNotFoundError as error:
     raise RuntimeError(
-        'The installation does not include grpc support. Specify \'grpc\' or \'all\' while installing the tritonclient package to include the support'
+        'The installation does not include grpc support. '
+        'Specify \'grpc\' or \'all\' while installing the tritonclient '
+        'package to include the support'
     ) from error
 
 from tritonclient.grpc import model_config_pb2
@@ -50,6 +54,15 @@ from tritonclient.utils import *
 INT32_MAX = 2**(struct.Struct('i').size * 8 - 1) - 1
 MAX_GRPC_MESSAGE_SIZE = INT32_MAX
 
+# Check grpc version and issue warnings if grpc version is known to have
+# memory leakage issue.
+if version.parse(grpc.__version__) >= version.parse('1.43.0') and version.parse(grpc.__version__) != version.parse('1.51.1'):
+    warnings.warn(
+        f"Imported version of grpc is {grpc.__version__}. "
+        "There is memory leak in later Python GRPC (1.43.0 to be specific), "
+        "Please use versions less than 1.42.0 and higher than 1.51.1 to avoid "
+        "leaks(see https://github.com/grpc/grpc/issues/28513)." 
+    )
 
 def get_error_grpc(rpc_error):
     return InferenceServerException(
@@ -100,7 +113,8 @@ def _grpc_compression_type(algorithm_str):
         return grpc.Compression.Gzip
 
     print(
-        "The provided client-side compression algorithm is not supported... using no compression"
+        "The provided client-side compression algorithm is not supported... "
+        "using no compression"
     )
     return grpc.Compression.NoCompression
 
