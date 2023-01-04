@@ -111,10 +111,44 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.batch_size, params.measurement_window_ms, params.max_threads,
             params.num_of_sequences, params.sequence_length,
             params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range,
-            params.string_length, params.string_data, params.zero_input,
-            params.user_data, GetParser(), GetFactory())
+            params.start_sequence_id, params.sequence_id_range, GetParser(),
+            GetFactory())
   {
+    InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+  }
+
+
+  /// Constructor that adds an arg to pass in the model parser and does NOT call
+  /// the InitManager code. This enables InitManager to be overloaded and mocked
+  /// out.
+  ///
+  TestRequestRateManager(
+      PerfAnalyzerParameters params, const std::shared_ptr<ModelParser>& parser,
+      bool is_sequence_model = false, bool is_decoupled_model = false,
+      bool use_mock_infer = false)
+      : use_mock_infer_(use_mock_infer),
+        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
+        RequestRateManager(
+            params.async, params.streaming, params.request_distribution,
+            params.batch_size, params.measurement_window_ms, params.max_threads,
+            params.num_of_sequences, params.sequence_length,
+            params.shared_memory_type, params.output_shm_size,
+            params.start_sequence_id, params.sequence_id_range, parser,
+            GetFactory())
+  {
+  }
+
+  // Mocked version of the CopySharedMemory method in loadmanager.
+  // This is strictly for testing to mock out the memcpy calls
+  //
+  cb::Error CopySharedMemory(
+      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+      std::vector<size_t>& byte_size, bool is_shape_tensor,
+      std::string& region_name) override
+  {
+    return cb::Error::Success;
   }
 
   std::shared_ptr<IWorker> MakeWorker(
@@ -303,6 +337,15 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences(params_.num_of_sequences);
   }
 
+  /// Test that the shared memory methods are called correctly
+  ///
+  void TestSharedMemory(uint request_rate, uint duration_ms)
+  {
+    ChangeRequestRate(request_rate);
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
+    StopWorkerThreads();
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -317,6 +360,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
+  bool& using_shared_memory_{LoadManager::using_shared_memory_};
   std::uniform_int_distribution<uint64_t>& distribution_{
       LoadManager::distribution_};
 
@@ -639,4 +683,109 @@ TEST_CASE(
   CHECK(recorded_inputs[3][0].second == 4);
 }
 
+/// Check that the using_shared_memory_ is being set correctly
+///
+TEST_CASE("Check setting of InitSharedMemory")
+{
+  PerfAnalyzerParameters params;
+  bool is_sequence = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = true;
+
+  SUBCASE("No shared memory")
+  {
+    params.shared_memory_type = NO_SHARED_MEMORY;
+    TestRequestRateManager trrm(
+        params, is_sequence, is_decoupled, use_mock_infer);
+    CHECK(false == trrm.using_shared_memory_);
+  }
+
+  SUBCASE("System shared memory")
+  {
+    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+    TestRequestRateManager trrm(
+        params, is_sequence, is_decoupled, use_mock_infer);
+    CHECK(true == trrm.using_shared_memory_);
+  }
+}
+
+/// Verify Shared Memory api calls
+///
+TEST_CASE("Shared memory methods")
+{
+  PerfAnalyzerParameters params;
+  bool is_sequence = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = true;
+  uint request_rate = 500;
+  uint duration_ms = 1000;
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(false, false)};
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT0";
+  model_tensor.shape_ = {1};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2123456789]
+      }
+    ]
+  }
+      )"};
+
+  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  cb::MockClientStats::SharedMemoryStats expected_stats;
+
+  SUBCASE("System shared memory usage")
+  {
+    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+    TestRequestRateManager trrm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    trrm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    expected_stats.num_unregister_all_shared_memory_calls = 1;
+    expected_stats.num_register_system_shared_memory_calls = 1;
+    expected_stats.num_create_shared_memory_region_calls = 1;
+    expected_stats.num_map_shared_memory_calls = 1;
+    trrm.CheckSharedMemory(expected_stats);
+  }
+
+  SUBCASE("Cuda shared memory usage")
+  {
+    params.shared_memory_type = CUDA_SHARED_MEMORY;
+    TestRequestRateManager trrm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    trrm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    expected_stats.num_unregister_all_shared_memory_calls = 1;
+    expected_stats.num_register_cuda_shared_memory_calls = 1;
+    trrm.CheckSharedMemory(expected_stats);
+  }
+
+  SUBCASE("No shared memory usage")
+  {
+    params.shared_memory_type = NO_SHARED_MEMORY;
+    TestRequestRateManager trrm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    trrm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    trrm.CheckSharedMemory(expected_stats);
+  }
+}
 }}  // namespace triton::perfanalyzer

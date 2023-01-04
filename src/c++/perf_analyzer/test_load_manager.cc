@@ -44,9 +44,8 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
             params.async, params.streaming, params.batch_size,
             params.max_threads, params.sequence_length,
             params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range,
-            params.string_length, params.string_data, params.zero_input,
-            params.user_data, GetParser(), GetFactory())
+            params.start_sequence_id, params.sequence_id_range, GetParser(),
+            GetFactory())
   {
   }
 

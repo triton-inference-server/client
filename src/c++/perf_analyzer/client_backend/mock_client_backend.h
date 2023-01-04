@@ -147,6 +147,50 @@ class MockClientStats {
 
   std::atomic<size_t> num_active_infer_calls{0};
 
+  // Struct tracking shared memory method calls
+  //
+  struct SharedMemoryStats {
+    std::atomic<size_t> num_unregister_all_shared_memory_calls{0};
+    std::atomic<size_t> num_register_system_shared_memory_calls{0};
+    std::atomic<size_t> num_register_cuda_shared_memory_calls{0};
+    std::atomic<size_t> num_register_cuda_memory_calls{0};
+    std::atomic<size_t> num_register_system_memory_calls{0};
+    std::atomic<size_t> num_create_shared_memory_region_calls{0};
+    std::atomic<size_t> num_map_shared_memory_calls{0};
+    std::atomic<size_t> num_close_shared_memory_calls{0};
+    std::atomic<size_t> num_unlink_shared_memory_region_calls{0};
+    std::atomic<size_t> num_unmap_shared_memory_calls{0};
+
+    // bool operator==(const SharedMemoryStats& lhs, const SharedMemoryStats&
+    // rhs)
+    bool operator==(const SharedMemoryStats& rhs) const
+    {
+      if (this->num_unregister_all_shared_memory_calls ==
+              rhs.num_unregister_all_shared_memory_calls &&
+          this->num_register_system_shared_memory_calls ==
+              rhs.num_register_system_shared_memory_calls &&
+          this->num_register_cuda_shared_memory_calls ==
+              rhs.num_register_cuda_shared_memory_calls &&
+          this->num_register_cuda_memory_calls ==
+              rhs.num_register_cuda_memory_calls &&
+          this->num_register_system_memory_calls ==
+              rhs.num_register_system_memory_calls &&
+          this->num_create_shared_memory_region_calls ==
+              rhs.num_create_shared_memory_region_calls &&
+          this->num_map_shared_memory_calls ==
+              rhs.num_map_shared_memory_calls &&
+          this->num_close_shared_memory_calls ==
+              rhs.num_close_shared_memory_calls &&
+          this->num_unlink_shared_memory_region_calls ==
+              rhs.num_unlink_shared_memory_region_calls &&
+          this->num_unmap_shared_memory_calls ==
+              rhs.num_unmap_shared_memory_calls) {
+        return true;
+      }
+      return false;
+    }
+  };
+
   std::chrono::milliseconds response_delay{0};
 
   bool start_stream_enable_stats_value{false};
@@ -154,6 +198,7 @@ class MockClientStats {
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       request_timestamps;
   SeqStatus sequence_status;
+  SharedMemoryStats memory_stats;
 
   std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
 
@@ -299,6 +344,75 @@ class MockClientBackend : public ClientBackend {
   Error ClientInferStat(InferStat* infer_stat) override
   {
     infer_stat->completed_request_count = local_completed_req_count_;
+    return Error::Success;
+  }
+
+  Error UnregisterAllSharedMemory() override
+  {
+    stats_->memory_stats.num_unregister_all_shared_memory_calls++;
+    return Error::Success;
+  }
+
+  Error RegisterSystemSharedMemory(
+      const std::string& name, const std::string& key,
+      const size_t byte_size) override
+  {
+    stats_->memory_stats.num_register_system_shared_memory_calls++;
+    return Error::Success;
+  }
+
+  Error RegisterCudaSharedMemory(
+      const std::string& name, const cudaIpcMemHandle_t& handle,
+      const size_t byte_size) override
+  {
+    stats_->memory_stats.num_register_cuda_shared_memory_calls++;
+    return Error::Success;
+  }
+
+  Error RegisterCudaMemory(
+      const std::string& name, void* handle, const size_t byte_size) override
+  {
+    stats_->memory_stats.num_register_cuda_memory_calls++;
+    return Error::Success;
+  }
+
+  Error RegisterSystemMemory(
+      const std::string& name, void* memory_ptr,
+      const size_t byte_size) override
+  {
+    stats_->memory_stats.num_register_system_memory_calls++;
+    return Error::Success;
+  }
+
+  Error CreateSharedMemoryRegion(
+      std::string shm_key, size_t byte_size, int* shm_fd) override
+  {
+    stats_->memory_stats.num_create_shared_memory_region_calls++;
+    return Error::Success;
+  }
+
+  Error MapSharedMemory(
+      int shm_fd, size_t offset, size_t byte_size, void** shm_addr) override
+  {
+    stats_->memory_stats.num_map_shared_memory_calls++;
+    return Error::Success;
+  }
+
+  Error CloseSharedMemory(int shm_fd) override
+  {
+    stats_->memory_stats.num_close_shared_memory_calls++;
+    return Error::Success;
+  }
+
+  Error UnlinkSharedMemoryRegion(std::string shm_key) override
+  {
+    stats_->memory_stats.num_unlink_shared_memory_region_calls++;
+    return Error::Success;
+  }
+
+  Error UnmapSharedMemory(void* shm_addr, size_t byte_size) override
+  {
+    stats_->memory_stats.num_unmap_shared_memory_calls++;
     return Error::Success;
   }
 
