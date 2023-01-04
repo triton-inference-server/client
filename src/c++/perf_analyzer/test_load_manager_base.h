@@ -107,6 +107,14 @@ class TestLoadManagerBase {
     }
   }
 
+
+  void CheckSharedMemory(
+      const cb::MockClientStats::SharedMemoryStats& expected_stats)
+  {
+    auto actual_stats = GetStats();
+    CHECK(expected_stats == actual_stats->memory_stats);
+  }
+
   void CheckSequences(uint64_t expected_num_seq)
   {
     auto stats = GetStats();
@@ -206,5 +214,4 @@ class TestLoadManagerBase {
     return params;
   }
 };
-
 }}  // namespace triton::perfanalyzer

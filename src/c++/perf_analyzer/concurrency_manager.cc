@@ -40,11 +40,9 @@ cb::Error
 ConcurrencyManager::Create(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t max_concurrency,
-    const size_t sequence_length, const size_t string_length,
-    const std::string& string_data, const bool zero_input,
-    std::vector<std::string>& user_data,
-    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const size_t sequence_length, const SharedMemoryType shared_memory_type,
+    const size_t output_shm_size, const uint64_t start_sequence_id,
+    const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
@@ -52,8 +50,7 @@ ConcurrencyManager::Create(
   std::unique_ptr<ConcurrencyManager> local_manager(new ConcurrencyManager(
       async, streaming, batch_size, max_threads, max_concurrency,
       sequence_length, shared_memory_type, output_shm_size, start_sequence_id,
-      sequence_id_range, string_length, string_data, zero_input, user_data,
-      parser, factory));
+      sequence_id_range, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -65,16 +62,13 @@ ConcurrencyManager::ConcurrencyManager(
     const size_t max_threads, const size_t max_concurrency,
     const size_t sequence_length, const SharedMemoryType shared_memory_type,
     const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range, const size_t string_length,
-    const std::string& string_data, const bool zero_input,
-    std::vector<std::string>& user_data,
+    const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, sequence_length,
           shared_memory_type, output_shm_size, start_sequence_id,
-          sequence_id_range, string_length, string_data, zero_input, user_data,
-          parser, factory),
+          sequence_id_range, parser, factory),
       execute_(true), max_concurrency_(max_concurrency)
 {
   if (on_sequence_model_) {
