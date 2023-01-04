@@ -41,6 +41,17 @@ class LoadManager {
  public:
   virtual ~LoadManager();
 
+  /// Initialize the Manager class to set up shared memory and inputs
+  /// \param string_length The length of the random strings to be generated
+  /// for string inputs.
+  /// \param string_data The string to be used as string inputs for model.
+  /// \param zero_input Whether to use zero for model inputs.
+  /// \param user_data The vector containing path/paths to user-provided data
+  /// that can be a directory or path to a json data file.
+  void InitManager(
+      const size_t string_length, const std::string& string_data,
+      const bool zero_input, std::vector<std::string>& user_data);
+
   /// Check if the load manager is working as expected.
   /// \return cb::Error object indicating success or failure.
   cb::Error CheckHealth();
@@ -77,8 +88,6 @@ class LoadManager {
       const size_t max_threads, const size_t sequence_length,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-      const size_t string_length, const std::string& string_data,
-      const bool zero_input, std::vector<std::string>& user_data,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
@@ -104,6 +113,19 @@ class LoadManager {
   cb::Error CreateMemoryRegion(
       const std::string& shm_region_name, const SharedMemoryType& memory_type,
       const size_t byte_size, void** ptr);
+
+  /// \brief Helper function to handle copying shared memory to the correct
+  /// memory region
+  /// \param input_shm_ptr Pointer to the shared memory for a specific input
+  /// \param data_ptrs Pointer to the data for the batch
+  /// \param byte_size Size of the data being copied
+  /// \param is_shape_tensor Is the input a shape tensor
+  /// \param region_name Name of the shared memory region
+  /// \return cb::Error object indicating success or failure
+  virtual cb::Error CopySharedMemory(
+      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+      std::vector<size_t>& byte_size, bool is_shape_tensor,
+      std::string& region_name);
 
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
