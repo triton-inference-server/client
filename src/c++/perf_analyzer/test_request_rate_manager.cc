@@ -274,7 +274,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   ///
   void TestSequences()
   {
-    stats_->response_delay = std::chrono::milliseconds(10);
+    stats_->SetDelays({10});
     double request_rate1 = 100;
     double request_rate2 = 200;
 
