@@ -57,18 +57,21 @@ class MockInferInput : public InferInput {
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
     recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
+    ++append_raw_calls_;
     return Error::Success;
   }
 
   Error SetSharedMemory(
-      const std::string& name, size_t byte_size, size_t offset = 0) const
+      const std::string& name, size_t byte_size, size_t offset = 0)
   {
-    throw std::runtime_error(
-        "MockInferInput::SetSharedMemory() not implemented.");
+    ++set_shared_memory_calls_;
+    return Error::Success;
   }
 
   const std::vector<int64_t> dims_{};
   std::vector<std::pair<const uint8_t*, size_t>> recorded_inputs_{};
+  std::atomic<size_t> append_raw_calls_{0};
+  std::atomic<size_t> set_shared_memory_calls_{0};
 };
 
 /// Mock class of an InferResult
@@ -159,6 +162,8 @@ class MockClientStats {
 
   std::atomic<size_t> num_active_infer_calls{0};
 
+  std::atomic<size_t> num_append_raw_calls{0};
+  std::atomic<size_t> num_set_shared_memory_calls{0};
   // Struct tracking shared memory method calls
   //
   struct SharedMemoryStats {
@@ -248,6 +253,7 @@ class MockClientStats {
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);
+    AccumulateInferInputCalls(inputs);
   }
 
   void CaptureStreamStart()
@@ -310,6 +316,16 @@ class MockClientStats {
         REQUIRE(sequence_status.IsSeqLive(options.sequence_id_) == true);
         sequence_status.HandleSeqEnd(options.sequence_id_);
       }
+    }
+  }
+
+  void AccumulateInferInputCalls(const std::vector<InferInput*>& inputs)
+  {
+    for (const auto& input : inputs) {
+      const MockInferInput* mock_input =
+          static_cast<const MockInferInput*>(input);
+      num_append_raw_calls += mock_input->append_raw_calls_;
+      num_set_shared_memory_calls += mock_input->set_shared_memory_calls_;
     }
   }
 };

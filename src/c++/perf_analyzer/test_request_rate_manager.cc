@@ -788,4 +788,128 @@ TEST_CASE("Shared memory methods")
     trrm.CheckSharedMemory(expected_stats);
   }
 }
+
+TEST_CASE("Request rate - Shared memory infer input calls")
+{
+  PerfAnalyzerParameters params{};
+  bool is_sequence_model{false};
+
+  const auto& ParameterizeAsyncAndStreaming{[&]() {
+    SUBCASE("sync non-streaming")
+    {
+      params.async = false;
+      params.streaming = false;
+    }
+    SUBCASE("async non-streaming")
+    {
+      params.async = true;
+      params.streaming = false;
+    }
+    SUBCASE("async streaming")
+    {
+      params.async = true;
+      params.streaming = true;
+    }
+  }};
+
+  const auto& ParameterizeSequence{[&]() {
+    SUBCASE("non-sequence")
+    {
+      is_sequence_model = false;
+      ParameterizeAsyncAndStreaming();
+    }
+    SUBCASE("sequence")
+    {
+      is_sequence_model = true;
+      params.num_of_sequences = 1;
+      ParameterizeAsyncAndStreaming();
+    }
+  }};
+
+  const auto& ParameterizeMemory{[&]() {
+    SUBCASE("No shared memory")
+    {
+      params.shared_memory_type = NO_SHARED_MEMORY;
+      ParameterizeSequence();
+    }
+    SUBCASE("system shared memory")
+    {
+      params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+      ParameterizeSequence();
+    }
+    SUBCASE("cuda shared memory")
+    {
+      params.shared_memory_type = CUDA_SHARED_MEMORY;
+      ParameterizeSequence();
+    }
+  }};
+
+  ParameterizeMemory();
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(false, false)};
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT0";
+  model_tensor.shape_ = {1};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+
+  trrm.parser_ = mmp;
+  trrm.data_loader_ = mdl;
+  trrm.using_json_data_ = true;
+  trrm.execute_ = true;
+  trrm.batch_size_ = 1;
+  trrm.max_threads_ = 1;
+  trrm.schedule_.push_back(std::chrono::milliseconds(4));
+  trrm.schedule_.push_back(std::chrono::milliseconds(8));
+  trrm.schedule_.push_back(std::chrono::milliseconds(12));
+  trrm.schedule_.push_back(std::chrono::milliseconds(16));
+  trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
+  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
+      0, mdl->GetDataStreamsCount() - 1);
+  trrm.start_time_ = std::chrono::steady_clock::now();
+
+  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
+  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(18));
+
+  early_exit = true;
+  infer_future.get();
+
+  const auto& actual_append_raw_calls{trrm.stats_->num_append_raw_calls};
+  const auto& actual_set_shared_memory_calls{
+      trrm.stats_->num_set_shared_memory_calls};
+
+  if (params.shared_memory_type == NO_SHARED_MEMORY) {
+    CHECK(actual_append_raw_calls > 0);
+    CHECK(actual_set_shared_memory_calls == 0);
+  } else {
+    CHECK(actual_append_raw_calls == 0);
+    CHECK(actual_set_shared_memory_calls > 0);
+  }
+}
 }}  // namespace triton::perfanalyzer
