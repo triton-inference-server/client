@@ -135,10 +135,12 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   // maintain concurrency for this thread.
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
-  while (active_ctx_cnt > ctxs_.size()) {
-    CreateContext();
+  if (active_ctx_cnt > ctxs_.size()) {
+    while (active_ctx_cnt > ctxs_.size()) {
+      CreateContext();
+    }
+    ResetFreeCtxIds();
   }
-  ResetFreeCtxIds();
 }
 
 void

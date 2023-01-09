@@ -92,6 +92,12 @@ class ConcurrencyManager : public LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeConcurrencyLevel(const size_t concurrent_request_count);
 
+ protected:
+  // Makes a new worker
+  virtual std::shared_ptr<IWorker> MakeWorker(
+      std::shared_ptr<ThreadStat>,
+      std::shared_ptr<ConcurrencyWorker::ThreadConfig>);
+
  private:
   ConcurrencyManager(
       const bool async, const bool streaming, const int32_t batch_size,
@@ -114,11 +120,6 @@ class ConcurrencyManager : public LoadManager {
   // Restart all worker threads that were working on sequences
   //
   void ResumeSequenceWorkers();
-
-  // Makes a new worker
-  virtual std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat>,
-      std::shared_ptr<ConcurrencyWorker::ThreadConfig>);
 
   // The number of worker threads with non-zero concurrencies
   size_t active_threads_;

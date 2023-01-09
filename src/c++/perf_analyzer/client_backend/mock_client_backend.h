@@ -103,6 +103,7 @@ class MockClientStats {
   struct SeqStatus {
     std::set<uint64_t> used_seq_ids;
     std::map<uint64_t, uint32_t> live_seq_ids_to_length;
+    std::map<uint64_t, uint32_t> seq_ids_to_count;
     uint32_t max_live_seq_count = 0;
     std::vector<uint64_t> seq_lengths;
 
@@ -127,7 +128,17 @@ class MockClientStats {
       live_seq_ids_to_length.erase(it);
     }
 
-    void HandleSeqRequest(uint64_t seq_id) { live_seq_ids_to_length[seq_id]++; }
+    void HandleSeqRequest(uint64_t seq_id)
+    {
+      live_seq_ids_to_length[seq_id]++;
+
+      if (seq_ids_to_count.find(seq_id) == seq_ids_to_count.end()) {
+        seq_ids_to_count[seq_id] = 1;
+      } else {
+        seq_ids_to_count[seq_id]++;
+      }
+    }
+
     void Reset()
     {
       // Note that live_seq_ids_to_length is explicitly not reset here.
@@ -137,6 +148,7 @@ class MockClientStats {
       used_seq_ids.clear();
       max_live_seq_count = 0;
       seq_lengths.clear();
+      seq_ids_to_count.clear();
     }
   };
 
@@ -191,7 +203,25 @@ class MockClientStats {
     }
   };
 
-  std::chrono::milliseconds response_delay{0};
+  void SetDelays(std::vector<size_t> times)
+  {
+    response_delays.clear();
+    for (size_t t : times) {
+      response_delays.push_back(std::chrono::milliseconds{t});
+    }
+  }
+
+  std::chrono::milliseconds GetNextDelay()
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    auto val = response_delays[response_delays_index];
+    response_delays_index++;
+    if (response_delays_index == response_delays.size()) {
+      response_delays_index = 0;
+    }
+    return val;
+  }
 
   bool start_stream_enable_stats_value{false};
 
@@ -239,6 +269,10 @@ class MockClientStats {
   }
 
  private:
+  std::vector<std::chrono::milliseconds> response_delays{
+      std::chrono::milliseconds{0}};
+  std::atomic<size_t> response_delays_index{0};
+
   std::mutex mtx_;
 
   void UpdateCallCount(ReqType type)
@@ -296,7 +330,7 @@ class MockClientBackend : public ClientBackend {
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
 
-    std::this_thread::sleep_for(stats_->response_delay);
+    std::this_thread::sleep_for(stats_->GetNextDelay());
 
     local_completed_req_count_++;
     stats_->num_active_infer_calls--;
@@ -420,7 +454,7 @@ class MockClientBackend : public ClientBackend {
   void LaunchAsyncMockRequest(const InferOptions options, OnCompleteFn callback)
   {
     std::thread([this, options, callback]() {
-      std::this_thread::sleep_for(stats_->response_delay);
+      std::this_thread::sleep_for(stats_->GetNextDelay());
       local_completed_req_count_++;
 
       InferResult* result = new MockInferResult(options);
