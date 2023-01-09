@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <future>
 #include "command_line_parser.h"
 #include "concurrency_manager.h"
 #include "doctest.h"
@@ -52,13 +53,27 @@ class TestConcurrencyManager : public TestLoadManagerBase,
         params.user_data);
   }
 
+  std::shared_ptr<IWorker> MakeWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
+  {
+    return std::make_shared<ConcurrencyWorker>(
+        thread_stat, thread_config, LoadManager::parser_, data_loader_,
+        backend_->Kind(), ConcurrencyManager::factory_, sequence_length_,
+        start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
+        max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
+        batch_size_, threads_config_, sequence_stat_, shared_memory_regions_,
+        wake_signal_, wake_mutex_, active_threads_, execute_, curr_seq_id_,
+        distribution_);
+  }
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType()
   {
     // FIXME TMA-982: This delay is to avoid deadlock. Investigate why delay is
     // needed.
-    stats_->response_delay = std::chrono::milliseconds(50);
+    stats_->SetDelays({50});
 
     ChangeConcurrencyLevel(params_.max_concurrency);
 
@@ -70,10 +85,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   /// Test that the correct concurrency is maintained in the load manager
   ///
   void TestConcurrency(
-      std::chrono::milliseconds response_delay,
-      std::chrono::milliseconds sleep_time)
+      size_t response_delay, std::chrono::milliseconds sleep_time)
   {
-    stats_->response_delay = response_delay;
+    stats_->SetDelays({response_delay});
 
     ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(sleep_time);
@@ -85,8 +99,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   ///
   void TestSequences()
   {
-    int delay_ms = 10;
-    stats_->response_delay = std::chrono::milliseconds(delay_ms);
+    size_t delay_ms = 10;
+    stats_->SetDelays({delay_ms});
 
     auto stats = cb::InferStat();
     double concurrency1 = params_.max_concurrency / 2;
@@ -192,7 +206,7 @@ TEST_CASE("concurrency_infer_type")
 TEST_CASE("concurrency_concurrency")
 {
   PerfAnalyzerParameters params{};
-  std::chrono::milliseconds response_delay{50};
+  size_t response_delay{50};
   std::chrono::milliseconds sleep_time{225};
 
   SUBCASE("sync, no-streaming, 1 concurrency, 1 thread")
@@ -298,6 +312,50 @@ TEST_CASE("concurrency_sequence")
   const bool is_sequence_model{true};
   TestConcurrencyManager tcm(params, is_sequence_model);
   tcm.TestSequences();
+}
+
+/// Create the case where the sequences do NOT go round robin due to
+/// the first request taking longer than the rest.
+///
+/// This exposed a bug where we were constantly resetting free_ctx_ids
+/// and issuing over and over again to the first sequence even though
+/// it was the only sequence that should NOT be issued because it was
+/// still outstanding
+///
+TEST_CASE("concurrency_free_ctx_ids")
+{
+  PerfAnalyzerParameters params{};
+  params.async = true;
+  params.streaming = true;
+  params.max_concurrency = 6;
+
+  bool is_sequence_model{true};
+
+  TestConcurrencyManager trrm(params, is_sequence_model);
+
+  // Have the first request (sequence ID 1) take very long, and all the other
+  // requests are fast
+  //
+  trrm.stats_->SetDelays({50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5});
+
+  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+  std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
+      std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
+  thread_config->concurrency_ = 4;
+
+  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
+
+  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(15));
+
+  early_exit = true;
+  infer_future.get();
+
+  // The first sequence should only be called two times, once at the very start,
+  // and once during shutdown
+  //
+  CHECK(trrm.stats_->sequence_status.seq_ids_to_count.at(1) == 2);
 }
 
 }}  // namespace triton::perfanalyzer
