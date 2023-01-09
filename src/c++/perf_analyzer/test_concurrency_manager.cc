@@ -242,8 +242,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   bool& execute_{ConcurrencyManager::execute_};
   size_t& batch_size_{LoadManager::batch_size_};
   size_t& max_threads_{LoadManager::max_threads_};
-  bool& async_{LoadManager::async_};
-  bool& streaming_{LoadManager::streaming_};
   bool& using_shared_memory_{LoadManager::using_shared_memory_};
   std::uniform_int_distribution<uint64_t>& distribution_{
       LoadManager::distribution_};
