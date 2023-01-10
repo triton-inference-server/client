@@ -685,7 +685,7 @@ TEST_CASE(
 
 /// Check that the using_shared_memory_ is being set correctly
 ///
-TEST_CASE("Check setting of InitSharedMemory")
+TEST_CASE("Request rate - Check setting of InitSharedMemory")
 {
   PerfAnalyzerParameters params;
   bool is_sequence = false;
@@ -711,14 +711,12 @@ TEST_CASE("Check setting of InitSharedMemory")
 
 /// Verify Shared Memory api calls
 ///
-TEST_CASE("Shared memory methods")
+TEST_CASE("Request rate - Shared memory methods")
 {
   PerfAnalyzerParameters params;
   bool is_sequence = false;
   bool is_decoupled = false;
   bool use_mock_infer = true;
-  uint request_rate = 500;
-  uint duration_ms = 1000;
 
   std::shared_ptr<MockModelParser> mmp{
       std::make_shared<MockModelParser>(false, false)};

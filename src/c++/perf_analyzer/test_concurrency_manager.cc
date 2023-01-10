@@ -129,6 +129,16 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   {
   }
 
+  // Mocked version of the CopySharedMemory method in loadmanager.
+  // This is strictly for testing to mock out the memcpy calls
+  //
+  cb::Error CopySharedMemory(
+      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+      std::vector<size_t>& byte_size, bool is_shape_tensor,
+      std::string& region_name) override
+  {
+    return cb::Error::Success;
+  }
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
@@ -423,19 +433,19 @@ TEST_CASE("concurrency_free_ctx_ids")
 
   bool is_sequence_model{true};
 
-  TestConcurrencyManager trrm(params, is_sequence_model);
+  TestConcurrencyManager tcm(params, is_sequence_model);
 
   // Have the first request (sequence ID 1) take very long, and all the other
   // requests are fast
   //
-  trrm.stats_->SetDelays({50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5});
+  tcm.stats_->SetDelays({50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5});
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
       std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
   thread_config->concurrency_ = 4;
 
-  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
+  std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
 
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
@@ -447,7 +457,7 @@ TEST_CASE("concurrency_free_ctx_ids")
   // The first sequence should only be called two times, once at the very start,
   // and once during shutdown
   //
-  CHECK(trrm.stats_->sequence_status.seq_ids_to_count.at(1) == 2);
+  CHECK(tcm.stats_->sequence_status.seq_ids_to_count.at(1) == 2);
 }
 
 TEST_CASE("Concurrency - shared memory infer input calls")
@@ -567,6 +577,110 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   } else {
     CHECK(actual_append_raw_calls == 0);
     CHECK(actual_set_shared_memory_calls > 0);
+  }
+}
+
+/// Check that the using_shared_memory_ is being set correctly
+///
+TEST_CASE("Concurrency - Check setting of InitSharedMemory")
+{
+  PerfAnalyzerParameters params;
+  bool is_sequence = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = true;
+
+  SUBCASE("No shared memory")
+  {
+    params.shared_memory_type = NO_SHARED_MEMORY;
+    TestConcurrencyManager tcm(
+        params, is_sequence, is_decoupled, use_mock_infer);
+    CHECK(false == tcm.using_shared_memory_);
+  }
+
+  SUBCASE("System shared memory")
+  {
+    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+    TestConcurrencyManager tcm(
+        params, is_sequence, is_decoupled, use_mock_infer);
+    CHECK(true == tcm.using_shared_memory_);
+  }
+}
+
+/// Verify Shared Memory api calls
+///
+TEST_CASE("Concurrency - Shared memory methods")
+{
+  PerfAnalyzerParameters params;
+  bool is_sequence = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = true;
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(false, false)};
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT0";
+  model_tensor.shape_ = {1};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2123456789]
+      }
+    ]
+  }
+      )"};
+
+  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  cb::MockClientStats::SharedMemoryStats expected_stats;
+
+  SUBCASE("System shared memory usage")
+  {
+    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+    TestConcurrencyManager tcm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    tcm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    expected_stats.num_unregister_all_shared_memory_calls = 1;
+    expected_stats.num_register_system_shared_memory_calls = 1;
+    expected_stats.num_create_shared_memory_region_calls = 1;
+    expected_stats.num_map_shared_memory_calls = 1;
+    tcm.CheckSharedMemory(expected_stats);
+  }
+
+  SUBCASE("Cuda shared memory usage")
+  {
+    params.shared_memory_type = CUDA_SHARED_MEMORY;
+    TestConcurrencyManager tcm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    tcm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    expected_stats.num_unregister_all_shared_memory_calls = 1;
+    expected_stats.num_register_cuda_shared_memory_calls = 1;
+    tcm.CheckSharedMemory(expected_stats);
+  }
+
+  SUBCASE("No shared memory usage")
+  {
+    params.shared_memory_type = NO_SHARED_MEMORY;
+    TestConcurrencyManager tcm(
+        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+    tcm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data);
+
+    tcm.CheckSharedMemory(expected_stats);
   }
 }
 
