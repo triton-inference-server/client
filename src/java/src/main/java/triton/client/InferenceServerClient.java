@@ -313,7 +313,8 @@ public class InferenceServerClient implements AutoCloseable {
         String requestUri = Util.isEmpty(arg.modelVersion) ?
             String.format("/v2/models/%s/infer", safeModelName) :
             String.format("/v2/models/%s/versions/%s/infer", safeModelName, arg.modelVersion);
-        ub.setPath(ub.getPath() + requestUri);
+        String addPath = ub.getPath() == null ? requestUri : ub.getPath() + requestUri;
+        ub.setPath(addPath);
         arg.queryParams.forEach(ub::addParameter);
 
         // Crete HttpPost, uri, body and headers.
