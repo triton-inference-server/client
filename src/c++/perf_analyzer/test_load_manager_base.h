@@ -29,11 +29,23 @@
 #include "command_line_parser.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
+#include "mock_data_loader.h"
 #include "mock_model_parser.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
+
+// Struct to hold the mock pieces to ingest custom json data
+struct MockInputPipeline {
+  MockInputPipeline(
+      std::shared_ptr<MockModelParser> mmp, std::shared_ptr<MockDataLoader> mdl)
+      : mmp_(mmp), mdl_(mdl)
+  {
+  }
+  std::shared_ptr<MockModelParser> mmp_;
+  std::shared_ptr<MockDataLoader> mdl_;
+};
 
 /// Helper base class to be inherited when testing any Load Manager class
 ///
@@ -54,6 +66,26 @@ class TestLoadManagerBase {
     factory_ = std::make_shared<cb::MockClientBackendFactory>(stats_);
     parser_ = std::make_shared<MockModelParser>(
         is_sequence_model, is_decoupled_model);
+  }
+  // Helper function to process custom json data in testing
+  // Creates a model tensor to pass to a mock parser which is consumed by the
+  // mock data loader
+  static MockInputPipeline ProcessCustomJsonData(const std::string& json_str)
+  {
+    std::shared_ptr<MockModelParser> mmp{
+        std::make_shared<MockModelParser>(false, false)};
+    ModelTensor model_tensor{};
+    model_tensor.datatype_ = "INT32";
+    model_tensor.is_optional_ = false;
+    model_tensor.is_shape_tensor_ = false;
+    model_tensor.name_ = "INPUT0";
+    model_tensor.shape_ = {1};
+    mmp->inputs_ = std::make_shared<ModelTensorMap>();
+    (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+    std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+    mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+    return MockInputPipeline{mmp, mdl};
   }
 
   // Set up all combinations of parameters for sequence testing

@@ -718,18 +718,6 @@ TEST_CASE("Request rate - Shared memory methods")
   bool is_decoupled = false;
   bool use_mock_infer = true;
 
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   const std::string json_str{R"(
   {
     "data": [
@@ -740,7 +728,7 @@ TEST_CASE("Request rate - Shared memory methods")
   }
       )"};
 
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   cb::MockClientStats::SharedMemoryStats expected_stats;
 
@@ -748,7 +736,7 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = SYSTEM_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -764,7 +752,7 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -778,7 +766,7 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -845,18 +833,6 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   ParameterizeMemory();
   TestRequestRateManager trrm(params, is_sequence_model);
 
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   const std::string json_str{R"(
   {
     "data": [
@@ -869,14 +845,14 @@ TEST_CASE("Request rate - Shared memory infer input calls")
     ]
   }
       )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
-  trrm.parser_ = mmp;
-  trrm.data_loader_ = mdl;
+  trrm.parser_ = mip.mmp_;
+  trrm.data_loader_ = mip.mdl_;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
@@ -887,7 +863,7 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.schedule_.push_back(std::chrono::milliseconds(16));
   trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mdl->GetDataStreamsCount() - 1);
+      0, mip.mdl_->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};

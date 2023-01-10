@@ -519,18 +519,6 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   ParameterizeMemory();
 
   TestConcurrencyManager tcm(params, is_sequence_model);
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   const std::string json_str{R"(
   {
     "data": [
@@ -543,21 +531,22 @@ TEST_CASE("Concurrency - shared memory infer input calls")
     ]
   }
       )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
       std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
   thread_config->concurrency_ = 1;
 
-  tcm.parser_ = mmp;
-  tcm.data_loader_ = mdl;
+  tcm.parser_ = mip.mmp_;
+  tcm.data_loader_ = mip.mdl_;
   tcm.using_json_data_ = true;
   tcm.execute_ = true;
   tcm.batch_size_ = 1;
   tcm.max_threads_ = 1;
   tcm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mdl->GetDataStreamsCount() - 1);
+      0, mip.mdl_->GetDataStreamsCount() - 1);
 
   std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
@@ -615,18 +604,6 @@ TEST_CASE("Concurrency - Shared memory methods")
   bool is_decoupled = false;
   bool use_mock_infer = true;
 
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   const std::string json_str{R"(
   {
     "data": [
@@ -637,7 +614,7 @@ TEST_CASE("Concurrency - Shared memory methods")
   }
       )"};
 
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   cb::MockClientStats::SharedMemoryStats expected_stats;
 
@@ -645,7 +622,7 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = SYSTEM_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -661,7 +638,7 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -675,7 +652,7 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mmp, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
