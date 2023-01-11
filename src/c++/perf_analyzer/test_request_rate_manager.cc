@@ -736,7 +736,8 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = SYSTEM_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -752,7 +753,8 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -766,7 +768,8 @@ TEST_CASE("Request rate - Shared memory methods")
   {
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestRequestRateManager trrm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -851,8 +854,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
-  trrm.parser_ = mip.mmp_;
-  trrm.data_loader_ = mip.mdl_;
+  trrm.parser_ = mip.mock_model_parser_;
+  trrm.data_loader_ = mip.mock_data_loader_;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
@@ -863,7 +866,7 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.schedule_.push_back(std::chrono::milliseconds(16));
   trrm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(16000000);
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mip.mdl_->GetDataStreamsCount() - 1);
+      0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};

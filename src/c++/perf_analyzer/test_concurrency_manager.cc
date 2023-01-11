@@ -539,14 +539,14 @@ TEST_CASE("Concurrency - shared memory infer input calls")
       std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
   thread_config->concurrency_ = 1;
 
-  tcm.parser_ = mip.mmp_;
-  tcm.data_loader_ = mip.mdl_;
+  tcm.parser_ = mip.mock_model_parser_;
+  tcm.data_loader_ = mip.mock_data_loader_;
   tcm.using_json_data_ = true;
   tcm.execute_ = true;
   tcm.batch_size_ = 1;
   tcm.max_threads_ = 1;
   tcm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mip.mdl_->GetDataStreamsCount() - 1);
+      0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
 
   std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
@@ -622,7 +622,8 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = SYSTEM_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -638,7 +639,8 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -652,7 +654,8 @@ TEST_CASE("Concurrency - Shared memory methods")
   {
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestConcurrencyManager tcm(
-        params, mip.mmp_, is_sequence, is_decoupled, use_mock_infer);
+        params, mip.mock_model_parser_, is_sequence, is_decoupled,
+        use_mock_infer);
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);

@@ -40,11 +40,11 @@ namespace triton { namespace perfanalyzer {
 struct MockInputPipeline {
   MockInputPipeline(
       std::shared_ptr<MockModelParser> mmp, std::shared_ptr<MockDataLoader> mdl)
-      : mmp_(mmp), mdl_(mdl)
+      : mock_model_parser_(mmp), mock_data_loader_(mdl)
   {
   }
-  std::shared_ptr<MockModelParser> mmp_;
-  std::shared_ptr<MockDataLoader> mdl_;
+  std::shared_ptr<MockModelParser> mock_model_parser_;
+  std::shared_ptr<MockDataLoader> mock_data_loader_;
 };
 
 /// Helper base class to be inherited when testing any Load Manager class
