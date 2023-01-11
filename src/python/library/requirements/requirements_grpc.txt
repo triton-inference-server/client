@@ -32,5 +32,6 @@ protobuf>=3.5.0,<4
 # use known working version until the memory leak is resolved in the future
 # (see https://github.com/grpc/grpc/issues/28513)
 grpcio>=1.41.0
+packaging>=14.1
 numpy>=1.19.1
 python-rapidjson>=0.9.1
