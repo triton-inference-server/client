@@ -60,8 +60,8 @@ if version.parse(grpc.__version__) >= version.parse('1.43.0') and version.parse(
     warnings.warn(
         f"Imported version of grpc is {grpc.__version__}. "
         "There is memory leak in later Python GRPC (1.43.0 to be specific), "
-        "Please use versions less than 1.42.0 and higher than 1.51.1 to avoid "
-        "leaks(see https://github.com/grpc/grpc/issues/28513).")
+        "Please use versions <1.43.0 or >=1.51.1 to avoid "
+        "leaks (see https://github.com/grpc/grpc/issues/28513).")
 
 
 def get_error_grpc(rpc_error):
