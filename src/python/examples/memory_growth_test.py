@@ -29,9 +29,6 @@ import argparse
 import numpy as np
 import sys
 
-import tritonclient.grpc as grpcclient
-import tritonclient.http as httpclient
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-v',
@@ -64,9 +61,11 @@ if __name__ == '__main__':
 
     for i in range(FLAGS.repetitions):
         if FLAGS.protocol.lower() != "grpc":
+            import tritonclient.http as httpclient
             triton_client = httpclient.InferenceServerClient(
                 url="localhost:8000", verbose=FLAGS.verbose)
         else:
+            import tritonclient.grpc as grpcclient
             triton_client = grpcclient.InferenceServerClient(
                 url="localhost:8001", verbose=FLAGS.verbose)
 
