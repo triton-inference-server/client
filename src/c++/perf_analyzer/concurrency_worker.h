@@ -113,7 +113,7 @@ class ConcurrencyWorker : public LoadWorker {
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
-  cb::Error CompleteOngoingSequences();
+  void CompleteOngoingSequences();
 
   // Reserve vector size for contexts
   void ReserveContexts();
