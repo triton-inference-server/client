@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 import argparse
 import numpy as np
 import sys
+from functools import partial
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -59,16 +60,19 @@ if __name__ == '__main__':
     input0_data = np.arange(start=0, stop=16, dtype=np.int32)
     input0_data = np.expand_dims(input0_data, axis=0)
 
-    for i in range(FLAGS.repetitions):
-        if FLAGS.protocol.lower() != "grpc":
-            import tritonclient.http as httpclient
-            triton_client = httpclient.InferenceServerClient(
-                url="localhost:8000", verbose=FLAGS.verbose)
-        else:
-            import tritonclient.grpc as grpcclient
-            triton_client = grpcclient.InferenceServerClient(
-                url="localhost:8001", verbose=FLAGS.verbose)
+    if FLAGS.protocol.lower() == "grpc":
+        import tritonclient.grpc as grpcclient
+        create_client = partial(grpcclient.InferenceServerClient,
+                                url="localhost:8001",
+                                verbose=FLAGS.verbose)
+    else:
+        import tritonclient.http as httpclient
+        create_client = partial(httpclient.InferenceServerClient,
+                                url="localhost:8000",
+                                verbose=FLAGS.verbose)
 
+    for i in range(FLAGS.repetitions):
+        triton_client = create_client()
         # Infer
         inputs = []
         outputs = []
