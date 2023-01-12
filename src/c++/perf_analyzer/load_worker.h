@@ -104,7 +104,7 @@ struct ThreadStat {
 /// Wraps the information required to send an inference to the
 /// server
 struct InferContext {
-  explicit InferContext() : inflight_request_cnt_(0) {}
+  explicit InferContext() {}
   InferContext(InferContext&&) = delete;
   InferContext(const InferContext&) = delete;
   ~InferContext()
@@ -132,8 +132,6 @@ struct InferContext {
   // The InferOptions object holding the details of the
   // inference.
   std::unique_ptr<cb::InferOptions> options_;
-  // The total number of inference in-flight.
-  std::atomic<size_t> inflight_request_cnt_;
 };
 
 /// The properties of an asynchronous request required in
@@ -298,6 +296,8 @@ class LoadWorker : public IWorker {
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
 
+  void WaitForOngoingRequests();
+
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
@@ -347,6 +347,8 @@ class LoadWorker : public IWorker {
   std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   uint64_t request_id_ = 0;
+
+  std::atomic<int> total_ongoing_requests_{0};
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;

@@ -92,7 +92,6 @@ RequestRateWorker::CompleteOngoingSequence(
     SendRequest(
         ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
         async_req_map_, thread_stat_);
-    // total_ongoing_requests_++;  FIXME
   }
 }
 
@@ -106,7 +105,7 @@ RequestRateWorker::HandleExecuteOff()
     CompleteOngoingSequences();
 
     // Ensures the clean measurements after thread is woken up.
-    while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
+    while (total_ongoing_requests_ != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     // Wait if no request should be sent and it is not exiting
@@ -198,7 +197,7 @@ RequestRateWorker::HandleExitConditions()
     CompleteOngoingSequences();
     if (async_) {
       // Loop to ensure all the inflight requests have been completed.
-      while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
+      while (total_ongoing_requests_ != 0) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
     }

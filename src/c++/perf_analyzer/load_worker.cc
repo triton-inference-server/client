@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#include <thread>
 
 #include "client_backend/client_backend.h"
 #include "load_worker.h"
@@ -500,7 +501,7 @@ LoadWorker::SendRequest(
           callback_func, *(context->options_), context->valid_inputs_,
           context->outputs_);
     }
-    context->inflight_request_cnt_++;
+    total_ongoing_requests_++;
   } else {
     std::chrono::time_point<std::chrono::system_clock> start_time_sync,
         end_time_sync;
@@ -536,6 +537,14 @@ LoadWorker::SendRequest(
 }
 
 void
+LoadWorker::WaitForOngoingRequests()
+{
+  while (total_ongoing_requests_ != 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+}
+
+void
 LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   uint32_t ctx_id = 0;
@@ -558,8 +567,7 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         ctx_id = it->second.ctx_id_;
         ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        // FIXME not used by conc_worker
-        ctxs_[ctx_id]->inflight_request_cnt_--;
+        total_ongoing_requests_--;
         thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }

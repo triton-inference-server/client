@@ -102,8 +102,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   std::queue<int> free_ctx_ids_;
 
-  std::atomic<int> total_ongoing_requests_{0};
-
   std::shared_ptr<ThreadConfig> thread_config_;
 
   // Variables used to signal async request completion
@@ -140,8 +138,6 @@ class ConcurrencyWorker : public LoadWorker {
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();
-
-  void WaitForOngoingRequests();
 
   void SyncClientStats();
 

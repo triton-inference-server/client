@@ -25,7 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
-#include <thread>
 
 #include "client_backend/client_backend.h"
 #include "concurrency_worker.h"
@@ -148,7 +147,7 @@ ConcurrencyWorker::PrepAndSendInferRequests()
   // Non-sequence model is 'num_reqs' * 1 ctx
   // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
-         early_exit == false) {
+         early_exit == false && execute_) {
     PrepAndSendInferRequest();
   }
 }
@@ -191,7 +190,6 @@ ConcurrencyWorker::PrepAndSendInferRequest()
       free_ctx_ids_.push(ctx_id);
     }
   }
-  total_ongoing_requests_++;
 }
 
 void
@@ -209,9 +207,6 @@ ConcurrencyWorker::WaitForResponses()
         return false;
       });
     }
-  } else {
-    // If synchronous, then all the requests have already been completed.
-    total_ongoing_requests_ = 0;
   }
 }
 
@@ -236,8 +231,6 @@ ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
     free_ctx_ids_.push(ctx_id);
     notified_ = true;
   }
-
-  total_ongoing_requests_--;
 
   cb_cv_.notify_all();
 }
@@ -273,21 +266,9 @@ ConcurrencyWorker::CompleteOngoingSequence(
     SendRequest(
         ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
         async_req_map_, thread_stat_);
-    total_ongoing_requests_++;
   }
 }
 
-void
-ConcurrencyWorker::WaitForOngoingRequests()
-{
-  if (async_) {
-    while (total_ongoing_requests_ != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-  } else {
-    total_ongoing_requests_ = 0;
-  }
-}
 
 void
 ConcurrencyWorker::SyncClientStats()
