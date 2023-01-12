@@ -57,6 +57,45 @@ RequestRateWorker::Infer()
   } while (true);
 }
 
+
+void
+RequestRateWorker::CompleteOngoingSequences()
+{
+  uint32_t ctx_id = 0;  // FIXME
+  if (on_sequence_model_) {
+    // Finish off all the ongoing sequences for graceful exit
+    for (size_t i = thread_config_->id_; i < sequence_stat_.size();
+         i += thread_config_->stride_) {
+      CompleteOngoingSequence(ctx_id, i);
+    }
+  }
+}
+
+
+void
+RequestRateWorker::CompleteOngoingSequence(
+    uint32_t ctx_id, uint32_t seq_stat_index)
+{
+  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+  sequence_stat_[seq_stat_index]->paused_ = true;
+
+  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
+    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+    if (using_json_data_) {
+      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+    }
+    sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+    bool is_delayed = false;
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+    // total_ongoing_requests_++;  FIXME
+  }
+}
+
 void
 RequestRateWorker::HandleExecuteOff()
 {
@@ -64,26 +103,8 @@ RequestRateWorker::HandleExecuteOff()
 
   // Should wait till main thread signals execution start
   if (!execute_) {
-    if (on_sequence_model_) {
-      // Finish off all the ongoing sequences for graceful exit
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = true;
-        if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctxs_[ctx_id]->options_->sequence_start_ = false;
-          ctxs_[ctx_id]->options_->sequence_end_ = true;
-          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
+    CompleteOngoingSequences();
 
-          bool is_delayed = false;
-          uint32_t ctx_id = 0;
-          SendRequest(
-              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
-              async_callback_func_, async_req_map_, thread_stat_);
-          sequence_stat_[i]->remaining_queries_ = 0;
-        }
-      }
-    }
     // Ensures the clean measurements after thread is woken up.
     while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -174,25 +195,7 @@ RequestRateWorker::HandleExitConditions()
   uint32_t ctx_id = GetCtxId();
 
   if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
-    if (on_sequence_model_) {
-      // Finish off all the ongoing sequences for graceful exit
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = true;
-        if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctxs_[ctx_id]->options_->sequence_start_ = false;
-          ctxs_[ctx_id]->options_->sequence_end_ = true;
-          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
-
-          bool is_delayed = false;
-          SendRequest(
-              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
-              async_callback_func_, async_req_map_, thread_stat_);
-          sequence_stat_[i]->remaining_queries_ = 0;
-        }
-      }
-    }
+    CompleteOngoingSequences();
     if (async_) {
       // Loop to ensure all the inflight requests have been completed.
       while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {

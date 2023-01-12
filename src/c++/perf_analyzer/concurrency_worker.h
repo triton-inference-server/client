@@ -114,6 +114,7 @@ class ConcurrencyWorker : public LoadWorker {
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
   void CompleteOngoingSequences();
+  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
 
   // Reserve vector size for contexts
   void ReserveContexts();

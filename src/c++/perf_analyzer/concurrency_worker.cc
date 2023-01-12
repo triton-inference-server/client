@@ -248,26 +248,32 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (on_sequence_model_) {
     for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-
-      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-      // Complete the sequence if there are remaining queries
-      if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
-        sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
-        SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
-
-        // Update the inputs if required
-        if (using_json_data_) {
-          UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
-        }
-        sequence_stat_[seq_stat_index]->remaining_queries_--;
-
-        bool is_delayed = false;
-        SendRequest(
-            ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
-            async_callback_func_, async_req_map_, thread_stat_);
-        total_ongoing_requests_++;
-      }
+      CompleteOngoingSequence(ctx_id, seq_stat_index);
     }
+  }
+}
+
+void
+ConcurrencyWorker::CompleteOngoingSequence(
+    uint32_t ctx_id, uint32_t seq_stat_index)
+{
+  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+  sequence_stat_[seq_stat_index]->paused_ = true;  // FIXME confirm
+
+  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
+    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+    if (using_json_data_) {
+      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+    }
+    sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+    bool is_delayed = false;
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+    total_ongoing_requests_++;
   }
 }
 

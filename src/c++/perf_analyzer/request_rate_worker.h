@@ -102,6 +102,9 @@ class RequestRateWorker : public LoadWorker {
 
   uint32_t GetSeqStatIndex() { return (rand() % sequence_stat_.size()); }
 
+  void CompleteOngoingSequences();
+  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+
   void HandleExecuteOff();
 
   // Sleep until it is time for the next part of the schedule
