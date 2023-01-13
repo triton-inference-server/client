@@ -65,27 +65,24 @@ if __name__ == '__main__':
         create_client = partial(grpcclient.InferenceServerClient,
                                 url="localhost:8001",
                                 verbose=FLAGS.verbose)
+        create_input = partial(grpcclient.InferInput)
+        create_output = partial(grpcclient.InferRequestedOutput)
     else:
         import tritonclient.http as httpclient
         create_client = partial(httpclient.InferenceServerClient,
                                 url="localhost:8000",
                                 verbose=FLAGS.verbose)
+        create_input = partial(httpclient.InferInput)
+        create_output = partial(httpclient.InferRequestedOutput)
 
     for i in range(FLAGS.repetitions):
         triton_client = create_client()
         # Infer
         inputs = []
         outputs = []
-
-        if FLAGS.protocol.lower() != "grpc":
-            inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
-            inputs[0].set_data_from_numpy(input0_data, binary_data=True)
-            outputs.append(
-                httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
-        else:
-            inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
-            inputs[0].set_data_from_numpy(input0_data)
-            outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
+        inputs.append(create_input('INPUT0', [1, 16], "INT32"))
+        inputs[0].set_data_from_numpy(input0_data)
+        outputs.append(create_output('OUTPUT0'))
 
         results = triton_client.infer(model_name=model_name,
                                       inputs=inputs,
