@@ -155,13 +155,19 @@ ConcurrencyWorker::PrepAndSendInferRequests()
 }
 
 void
+ConcurrencyWorker::UpdateJsonData(uint32_t ctx_id)
+{
+  LoadWorker::UpdateJsonData(
+      std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
+      active_threads_);
+}
+
+void
 ConcurrencyWorker::PrepAndSendInferRequest(uint32_t ctx_id)
 {
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
-    UpdateJsonData(
-        std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
-        active_threads_);
+    UpdateJsonData(ctx_id);
   }
 
   if (on_sequence_model_) {

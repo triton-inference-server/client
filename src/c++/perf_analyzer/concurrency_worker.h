@@ -109,6 +109,8 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
+  void UpdateJsonData(uint32_t ctx_id);
+
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
   void CompleteOngoingSequences() override;

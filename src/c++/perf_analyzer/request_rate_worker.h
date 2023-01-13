@@ -105,6 +105,8 @@ class RequestRateWorker : public LoadWorker {
     return (rand() % sequence_stat_.size());
   }
 
+  void UpdateJsonData(uint32_t ctx_id);
+
   void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();

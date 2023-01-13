@@ -74,8 +74,6 @@ RequestRateWorker::CompleteOngoingSequences()
 void
 RequestRateWorker::HandleExecuteOff()
 {
-  uint32_t ctx_id = GetCtxId();
-
   // Should wait till main thread signals execution start
   if (!execute_) {
     CompleteOngoingSequences();
@@ -124,14 +122,20 @@ RequestRateWorker::SleepIfNecessary()
 }
 
 void
+RequestRateWorker::UpdateJsonData(uint32_t ctx_id)
+{
+  LoadWorker::UpdateJsonData(
+      std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
+      max_threads_);
+}
+
+void
 RequestRateWorker::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
 {
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateJsonData(
-          std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
-          max_threads_);
+      UpdateJsonData(ctx_id);
     }
     SendRequest(
         ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
