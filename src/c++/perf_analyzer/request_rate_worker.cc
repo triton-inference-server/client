@@ -61,12 +61,13 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CompleteOngoingSequences()
 {
-  uint32_t ctx_id = 0;  // FIXME
   if (on_sequence_model_) {
-    // Finish off all the ongoing sequences for graceful exit
-    for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-         i += thread_config_->stride_) {
-      CompleteOngoingSequence(ctx_id, i);
+    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
+      // Finish off all the ongoing sequences for graceful exit
+      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
+           i += thread_config_->stride_) {
+        CompleteOngoingSequence(ctx_id, i);
+      }
     }
   }
 }

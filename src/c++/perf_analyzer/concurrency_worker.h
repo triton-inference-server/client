@@ -109,6 +109,8 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
+  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
+  // same thread_config_
   void UpdateJsonData(uint32_t ctx_id) override;
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override;

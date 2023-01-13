@@ -105,6 +105,8 @@ class RequestRateWorker : public LoadWorker {
     return (rand() % sequence_stat_.size());
   }
 
+  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
+  // same thread_config_
   void UpdateJsonData(uint32_t ctx_id) override;
 
   void CompleteOngoingSequences() override;
