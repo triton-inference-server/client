@@ -279,6 +279,8 @@ class LoadWorker : public IWorker {
   // Create and initialize a new context
   void CreateContext();
 
+  void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
+
   /// A helper function to issue inference request to the server.
   /// \param context InferContext to use for sending the request.
   /// \param context_id The ID of the context
@@ -300,6 +302,8 @@ class LoadWorker : public IWorker {
   // Returns true if an exit condition was met
   bool HandleExitConditions();
 
+  virtual uint32_t GetSeqStatIndex(uint32_t ctx_id) = 0;
+  virtual void UpdateJsonData(uint32_t ctx_id) = 0;
   virtual void CompleteOngoingSequences() = 0;
   void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
 

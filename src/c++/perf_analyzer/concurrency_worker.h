@@ -109,7 +109,7 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
-  void UpdateJsonData(uint32_t ctx_id);
+  void UpdateJsonData(uint32_t ctx_id) override;
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
@@ -131,9 +131,6 @@ class ConcurrencyWorker : public LoadWorker {
   // Prepare and Send out the desired concurrency of requests
   void PrepAndSendInferRequests();
 
-  // Prepare and Send out a single request
-  void PrepAndSendInferRequest(uint32_t ctx_id);
-
   void WaitForResponses();
 
   void SyncClientStats();
@@ -141,7 +138,7 @@ class ConcurrencyWorker : public LoadWorker {
   void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
-  uint32_t GetSeqStatIndex(uint32_t ctx_id);
+  uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   uint32_t GetCtxId();
 };

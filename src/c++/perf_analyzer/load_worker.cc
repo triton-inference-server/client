@@ -469,6 +469,42 @@ LoadWorker::GetRandomSequenceLength(double offset_ratio)
 
 
 void
+LoadWorker::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
+{
+  if (!on_sequence_model_) {
+    // Update the inputs if required
+    if (using_json_data_) {
+      UpdateJsonData(ctx_id);
+    }
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+  } else {
+    // Select one of the sequence at random for this request
+    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
+
+    // Need lock to protect the order of dispatch across worker threads.
+    // This also helps in reporting the realistic latencies.
+    std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+    if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
+      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+      // Update the inputs if required
+      if (using_json_data_) {
+        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+      }
+
+      sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+      SendRequest(
+          ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
+          async_req_map_, thread_stat_);
+    }
+  }
+}
+
+
+void
 LoadWorker::SendRequest(
     std::shared_ptr<InferContext> context, const uint32_t ctx_id,
     const uint64_t request_id, const bool delayed,

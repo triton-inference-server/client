@@ -101,6 +101,13 @@ ConcurrencyWorker::HandleExecuteOff()
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
       wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+
+      // Unpause all sequences
+      for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
+        size_t seq_stat_index = GetSeqStatIndex(ctx_id);
+        std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+        sequence_stat_[seq_stat_index]->paused_ = false;
+      }
     }
   }
   thread_config_->is_paused_ = false;
@@ -160,34 +167,6 @@ ConcurrencyWorker::UpdateJsonData(uint32_t ctx_id)
   LoadWorker::UpdateJsonData(
       std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
       active_threads_);
-}
-
-void
-ConcurrencyWorker::PrepAndSendInferRequest(uint32_t ctx_id)
-{
-  // Update the inputs if required for non-sequence
-  if (using_json_data_ && (!on_sequence_model_)) {
-    UpdateJsonData(ctx_id);
-  }
-
-  if (on_sequence_model_) {
-    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
-
-    {
-      std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
-
-      // Update the inputs if required
-      if (using_json_data_) {
-        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
-      }
-      sequence_stat_[seq_stat_index]->remaining_queries_--;
-    }
-  }
-  bool is_delayed = false;
-  SendRequest(
-      ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
-      async_req_map_, thread_stat_);
 }
 
 void
