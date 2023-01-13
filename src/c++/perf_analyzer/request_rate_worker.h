@@ -100,7 +100,10 @@ class RequestRateWorker : public LoadWorker {
   // Request Rate Worker only ever has a single context
   uint32_t GetCtxId() { return 0; }
 
-  uint32_t GetSeqStatIndex() { return (rand() % sequence_stat_.size()); }
+  uint32_t GetSeqStatIndex(uint32_t ctx_id)
+  {
+    return (rand() % sequence_stat_.size());
+  }
 
   void CompleteOngoingSequences() override;
 
@@ -113,7 +116,7 @@ class RequestRateWorker : public LoadWorker {
   // Prepare and Send a single infer request.
   // Input boolean indicates if the request was delayed from the original
   // schedule
-  void PrepAndSendInferRequest(bool delayed);
+  void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed);
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met

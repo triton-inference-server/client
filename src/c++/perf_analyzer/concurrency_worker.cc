@@ -148,15 +148,15 @@ ConcurrencyWorker::PrepAndSendInferRequests()
   // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
          early_exit == false && execute_) {
-    PrepAndSendInferRequest();
+    uint32_t ctx_id = GetCtxId();
+    PrepAndSendInferRequest(ctx_id);
+    RestoreFreeCtxId(ctx_id);
   }
 }
 
 void
-ConcurrencyWorker::PrepAndSendInferRequest()
+ConcurrencyWorker::PrepAndSendInferRequest(uint32_t ctx_id)
 {
-  uint32_t ctx_id = GetCtxId();
-
   // Update the inputs if required for non-sequence
   if (using_json_data_ && (!on_sequence_model_)) {
     UpdateJsonData(
@@ -182,7 +182,11 @@ ConcurrencyWorker::PrepAndSendInferRequest()
   SendRequest(
       ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
       async_req_map_, thread_stat_);
+}
 
+void
+ConcurrencyWorker::RestoreFreeCtxId(uint32_t ctx_id)
+{
   // FIXME TMA-1023 we are clearly pushing and not popping in some cases
   if (!async_) {
     {

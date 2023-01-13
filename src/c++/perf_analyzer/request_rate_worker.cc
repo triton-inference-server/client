@@ -47,8 +47,8 @@ RequestRateWorker::Infer()
     HandleExecuteOff();
 
     bool is_delayed = SleepIfNecessary();
-
-    PrepAndSendInferRequest(is_delayed);
+    uint32_t ctx_id = GetCtxId();
+    PrepAndSendInferRequest(ctx_id, is_delayed);
 
     if (HandleExitConditions()) {
       return;
@@ -124,10 +124,8 @@ RequestRateWorker::SleepIfNecessary()
 }
 
 void
-RequestRateWorker::PrepAndSendInferRequest(bool delayed)
+RequestRateWorker::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
 {
-  uint32_t ctx_id = GetCtxId();
-
   if (!on_sequence_model_) {
     // Update the inputs if required
     if (using_json_data_) {
@@ -140,7 +138,8 @@ RequestRateWorker::PrepAndSendInferRequest(bool delayed)
         async_req_map_, thread_stat_);
   } else {
     // Select one of the sequence at random for this request
-    uint32_t seq_stat_index = rand() % sequence_stat_.size();
+    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
+
     // Need lock to protect the order of dispatch across worker threads.
     // This also helps in reporting the realistic latencies.
     std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);

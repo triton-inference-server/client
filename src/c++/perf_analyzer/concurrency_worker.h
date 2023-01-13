@@ -130,12 +130,13 @@ class ConcurrencyWorker : public LoadWorker {
   void PrepAndSendInferRequests();
 
   // Prepare and Send out a single request
-  void PrepAndSendInferRequest();
+  void PrepAndSendInferRequest(uint32_t ctx_id);
 
   void WaitForResponses();
 
   void SyncClientStats();
 
+  void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
   uint32_t GetSeqStatIndex(uint32_t ctx_id);
