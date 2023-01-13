@@ -111,8 +111,7 @@ class ConcurrencyWorker : public LoadWorker {
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
-  void CompleteOngoingSequences();
-  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+  void CompleteOngoingSequences() override;
 
   // Reserve vector size for contexts
   void ReserveContexts();
@@ -134,10 +133,6 @@ class ConcurrencyWorker : public LoadWorker {
   void PrepAndSendInferRequest();
 
   void WaitForResponses();
-
-  // Detect and handle the case where this thread needs to exit
-  // Returns true if an exit condition was met
-  bool HandleExitConditions();
 
   void SyncClientStats();
 

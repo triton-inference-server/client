@@ -536,6 +536,40 @@ LoadWorker::SendRequest(
   }
 }
 
+
+bool
+LoadWorker::HandleExitConditions()
+{
+  if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
+    CompleteOngoingSequences();
+    WaitForOngoingRequests();
+    return true;
+  }
+  return false;
+}
+
+void
+LoadWorker::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
+{
+  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+  sequence_stat_[seq_stat_index]->paused_ = true;
+
+  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
+    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+    if (using_json_data_) {
+      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+    }
+    sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+    bool is_delayed = false;
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+  }
+}
+
 void
 LoadWorker::WaitForOngoingRequests()
 {

@@ -296,6 +296,13 @@ class LoadWorker : public IWorker {
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
 
+  // Detect and handle the case where this thread needs to exit
+  // Returns true if an exit condition was met
+  bool HandleExitConditions();
+
+  virtual void CompleteOngoingSequences() = 0;
+  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+
   void WaitForOngoingRequests();
 
   // Callback function for handling asynchronous requests
