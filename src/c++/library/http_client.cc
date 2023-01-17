@@ -534,10 +534,6 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
 {
   *input_bytes = 0;
 
-  if (data_buffers_.empty()) {
-    return Error::Success;
-  }
-
   while (!data_buffers_.empty() && size > 0) {
     const size_t csz = std::min(data_buffers_.front().second, size);
     if (csz > 0) {
