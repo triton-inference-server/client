@@ -61,6 +61,9 @@ ConcurrencyWorker::Infer()
     if (!thread_stat_->status_.IsOk()) {
       return;
     }
+    if (HandleExitConditions()) {
+      return;
+    }
 
     WaitForResponses();
 
