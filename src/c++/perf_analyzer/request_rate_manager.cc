@@ -161,6 +161,8 @@ RequestRateManager::ResumeWorkers()
     thread_config->rounds_ = 0;
   }
 
+  UnpauseAllSequences();
+
   // Update the start_time_ to point to current time
   start_time_ = std::chrono::steady_clock::now();
 

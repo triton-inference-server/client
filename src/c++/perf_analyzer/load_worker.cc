@@ -637,7 +637,6 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         ctx_id = it->second.ctx_id_;
         ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        total_ongoing_requests_--;
         thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }

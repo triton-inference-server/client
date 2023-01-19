@@ -130,6 +130,8 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
+  void UnpauseAllSequences();
+
  protected:
   bool async_;
   bool streaming_;

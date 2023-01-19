@@ -151,6 +151,7 @@ void
 ConcurrencyManager::ResumeSequenceWorkers()
 {
   if (on_sequence_model_) {
+    UnpauseAllSequences();
     execute_ = true;
   }
 

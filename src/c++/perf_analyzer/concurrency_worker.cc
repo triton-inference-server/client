@@ -101,13 +101,6 @@ ConcurrencyWorker::HandleExecuteOff()
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
       wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
-
-      // Unpause all sequences
-      for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-        size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-        std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-        sequence_stat_[seq_stat_index]->paused_ = false;
-      }
     }
   }
   thread_config_->is_paused_ = false;
@@ -154,7 +147,7 @@ ConcurrencyWorker::PrepAndSendInferRequests()
   // Non-sequence model is 'num_reqs' * 1 ctx
   // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
-         early_exit == false && execute_) {
+         early_exit == false && execute_ && thread_stat_->status_.IsOk()) {
     uint32_t ctx_id = GetCtxId();
     PrepAndSendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
@@ -208,6 +201,8 @@ ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
     free_ctx_ids_.push(ctx_id);
     notified_ = true;
   }
+
+  total_ongoing_requests_--;
 
   cb_cv_.notify_all();
 }
@@ -263,6 +258,10 @@ ConcurrencyWorker::GetCtxId()
     // Find the next available context id to use for this request
     {
       std::lock_guard<std::mutex> lk(cb_mtx_);
+
+      if (free_ctx_ids_.size() < 1) {
+        throw std::runtime_error("free ctx id list is empty");
+      }
       ctx_id = free_ctx_ids_.front();
       free_ctx_ids_.pop();
     }

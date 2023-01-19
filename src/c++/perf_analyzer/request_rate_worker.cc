@@ -84,14 +84,6 @@ RequestRateWorker::HandleExecuteOff()
     thread_config_->is_paused_ = true;
     std::unique_lock<std::mutex> lock(wake_mutex_);
     wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
-
-    if (on_sequence_model_) {
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = false;
-      }
-    }
   }
 
   thread_config_->is_paused_ = false;

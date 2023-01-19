@@ -117,9 +117,10 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  // Empty function (request rate worker doesn't need to finalize
-  // anything here)
-  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
+  void AsyncCallbackFinalize(uint32_t ctx_id) override
+  {
+    total_ongoing_requests_--;
+  }
 };
 
 
