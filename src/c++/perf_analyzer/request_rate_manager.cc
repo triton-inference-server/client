@@ -138,9 +138,10 @@ RequestRateManager::PauseWorkers()
       threads_config_.emplace_back(
           new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
 
-      auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
+      workers_.push_back(
+          MakeWorker(threads_stat_.back(), threads_config_.back()));
 
-      threads_.emplace_back(&IWorker::Infer, worker);
+      threads_.emplace_back(&IWorker::Infer, workers_.back());
     }
   }
 

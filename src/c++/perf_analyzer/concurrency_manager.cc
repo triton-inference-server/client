@@ -122,9 +122,10 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     threads_config_.emplace_back(
         new ConcurrencyWorker::ThreadConfig(threads_config_.size()));
 
-    auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
+    workers_.push_back(
+        MakeWorker(threads_stat_.back(), threads_config_.back()));
 
-    threads_.emplace_back(&IWorker::Infer, worker);
+    threads_.emplace_back(&IWorker::Infer, workers_.back());
   }
 
   {

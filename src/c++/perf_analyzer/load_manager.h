@@ -164,6 +164,10 @@ class LoadManager {
   // Current sequence id (for issuing new sequences)
   std::atomic<uint64_t> curr_seq_id_;
 
+  // Track the workers so they all go out of scope at the
+  // same time
+  std::vector<std::shared_ptr<IWorker>> workers_;
+
   // Worker threads that loads the server with inferences
   std::vector<std::thread> threads_;
   // Contains the statistics on the current working threads
