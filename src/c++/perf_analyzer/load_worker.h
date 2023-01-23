@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -104,7 +104,7 @@ struct ThreadStat {
 /// Wraps the information required to send an inference to the
 /// server
 struct InferContext {
-  explicit InferContext() : inflight_request_cnt_(0) {}
+  explicit InferContext() {}
   InferContext(InferContext&&) = delete;
   InferContext(const InferContext&) = delete;
   ~InferContext()
@@ -132,8 +132,6 @@ struct InferContext {
   // The InferOptions object holding the details of the
   // inference.
   std::unique_ptr<cb::InferOptions> options_;
-  // The total number of inference in-flight.
-  std::atomic<size_t> inflight_request_cnt_;
 };
 
 /// The properties of an asynchronous request required in
@@ -281,6 +279,8 @@ class LoadWorker : public IWorker {
   // Create and initialize a new context
   void CreateContext();
 
+  void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
+
   /// A helper function to issue inference request to the server.
   /// \param context InferContext to use for sending the request.
   /// \param context_id The ID of the context
@@ -297,6 +297,17 @@ class LoadWorker : public IWorker {
       cb::OnCompleteFn callback_func,
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
+
+  // Detect and handle the case where this thread needs to exit
+  // Returns true if an exit condition was met
+  bool HandleExitConditions();
+
+  virtual uint32_t GetSeqStatIndex(uint32_t ctx_id) = 0;
+  virtual void UpdateJsonData(uint32_t ctx_id) = 0;
+  virtual void CompleteOngoingSequences() = 0;
+  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+
+  void WaitForOngoingRequests();
 
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
@@ -347,6 +358,8 @@ class LoadWorker : public IWorker {
   std::map<std::string, AsyncRequestProperties> async_req_map_;
 
   uint64_t request_id_ = 0;
+
+  std::atomic<int> total_ongoing_requests_{0};
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;

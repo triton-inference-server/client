@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -102,8 +102,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   std::queue<int> free_ctx_ids_;
 
-  std::atomic<int> total_ongoing_requests_{0};
-
   std::shared_ptr<ThreadConfig> thread_config_;
 
   // Variables used to signal async request completion
@@ -111,9 +109,13 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
+  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
+  // same thread_config_
+  void UpdateJsonData(uint32_t ctx_id) override;
+
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
-  cb::Error CompleteOngoingSequences();
+  void CompleteOngoingSequences() override;
 
   // Reserve vector size for contexts
   void ReserveContexts();
@@ -131,22 +133,14 @@ class ConcurrencyWorker : public LoadWorker {
   // Prepare and Send out the desired concurrency of requests
   void PrepAndSendInferRequests();
 
-  // Prepare and Send out a single request
-  void PrepAndSendInferRequest();
-
   void WaitForResponses();
-
-  // Detect and handle the case where this thread needs to exit
-  // Returns true if an exit condition was met
-  bool HandleExitConditions();
-
-  void WaitForOngoingRequests();
 
   void SyncClientStats();
 
+  void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
-  uint32_t GetSeqStatIndex(uint32_t ctx_id);
+  uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   uint32_t GetCtxId();
 };
