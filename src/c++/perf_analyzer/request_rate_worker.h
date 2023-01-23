@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -100,7 +100,16 @@ class RequestRateWorker : public LoadWorker {
   // Request Rate Worker only ever has a single context
   uint32_t GetCtxId() { return 0; }
 
-  uint32_t GetSeqStatIndex() { return (rand() % sequence_stat_.size()); }
+  uint32_t GetSeqStatIndex(uint32_t ctx_id) override
+  {
+    return (rand() % sequence_stat_.size());
+  }
+
+  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
+  // same thread_config_
+  void UpdateJsonData(uint32_t ctx_id) override;
+
+  void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();
 
@@ -108,18 +117,10 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  // Prepare and Send a single infer request.
-  // Input boolean indicates if the request was delayed from the original
-  // schedule
-  void PrepAndSendInferRequest(bool delayed);
-
-  // Detect and handle the case where this thread needs to exit
-  // Returns true if an exit condition was met
-  bool HandleExitConditions();
-
-  // Empty function (request rate worker doesn't need to finalize
-  // anything here)
-  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
+  void AsyncCallbackFinalize(uint32_t ctx_id) override
+  {
+    total_ongoing_requests_--;
+  }
 };
 
 
