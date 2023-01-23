@@ -914,7 +914,7 @@ TritonLoader::Infer(
   timer.CaptureTimestamp(tc::RequestTimers::Kind::REQUEST_START);
 
   RETURN_IF_ERROR(InitializeRequest(options, outputs, &allocator, &irequest));
-  ScopedDefer error_handler([&error, completed_response, allocator, this] {
+  ScopedDefer error_handler([&error, &completed_response, &allocator, this] {
     error = CleanUp(completed_response, allocator);
   });
   RETURN_IF_ERROR(AddInputs(inputs, irequest));
