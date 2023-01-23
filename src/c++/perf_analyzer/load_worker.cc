@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <algorithm>
+#include <thread>
 
 #include "client_backend/client_backend.h"
 #include "load_worker.h"
@@ -468,6 +469,42 @@ LoadWorker::GetRandomSequenceLength(double offset_ratio)
 
 
 void
+LoadWorker::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
+{
+  if (!on_sequence_model_) {
+    // Update the inputs if required
+    if (using_json_data_) {
+      UpdateJsonData(ctx_id);
+    }
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+  } else {
+    // Select one of the sequence at random for this request
+    uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
+
+    // Need lock to protect the order of dispatch across worker threads.
+    // This also helps in reporting the realistic latencies.
+    std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+    if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
+      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+      // Update the inputs if required
+      if (using_json_data_) {
+        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+      }
+
+      sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+      SendRequest(
+          ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
+          async_req_map_, thread_stat_);
+    }
+  }
+}
+
+
+void
 LoadWorker::SendRequest(
     std::shared_ptr<InferContext> context, const uint32_t ctx_id,
     const uint64_t request_id, const bool delayed,
@@ -500,7 +537,7 @@ LoadWorker::SendRequest(
           callback_func, *(context->options_), context->valid_inputs_,
           context->outputs_);
     }
-    context->inflight_request_cnt_++;
+    total_ongoing_requests_++;
   } else {
     std::chrono::time_point<std::chrono::system_clock> start_time_sync,
         end_time_sync;
@@ -535,6 +572,48 @@ LoadWorker::SendRequest(
   }
 }
 
+
+bool
+LoadWorker::HandleExitConditions()
+{
+  if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
+    CompleteOngoingSequences();
+    WaitForOngoingRequests();
+    return true;
+  }
+  return false;
+}
+
+void
+LoadWorker::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
+{
+  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+  sequence_stat_[seq_stat_index]->paused_ = true;
+
+  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
+    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+
+    if (using_json_data_) {
+      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+    }
+    sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+    bool is_delayed = false;
+    SendRequest(
+        ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
+        async_req_map_, thread_stat_);
+  }
+}
+
+void
+LoadWorker::WaitForOngoingRequests()
+{
+  while (total_ongoing_requests_ != 0) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+}
+
 void
 LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
@@ -558,8 +637,6 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
         ctx_id = it->second.ctx_id_;
         ctxs_[ctx_id]->infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        // FIXME not used by conc_worker
-        ctxs_[ctx_id]->inflight_request_cnt_--;
         thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
         async_req_map_.erase(request_id);
       }

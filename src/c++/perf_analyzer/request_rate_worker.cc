@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -47,8 +47,8 @@ RequestRateWorker::Infer()
     HandleExecuteOff();
 
     bool is_delayed = SleepIfNecessary();
-
-    PrepAndSendInferRequest(is_delayed);
+    uint32_t ctx_id = GetCtxId();
+    PrepAndSendInferRequest(ctx_id, is_delayed);
 
     if (HandleExitConditions()) {
       return;
@@ -57,49 +57,33 @@ RequestRateWorker::Infer()
   } while (true);
 }
 
-void
-RequestRateWorker::HandleExecuteOff()
-{
-  uint32_t ctx_id = GetCtxId();
 
-  // Should wait till main thread signals execution start
-  if (!execute_) {
-    if (on_sequence_model_) {
+void
+RequestRateWorker::CompleteOngoingSequences()
+{
+  if (on_sequence_model_) {
+    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       // Finish off all the ongoing sequences for graceful exit
       for (size_t i = thread_config_->id_; i < sequence_stat_.size();
            i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = true;
-        if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctxs_[ctx_id]->options_->sequence_start_ = false;
-          ctxs_[ctx_id]->options_->sequence_end_ = true;
-          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
-
-          bool is_delayed = false;
-          uint32_t ctx_id = 0;
-          SendRequest(
-              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
-              async_callback_func_, async_req_map_, thread_stat_);
-          sequence_stat_[i]->remaining_queries_ = 0;
-        }
+        CompleteOngoingSequence(ctx_id, i);
       }
     }
-    // Ensures the clean measurements after thread is woken up.
-    while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
+  }
+}
+
+void
+RequestRateWorker::HandleExecuteOff()
+{
+  // Should wait till main thread signals execution start
+  if (!execute_) {
+    CompleteOngoingSequences();
+    WaitForOngoingRequests();
+
     // Wait if no request should be sent and it is not exiting
     thread_config_->is_paused_ = true;
     std::unique_lock<std::mutex> lock(wake_mutex_);
     wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
-
-    if (on_sequence_model_) {
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = false;
-      }
-    }
   }
 
   thread_config_->is_paused_ = false;
@@ -131,77 +115,11 @@ RequestRateWorker::SleepIfNecessary()
 }
 
 void
-RequestRateWorker::PrepAndSendInferRequest(bool delayed)
+RequestRateWorker::UpdateJsonData(uint32_t ctx_id)
 {
-  uint32_t ctx_id = GetCtxId();
-
-  if (!on_sequence_model_) {
-    // Update the inputs if required
-    if (using_json_data_) {
-      UpdateJsonData(
-          std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
-          max_threads_);
-    }
-    SendRequest(
-        ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
-        async_req_map_, thread_stat_);
-  } else {
-    // Select one of the sequence at random for this request
-    uint32_t seq_stat_index = rand() % sequence_stat_.size();
-    // Need lock to protect the order of dispatch across worker threads.
-    // This also helps in reporting the realistic latencies.
-    std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-    if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-      SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
-
-      // Update the inputs if required
-      if (using_json_data_) {
-        UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
-      }
-
-      sequence_stat_[seq_stat_index]->remaining_queries_--;
-
-      SendRequest(
-          ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
-          async_req_map_, thread_stat_);
-    }
-  }
-}
-
-bool
-RequestRateWorker::HandleExitConditions()
-{
-  uint32_t ctx_id = GetCtxId();
-
-  if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
-    if (on_sequence_model_) {
-      // Finish off all the ongoing sequences for graceful exit
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        std::lock_guard<std::mutex> guard(sequence_stat_[i]->mtx_);
-        sequence_stat_[i]->paused_ = true;
-        if (sequence_stat_[i]->remaining_queries_ != 0) {
-          ctxs_[ctx_id]->options_->sequence_start_ = false;
-          ctxs_[ctx_id]->options_->sequence_end_ = true;
-          ctxs_[ctx_id]->options_->sequence_id_ = sequence_stat_[i]->seq_id_;
-
-          bool is_delayed = false;
-          SendRequest(
-              ctxs_[ctx_id], ctx_id, request_id_++, is_delayed,
-              async_callback_func_, async_req_map_, thread_stat_);
-          sequence_stat_[i]->remaining_queries_ = 0;
-        }
-      }
-    }
-    if (async_) {
-      // Loop to ensure all the inflight requests have been completed.
-      while (ctxs_[ctx_id]->inflight_request_cnt_ != 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      }
-    }
-    return true;
-  }
-  return false;
+  LoadWorker::UpdateJsonData(
+      std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
+      max_threads_);
 }
 
 }}  // namespace triton::perfanalyzer

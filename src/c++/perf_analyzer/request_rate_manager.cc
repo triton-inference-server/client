@@ -138,9 +138,10 @@ RequestRateManager::PauseWorkers()
       threads_config_.emplace_back(
           new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
 
-      auto worker = MakeWorker(threads_stat_.back(), threads_config_.back());
+      workers_.push_back(
+          MakeWorker(threads_stat_.back(), threads_config_.back()));
 
-      threads_.emplace_back(&IWorker::Infer, worker);
+      threads_.emplace_back(&IWorker::Infer, workers_.back());
     }
   }
 
@@ -160,6 +161,8 @@ RequestRateManager::ResumeWorkers()
     thread_config->index_ = thread_config->id_;
     thread_config->rounds_ = 0;
   }
+
+  UnpauseAllSequences();
 
   // Update the start_time_ to point to current time
   start_time_ = std::chrono::steady_clock::now();

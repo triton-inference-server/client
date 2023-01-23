@@ -529,4 +529,13 @@ LoadManager::StopWorkerThreads()
   threads_.clear();
 }
 
+void
+LoadManager::UnpauseAllSequences()
+{
+  for (auto seq : sequence_stat_) {
+    std::lock_guard<std::mutex> guard(seq->mtx_);
+    seq->paused_ = false;
+  }
+}
+
 }}  // namespace triton::perfanalyzer
