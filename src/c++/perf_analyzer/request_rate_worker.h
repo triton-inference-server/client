@@ -39,10 +39,10 @@ namespace triton { namespace perfanalyzer {
 ///
 class RequestRateWorker : public LoadWorker {
  public:
-  struct ThreadConfig : public DataStepIdTracker {
+  struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
-        : DataStepIdTracker(index), index_(index), id_(index), stride_(stride),
-          is_paused_(false), rounds_(0)
+        : index_(index), id_(index), stride_(stride), is_paused_(false),
+          rounds_(0)
     {
     }
 
@@ -54,7 +54,7 @@ class RequestRateWorker : public LoadWorker {
   };
 
   RequestRateWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
+      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
@@ -73,7 +73,7 @@ class RequestRateWorker : public LoadWorker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
-            thread_stat, parser, data_loader, factory, sequence_stat,
+            id, thread_stat, parser, data_loader, factory, sequence_stat,
             shared_memory_regions, backend_kind, shared_memory_type,
             on_sequence_model, async, streaming, batch_size, using_json_data,
             sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
@@ -105,10 +105,6 @@ class RequestRateWorker : public LoadWorker {
     return (rand() % sequence_stat_.size());
   }
 
-  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
-  // same thread_config_
-  void UpdateJsonData(uint32_t ctx_id) override;
-
   void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();
@@ -121,6 +117,8 @@ class RequestRateWorker : public LoadWorker {
   {
     total_ongoing_requests_--;
   }
+
+  size_t GetNumActiveThreads() override { return max_threads_; }
 };
 
 
