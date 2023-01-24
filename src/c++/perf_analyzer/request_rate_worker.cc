@@ -114,12 +114,4 @@ RequestRateWorker::SleepIfNecessary()
   return delayed;
 }
 
-void
-RequestRateWorker::UpdateJsonData(uint32_t ctx_id)
-{
-  LoadWorker::UpdateJsonData(
-      std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
-      max_threads_);
-}
-
 }}  // namespace triton::perfanalyzer

@@ -42,7 +42,7 @@ namespace triton { namespace perfanalyzer {
 class TestRequestRateWorker : public RequestRateWorker {
  public:
   TestRequestRateWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
+      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
@@ -61,7 +61,7 @@ class TestRequestRateWorker : public RequestRateWorker {
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : RequestRateWorker(
-            thread_stat, thread_config, parser, data_loader, backend_kind,
+            id, thread_stat, thread_config, parser, data_loader, backend_kind,
             factory, sequence_length, start_sequence_id, sequence_id_range,
             on_sequence_model, async, max_threads, using_json_data, streaming,
             shared_memory_type, batch_size, sequence_stat,
@@ -155,17 +155,18 @@ class TestRequestRateManager : public TestLoadManagerBase,
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
+    uint32_t id = workers_.size();
     if (use_mock_infer_) {
       return std::make_shared<MockRequestRateWorker>(thread_config);
     } else {
       return std::make_shared<TestRequestRateWorker>(
-          thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
-          RequestRateManager::factory_, sequence_length_, start_sequence_id_,
-          sequence_id_range_, on_sequence_model_, async_, max_threads_,
-          using_json_data_, streaming_, shared_memory_type_, batch_size_,
-          sequence_stat_, shared_memory_regions_, wake_signal_, wake_mutex_,
-          execute_, curr_seq_id_, start_time_, schedule_, gen_duration_,
-          distribution_);
+          id, thread_stat, thread_config, parser_, data_loader_,
+          backend_->Kind(), RequestRateManager::factory_, sequence_length_,
+          start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
+          max_threads_, using_json_data_, streaming_, shared_memory_type_,
+          batch_size_, sequence_stat_, shared_memory_regions_, wake_signal_,
+          wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
+          gen_duration_, distribution_);
     }
   }
 

@@ -38,7 +38,7 @@ namespace triton { namespace perfanalyzer {
 class TestConcurrencyWorker : public ConcurrencyWorker {
  public:
   TestConcurrencyWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
+      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
@@ -55,7 +55,7 @@ class TestConcurrencyWorker : public ConcurrencyWorker {
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
       : ConcurrencyWorker(
-            thread_stat, thread_config, parser, data_loader, backend_kind,
+            id, thread_stat, thread_config, parser, data_loader, backend_kind,
             factory, sequence_length, start_sequence_id, sequence_id_range,
             on_sequence_model, async, max_concurrency, using_json_data,
             streaming, shared_memory_type, batch_size, threads_config,
@@ -144,16 +144,19 @@ class TestConcurrencyManager : public TestLoadManagerBase,
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
   {
+    uint32_t id = workers_.size();
+
     if (use_mock_infer_) {
       return std::make_shared<MockConcurrencyWorker>(thread_config);
     } else {
       return std::make_shared<TestConcurrencyWorker>(
-          thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
-          ConcurrencyManager::factory_, sequence_length_, start_sequence_id_,
-          sequence_id_range_, on_sequence_model_, async_, max_concurrency_,
-          using_json_data_, streaming_, shared_memory_type_, batch_size_,
-          threads_config_, sequence_stat_, shared_memory_regions_, wake_signal_,
-          wake_mutex_, active_threads_, execute_, curr_seq_id_, distribution_);
+          id, thread_stat, thread_config, parser_, data_loader_,
+          backend_->Kind(), ConcurrencyManager::factory_, sequence_length_,
+          start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
+          max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
+          batch_size_, threads_config_, sequence_stat_, shared_memory_regions_,
+          wake_signal_, wake_mutex_, active_threads_, execute_, curr_seq_id_,
+          distribution_);
     }
   }
 
