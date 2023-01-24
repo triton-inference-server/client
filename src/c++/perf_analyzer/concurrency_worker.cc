@@ -158,14 +158,6 @@ ConcurrencyWorker::PrepAndSendInferRequests()
 }
 
 void
-ConcurrencyWorker::UpdateJsonData(uint32_t ctx_id)
-{
-  LoadWorker::UpdateJsonData(
-      std::static_pointer_cast<DataStepIdTracker>(thread_config_), ctx_id,
-      active_threads_);
-}
-
-void
 ConcurrencyWorker::RestoreFreeCtxId(uint32_t ctx_id)
 {
   // FIXME TMA-1023 we are clearly pushing and not popping in some cases
