@@ -47,10 +47,9 @@ namespace triton { namespace perfanalyzer {
 ///
 class ConcurrencyWorker : public LoadWorker {
  public:
-  struct ThreadConfig : public DataStepIdTracker {
+  struct ThreadConfig {
     ThreadConfig(size_t thread_id)
-        : DataStepIdTracker(thread_id), thread_id_(thread_id), concurrency_(0),
-          is_paused_(false)
+        : thread_id_(thread_id), concurrency_(0), is_paused_(false)
     {
     }
 
@@ -63,7 +62,7 @@ class ConcurrencyWorker : public LoadWorker {
   };
 
   ConcurrencyWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
+      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
@@ -80,7 +79,7 @@ class ConcurrencyWorker : public LoadWorker {
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
-            thread_stat, parser, data_loader, factory, sequence_stat,
+            id, thread_stat, parser, data_loader, factory, sequence_stat,
             shared_memory_regions, backend_kind, shared_memory_type,
             on_sequence_model, async, streaming, batch_size, using_json_data,
             sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
@@ -108,10 +107,6 @@ class ConcurrencyWorker : public LoadWorker {
   bool notified_ = false;
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
-
-  // TODO REFACTOR TMA-1020 this can go away once we are decoupled and share the
-  // same thread_config_
-  void UpdateJsonData(uint32_t ctx_id) override;
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override;
 
@@ -143,6 +138,8 @@ class ConcurrencyWorker : public LoadWorker {
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   uint32_t GetCtxId();
+
+  virtual size_t GetNumActiveThreads() override { return active_threads_; }
 };
 
 }}  // namespace triton::perfanalyzer

@@ -646,14 +646,13 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
 }
 
 void
-LoadWorker::UpdateJsonData(
-    std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
-    const size_t num_threads)
+LoadWorker::UpdateJsonData(const uint32_t ctx_id)
 {
-  size_t curr_step_id = step_id_tracker->GetDataStepId();
+  size_t num_threads = GetNumActiveThreads();
+  size_t curr_step_id = data_step_id_tracker_->GetDataStepId();
   int step_id =
       (curr_step_id % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
-  step_id_tracker->SetDataStepId(curr_step_id + num_threads);
+  data_step_id_tracker_->SetDataStepId(curr_step_id + num_threads);
   thread_stat_->status_ = UpdateInputs(
       ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {

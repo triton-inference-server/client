@@ -155,7 +155,7 @@ struct AsyncRequestProperties {
 class LoadWorker : public IWorker {
  protected:
   LoadWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
+      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -182,6 +182,7 @@ class LoadWorker : public IWorker {
         distribution_(distribution), wake_signal_(wake_signal),
         wake_mutex_(wake_mutex), execute_(execute)
   {
+    data_step_id_tracker_ = std::make_unique<DataStepIdTracker>(id);
   }
 
   virtual ~LoadWorker() = default;
@@ -303,7 +304,6 @@ class LoadWorker : public IWorker {
   bool HandleExitConditions();
 
   virtual uint32_t GetSeqStatIndex(uint32_t ctx_id) = 0;
-  virtual void UpdateJsonData(uint32_t ctx_id) = 0;
   virtual void CompleteOngoingSequences() = 0;
   void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
 
@@ -320,13 +320,15 @@ class LoadWorker : public IWorker {
       &LoadWorker::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
   /// Update inputs based on custom json data
-  void UpdateJsonData(
-      std::shared_ptr<DataStepIdTracker> step_id_tracker, const uint32_t ctx_id,
-      const size_t num_threads);
+  void UpdateJsonData(const uint32_t ctx_id);
 
   /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(
       const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
+
+  virtual size_t GetNumActiveThreads() = 0;
+
+  std::unique_ptr<DataStepIdTracker> data_step_id_tracker_;
 
   // TODO REFACTOR TMA-1019 all sequence related code should be in a single
   // class. We shouldn't have to have a shared uint64 reference passed to all
