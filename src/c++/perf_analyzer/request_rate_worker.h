@@ -113,8 +113,6 @@ class RequestRateWorker : public LoadWorker {
   // Sleep until it is time for the next part of the schedule
   // Returns true if the request was delayed
   bool SleepIfNecessary();
-
-  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
 };
 
 

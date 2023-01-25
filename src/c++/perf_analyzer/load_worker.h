@@ -98,9 +98,6 @@ class LoadWorker : public IWorker {
 
   void WaitForOngoingRequests();
 
-  // Code to execute at the end of the async callback function
-  virtual void AsyncCallbackFinalize(uint32_t ctx_id) = 0;
-
   std::unique_ptr<InferManager> infer_manager_;
 
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
