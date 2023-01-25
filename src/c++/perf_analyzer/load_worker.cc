@@ -47,7 +47,7 @@ LoadWorker::HandleExitConditions()
 void
 LoadWorker::WaitForOngoingRequests()
 {
-  while (total_ongoing_requests_ != 0) {
+  while (infer_manager_->GetNumOngoingRequests() != 0) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 }

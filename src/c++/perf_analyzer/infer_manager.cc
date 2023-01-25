@@ -85,6 +85,12 @@ InferManager::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
   }
 }
 
+void
+InferManager::RegisterCallback(std::function<void(uint32_t)> callback)
+{
+  async_callback_finalize_func_ = callback;
+}
+
 
 void
 InferManager::SendRequest(
@@ -689,7 +695,9 @@ InferManager::AsyncCallbackFuncImpl(cb::InferResult* result)
   total_ongoing_requests_--;
 
   // FIXME have to register callbacks!
-  // AsyncCallbackFinalize(ctx_id);
+  if (async_callback_finalize_func_ != nullptr) {
+    async_callback_finalize_func_(ctx_id);
+  }
 }
 
 }}  // namespace triton::perfanalyzer

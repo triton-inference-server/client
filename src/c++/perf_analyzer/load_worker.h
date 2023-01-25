@@ -121,18 +121,20 @@ class LoadWorker : public IWorker {
   // shared bool reference? Used to pause execution of this thread
   bool& execute_;
 
-  // All of the Inference contexts for this worker
-  std::vector<std::shared_ptr<InferContext>> ctxs_;
+  // FIXME this has to not be here now
+  //  // All of the Inference contexts for this worker
+  //  std::vector<std::shared_ptr<InferContext>> ctxs_;
 
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
 
-  // request_id to start timestamp map
-  std::map<std::string, AsyncRequestProperties> async_req_map_;
+  // FIXME this has to not be here now
+  //  // request_id to start timestamp map
+  //  std::map<std::string, AsyncRequestProperties> async_req_map_;
 
-  uint64_t request_id_ = 0;
-
-  std::atomic<int> total_ongoing_requests_{0};
+  // FIXME this has to not be here now
+  // uint64_t request_id_ = 0;
+  // std::atomic<int> total_ongoing_requests_{0};
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;

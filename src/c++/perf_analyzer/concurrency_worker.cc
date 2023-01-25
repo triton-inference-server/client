@@ -82,7 +82,7 @@ ConcurrencyWorker::ReserveContexts()
   // reserving.
   if (on_sequence_model_ && async_) {
     thread_stat_->contexts_stat_.reserve(max_concurrency_);
-    ctxs_.reserve(max_concurrency_);
+    // FIXME ctxs_.reserve(max_concurrency_);
   }
 }
 
@@ -94,7 +94,9 @@ ConcurrencyWorker::HandleExecuteOff()
       // Ensures the clean exit of the sequences
       CompleteOngoingSequences();
       WaitForOngoingRequests();
-      SyncClientStats();
+
+      // Make sure all threads are in sync with the client's stats
+      infer_manager_->SyncClientStats();
 
       // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
@@ -134,8 +136,8 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   // maintain concurrency for this thread.
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
-  if (active_ctx_cnt > ctxs_.size()) {
-    while (active_ctx_cnt > ctxs_.size()) {
+  if (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
+    while (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
       // FIXME -- who "OWNs" the contexts??
       infer_manager_->CreateContext();
     }
@@ -200,21 +202,10 @@ void
 ConcurrencyWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
+    for (size_t ctx_id = 0; ctx_id < infer_manager_->GetNumCtxs(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
       infer_manager_->CompleteOngoingSequence(ctx_id, seq_stat_index);
     }
-  }
-}
-
-void
-ConcurrencyWorker::SyncClientStats()
-{
-  // Make sure all threads are in sync with the client's stats
-  //
-  for (size_t i = 0; i < ctxs_.size(); ++i) {
-    ctxs_[i]->infer_backend_->ClientInferStat(
-        &(thread_stat_->contexts_stat_[i]));
   }
 }
 

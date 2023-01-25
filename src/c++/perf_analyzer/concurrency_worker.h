@@ -87,6 +87,9 @@ class ConcurrencyWorker : public LoadWorker {
         thread_config_(thread_config), max_concurrency_(max_concurrency),
         threads_config_(threads_config), active_threads_(active_threads)
   {
+    infer_manager_->RegisterCallback(std::bind(
+        &ConcurrencyWorker::AsyncCallbackFinalize, this,
+        std::placeholders::_1));
   }
 
   void Infer() override;

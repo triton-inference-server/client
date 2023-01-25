@@ -177,9 +177,18 @@ class InferManager {
 
   // Create and initialize a new context
   void CreateContext();
-
+  void SyncClientStats()
+  {
+    for (size_t i = 0; i < ctxs_.size(); ++i) {
+      ctxs_[i]->infer_backend_->ClientInferStat(
+          &(thread_stat_->contexts_stat_[i]));
+    }
+  }
+  uint GetNumOngoingRequests() { return total_ongoing_requests_; }
+  size_t GetNumCtxs() { return ctxs_.size(); }
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
   void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+  void RegisterCallback(std::function<void(uint32_t)> callback);
 
  protected:
   /// A helper function to issue inference request to the server.
@@ -305,7 +314,9 @@ class InferManager {
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
       &InferManager::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
- protected:
+  // Function pointer to registered async callbacks
+  std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
+
   std::unique_ptr<DataStepIdTracker> data_step_id_tracker_;
 
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
@@ -326,7 +337,7 @@ class InferManager {
   std::vector<std::shared_ptr<InferContext>> ctxs_;
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
-  std::atomic<int> total_ongoing_requests_{0};
+  std::atomic<uint> total_ongoing_requests_{0};
 
   // Map from shared memory key to its starting address and size
   // FIXME this was a REF that was passed in!
