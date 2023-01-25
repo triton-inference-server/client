@@ -36,6 +36,43 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+class TestInferManager : public InferManager {
+ public:
+  TestInferManager(
+      const uint32_t id, const bool async, const bool streaming,
+      const bool on_sequence_model, const bool using_json_data,
+      const int32_t batch_size, const cb::BackendKind backend_kind,
+      const SharedMemoryType shared_memory_type,
+      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
+      std::uniform_int_distribution<uint64_t>& distribution,
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
+      std::shared_ptr<DataLoader> data_loader,
+      std::shared_ptr<ModelParser> parser,
+      std::shared_ptr<cb::ClientBackendFactory> factory)
+      : InferManager(
+            id, async, streaming, on_sequence_model, using_json_data,
+            batch_size, backend_kind, shared_memory_type, shared_memory_regions,
+            start_sequence_id, sequence_id_range, sequence_length, curr_seq_id,
+            distribution, thread_stat, sequence_stat, data_loader, parser,
+            factory)
+  {
+  }
+
+ protected:
+  cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype) override
+  {
+    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
+    return cb::Error::Success;
+  }
+};  // namespace perfanalyzer
+
+
 // Struct to hold the mock pieces to ingest custom json data
 struct MockInputPipeline {
   MockInputPipeline(

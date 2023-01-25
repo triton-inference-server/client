@@ -62,19 +62,16 @@ class TestConcurrencyWorker : public ConcurrencyWorker {
             sequence_stat, shared_memory_regions, wake_signal, wake_mutex,
             active_threads, execute, curr_seq_id, distribution)
   {
+    // FIXMETKG better way to do this than to overwrite in constructor?
+    infer_manager_ = std::make_unique<TestInferManager>(
+        id, async, streaming, on_sequence_model, using_json_data, batch_size,
+        backend_kind, shared_memory_type, shared_memory_regions,
+        start_sequence_id, sequence_id_range, sequence_length, curr_seq_id,
+        distribution, thread_stat, sequence_stat, data_loader, parser, factory);
+    infer_manager_->RegisterCallback(std::bind(
+        &TestConcurrencyWorker::AsyncCallbackFinalize, this,
+        std::placeholders::_1));
   }
-
-  // FIXMETKG going to have to revive this testing
-  //  /// Mock out the InferInput object
-  //  ///
-  //  cb::Error CreateInferInput(
-  //      cb::InferInput** infer_input, const cb::BackendKind kind,
-  //      const std::string& name, const std::vector<int64_t>& dims,
-  //      const std::string& datatype) override
-  //  {
-  //    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-  //    return cb::Error::Success;
-  //  }
 };
 
 class MockConcurrencyWorker : public IWorker {
