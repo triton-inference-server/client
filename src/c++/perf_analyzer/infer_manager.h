@@ -157,6 +157,8 @@ class InferManager {
       bool using_json_data, int32_t batch_size, cb::BackendKind backend_kind,
       SharedMemoryType shared_memory_type, uint64_t start_sequence_id,
       uint64_t sequence_id_range, size_t sequence_length,
+      std::atomic<uint64_t>& curr_seq_id,
+      std::uniform_int_distribution<uint64_t>& distribution,
       std::shared_ptr<ThreadStat> thread_stat,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::shared_ptr<DataLoader> data_loader,
@@ -168,7 +170,8 @@ class InferManager {
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range),
-        sequence_length_(sequence_length), thread_stat_(thread_stat),
+        sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
+        distribution_(distribution), thread_stat_(thread_stat),
         sequence_stat_(sequence_stat), data_loader_(data_loader),
         parser_(parser), factory_(factory)
   {
@@ -187,6 +190,8 @@ class InferManager {
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
   size_t GetNumCtxs() { return ctxs_.size(); }
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
+  void PrepAndSendSequenceInferRequest(
+      uint32_t ctx_id, uint32_t seq_index, bool delayed = false);
   void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
   void RegisterCallback(std::function<void(uint32_t)> callback);
 
@@ -322,14 +327,12 @@ class InferManager {
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably
   // gets absorbed into the new sequence class when it is created
-  // FIXME this was a REF!
-  std::uniform_int_distribution<uint64_t> distribution_;
+  std::uniform_int_distribution<uint64_t>& distribution_;
 
   // TODO REFACTOR TMA-1019 all sequence related code should be in a single
   // class. We shouldn't have to have a shared uint64 reference passed to all
   // threads Current sequence id (for issuing new sequences)
-  // FIXME this was a REF!
-  std::atomic<uint64_t> curr_seq_id_;
+  std::atomic<uint64_t>& curr_seq_id_;
 
   //////////////////////////////////////////////
   // FIXME all these need to come from somewhere!
@@ -361,8 +364,7 @@ class InferManager {
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
-  // FIXME
-  uint32_t GetSeqStatIndex(uint32_t ctx_id) { return 0; }
+  // FIXME!!
   size_t GetNumActiveThreads() { return 0; }
 
  private:

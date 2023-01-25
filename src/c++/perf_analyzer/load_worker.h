@@ -64,15 +64,14 @@ class LoadWorker : public IWorker {
         streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), sequence_length_(sequence_length),
         start_sequence_id_(start_sequence_id),
-        sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
-        distribution_(distribution), wake_signal_(wake_signal),
+        sequence_id_range_(sequence_id_range), wake_signal_(wake_signal),
         wake_mutex_(wake_mutex), execute_(execute)
   {
     infer_manager_ = std::make_unique<InferManager>(
         id, async, streaming, on_sequence_model, using_json_data, batch_size,
         backend_kind, shared_memory_type, start_sequence_id, sequence_id_range,
-        sequence_length, thread_stat, sequence_stat, data_loader, parser,
-        factory);
+        sequence_length, curr_seq_id, distribution, thread_stat, sequence_stat,
+        data_loader, parser, factory);
   }
 
   virtual ~LoadWorker() = default;
@@ -81,7 +80,13 @@ class LoadWorker : public IWorker {
   // FIXME
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
-    infer_manager_->PrepAndSendInferRequest(ctx_id, delayed);
+    if (on_sequence_model_) {
+      uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
+      infer_manager_->PrepAndSendSequenceInferRequest(
+          ctx_id, seq_stat_index, delayed);
+    } else {
+      infer_manager_->PrepAndSendInferRequest(ctx_id, delayed);
+    }
   }
 
 
@@ -100,16 +105,6 @@ class LoadWorker : public IWorker {
   virtual size_t GetNumActiveThreads() = 0;
 
   std::unique_ptr<InferManager> infer_manager_;
-
-  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
-  // class. We shouldn't have to have a shared uint64 reference passed to all
-  // threads Current sequence id (for issuing new sequences)
-  std::atomic<uint64_t>& curr_seq_id_;
-
-  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
-  // we decouple? Used to pick among multiple data streams. Note this probably
-  // gets absorbed into the new sequence class when it is created
-  std::uniform_int_distribution<uint64_t>& distribution_;
 
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
   // the same cv/mutex into every thread by reference? Used to wake up this
