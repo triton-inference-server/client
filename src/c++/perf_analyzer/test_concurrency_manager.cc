@@ -64,7 +64,7 @@ class TestConcurrencyWorker : public ConcurrencyWorker {
   {
   }
 
-  // FIXME going to have to revive this testing
+  // FIXMETKG going to have to revive this testing
   //  /// Mock out the InferInput object
   //  ///
   //  cb::Error CreateInferInput(

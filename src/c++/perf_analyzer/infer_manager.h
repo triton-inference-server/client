@@ -151,13 +151,13 @@ struct InferContext {
 
 class InferManager {
  public:
-  // FIXME consts
   InferManager(
-      uint32_t id, bool async, bool streaming, bool on_sequence_model,
-      bool using_json_data, int32_t batch_size, cb::BackendKind backend_kind,
-      SharedMemoryType shared_memory_type, uint64_t start_sequence_id,
-      uint64_t sequence_id_range, size_t sequence_length,
-      std::atomic<uint64_t>& curr_seq_id,
+      const uint32_t id, const bool async, const bool streaming,
+      const bool on_sequence_model, const bool using_json_data,
+      const int32_t batch_size, const cb::BackendKind backend_kind,
+      const SharedMemoryType shared_memory_type,
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::shared_ptr<ThreadStat> thread_stat,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
@@ -335,19 +335,18 @@ class InferManager {
   std::atomic<uint64_t>& curr_seq_id_;
 
   //////////////////////////////////////////////
-  // FIXME all these need to come from somewhere!
-  // FIXME which should be const?
+  // FIXMETKG these are now owned here
   std::vector<std::shared_ptr<InferContext>> ctxs_;
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
 
   // Map from shared memory key to its starting address and size
-  // FIXME this was a REF that was passed in!
-  // FIXME who owns?? Can there be one per infermanager?
+  // FIXMETKG this was a REF that was passed in!
+  // FIXMETKG who owns?? Can there be one per infermanager?
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
 
-  // FIXME these should now be passed in
+  // FIXMETKG These are all passed in
   const bool async_;
   const bool streaming_;
   const bool on_sequence_model_;
@@ -364,7 +363,7 @@ class InferManager {
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
-  // FIXME!!
+  // FIXMETKG!!
   size_t GetNumActiveThreads() { return 0; }
 
  private:

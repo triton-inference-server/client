@@ -82,7 +82,6 @@ ConcurrencyWorker::ReserveContexts()
   // reserving.
   if (on_sequence_model_ && async_) {
     thread_stat_->contexts_stat_.reserve(max_concurrency_);
-    // FIXME ctxs_.reserve(max_concurrency_);
   }
 }
 
@@ -138,7 +137,6 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 
   if (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
     while (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
-      // FIXME -- who "OWNs" the contexts??
       infer_manager_->CreateContext();
     }
     ResetFreeCtxIds();

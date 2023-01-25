@@ -70,7 +70,7 @@ class TestRequestRateWorker : public RequestRateWorker {
   {
   }
 
-  // FIXME going to have to revive this testing
+  // FIXMETKG going to have to revive this testing
   //
   //  /// Mock out the InferInput object
   //  ///
