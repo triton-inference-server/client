@@ -141,8 +141,6 @@ class ConcurrencyWorker : public LoadWorker {
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   uint32_t GetCtxId();
-
-  virtual size_t GetNumActiveThreads() override { return active_threads_; }
 };
 
 }}  // namespace triton::perfanalyzer

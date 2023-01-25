@@ -105,6 +105,10 @@ ConcurrencyWorker::HandleExecuteOff()
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
       wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+
+      // TODO REFACTOR TMA-1043 - memory manager should be handling this instead
+      // of here
+      infer_manager_->SetNumActiveThreads(active_threads_);
     }
   }
   thread_config_->is_paused_ = false;
@@ -141,6 +145,9 @@ ConcurrencyWorker::CreateContextsAsNecessary()
     }
     ResetFreeCtxIds();
   }
+
+  // TODO REFACTOR TMA-1043 -- this shouldn't be handled here
+  infer_manager_->SetNumActiveThreads(active_threads_);
 }
 
 void

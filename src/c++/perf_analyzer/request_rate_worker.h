@@ -82,6 +82,7 @@ class RequestRateWorker : public LoadWorker {
         start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)
   {
+    infer_manager_->SetNumActiveThreads(max_threads);
   }
 
   void Infer() override;
@@ -114,8 +115,6 @@ class RequestRateWorker : public LoadWorker {
   bool SleepIfNecessary();
 
   void AsyncCallbackFinalize(uint32_t ctx_id) override {}
-
-  size_t GetNumActiveThreads() override { return max_threads_; }
 };
 
 

@@ -189,6 +189,11 @@ class InferManager {
           &(thread_stat_->contexts_stat_[i]));
     }
   }
+  // TODO REFACTOR TMA-1043 this should be in memory class
+  void SetNumActiveThreads(size_t num_threads)
+  {
+    num_active_threads_ = num_threads;
+  }
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
   size_t GetNumCtxs() { return ctxs_.size(); }
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
@@ -317,6 +322,23 @@ class InferManager {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
+  const bool async_;
+  const bool streaming_;
+  const bool on_sequence_model_;
+  const bool using_json_data_;
+  const int32_t batch_size_;
+  const cb::BackendKind backend_kind_;
+  const SharedMemoryType shared_memory_type_;
+  const uint64_t start_sequence_id_;
+  const uint64_t sequence_id_range_;
+  const size_t sequence_length_;
+
+  std::shared_ptr<ThreadStat> thread_stat_;
+  std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
+  std::shared_ptr<DataLoader> data_loader_;
+  std::shared_ptr<ModelParser> parser_;
+  std::shared_ptr<cb::ClientBackendFactory> factory_;
+
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably
   // gets absorbed into the new sequence class when it is created
@@ -330,8 +352,6 @@ class InferManager {
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
 
-  //////////////////////////////////////////////
-  // FIXMETKG these are now owned here
   std::vector<std::shared_ptr<InferContext>> ctxs_;
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
@@ -345,30 +365,11 @@ class InferManager {
   // Function pointer to registered async callbacks
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
-
-  ///////////////////////////////////
-  // FIXMETKG These are all passed in now
-  const bool async_;
-  const bool streaming_;
-  const bool on_sequence_model_;
-  const bool using_json_data_;
-  const int32_t batch_size_;
-  const cb::BackendKind backend_kind_;
-  const SharedMemoryType shared_memory_type_;
-  const uint64_t start_sequence_id_;
-  const uint64_t sequence_id_range_;
-  const size_t sequence_length_;
-  std::shared_ptr<ThreadStat> thread_stat_;
-  std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
-  std::shared_ptr<DataLoader> data_loader_;
-  std::shared_ptr<ModelParser> parser_;
-  std::shared_ptr<cb::ClientBackendFactory> factory_;
-
-  // FIXMETKG!!
-  size_t GetNumActiveThreads() { return 0; }
-
  private:
+  size_t GetNumActiveThreads() { return num_active_threads_; }
+
   std::default_random_engine rng_generator_;
+  size_t num_active_threads_{0};
 };
 
 }}  // namespace triton::perfanalyzer
