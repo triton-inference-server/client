@@ -156,6 +156,7 @@ class InferManager {
       const bool on_sequence_model, const bool using_json_data,
       const int32_t batch_size, const cb::BackendKind backend_kind,
       const SharedMemoryType shared_memory_type,
+      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
       const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
@@ -168,6 +169,7 @@ class InferManager {
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
+        shared_memory_regions_(shared_memory_regions),
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range),
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
@@ -315,15 +317,6 @@ class InferManager {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
-  // Function pointer to the async callback function implementation
-  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &InferManager::AsyncCallbackFuncImpl, this, std::placeholders::_1);
-
-  // Function pointer to registered async callbacks
-  std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
-
-  std::unique_ptr<DataStepIdTracker> data_step_id_tracker_;
-
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably
   // gets absorbed into the new sequence class when it is created
@@ -334,19 +327,27 @@ class InferManager {
   // threads Current sequence id (for issuing new sequences)
   std::atomic<uint64_t>& curr_seq_id_;
 
+  // Map from shared memory key to its starting address and size
+  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
+
   //////////////////////////////////////////////
   // FIXMETKG these are now owned here
   std::vector<std::shared_ptr<InferContext>> ctxs_;
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
+  std::unique_ptr<DataStepIdTracker> data_step_id_tracker_;
 
-  // Map from shared memory key to its starting address and size
-  // FIXMETKG this was a REF that was passed in!
-  // FIXMETKG who owns?? Can there be one per infermanager?
-  std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
+  // Function pointer to the async callback function implementation
+  std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
+      &InferManager::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
-  // FIXMETKG These are all passed in
+  // Function pointer to registered async callbacks
+  std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
+
+
+  ///////////////////////////////////
+  // FIXMETKG These are all passed in now
   const bool async_;
   const bool streaming_;
   const bool on_sequence_model_;

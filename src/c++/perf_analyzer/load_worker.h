@@ -58,7 +58,6 @@ class LoadWorker : public IWorker {
       bool& execute)
       : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
         factory_(factory), sequence_stat_(sequence_stat),
-        shared_memory_regions_(shared_memory_regions),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
         streaming_(streaming), batch_size_(batch_size),
@@ -69,9 +68,9 @@ class LoadWorker : public IWorker {
   {
     infer_manager_ = std::make_unique<InferManager>(
         id, async, streaming, on_sequence_model, using_json_data, batch_size,
-        backend_kind, shared_memory_type, start_sequence_id, sequence_id_range,
-        sequence_length, curr_seq_id, distribution, thread_stat, sequence_stat,
-        data_loader, parser, factory);
+        backend_kind, shared_memory_type, shared_memory_regions,
+        start_sequence_id, sequence_id_range, sequence_length, curr_seq_id,
+        distribution, thread_stat, sequence_stat, data_loader, parser, factory);
   }
 
   virtual ~LoadWorker() = default;
@@ -119,8 +118,6 @@ class LoadWorker : public IWorker {
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
 
-  // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
   // Sequence stats for all sequences
   std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
   std::shared_ptr<DataLoader> data_loader_;
