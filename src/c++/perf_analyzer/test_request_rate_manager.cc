@@ -70,16 +70,18 @@ class TestRequestRateWorker : public RequestRateWorker {
   {
   }
 
-  /// Mock out the InferInput object
-  ///
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
-  }
+  // FIXME going to have to revive this testing
+  //
+  //  /// Mock out the InferInput object
+  //  ///
+  //  cb::Error CreateInferInput(
+  //      cb::InferInput** infer_input, const cb::BackendKind kind,
+  //      const std::string& name, const std::vector<int64_t>& dims,
+  //      const std::string& datatype) override
+  //  {
+  //    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
+  //    return cb::Error::Success;
+  //  }
 };
 
 class MockRequestRateWorker : public IWorker {

@@ -136,7 +136,8 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 
   if (active_ctx_cnt > ctxs_.size()) {
     while (active_ctx_cnt > ctxs_.size()) {
-      CreateContext();
+      // FIXME -- who "OWNs" the contexts??
+      infer_manager_->CreateContext();
     }
     ResetFreeCtxIds();
   }
@@ -201,7 +202,7 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (on_sequence_model_) {
     for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      CompleteOngoingSequence(ctx_id, seq_stat_index);
+      infer_manager_->CompleteOngoingSequence(ctx_id, seq_stat_index);
     }
   }
 }
