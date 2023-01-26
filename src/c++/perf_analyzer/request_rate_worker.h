@@ -113,10 +113,7 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  void AsyncCallbackFinalize(uint32_t ctx_id) override
-  {
-    total_ongoing_requests_--;
-  }
+  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
 
   size_t GetNumActiveThreads() override { return max_threads_; }
 };
