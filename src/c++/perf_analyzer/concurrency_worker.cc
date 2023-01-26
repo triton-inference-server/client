@@ -145,10 +145,6 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::PrepAndSendInferRequests()
 {
-  // Create async requests such that the number of ongoing requests
-  // matches the concurrency level
-  // Non-sequence model is 'num_reqs' * 1 ctx
-  // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
   while (free_ctx_ids_.size() && early_exit == false && execute_ &&
          thread_stat_->status_.IsOk()) {
     uint32_t ctx_id = GetCtxId();
@@ -227,12 +223,10 @@ ConcurrencyWorker::ResetFreeCtxIds()
   std::lock_guard<std::mutex> lock(cb_mtx_);
   free_ctx_ids_ = std::queue<int>();
 
-  if (ctxs_.size() > 1) {
-    for (size_t i = 0; i < ctxs_.size(); ++i) {
+  for (size_t i = 0; i < thread_config_->concurrency_; ++i) {
+    if (on_sequence_model_) {
       free_ctx_ids_.push(i);
-    }
-  } else {
-    for (size_t i = 0; i < thread_config_->concurrency_; i++) {
+    } else {
       free_ctx_ids_.push(0);
     }
   }
