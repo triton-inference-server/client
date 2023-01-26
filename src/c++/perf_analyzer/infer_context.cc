@@ -612,7 +612,7 @@ InferContext::SetInputsSharedMemory(
 void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
-  // FIXME don't I know my own ctx id? Does it even have to be passed?
+  // FIXMETKG don't I know my own ctx id? Does it even have to be passed?
   uint32_t ctx_id = 0;
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
