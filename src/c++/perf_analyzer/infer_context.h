@@ -92,7 +92,7 @@ struct ThreadStat {
   cb::Error status_;
   // The status of the callback thread for async requests
   cb::Error cb_status_;
-  // FIXMETKG -- why isn't this in the InferContext class??
+  // TODO REFACTOR TMA-1046 -- This should be in the InferContext class
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
   // A vector of request timestamps <start_time, end_time>
@@ -114,7 +114,7 @@ struct AsyncRequestProperties {
   bool delayed_;
 };
 
-/// FIXMETKG Sends inference to the server
+/// Sends inference requests to the server
 class InferContext {
  public:
   InferContext(
@@ -185,8 +185,7 @@ class InferContext {
     }
   }
 
-  // FIXMETKG -- does it make sense for this class to own this?
-  // FIXMETKG -- might not even be needed anymore after standardization?
+  // TODO REFACTOR TMA-1047 - This is likely no longer needed
   void SyncClientStats()
   {
     infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));

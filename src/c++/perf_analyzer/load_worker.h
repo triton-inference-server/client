@@ -75,7 +75,6 @@ class LoadWorker : public IWorker {
  protected:
   uint GetNumOngoingRequests();
 
-  // FIXMETKG - clean this up? dynamic dispatch?
   void SendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
     if (on_sequence_model_) {
