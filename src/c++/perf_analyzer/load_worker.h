@@ -30,7 +30,7 @@
 #include <mutex>
 
 #include "data_loader.h"
-#include "infer_manager.h"
+#include "infer_context.h"
 #include "iworker.h"
 #include "model_parser.h"
 
