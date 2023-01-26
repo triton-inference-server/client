@@ -126,8 +126,8 @@ class ConcurrencyWorker : public LoadWorker {
   // Create and populate contexts if needed
   void CreateContextsAsNecessary();
 
-  // Prepare and Send out the desired concurrency of requests
-  void PrepAndSendInferRequests();
+  // Send out the desired concurrency of requests
+  void SendInferRequests();
 
   void WaitForResponses();
 
@@ -142,7 +142,7 @@ class ConcurrencyWorker : public LoadWorker {
 
   void CreateContextPost(std::shared_ptr<InferContext> ctx) override
   {
-    ctx->RegisterCallback(std::bind(
+    ctx->RegisterAsyncCallbackFinalize(std::bind(
         &ConcurrencyWorker::AsyncCallbackFinalize, this,
         std::placeholders::_1));
   }

@@ -76,13 +76,13 @@ class LoadWorker : public IWorker {
   uint GetNumOngoingRequests();
 
   // FIXMETKG - clean this up? dynamic dispatch?
-  void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false)
+  void SendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
     if (on_sequence_model_) {
       uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      ctxs_[ctx_id]->PrepAndSendSequenceInferRequest(seq_stat_index, delayed);
+      ctxs_[ctx_id]->SendSequenceInferRequest(seq_stat_index, delayed);
     } else {
-      ctxs_[ctx_id]->PrepAndSendInferRequest(delayed);
+      ctxs_[ctx_id]->SendInferRequest(delayed);
     }
   }
 

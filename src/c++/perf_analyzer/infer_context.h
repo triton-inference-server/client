@@ -188,11 +188,11 @@ class InferContext {
     }
   }
 
-  // FIXME no need to pass in ID
   // FIXME -- does it make sense for this class to own this?
-  void SyncClientStats(size_t i)
+  // FIXME -- might not even be needed anymore after standardization?
+  void SyncClientStats()
   {
-    infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[i]));
+    infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
   }
 
   // TODO REFACTOR TMA-1043 this should be in memory class
@@ -201,27 +201,16 @@ class InferContext {
     num_active_threads_ = num_threads;
   }
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
-  void PrepAndSendInferRequest(bool delayed = false);
-  void PrepAndSendSequenceInferRequest(
-      uint32_t seq_index, bool delayed = false);
+  void SendInferRequest(bool delayed = false);
+  void SendSequenceInferRequest(uint32_t seq_index, bool delayed = false);
   void CompleteOngoingSequence(uint32_t seq_stat_index);
-  void RegisterCallback(std::function<void(uint32_t)> callback);
+  void RegisterAsyncCallbackFinalize(std::function<void(uint32_t)> callback);
 
  protected:
   /// A helper function to issue inference request to the server.
-  /// \param context_id The ID of the context
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param callback_func The callback function to use with asynchronous
-  /// request.
-  /// \param async_req_map The map from ongoing request_id to the
-  /// request information needed to correctly interpret the details.
-  /// \param thread_stat The runnning status of the worker thread
-  void SendRequest(
-      const uint64_t request_id, const bool delayed,
-      cb::OnCompleteFn callback_func,
-      std::map<std::string, AsyncRequestProperties>& async_req_map,
-      std::shared_ptr<ThreadStat> thread_stat);
+  void SendRequest(const uint64_t request_id, const bool delayed);
 
   /// Helper function to prepare the InferContext for sending
   /// inference request.

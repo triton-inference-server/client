@@ -44,27 +44,22 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
     bool is_delayed = false;
-    SendRequest(
-        request_id_++, is_delayed, async_callback_func_, async_req_map_,
-        thread_stat_);
+    SendRequest(request_id_++, is_delayed);
   }
 }
 
 void
-InferContext::PrepAndSendInferRequest(bool delayed)
+InferContext::SendInferRequest(bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_) {
     UpdateJsonData();
   }
-  SendRequest(
-      request_id_++, delayed, async_callback_func_, async_req_map_,
-      thread_stat_);
+  SendRequest(request_id_++, delayed);
 }
 
 void
-InferContext::PrepAndSendSequenceInferRequest(
-    uint32_t seq_stat_index, bool delayed)
+InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 {
   // Need lock to protect the order of dispatch across worker threads.
   // This also helps in reporting the realistic latencies.
@@ -79,48 +74,43 @@ InferContext::PrepAndSendSequenceInferRequest(
 
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
-    SendRequest(
-        request_id_++, delayed, async_callback_func_, async_req_map_,
-        thread_stat_);
+    SendRequest(request_id_++, delayed);
   }
 }
 
 void
-InferContext::RegisterCallback(std::function<void(uint32_t)> callback)
+InferContext::RegisterAsyncCallbackFinalize(
+    std::function<void(uint32_t)> callback)
 {
   async_callback_finalize_func_ = callback;
 }
 
 
 void
-InferContext::SendRequest(
-    const uint64_t request_id, const bool delayed,
-    cb::OnCompleteFn callback_func,
-    std::map<std::string, AsyncRequestProperties>& async_req_map,
-    std::shared_ptr<ThreadStat> thread_stat)
+InferContext::SendRequest(const uint64_t request_id, const bool delayed)
 {
-  if (!thread_stat->status_.IsOk()) {
+  if (!thread_stat_->status_.IsOk()) {
     return;
   }
 
   if (async_) {
     options_->request_id_ = std::to_string(request_id);
     {
-      std::lock_guard<std::mutex> lock(thread_stat->mu_);
-      auto it =
-          async_req_map.emplace(options_->request_id_, AsyncRequestProperties())
-              .first;
+      std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+      auto it = async_req_map_
+                    .emplace(options_->request_id_, AsyncRequestProperties())
+                    .first;
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.ctx_id_ = id_;
       it->second.sequence_end_ = options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
     if (streaming_) {
-      thread_stat->status_ = infer_backend_->AsyncStreamInfer(
+      thread_stat_->status_ = infer_backend_->AsyncStreamInfer(
           *(options_), valid_inputs_, outputs_);
     } else {
-      thread_stat->status_ = infer_backend_->AsyncInfer(
-          callback_func, *(options_), valid_inputs_, outputs_);
+      thread_stat_->status_ = infer_backend_->AsyncInfer(
+          async_callback_func_, *(options_), valid_inputs_, outputs_);
     }
     total_ongoing_requests_++;
   } else {
@@ -128,27 +118,27 @@ InferContext::SendRequest(
         end_time_sync;
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    thread_stat->status_ =
+    thread_stat_->status_ =
         infer_backend_->Infer(&results, *(options_), valid_inputs_, outputs_);
     if (results != nullptr) {
-      if (thread_stat->status_.IsOk()) {
-        thread_stat->status_ = ValidateOutputs(results);
+      if (thread_stat_->status_.IsOk()) {
+        thread_stat_->status_ = ValidateOutputs(results);
       }
       delete results;
     }
-    if (!thread_stat->status_.IsOk()) {
+    if (!thread_stat_->status_.IsOk()) {
       return;
     }
     end_time_sync = std::chrono::system_clock::now();
     {
       // Add the request timestamp to thread Timestamp vector with proper
       // locking
-      std::lock_guard<std::mutex> lock(thread_stat->mu_);
-      thread_stat->request_timestamps_.emplace_back(std::make_tuple(
+      std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+      thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, options_->sequence_end_, delayed));
-      thread_stat->status_ =
-          infer_backend_->ClientInferStat(&(thread_stat->contexts_stat_[id_]));
-      if (!thread_stat->status_.IsOk()) {
+      thread_stat_->status_ =
+          infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
+      if (!thread_stat_->status_.IsOk()) {
         return;
       }
     }

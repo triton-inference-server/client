@@ -56,7 +56,7 @@ ConcurrencyWorker::Infer()
       return;
     }
 
-    PrepAndSendInferRequests();
+    SendInferRequests();
 
     if (!thread_stat_->status_.IsOk()) {
       return;
@@ -153,12 +153,12 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 }
 
 void
-ConcurrencyWorker::PrepAndSendInferRequests()
+ConcurrencyWorker::SendInferRequests()
 {
   while (free_ctx_ids_.size() && early_exit == false && execute_ &&
          thread_stat_->status_.IsOk()) {
     uint32_t ctx_id = GetCtxId();
-    PrepAndSendInferRequest(ctx_id);
+    SendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
   }
 }
@@ -222,7 +222,7 @@ ConcurrencyWorker::SyncClientStats()
   // Make sure all threads are in sync with the client's stats
   //
   for (size_t i = 0; i < ctxs_.size(); ++i) {
-    ctxs_[i]->SyncClientStats(i);
+    ctxs_[i]->SyncClientStats();
   }
 }
 

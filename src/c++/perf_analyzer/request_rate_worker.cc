@@ -48,7 +48,7 @@ RequestRateWorker::Infer()
 
     bool is_delayed = SleepIfNecessary();
     uint32_t ctx_id = GetCtxId();
-    PrepAndSendInferRequest(ctx_id, is_delayed);
+    SendInferRequest(ctx_id, is_delayed);
 
     if (HandleExitConditions()) {
       return;
@@ -63,9 +63,10 @@ RequestRateWorker::CompleteOngoingSequences()
   if (on_sequence_model_) {
     for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       // Finish off all the ongoing sequences for graceful exit
-      for (size_t i = thread_config_->id_; i < sequence_stat_.size();
-           i += thread_config_->stride_) {
-        ctxs_[ctx_id]->CompleteOngoingSequence(i);
+      for (size_t seq_stat_index = thread_config_->id_;
+           seq_stat_index < sequence_stat_.size();
+           seq_stat_index += thread_config_->stride_) {
+        ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
       }
     }
   }
