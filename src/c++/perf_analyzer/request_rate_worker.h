@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -71,13 +71,14 @@ class RequestRateWorker : public LoadWorker {
       std::chrono::steady_clock::time_point& start_time,
       std::vector<std::chrono::nanoseconds>& schedule,
       std::shared_ptr<std::chrono::nanoseconds> gen_duration,
-      std::uniform_int_distribution<uint64_t>& distribution)
+      std::uniform_int_distribution<uint64_t>& distribution,
+      std::shared_ptr<MemoryManager> memory_manager)
       : LoadWorker(
             thread_stat, parser, data_loader, factory, sequence_stat,
             shared_memory_regions, backend_kind, shared_memory_type,
             on_sequence_model, async, streaming, batch_size, using_json_data,
             sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
-            distribution, wake_signal, wake_mutex, execute),
+            distribution, wake_signal, wake_mutex, execute, memory_manager),
         thread_config_(thread_config), max_threads_(max_threads),
         start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)

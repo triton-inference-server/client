@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 
 #include "data_loader.h"
 #include "iworker.h"
+#include "memory_manager.h"
 #include "model_parser.h"
 
 namespace triton { namespace perfanalyzer {
@@ -45,24 +46,6 @@ class DataStepIdTracker {
 
  private:
   size_t data_step_id_;
-};
-
-// Holds information about the shared memory locations
-struct SharedMemoryData {
-  SharedMemoryData(
-      size_t byte_size,
-      std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data)
-      : byte_size_(byte_size), data_(std::move(data))
-  {
-  }
-
-  SharedMemoryData() {}
-
-  // Byte size
-  size_t byte_size_;
-
-  // Unique pointer holding the shared memory data
-  std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
 };
 
 // Holds the status of the inflight sequence
@@ -101,41 +84,6 @@ struct ThreadStat {
   std::mutex mu_;
 };
 
-/// Wraps the information required to send an inference to the
-/// server
-struct InferContext {
-  explicit InferContext() : inflight_request_cnt_(0) {}
-  InferContext(InferContext&&) = delete;
-  InferContext(const InferContext&) = delete;
-  ~InferContext()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
-  // The backend to communicate with the server
-  std::unique_ptr<cb::ClientBackend> infer_backend_;
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
-  // The total number of inference in-flight.
-  std::atomic<size_t> inflight_request_cnt_;
-};
-
 /// The properties of an asynchronous request required in
 /// the callback to effectively interpret the response.
 struct AsyncRequestProperties {
@@ -171,7 +119,7 @@ class LoadWorker : public IWorker {
       std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      bool& execute)
+      bool& execute, const std::shared_ptr<MemoryManager> memory_manager)
       : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
         factory_(factory), sequence_stat_(sequence_stat),
         shared_memory_regions_(shared_memory_regions),
@@ -182,35 +130,12 @@ class LoadWorker : public IWorker {
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
         distribution_(distribution), wake_signal_(wake_signal),
-        wake_mutex_(wake_mutex), execute_(execute)
+        wake_mutex_(wake_mutex), execute_(execute),
+        memory_manager_(memory_manager)
   {
   }
 
   virtual ~LoadWorker() = default;
-
-  /// Creates inference input object
-  /// \param infer_input Output parameter storing newly created inference input
-  /// \param kind Backend kind
-  /// \param name Name of inference input
-  /// \param dims Shape of inference input
-  /// \param datatype Data type of inference input
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype);
-
-  /// Helper function to prepare the InferContext for sending
-  /// inference request.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferContext* ctx);
-
-  /// Helper function to prepare the InferContext for sending
-  /// inference request in shared memory. \param ctx The target
-  /// InferContext object. \return cb::Error object indicating
-  /// success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
 
   /// Updates the input data to use for inference request
   /// \param inputs The vector of pointers to InferInput objects for all
@@ -226,19 +151,6 @@ class LoadWorker : public IWorker {
       std::vector<cb::InferInput*>& valid_inputs, int stream_index,
       int step_index);
 
-  /// Updates the expected output data to use for inference request. Empty
-  /// vector will be returned if there is no expected output associated to the
-  /// step.
-  /// \param outputs The vector of outputs to get the expected data
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \param data The vector of pointer and size of the expected outputs
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateValidationOutputs(
-      const std::vector<const cb::InferRequestedOutput*>& outputs,
-      int stream_index, int step_index,
-      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
-
   cb::Error ValidateOutputs(
       const InferContext& ctx, const cb::InferResult* result_ptr);
 
@@ -253,29 +165,6 @@ class LoadWorker : public IWorker {
   /// \param offset_ratio The offset ratio of the generated length
   /// \return random sequence length
   size_t GetRandomSequenceLength(double offset_ratio);
-
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
 
  protected:
   // Create and initialize a new context
@@ -355,6 +244,7 @@ class LoadWorker : public IWorker {
   std::shared_ptr<DataLoader> data_loader_;
   const std::shared_ptr<ModelParser> parser_;
   const std::shared_ptr<cb::ClientBackendFactory> factory_;
+  const std::shared_ptr<MemoryManager> memory_manager_;
 
   const cb::BackendKind backend_kind_;
   const SharedMemoryType shared_memory_type_;

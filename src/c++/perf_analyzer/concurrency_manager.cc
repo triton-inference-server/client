@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -169,7 +169,7 @@ ConcurrencyManager::MakeWorker(
       on_sequence_model_, async_, max_concurrency_, using_json_data_,
       streaming_, shared_memory_type_, batch_size_, threads_config_,
       sequence_stat_, shared_memory_regions_, wake_signal_, wake_mutex_,
-      active_threads_, execute_, curr_seq_id_, distribution_);
+      active_threads_, execute_, curr_seq_id_, distribution_, memory_manager_);
 }
 
 }}  // namespace triton::perfanalyzer

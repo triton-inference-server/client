@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -278,7 +278,7 @@ ConcurrencyWorker::CompleteOngoingSequences()
         RETURN_IF_ERROR(UpdateInputs(
             ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
             sequence_stat_[seq_stat_index]->data_stream_id_, step_id));
-        RETURN_IF_ERROR(UpdateValidationOutputs(
+        RETURN_IF_ERROR(memory_manager_->UpdateValidationOutputs(
             ctxs_[ctx_id]->outputs_,
             sequence_stat_[seq_stat_index]->data_stream_id_, step_id,
             ctxs_[ctx_id]->expected_outputs_));
