@@ -145,12 +145,8 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::PrepAndSendInferRequests()
 {
-  // Create async requests such that the number of ongoing requests
-  // matches the concurrency level
-  // Non-sequence model is 'num_reqs' * 1 ctx
-  // Sequence model is 1 request of 1 sequence * 'active_ctx_cnt' ctxs_
-  while (total_ongoing_requests_ < (int)thread_config_->concurrency_ &&
-         early_exit == false && execute_ && thread_stat_->status_.IsOk()) {
+  while (free_ctx_ids_.size() && early_exit == false && execute_ &&
+         thread_stat_->status_.IsOk()) {
     uint32_t ctx_id = GetCtxId();
     PrepAndSendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
@@ -160,7 +156,6 @@ ConcurrencyWorker::PrepAndSendInferRequests()
 void
 ConcurrencyWorker::RestoreFreeCtxId(uint32_t ctx_id)
 {
-  // FIXME TMA-1023 we are clearly pushing and not popping in some cases
   if (!async_) {
     {
       std::lock_guard<std::mutex> lock(cb_mtx_);
@@ -197,8 +192,6 @@ ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
     notified_ = true;
   }
 
-  total_ongoing_requests_--;
-
   cb_cv_.notify_all();
 }
 
@@ -229,8 +222,13 @@ ConcurrencyWorker::ResetFreeCtxIds()
 {
   std::lock_guard<std::mutex> lock(cb_mtx_);
   free_ctx_ids_ = std::queue<int>();
-  for (size_t i = 0; i < ctxs_.size(); ++i) {
-    free_ctx_ids_.push(i);
+
+  for (size_t i = 0; i < thread_config_->concurrency_; ++i) {
+    if (on_sequence_model_) {
+      free_ctx_ids_.push(i);
+    } else {
+      free_ctx_ids_.push(0);
+    }
   }
 }
 
@@ -249,19 +247,14 @@ uint32_t
 ConcurrencyWorker::GetCtxId()
 {
   uint32_t ctx_id;
-  if (on_sequence_model_) {
-    // Find the next available context id to use for this request
-    {
-      std::lock_guard<std::mutex> lk(cb_mtx_);
-
-      if (free_ctx_ids_.size() < 1) {
-        throw std::runtime_error("free ctx id list is empty");
-      }
-      ctx_id = free_ctx_ids_.front();
-      free_ctx_ids_.pop();
+  // Find the next available context id to use for this request
+  std::lock_guard<std::mutex> lk(cb_mtx_);
+  {
+    if (free_ctx_ids_.size() < 1) {
+      throw std::runtime_error("free ctx id list is empty");
     }
-  } else {
-    ctx_id = 0;
+    ctx_id = free_ctx_ids_.front();
+    free_ctx_ids_.pop();
   }
   return ctx_id;
 }

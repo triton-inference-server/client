@@ -642,6 +642,9 @@ LoadWorker::AsyncCallbackFuncImpl(cb::InferResult* result)
       }
     }
   }
+
+  total_ongoing_requests_--;
+
   AsyncCallbackFinalize(ctx_id);
 }
 
