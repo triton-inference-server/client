@@ -132,23 +132,7 @@ class InferContext {
     }
   }
 
-  // The backend to communicate with the server
-  std::unique_ptr<cb::ClientBackend> infer_backend_;
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
-
+ public:
   InferContext(
       const uint32_t id, const bool async, const bool streaming,
       const bool on_sequence_model, const bool using_json_data,
@@ -203,6 +187,13 @@ class InferContext {
         return;
       }
     }
+  }
+
+  // FIXME no need to pass in ID
+  // FIXME -- does it make sense for this class to own this?
+  void SyncClientStats(size_t i)
+  {
+    infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[i]));
   }
 
   // TODO REFACTOR TMA-1043 this should be in memory class
@@ -381,6 +372,23 @@ class InferContext {
 
   std::default_random_engine rng_generator_;
   size_t num_active_threads_{0};
+
+  // The backend to communicate with the server
+  std::unique_ptr<cb::ClientBackend> infer_backend_;
+  // The vector of pointers to InferInput objects for all possible inputs,
+  // potentially including optional inputs with no provided data.
+  std::vector<cb::InferInput*> inputs_;
+  // The vector of pointers to InferInput objects to be
+  // used for inference request.
+  std::vector<cb::InferInput*> valid_inputs_;
+  // The vector of pointers to InferRequestedOutput objects
+  // to be used with the inference request.
+  std::vector<const cb::InferRequestedOutput*> outputs_;
+  // If not empty, the expected output data in the same order as 'outputs_'
+  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
+  // The InferOptions object holding the details of the
+  // inference.
+  std::unique_ptr<cb::InferOptions> options_;
 };
 
 }}  // namespace triton::perfanalyzer

@@ -222,8 +222,7 @@ ConcurrencyWorker::SyncClientStats()
   // Make sure all threads are in sync with the client's stats
   //
   for (size_t i = 0; i < ctxs_.size(); ++i) {
-    ctxs_[i]->infer_backend_->ClientInferStat(
-        &(thread_stat_->contexts_stat_[i]));
+    ctxs_[i]->SyncClientStats(i);
   }
 }
 
