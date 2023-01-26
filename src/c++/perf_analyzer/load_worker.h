@@ -80,10 +80,9 @@ class LoadWorker : public IWorker {
   {
     if (on_sequence_model_) {
       uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      ctxs_[ctx_id]->PrepAndSendSequenceInferRequest(
-          ctx_id, seq_stat_index, delayed);
+      ctxs_[ctx_id]->PrepAndSendSequenceInferRequest(seq_stat_index, delayed);
     } else {
-      ctxs_[ctx_id]->PrepAndSendInferRequest(ctx_id, delayed);
+      ctxs_[ctx_id]->PrepAndSendInferRequest(delayed);
     }
   }
 

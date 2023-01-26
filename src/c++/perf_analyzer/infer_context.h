@@ -92,6 +92,7 @@ struct ThreadStat {
   cb::Error status_;
   // The status of the callback thread for async requests
   cb::Error cb_status_;
+  // FIXME -- why isn't this in the InferContext class??
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
   // A vector of request timestamps <start_time, end_time>
@@ -116,22 +117,8 @@ struct AsyncRequestProperties {
   bool delayed_;
 };
 
-/// Wraps the information required to send an inference to the
-/// server
+/// FIXME Sends inference to the server
 class InferContext {
- public:
-  InferContext(InferContext&&) = delete;
-  InferContext(const InferContext&) = delete;
-  ~InferContext()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
-
  public:
   InferContext(
       const uint32_t id, const bool async, const bool streaming,
@@ -147,7 +134,7 @@ class InferContext {
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
       std::shared_ptr<cb::ClientBackendFactory> factory)
-      : async_(async), streaming_(streaming),
+      : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
@@ -166,6 +153,18 @@ class InferContext {
     options_->model_signature_name_ = parser_->ModelSignatureName();
 
     thread_stat_->contexts_stat_.emplace_back();
+  }
+
+  InferContext(InferContext&&) = delete;
+  InferContext(const InferContext&) = delete;
+  ~InferContext()
+  {
+    for (const auto input : inputs_) {
+      delete input;
+    }
+    for (const auto output : outputs_) {
+      delete output;
+    }
   }
 
   void Init()
@@ -202,10 +201,10 @@ class InferContext {
     num_active_threads_ = num_threads;
   }
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
-  void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
+  void PrepAndSendInferRequest(bool delayed = false);
   void PrepAndSendSequenceInferRequest(
-      uint32_t ctx_id, uint32_t seq_index, bool delayed = false);
-  void CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index);
+      uint32_t seq_index, bool delayed = false);
+  void CompleteOngoingSequence(uint32_t seq_stat_index);
   void RegisterCallback(std::function<void(uint32_t)> callback);
 
  protected:
@@ -219,7 +218,7 @@ class InferContext {
   /// request information needed to correctly interpret the details.
   /// \param thread_stat The runnning status of the worker thread
   void SendRequest(
-      const uint32_t ctx_id, const uint64_t request_id, const bool delayed,
+      const uint64_t request_id, const bool delayed,
       cb::OnCompleteFn callback_func,
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
@@ -249,11 +248,10 @@ class InferContext {
       const std::string& datatype);
 
   /// Update inputs based on custom json data
-  void UpdateJsonData(const uint32_t ctx_id);
+  void UpdateJsonData();
 
   /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(
-      const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat);
+  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
 
   void SetInferSequenceOptions(
       const uint32_t seq_stat_index,
@@ -368,6 +366,8 @@ class InferContext {
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
  private:
+  const uint32_t id_;
+
   size_t GetNumActiveThreads() { return num_active_threads_; }
 
   std::default_random_engine rng_generator_;

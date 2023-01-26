@@ -29,7 +29,7 @@
 namespace triton { namespace perfanalyzer {
 
 void
-InferContext::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
+InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
 {
   std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
   sequence_stat_[seq_stat_index]->paused_ = true;
@@ -39,32 +39,32 @@ InferContext::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
     SetInferSequenceOptions(seq_stat_index, options_);
 
     if (using_json_data_) {
-      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
     }
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
     bool is_delayed = false;
     SendRequest(
-        ctx_id, request_id_++, is_delayed, async_callback_func_, async_req_map_,
+        request_id_++, is_delayed, async_callback_func_, async_req_map_,
         thread_stat_);
   }
 }
 
 void
-InferContext::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
+InferContext::PrepAndSendInferRequest(bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_) {
-    UpdateJsonData(ctx_id);
+    UpdateJsonData();
   }
   SendRequest(
-      ctx_id, request_id_++, delayed, async_callback_func_, async_req_map_,
+      request_id_++, delayed, async_callback_func_, async_req_map_,
       thread_stat_);
 }
 
 void
 InferContext::PrepAndSendSequenceInferRequest(
-    uint32_t ctx_id, uint32_t seq_stat_index, bool delayed)
+    uint32_t seq_stat_index, bool delayed)
 {
   // Need lock to protect the order of dispatch across worker threads.
   // This also helps in reporting the realistic latencies.
@@ -74,13 +74,13 @@ InferContext::PrepAndSendSequenceInferRequest(
 
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
     }
 
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
     SendRequest(
-        ctx_id, request_id_++, delayed, async_callback_func_, async_req_map_,
+        request_id_++, delayed, async_callback_func_, async_req_map_,
         thread_stat_);
   }
 }
@@ -94,7 +94,7 @@ InferContext::RegisterCallback(std::function<void(uint32_t)> callback)
 
 void
 InferContext::SendRequest(
-    const uint32_t ctx_id, const uint64_t request_id, const bool delayed,
+    const uint64_t request_id, const bool delayed,
     cb::OnCompleteFn callback_func,
     std::map<std::string, AsyncRequestProperties>& async_req_map,
     std::shared_ptr<ThreadStat> thread_stat)
@@ -111,7 +111,7 @@ InferContext::SendRequest(
           async_req_map.emplace(options_->request_id_, AsyncRequestProperties())
               .first;
       it->second.start_time_ = std::chrono::system_clock::now();
-      it->second.ctx_id_ = ctx_id;
+      it->second.ctx_id_ = id_;
       it->second.sequence_end_ = options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
@@ -146,8 +146,8 @@ InferContext::SendRequest(
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       thread_stat->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, options_->sequence_end_, delayed));
-      thread_stat->status_ = infer_backend_->ClientInferStat(
-          &(thread_stat->contexts_stat_[ctx_id]));
+      thread_stat->status_ =
+          infer_backend_->ClientInferStat(&(thread_stat->contexts_stat_[id_]));
       if (!thread_stat->status_.IsOk()) {
         return;
       }
@@ -268,7 +268,7 @@ InferContext::CreateInferInput(
 }
 
 void
-InferContext::UpdateJsonData(const uint32_t ctx_id)
+InferContext::UpdateJsonData()
 {
   size_t num_threads = GetNumActiveThreads();
   size_t curr_step_id = data_step_id_tracker_->GetDataStepId();
@@ -283,8 +283,7 @@ InferContext::UpdateJsonData(const uint32_t ctx_id)
 }
 
 void
-InferContext::UpdateSeqJsonData(
-    const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
+InferContext::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
 {
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
@@ -623,6 +622,7 @@ InferContext::SetInputsSharedMemory(
 void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
+  // FIXME don't I know my own ctx id? Does it even have to be passed?
   uint32_t ctx_id = 0;
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {

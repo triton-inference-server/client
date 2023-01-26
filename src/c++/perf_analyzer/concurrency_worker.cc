@@ -211,7 +211,7 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (on_sequence_model_) {
     for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      ctxs_[ctx_id]->CompleteOngoingSequence(ctx_id, seq_stat_index);
+      ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
     }
   }
 }

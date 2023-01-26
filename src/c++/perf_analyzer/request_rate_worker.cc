@@ -65,7 +65,7 @@ RequestRateWorker::CompleteOngoingSequences()
       // Finish off all the ongoing sequences for graceful exit
       for (size_t i = thread_config_->id_; i < sequence_stat_.size();
            i += thread_config_->stride_) {
-        ctxs_[ctx_id]->CompleteOngoingSequence(ctx_id, i);
+        ctxs_[ctx_id]->CompleteOngoingSequence(i);
       }
     }
   }
