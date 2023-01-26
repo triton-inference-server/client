@@ -39,9 +39,9 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
-class TestRequestRateWorker : public RequestRateWorker {
+class RequestRateWorkerMockedInferInput : public RequestRateWorker {
  public:
-  TestRequestRateWorker(
+  RequestRateWorkerMockedInferInput(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
@@ -68,13 +68,16 @@ class TestRequestRateWorker : public RequestRateWorker {
             shared_memory_regions, wake_signal, wake_mutex, execute,
             curr_seq_id, start_time, schedule, gen_duration, distribution)
   {
-    // FIXMETKG better way to do this than to overwrite in constructor?
-    infer_manager_ = std::make_unique<TestInferManager>(
-        id, async, streaming, on_sequence_model, using_json_data, batch_size,
-        backend_kind, shared_memory_type, shared_memory_regions,
-        start_sequence_id, sequence_id_range, sequence_length, curr_seq_id,
-        distribution, thread_stat, sequence_stat, data_loader, parser, factory);
-    infer_manager_->SetNumActiveThreads(max_threads);
+  }
+
+  std::shared_ptr<InferContext> CreateInferContext() override
+  {
+    return std::make_shared<InferContextMockedInferInput>(
+        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
+        batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
+        start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
+        distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
+        factory_);
   }
 };
 
@@ -155,7 +158,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     if (use_mock_infer_) {
       return std::make_shared<MockRequestRateWorker>(thread_config);
     } else {
-      return std::make_shared<TestRequestRateWorker>(
+      return std::make_shared<RequestRateWorkerMockedInferInput>(
           id, thread_stat, thread_config, parser_, data_loader_,
           backend_->Kind(), RequestRateManager::factory_, sequence_length_,
           start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,

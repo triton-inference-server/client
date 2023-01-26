@@ -37,7 +37,7 @@ namespace triton { namespace perfanalyzer {
 void
 RequestRateWorker::Infer()
 {
-  infer_manager_->CreateContext();
+  CreateContext();
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
@@ -61,11 +61,11 @@ void
 RequestRateWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < infer_manager_->GetNumCtxs(); ++ctx_id) {
+    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       // Finish off all the ongoing sequences for graceful exit
       for (size_t i = thread_config_->id_; i < sequence_stat_.size();
            i += thread_config_->stride_) {
-        infer_manager_->CompleteOngoingSequence(ctx_id, i);
+        ctxs_[ctx_id]->CompleteOngoingSequence(ctx_id, i);
       }
     }
   }

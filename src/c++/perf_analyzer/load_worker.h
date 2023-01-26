@@ -58,36 +58,47 @@ class LoadWorker : public IWorker {
       bool& execute)
       : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
         factory_(factory), sequence_stat_(sequence_stat),
+        shared_memory_regions_(shared_memory_regions),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
         streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), sequence_length_(sequence_length),
         start_sequence_id_(start_sequence_id),
-        sequence_id_range_(sequence_id_range), wake_signal_(wake_signal),
+        sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
+        distribution_(distribution), wake_signal_(wake_signal),
         wake_mutex_(wake_mutex), execute_(execute)
   {
-    infer_manager_ = std::make_unique<InferManager>(
-        id, async, streaming, on_sequence_model, using_json_data, batch_size,
-        backend_kind, shared_memory_type, shared_memory_regions,
-        start_sequence_id, sequence_id_range, sequence_length, curr_seq_id,
-        distribution, thread_stat, sequence_stat, data_loader, parser, factory);
   }
 
   virtual ~LoadWorker() = default;
 
  protected:
+  uint GetNumOngoingRequests();
+
   // FIXMETKG - clean this up? dynamic dispatch?
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
     if (on_sequence_model_) {
       uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      infer_manager_->PrepAndSendSequenceInferRequest(
+      ctxs_[ctx_id]->PrepAndSendSequenceInferRequest(
           ctx_id, seq_stat_index, delayed);
     } else {
-      infer_manager_->PrepAndSendInferRequest(ctx_id, delayed);
+      ctxs_[ctx_id]->PrepAndSendInferRequest(ctx_id, delayed);
     }
   }
 
+  virtual std::shared_ptr<InferContext> CreateInferContext()
+  {
+    return std::make_shared<InferContext>(
+        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
+        batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
+        start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
+        distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
+        factory_);
+  }
+
+  void CreateContext();
+  virtual void CreateContextPost(std::shared_ptr<InferContext> ctx) = 0;
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
@@ -98,7 +109,17 @@ class LoadWorker : public IWorker {
 
   void WaitForOngoingRequests();
 
-  std::unique_ptr<InferManager> infer_manager_;
+  std::vector<std::shared_ptr<InferContext>> ctxs_;
+
+  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
+  // class. We shouldn't have to have a shared uint64 reference passed to all
+  // threads Current sequence id (for issuing new sequences)
+  std::atomic<uint64_t>& curr_seq_id_;
+
+  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
+  // we decouple? Used to pick among multiple data streams. Note this probably
+  // gets absorbed into the new sequence class when it is created
+  std::uniform_int_distribution<uint64_t>& distribution_;
 
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
   // the same cv/mutex into every thread by reference? Used to wake up this
@@ -113,6 +134,8 @@ class LoadWorker : public IWorker {
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
 
+  // Map from shared memory key to its starting address and size
+  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
   // Sequence stats for all sequences
   std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
   std::shared_ptr<DataLoader> data_loader_;

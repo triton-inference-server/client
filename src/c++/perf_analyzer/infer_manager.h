@@ -118,8 +118,8 @@ struct AsyncRequestProperties {
 
 /// Wraps the information required to send an inference to the
 /// server
-struct InferContext {
-  explicit InferContext() {}
+class InferContext {
+ public:
   InferContext(InferContext&&) = delete;
   InferContext(const InferContext&) = delete;
   ~InferContext()
@@ -131,6 +131,7 @@ struct InferContext {
       delete output;
     }
   }
+
   // The backend to communicate with the server
   std::unique_ptr<cb::ClientBackend> infer_backend_;
   // The vector of pointers to InferInput objects for all possible inputs,
@@ -147,11 +148,8 @@ struct InferContext {
   // The InferOptions object holding the details of the
   // inference.
   std::unique_ptr<cb::InferOptions> options_;
-};
 
-class InferManager {
- public:
-  InferManager(
+  InferContext(
       const uint32_t id, const bool async, const bool streaming,
       const bool on_sequence_model, const bool using_json_data,
       const int32_t batch_size, const cb::BackendKind backend_kind,
@@ -178,24 +176,41 @@ class InferManager {
         parser_(parser), factory_(factory)
   {
     data_step_id_tracker_ = std::make_unique<DataStepIdTracker>(id);
+    thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
+    options_.reset(new cb::InferOptions(parser_->ModelName()));
+    options_->model_version_ = parser_->ModelVersion();
+    options_->model_signature_name_ = parser_->ModelSignatureName();
+
+    thread_stat_->contexts_stat_.emplace_back();
   }
 
-  // Create and initialize a new context
-  void CreateContext();
-  void SyncClientStats()
+  void Init()
   {
-    for (size_t i = 0; i < ctxs_.size(); ++i) {
-      ctxs_[i]->infer_backend_->ClientInferStat(
-          &(thread_stat_->contexts_stat_[i]));
+    if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+      thread_stat_->status_ = PrepareInfer(this);
+    } else {
+      thread_stat_->status_ = PrepareSharedMemoryInfer(this);
+    }
+    if (!thread_stat_->status_.IsOk()) {
+      return;
+    }
+
+    if (streaming_) {
+      // Decoupled models should not collect client side statistics
+      thread_stat_->status_ = infer_backend_->StartStream(
+          async_callback_func_, (!parser_->IsDecoupled()));
+      if (!thread_stat_->status_.IsOk()) {
+        return;
+      }
     }
   }
+
   // TODO REFACTOR TMA-1043 this should be in memory class
   void SetNumActiveThreads(size_t num_threads)
   {
     num_active_threads_ = num_threads;
   }
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
-  size_t GetNumCtxs() { return ctxs_.size(); }
   void PrepAndSendInferRequest(uint32_t ctx_id, bool delayed = false);
   void PrepAndSendSequenceInferRequest(
       uint32_t ctx_id, uint32_t seq_index, bool delayed = false);
@@ -204,7 +219,6 @@ class InferManager {
 
  protected:
   /// A helper function to issue inference request to the server.
-  /// \param context InferContext to use for sending the request.
   /// \param context_id The ID of the context
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
@@ -214,8 +228,7 @@ class InferManager {
   /// request information needed to correctly interpret the details.
   /// \param thread_stat The runnning status of the worker thread
   void SendRequest(
-      std::shared_ptr<InferContext> context, const uint32_t ctx_id,
-      const uint64_t request_id, const bool delayed,
+      const uint32_t ctx_id, const uint64_t request_id, const bool delayed,
       cb::OnCompleteFn callback_func,
       std::map<std::string, AsyncRequestProperties>& async_req_map,
       std::shared_ptr<ThreadStat> thread_stat);
@@ -270,8 +283,7 @@ class InferManager {
       std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
 
 
-  cb::Error ValidateOutputs(
-      const InferContext& ctx, const cb::InferResult* result_ptr);
+  cb::Error ValidateOutputs(const cb::InferResult* result_ptr);
 
   /// Updates the input data to use for inference request
   /// \param inputs The vector of pointers to InferInput objects for all
@@ -352,7 +364,6 @@ class InferManager {
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
 
-  std::vector<std::shared_ptr<InferContext>> ctxs_;
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
@@ -360,7 +371,7 @@ class InferManager {
 
   // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(
-      &InferManager::AsyncCallbackFuncImpl, this, std::placeholders::_1);
+      &InferContext::AsyncCallbackFuncImpl, this, std::placeholders::_1);
 
   // Function pointer to registered async callbacks
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;

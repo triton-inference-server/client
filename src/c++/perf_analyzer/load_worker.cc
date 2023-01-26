@@ -47,9 +47,28 @@ LoadWorker::HandleExitConditions()
 void
 LoadWorker::WaitForOngoingRequests()
 {
-  while (infer_manager_->GetNumOngoingRequests() != 0) {
+  while (GetNumOngoingRequests() != 0) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
+}
+
+uint
+LoadWorker::GetNumOngoingRequests()
+{
+  uint num = 0;
+  for (auto ctx : ctxs_) {
+    num += ctx->GetNumOngoingRequests();
+  }
+  return num;
+}
+
+void
+LoadWorker::CreateContext()
+{
+  auto ctx = CreateInferContext();
+  ctx->Init();
+  CreateContextPost(ctx);
+  ctxs_.push_back(ctx);
 }
 
 }}  // namespace triton::perfanalyzer

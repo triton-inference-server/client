@@ -82,7 +82,6 @@ class RequestRateWorker : public LoadWorker {
         start_time_(start_time), schedule_(schedule),
         gen_duration_(gen_duration)
   {
-    infer_manager_->SetNumActiveThreads(max_threads);
   }
 
   void Infer() override;
@@ -113,6 +112,11 @@ class RequestRateWorker : public LoadWorker {
   // Sleep until it is time for the next part of the schedule
   // Returns true if the request was delayed
   bool SleepIfNecessary();
+
+  void CreateContextPost(std::shared_ptr<InferContext> ctx) override
+  {
+    ctx->SetNumActiveThreads(max_threads_);
+  }
 };
 
 

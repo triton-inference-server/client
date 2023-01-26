@@ -29,14 +29,14 @@
 namespace triton { namespace perfanalyzer {
 
 void
-InferManager::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
+InferContext::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
 {
   std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
   sequence_stat_[seq_stat_index]->paused_ = true;
 
   if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
     sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
-    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+    SetInferSequenceOptions(seq_stat_index, options_);
 
     if (using_json_data_) {
       UpdateSeqJsonData(ctx_id, sequence_stat_[seq_stat_index]);
@@ -45,32 +45,32 @@ InferManager::CompleteOngoingSequence(uint32_t ctx_id, uint32_t seq_stat_index)
 
     bool is_delayed = false;
     SendRequest(
-        ctxs_[ctx_id], ctx_id, request_id_++, is_delayed, async_callback_func_,
-        async_req_map_, thread_stat_);
+        ctx_id, request_id_++, is_delayed, async_callback_func_, async_req_map_,
+        thread_stat_);
   }
 }
 
 void
-InferManager::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
+InferContext::PrepAndSendInferRequest(uint32_t ctx_id, bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_) {
     UpdateJsonData(ctx_id);
   }
   SendRequest(
-      ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
-      async_req_map_, thread_stat_);
+      ctx_id, request_id_++, delayed, async_callback_func_, async_req_map_,
+      thread_stat_);
 }
 
 void
-InferManager::PrepAndSendSequenceInferRequest(
+InferContext::PrepAndSendSequenceInferRequest(
     uint32_t ctx_id, uint32_t seq_stat_index, bool delayed)
 {
   // Need lock to protect the order of dispatch across worker threads.
   // This also helps in reporting the realistic latencies.
   std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
   if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-    SetInferSequenceOptions(seq_stat_index, ctxs_[ctx_id]->options_);
+    SetInferSequenceOptions(seq_stat_index, options_);
 
     // Update the inputs if required
     if (using_json_data_) {
@@ -80,22 +80,21 @@ InferManager::PrepAndSendSequenceInferRequest(
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
     SendRequest(
-        ctxs_[ctx_id], ctx_id, request_id_++, delayed, async_callback_func_,
-        async_req_map_, thread_stat_);
+        ctx_id, request_id_++, delayed, async_callback_func_, async_req_map_,
+        thread_stat_);
   }
 }
 
 void
-InferManager::RegisterCallback(std::function<void(uint32_t)> callback)
+InferContext::RegisterCallback(std::function<void(uint32_t)> callback)
 {
   async_callback_finalize_func_ = callback;
 }
 
 
 void
-InferManager::SendRequest(
-    std::shared_ptr<InferContext> context, const uint32_t ctx_id,
-    const uint64_t request_id, const bool delayed,
+InferContext::SendRequest(
+    const uint32_t ctx_id, const uint64_t request_id, const bool delayed,
     cb::OnCompleteFn callback_func,
     std::map<std::string, AsyncRequestProperties>& async_req_map,
     std::shared_ptr<ThreadStat> thread_stat)
@@ -105,25 +104,23 @@ InferManager::SendRequest(
   }
 
   if (async_) {
-    context->options_->request_id_ = std::to_string(request_id);
+    options_->request_id_ = std::to_string(request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       auto it =
-          async_req_map
-              .emplace(context->options_->request_id_, AsyncRequestProperties())
+          async_req_map.emplace(options_->request_id_, AsyncRequestProperties())
               .first;
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.ctx_id_ = ctx_id;
-      it->second.sequence_end_ = context->options_->sequence_end_;
+      it->second.sequence_end_ = options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
     if (streaming_) {
-      thread_stat->status_ = context->infer_backend_->AsyncStreamInfer(
-          *(context->options_), context->valid_inputs_, context->outputs_);
+      thread_stat->status_ = infer_backend_->AsyncStreamInfer(
+          *(options_), valid_inputs_, outputs_);
     } else {
-      thread_stat->status_ = context->infer_backend_->AsyncInfer(
-          callback_func, *(context->options_), context->valid_inputs_,
-          context->outputs_);
+      thread_stat->status_ = infer_backend_->AsyncInfer(
+          callback_func, *(options_), valid_inputs_, outputs_);
     }
     total_ongoing_requests_++;
   } else {
@@ -131,12 +128,11 @@ InferManager::SendRequest(
         end_time_sync;
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    thread_stat->status_ = context->infer_backend_->Infer(
-        &results, *(context->options_), context->valid_inputs_,
-        context->outputs_);
+    thread_stat->status_ =
+        infer_backend_->Infer(&results, *(options_), valid_inputs_, outputs_);
     if (results != nullptr) {
       if (thread_stat->status_.IsOk()) {
-        thread_stat->status_ = ValidateOutputs(*context, results);
+        thread_stat->status_ = ValidateOutputs(results);
       }
       delete results;
     }
@@ -149,9 +145,8 @@ InferManager::SendRequest(
       // locking
       std::lock_guard<std::mutex> lock(thread_stat->mu_);
       thread_stat->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, context->options_->sequence_end_,
-          delayed));
-      thread_stat->status_ = context->infer_backend_->ClientInferStat(
+          start_time_sync, end_time_sync, options_->sequence_end_, delayed));
+      thread_stat->status_ = infer_backend_->ClientInferStat(
           &(thread_stat->contexts_stat_[ctx_id]));
       if (!thread_stat->status_.IsOk()) {
         return;
@@ -162,7 +157,7 @@ InferManager::SendRequest(
 
 
 cb::Error
-InferManager::PrepareInfer(InferContext* ctx)
+InferContext::PrepareInfer(InferContext* ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -217,7 +212,7 @@ InferManager::PrepareInfer(InferContext* ctx)
 }
 
 cb::Error
-InferManager::PrepareSharedMemoryInfer(InferContext* ctx)
+InferContext::PrepareSharedMemoryInfer(InferContext* ctx)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -264,7 +259,7 @@ InferManager::PrepareSharedMemoryInfer(InferContext* ctx)
 }
 
 cb::Error
-InferManager::CreateInferInput(
+InferContext::CreateInferInput(
     cb::InferInput** infer_input, const cb::BackendKind kind,
     const std::string& name, const std::vector<int64_t>& dims,
     const std::string& datatype)
@@ -273,40 +268,37 @@ InferManager::CreateInferInput(
 }
 
 void
-InferManager::UpdateJsonData(const uint32_t ctx_id)
+InferContext::UpdateJsonData(const uint32_t ctx_id)
 {
   size_t num_threads = GetNumActiveThreads();
   size_t curr_step_id = data_step_id_tracker_->GetDataStepId();
   int step_id =
       (curr_step_id % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
   data_step_id_tracker_->SetDataStepId(curr_step_id + num_threads);
-  thread_stat_->status_ = UpdateInputs(
-      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_, 0, step_id);
+  thread_stat_->status_ = UpdateInputs(inputs_, valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = UpdateValidationOutputs(
-        ctxs_[ctx_id]->outputs_, 0, step_id, ctxs_[ctx_id]->expected_outputs_);
+    thread_stat_->status_ =
+        UpdateValidationOutputs(outputs_, 0, step_id, expected_outputs_);
   }
 }
 
 void
-InferManager::UpdateSeqJsonData(
+InferContext::UpdateSeqJsonData(
     const uint32_t ctx_id, std::shared_ptr<SequenceStat> seq_stat)
 {
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
-  thread_stat_->status_ = UpdateInputs(
-      ctxs_[ctx_id]->inputs_, ctxs_[ctx_id]->valid_inputs_,
-      seq_stat->data_stream_id_, step_id);
+  thread_stat_->status_ =
+      UpdateInputs(inputs_, valid_inputs_, seq_stat->data_stream_id_, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        ctxs_[ctx_id]->outputs_, seq_stat->data_stream_id_, step_id,
-        ctxs_[ctx_id]->expected_outputs_);
+        outputs_, seq_stat->data_stream_id_, step_id, expected_outputs_);
   }
 }
 
 
 void
-InferManager::SetInferSequenceOptions(
+InferContext::SetInferSequenceOptions(
     const uint32_t seq_stat_index, std::unique_ptr<cb::InferOptions>& options)
 {
   options->sequence_start_ =
@@ -322,7 +314,7 @@ InferManager::SetInferSequenceOptions(
 }
 
 void
-InferManager::InitNewSequence(int seq_stat_index)
+InferContext::InitNewSequence(int seq_stat_index)
 {
   sequence_stat_[seq_stat_index]->seq_id_ = GetNextSeqId(seq_stat_index);
   if (!using_json_data_) {
@@ -340,7 +332,7 @@ InferManager::InitNewSequence(int seq_stat_index)
 }
 
 cb::Error
-InferManager::UpdateValidationOutputs(
+InferContext::UpdateValidationOutputs(
     const std::vector<const cb::InferRequestedOutput*>& outputs,
     int stream_index, int step_index,
     std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
@@ -393,16 +385,15 @@ InferManager::UpdateValidationOutputs(
 }
 
 cb::Error
-InferManager::ValidateOutputs(
-    const InferContext& ctx, const cb::InferResult* result_ptr)
+InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
 {
   // Validate output if set
-  if (!ctx.expected_outputs_.empty()) {
-    for (size_t i = 0; i < ctx.outputs_.size(); ++i) {
+  if (!expected_outputs_.empty()) {
+    for (size_t i = 0; i < outputs_.size(); ++i) {
       const uint8_t* buf = nullptr;
       size_t byte_size = 0;
-      result_ptr->RawData(ctx.outputs_[i]->Name(), &buf, &byte_size);
-      for (const auto& expected : ctx.expected_outputs_[i]) {
+      result_ptr->RawData(outputs_[i]->Name(), &buf, &byte_size);
+      for (const auto& expected : expected_outputs_[i]) {
         if (byte_size < expected.second) {
           return cb::Error(
               "Output size doesn't match expected size", pa::GENERIC_ERROR);
@@ -425,7 +416,7 @@ InferManager::ValidateOutputs(
 
 
 cb::Error
-InferManager::UpdateInputs(
+InferContext::UpdateInputs(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, int stream_index,
     int step_index)
@@ -457,7 +448,7 @@ InferManager::UpdateInputs(
 }
 
 uint64_t
-InferManager::GetNextSeqId(int seq_stat_index)
+InferContext::GetNextSeqId(int seq_stat_index)
 {
   uint64_t old_seq_id = sequence_stat_[seq_stat_index]->seq_id_;
   uint64_t next_seq_id =
@@ -476,7 +467,7 @@ InferManager::GetNextSeqId(int seq_stat_index)
 }
 
 size_t
-InferManager::GetRandomSequenceLength(double offset_ratio)
+InferContext::GetRandomSequenceLength(double offset_ratio)
 {
   int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
                       sequence_length_;
@@ -488,7 +479,7 @@ InferManager::GetRandomSequenceLength(double offset_ratio)
 
 
 cb::Error
-InferManager::SetInputs(
+InferContext::SetInputs(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
     const int step_index)
@@ -602,7 +593,7 @@ InferManager::SetInputs(
 }
 
 cb::Error
-InferManager::SetInputsSharedMemory(
+InferContext::SetInputsSharedMemory(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
     const int step_index)
 {
@@ -629,42 +620,8 @@ InferManager::SetInputsSharedMemory(
   return cb::Error::Success;
 }
 
-
 void
-InferManager::CreateContext()
-{
-  ctxs_.push_back(std::make_shared<InferContext>());
-
-  thread_stat_->status_ =
-      factory_->CreateClientBackend(&(ctxs_.back()->infer_backend_));
-  ctxs_.back()->options_.reset(new cb::InferOptions(parser_->ModelName()));
-  ctxs_.back()->options_->model_version_ = parser_->ModelVersion();
-  ctxs_.back()->options_->model_signature_name_ = parser_->ModelSignatureName();
-
-  thread_stat_->contexts_stat_.emplace_back();
-
-  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    thread_stat_->status_ = PrepareInfer(ctxs_.back().get());
-  } else {
-    thread_stat_->status_ = PrepareSharedMemoryInfer(ctxs_.back().get());
-  }
-  if (!thread_stat_->status_.IsOk()) {
-    return;
-  }
-
-  if (streaming_) {
-    // Decoupled models should not collect client side statistics
-    thread_stat_->status_ = ctxs_.back()->infer_backend_->StartStream(
-        async_callback_func_, (!parser_->IsDecoupled()));
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
-  }
-}
-
-
-void
-InferManager::AsyncCallbackFuncImpl(cb::InferResult* result)
+InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   uint32_t ctx_id = 0;
   std::shared_ptr<cb::InferResult> result_ptr(result);
@@ -684,9 +641,9 @@ InferManager::AsyncCallbackFuncImpl(cb::InferResult* result)
             it->second.start_time_, end_time_async, it->second.sequence_end_,
             it->second.delayed_));
         ctx_id = it->second.ctx_id_;
-        ctxs_[ctx_id]->infer_backend_->ClientInferStat(
+        infer_backend_->ClientInferStat(
             &(thread_stat_->contexts_stat_[ctx_id]));
-        thread_stat_->cb_status_ = ValidateOutputs(*ctxs_[ctx_id], result);
+        thread_stat_->cb_status_ = ValidateOutputs(result);
         async_req_map_.erase(request_id);
       }
     }

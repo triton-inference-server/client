@@ -93,9 +93,7 @@ ConcurrencyWorker::HandleExecuteOff()
       // Ensures the clean exit of the sequences
       CompleteOngoingSequences();
       WaitForOngoingRequests();
-
-      // Make sure all threads are in sync with the client's stats
-      infer_manager_->SyncClientStats();
+      SyncClientStats();
 
       // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
@@ -108,7 +106,9 @@ ConcurrencyWorker::HandleExecuteOff()
 
       // TODO REFACTOR TMA-1043 - memory manager should be handling this instead
       // of here
-      infer_manager_->SetNumActiveThreads(active_threads_);
+      for (auto ctx : ctxs_) {
+        ctx->SetNumActiveThreads(active_threads_);
+      }
     }
   }
   thread_config_->is_paused_ = false;
@@ -139,15 +139,17 @@ ConcurrencyWorker::CreateContextsAsNecessary()
   // maintain concurrency for this thread.
   size_t active_ctx_cnt = on_sequence_model_ ? thread_config_->concurrency_ : 1;
 
-  if (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
-    while (active_ctx_cnt > infer_manager_->GetNumCtxs()) {
-      infer_manager_->CreateContext();
+  if (active_ctx_cnt > ctxs_.size()) {
+    while (active_ctx_cnt > ctxs_.size()) {
+      CreateContext();
     }
     ResetFreeCtxIds();
   }
 
   // TODO REFACTOR TMA-1043 -- this shouldn't be handled here
-  infer_manager_->SetNumActiveThreads(active_threads_);
+  for (auto ctx : ctxs_) {
+    ctx->SetNumActiveThreads(active_threads_);
+  }
 }
 
 void
@@ -207,10 +209,21 @@ void
 ConcurrencyWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < infer_manager_->GetNumCtxs(); ++ctx_id) {
+    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      infer_manager_->CompleteOngoingSequence(ctx_id, seq_stat_index);
+      ctxs_[ctx_id]->CompleteOngoingSequence(ctx_id, seq_stat_index);
     }
+  }
+}
+
+void
+ConcurrencyWorker::SyncClientStats()
+{
+  // Make sure all threads are in sync with the client's stats
+  //
+  for (size_t i = 0; i < ctxs_.size(); ++i) {
+    ctxs_[i]->infer_backend_->ClientInferStat(
+        &(thread_stat_->contexts_stat_[i]));
   }
 }
 
