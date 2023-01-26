@@ -113,7 +113,7 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  void CreateContextPost(std::shared_ptr<InferContext> ctx) override
+  void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
     ctx->SetNumActiveThreads(max_threads_);
   }

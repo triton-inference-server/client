@@ -82,6 +82,7 @@ ConcurrencyWorker::ReserveContexts()
   // reserving.
   if (on_sequence_model_ && async_) {
     thread_stat_->contexts_stat_.reserve(max_concurrency_);
+    ctxs_.reserve(max_concurrency_);
   }
 }
 
@@ -219,7 +220,7 @@ ConcurrencyWorker::CompleteOngoingSequences()
 void
 ConcurrencyWorker::SyncClientStats()
 {
-  // Make sure all threads are in sync with the client's stats
+  // Make sure all contexts are in sync with the client's stats
   //
   for (size_t i = 0; i < ctxs_.size(); ++i) {
     ctxs_[i]->SyncClientStats();

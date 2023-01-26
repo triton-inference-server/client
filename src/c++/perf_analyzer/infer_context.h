@@ -53,18 +53,6 @@ struct SharedMemoryData {
   std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
 };
 
-// Tracks the data step ID for non-sequences
-class DataStepIdTracker {
- public:
-  DataStepIdTracker(size_t data_step_id) : data_step_id_(data_step_id) {}
-
-  size_t GetDataStepId() { return data_step_id_; }
-  void SetDataStepId(size_t data_step_id) { data_step_id_ = data_step_id; }
-
- private:
-  size_t data_step_id_;
-};
-
 // Holds the status of the inflight sequence
 struct SequenceStat {
   SequenceStat(uint64_t seq_id)
@@ -141,9 +129,8 @@ class InferContext {
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
         distribution_(distribution), thread_stat_(thread_stat),
         sequence_stat_(sequence_stat), data_loader_(data_loader),
-        parser_(parser), factory_(factory)
+        parser_(parser), factory_(factory), data_step_id_(id)
   {
-    data_step_id_tracker_ = std::make_unique<DataStepIdTracker>(id);
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
     options_.reset(new cb::InferOptions(parser_->ModelName()));
     options_->model_version_ = parser_->ModelVersion();
@@ -164,28 +151,31 @@ class InferContext {
     }
   }
 
-  void Init()
-  {
-    if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-      thread_stat_->status_ = PrepareInfer(this);
-    } else {
-      thread_stat_->status_ = PrepareSharedMemoryInfer(this);
-    }
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
+  // Initialize the context. Must be done before any inferences are sent
+  void Init();
 
-    if (streaming_) {
-      // Decoupled models should not collect client side statistics
-      thread_stat_->status_ = infer_backend_->StartStream(
-          async_callback_func_, (!parser_->IsDecoupled()));
-      if (!thread_stat_->status_.IsOk()) {
-        return;
-      }
-    }
+  // Send a single inference request to the server
+  void SendInferRequest(bool delayed = false);
+
+  // Send a single sequence inference request to the server
+  void SendSequenceInferRequest(uint32_t seq_index, bool delayed = false);
+
+  // Finish the active sequence at the given seq_stat_index
+  void CompleteOngoingSequence(uint32_t seq_stat_index);
+
+  // Returns the total number of async requests that have been sent by this
+  // object and have not returned
+  uint GetNumOngoingRequests() { return total_ongoing_requests_; }
+
+  // Register a function that will get called after every async request returns
+  void RegisterAsyncCallbackFinalize(std::function<void(uint32_t)> callback)
+  {
+    async_callback_finalize_func_ = callback;
   }
 
   // TODO REFACTOR TMA-1047 - This is likely no longer needed
+  // Copy the client statistics into this object's local copy
+  // of the statistics
   void SyncClientStats()
   {
     infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
@@ -196,11 +186,6 @@ class InferContext {
   {
     num_active_threads_ = num_threads;
   }
-  uint GetNumOngoingRequests() { return total_ongoing_requests_; }
-  void SendInferRequest(bool delayed = false);
-  void SendSequenceInferRequest(uint32_t seq_index, bool delayed = false);
-  void CompleteOngoingSequence(uint32_t seq_stat_index);
-  void RegisterAsyncCallbackFinalize(std::function<void(uint32_t)> callback);
 
  protected:
   /// A helper function to issue inference request to the server.
@@ -341,7 +326,7 @@ class InferContext {
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
-  std::unique_ptr<DataStepIdTracker> data_step_id_tracker_;
+  size_t data_step_id_;
 
   // Function pointer to the async callback function implementation
   std::function<void(cb::InferResult*)> async_callback_func_ = std::bind(

@@ -29,24 +29,27 @@
 namespace triton { namespace perfanalyzer {
 
 void
-InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
+InferContext::Init()
 {
-  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-  sequence_stat_[seq_stat_index]->paused_ = true;
+  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+    thread_stat_->status_ = PrepareInfer(this);
+  } else {
+    thread_stat_->status_ = PrepareSharedMemoryInfer(this);
+  }
+  if (!thread_stat_->status_.IsOk()) {
+    return;
+  }
 
-  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
-    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
-    SetInferSequenceOptions(seq_stat_index, options_);
-
-    if (using_json_data_) {
-      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+  if (streaming_) {
+    // Decoupled models should not collect client side statistics
+    thread_stat_->status_ = infer_backend_->StartStream(
+        async_callback_func_, (!parser_->IsDecoupled()));
+    if (!thread_stat_->status_.IsOk()) {
+      return;
     }
-    sequence_stat_[seq_stat_index]->remaining_queries_--;
-
-    bool is_delayed = false;
-    SendRequest(request_id_++, is_delayed);
   }
 }
+
 
 void
 InferContext::SendInferRequest(bool delayed)
@@ -79,12 +82,24 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 }
 
 void
-InferContext::RegisterAsyncCallbackFinalize(
-    std::function<void(uint32_t)> callback)
+InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
 {
-  async_callback_finalize_func_ = callback;
-}
+  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
+  sequence_stat_[seq_stat_index]->paused_ = true;
 
+  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
+    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
+    SetInferSequenceOptions(seq_stat_index, options_);
+
+    if (using_json_data_) {
+      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+    }
+    sequence_stat_[seq_stat_index]->remaining_queries_--;
+
+    bool is_delayed = false;
+    SendRequest(request_id_++, is_delayed);
+  }
+}
 
 void
 InferContext::SendRequest(const uint64_t request_id, const bool delayed)
@@ -143,7 +158,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
     }
   }
 }
-
 
 cb::Error
 InferContext::PrepareInfer(InferContext* ctx)
@@ -259,11 +273,9 @@ InferContext::CreateInferInput(
 void
 InferContext::UpdateJsonData()
 {
-  size_t num_threads = GetNumActiveThreads();
-  size_t curr_step_id = data_step_id_tracker_->GetDataStepId();
   int step_id =
-      (curr_step_id % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
-  data_step_id_tracker_->SetDataStepId(curr_step_id + num_threads);
+      (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
+  data_step_id_ += GetNumActiveThreads();
   thread_stat_->status_ = UpdateInputs(inputs_, valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ =

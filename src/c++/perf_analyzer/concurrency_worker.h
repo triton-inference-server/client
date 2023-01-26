@@ -91,9 +91,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   void Infer() override;
 
- protected:
-  void AsyncCallbackFinalize(uint32_t ctx_id);
-
  private:
   const size_t max_concurrency_;
   // TODO REFACTOR TMA-1020 can we decouple this thread from the total count of
@@ -110,6 +107,8 @@ class ConcurrencyWorker : public LoadWorker {
   bool notified_ = false;
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
+
+  void AsyncCallbackFinalize(uint32_t ctx_id);
 
   void CompleteOngoingSequences() override;
 
@@ -140,7 +139,7 @@ class ConcurrencyWorker : public LoadWorker {
 
   uint32_t GetCtxId();
 
-  void CreateContextPost(std::shared_ptr<InferContext> ctx) override
+  void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
     ctx->RegisterAsyncCallbackFinalize(std::bind(
         &ConcurrencyWorker::AsyncCallbackFinalize, this,

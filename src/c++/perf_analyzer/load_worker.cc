@@ -67,7 +67,7 @@ LoadWorker::CreateContext()
 {
   auto ctx = CreateInferContext();
   ctx->Init();
-  CreateContextPost(ctx);
+  CreateContextFinalize(ctx);
   ctxs_.push_back(ctx);
 }
 

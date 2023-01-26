@@ -73,6 +73,8 @@ class LoadWorker : public IWorker {
   virtual ~LoadWorker() = default;
 
  protected:
+  // Return the total number of async requests that have started and not
+  // finished
   uint GetNumOngoingRequests();
 
   void SendInferRequest(uint32_t ctx_id, bool delayed = false)
@@ -95,8 +97,11 @@ class LoadWorker : public IWorker {
         factory_);
   }
 
+  // Create an inference context and add it to ctxs_
   void CreateContext();
-  virtual void CreateContextPost(std::shared_ptr<InferContext> ctx) = 0;
+
+  // Any code that needs to execute after the Context has been created
+  virtual void CreateContextFinalize(std::shared_ptr<InferContext> ctx) = 0;
 
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
