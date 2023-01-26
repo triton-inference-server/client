@@ -106,9 +106,6 @@ struct ThreadStat {
 /// the callback to effectively interpret the response.
 struct AsyncRequestProperties {
   AsyncRequestProperties() : sequence_end_(false), delayed_(true) {}
-  // The id of in the inference context which was used to
-  // send this request.
-  uint32_t ctx_id_;
   // The timestamp of when the request was started.
   std::chrono::time_point<std::chrono::system_clock> start_time_;
   // Whether or not the request is at the end of a sequence.

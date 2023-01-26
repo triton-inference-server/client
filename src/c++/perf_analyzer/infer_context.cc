@@ -101,7 +101,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
                     .emplace(options_->request_id_, AsyncRequestProperties())
                     .first;
       it->second.start_time_ = std::chrono::system_clock::now();
-      it->second.ctx_id_ = id_;
       it->second.sequence_end_ = options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
@@ -612,8 +611,6 @@ InferContext::SetInputsSharedMemory(
 void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
-  // FIXMETKG don't I know my own ctx id? Does it even have to be passed?
-  uint32_t ctx_id = 0;
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
     // Add the request timestamp to thread Timestamp vector with
@@ -630,9 +627,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
             it->second.start_time_, end_time_async, it->second.sequence_end_,
             it->second.delayed_));
-        ctx_id = it->second.ctx_id_;
-        infer_backend_->ClientInferStat(
-            &(thread_stat_->contexts_stat_[ctx_id]));
+        infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
         thread_stat_->cb_status_ = ValidateOutputs(result);
         async_req_map_.erase(request_id);
       }
@@ -642,7 +637,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
   total_ongoing_requests_--;
 
   if (async_callback_finalize_func_ != nullptr) {
-    async_callback_finalize_func_(ctx_id);
+    async_callback_finalize_func_(id_);
   }
 }
 
