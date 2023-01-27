@@ -108,7 +108,7 @@ class ConcurrencyWorker : public LoadWorker {
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
 
-  void AsyncCallbackFinalize(uint32_t ctx_id) override;
+  void AsyncCallbackFinalize(uint32_t ctx_id);
 
   void CompleteOngoingSequences() override;
 
@@ -125,8 +125,8 @@ class ConcurrencyWorker : public LoadWorker {
   // Create and populate contexts if needed
   void CreateContextsAsNecessary();
 
-  // Prepare and Send out the desired concurrency of requests
-  void PrepAndSendInferRequests();
+  // Send out the desired concurrency of requests
+  void SendInferRequests();
 
   void WaitForResponses();
 
@@ -139,7 +139,12 @@ class ConcurrencyWorker : public LoadWorker {
 
   uint32_t GetCtxId();
 
-  virtual size_t GetNumActiveThreads() override { return active_threads_; }
+  void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
+  {
+    ctx->RegisterAsyncCallbackFinalize(std::bind(
+        &ConcurrencyWorker::AsyncCallbackFinalize, this,
+        std::placeholders::_1));
+  }
 };
 
 }}  // namespace triton::perfanalyzer

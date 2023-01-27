@@ -56,7 +56,7 @@ ConcurrencyWorker::Infer()
       return;
     }
 
-    PrepAndSendInferRequests();
+    SendInferRequests();
 
     if (!thread_stat_->status_.IsOk()) {
       return;
@@ -104,6 +104,12 @@ ConcurrencyWorker::HandleExecuteOff()
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
       wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+
+      // TODO REFACTOR TMA-1043 - memory manager should be handling this instead
+      // of here
+      for (auto ctx : ctxs_) {
+        ctx->SetNumActiveThreads(active_threads_);
+      }
     }
   }
   thread_config_->is_paused_ = false;
@@ -140,15 +146,20 @@ ConcurrencyWorker::CreateContextsAsNecessary()
     }
     ResetFreeCtxIds();
   }
+
+  // TODO REFACTOR TMA-1043 -- this shouldn't be handled here
+  for (auto ctx : ctxs_) {
+    ctx->SetNumActiveThreads(active_threads_);
+  }
 }
 
 void
-ConcurrencyWorker::PrepAndSendInferRequests()
+ConcurrencyWorker::SendInferRequests()
 {
   while (free_ctx_ids_.size() && early_exit == false && execute_ &&
          thread_stat_->status_.IsOk()) {
     uint32_t ctx_id = GetCtxId();
-    PrepAndSendInferRequest(ctx_id);
+    SendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
   }
 }
@@ -201,7 +212,7 @@ ConcurrencyWorker::CompleteOngoingSequences()
   if (on_sequence_model_) {
     for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      CompleteOngoingSequence(ctx_id, seq_stat_index);
+      ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
     }
   }
 }
@@ -209,11 +220,10 @@ ConcurrencyWorker::CompleteOngoingSequences()
 void
 ConcurrencyWorker::SyncClientStats()
 {
-  // Make sure all threads are in sync with the client's stats
+  // Make sure all contexts are in sync with the client's stats
   //
   for (size_t i = 0; i < ctxs_.size(); ++i) {
-    ctxs_[i]->infer_backend_->ClientInferStat(
-        &(thread_stat_->contexts_stat_[i]));
+    ctxs_[i]->SyncClientStats();
   }
 }
 

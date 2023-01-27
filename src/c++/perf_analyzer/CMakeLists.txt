@@ -47,6 +47,7 @@ set(
   concurrency_worker.cc
   request_rate_worker.cc
   custom_load_manager.cc
+  infer_context.cc
   inference_profiler.cc
   report_writer.cc
   mpi_utils.cc
@@ -68,6 +69,7 @@ set(
   load_worker.h
   request_rate_worker.h
   concurrency_worker.h
+  infer_context.h
   inference_profiler.h
   report_writer.h
   mpi_utils.h
