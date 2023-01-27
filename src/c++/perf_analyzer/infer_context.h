@@ -173,14 +173,6 @@ class InferContext {
     async_callback_finalize_func_ = callback;
   }
 
-  // TODO REFACTOR TMA-1047 - This is likely no longer needed
-  // Copy the client statistics into this object's local copy
-  // of the statistics
-  void SyncClientStats()
-  {
-    infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
-  }
-
   // TODO REFACTOR TMA-1043 this should be in memory class
   void SetNumActiveThreads(size_t num_threads)
   {
