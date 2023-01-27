@@ -109,6 +109,9 @@ class LoadWorker : public IWorker {
   // Any code that needs to execute after the Context has been created
   virtual void CreateContextFinalize(std::shared_ptr<InferContext> ctx) = 0;
 
+  // Detect the cases where this thread needs to exit
+  bool ShouldExit();
+
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();

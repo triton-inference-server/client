@@ -34,9 +34,16 @@
 namespace triton { namespace perfanalyzer {
 
 bool
+LoadWorker::ShouldExit()
+{
+  return early_exit || !thread_stat_->cb_status_.IsOk() ||
+         !thread_stat_->status_.IsOk();
+}
+
+bool
 LoadWorker::HandleExitConditions()
 {
-  if (early_exit || (!thread_stat_->cb_status_.IsOk())) {
+  if (ShouldExit()) {
     CompleteOngoingSequences();
     WaitForOngoingRequests();
     return true;

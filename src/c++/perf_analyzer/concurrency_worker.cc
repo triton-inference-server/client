@@ -52,15 +52,12 @@ ConcurrencyWorker::Infer()
 
     CreateContextsAsNecessary();
 
-    if (!thread_stat_->status_.IsOk()) {
+    if (HandleExitConditions()) {
       return;
     }
 
     SendInferRequests();
 
-    if (!thread_stat_->status_.IsOk()) {
-      return;
-    }
     if (HandleExitConditions()) {
       return;
     }
@@ -156,8 +153,7 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::SendInferRequests()
 {
-  while (free_ctx_ids_.size() && early_exit == false && execute_ &&
-         thread_stat_->status_.IsOk()) {
+  while (free_ctx_ids_.size() && execute_ && !ShouldExit()) {
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
