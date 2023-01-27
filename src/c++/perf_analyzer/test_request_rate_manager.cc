@@ -346,13 +346,15 @@ class TestRequestRateManager : public TestLoadManagerBase,
     StopWorkerThreads();
   }
 
-  // FIXME
+  /// Test that tries to find deadlocks and livelocks
   ///
   void TestTimeouts()
   {
+    WatchDog watchdog(1000);
     ChangeRequestRate(100);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     StopWorkerThreads();
+    watchdog.stop();
   }
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
@@ -899,9 +901,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   }
 }
 
-TEST_CASE("request_rate_timeouts")
+TEST_CASE("request_rate_deadlock")
 {
-  WatchDog watchdog(2000);
   PerfAnalyzerParameters params{};
   params.max_concurrency = 6;
   bool is_sequence_model{true};
@@ -979,12 +980,26 @@ TEST_CASE("request_rate_timeouts")
     }
   }};
 
-  ParameterizeFailures();
+  std::vector<uint64_t> delays;
+
+  const auto& ParameterizeDelays{[&]() {
+    SUBCASE("no_delay")
+    {
+      delays = {0};
+      ParameterizeFailures();
+    }
+    SUBCASE("random_delay")
+    {
+      delays = {1, 5, 2, 4, 3};
+      ParameterizeFailures();
+    }
+  }};
+
+  ParameterizeDelays();
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
-  // Randomize the delays of the responses
-  trrm.stats_->SetDelays({1, 5, 2, 4, 3});
+  trrm.stats_->SetDelays(delays);
 
   // Sometimes have a request fail
   if (some_infer_failures) {
@@ -992,8 +1007,6 @@ TEST_CASE("request_rate_timeouts")
   }
 
   trrm.TestTimeouts();
-
-  watchdog.stop();
 }
 
 

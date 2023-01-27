@@ -249,13 +249,15 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     CheckSequences(concurrency2);
   }
 
-  // FIXME
+  /// Test that tries to find deadlocks and livelocks
   ///
   void TestTimeouts()
   {
+    WatchDog watchdog(1000);
     ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     StopWorkerThreads();
+    watchdog.stop();
   }
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
@@ -676,9 +678,8 @@ TEST_CASE("Concurrency - Shared memory methods")
   }
 }
 
-TEST_CASE("concurrency_timeouts")
+TEST_CASE("concurrency_deadlock")
 {
-  WatchDog watchdog(2000);
   PerfAnalyzerParameters params{};
   params.max_concurrency = 6;
   bool is_sequence_model{true};
@@ -756,12 +757,27 @@ TEST_CASE("concurrency_timeouts")
     }
   }};
 
-  ParameterizeFailures();
+  std::vector<uint64_t> delays;
+
+  const auto& ParameterizeDelays{[&]() {
+    SUBCASE("no_delay")
+    {
+      delays = {0};
+      ParameterizeFailures();
+    }
+    SUBCASE("random_delay")
+    {
+      delays = {1, 5, 2, 4, 3};
+      ParameterizeFailures();
+    }
+  }};
+
+
+  ParameterizeDelays();
 
   TestConcurrencyManager tcm(params, is_sequence_model);
 
-  // Randomize the delays of the responses
-  tcm.stats_->SetDelays({1, 5, 2, 4, 3});
+  tcm.stats_->SetDelays(delays);
 
   // Sometimes have a request fail
   if (some_infer_failures) {
@@ -769,8 +785,6 @@ TEST_CASE("concurrency_timeouts")
   }
 
   tcm.TestTimeouts();
-
-  watchdog.stop();
 }
 
 }}  // namespace triton::perfanalyzer
