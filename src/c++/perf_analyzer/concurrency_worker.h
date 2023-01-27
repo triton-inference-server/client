@@ -130,8 +130,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   void WaitForResponses();
 
-  void SyncClientStats();
-
   void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
