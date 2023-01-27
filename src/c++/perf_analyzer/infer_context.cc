@@ -104,6 +104,10 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
 void
 InferContext::SendRequest(const uint64_t request_id, const bool delayed)
 {
+  if (!thread_stat_->status_.IsOk()) {
+    return;
+  }
+
   if (async_) {
     options_->request_id_ = std::to_string(request_id);
     {
