@@ -94,7 +94,6 @@ ConcurrencyWorker::HandleExecuteOff()
       // Ensures the clean exit of the sequences
       CompleteOngoingSequences();
       WaitForOngoingRequests();
-      SyncClientStats();
 
       // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
       // has destructive side affects
@@ -214,16 +213,6 @@ ConcurrencyWorker::CompleteOngoingSequences()
       size_t seq_stat_index = GetSeqStatIndex(ctx_id);
       ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
     }
-  }
-}
-
-void
-ConcurrencyWorker::SyncClientStats()
-{
-  // Make sure all contexts are in sync with the client's stats
-  //
-  for (size_t i = 0; i < ctxs_.size(); ++i) {
-    ctxs_[i]->SyncClientStats();
   }
 }
 
