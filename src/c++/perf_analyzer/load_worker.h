@@ -56,8 +56,9 @@ class LoadWorker : public IWorker {
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute)
-      : thread_stat_(thread_stat), parser_(parser), data_loader_(data_loader),
-        factory_(factory), sequence_stat_(sequence_stat),
+      : id_(id), thread_stat_(thread_stat), parser_(parser),
+        data_loader_(data_loader), factory_(factory),
+        sequence_stat_(sequence_stat),
         shared_memory_regions_(shared_memory_regions),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
@@ -79,6 +80,11 @@ class LoadWorker : public IWorker {
 
   void SendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
+    if (early_exit || !thread_stat_->status_.IsOk() ||
+        !thread_stat_->cb_status_.IsOk()) {
+      return;
+    }
+
     if (on_sequence_model_) {
       uint32_t seq_stat_index = GetSeqStatIndex(ctx_id);
       ctxs_[ctx_id]->SendSequenceInferRequest(seq_stat_index, delayed);
@@ -111,6 +117,8 @@ class LoadWorker : public IWorker {
   virtual void CompleteOngoingSequences() = 0;
 
   void WaitForOngoingRequests();
+
+  uint32_t id_;
 
   std::vector<std::shared_ptr<InferContext>> ctxs_;
 

@@ -210,9 +210,21 @@ class MockClientStats {
 
   void SetDelays(std::vector<size_t> times)
   {
-    response_delays.clear();
+    response_delays_.clear();
     for (size_t t : times) {
-      response_delays.push_back(std::chrono::milliseconds{t});
+      response_delays_.push_back(std::chrono::milliseconds{t});
+    }
+  }
+
+  void SetReturnStatuses(std::vector<bool> statuses)
+  {
+    response_statuses_.clear();
+    for (bool success : statuses) {
+      if (success) {
+        response_statuses_.push_back(cb::Error::Success);
+      } else {
+        response_statuses_.push_back(cb::Error("Injected test error"));
+      }
     }
   }
 
@@ -220,10 +232,22 @@ class MockClientStats {
   {
     std::lock_guard<std::mutex> lock(mtx_);
 
-    auto val = response_delays[response_delays_index];
-    response_delays_index++;
-    if (response_delays_index == response_delays.size()) {
-      response_delays_index = 0;
+    auto val = response_delays_[response_delays_index_];
+    response_delays_index_++;
+    if (response_delays_index_ == response_delays_.size()) {
+      response_delays_index_ = 0;
+    }
+    return val;
+  }
+
+  cb::Error GetNextReturnStatus()
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+
+    auto val = response_statuses_[response_statuses_index_];
+    response_statuses_index_++;
+    if (response_statuses_index_ == response_statuses_.size()) {
+      response_statuses_index_ = 0;
     }
     return val;
   }
@@ -275,9 +299,11 @@ class MockClientStats {
   }
 
  private:
-  std::vector<std::chrono::milliseconds> response_delays{
+  std::vector<std::chrono::milliseconds> response_delays_{
       std::chrono::milliseconds{0}};
-  std::atomic<size_t> response_delays_index{0};
+  std::vector<cb::Error> response_statuses_{cb::Error::Success};
+  std::atomic<size_t> response_delays_index_{0};
+  std::atomic<size_t> response_statuses_index_{0};
 
   std::mutex mtx_;
 
@@ -351,7 +377,7 @@ class MockClientBackend : public ClientBackend {
     local_completed_req_count_++;
     stats_->num_active_infer_calls--;
 
-    return Error::Success;
+    return stats_->GetNextReturnStatus();
   }
 
   Error AsyncInfer(
@@ -366,7 +392,7 @@ class MockClientBackend : public ClientBackend {
 
     LaunchAsyncMockRequest(options, callback);
 
-    return Error::Success;
+    return stats_->GetNextReturnStatus();
   }
 
   Error AsyncStreamInfer(
@@ -380,7 +406,7 @@ class MockClientBackend : public ClientBackend {
 
     LaunchAsyncMockRequest(options, stream_callback_);
 
-    return Error::Success;
+    return stats_->GetNextReturnStatus();
   }
 
   Error StartStream(OnCompleteFn callback, bool enable_stats)
@@ -388,7 +414,7 @@ class MockClientBackend : public ClientBackend {
     stats_->CaptureStreamStart();
     stats_->start_stream_enable_stats_value = enable_stats;
     stream_callback_ = callback;
-    return Error::Success;
+    return stats_->GetNextReturnStatus();
   }
 
   Error ClientInferStat(InferStat* infer_stat) override

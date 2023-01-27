@@ -26,12 +26,54 @@
 
 #pragma once
 
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <numeric>
+#include <thread>
 #include <vector>
 
 namespace triton { namespace perfanalyzer {
+
+// FIXME
+class WatchDog {
+ public:
+  WatchDog(unsigned int max_time_ms) { start(max_time_ms); }
+
+  void stop()
+  {
+    running_ = false;
+    thread_.join();
+  }
+
+ private:
+  uint interval{100};
+  uint max_time_ms_;
+  std::atomic<unsigned int> timer_;
+  std::atomic<bool> running_;
+  std::thread thread_;
+
+  void start(unsigned int max_time_ms)
+  {
+    max_time_ms_ = max_time_ms;
+    timer_ = 0;
+    running_ = true;
+    thread_ = std::thread(&WatchDog::loop, this);
+  }
+
+  void loop()
+  {
+    while (running_) {
+      if (timer_ >= max_time_ms_) {
+        running_ = false;
+        REQUIRE_MESSAGE(false, "WATCHDOG TIMEOUT!");
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+      timer_ += interval;
+    }
+  }
+};
 
 /// Calculate the average of a vector of integers
 ///
