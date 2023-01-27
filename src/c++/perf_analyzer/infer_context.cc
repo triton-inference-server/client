@@ -32,9 +32,9 @@ void
 InferContext::Init()
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    thread_stat_->status_ = PrepareInfer(this);
+    thread_stat_->status_ = PrepareInfer(infer_data_);
   } else {
-    thread_stat_->status_ = PrepareSharedMemoryInfer(this);
+    thread_stat_->status_ = PrepareSharedMemoryInfer(infer_data_);
   }
   if (!thread_stat_->status_.IsOk()) {
     return;
@@ -50,13 +50,12 @@ InferContext::Init()
   }
 }
 
-
 void
 InferContext::SendInferRequest(bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_) {
-    UpdateJsonData();
+    UpdateJsonData(infer_data_);
   }
   SendRequest(request_id_++, delayed);
 }
@@ -68,11 +67,11 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
   // This also helps in reporting the realistic latencies.
   std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
   if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-    SetInferSequenceOptions(seq_stat_index, options_);
+    SetInferSequenceOptions(seq_stat_index, infer_data_.options_);
 
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(infer_data_, sequence_stat_[seq_stat_index]);
     }
 
     sequence_stat_[seq_stat_index]->remaining_queries_--;
@@ -89,10 +88,10 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
 
   if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
     sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
-    SetInferSequenceOptions(seq_stat_index, options_);
+    SetInferSequenceOptions(seq_stat_index, infer_data_.options_);
 
     if (using_json_data_) {
-      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(infer_data_, sequence_stat_[seq_stat_index]);
     }
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
@@ -109,22 +108,26 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
   }
 
   if (async_) {
-    options_->request_id_ = std::to_string(request_id);
+    infer_data_.options_->request_id_ = std::to_string(request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-      auto it = async_req_map_
-                    .emplace(options_->request_id_, AsyncRequestProperties())
-                    .first;
+      auto it =
+          async_req_map_
+              .emplace(
+                  infer_data_.options_->request_id_, AsyncRequestProperties())
+              .first;
       it->second.start_time_ = std::chrono::system_clock::now();
-      it->second.sequence_end_ = options_->sequence_end_;
+      it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
     }
     if (streaming_) {
       thread_stat_->status_ = infer_backend_->AsyncStreamInfer(
-          *(options_), valid_inputs_, outputs_);
+          *(infer_data_.options_), infer_data_.valid_inputs_,
+          infer_data_.outputs_);
     } else {
       thread_stat_->status_ = infer_backend_->AsyncInfer(
-          async_callback_func_, *(options_), valid_inputs_, outputs_);
+          async_callback_func_, *(infer_data_.options_),
+          infer_data_.valid_inputs_, infer_data_.outputs_);
     }
     total_ongoing_requests_++;
   } else {
@@ -132,8 +135,9 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
         end_time_sync;
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    thread_stat_->status_ =
-        infer_backend_->Infer(&results, *(options_), valid_inputs_, outputs_);
+    thread_stat_->status_ = infer_backend_->Infer(
+        &results, *(infer_data_.options_), infer_data_.valid_inputs_,
+        infer_data_.outputs_);
     if (results != nullptr) {
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = ValidateOutputs(results);
@@ -149,7 +153,8 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, options_->sequence_end_, delayed));
+          start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
+          delayed));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -160,7 +165,7 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
 }
 
 cb::Error
-InferContext::PrepareInfer(InferContext* ctx)
+InferContext::PrepareInfer(InferData& infer_data)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -181,7 +186,7 @@ InferContext::PrepareInfer(InferContext* ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx->inputs_.push_back(infer_input);
+    infer_data.inputs_.push_back(infer_input);
 
     data_ptr = nullptr;
     RETURN_IF_ERROR(data_loader_->GetInputData(
@@ -189,7 +194,7 @@ InferContext::PrepareInfer(InferContext* ctx)
 
     // Add optional input to request if data was found
     if (data_ptr != nullptr) {
-      ctx->valid_inputs_.push_back(infer_input);
+      infer_data.valid_inputs_.push_back(infer_input);
     }
 
     if (!shape.empty()) {
@@ -206,16 +211,16 @@ InferContext::PrepareInfer(InferContext* ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx->outputs_.push_back(requested_output);
+    infer_data.outputs_.push_back(requested_output);
   }
-  RETURN_IF_ERROR(
-      UpdateValidationOutputs(ctx->outputs_, 0, 0, ctx->expected_outputs_));
+  RETURN_IF_ERROR(UpdateValidationOutputs(
+      infer_data.outputs_, 0, 0, infer_data.expected_outputs_));
 
   return cb::Error::Success;
 }
 
 cb::Error
-InferContext::PrepareSharedMemoryInfer(InferContext* ctx)
+InferContext::PrepareSharedMemoryInfer(InferData& infer_data)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -236,11 +241,11 @@ InferContext::PrepareSharedMemoryInfer(InferContext* ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx->inputs_.push_back(infer_input);
+    infer_data.inputs_.push_back(infer_input);
 
     // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
     // currently, and will be implemented in the associated story.
-    ctx->valid_inputs_.push_back(infer_input);
+    infer_data.valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
@@ -252,7 +257,7 @@ InferContext::PrepareSharedMemoryInfer(InferContext* ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx->outputs_.push_back(requested_output);
+    infer_data.outputs_.push_back(requested_output);
 
     RETURN_IF_ERROR(requested_output->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
@@ -271,28 +276,32 @@ InferContext::CreateInferInput(
 }
 
 void
-InferContext::UpdateJsonData()
+InferContext::UpdateJsonData(InferData& infer_data)
 {
   int step_id =
       (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
   data_step_id_ += GetNumActiveThreads();
-  thread_stat_->status_ = UpdateInputs(inputs_, valid_inputs_, 0, step_id);
+  thread_stat_->status_ =
+      UpdateInputs(infer_data.inputs_, infer_data.valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ =
-        UpdateValidationOutputs(outputs_, 0, step_id, expected_outputs_);
+    thread_stat_->status_ = UpdateValidationOutputs(
+        infer_data.outputs_, 0, step_id, infer_data.expected_outputs_);
   }
 }
 
 void
-InferContext::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
+InferContext::UpdateSeqJsonData(
+    InferData& infer_data, std::shared_ptr<SequenceStat> seq_stat)
 {
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
-  thread_stat_->status_ =
-      UpdateInputs(inputs_, valid_inputs_, seq_stat->data_stream_id_, step_id);
+  thread_stat_->status_ = UpdateInputs(
+      infer_data.inputs_, infer_data.valid_inputs_, seq_stat->data_stream_id_,
+      step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = UpdateValidationOutputs(
-        outputs_, seq_stat->data_stream_id_, step_id, expected_outputs_);
+        infer_data.outputs_, seq_stat->data_stream_id_, step_id,
+        infer_data.expected_outputs_);
   }
 }
 
@@ -388,12 +397,12 @@ cb::Error
 InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
 {
   // Validate output if set
-  if (!expected_outputs_.empty()) {
-    for (size_t i = 0; i < outputs_.size(); ++i) {
+  if (!infer_data_.expected_outputs_.empty()) {
+    for (size_t i = 0; i < infer_data_.outputs_.size(); ++i) {
       const uint8_t* buf = nullptr;
       size_t byte_size = 0;
-      result_ptr->RawData(outputs_[i]->Name(), &buf, &byte_size);
-      for (const auto& expected : expected_outputs_[i]) {
+      result_ptr->RawData(infer_data_.outputs_[i]->Name(), &buf, &byte_size);
+      for (const auto& expected : infer_data_.expected_outputs_[i]) {
         if (byte_size < expected.second) {
           return cb::Error(
               "Output size doesn't match expected size", pa::GENERIC_ERROR);
