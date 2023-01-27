@@ -34,6 +34,33 @@
 
 namespace triton { namespace perfanalyzer {
 
+/// Holds all the data needed to send an inference request
+struct InferData {
+  ~InferData()
+  {
+    for (const auto input : inputs_) {
+      delete input;
+    }
+    for (const auto output : outputs_) {
+      delete output;
+    }
+  }
+
+  // The vector of pointers to InferInput objects for all possible inputs,
+  // potentially including optional inputs with no provided data.
+  std::vector<cb::InferInput*> inputs_;
+  // The vector of pointers to InferInput objects to be
+  // used for inference request.
+  std::vector<cb::InferInput*> valid_inputs_;
+  // The vector of pointers to InferRequestedOutput objects
+  // to be used with the inference request.
+  std::vector<const cb::InferRequestedOutput*> outputs_;
+  // If not empty, the expected output data in the same order as 'outputs_'
+  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
+  // The InferOptions object holding the details of the
+  // inference.
+  std::unique_ptr<cb::InferOptions> options_;
+};
 
 // Holds information about the shared memory locations
 struct SharedMemoryData {
@@ -132,24 +159,15 @@ class InferContext {
         parser_(parser), factory_(factory), data_step_id_(id)
   {
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
-    options_.reset(new cb::InferOptions(parser_->ModelName()));
-    options_->model_version_ = parser_->ModelVersion();
-    options_->model_signature_name_ = parser_->ModelSignatureName();
+    infer_data_.options_.reset(new cb::InferOptions(parser_->ModelName()));
+    infer_data_.options_->model_version_ = parser_->ModelVersion();
+    infer_data_.options_->model_signature_name_ = parser_->ModelSignatureName();
 
     thread_stat_->contexts_stat_.emplace_back();
   }
 
   InferContext(InferContext&&) = delete;
   InferContext(const InferContext&) = delete;
-  ~InferContext()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
 
   // Initialize the context. Must be done before any inferences are sent
   void Init();
@@ -195,15 +213,15 @@ class InferContext {
 
   /// Helper function to prepare the InferContext for sending
   /// inference request.
-  /// \param ctx The target InferContext object.
+  /// \param data The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferContext* ctx);
+  cb::Error PrepareInfer(InferData& data);
 
   /// Helper function to prepare the InferContext for sending
-  /// inference request in shared memory. \param ctx The target
-  /// InferContext object. \return cb::Error object indicating
-  /// success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
+  /// inference request in shared memory.
+  /// \param data The target InferContext object.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error PrepareSharedMemoryInfer(InferData& data);
 
   /// Creates inference input object
   /// \param infer_input Output parameter storing newly created inference input
@@ -218,10 +236,11 @@ class InferContext {
       const std::string& datatype);
 
   /// Update inputs based on custom json data
-  void UpdateJsonData();
+  void UpdateJsonData(InferData& infer_data);
 
   /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
+  void UpdateSeqJsonData(
+      InferData& infer_data, std::shared_ptr<SequenceStat> seq_stat);
 
   void SetInferSequenceOptions(
       const uint32_t seq_stat_index,
@@ -240,7 +259,6 @@ class InferContext {
       const std::vector<const cb::InferRequestedOutput*>& outputs,
       int stream_index, int step_index,
       std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
-
 
   cb::Error ValidateOutputs(const cb::InferResult* result_ptr);
 
@@ -345,20 +363,7 @@ class InferContext {
 
   // The backend to communicate with the server
   std::unique_ptr<cb::ClientBackend> infer_backend_;
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
+  InferData infer_data_;
 };
 
 }}  // namespace triton::perfanalyzer
