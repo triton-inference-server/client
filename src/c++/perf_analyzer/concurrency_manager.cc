@@ -145,6 +145,8 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
         active_threads_++;
       }
     }
+    // TODO REFACTOR TMA-1043 the memory manager should have API to set
+    // num_active_threads in constructor, as well as overwrite it here
   }
 }
 

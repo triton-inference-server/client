@@ -113,9 +113,10 @@ class RequestRateWorker : public LoadWorker {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  void AsyncCallbackFinalize(uint32_t ctx_id) override {}
-
-  size_t GetNumActiveThreads() override { return max_threads_; }
+  void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
+  {
+    ctx->SetNumActiveThreads(max_threads_);
+  }
 };
 
 
