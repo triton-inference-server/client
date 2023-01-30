@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_data_loader.h"
+#include "mock_memory_manager.h"
 #include "mock_model_parser.h"
 #include "test_load_manager_base.h"
 
@@ -53,26 +54,16 @@ class TestConcurrencyWorker : public ConcurrencyWorker {
       std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution)
+      std::uniform_int_distribution<uint64_t>& distribution,
+      const std::shared_ptr<MemoryManager> memory_manager)
       : ConcurrencyWorker(
             thread_stat, thread_config, parser, data_loader, backend_kind,
             factory, sequence_length, start_sequence_id, sequence_id_range,
             on_sequence_model, async, max_concurrency, using_json_data,
             streaming, shared_memory_type, batch_size, threads_config,
             sequence_stat, shared_memory_regions, wake_signal, wake_mutex,
-            active_threads, execute, curr_seq_id, distribution)
+            active_threads, execute, curr_seq_id, distribution, memory_manager)
   {
-  }
-
-  /// Mock out the InferInput object
-  ///
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
   }
 };
 
@@ -105,6 +96,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
             GetFactory())
   {
+    memory_manager_ = std::make_shared<MockMemoryManager>(
+        batch_size_, shared_memory_type_, output_shm_size_, parser_,
+        GetFactory(), data_loader_);
     InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -129,17 +123,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   {
   }
 
-  // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
-  //
-  cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name) override
-  {
-    return cb::Error::Success;
-  }
-
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
@@ -153,7 +136,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
           sequence_id_range_, on_sequence_model_, async_, max_concurrency_,
           using_json_data_, streaming_, shared_memory_type_, batch_size_,
           threads_config_, sequence_stat_, shared_memory_regions_, wake_signal_,
-          wake_mutex_, active_threads_, execute_, curr_seq_id_, distribution_);
+          wake_mutex_, active_threads_, execute_, curr_seq_id_, distribution_,
+          memory_manager_);
     }
   }
 
@@ -248,6 +232,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
+  std::shared_ptr<MemoryManager>& memory_manager_{LoadManager::memory_manager_};
   bool& using_json_data_{LoadManager::using_json_data_};
   bool& execute_{ConcurrencyManager::execute_};
   size_t& batch_size_{LoadManager::batch_size_};
