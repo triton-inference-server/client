@@ -80,8 +80,7 @@ class LoadWorker : public IWorker {
 
   void SendInferRequest(uint32_t ctx_id, bool delayed = false)
   {
-    if (early_exit || !thread_stat_->status_.IsOk() ||
-        !thread_stat_->cb_status_.IsOk()) {
+    if (ShouldExit()) {
       return;
     }
 

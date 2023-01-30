@@ -253,7 +253,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   ///
   void TestTimeouts()
   {
-    WatchDog watchdog(1000);
+    TestWatchDog watchdog(1000);
     ChangeConcurrencyLevel(params_.max_concurrency);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     StopWorkerThreads();
@@ -685,7 +685,7 @@ TEST_CASE("concurrency_deadlock")
   bool is_sequence_model{true};
   bool some_infer_failures{false};
 
-  const auto& ParameterizeSync{[&]() {
+  const auto& ParameterizeSyncStreaming{[&]() {
     SUBCASE("sync")
     {
       params.async = false;
@@ -704,29 +704,17 @@ TEST_CASE("concurrency_deadlock")
   }};
 
   const auto& ParameterizeConcurrency{[&]() {
-    SUBCASE("1 concurrency, 1 thread")
+    SUBCASE("10 concurrency, 10 thread")
     {
-      ParameterizeSync();
-      params.max_concurrency = 1;
-      params.max_threads = 1;
+      ParameterizeSyncStreaming();
+      params.max_concurrency = 10;
+      params.max_threads = 10;
     }
-    SUBCASE("4 concurrency, 4 thread")
+    SUBCASE("10 concurrency, 4 thread")
     {
-      ParameterizeSync();
-      params.max_concurrency = 4;
+      ParameterizeSyncStreaming();
+      params.max_concurrency = 10;
       params.max_threads = 4;
-    }
-    SUBCASE("4 concurrency, 3 thread")
-    {
-      ParameterizeSync();
-      params.max_concurrency = 4;
-      params.max_threads = 3;
-    }
-    SUBCASE("4 concurrency, 1 thread")
-    {
-      ParameterizeSync();
-      params.max_concurrency = 4;
-      params.max_threads = 1;
     }
   }};
 
@@ -740,7 +728,6 @@ TEST_CASE("concurrency_deadlock")
     {
       ParameterizeConcurrency();
       is_sequence_model = true;
-      params.num_of_sequences = 3;
     }
   }};
 
@@ -767,7 +754,7 @@ TEST_CASE("concurrency_deadlock")
     }
     SUBCASE("random_delay")
     {
-      delays = {1, 5, 2, 4, 3};
+      delays = {1, 5, 20, 4, 3};
       ParameterizeFailures();
     }
   }};

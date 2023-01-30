@@ -350,7 +350,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   ///
   void TestTimeouts()
   {
-    WatchDog watchdog(1000);
+    TestWatchDog watchdog(1000);
     ChangeRequestRate(100);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     StopWorkerThreads();
@@ -926,42 +926,28 @@ TEST_CASE("request_rate_deadlock")
     }
   }};
 
-  const auto& ParameterizeConcurrency{[&]() {
-    SUBCASE("1 concurrency, 1 thread")
+  const auto& ParameterizeThreads{[&]() {
+    SUBCASE("2 thread")
     {
       ParameterizeSync();
-      params.max_concurrency = 1;
-      params.max_threads = 1;
+      params.max_threads = 2;
     }
-    SUBCASE("4 concurrency, 4 thread")
+    SUBCASE("10 thread")
     {
       ParameterizeSync();
-      params.max_concurrency = 4;
-      params.max_threads = 4;
-    }
-    SUBCASE("4 concurrency, 3 thread")
-    {
-      ParameterizeSync();
-      params.max_concurrency = 4;
-      params.max_threads = 3;
-    }
-    SUBCASE("4 concurrency, 1 thread")
-    {
-      ParameterizeSync();
-      params.max_concurrency = 4;
-      params.max_threads = 1;
+      params.max_threads = 10;
     }
   }};
 
   const auto& ParameterizeSequence{[&]() {
     SUBCASE("non-sequence")
     {
-      ParameterizeConcurrency();
+      ParameterizeThreads();
       is_sequence_model = false;
     }
     SUBCASE("sequence")
     {
-      ParameterizeConcurrency();
+      ParameterizeThreads();
       is_sequence_model = true;
       params.num_of_sequences = 3;
     }
@@ -990,7 +976,7 @@ TEST_CASE("request_rate_deadlock")
     }
     SUBCASE("random_delay")
     {
-      delays = {1, 5, 2, 4, 3};
+      delays = {1, 5, 20, 4, 3};
       ParameterizeFailures();
     }
   }};

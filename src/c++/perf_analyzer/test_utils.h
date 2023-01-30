@@ -35,11 +35,22 @@
 
 namespace triton { namespace perfanalyzer {
 
-// FIXME
-class WatchDog {
+/// This class will create a thread that will raise an error after a fixed
+/// amount of time, unless the stop function is called.
+///
+/// It can be used to detect livelock/deadlock cases in tests so that the test
+/// will be guarenteed to finish instead of hang
+///
+class TestWatchDog {
  public:
-  WatchDog(unsigned int max_time_ms) { start(max_time_ms); }
+  /// Create the watchdog
+  ///
+  /// @param max_time_ms How long (in milliseconds) until this watchdog will
+  /// raise an error
+  TestWatchDog(unsigned int max_time_ms) { start(max_time_ms); }
 
+  /// Stop the watchdog so that it will not raise any errors
+  ///
   void stop()
   {
     running_ = false;
@@ -47,7 +58,7 @@ class WatchDog {
   }
 
  private:
-  uint interval{100};
+  uint sleep_interval_ms{40};
   uint max_time_ms_;
   std::atomic<unsigned int> timer_;
   std::atomic<bool> running_;
@@ -58,7 +69,7 @@ class WatchDog {
     max_time_ms_ = max_time_ms;
     timer_ = 0;
     running_ = true;
-    thread_ = std::thread(&WatchDog::loop, this);
+    thread_ = std::thread(&TestWatchDog::loop, this);
   }
 
   void loop()
@@ -69,8 +80,8 @@ class WatchDog {
         REQUIRE_MESSAGE(false, "WATCHDOG TIMEOUT!");
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(interval));
-      timer_ += interval;
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
+      timer_ += sleep_interval_ms;
     }
   }
 };

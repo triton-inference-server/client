@@ -208,6 +208,11 @@ class MockClientStats {
     }
   };
 
+  /// Determines how long the backend will delay before sending a "response".
+  /// If a single value vector is passed in, all responses will take that long.
+  /// If a list of values is passed in, then the mock backend will loop through
+  /// the values (and loop back to the start when it hits the end of the vector)
+  ///
   void SetDelays(std::vector<size_t> times)
   {
     response_delays_.clear();
@@ -216,6 +221,12 @@ class MockClientStats {
     }
   }
 
+  /// Determines the return status of requests.
+  /// If a single value vector is passed in, all responses will return that
+  /// status. If a list of values is passed in, then the mock backend will loop
+  /// through the values (and loop back to the start when it hits the end of the
+  /// vector)
+  ///
   void SetReturnStatuses(std::vector<bool> statuses)
   {
     response_statuses_.clear();
