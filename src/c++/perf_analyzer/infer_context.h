@@ -30,55 +30,11 @@
 #include <mutex>
 #include <vector>
 #include "data_loader.h"
+#include "infer_data.h"
+#include "memory_manager.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
-
-/// Holds all the data needed to send an inference request
-struct InferData {
-  ~InferData()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
-
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
-};
-
-// Holds information about the shared memory locations
-struct SharedMemoryData {
-  SharedMemoryData(
-      size_t byte_size,
-      std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data)
-      : byte_size_(byte_size), data_(std::move(data))
-  {
-  }
-
-  SharedMemoryData() {}
-
-  // Byte size
-  size_t byte_size_;
-
-  // Unique pointer holding the shared memory data
-  std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
-};
 
 // Holds the status of the inflight sequence
 struct SequenceStat {
@@ -145,7 +101,8 @@ class InferContext {
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<cb::ClientBackendFactory> factory)
+      std::shared_ptr<cb::ClientBackendFactory> factory,
+      const std::shared_ptr<MemoryManager>& memory_manager)
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
@@ -156,7 +113,8 @@ class InferContext {
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
         distribution_(distribution), thread_stat_(thread_stat),
         sequence_stat_(sequence_stat), data_loader_(data_loader),
-        parser_(parser), factory_(factory), data_step_id_(id)
+        parser_(parser), factory_(factory), data_step_id_(id),
+        memory_manager_(memory_manager)
   {
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
     infer_data_.options_.reset(new cb::InferOptions(parser_->ModelName()));
@@ -203,17 +161,6 @@ class InferContext {
   /// \param delayed Whether the request fell behind its scheduled time.
   void SendRequest(const uint64_t request_id, const bool delayed);
 
-  /// Helper function to prepare the InferContext for sending
-  /// inference request.
-  /// \param data The target InferData object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferData& data);
-
-  /// Helper function to prepare the InferContext for sending
-  /// inference request in shared memory.
-  /// \param data The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferData& data);
 
   /// Creates inference input object
   /// \param infer_input Output parameter storing newly created inference input
@@ -319,6 +266,7 @@ class InferContext {
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
+  const std::shared_ptr<MemoryManager> memory_manager_;
 
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably

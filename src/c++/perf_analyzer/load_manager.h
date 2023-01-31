@@ -33,6 +33,7 @@
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "load_worker.h"
+#include "memory_manager.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
@@ -103,30 +104,6 @@ class LoadManager {
       const size_t string_length, const std::string& string_data,
       const bool zero_input, std::vector<std::string>& user_data);
 
-  /// Helper function to allocate and prepare shared memory.
-  /// from shared memory.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error InitSharedMemory();
-
-  /// Create a memory region.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error CreateMemoryRegion(
-      const std::string& shm_region_name, const SharedMemoryType& memory_type,
-      const size_t byte_size, void** ptr);
-
-  /// \brief Helper function to handle copying shared memory to the correct
-  /// memory region
-  /// \param input_shm_ptr Pointer to the shared memory for a specific input
-  /// \param data_ptrs Pointer to the data for the batch
-  /// \param byte_size Size of the data being copied
-  /// \param is_shape_tensor Is the input a shape tensor
-  /// \param region_name Name of the shared memory region
-  /// \return cb::Error object indicating success or failure
-  virtual cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name);
-
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
@@ -155,6 +132,7 @@ class LoadManager {
 
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
+  std::shared_ptr<MemoryManager> memory_manager_;
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;

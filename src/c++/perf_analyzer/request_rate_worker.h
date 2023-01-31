@@ -73,13 +73,14 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::chrono::steady_clock::time_point& start_time,
-      std::uniform_int_distribution<uint64_t>& distribution)
+      std::uniform_int_distribution<uint64_t>& distribution,
+      const std::shared_ptr<MemoryManager>& memory_manager)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, sequence_stat,
             shared_memory_regions, backend_kind, shared_memory_type,
             on_sequence_model, async, streaming, batch_size, using_json_data,
             sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
-            distribution, wake_signal, wake_mutex, execute),
+            distribution, wake_signal, wake_mutex, execute, memory_manager),
         thread_config_(thread_config), max_threads_(max_threads),
         start_time_(start_time)
   {

@@ -244,7 +244,7 @@ RequestRateManager::MakeWorker(
       on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
       shared_memory_type_, batch_size_, sequence_stat_, shared_memory_regions_,
       wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_,
-      distribution_);
+      distribution_, memory_manager_);
 }
 
 

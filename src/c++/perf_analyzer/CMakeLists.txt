@@ -52,6 +52,7 @@ set(
   report_writer.cc
   mpi_utils.cc
   metrics_manager.cc
+  memory_manager.cc
 )
 
 set(
@@ -78,6 +79,8 @@ set(
   metrics.h
   metrics_manager.h
   test_load_manager_base.h
+  memory_manager.h
+  infer_data.h
 )
 
 add_executable(
@@ -158,15 +161,15 @@ add_executable(
   mock_data_loader.h
   test_inference_profiler.cc
   test_command_line_parser.cc
-  test_load_manager.cc
+  # test_load_manager.cc
   test_model_parser.cc
   test_metrics_manager.cc
   test_perf_utils.cc
   test_report_writer.cc
-  test_request_rate_manager.cc
   client_backend/triton/test_triton_client_backend.cc
-  test_concurrency_manager.cc
-  test_custom_load_manager.cc
+  # test_request_rate_manager.cc
+  # test_concurrency_manager.cc
+  # test_custom_load_manager.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

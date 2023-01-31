@@ -55,7 +55,7 @@ class LoadWorker : public IWorker {
       std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      bool& execute)
+      bool& execute, const std::shared_ptr<MemoryManager>& memory_manager)
       : id_(id), thread_stat_(thread_stat), parser_(parser),
         data_loader_(data_loader), factory_(factory),
         sequence_stat_(sequence_stat),
@@ -67,7 +67,8 @@ class LoadWorker : public IWorker {
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
         distribution_(distribution), wake_signal_(wake_signal),
-        wake_mutex_(wake_mutex), execute_(execute)
+        wake_mutex_(wake_mutex), execute_(execute),
+        memory_manager_(memory_manager)
   {
   }
 
@@ -99,7 +100,7 @@ class LoadWorker : public IWorker {
         batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
         start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
         distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
-        factory_);
+        factory_, memory_manager_);
   }
 
   // Create an inference context and add it to ctxs_
@@ -154,6 +155,7 @@ class LoadWorker : public IWorker {
   std::shared_ptr<DataLoader> data_loader_;
   const std::shared_ptr<ModelParser> parser_;
   const std::shared_ptr<cb::ClientBackendFactory> factory_;
+  const std::shared_ptr<MemoryManager> memory_manager_;
 
   const cb::BackendKind backend_kind_;
   const SharedMemoryType shared_memory_type_;

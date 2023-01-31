@@ -72,7 +72,7 @@ class ConcurrencyWorkerMockedInferInput : public ConcurrencyWorker {
         batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
         start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
         distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
-        factory_);
+        factory_, memory_manager_);
   }
 };
 
