@@ -346,6 +346,17 @@ class TestRequestRateManager : public TestLoadManagerBase,
     StopWorkerThreads();
   }
 
+  /// Test that tries to find deadlocks and livelocks
+  ///
+  void TestTimeouts()
+  {
+    TestWatchDog watchdog(1000);
+    ChangeRequestRate(100);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    StopWorkerThreads();
+    watchdog.stop();
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -889,4 +900,100 @@ TEST_CASE("Request rate - Shared memory infer input calls")
     CHECK(actual_set_shared_memory_calls > 0);
   }
 }
+
+TEST_CASE("request_rate_deadlock")
+{
+  PerfAnalyzerParameters params{};
+  params.max_concurrency = 6;
+  bool is_sequence_model{true};
+  bool some_infer_failures{false};
+
+  const auto& ParameterizeSync{[&]() {
+    SUBCASE("sync")
+    {
+      params.async = false;
+      params.streaming = false;
+    }
+    SUBCASE("aync no streaming")
+    {
+      params.async = true;
+      params.streaming = false;
+    }
+    SUBCASE("async streaming")
+    {
+      params.async = true;
+      params.streaming = true;
+    }
+  }};
+
+  const auto& ParameterizeThreads{[&]() {
+    SUBCASE("2 thread")
+    {
+      ParameterizeSync();
+      params.max_threads = 2;
+    }
+    SUBCASE("10 thread")
+    {
+      ParameterizeSync();
+      params.max_threads = 10;
+    }
+  }};
+
+  const auto& ParameterizeSequence{[&]() {
+    SUBCASE("non-sequence")
+    {
+      ParameterizeThreads();
+      is_sequence_model = false;
+    }
+    SUBCASE("sequence")
+    {
+      ParameterizeThreads();
+      is_sequence_model = true;
+      params.num_of_sequences = 3;
+    }
+  }};
+
+  const auto& ParameterizeFailures{[&]() {
+    SUBCASE("yes_failures")
+    {
+      some_infer_failures = true;
+      ParameterizeSequence();
+    }
+    SUBCASE("no_failures")
+    {
+      some_infer_failures = false;
+      ParameterizeSequence();
+    }
+  }};
+
+  std::vector<uint64_t> delays;
+
+  const auto& ParameterizeDelays{[&]() {
+    SUBCASE("no_delay")
+    {
+      delays = {0};
+      ParameterizeFailures();
+    }
+    SUBCASE("random_delay")
+    {
+      delays = {1, 5, 20, 4, 3};
+      ParameterizeFailures();
+    }
+  }};
+
+  ParameterizeDelays();
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  trrm.stats_->SetDelays(delays);
+
+  // Sometimes have a request fail
+  if (some_infer_failures) {
+    trrm.stats_->SetReturnStatuses({true, true, true, false});
+  }
+
+  trrm.TestTimeouts();
+}
+
+
 }}  // namespace triton::perfanalyzer
