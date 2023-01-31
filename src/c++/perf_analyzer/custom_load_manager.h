@@ -95,7 +95,7 @@ class CustomLoadManager : public RequestRateManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error GetCustomRequestRate(double* request_rate);
 
- private:
+ protected:
   CustomLoadManager(
       const bool async, const bool streaming,
       const std::string& request_intervals_file, const int32_t batch_size,
@@ -106,6 +106,7 @@ class CustomLoadManager : public RequestRateManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
+ private:
   /// Reads the time intervals file and stores intervals in vector
   /// \param path Filesystem path of the time intervals file.
   /// \param contents Output intervals vector.
