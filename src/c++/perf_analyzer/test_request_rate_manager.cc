@@ -70,6 +70,11 @@ class RequestRateWorkerMockedInferInput : public RequestRateWorker {
   {
   }
 
+  std::chrono::nanoseconds GetNextTimestamp() override
+  {
+    return RequestRateWorker::GetNextTimestamp();
+  }
+
   std::shared_ptr<InferContext> CreateInferContext() override
   {
     return std::make_shared<InferContextMockedInferInput>(
@@ -167,6 +172,28 @@ class TestRequestRateManager : public TestLoadManagerBase,
           wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
           gen_duration_, distribution_);
     }
+  }
+
+  void TestSchedule(double rate, PerfAnalyzerParameters params)
+  {
+    PauseWorkers();
+    GenerateSchedule(rate);
+
+    std::chrono::nanoseconds max_test_duration{params.measurement_window_ms *
+                                               1000000 * params.max_trials};
+    std::chrono::nanoseconds expected_interval{int(1000000000 / rate)};
+    std::chrono::nanoseconds expected_current_timestamp{0};
+
+    while (expected_current_timestamp.count() < max_test_duration.count()) {
+      for (auto worker : workers_) {
+        auto timestamp =
+            std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(worker)
+                ->GetNextTimestamp();
+        REQUIRE(timestamp.count() == expected_current_timestamp.count());
+        expected_current_timestamp += expected_interval;
+      }
+    }
+    early_exit = true;
   }
 
   /// Test the public function ResetWorkers()
@@ -437,6 +464,91 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return time_between_requests;
   }
 };
+
+TEST_CASE("request_rate_schedule")
+{
+  PerfAnalyzerParameters params;
+  params.measurement_window_ms = 1000;
+  params.max_trials = 10;
+  bool is_sequence = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = false;
+  double rate;
+
+
+  const auto& ParameterizeRate{[&]() {
+    // FIXME
+    // SUBCASE("rate 1") { rate = 1; }
+    // SUBCASE("rate 3") { rate = 3; }
+    SUBCASE("rate 10") { rate = 10; }
+    SUBCASE("rate 100") { rate = 100; }
+  }};
+
+  const auto& ParameterizeThreads{[&]() {
+    SUBCASE("threads 1")
+    {
+      ParameterizeRate();
+      params.max_threads = 1;
+    }
+    SUBCASE("threads 2")
+    {
+      ParameterizeRate();
+      params.max_threads = 2;
+    }
+    SUBCASE("threads 4")
+    {
+      ParameterizeRate();
+      params.max_threads = 4;
+    }
+    SUBCASE("threads 7")
+    {
+      ParameterizeRate();
+      params.max_threads = 7;
+    }
+  }};
+
+  const auto& ParameterizeTrials{[&]() {
+    SUBCASE("trials 3")
+    {
+      ParameterizeThreads();
+      params.max_trials = 3;
+    }
+    SUBCASE("trials 10")
+    {
+      ParameterizeThreads();
+      params.max_trials = 10;
+    }
+    SUBCASE("trials 20")
+    {
+      ParameterizeThreads();
+      params.max_trials = 20;
+    }
+  }};
+
+  const auto& ParameterizeMeasurementWindow{[&]() {
+    SUBCASE("window 1000")
+    {
+      ParameterizeTrials();
+      params.measurement_window_ms = 1000;
+    }
+    SUBCASE("window 10000")
+    {
+      ParameterizeTrials();
+      params.measurement_window_ms = 10000;
+    }
+    SUBCASE("window 500")
+    {
+      ParameterizeTrials();
+      params.measurement_window_ms = 500;
+    }
+  }};
+
+  ParameterizeMeasurementWindow();
+
+  TestRequestRateManager trrm(
+      params, is_sequence, is_decoupled, use_mock_infer);
+  trrm.TestSchedule(rate, params);
+}
 
 TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
 {

@@ -86,6 +86,9 @@ class RequestRateWorker : public LoadWorker {
 
   void Infer() override;
 
+ protected:
+  virtual std::chrono::nanoseconds GetNextTimestamp();
+
  private:
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
