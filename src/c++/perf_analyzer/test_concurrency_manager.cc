@@ -32,9 +32,9 @@
 #include "mock_data_loader.h"
 #include "mock_model_parser.h"
 #include "test_load_manager_base.h"
+#include "test_utils.h"
 
 namespace triton { namespace perfanalyzer {
-
 
 class ConcurrencyWorkerMockedInferInput : public ConcurrencyWorker {
  public:
@@ -247,6 +247,17 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     StopWorkerThreads();
 
     CheckSequences(concurrency2);
+  }
+
+  /// Test that tries to find deadlocks and livelocks
+  ///
+  void TestTimeouts()
+  {
+    TestWatchDog watchdog(1000);
+    ChangeConcurrencyLevel(params_.max_concurrency);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    StopWorkerThreads();
+    watchdog.stop();
   }
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
@@ -665,6 +676,102 @@ TEST_CASE("Concurrency - Shared memory methods")
 
     tcm.CheckSharedMemory(expected_stats);
   }
+}
+
+TEST_CASE("concurrency_deadlock")
+{
+  PerfAnalyzerParameters params{};
+  params.max_concurrency = 6;
+  bool is_sequence_model{true};
+  bool some_infer_failures{false};
+
+  const auto& ParameterizeSyncStreaming{[&]() {
+    SUBCASE("sync")
+    {
+      params.async = false;
+      params.streaming = false;
+    }
+    SUBCASE("aync no streaming")
+    {
+      params.async = true;
+      params.streaming = false;
+    }
+    SUBCASE("async streaming")
+    {
+      params.async = true;
+      params.streaming = true;
+    }
+  }};
+
+  const auto& ParameterizeConcurrency{[&]() {
+    SUBCASE("10 concurrency, 10 thread")
+    {
+      ParameterizeSyncStreaming();
+      params.max_concurrency = 10;
+      params.max_threads = 10;
+    }
+    SUBCASE("10 concurrency, 4 thread")
+    {
+      ParameterizeSyncStreaming();
+      params.max_concurrency = 10;
+      params.max_threads = 4;
+    }
+  }};
+
+  const auto& ParameterizeSequence{[&]() {
+    SUBCASE("non-sequence")
+    {
+      ParameterizeConcurrency();
+      is_sequence_model = false;
+    }
+    SUBCASE("sequence")
+    {
+      ParameterizeConcurrency();
+      is_sequence_model = true;
+    }
+  }};
+
+  const auto& ParameterizeFailures{[&]() {
+    SUBCASE("yes_failures")
+    {
+      some_infer_failures = true;
+      ParameterizeSequence();
+    }
+    SUBCASE("no_failures")
+    {
+      some_infer_failures = false;
+      ParameterizeSequence();
+    }
+  }};
+
+  std::vector<uint64_t> delays;
+
+  const auto& ParameterizeDelays{[&]() {
+    SUBCASE("no_delay")
+    {
+      delays = {0};
+      ParameterizeFailures();
+    }
+    SUBCASE("random_delay")
+    {
+      delays = {1, 5, 20, 4, 3};
+      ParameterizeFailures();
+    }
+  }};
+
+
+  ParameterizeDelays();
+
+  TestConcurrencyManager tcm(params, is_sequence_model);
+
+  tcm.stats_->SetDelays(delays);
+
+  // Sometimes have a request fail
+  if (some_infer_failures) {
+    tcm.stats_->SetReturnStatuses({true, true, true, false});
+  }
+
+  tcm.TestTimeouts();
 }
 
 }}  // namespace triton::perfanalyzer

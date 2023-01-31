@@ -38,9 +38,6 @@ void
 RequestRateWorker::Infer()
 {
   CreateContext();
-  if (!thread_stat_->status_.IsOk()) {
-    return;
-  }
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
