@@ -52,6 +52,7 @@ class CustomLoadManager : public RequestRateManager {
   /// request.
   /// \param streaming Whether to use gRPC streaming API for infer request
   /// \param measurement_window_ms The time window for measurements.
+  /// \param max_trials The maximum number of windows that will be measured
   /// \param request_intervals_file The path to the file to use to pick up the
   /// time intervals between the successive requests.
   /// \param batch_size The batch size used for each request.

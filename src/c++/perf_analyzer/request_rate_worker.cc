@@ -118,7 +118,6 @@ RequestRateWorker::SleepIfNecessary()
   } else {
     std::this_thread::sleep_for(wait_time);
   }
-
   return delayed;
 }
 

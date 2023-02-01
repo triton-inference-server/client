@@ -37,10 +37,9 @@
 
 namespace triton { namespace perfanalyzer {
 
-// FIXME duplicate
-class RequestRateWorkerMockedInferInput : public RequestRateWorker {
+class TestRequestRateWorker : public RequestRateWorker {
  public:
-  RequestRateWorkerMockedInferInput(
+  TestRequestRateWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
@@ -72,16 +71,6 @@ class RequestRateWorkerMockedInferInput : public RequestRateWorker {
   std::chrono::nanoseconds GetNextTimestamp() override
   {
     return RequestRateWorker::GetNextTimestamp();
-  }
-
-  std::shared_ptr<InferContext> CreateInferContext() override
-  {
-    return std::make_shared<InferContextMockedInferInput>(
-        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
-        start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
-        distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
-        factory_);
   }
 };
 
@@ -115,7 +104,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
     uint32_t id = workers_.size();
-    return std::make_shared<RequestRateWorkerMockedInferInput>(
+    return std::make_shared<TestRequestRateWorker>(
         id, thread_stat, thread_config, LoadManager::parser_, data_loader_,
         backend_->Kind(), RequestRateManager::factory_, sequence_length_,
         start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
@@ -141,7 +130,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     while (expected_current_timestamp.count() < max_test_duration.count()) {
       for (auto worker : workers_) {
         auto timestamp =
-            std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(worker)
+            std::dynamic_pointer_cast<TestRequestRateWorker>(worker)
                 ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
         expected_current_timestamp += custom_intervals_[intervals_index];

@@ -601,7 +601,6 @@ TEST_CASE("request_rate_infer_type")
 TEST_CASE("request_rate_distribution")
 {
   PerfAnalyzerParameters params;
-  params.max_trials = 1;
   uint request_rate = 500;
   uint duration_ms = 1000;
 
