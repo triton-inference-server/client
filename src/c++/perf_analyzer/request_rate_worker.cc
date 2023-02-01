@@ -110,7 +110,7 @@ RequestRateWorker::SleepIfNecessary()
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::nanoseconds next_timestamp = GetNextTimestamp();
   std::chrono::nanoseconds current_timestamp = now - start_time_;
-  std::chrono::nanoseconds wait_time = current_timestamp - next_timestamp;
+  std::chrono::nanoseconds wait_time = next_timestamp - current_timestamp;
 
   bool delayed = false;
   if (wait_time.count() < 0) {
@@ -118,6 +118,7 @@ RequestRateWorker::SleepIfNecessary()
   } else {
     std::this_thread::sleep_for(wait_time);
   }
+
   return delayed;
 }
 

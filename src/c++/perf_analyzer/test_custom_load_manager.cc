@@ -98,7 +98,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
       : TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         CustomLoadManager(
             params.async, params.streaming, "INTERVALS_FILE", params.batch_size,
-            params.measurement_window_ms, params.max_threads,
+            params.measurement_window_ms, params.max_trials, params.max_threads,
             params.num_of_sequences, params.sequence_length,
             params.shared_memory_type, params.output_shm_size,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
@@ -128,8 +128,8 @@ class TestCustomLoadManager : public TestLoadManagerBase,
   void TestSchedule(
       std::vector<uint64_t> intervals, PerfAnalyzerParameters params)
   {
-    for (auto x : intervals) {
-      custom_intervals_.push_back(std::chrono::nanoseconds{x});
+    for (auto i : intervals) {
+      custom_intervals_.push_back(std::chrono::nanoseconds{i});
     }
     std::chrono::nanoseconds max_test_duration{params.measurement_window_ms *
                                                1000000 * params.max_trials};
@@ -177,9 +177,6 @@ TEST_CASE("custom_load_schedule")
   bool is_decoupled = false;
   bool use_mock_infer = false;
   std::vector<uint64_t> intervals;
-
-  TestCustomLoadManager tclm(params, is_sequence, is_decoupled);
-
 
   const auto& ParameterizeIntervals{[&]() {
     SUBCASE("intervals A") { intervals = {100000000, 110000000, 130000000}; }
@@ -250,7 +247,7 @@ TEST_CASE("custom_load_schedule")
   }};
 
   ParameterizeMeasurementWindow();
-
+  TestCustomLoadManager tclm(params, is_sequence, is_decoupled);
   tclm.TestSchedule(intervals, params);
 }
 
@@ -284,46 +281,6 @@ TEST_CASE("testing the InitCustomIntervals function")
     CHECK(tclm.schedule_[2] == std::chrono::nanoseconds(210000000));
     CHECK(tclm.schedule_[3] == std::chrono::nanoseconds(340000000));
     CHECK(tclm.schedule_[4] == std::chrono::nanoseconds(440000000));
-  }
-
-  SUBCASE("FIXME")
-  {
-    tclm.request_intervals_file_ = "nonexistent_file.txt";
-    tclm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(200000000);
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(100000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(110000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(130000000));
-
-    cb::Error result{tclm.InitCustomIntervals()};
-
-    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
-
-    auto x = tclm.MakeWorker(thread_stat, thread_config);
-
-    std::shared_ptr<RequestRateWorkerMockedInferInput> rrw =
-        std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(x);
-    auto t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-    t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-    t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-    t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-    t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-    t = rrw->GetNextTimestamp();
-    std::cout << "TKG :: " << t.count() << std::endl;
-
-    // CHECK(result.Err() == SUCCESS);
-    // CHECK(tclm.schedule_.size() == 5);
-    // CHECK(tclm.schedule_[0] == std::chrono::nanoseconds(0));
-    // CHECK(tclm.schedule_[1] == std::chrono::nanoseconds(100000000));
-    // CHECK(tclm.schedule_[2] == std::chrono::nanoseconds(210000000));
-    // CHECK(tclm.schedule_[3] == std::chrono::nanoseconds(340000000));
-    // CHECK(tclm.schedule_[4] == std::chrono::nanoseconds(440000000));
   }
 }
 

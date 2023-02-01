@@ -112,8 +112,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
         TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         RequestRateManager(
             params.async, params.streaming, params.request_distribution,
-            params.batch_size, params.measurement_window_ms, params.max_threads,
-            params.num_of_sequences, params.sequence_length,
+            params.batch_size, params.measurement_window_ms, params.max_trials,
+            params.max_threads, params.num_of_sequences, params.sequence_length,
             params.shared_memory_type, params.output_shm_size,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
             GetFactory())
@@ -136,8 +136,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
         TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         RequestRateManager(
             params.async, params.streaming, params.request_distribution,
-            params.batch_size, params.measurement_window_ms, params.max_threads,
-            params.num_of_sequences, params.sequence_length,
+            params.batch_size, params.measurement_window_ms, params.max_trials,
+            params.max_threads, params.num_of_sequences, params.sequence_length,
             params.shared_memory_type, params.output_shm_size,
             params.start_sequence_id, params.sequence_id_range, parser,
             GetFactory())
@@ -477,10 +477,8 @@ TEST_CASE("request_rate_schedule")
 
 
   const auto& ParameterizeRate{[&]() {
-    // FIXME
-    // SUBCASE("rate 1") { rate = 1; }
-    // SUBCASE("rate 3") { rate = 3; }
     SUBCASE("rate 10") { rate = 10; }
+    SUBCASE("rate 30") { rate = 30; }
     SUBCASE("rate 100") { rate = 100; }
   }};
 
@@ -603,6 +601,7 @@ TEST_CASE("request_rate_infer_type")
 TEST_CASE("request_rate_distribution")
 {
   PerfAnalyzerParameters params;
+  params.max_trials = 1;
   uint request_rate = 500;
   uint duration_ms = 1000;
 
