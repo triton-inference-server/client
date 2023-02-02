@@ -510,7 +510,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / (1000 * 1000);
+        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -567,7 +567,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / (1000 * 1000);
+        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -611,7 +611,7 @@ InferenceProfiler::Profile(
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / (1000 * 1000);
+        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -829,7 +829,8 @@ InferenceProfiler::IsDoneProfiling(LoadStatus& load_status, bool* is_stable)
 bool
 InferenceProfiler::CheckWithinThreshold(size_t idx, LoadStatus& load_status)
 {
-  return load_status.latencies[idx] < (latency_threshold_ms_ * 1000 * 1000);
+  return load_status.latencies[idx] <
+         (latency_threshold_ms_ * NANOS_PER_MILLIS);
 }
 
 cb::Error

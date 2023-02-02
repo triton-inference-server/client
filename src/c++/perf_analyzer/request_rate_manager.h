@@ -136,7 +136,6 @@ class RequestRateManager : public LoadManager {
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
   Distribution request_distribution_;
-  std::vector<std::chrono::nanoseconds> schedule_;
   std::chrono::steady_clock::time_point start_time_;
   bool execute_;
 

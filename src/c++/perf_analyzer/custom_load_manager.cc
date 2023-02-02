@@ -76,19 +76,31 @@ CustomLoadManager::CustomLoadManager(
 cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
-  schedule_.clear();
-  schedule_.emplace_back(0);
   if (!request_intervals_file_.empty()) {
     RETURN_IF_ERROR(
         ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
-    size_t index = 0;
-    while (schedule_.back() < *gen_duration_) {
-      std::chrono::nanoseconds next_timestamp(
-          schedule_.back() + custom_intervals_[index++]);
-      schedule_.emplace_back(next_timestamp);
-      if (index == custom_intervals_.size()) {
-        index = 0;
-      }
+
+    std::chrono::nanoseconds next_timestamp(0);
+
+    std::vector<RateSchedule> worker_schedules(workers_.size());
+    size_t worker_index = 0;
+    size_t intervals_index = 0;
+
+    while (next_timestamp < *gen_duration_ || worker_index != 0) {
+      worker_schedules[worker_index].emplace_back(next_timestamp);
+
+      next_timestamp = next_timestamp + custom_intervals_[intervals_index];
+
+      worker_index = (worker_index + 1) % workers_.size();
+      intervals_index = (intervals_index + 1) % custom_intervals_.size();
+    }
+
+    std::chrono::nanoseconds duration =
+        worker_schedules[worker_schedules.size() - 1].back();
+
+    for (size_t i = 0; i < workers_.size(); i++) {
+      auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);
+      w->SetSchedule(worker_schedules[i], duration);
     }
   }
   return cb::Error::Success;
@@ -106,13 +118,13 @@ CustomLoadManager::GetCustomRequestRate(double* request_rate)
   }
 
   *request_rate =
-      (custom_intervals_.size() * 1000 * 1000 * 1000) / (total_time_ns);
+      (custom_intervals_.size() * NANOS_PER_SECOND) / (total_time_ns);
   return cb::Error::Success;
 }
 
 cb::Error
 CustomLoadManager::ReadTimeIntervalsFile(
-    const std::string& path, std::vector<std::chrono::nanoseconds>* contents)
+    const std::string& path, RateSchedule* contents)
 {
   std::ifstream in(path);
   if (!in) {

@@ -79,9 +79,8 @@ RequestRateManager::RequestRateManager(
       sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
-  // FIXME TODO TMA-1018 - remove the +1
   gen_duration_.reset(new std::chrono::nanoseconds(
-      (max_trials + 1) * measurement_window_ms * 1000 * 1000));
+      max_trials * measurement_window_ms * NANOS_PER_MILLIS));
 
   threads_config_.reserve(max_threads);
 }
@@ -109,22 +108,42 @@ RequestRateManager::ResetWorkers()
 void
 RequestRateManager::GenerateSchedule(const double request_rate)
 {
+  std::chrono::nanoseconds schedule_duration = *gen_duration_;
+
   std::function<std::chrono::nanoseconds(std::mt19937&)> distribution;
   if (request_distribution_ == Distribution::POISSON) {
     distribution = ScheduleDistribution<Distribution::POISSON>(request_rate);
   } else if (request_distribution_ == Distribution::CONSTANT) {
     distribution = ScheduleDistribution<Distribution::CONSTANT>(request_rate);
+    schedule_duration = std::chrono::nanoseconds(1);
   } else {
     return;
   }
-  schedule_.clear();
 
   std::chrono::nanoseconds next_timestamp(0);
 
   std::mt19937 schedule_rng;
-  while (next_timestamp < *gen_duration_) {
-    schedule_.emplace_back(next_timestamp);
-    next_timestamp = schedule_.back() + distribution(schedule_rng);
+
+  std::vector<RateSchedule> worker_schedules(workers_.size());
+  size_t worker_index = 0;
+
+  while (next_timestamp < schedule_duration || worker_index != 0) {
+    worker_schedules[worker_index].emplace_back(next_timestamp);
+    worker_index = (worker_index + 1) % workers_.size();
+    next_timestamp = next_timestamp + distribution(schedule_rng);
+  }
+
+  // FIXME
+  // The duration is the last value we added to the schedules plus one more
+  // value. That way when we wrap back around to 0 we have an additional value
+  //
+  std::chrono::nanoseconds duration =
+      worker_schedules[worker_schedules.size() - 1].back() +
+      distribution(schedule_rng);
+
+  for (size_t i = 0; i < workers_.size(); i++) {
+    auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);
+    w->SetSchedule(worker_schedules[i], duration);
   }
 }
 
@@ -159,12 +178,6 @@ RequestRateManager::PauseWorkers()
 void
 RequestRateManager::ResumeWorkers()
 {
-  // Reset all the thread counters
-  for (auto& thread_config : threads_config_) {
-    thread_config->index_ = thread_config->id_;
-    thread_config->rounds_ = 0;
-  }
-
   UnpauseAllSequences();
 
   // Update the start_time_ to point to current time
@@ -186,8 +199,8 @@ RequestRateManager::MakeWorker(
       factory_, sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
       shared_memory_type_, batch_size_, sequence_stat_, shared_memory_regions_,
-      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
-      gen_duration_, distribution_);
+      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_,
+      distribution_);
 }
 
 

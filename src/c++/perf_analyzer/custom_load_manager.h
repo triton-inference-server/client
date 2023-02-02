@@ -113,10 +113,10 @@ class CustomLoadManager : public RequestRateManager {
   /// \param contents Output intervals vector.
   /// \return cb::Error object indicating success or failure.
   virtual cb::Error ReadTimeIntervalsFile(
-      const std::string& path, std::vector<std::chrono::nanoseconds>* contents);
+      const std::string& path, RateSchedule* contents);
 
   std::string request_intervals_file_;
-  std::vector<std::chrono::nanoseconds> custom_intervals_;
+  RateSchedule custom_intervals_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestCustomLoadManager;
