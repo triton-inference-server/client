@@ -43,6 +43,17 @@ class MockMemoryManager : public MemoryManager {
   {
   }
 
+  // Mocked version of the CopySharedMemory method in loadmanager.
+  // This is strictly for testing to mock out the memcpy calls
+  //
+  cb::Error CopySharedMemory(
+      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+      std::vector<size_t>& byte_size, bool is_shape_tensor,
+      std::string& region_name) override
+  {
+    return cb::Error::Success;
+  }
+
   virtual cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
       const std::string& name, const std::vector<int64_t>& dims,

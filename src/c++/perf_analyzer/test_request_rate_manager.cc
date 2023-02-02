@@ -139,17 +139,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
   }
 
-  // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
-  //
-  cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name) override
-  {
-    return cb::Error::Success;
-  }
-
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override

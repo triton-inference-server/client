@@ -484,18 +484,6 @@ TEST_CASE("Concurrency - shared memory infer input calls")
 
   ParameterizeMemory();
 
-  TestConcurrencyManager tcm(params, is_sequence_model);
-
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          tcm.parser_, tcm.factory_, tcm.data_loader_)};
-
-  tcm.memory_manager_ = mock_memory_manager;
-  tcm.InitManager(
-      params.string_length, params.string_data, params.zero_input,
-      params.user_data);
-  // std::cout << "Type: " << typeid(tcm.memory_manager_).name() << std::endl;
 
   const std::string json_str{R"(
   {
@@ -511,6 +499,21 @@ TEST_CASE("Concurrency - shared memory infer input calls")
       )"};
 
   MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
+
+
+  TestConcurrencyManager tcm(params, is_sequence_model);
+
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
+
+  tcm.memory_manager_ = mock_memory_manager;
+  tcm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
+  // std::cout << "Type: " << typeid(tcm.memory_manager_).name() << std::endl;
+
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
