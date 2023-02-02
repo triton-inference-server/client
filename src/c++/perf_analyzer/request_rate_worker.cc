@@ -43,10 +43,6 @@ RequestRateWorker::Infer()
   do {
     HandleExecuteOff();
 
-    if (HandleExitConditions()) {
-      return;
-    }
-
     bool is_delayed = SleepIfNecessary();
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id, is_delayed);

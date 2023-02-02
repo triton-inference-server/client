@@ -35,44 +35,9 @@
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
 
+using std::chrono::nanoseconds;
+
 namespace triton { namespace perfanalyzer {
-
-class TestRequestRateWorker : public RequestRateWorker {
- public:
-  TestRequestRateWorker(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, const bool on_sequence_model,
-      const bool async, const size_t max_threads, const bool using_json_data,
-      const bool streaming, const SharedMemoryType shared_memory_type,
-      const int32_t batch_size,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      bool& execute, std::atomic<uint64_t>& curr_seq_id,
-      std::chrono::steady_clock::time_point& start_time,
-      std::vector<std::chrono::nanoseconds>& schedule,
-      std::shared_ptr<std::chrono::nanoseconds> gen_duration,
-      std::uniform_int_distribution<uint64_t>& distribution)
-      : RequestRateWorker(
-            id, thread_stat, thread_config, parser, data_loader, backend_kind,
-            factory, sequence_length, start_sequence_id, sequence_id_range,
-            on_sequence_model, async, max_threads, using_json_data, streaming,
-            shared_memory_type, batch_size, sequence_stat,
-            shared_memory_regions, wake_signal, wake_mutex, execute,
-            curr_seq_id, start_time, schedule, gen_duration, distribution)
-  {
-  }
-
-  std::chrono::nanoseconds GetNextTimestamp() override
-  {
-    return RequestRateWorker::GetNextTimestamp();
-  }
-};
 
 /// Class to test the CustomLoadManager
 ///
@@ -98,40 +63,29 @@ class TestCustomLoadManager : public TestLoadManagerBase,
         params.user_data);
   }
 
-
-  std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
-  {
-    uint32_t id = workers_.size();
-    return std::make_shared<TestRequestRateWorker>(
-        id, thread_stat, thread_config, LoadManager::parser_, data_loader_,
-        backend_->Kind(), RequestRateManager::factory_, sequence_length_,
-        start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
-        max_threads_, using_json_data_, streaming_, shared_memory_type_,
-        batch_size_, sequence_stat_, shared_memory_regions_, wake_signal_,
-        wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
-        gen_duration_, distribution_);
-  }
-
   void TestSchedule(
       std::vector<uint64_t> intervals, PerfAnalyzerParameters params)
   {
     for (auto i : intervals) {
-      custom_intervals_.push_back(std::chrono::nanoseconds{i});
+      custom_intervals_.push_back(nanoseconds{i});
     }
-    std::chrono::nanoseconds max_test_duration{params.measurement_window_ms *
-                                               1000000 * params.max_trials};
-    std::chrono::nanoseconds expected_current_timestamp{0};
+    nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *
+                                               NANOS_PER_MILLIS};
+    nanoseconds max_test_duration{measurement_window_nanoseconds *
+                                  params.max_trials};
+    nanoseconds expected_current_timestamp{0};
     size_t intervals_index = 0;
 
     PauseWorkers();
     InitCustomIntervals();
-    while (expected_current_timestamp.count() < max_test_duration.count()) {
+
+    // Keep calling GetNextTimestamp for the entire test_duration to make sure
+    // the schedule is exactly as expected
+    //
+    while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
-        auto timestamp =
-            std::dynamic_pointer_cast<TestRequestRateWorker>(worker)
-                ->GetNextTimestamp();
+        auto timestamp = std::dynamic_pointer_cast<RequestRateWorker>(worker)
+                             ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
         expected_current_timestamp += custom_intervals_[intervals_index];
         intervals_index = (intervals_index + 1) % custom_intervals_.size();
@@ -140,18 +94,16 @@ class TestCustomLoadManager : public TestLoadManagerBase,
   }
 
 
-  std::shared_ptr<std::chrono::nanoseconds>& gen_duration_{
+  std::shared_ptr<nanoseconds>& gen_duration_{
       RequestRateManager::gen_duration_};
-  std::vector<std::chrono::nanoseconds>& schedule_{
-      RequestRateManager::schedule_};
+  std::vector<nanoseconds>& schedule_{RequestRateManager::schedule_};
   std::string& request_intervals_file_{
       CustomLoadManager::request_intervals_file_};
-  std::vector<std::chrono::nanoseconds>& custom_intervals_{
+  std::vector<nanoseconds>& custom_intervals_{
       CustomLoadManager::custom_intervals_};
 
   cb::Error ReadTimeIntervalsFile(
-      const std::string& path,
-      std::vector<std::chrono::nanoseconds>* contents) override
+      const std::string& path, std::vector<nanoseconds>* contents) override
   {
     return cb::Error::Success;
   }
@@ -250,26 +202,26 @@ TEST_CASE("testing the InitCustomIntervals function")
 
     CHECK(result.Err() == SUCCESS);
     CHECK(tclm.schedule_.size() == 1);
-    CHECK(tclm.schedule_[0] == std::chrono::nanoseconds(0));
+    CHECK(tclm.schedule_[0] == nanoseconds(0));
   }
 
   SUBCASE("file provided")
   {
     tclm.request_intervals_file_ = "nonexistent_file.txt";
-    tclm.gen_duration_ = std::make_unique<std::chrono::nanoseconds>(350000000);
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(100000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(110000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(130000000));
+    tclm.gen_duration_ = std::make_unique<nanoseconds>(350000000);
+    tclm.custom_intervals_.push_back(nanoseconds(100000000));
+    tclm.custom_intervals_.push_back(nanoseconds(110000000));
+    tclm.custom_intervals_.push_back(nanoseconds(130000000));
 
     cb::Error result{tclm.InitCustomIntervals()};
 
     CHECK(result.Err() == SUCCESS);
     CHECK(tclm.schedule_.size() == 5);
-    CHECK(tclm.schedule_[0] == std::chrono::nanoseconds(0));
-    CHECK(tclm.schedule_[1] == std::chrono::nanoseconds(100000000));
-    CHECK(tclm.schedule_[2] == std::chrono::nanoseconds(210000000));
-    CHECK(tclm.schedule_[3] == std::chrono::nanoseconds(340000000));
-    CHECK(tclm.schedule_[4] == std::chrono::nanoseconds(440000000));
+    CHECK(tclm.schedule_[0] == nanoseconds(0));
+    CHECK(tclm.schedule_[1] == nanoseconds(100000000));
+    CHECK(tclm.schedule_[2] == nanoseconds(210000000));
+    CHECK(tclm.schedule_[3] == nanoseconds(340000000));
+    CHECK(tclm.schedule_[4] == nanoseconds(440000000));
   }
 }
 
@@ -288,9 +240,9 @@ TEST_CASE("testing the GetCustomRequestRate function")
 
   SUBCASE("custom_intervals_ populated")
   {
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(100000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(110000000));
-    tclm.custom_intervals_.push_back(std::chrono::nanoseconds(130000000));
+    tclm.custom_intervals_.push_back(nanoseconds(100000000));
+    tclm.custom_intervals_.push_back(nanoseconds(110000000));
+    tclm.custom_intervals_.push_back(nanoseconds(130000000));
 
     cb::Error result{tclm.GetCustomRequestRate(&request_rate)};
 

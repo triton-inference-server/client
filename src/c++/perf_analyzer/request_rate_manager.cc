@@ -79,6 +79,7 @@ RequestRateManager::RequestRateManager(
       sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
+  // FIXME TODO TMA-1018 - remove the +1
   gen_duration_.reset(new std::chrono::nanoseconds(
       (max_trials + 1) * measurement_window_ms * 1000 * 1000));
 

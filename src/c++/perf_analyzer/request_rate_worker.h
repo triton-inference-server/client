@@ -30,6 +30,12 @@
 
 namespace triton { namespace perfanalyzer {
 
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class TestRequestRateManager;
+class TestCustomLoadManager;
+#endif
+
 /// Worker thread for RequestRateManager
 ///
 /// If the model is non-sequence model, each worker uses only one context
@@ -86,9 +92,6 @@ class RequestRateWorker : public LoadWorker {
 
   void Infer() override;
 
- protected:
-  virtual std::chrono::nanoseconds GetNextTimestamp();
-
  private:
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
@@ -99,6 +102,8 @@ class RequestRateWorker : public LoadWorker {
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
+
+  std::chrono::nanoseconds GetNextTimestamp();
 
   // Request Rate Worker only ever has a single context
   uint32_t GetCtxId() { return 0; }
@@ -120,6 +125,12 @@ class RequestRateWorker : public LoadWorker {
   {
     ctx->SetNumActiveThreads(max_threads_);
   }
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend TestCustomLoadManager;
+  friend TestRequestRateManager;
+
+#endif
 };
 
 
