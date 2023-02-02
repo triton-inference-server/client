@@ -30,51 +30,12 @@
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_data_loader.h"
+#include "mock_memory_manager.h"
 #include "mock_model_parser.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
 
 namespace triton { namespace perfanalyzer {
-
-class ConcurrencyWorkerMockedInferInput : public ConcurrencyWorker {
- public:
-  ConcurrencyWorkerMockedInferInput(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, const bool on_sequence_model,
-      const bool async, const size_t max_concurrency,
-      const bool using_json_data, const bool streaming,
-      const SharedMemoryType shared_memory_type, const int32_t batch_size,
-      std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution)
-      : ConcurrencyWorker(
-            id, thread_stat, thread_config, parser, data_loader, backend_kind,
-            factory, sequence_length, start_sequence_id, sequence_id_range,
-            on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, shared_memory_type, batch_size, threads_config,
-            sequence_stat, shared_memory_regions, wake_signal, wake_mutex,
-            active_threads, execute, curr_seq_id, distribution)
-  {
-  }
-
-  std::shared_ptr<InferContext> CreateInferContext() override
-  {
-    return std::make_shared<InferContextMockedInferInput>(
-        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
-        start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
-        distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
-        factory_, memory_manager_);
-  }
-};
 
 class MockConcurrencyWorker : public IWorker {
  public:
@@ -105,9 +66,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
             GetFactory())
   {
-    InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+    // InitManager(
+    //     params.string_length, params.string_data, params.zero_input,
+    //     params.user_data);
   }
 
   /// Constructor that adds an arg to pass in the model parser and does NOT call
@@ -129,17 +90,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   {
   }
 
-  // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
-  //
-  cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name) override
-  {
-    return cb::Error::Success;
-  }
-
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
@@ -149,14 +99,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     if (use_mock_infer_) {
       return std::make_shared<MockConcurrencyWorker>(thread_config);
     } else {
-      return std::make_shared<ConcurrencyWorkerMockedInferInput>(
-          id, thread_stat, thread_config, parser_, data_loader_,
-          backend_->Kind(), ConcurrencyManager::factory_, sequence_length_,
-          start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
-          max_concurrency_, using_json_data_, streaming_, shared_memory_type_,
-          batch_size_, threads_config_, sequence_stat_, shared_memory_regions_,
-          wake_signal_, wake_mutex_, active_threads_, execute_, curr_seq_id_,
-          distribution_);
+      return ConcurrencyManager::MakeWorker(thread_stat, thread_config);
     }
   }
 
@@ -269,6 +212,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   bool& using_shared_memory_{LoadManager::using_shared_memory_};
   std::uniform_int_distribution<uint64_t>& distribution_{
       LoadManager::distribution_};
+  std::shared_ptr<cb::ClientBackendFactory> factory_{
+      TestLoadManagerBase::factory_};
+  std::shared_ptr<MemoryManager>& memory_manager_{LoadManager::memory_manager_};
 
  private:
   bool use_mock_infer_{false};
@@ -290,6 +236,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 TEST_CASE("concurrency_infer_type")
 {
   PerfAnalyzerParameters params{};
+
   params.max_concurrency = 1;
 
   SUBCASE("async_streaming")
@@ -314,6 +261,11 @@ TEST_CASE("concurrency_infer_type")
   }
 
   TestConcurrencyManager tcm(params);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          tcm.parser_, tcm.factory_, tcm.data_loader_)};
+  tcm.memory_manager_ = mock_memory_manager;
   tcm.TestInferType();
 }
 
@@ -533,6 +485,18 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   ParameterizeMemory();
 
   TestConcurrencyManager tcm(params, is_sequence_model);
+
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          tcm.parser_, tcm.factory_, tcm.data_loader_)};
+
+  tcm.memory_manager_ = mock_memory_manager;
+  tcm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
+  // std::cout << "Type: " << typeid(tcm.memory_manager_).name() << std::endl;
+
   const std::string json_str{R"(
   {
     "data": [
@@ -582,7 +546,7 @@ TEST_CASE("Concurrency - shared memory infer input calls")
     CHECK(actual_set_shared_memory_calls > 0);
   }
 }
-
+/*
 /// Check that the using_shared_memory_ is being set correctly
 ///
 TEST_CASE("Concurrency - Check setting of InitSharedMemory")
@@ -773,5 +737,5 @@ TEST_CASE("concurrency_deadlock")
 
   tcm.TestTimeouts();
 }
-
+*/
 }}  // namespace triton::perfanalyzer

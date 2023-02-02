@@ -30,7 +30,7 @@
 
 namespace triton { namespace perfanalyzer {
 
-class MockMemoryManager : MemoryManager {
+class MockMemoryManager : public MemoryManager {
  public:
   MockMemoryManager(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
