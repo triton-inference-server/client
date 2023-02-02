@@ -223,30 +223,6 @@ class InferContext {
   /// \return random sequence length
   size_t GetRandomSequenceLength(double offset_ratio);
 
-
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
-
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
