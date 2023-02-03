@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_data_loader.h"
+#include "mock_memory_manager.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
@@ -39,47 +40,8 @@ namespace cb = triton::perfanalyzer::clientbackend;
 using milliseconds = std::chrono::milliseconds;
 using nanoseconds = std::chrono::nanoseconds;
 
-namespace triton { namespace perfanalyzer {
-
-class RequestRateWorkerMockedInferInput : public RequestRateWorker {
- public:
-  RequestRateWorkerMockedInferInput(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader, cb::BackendKind backend_kind,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, const bool on_sequence_model,
-      const bool async, const size_t max_threads, const bool using_json_data,
-      const bool streaming, const SharedMemoryType shared_memory_type,
-      const int32_t batch_size,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      bool& execute, std::atomic<uint64_t>& curr_seq_id,
-      std::chrono::steady_clock::time_point& start_time,
-      std::uniform_int_distribution<uint64_t>& distribution)
-      : RequestRateWorker(
-            id, thread_stat, thread_config, parser, data_loader, backend_kind,
-            factory, sequence_length, start_sequence_id, sequence_id_range,
-            on_sequence_model, async, max_threads, using_json_data, streaming,
-            shared_memory_type, batch_size, sequence_stat,
-            shared_memory_regions, wake_signal, wake_mutex, execute,
-            curr_seq_id, start_time, distribution)
-  {
-  }
-
-  std::shared_ptr<InferContext> CreateInferContext() override
-  {
-    return std::make_shared<InferContextMockedInferInput>(
-        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, backend_kind_, shared_memory_type_, shared_memory_regions_,
-        start_sequence_id_, sequence_id_range_, sequence_length_, curr_seq_id_,
-        distribution_, thread_stat_, sequence_stat_, data_loader_, parser_,
-        factory_, memory_manager_);
-  }
-};
+namespace triton {
+namespace perfanalyzer {
 
 class MockRequestRateWorker : public IWorker {
  public:
@@ -113,31 +75,32 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
             GetFactory())
   {
-    InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+    // InitManager(
+    //     params.string_length, params.string_data, params.zero_input,
+    //     params.user_data);
   }
 
 
-  /// Constructor that adds an arg to pass in the model parser and does NOT call
-  /// the InitManager code. This enables InitManager to be overloaded and mocked
-  /// out.
-  ///
-  TestRequestRateManager(
-      PerfAnalyzerParameters params, const std::shared_ptr<ModelParser>& parser,
-      bool is_sequence_model = false, bool is_decoupled_model = false,
-      bool use_mock_infer = false)
-      : use_mock_infer_(use_mock_infer),
-        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
-        RequestRateManager(
-            params.async, params.streaming, params.request_distribution,
-            params.batch_size, params.measurement_window_ms, params.max_trials,
-            params.max_threads, params.num_of_sequences, params.sequence_length,
-            params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range, parser,
-            GetFactory())
-  {
-  }
+  // /// Constructor that adds an arg to pass in the model parser and does NOT
+  // call
+  // /// the InitManager code. This enables InitManager to be overloaded and
+  // mocked
+  // /// out.
+  // ///
+  // TestRequestRateManager(
+  //     PerfAnalyzerParameters params, const std::shared_ptr<ModelParser>&
+  //     parser, bool is_sequence_model = false, bool is_decoupled_model =
+  //     false, bool use_mock_infer = false) : use_mock_infer_(use_mock_infer),
+  //       TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
+  //       RequestRateManager(
+  //           params.async, params.streaming, params.request_distribution,
+  //           params.batch_size, params.measurement_window_ms,
+  //           params.max_threads, params.num_of_sequences,
+  //           params.sequence_length, params.shared_memory_type,
+  //           params.output_shm_size, params.start_sequence_id,
+  //           params.sequence_id_range, parser, GetFactory())
+  // {
+  // }
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
@@ -147,13 +110,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     if (use_mock_infer_) {
       return std::make_shared<MockRequestRateWorker>(thread_config);
     } else {
-      return std::make_shared<RequestRateWorkerMockedInferInput>(
-          id, thread_stat, thread_config, parser_, data_loader_,
-          backend_->Kind(), RequestRateManager::factory_, sequence_length_,
-          start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
-          max_threads_, using_json_data_, streaming_, shared_memory_type_,
-          batch_size_, sequence_stat_, shared_memory_regions_, wake_signal_,
-          wake_mutex_, execute_, curr_seq_id_, start_time_, distribution_);
+      return RequestRateManager::MakeWorker(thread_stat, thread_config);
     }
   }
 
@@ -374,9 +331,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
-  bool& using_shared_memory_{LoadManager::using_shared_memory_};
   std::uniform_int_distribution<uint64_t>& distribution_{
       LoadManager::distribution_};
+  std::shared_ptr<cb::ClientBackendFactory> factory_{
+      TestLoadManagerBase::factory_};
+  std::shared_ptr<MemoryManager>& memory_manager_{LoadManager::memory_manager_};
 
  private:
   bool use_mock_infer_;
@@ -565,7 +524,29 @@ TEST_CASE("request_rate_infer_type")
   PerfAnalyzerParameters params;
   params.async = async;
   params.streaming = stream;
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params, false);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestInferType();
 }
 
@@ -581,7 +562,29 @@ TEST_CASE("request_rate_distribution")
   SUBCASE("constant") { params.request_distribution = CONSTANT; }
   SUBCASE("poisson") { params.request_distribution = POISSON; }
 
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -601,7 +604,30 @@ TEST_CASE("request_rate_tiny_window")
   SUBCASE("one_thread") { params.max_threads = 1; }
   SUBCASE("odd_threads") { params.max_threads = 9; }
 
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
+
   TestRequestRateManager trrm(params);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -610,7 +636,30 @@ TEST_CASE("request_rate_tiny_window")
 ///
 TEST_CASE("request_rate_multiple")
 {
+  PerfAnalyzerParameters params{};
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(PerfAnalyzerParameters{});
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestMultipleRequestRate();
 }
 
@@ -621,7 +670,29 @@ TEST_CASE("request_rate_sequence")
 {
   PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
   bool is_sequence_model = true;
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params, is_sequence_model);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestSequences();
 }
 
@@ -654,6 +725,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
 
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
 
   auto worker = trrm.MakeWorker(thread_stat, thread_config);
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
@@ -673,52 +747,36 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
   bool is_sequence_model{false};
-
-  const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
-    SUBCASE("sync non-streaming")
-    {
-      async = false;
-      streaming = false;
-    }
-    SUBCASE("async non-streaming")
-    {
-      async = true;
-      streaming = false;
-    }
-    SUBCASE("async streaming")
-    {
-      async = true;
-      streaming = true;
-    }
-  }};
-
-  SUBCASE("non-sequence")
+  const auto& ParameterizeAsyncAndStreaming
   {
-    is_sequence_model = false;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-  SUBCASE("sequence")
-  {
-    is_sequence_model = true;
-    params.num_of_sequences = 1;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
+    [](bool& async, bool& streaming) {
+      SUBCASE("non-sequence")
+      {
+        is_sequence_model = false;
+        ParameterizeAsyncAndStreaming(params.async, params.streaming);
+      }
+      SUBCASE("sequence")
+      {
+        is_sequence_model = true;
+        params.num_of_sequences = 1;
+        ParameterizeAsyncAndStreaming(params.async, params.streaming);
+      }
 
-  TestRequestRateManager trrm(params, is_sequence_model);
+      TestRequestRateManager trrm(params, is_sequence_model);
 
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+      std::shared_ptr<MockModelParser> mmp{
+          std::make_shared<MockModelParser>(false, false)};
+      ModelTensor model_tensor{};
+      model_tensor.datatype_ = "INT32";
+      model_tensor.is_optional_ = false;
+      model_tensor.is_shape_tensor_ = false;
+      model_tensor.name_ = "INPUT0";
+      model_tensor.shape_ = {1};
+      mmp->inputs_ = std::make_shared<ModelTensorMap>();
+      (*mmp->inputs_)[model_tensor.name_] = model_tensor;
 
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
-  const std::string json_str{R"(
+      std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
+      const std::string json_str{R"(
 {
   "data": [
     {
@@ -730,211 +788,77 @@ TEST_CASE(
   ]
 }
     )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+      mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
 
-  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+      std::shared_ptr<MockMemoryManager> mock_memory_manager{
+          std::make_shared<MockMemoryManager>(
+              params.batch_size, params.shared_memory_type,
+              params.output_shm_size, mmp, trrm.factory_, mdl)};
 
-  trrm.parser_ = mmp;
-  trrm.data_loader_ = mdl;
-  trrm.using_json_data_ = true;
-  trrm.execute_ = true;
-  trrm.batch_size_ = 1;
-  trrm.max_threads_ = 1;
-  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                      milliseconds(12), milliseconds(16)};
-  schedule->duration = nanoseconds{16000000};
 
-  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mdl->GetDataStreamsCount() - 1);
-  trrm.start_time_ = std::chrono::steady_clock::now();
+      std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+          std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
-  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
-  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+      trrm.memory_manager_ = mock_memory_manager;
+      trrm.parser_ = mmp;
+      trrm.data_loader_ = mdl;
+      trrm.using_json_data_ = true;
+      trrm.execute_ = true;
+      trrm.batch_size_ = 1;
+      trrm.max_threads_ = 1;
+      RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+      schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                          milliseconds(12), milliseconds(16)};
+      schedule->duration = nanoseconds{16000000};
 
-  std::this_thread::sleep_for(milliseconds(18));
+      trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
+          0, mdl->GetDataStreamsCount() - 1);
+      trrm.start_time_ = std::chrono::steady_clock::now();
 
-  early_exit = true;
-  infer_future.get();
+      trrm.InitManager(
+          params.string_length, params.string_data, params.zero_input,
+          params.user_data);
+      std::shared_ptr<IWorker> worker{
+          trrm.MakeWorker(thread_stat, thread_config)};
+      std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+      std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-  const auto& recorded_inputs{trrm.stats_->recorded_inputs};
+      std::this_thread::sleep_for(milliseconds(18));
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[0][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[1][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[2][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[3][0].second == 4);
-}
+      early_exit = true;
+      infer_future.get();
 
-/// Check that the using_shared_memory_ is being set correctly
-///
-TEST_CASE("Request rate - Check setting of InitSharedMemory")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
+      const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
-  SUBCASE("No shared memory")
-  {
-    params.shared_memory_type = NO_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    CHECK(false == trrm.using_shared_memory_);
-  }
-
-  SUBCASE("System shared memory")
-  {
-    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    CHECK(true == trrm.using_shared_memory_);
-  }
-}
-
-/// Verify Shared Memory api calls
-///
-TEST_CASE("Request rate - Shared memory methods")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
-
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2123456789]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
-
-  cb::MockClientStats::SharedMemoryStats expected_stats;
-
-  SUBCASE("System shared memory usage")
-  {
-    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, mip.mock_model_parser_, is_sequence, is_decoupled,
-        use_mock_infer);
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-
-    expected_stats.num_unregister_all_shared_memory_calls = 1;
-    expected_stats.num_register_system_shared_memory_calls = 1;
-    expected_stats.num_create_shared_memory_region_calls = 1;
-    expected_stats.num_map_shared_memory_calls = 1;
-    trrm.CheckSharedMemory(expected_stats);
-  }
-
-  SUBCASE("Cuda shared memory usage")
-  {
-    params.shared_memory_type = CUDA_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, mip.mock_model_parser_, is_sequence, is_decoupled,
-        use_mock_infer);
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-
-    expected_stats.num_unregister_all_shared_memory_calls = 1;
-    expected_stats.num_register_cuda_shared_memory_calls = 1;
-    trrm.CheckSharedMemory(expected_stats);
-  }
-
-  SUBCASE("No shared memory usage")
-  {
-    params.shared_memory_type = NO_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, mip.mock_model_parser_, is_sequence, is_decoupled,
-        use_mock_infer);
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-
-    trrm.CheckSharedMemory(expected_stats);
-  }
-}
-
-TEST_CASE("Request rate - Shared memory infer input calls")
-{
-  PerfAnalyzerParameters params{};
-  bool is_sequence_model{false};
-
-  const auto& ParameterizeAsyncAndStreaming{[&]() {
-    SUBCASE("sync non-streaming")
-    {
-      params.async = false;
-      params.streaming = false;
+      REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
+          2000000000);
+      CHECK(recorded_inputs[0][0].second == 4);
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
+          2000000001);
+      CHECK(recorded_inputs[1][0].second == 4);
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
+          2000000000);
+      CHECK(recorded_inputs[2][0].second == 4);
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
+          2000000001);
+      CHECK(recorded_inputs[3][0].second == 4);
     }
-    SUBCASE("async non-streaming")
-    {
-      params.async = true;
-      params.streaming = false;
-    }
-    SUBCASE("async streaming")
-    {
-      params.async = true;
-      params.streaming = true;
-    }
-  }};
 
-  const auto& ParameterizeSequence{[&]() {
-    SUBCASE("non-sequence")
+    /// Check that the using_shared_memory_ is being set correctly
+    ///
+    TEST_CASE("Request rate - Check setting of InitSharedMemory")
     {
-      is_sequence_model = false;
-      ParameterizeAsyncAndStreaming();
-    }
-    SUBCASE("sequence")
-    {
-      is_sequence_model = true;
-      params.num_of_sequences = 1;
-      ParameterizeAsyncAndStreaming();
-    }
-  }};
-
-  const auto& ParameterizeMemory{[&]() {
-    SUBCASE("No shared memory")
-    {
-      params.shared_memory_type = NO_SHARED_MEMORY;
-      ParameterizeSequence();
-    }
-    SUBCASE("system shared memory")
-    {
-      params.shared_memory_type = SYSTEM_SHARED_MEMORY;
-      ParameterizeSequence();
-    }
-    SUBCASE("cuda shared memory")
-    {
-      params.shared_memory_type = CUDA_SHARED_MEMORY;
-      ParameterizeSequence();
-    }
-  }};
-
-  ParameterizeMemory();
-  TestRequestRateManager trrm(params, is_sequence_model);
-
-  const std::string json_str{R"(
+      PerfAnalyzerParameters params;
+      bool is_sequence = false;
+      bool is_decoupled = false;
+      bool use_mock_infer = true;
+      const std::string json_str{R"(
   {
     "data": [
       {
@@ -946,143 +870,376 @@ TEST_CASE("Request rate - Shared memory infer input calls")
     ]
   }
       )"};
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
-  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+      MockInputPipeline mip =
+          TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
-  trrm.parser_ = mip.mock_model_parser_;
-  trrm.data_loader_ = mip.mock_data_loader_;
-  trrm.using_json_data_ = true;
-  trrm.execute_ = true;
-  trrm.batch_size_ = 1;
-  trrm.max_threads_ = 1;
+      SUBCASE("No shared memory")
+      {
+        params.shared_memory_type = NO_SHARED_MEMORY;
+        TestRequestRateManager trrm(
+            params, is_sequence, is_decoupled, use_mock_infer);
+        std::shared_ptr<MockMemoryManager> mock_memory_manager{
+            std::make_shared<MockMemoryManager>(
+                params.batch_size, params.shared_memory_type,
+                params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+                mip.mock_data_loader_)};
+        trrm.memory_manager_ = mock_memory_manager;
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data);
+        CHECK(false == mock_memory_manager->using_shared_memory_);
+      }
 
-  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                      milliseconds(12), milliseconds(16)};
-  schedule->duration = nanoseconds{16000000};
+      SUBCASE("System shared memory")
+      {
+        params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+        TestRequestRateManager trrm(
+            params, is_sequence, is_decoupled, use_mock_infer);
+        std::shared_ptr<MockMemoryManager> mock_memory_manager{
+            std::make_shared<MockMemoryManager>(
+                params.batch_size, params.shared_memory_type,
+                params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+                mip.mock_data_loader_)};
+        trrm.memory_manager_ = mock_memory_manager;
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data);
+        CHECK(true == mock_memory_manager->using_shared_memory_);
+      }
+    }
 
-  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
-  trrm.start_time_ = std::chrono::steady_clock::now();
+    /// Verify Shared Memory api calls
+    ///
+    TEST_CASE("Request rate - Shared memory methods")
+    {
+      PerfAnalyzerParameters params;
+      bool is_sequence = false;
+      bool is_decoupled = false;
+      bool use_mock_infer = true;
 
-  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
-  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
-
-  std::this_thread::sleep_for(milliseconds(18));
-
-  early_exit = true;
-  infer_future.get();
-
-  const auto& actual_append_raw_calls{trrm.stats_->num_append_raw_calls};
-  const auto& actual_set_shared_memory_calls{
-      trrm.stats_->num_set_shared_memory_calls};
-
-  if (params.shared_memory_type == NO_SHARED_MEMORY) {
-    CHECK(actual_append_raw_calls > 0);
-    CHECK(actual_set_shared_memory_calls == 0);
-  } else {
-    CHECK(actual_append_raw_calls == 0);
-    CHECK(actual_set_shared_memory_calls > 0);
+      const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2123456789]
+      }
+    ]
   }
-}
+      )"};
 
-TEST_CASE("request_rate_deadlock")
-{
-  PerfAnalyzerParameters params{};
-  params.max_concurrency = 6;
-  bool is_sequence_model{true};
-  bool some_infer_failures{false};
+      MockInputPipeline mip =
+          TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
-  const auto& ParameterizeSync{[&]() {
-    SUBCASE("sync")
-    {
-      params.async = false;
-      params.streaming = false;
-    }
-    SUBCASE("aync no streaming")
-    {
-      params.async = true;
-      params.streaming = false;
-    }
-    SUBCASE("async streaming")
-    {
-      params.async = true;
-      params.streaming = true;
-    }
-  }};
+      cb::MockClientStats::SharedMemoryStats expected_stats;
 
-  const auto& ParameterizeThreads{[&]() {
-    SUBCASE("2 thread")
-    {
-      ParameterizeSync();
-      params.max_threads = 2;
-    }
-    SUBCASE("10 thread")
-    {
-      ParameterizeSync();
-      params.max_threads = 10;
-    }
-  }};
+      SUBCASE("System shared memory usage")
+      {
+        params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+        TestRequestRateManager trrm(
+            params, is_sequence, is_decoupled, use_mock_infer);
+        std::shared_ptr<MockMemoryManager> mock_memory_manager{
+            std::make_shared<MockMemoryManager>(
+                params.batch_size, params.shared_memory_type,
+                params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+                mip.mock_data_loader_)};
+        trrm.memory_manager_ = mock_memory_manager;
+        trrm.parser_ = mip.mock_model_parser_;
+        trrm.data_loader_ = mip.mock_data_loader_;
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data);
 
-  const auto& ParameterizeSequence{[&]() {
-    SUBCASE("non-sequence")
-    {
-      ParameterizeThreads();
-      is_sequence_model = false;
+        expected_stats.num_unregister_all_shared_memory_calls = 1;
+        expected_stats.num_register_system_shared_memory_calls = 1;
+        expected_stats.num_create_shared_memory_region_calls = 1;
+        expected_stats.num_map_shared_memory_calls = 1;
+        trrm.CheckSharedMemory(expected_stats);
+      }
+
+      SUBCASE("Cuda shared memory usage")
+      {
+        params.shared_memory_type = CUDA_SHARED_MEMORY;
+        TestRequestRateManager trrm(
+            params, is_sequence, is_decoupled, use_mock_infer);
+        std::shared_ptr<MockMemoryManager> mock_memory_manager{
+            std::make_shared<MockMemoryManager>(
+                params.batch_size, params.shared_memory_type,
+                params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+                mip.mock_data_loader_)};
+        trrm.memory_manager_ = mock_memory_manager;
+        trrm.parser_ = mip.mock_model_parser_;
+        trrm.data_loader_ = mip.mock_data_loader_;
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data);
+
+        expected_stats.num_unregister_all_shared_memory_calls = 1;
+        expected_stats.num_register_cuda_shared_memory_calls = 1;
+        trrm.CheckSharedMemory(expected_stats);
+      }
+
+      SUBCASE("No shared memory usage")
+      {
+        params.shared_memory_type = NO_SHARED_MEMORY;
+        TestRequestRateManager trrm(
+            params, is_sequence, is_decoupled, use_mock_infer);
+        std::shared_ptr<MockMemoryManager> mock_memory_manager{
+            std::make_shared<MockMemoryManager>(
+                params.batch_size, params.shared_memory_type,
+                params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+                mip.mock_data_loader_)};
+        trrm.memory_manager_ = mock_memory_manager;
+        trrm.parser_ = mip.mock_model_parser_;
+        trrm.data_loader_ = mip.mock_data_loader_;
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data);
+
+        trrm.CheckSharedMemory(expected_stats);
+      }
     }
-    SUBCASE("sequence")
+
+    TEST_CASE("Request rate - Shared memory infer input calls")
     {
-      ParameterizeThreads();
-      is_sequence_model = true;
-      params.num_of_sequences = 3;
-    }
-  }};
+      PerfAnalyzerParameters params{};
+      bool is_sequence_model{false};
 
-  const auto& ParameterizeFailures{[&]() {
-    SUBCASE("yes_failures")
-    {
-      some_infer_failures = true;
-      ParameterizeSequence();
-    }
-    SUBCASE("no_failures")
-    {
-      some_infer_failures = false;
-      ParameterizeSequence();
-    }
-  }};
+      const auto& ParameterizeAsyncAndStreaming{[&]() {
+        SUBCASE("sync non-streaming")
+        {
+          params.async = false;
+          params.streaming = false;
+        }
+        SUBCASE("async non-streaming")
+        {
+          params.async = true;
+          params.streaming = false;
+        }
+        SUBCASE("async streaming")
+        {
+          params.async = true;
+          params.streaming = true;
+        }
+      }};
 
-  std::vector<uint64_t> delays;
+      const auto& ParameterizeSequence{[&]() {
+        SUBCASE("non-sequence")
+        {
+          is_sequence_model = false;
+          ParameterizeAsyncAndStreaming();
+        }
+        SUBCASE("sequence")
+        {
+          is_sequence_model = true;
+          params.num_of_sequences = 1;
+          ParameterizeAsyncAndStreaming();
+        }
+      }};
 
-  const auto& ParameterizeDelays{[&]() {
-    SUBCASE("no_delay")
-    {
-      delays = {0};
-      ParameterizeFailures();
-    }
-    SUBCASE("random_delay")
-    {
-      delays = {1, 5, 20, 4, 3};
-      ParameterizeFailures();
-    }
-  }};
+      const auto& ParameterizeMemory{[&]() {
+        SUBCASE("No shared memory")
+        {
+          params.shared_memory_type = NO_SHARED_MEMORY;
+          ParameterizeSequence();
+        }
+        SUBCASE("system shared memory")
+        {
+          params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+          ParameterizeSequence();
+        }
+        SUBCASE("cuda shared memory")
+        {
+          params.shared_memory_type = CUDA_SHARED_MEMORY;
+          ParameterizeSequence();
+        }
+      }};
 
-  ParameterizeDelays();
+      ParameterizeMemory();
+      TestRequestRateManager trrm(params, is_sequence_model);
 
-  TestRequestRateManager trrm(params, is_sequence_model);
-
-  trrm.stats_->SetDelays(delays);
-
-  // Sometimes have a request fail
-  if (some_infer_failures) {
-    trrm.stats_->SetReturnStatuses({true, true, true, false});
+      const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
   }
+      )"};
+      MockInputPipeline mip =
+          TestLoadManagerBase::ProcessCustomJsonData(json_str);
+      std::shared_ptr<MockMemoryManager> mock_memory_manager{
+          std::make_shared<MockMemoryManager>(
+              params.batch_size, params.shared_memory_type,
+              params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+              mip.mock_data_loader_)};
 
-  trrm.TestTimeouts();
-}
+      std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+          std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
+      trrm.memory_manager_ = mock_memory_manager;
+      trrm.parser_ = mip.mock_model_parser_;
+      trrm.data_loader_ = mip.mock_data_loader_;
+      trrm.using_json_data_ = true;
+      trrm.execute_ = true;
+      trrm.batch_size_ = 1;
+      trrm.max_threads_ = 1;
 
-}}  // namespace triton::perfanalyzer
+      RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+      schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                          milliseconds(12), milliseconds(16)};
+      schedule->duration = nanoseconds{16000000};
+
+      trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
+          0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
+      trrm.start_time_ = std::chrono::steady_clock::now();
+      trrm.InitManager(
+          params.string_length, params.string_data, params.zero_input,
+          params.user_data);
+
+      std::shared_ptr<IWorker> worker{
+          trrm.MakeWorker(thread_stat, thread_config)};
+      std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+      std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+      std::this_thread::sleep_for(milliseconds(18));
+
+      early_exit = true;
+      infer_future.get();
+
+      const auto& actual_append_raw_calls{trrm.stats_->num_append_raw_calls};
+      const auto& actual_set_shared_memory_calls{
+          trrm.stats_->num_set_shared_memory_calls};
+
+      if (params.shared_memory_type == NO_SHARED_MEMORY) {
+        CHECK(actual_append_raw_calls > 0);
+        CHECK(actual_set_shared_memory_calls == 0);
+      } else {
+        CHECK(actual_append_raw_calls == 0);
+        CHECK(actual_set_shared_memory_calls > 0);
+      }
+    }
+
+    TEST_CASE("request_rate_deadlock")
+    {
+      PerfAnalyzerParameters params{};
+      params.max_concurrency = 6;
+      bool is_sequence_model{true};
+      bool some_infer_failures{false};
+
+      const auto& ParameterizeSync{[&]() {
+        SUBCASE("sync")
+        {
+          params.async = false;
+          params.streaming = false;
+        }
+        SUBCASE("aync no streaming")
+        {
+          params.async = true;
+          params.streaming = false;
+        }
+        SUBCASE("async streaming")
+        {
+          params.async = true;
+          params.streaming = true;
+        }
+      }};
+
+      const auto& ParameterizeThreads{[&]() {
+        SUBCASE("2 thread")
+        {
+          ParameterizeSync();
+          params.max_threads = 2;
+        }
+        SUBCASE("10 thread")
+        {
+          ParameterizeSync();
+          params.max_threads = 10;
+        }
+      }};
+
+      const auto& ParameterizeSequence{[&]() {
+        SUBCASE("non-sequence")
+        {
+          ParameterizeThreads();
+          is_sequence_model = false;
+        }
+        SUBCASE("sequence")
+        {
+          ParameterizeThreads();
+          is_sequence_model = true;
+          params.num_of_sequences = 3;
+        }
+      }};
+
+      const auto& ParameterizeFailures{[&]() {
+        SUBCASE("yes_failures")
+        {
+          some_infer_failures = true;
+          ParameterizeSequence();
+        }
+        SUBCASE("no_failures")
+        {
+          some_infer_failures = false;
+          ParameterizeSequence();
+        }
+      }};
+
+      std::vector<uint64_t> delays;
+
+      const auto& ParameterizeDelays{[&]() {
+        SUBCASE("no_delay")
+        {
+          delays = {0};
+          ParameterizeFailures();
+        }
+        SUBCASE("random_delay")
+        {
+          delays = {1, 5, 20, 4, 3};
+          ParameterizeFailures();
+        }
+      }};
+
+      ParameterizeDelays();
+
+      const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+      MockInputPipeline mip =
+          TestLoadManagerBase::ProcessCustomJsonData(json_str);
+      TestRequestRateManager trrm(params, is_sequence_model);
+      std::shared_ptr<MockMemoryManager> mock_memory_manager{
+          std::make_shared<MockMemoryManager>(
+              params.batch_size, params.shared_memory_type,
+              params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+              mip.mock_data_loader_)};
+      trrm.memory_manager_ = mock_memory_manager;
+      trrm.stats_->SetDelays(delays);
+      trrm.InitManager(
+          params.string_length, params.string_data, params.zero_input,
+          params.user_data);
+
+      // Sometimes have a request fail
+      if (some_infer_failures) {
+        trrm.stats_->SetReturnStatuses({true, true, true, false});
+      }
+
+      trrm.TestTimeouts();
+    }
+  }
+}  // namespace triton::perfanalyzer
