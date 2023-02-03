@@ -85,36 +85,40 @@ CustomLoadManager::InitCustomIntervals()
 cb::Error
 CustomLoadManager::GenerateSchedule()
 {
-  if (!request_intervals_file_.empty()) {
-    RETURN_IF_ERROR(
-        ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
-
-    std::chrono::nanoseconds next_timestamp(0);
-
-    std::vector<RateSchedule> worker_schedules(workers_.size());
-    size_t worker_index = 0;
-    size_t intervals_index = 0;
-
-    size_t total_count = workers_.size() * custom_intervals_.size();
-
-    size_t count = 0;
-    while (count < total_count) {
-      count++;
-      next_timestamp = next_timestamp + custom_intervals_[intervals_index];
-      worker_schedules[worker_index].emplace_back(next_timestamp);
-      worker_index = (worker_index + 1) % workers_.size();
-      intervals_index = (intervals_index + 1) % custom_intervals_.size();
-    }
-
-    std::chrono::nanoseconds duration =
-        worker_schedules[worker_schedules.size() - 1].back();
-
-    for (size_t i = 0; i < workers_.size(); i++) {
-      auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);
-      w->SetSchedule(worker_schedules[i], duration);
-    }
+  if (request_intervals_file_.empty()) {
+    return cb::Error::Success;
   }
+
+  RETURN_IF_ERROR(
+      ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
+
+  std::vector<RateSchedule> worker_schedules =
+      CreateWorkerSchedules(custom_intervals_);
+
+  GiveSchedulesToWorkers(worker_schedules);
   return cb::Error::Success;
+}
+
+std::vector<RateSchedule>
+CustomLoadManager::CreateWorkerSchedules(const RateSchedule& custom_intervals)
+{
+  std::chrono::nanoseconds next_timestamp(0);
+
+  std::vector<RateSchedule> worker_schedules(workers_.size());
+  size_t worker_index = 0;
+  size_t intervals_index = 0;
+
+  size_t total_count = workers_.size() * custom_intervals.size();
+
+  size_t count = 0;
+  while (count < total_count) {
+    count++;
+    next_timestamp = next_timestamp + custom_intervals[intervals_index];
+    worker_schedules[worker_index].emplace_back(next_timestamp);
+    worker_index = (worker_index + 1) % workers_.size();
+    intervals_index = (intervals_index + 1) % custom_intervals.size();
+  }
+  return worker_schedules;
 }
 
 cb::Error

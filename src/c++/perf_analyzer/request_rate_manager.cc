@@ -108,31 +108,49 @@ RequestRateManager::ResetWorkers()
 void
 RequestRateManager::GenerateSchedule(const double request_rate)
 {
-  std::chrono::nanoseconds schedule_duration = *gen_duration_;
-
+  std::chrono::nanoseconds duration;
   std::function<std::chrono::nanoseconds(std::mt19937&)> distribution;
+
   if (request_distribution_ == Distribution::POISSON) {
     distribution = ScheduleDistribution<Distribution::POISSON>(request_rate);
+    // Poisson distribution needs to generate a full schedule so that the result
+    // is as random and as close to the desired rate as possible
+    duration = *gen_duration_;
   } else if (request_distribution_ == Distribution::CONSTANT) {
     distribution = ScheduleDistribution<Distribution::CONSTANT>(request_rate);
-    schedule_duration = std::chrono::nanoseconds(1);
+    // Constant distribution only needs one entry per worker
+    duration = std::chrono::nanoseconds(1);
   } else {
     return;
   }
 
-  std::chrono::nanoseconds next_timestamp(0);
+  auto worker_schedules = CreateWorkerSchedules(duration, distribution);
+  GiveSchedulesToWorkers(worker_schedules);
+}
 
+std::vector<RateSchedule>
+RequestRateManager::CreateWorkerSchedules(
+    std::chrono::nanoseconds duration,
+    std::function<std::chrono::nanoseconds(std::mt19937&)> distribution)
+{
   std::mt19937 schedule_rng;
-
   std::vector<RateSchedule> worker_schedules(workers_.size());
+
+  std::chrono::nanoseconds next_timestamp(0);
   size_t worker_index = 0;
 
-  while (next_timestamp < schedule_duration || worker_index != 0) {
+  while (next_timestamp < duration || worker_index != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
     worker_schedules[worker_index].emplace_back(next_timestamp);
     worker_index = (worker_index + 1) % workers_.size();
   }
+  return worker_schedules;
+}
 
+void
+RequestRateManager::GiveSchedulesToWorkers(
+    const std::vector<RateSchedule>& worker_schedules)
+{
   std::chrono::nanoseconds duration =
       worker_schedules[worker_schedules.size() - 1].back();
 

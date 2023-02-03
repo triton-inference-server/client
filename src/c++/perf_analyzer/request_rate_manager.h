@@ -121,6 +121,13 @@ class RequestRateManager : public LoadManager {
   /// \param request_rate The request rate to use for new schedule.
   void GenerateSchedule(const double request_rate);
 
+  std::vector<RateSchedule> CreateWorkerSchedules(
+      std::chrono::nanoseconds duration,
+      std::function<std::chrono::nanoseconds(std::mt19937&)> distribution);
+
+  void GiveSchedulesToWorkers(
+      const std::vector<RateSchedule>& worker_schedules);
+
   // Pauses the worker threads
   void PauseWorkers();
 

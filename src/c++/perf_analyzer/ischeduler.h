@@ -37,6 +37,10 @@ using RateSchedule = std::vector<std::chrono::nanoseconds>;
 ///
 class IScheduler {
  public:
+  /// Provides schedule information, where the consumer should
+  /// loop through the provided schedule, and then every time it loops back to
+  /// the start add an additional amount equal to the provided schedule_duration
+  ///
   virtual void SetSchedule(
       RateSchedule schedule, std::chrono::nanoseconds schedule_duration) = 0;
 };

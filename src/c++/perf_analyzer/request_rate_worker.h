@@ -87,12 +87,14 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   void Infer() override;
 
-  // FIXME -- document (including reset)
+  /// Provides schedule information, where the consumer should
+  /// loop through the provided schedule, and then every time it loops back to
+  /// the start add an additional amount equal to the provided schedule_duration
+  ///
   void SetSchedule(
       RateSchedule schedule,
       std::chrono::nanoseconds schedule_duration) override
   {
-    // FIXME -- emplace? way to avoid copy?
     schedule_ = schedule;
     schedule_duration_ = schedule_duration;
 
