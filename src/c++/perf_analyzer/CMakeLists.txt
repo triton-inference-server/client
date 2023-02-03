@@ -169,7 +169,7 @@ add_executable(
   client_backend/triton/test_triton_client_backend.cc
   test_request_rate_manager.cc
   test_concurrency_manager.cc
-  # test_custom_load_manager.cc
+  test_custom_load_manager.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 
