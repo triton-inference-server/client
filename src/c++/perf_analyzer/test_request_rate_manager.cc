@@ -75,32 +75,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.start_sequence_id, params.sequence_id_range, GetParser(),
             GetFactory())
   {
-    // InitManager(
-    //     params.string_length, params.string_data, params.zero_input,
-    //     params.user_data);
   }
-
-
-  // /// Constructor that adds an arg to pass in the model parser and does NOT
-  // call
-  // /// the InitManager code. This enables InitManager to be overloaded and
-  // mocked
-  // /// out.
-  // ///
-  // TestRequestRateManager(
-  //     PerfAnalyzerParameters params, const std::shared_ptr<ModelParser>&
-  //     parser, bool is_sequence_model = false, bool is_decoupled_model =
-  //     false, bool use_mock_infer = false) : use_mock_infer_(use_mock_infer),
-  //       TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
-  //       RequestRateManager(
-  //           params.async, params.streaming, params.request_distribution,
-  //           params.batch_size, params.measurement_window_ms,
-  //           params.max_threads, params.num_of_sequences,
-  //           params.sequence_length, params.shared_memory_type,
-  //           params.output_shm_size, params.start_sequence_id,
-  //           params.sequence_id_range, parser, GetFactory())
-  // {
-  // }
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
@@ -133,9 +108,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
         expected_current_timestamp += expected_time_between_requests;
-        auto timestamp =
-            std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(worker)
-                ->GetNextTimestamp();
+        auto timestamp = std::dynamic_pointer_cast<RequestRateWorker>(worker)
+                             ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
       }
     }
@@ -408,6 +382,21 @@ TEST_CASE("request_rate_schedule")
   bool use_mock_infer = false;
   double rate;
 
+  const std::string json_str{R"(
+  {
+    "data": [
+      {
+        "INPUT0": [2000000000]
+      },
+      {
+        "INPUT0": [2000000001]
+      }
+    ]
+  }
+      )"};
+
+  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
+
 
   const auto& ParameterizeRate{[&]() {
     SUBCASE("rate 10") { rate = 10; }
@@ -478,6 +467,14 @@ TEST_CASE("request_rate_schedule")
 
   TestRequestRateManager trrm(
       params, is_sequence, is_decoupled, use_mock_infer);
+  std::shared_ptr<MockMemoryManager> mock_memory_manager{
+      std::make_shared<MockMemoryManager>(
+          params.batch_size, params.shared_memory_type, params.output_shm_size,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+  trrm.memory_manager_ = mock_memory_manager;
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data);
   trrm.TestSchedule(rate, params);
 }
 
