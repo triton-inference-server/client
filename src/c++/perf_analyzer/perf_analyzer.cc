@@ -219,11 +219,12 @@ PerfAnalyzer::CreateAnalyzerObjects()
     FAIL_IF_ERR(
         pa::RequestRateManager::Create(
             params_->async, params_->streaming, params_->measurement_window_ms,
-            params_->request_distribution, params_->batch_size,
-            params_->max_threads, params_->num_of_sequences,
-            params_->sequence_length, params_->shared_memory_type,
-            params_->output_shm_size, params_->start_sequence_id,
-            params_->sequence_id_range, parser_, factory, &manager),
+            params_->max_trials, params_->request_distribution,
+            params_->batch_size, params_->max_threads,
+            params_->num_of_sequences, params_->sequence_length,
+            params_->shared_memory_type, params_->output_shm_size,
+            params_->start_sequence_id, params_->sequence_id_range, parser_,
+            factory, &manager),
         "failed to create request rate manager");
 
   } else {
@@ -238,11 +239,12 @@ PerfAnalyzer::CreateAnalyzerObjects()
     FAIL_IF_ERR(
         pa::CustomLoadManager::Create(
             params_->async, params_->streaming, params_->measurement_window_ms,
-            params_->request_intervals_file, params_->batch_size,
-            params_->max_threads, params_->num_of_sequences,
-            params_->sequence_length, params_->shared_memory_type,
-            params_->output_shm_size, params_->start_sequence_id,
-            params_->sequence_id_range, parser_, factory, &manager),
+            params_->max_trials, params_->request_intervals_file,
+            params_->batch_size, params_->max_threads,
+            params_->num_of_sequences, params_->sequence_length,
+            params_->shared_memory_type, params_->output_shm_size,
+            params_->start_sequence_id, params_->sequence_id_range, parser_,
+            factory, &manager),
         "failed to create custom load manager");
   }
 
