@@ -62,6 +62,8 @@ class MockMemoryManager : public MemoryManager {
     *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
     return cb::Error::Success;
   }
+
+  bool& using_shared_memory_{MemoryManager::using_shared_memory_};
 };
 
 }}  // namespace triton::perfanalyzer

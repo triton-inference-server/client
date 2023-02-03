@@ -126,6 +126,7 @@ class LoadManager {
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
   bool using_json_data_;
+  // DEB - should remove
   bool using_shared_memory_;
 
   std::uniform_int_distribution<uint64_t> distribution_;
