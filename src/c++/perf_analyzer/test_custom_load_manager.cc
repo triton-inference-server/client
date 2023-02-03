@@ -35,7 +35,7 @@
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
 
-using std::chrono::nanoseconds;
+using nanoseconds = std::chrono::nanoseconds;
 
 namespace triton { namespace perfanalyzer {
 

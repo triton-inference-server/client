@@ -36,8 +36,8 @@
 #include "test_utils.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
-using std::chrono::milliseconds;
-using std::chrono::nanoseconds;
+using milliseconds = std::chrono::milliseconds;
+using nanoseconds = std::chrono::nanoseconds;
 
 namespace triton { namespace perfanalyzer {
 
