@@ -128,18 +128,13 @@ RequestRateManager::GenerateSchedule(const double request_rate)
   size_t worker_index = 0;
 
   while (next_timestamp < schedule_duration || worker_index != 0) {
+    next_timestamp = next_timestamp + distribution(schedule_rng);
     worker_schedules[worker_index].emplace_back(next_timestamp);
     worker_index = (worker_index + 1) % workers_.size();
-    next_timestamp = next_timestamp + distribution(schedule_rng);
   }
 
-  // FIXME
-  // The duration is the last value we added to the schedules plus one more
-  // value. That way when we wrap back around to 0 we have an additional value
-  //
   std::chrono::nanoseconds duration =
-      worker_schedules[worker_schedules.size() - 1].back() +
-      distribution(schedule_rng);
+      worker_schedules[worker_schedules.size() - 1].back();
 
   for (size_t i = 0; i < workers_.size(); i++) {
     auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);

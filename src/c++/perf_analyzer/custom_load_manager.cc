@@ -77,13 +77,13 @@ cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
   PauseWorkers();
-  auto status = CreateSchedules();  // FIXME name
+  auto status = GenerateSchedule();
   ResumeWorkers();
   return status;
 }
 
 cb::Error
-CustomLoadManager::CreateSchedules()
+CustomLoadManager::GenerateSchedule()
 {
   if (!request_intervals_file_.empty()) {
     RETURN_IF_ERROR(

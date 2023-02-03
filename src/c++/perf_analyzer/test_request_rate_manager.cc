@@ -186,11 +186,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
     //
     while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
+        expected_current_timestamp += expected_time_between_requests;
         auto timestamp =
             std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(worker)
                 ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
-        expected_current_timestamp += expected_time_between_requests;
       }
     }
     early_exit = true;
