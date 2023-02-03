@@ -94,6 +94,7 @@ struct MockInputPipeline {
 ///
 class TestLoadManagerBase {
  public:
+  TestLoadManagerBase() = default;
   TestLoadManagerBase(
       PerfAnalyzerParameters params, bool is_sequence_model,
       bool is_decoupled_model)
