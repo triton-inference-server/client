@@ -76,6 +76,15 @@ CustomLoadManager::CustomLoadManager(
 cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
+  PauseWorkers();
+  auto status = CreateSchedules();  // FIXME name
+  ResumeWorkers();
+  return status;
+}
+
+cb::Error
+CustomLoadManager::CreateSchedules()
+{
   if (!request_intervals_file_.empty()) {
     RETURN_IF_ERROR(
         ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
@@ -86,11 +95,13 @@ CustomLoadManager::InitCustomIntervals()
     size_t worker_index = 0;
     size_t intervals_index = 0;
 
-    while (next_timestamp < *gen_duration_ || worker_index != 0) {
-      worker_schedules[worker_index].emplace_back(next_timestamp);
+    size_t total_count = workers_.size() * custom_intervals_.size();
 
+    size_t count = 0;
+    while (count < total_count) {
+      count++;
       next_timestamp = next_timestamp + custom_intervals_[intervals_index];
-
+      worker_schedules[worker_index].emplace_back(next_timestamp);
       worker_index = (worker_index + 1) % workers_.size();
       intervals_index = (intervals_index + 1) % custom_intervals_.size();
     }

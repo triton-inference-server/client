@@ -506,7 +506,7 @@ InferenceProfiler::Profile(
   RETURN_IF_ERROR(dynamic_cast<ConcurrencyManager*>(manager_.get())
                       ->ChangeConcurrencyLevel(concurrent_request_count));
 
-  err = ProfileHelper(false /* clean_starts */, status_summary, &is_stable);
+  err = ProfileHelper(status_summary, &is_stable);
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
@@ -563,7 +563,7 @@ InferenceProfiler::Profile(
   std::cout << "Request Rate: " << request_rate
             << " inference requests per seconds" << std::endl;
 
-  err = ProfileHelper(false /*clean_starts*/, status_summary, &is_stable);
+  err = ProfileHelper(status_summary, &is_stable);
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
@@ -607,7 +607,7 @@ InferenceProfiler::Profile(
   is_stable = false;
   meets_threshold = true;
 
-  err = ProfileHelper(true /* clean_starts */, status_summary, &is_stable);
+  err = ProfileHelper(status_summary, &is_stable);
   if (err.IsOk()) {
     summary.push_back(status_summary);
     uint64_t stabilizing_latency_ms =
@@ -637,8 +637,7 @@ InferenceProfiler::Profile(
 }
 
 cb::Error
-InferenceProfiler::ProfileHelper(
-    const bool clean_starts, PerfStatus& status_summary, bool* is_stable)
+InferenceProfiler::ProfileHelper(PerfStatus& status_summary, bool* is_stable)
 {
   // Start measurement
   LoadStatus load_status;
@@ -656,11 +655,6 @@ InferenceProfiler::ProfileHelper(
   do {
     PerfStatus status_summary;
     RETURN_IF_ERROR(manager_->CheckHealth());
-
-    // Needed to obtain stable measurements
-    if (clean_starts) {
-      manager_->ResetWorkers();
-    }
 
     if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
       error.push(Measure(status_summary, measurement_window_ms_, false));

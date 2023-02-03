@@ -77,17 +77,17 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     size_t intervals_index = 0;
 
     PauseWorkers();
-    InitCustomIntervals();
+    CreateSchedules();
 
     // Keep calling GetNextTimestamp for the entire test_duration to make sure
     // the schedule is exactly as expected
     //
     while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
+        expected_current_timestamp += custom_intervals_[intervals_index];
         auto timestamp = std::dynamic_pointer_cast<RequestRateWorker>(worker)
                              ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
-        expected_current_timestamp += custom_intervals_[intervals_index];
         intervals_index = (intervals_index + 1) % custom_intervals_.size();
       }
     }

@@ -108,6 +108,8 @@ class CustomLoadManager : public RequestRateManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
+  cb::Error CreateSchedules();
+
   /// Reads the time intervals file and stores intervals in vector
   /// \param path Filesystem path of the time intervals file.
   /// \param contents Output intervals vector.
