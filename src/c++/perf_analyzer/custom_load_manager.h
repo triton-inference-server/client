@@ -52,6 +52,7 @@ class CustomLoadManager : public RequestRateManager {
   /// request.
   /// \param streaming Whether to use gRPC streaming API for infer request
   /// \param measurement_window_ms The time window for measurements.
+  /// \param max_trials The maximum number of windows that will be measured
   /// \param request_intervals_file The path to the file to use to pick up the
   /// time intervals between the successive requests.
   /// \param batch_size The batch size used for each request.
@@ -73,7 +74,7 @@ class CustomLoadManager : public RequestRateManager {
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool async, const bool streaming,
-      const uint64_t measurement_window_ms,
+      const uint64_t measurement_window_ms, const size_t max_trials,
       const std::string& request_intervals_file, const int32_t batch_size,
       const size_t max_threads, const uint32_t num_of_sequences,
       const size_t sequence_length, const SharedMemoryType shared_memory_type,
@@ -99,10 +100,11 @@ class CustomLoadManager : public RequestRateManager {
   CustomLoadManager(
       const bool async, const bool streaming,
       const std::string& request_intervals_file, const int32_t batch_size,
-      const uint64_t measurement_window_ms, const size_t max_threads,
-      const uint32_t num_of_sequences, const size_t sequence_length,
-      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const uint64_t measurement_window_ms, const size_t max_trials,
+      const size_t max_threads, const uint32_t num_of_sequences,
+      const size_t sequence_length, const SharedMemoryType shared_memory_type,
+      const size_t output_shm_size, const uint64_t start_sequence_id,
+      const uint64_t sequence_id_range,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 

@@ -86,21 +86,27 @@ RequestRateWorker::HandleExecuteOff()
   thread_config_->is_paused_ = false;
 }
 
-bool
-RequestRateWorker::SleepIfNecessary()
+std::chrono::nanoseconds
+RequestRateWorker::GetNextTimestamp()
 {
-  // Sleep if required
-  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-
-  std::chrono::nanoseconds wait_time =
-      (schedule_[thread_config_->index_] +
-       (thread_config_->rounds_ * (*gen_duration_))) -
-      (now - start_time_);
+  auto next_timestamp = schedule_[thread_config_->index_] +
+                        (thread_config_->rounds_ * (*gen_duration_));
 
   thread_config_->index_ = (thread_config_->index_ + thread_config_->stride_);
   // Loop around the schedule to keep running
   thread_config_->rounds_ += (thread_config_->index_ / schedule_.size());
   thread_config_->index_ = thread_config_->index_ % schedule_.size();
+
+  return next_timestamp;
+}
+
+bool
+RequestRateWorker::SleepIfNecessary()
+{
+  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+  std::chrono::nanoseconds next_timestamp = GetNextTimestamp();
+  std::chrono::nanoseconds current_timestamp = now - start_time_;
+  std::chrono::nanoseconds wait_time = next_timestamp - current_timestamp;
 
   bool delayed = false;
   if (wait_time.count() < 0) {

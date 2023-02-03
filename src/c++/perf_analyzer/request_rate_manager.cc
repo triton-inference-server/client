@@ -38,19 +38,21 @@ RequestRateManager::~RequestRateManager()
 cb::Error
 RequestRateManager::Create(
     const bool async, const bool streaming,
-    const uint64_t measurement_window_ms, Distribution request_distribution,
-    const int32_t batch_size, const size_t max_threads,
-    const uint32_t num_of_sequences, const size_t sequence_length,
-    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const uint64_t measurement_window_ms, const size_t max_trials,
+    Distribution request_distribution, const int32_t batch_size,
+    const size_t max_threads, const uint32_t num_of_sequences,
+    const size_t sequence_length, const SharedMemoryType shared_memory_type,
+    const size_t output_shm_size, const uint64_t start_sequence_id,
+    const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<RequestRateManager> local_manager(new RequestRateManager(
       async, streaming, request_distribution, batch_size, measurement_window_ms,
-      max_threads, num_of_sequences, sequence_length, shared_memory_type,
-      output_shm_size, start_sequence_id, sequence_id_range, parser, factory));
+      max_trials, max_threads, num_of_sequences, sequence_length,
+      shared_memory_type, output_shm_size, start_sequence_id, sequence_id_range,
+      parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -60,10 +62,10 @@ RequestRateManager::Create(
 RequestRateManager::RequestRateManager(
     const bool async, const bool streaming, Distribution request_distribution,
     int32_t batch_size, const uint64_t measurement_window_ms,
-    const size_t max_threads, const uint32_t num_of_sequences,
-    const size_t sequence_length, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range,
+    const size_t max_trials, const size_t max_threads,
+    const uint32_t num_of_sequences, const size_t sequence_length,
+    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
@@ -77,8 +79,9 @@ RequestRateManager::RequestRateManager(
       sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
-  gen_duration_.reset(
-      new std::chrono::nanoseconds(2 * measurement_window_ms * 1000 * 1000));
+  // FIXME TODO TMA-1018 - remove the +1
+  gen_duration_.reset(new std::chrono::nanoseconds(
+      (max_trials + 1) * measurement_window_ms * 1000 * 1000));
 
   threads_config_.reserve(max_threads);
 }
