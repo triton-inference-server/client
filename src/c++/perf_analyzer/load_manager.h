@@ -40,7 +40,7 @@ namespace triton { namespace perfanalyzer {
 
 class LoadManager {
  public:
-  virtual ~LoadManager();
+  virtual ~LoadManager() = default;
 
   /// Initialize the Manager class to set up shared memory and inputs
   /// \param string_length The length of the random strings to be generated

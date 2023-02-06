@@ -33,7 +33,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-LoadManager::~LoadManager() {}
 
 cb::Error
 LoadManager::CheckHealth()
