@@ -175,7 +175,7 @@ class InferContext {
       const std::string& datatype);
 
   /// Update inputs based on custom json data
-  void UpdateJsonData(InferData& infer_data);
+  void UpdateJsonData();
 
   /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(

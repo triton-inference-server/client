@@ -51,7 +51,7 @@ InferContext::SendInferRequest(bool delayed)
 {
   // Update the inputs if required
   if (using_json_data_) {
-    UpdateJsonData(infer_data_);
+    UpdateJsonData();
   }
   SendRequest(request_id_++, delayed);
 }
@@ -170,16 +170,16 @@ InferContext::CreateInferInput(
 }
 
 void
-InferContext::UpdateJsonData(InferData& infer_data)
+InferContext::UpdateJsonData()
 {
   int step_id =
       (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
   data_step_id_ += GetNumActiveThreads();
   thread_stat_->status_ =
-      UpdateInputs(infer_data.inputs_, infer_data.valid_inputs_, 0, step_id);
+      UpdateInputs(infer_data_.inputs_, infer_data_.valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = memory_manager_->UpdateValidationOutputs(
-        infer_data.outputs_, 0, step_id, infer_data.expected_outputs_);
+        infer_data_.outputs_, 0, step_id, infer_data_.expected_outputs_);
   }
 }
 
