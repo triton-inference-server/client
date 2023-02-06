@@ -123,7 +123,7 @@ LoadManager::LoadManager(
       shared_memory_type_(shared_memory_type),
       output_shm_size_(output_shm_size), start_sequence_id_(start_sequence_id),
       sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
-      using_json_data_(false), using_shared_memory_(false), curr_seq_id_(0)
+      using_json_data_(false), curr_seq_id_(0)
 {
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
