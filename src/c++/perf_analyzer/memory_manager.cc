@@ -96,8 +96,12 @@ MemoryManager::MemoryManager(
 }
 
 cb::Error
-MemoryManager::InitSharedMemory()
+MemoryManager::InitMemoryManager()
 {
+  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+    return cb::Error::Success;
+  }
+
   // DEB - will go away once i have a heirarchy
   using_shared_memory_ = true;
   // DEB - not sure if this can stay here
@@ -355,7 +359,17 @@ MemoryManager::CreateInferInput(
 }
 
 cb::Error
-MemoryManager::PrepareInfer(InferData* ctx)
+MemoryManager::PrepareInfer(InferData& ctx)
+{
+  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+    return PrepareInferNoSharedMemoryInfer(ctx);
+  } else {
+    return PrepareSharedMemoryInfer(ctx);
+  }
+}
+
+cb::Error
+MemoryManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -376,7 +390,7 @@ MemoryManager::PrepareInfer(InferData* ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx->inputs_.push_back(infer_input);
+    ctx.inputs_.push_back(infer_input);
 
 
     data_ptr = nullptr;
@@ -385,7 +399,7 @@ MemoryManager::PrepareInfer(InferData* ctx)
 
     // Add optional input to request if data was found
     if (data_ptr != nullptr) {
-      ctx->valid_inputs_.push_back(infer_input);
+      ctx.valid_inputs_.push_back(infer_input);
     }
 
     if (!shape.empty()) {
@@ -402,16 +416,16 @@ MemoryManager::PrepareInfer(InferData* ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx->outputs_.push_back(requested_output);
+    ctx.outputs_.push_back(requested_output);
   }
   RETURN_IF_ERROR(
-      UpdateValidationOutputs(ctx->outputs_, 0, 0, ctx->expected_outputs_));
+      UpdateValidationOutputs(ctx.outputs_, 0, 0, ctx.expected_outputs_));
 
   return cb::Error::Success;
 }
 
 cb::Error
-MemoryManager::PrepareSharedMemoryInfer(InferData* ctx)
+MemoryManager::PrepareSharedMemoryInfer(InferData& ctx)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -432,11 +446,11 @@ MemoryManager::PrepareSharedMemoryInfer(InferData* ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx->inputs_.push_back(infer_input);
+    ctx.inputs_.push_back(infer_input);
 
     // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
     // currently, and will be implemented in the associated story.
-    ctx->valid_inputs_.push_back(infer_input);
+    ctx.valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
@@ -449,7 +463,7 @@ MemoryManager::PrepareSharedMemoryInfer(InferData* ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx->outputs_.push_back(requested_output);
+    ctx.outputs_.push_back(requested_output);
 
     RETURN_IF_ERROR(requested_output->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
@@ -513,6 +527,20 @@ MemoryManager::UpdateValidationOutputs(
 
 cb::Error
 MemoryManager::SetInputs(
+    const std::vector<cb::InferInput*>& inputs,
+    std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
+    const int step_index)
+{
+  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
+    return SetInputsNoSharedMemory(
+        inputs, valid_inputs, stream_index, step_index);
+  } else {
+    return SetInputsSharedMemory(inputs, stream_index, step_index);
+  }
+}
+
+cb::Error
+MemoryManager::SetInputsNoSharedMemory(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
     const int step_index)

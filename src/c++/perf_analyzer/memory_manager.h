@@ -99,7 +99,7 @@ class MemoryManager {
 
   /// Helper function to allocate and prepare shared memory.
   /// \return cb::Error object indicating success or failure.
-  cb::Error InitSharedMemory();
+  cb::Error InitMemoryManager();
 
 
   /// Creates inference input object
@@ -114,17 +114,12 @@ class MemoryManager {
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype);
 
-  /// Helper function to prepare the InferData for sending
+  /// Wrapper function to prepare the InferData for sending
   /// inference request.
   /// \param ctx The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferData* ctx);
+  cb::Error PrepareInfer(InferData& ctx);
 
-  /// Helper function to prepare the InferData for sending
-  /// inference request in shared memory. \param ctx The target
-  /// InferData object. \return cb::Error object indicating
-  /// success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferData* ctx);
 
   /// Updates the expected output data to use for inference request. Empty
   /// vector will be returned if there is no expected output associated to the
@@ -154,15 +149,6 @@ class MemoryManager {
       const int step_index);
 
 
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
-
  protected:
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.
@@ -182,6 +168,42 @@ class MemoryManager {
       uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
       std::vector<size_t>& byte_size, bool is_shape_tensor,
       std::string& region_name);
+
+  /// Helper function to prepare the InferData for sending
+  /// inference request.
+  /// \param ctx The target InferData object.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error PrepareInferNoSharedMemoryInfer(InferData& ctx);
+
+  /// Helper function to prepare the InferData for sending
+  /// inference request in shared memory. \param ctx The target
+  /// InferData object. \return cb::Error object indicating
+  /// success or failure.
+  cb::Error PrepareSharedMemoryInfer(InferData& ctx);
+
+  /// Helper function to update the inputs
+  /// \param inputs The vector of pointers to InferInput objects for all
+  /// possible inputs, potentially including optional inputs with no provided
+  /// data
+  /// \param valid_inputs The vector of pointers to InferInput objects to be
+  /// used for inference request.
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \return cb::Error object indicating success or failure.
+  cb::Error SetInputsNoSharedMemory(
+      const std::vector<cb::InferInput*>& inputs,
+      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
+      const int step_index);
+
+
+  /// Helper function to update the shared memory inputs
+  /// \param inputs The vector of pointers to InferInput objects
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \return cb::Error object indicating success or failure.
+  cb::Error SetInputsSharedMemory(
+      const std::vector<cb::InferInput*>& inputs, const int stream_index,
+      const int step_index);
 
   size_t batch_size_;
   SharedMemoryType shared_memory_type_;

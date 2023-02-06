@@ -146,10 +146,9 @@ LoadManager::InitManager(
       InitManagerInputs(string_length, string_data, zero_input, user_data);
   THROW_IF_ERROR(status, "Failed to init manager inputs");
 
-  if (shared_memory_type_ != SharedMemoryType::NO_SHARED_MEMORY) {
-    THROW_IF_ERROR(
-        memory_manager_->InitSharedMemory(), "Unable to init shared memory");
-  }
+  THROW_IF_ERROR(
+      memory_manager_->InitMemoryManager(),
+      "Unable to init shared memory in memory manager");
 }
 
 cb::Error

@@ -31,12 +31,7 @@ namespace triton { namespace perfanalyzer {
 void
 InferContext::Init()
 {
-  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    thread_stat_->status_ = memory_manager_->PrepareInfer(&infer_data_);
-  } else {
-    thread_stat_->status_ =
-        memory_manager_->PrepareSharedMemoryInfer(&infer_data_);
-  }
+  thread_stat_->status_ = memory_manager_->PrepareInfer(infer_data_);
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
@@ -293,13 +288,8 @@ InferContext::UpdateInputs(
         pa::GENERIC_ERROR);
   }
 
-  if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    RETURN_IF_ERROR(memory_manager_->SetInputs(
-        inputs, valid_inputs, stream_index, step_index));
-  } else {
-    RETURN_IF_ERROR(memory_manager_->SetInputsSharedMemory(
-        inputs, stream_index, step_index));
-  }
+  RETURN_IF_ERROR(memory_manager_->SetInputs(
+      inputs, valid_inputs, stream_index, step_index));
 
   return cb::Error::Success;
 }
