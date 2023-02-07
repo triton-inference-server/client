@@ -108,7 +108,6 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   std::chrono::nanoseconds schedule_duration_;
   RateSchedule schedule_;
 
- private:
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
 

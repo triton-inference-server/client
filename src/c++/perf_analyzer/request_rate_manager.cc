@@ -108,29 +108,29 @@ RequestRateManager::ResetWorkers()
 void
 RequestRateManager::GenerateSchedule(const double request_rate)
 {
-  std::chrono::nanoseconds duration;
+  std::chrono::nanoseconds max_duration;
   std::function<std::chrono::nanoseconds(std::mt19937&)> distribution;
 
   if (request_distribution_ == Distribution::POISSON) {
     distribution = ScheduleDistribution<Distribution::POISSON>(request_rate);
     // Poisson distribution needs to generate a full schedule so that the result
     // is as random and as close to the desired rate as possible
-    duration = *gen_duration_;
+    max_duration = *gen_duration_;
   } else if (request_distribution_ == Distribution::CONSTANT) {
     distribution = ScheduleDistribution<Distribution::CONSTANT>(request_rate);
     // Constant distribution only needs one entry per worker
-    duration = std::chrono::nanoseconds(1);
+    max_duration = std::chrono::nanoseconds(1);
   } else {
     return;
   }
 
-  auto worker_schedules = CreateWorkerSchedules(duration, distribution);
+  auto worker_schedules = CreateWorkerSchedules(max_duration, distribution);
   GiveSchedulesToWorkers(worker_schedules);
 }
 
 std::vector<RateSchedule>
 RequestRateManager::CreateWorkerSchedules(
-    std::chrono::nanoseconds duration,
+    std::chrono::nanoseconds max_duration,
     std::function<std::chrono::nanoseconds(std::mt19937&)> distribution)
 {
   std::mt19937 schedule_rng;
@@ -139,7 +139,10 @@ RequestRateManager::CreateWorkerSchedules(
   std::chrono::nanoseconds next_timestamp(0);
   size_t worker_index = 0;
 
-  while (next_timestamp < duration || worker_index != 0) {
+  // Generate schedule until we hit max_duration, but also make sure that all
+  // worker schedules are the same length
+  //
+  while (next_timestamp < max_duration || worker_index != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
     worker_schedules[worker_index].emplace_back(next_timestamp);
     worker_index = (worker_index + 1) % workers_.size();
@@ -151,8 +154,7 @@ void
 RequestRateManager::GiveSchedulesToWorkers(
     const std::vector<RateSchedule>& worker_schedules)
 {
-  std::chrono::nanoseconds duration =
-      worker_schedules[worker_schedules.size() - 1].back();
+  std::chrono::nanoseconds duration = worker_schedules.back().back();
 
   for (size_t i = 0; i < workers_.size(); i++) {
     auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);

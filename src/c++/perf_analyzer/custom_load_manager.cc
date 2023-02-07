@@ -113,7 +113,7 @@ CustomLoadManager::CreateWorkerSchedules(const RateSchedule& custom_intervals)
   size_t count = 0;
   while (count < total_count) {
     count++;
-    next_timestamp = next_timestamp + custom_intervals[intervals_index];
+    next_timestamp += custom_intervals[intervals_index];
     worker_schedules[worker_index].emplace_back(next_timestamp);
     worker_index = (worker_index + 1) % workers_.size();
     intervals_index = (intervals_index + 1) % custom_intervals.size();
