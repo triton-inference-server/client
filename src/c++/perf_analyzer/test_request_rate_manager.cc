@@ -641,46 +641,44 @@ TEST_CASE("request_rate_sequence")
 
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 {
+  bool is_sequence = false;
+  bool is_decoupled;
+  bool expected_enable_stats_value;
+
+  SUBCASE("enable_stats true")
+  {
+    is_decoupled = false;
+    expected_enable_stats_value = true;
+  }
+  SUBCASE("enable_stats false")
+  {
+    is_decoupled = true;
+    expected_enable_stats_value = false;
+  }
+
   PerfAnalyzerParameters params{};
   params.streaming = true;
+
+  RateSchedule schedule{nanoseconds(1)};
+  nanoseconds duration{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
 
-  SUBCASE("enable_stats true")
-  {
-    TestRequestRateManager trrm(params);
+  TestRequestRateManager trrm(params, is_sequence, is_decoupled);
 
-    auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    RateSchedule schedule{nanoseconds(1)};
-    nanoseconds duration{1};
+  auto worker = trrm.MakeWorker(thread_stat, thread_config);
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
+      schedule, duration);
+  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
-        schedule, duration);
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+  early_exit = true;
+  infer_future.get();
 
-    early_exit = true;
-    infer_future.get();
-
-    CHECK(trrm.stats_->start_stream_enable_stats_value == true);
-  }
-
-  SUBCASE("enable_stats false")
-  {
-    TestRequestRateManager trrm(
-        params, false /* is_sequence */, true /* is_decoupled */);
-
-    auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
-        {nanoseconds(1)}, nanoseconds(1));
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
-
-    early_exit = true;
-    infer_future.get();
-
-    CHECK(trrm.stats_->start_stream_enable_stats_value == false);
-  }
+  CHECK(
+      trrm.stats_->start_stream_enable_stats_value ==
+      expected_enable_stats_value);
 }
 
 TEST_CASE(
