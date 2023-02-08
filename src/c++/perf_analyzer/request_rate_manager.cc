@@ -128,13 +128,17 @@ RequestRateManager::GenerateSchedule(const double request_rate)
   GiveSchedulesToWorkers(worker_schedules);
 }
 
-std::vector<RateSchedule>
+std::vector<RateSchedulePtr_t>
 RequestRateManager::CreateWorkerSchedules(
     std::chrono::nanoseconds max_duration,
     std::function<std::chrono::nanoseconds(std::mt19937&)> distribution)
 {
   std::mt19937 schedule_rng;
-  std::vector<RateSchedule> worker_schedules(workers_.size());
+  std::vector<RateSchedulePtr_t> worker_schedules;
+
+  for (size_t i = 0; i < workers_.size(); i++) {
+    worker_schedules.push_back(std::make_shared<RateSchedule>());
+  }
 
   std::chrono::nanoseconds next_timestamp(0);
   size_t worker_index = 0;
@@ -144,21 +148,35 @@ RequestRateManager::CreateWorkerSchedules(
   //
   while (next_timestamp < max_duration || worker_index != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
-    worker_schedules[worker_index].emplace_back(next_timestamp);
+    worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
     worker_index = (worker_index + 1) % workers_.size();
   }
+
+  SetScheduleDurations(worker_schedules);
+
   return worker_schedules;
 }
 
 void
-RequestRateManager::GiveSchedulesToWorkers(
-    const std::vector<RateSchedule>& worker_schedules)
+RequestRateManager::SetScheduleDurations(
+    std::vector<RateSchedulePtr_t>& schedules)
 {
-  std::chrono::nanoseconds duration = worker_schedules.back().back();
+  RateSchedulePtr_t last_worker = schedules.back();
 
+  std::chrono::nanoseconds duration = last_worker->intervals.back();
+  for (auto schedule : schedules) {
+    schedule->duration = duration;
+  }
+}
+
+
+void
+RequestRateManager::GiveSchedulesToWorkers(
+    const std::vector<RateSchedulePtr_t>& worker_schedules)
+{
   for (size_t i = 0; i < workers_.size(); i++) {
     auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);
-    w->SetSchedule(worker_schedules[i], duration);
+    w->SetSchedule(worker_schedules[i]);
   }
 }
 

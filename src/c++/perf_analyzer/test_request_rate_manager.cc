@@ -659,8 +659,9 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   PerfAnalyzerParameters params{};
   params.streaming = true;
 
-  RateSchedule schedule{nanoseconds(1)};
-  nanoseconds duration{1};
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{nanoseconds(1)};
+  schedule->duration = nanoseconds{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
@@ -669,8 +670,7 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
 
   auto worker = trrm.MakeWorker(thread_stat, thread_config);
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
-      schedule, duration);
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   early_exit = true;
@@ -756,16 +756,17 @@ TEST_CASE(
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
-  RateSchedule schedule{milliseconds(4), milliseconds(8), milliseconds(12),
-                        milliseconds(16)};
-  nanoseconds duration{16000000};
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                      milliseconds(12), milliseconds(16)};
+  schedule->duration = nanoseconds{16000000};
+
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
       0, mdl->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
-      schedule, duration);
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   std::this_thread::sleep_for(milliseconds(18));
@@ -971,16 +972,18 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
-  RateSchedule schedule{milliseconds(4), milliseconds(8), milliseconds(12),
-                        milliseconds(16)};
-  nanoseconds duration{16000000};
+
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                      milliseconds(12), milliseconds(16)};
+  schedule->duration = nanoseconds{16000000};
+
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
       0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(
-      schedule, duration);
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   std::this_thread::sleep_for(milliseconds(18));

@@ -110,18 +110,18 @@ class CustomLoadManager : public RequestRateManager {
 
   cb::Error GenerateSchedule();
 
-  std::vector<RateSchedule> CreateWorkerSchedules(
-      const RateSchedule& custom_intervals);
+  std::vector<RateSchedulePtr_t> CreateWorkerSchedules(
+      const NanoIntervals& custom_intervals);
 
   /// Reads the time intervals file and stores intervals in vector
   /// \param path Filesystem path of the time intervals file.
   /// \param contents Output intervals vector.
   /// \return cb::Error object indicating success or failure.
   virtual cb::Error ReadTimeIntervalsFile(
-      const std::string& path, RateSchedule* contents);
+      const std::string& path, NanoIntervals* contents);
 
   std::string request_intervals_file_;
-  RateSchedule custom_intervals_;
+  NanoIntervals custom_intervals_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestCustomLoadManager;

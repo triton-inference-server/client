@@ -31,18 +31,24 @@
 
 namespace triton { namespace perfanalyzer {
 
-using RateSchedule = std::vector<std::chrono::nanoseconds>;
+using NanoIntervals = std::vector<std::chrono::nanoseconds>;
+
+struct RateSchedule {
+  RateSchedule() = default;
+
+  NanoIntervals intervals;
+  std::chrono::nanoseconds duration;
+};
+
+using RateSchedulePtr_t = std::shared_ptr<RateSchedule>;
 
 /// Interface for worker threads that use a schedule
 ///
 class IScheduler {
  public:
-  /// Provides schedule information, where the consumer should
-  /// loop through the provided schedule, and then every time it loops back to
-  /// the start add an additional amount equal to the provided schedule_duration
+  /// Provides the schedule that should be followed
   ///
-  virtual void SetSchedule(
-      RateSchedule schedule, std::chrono::nanoseconds schedule_duration) = 0;
+  virtual void SetSchedule(RateSchedulePtr_t schedule) = 0;
 };
 
 }}  // namespace triton::perfanalyzer

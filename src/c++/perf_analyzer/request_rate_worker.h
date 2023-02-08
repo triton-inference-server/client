@@ -91,22 +91,18 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   /// loop through the provided schedule, and then every time it loops back to
   /// the start add an additional amount equal to the provided schedule_duration
   ///
-  void SetSchedule(
-      RateSchedule schedule,
-      std::chrono::nanoseconds schedule_duration) override
+  void SetSchedule(RateSchedulePtr_t schedule) override
   {
     schedule_ = schedule;
-    schedule_duration_ = schedule_duration;
 
     schedule_rounds_ = 0;
     schedule_index_ = 0;
   }
 
  private:
+  RateSchedulePtr_t schedule_;
   size_t schedule_index_ = 0;
   size_t schedule_rounds_ = 0;
-  std::chrono::nanoseconds schedule_duration_;
-  RateSchedule schedule_;
 
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
@@ -115,11 +111,11 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   std::chrono::nanoseconds GetNextTimestamp()
   {
-    auto next =
-        schedule_[schedule_index_] + schedule_duration_ * schedule_rounds_;
+    auto next = schedule_->intervals[schedule_index_] +
+                schedule_->duration * schedule_rounds_;
 
     schedule_index_++;
-    if (schedule_index_ >= schedule_.size()) {
+    if (schedule_index_ >= schedule_->intervals.size()) {
       schedule_rounds_++;
       schedule_index_ = 0;
     }

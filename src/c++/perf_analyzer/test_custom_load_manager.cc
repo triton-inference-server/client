@@ -96,10 +96,10 @@ class TestCustomLoadManager : public TestLoadManagerBase,
 
   std::string& request_intervals_file_{
       CustomLoadManager::request_intervals_file_};
-  RateSchedule& custom_intervals_{CustomLoadManager::custom_intervals_};
+  NanoIntervals& custom_intervals_{CustomLoadManager::custom_intervals_};
 
   cb::Error ReadTimeIntervalsFile(
-      const std::string& path, RateSchedule* contents) override
+      const std::string& path, NanoIntervals* contents) override
   {
     return cb::Error::Success;
   }
