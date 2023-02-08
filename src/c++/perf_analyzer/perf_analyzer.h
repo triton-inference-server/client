@@ -31,7 +31,6 @@
 #include "command_line_parser.h"
 #include "concurrency_manager.h"
 #include "custom_load_manager.h"
-#include "data_loader.h"
 #include "inference_profiler.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
@@ -180,7 +179,6 @@ class PerfAnalyzer {
   std::unique_ptr<pa::InferenceProfiler> profiler_;
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<pa::ModelParser> parser_;
-  std::shared_ptr<pa::DataLoader> data_loader_;
   std::shared_ptr<pa::MemoryManager> memory_manager_;
   std::vector<pa::PerfStatus> summary_;
 
