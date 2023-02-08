@@ -102,9 +102,8 @@ MemoryManager::InitMemoryManager()
     return cb::Error::Success;
   }
 
-  // DEB - will go away once i have a heirarchy
   using_shared_memory_ = true;
-  // DEB - not sure if this can stay here
+  // TMA-1062 remove the factory from this class and use only the backend
   RETURN_IF_ERROR(factory_->CreateClientBackend(&backend_));
   backend_kind_ = backend_->Kind();
   // Calling this function for the clean start
