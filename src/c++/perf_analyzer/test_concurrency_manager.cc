@@ -30,7 +30,7 @@
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_data_loader.h"
-#include "mock_memory_manager.h"
+#include "mock_infer_data_manager.h"
 #include "mock_model_parser.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
@@ -191,7 +191,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
       LoadManager::distribution_};
   std::shared_ptr<cb::ClientBackendFactory> factory_{
       TestLoadManagerBase::factory_};
-  std::shared_ptr<MemoryManager>& memory_manager_{LoadManager::memory_manager_};
+  std::shared_ptr<InferDataManager>& infer_data_manager_{
+      LoadManager::infer_data_manager_};
 
  private:
   bool use_mock_infer_{false};
@@ -254,12 +255,12 @@ TEST_CASE("concurrency_infer_type")
 
   TestConcurrencyManager tcm(params);
 
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -382,12 +383,12 @@ TEST_CASE("concurrency_concurrency")
 
   TestConcurrencyManager tcm(params);
 
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -417,12 +418,12 @@ TEST_CASE("concurrency_sequence")
 
   MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestConcurrencyManager tcm(params, is_sequence_model);
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -463,12 +464,12 @@ TEST_CASE("concurrency_free_ctx_ids")
 
   TestConcurrencyManager tcm(params, is_sequence_model);
 
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -575,12 +576,12 @@ TEST_CASE("Concurrency - shared memory infer input calls")
 
   TestConcurrencyManager tcm(params, is_sequence_model);
 
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -651,17 +652,17 @@ TEST_CASE("Concurrency - Check setting of InitSharedMemory")
     TestConcurrencyManager tcm(
         params, is_sequence, is_decoupled, use_mock_infer);
 
-    std::shared_ptr<MockMemoryManager> mock_memory_manager{
-        std::make_shared<MockMemoryManager>(
+    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+        std::make_shared<MockInferDataManager>(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_)};
 
-    tcm.memory_manager_ = mock_memory_manager;
+    tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
-    CHECK(false == mock_memory_manager->using_shared_memory_);
+    CHECK(false == mock_infer_data_manager->using_shared_memory_);
   }
 
   SUBCASE("System shared memory")
@@ -670,17 +671,17 @@ TEST_CASE("Concurrency - Check setting of InitSharedMemory")
     TestConcurrencyManager tcm(
         params, is_sequence, is_decoupled, use_mock_infer);
 
-    std::shared_ptr<MockMemoryManager> mock_memory_manager{
-        std::make_shared<MockMemoryManager>(
+    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+        std::make_shared<MockInferDataManager>(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_)};
 
-    tcm.memory_manager_ = mock_memory_manager;
+    tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
-    CHECK(true == mock_memory_manager->using_shared_memory_);
+    CHECK(true == mock_infer_data_manager->using_shared_memory_);
   }
 }
 
@@ -713,13 +714,13 @@ TEST_CASE("Concurrency - Shared memory methods")
     TestConcurrencyManager tcm(
         params, is_sequence, is_decoupled, use_mock_infer);
 
-    std::shared_ptr<MockMemoryManager> mock_memory_manager{
-        std::make_shared<MockMemoryManager>(
+    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+        std::make_shared<MockInferDataManager>(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_)};
 
-    tcm.memory_manager_ = mock_memory_manager;
+    tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -736,13 +737,13 @@ TEST_CASE("Concurrency - Shared memory methods")
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestConcurrencyManager tcm(
         params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockMemoryManager> mock_memory_manager{
-        std::make_shared<MockMemoryManager>(
+    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+        std::make_shared<MockInferDataManager>(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_)};
 
-    tcm.memory_manager_ = mock_memory_manager;
+    tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -757,13 +758,13 @@ TEST_CASE("Concurrency - Shared memory methods")
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestConcurrencyManager tcm(
         params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockMemoryManager> mock_memory_manager{
-        std::make_shared<MockMemoryManager>(
+    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+        std::make_shared<MockInferDataManager>(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_)};
 
-    tcm.memory_manager_ = mock_memory_manager;
+    tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data);
@@ -872,12 +873,12 @@ TEST_CASE("concurrency_deadlock")
   MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestConcurrencyManager tcm(params, is_sequence_model);
-  std::shared_ptr<MockMemoryManager> mock_memory_manager{
-      std::make_shared<MockMemoryManager>(
+  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
+      std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.memory_manager_ = mock_memory_manager;
+  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);

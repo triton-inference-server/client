@@ -25,19 +25,19 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "memory_manager.h"
+#include "infer_data_manager.h"
 #include "mock_client_backend.h"
 
 namespace triton { namespace perfanalyzer {
 
-class MockMemoryManager : public MemoryManager {
+class MockInferDataManager : public InferDataManager {
  public:
-  MockMemoryManager(
+  MockInferDataManager(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
       const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
-      : MemoryManager(
+      : InferDataManager(
             batch_size, shared_memory_type, output_shm_size, parser, factory,
             data_loader)
   {
@@ -63,7 +63,7 @@ class MockMemoryManager : public MemoryManager {
     return cb::Error::Success;
   }
 
-  bool& using_shared_memory_{MemoryManager::using_shared_memory_};
+  bool& using_shared_memory_{InferDataManager::using_shared_memory_};
 };
 
 }}  // namespace triton::perfanalyzer

@@ -131,7 +131,7 @@ LoadManager::LoadManager(
 
   data_loader_.reset(new DataLoader(batch_size_));
 
-  memory_manager_ = std::make_shared<pa::MemoryManager>(
+  infer_data_manager_ = std::make_shared<pa::InferDataManager>(
       batch_size_, shared_memory_type_, output_shm_size_, parser_, factory_,
       data_loader_);
 }
@@ -146,7 +146,7 @@ LoadManager::InitManager(
   THROW_IF_ERROR(status, "Failed to init manager inputs");
 
   THROW_IF_ERROR(
-      memory_manager_->InitMemoryManager(),
+      infer_data_manager_->InitInferDataManager(),
       "Unable to init shared memory in memory manager");
 }
 

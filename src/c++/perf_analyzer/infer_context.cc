@@ -31,7 +31,7 @@ namespace triton { namespace perfanalyzer {
 void
 InferContext::Init()
 {
-  thread_stat_->status_ = memory_manager_->PrepareInfer(infer_data_);
+  thread_stat_->status_ = infer_data_manager_->PrepareInfer(infer_data_);
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
@@ -178,7 +178,7 @@ InferContext::UpdateJsonData()
   thread_stat_->status_ =
       UpdateInputs(infer_data_.inputs_, infer_data_.valid_inputs_, 0, step_id);
   if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = memory_manager_->UpdateValidationOutputs(
+    thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
         infer_data_.outputs_, 0, step_id, infer_data_.expected_outputs_);
   }
 }
@@ -193,7 +193,7 @@ InferContext::UpdateSeqJsonData(
       infer_data.inputs_, infer_data.valid_inputs_, seq_stat->data_stream_id_,
       step_id);
   if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = memory_manager_->UpdateValidationOutputs(
+    thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
         infer_data.outputs_, seq_stat->data_stream_id_, step_id,
         infer_data.expected_outputs_);
   }
@@ -288,7 +288,7 @@ InferContext::UpdateInputs(
         pa::GENERIC_ERROR);
   }
 
-  RETURN_IF_ERROR(memory_manager_->SetInputs(
+  RETURN_IF_ERROR(infer_data_manager_->SetInputs(
       inputs, valid_inputs, stream_index, step_index));
 
   return cb::Error::Success;

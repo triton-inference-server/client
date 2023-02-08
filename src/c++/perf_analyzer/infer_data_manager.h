@@ -87,19 +87,21 @@ struct SharedMemoryData {
   std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
 };
 
-class MemoryManager {
+// Manages infer data to prepare an inference request and the resulting
+// inference output from triton server
+class InferDataManager {
  public:
-  MemoryManager(
+  InferDataManager(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
       const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader);
 
-  virtual ~MemoryManager();
+  virtual ~InferDataManager();
 
   /// Helper function to allocate and prepare shared memory.
   /// \return cb::Error object indicating success or failure.
-  cb::Error InitMemoryManager();
+  cb::Error InitInferDataManager();
 
 
   /// Creates inference input object

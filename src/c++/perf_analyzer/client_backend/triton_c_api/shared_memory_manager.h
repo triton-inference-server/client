@@ -39,10 +39,10 @@
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
 
-class SharedMemoryManager {
+class SharedInferDataManager {
  public:
-  SharedMemoryManager() = default;
-  ~SharedMemoryManager();
+  SharedInferDataManager() = default;
+  ~SharedInferDataManager();
 
 #ifdef TRITON_ENABLE_GPU
   /// Add a memory block representing memory in CUDA (GPU) memory

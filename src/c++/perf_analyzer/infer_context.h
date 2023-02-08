@@ -31,7 +31,7 @@
 #include <vector>
 #include "data_loader.h"
 #include "infer_data.h"
-#include "memory_manager.h"
+#include "infer_data_manager.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
@@ -102,7 +102,7 @@ class InferContext {
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
       std::shared_ptr<cb::ClientBackendFactory> factory,
-      const std::shared_ptr<MemoryManager>& memory_manager)
+      const std::shared_ptr<InferDataManager>& infer_data_manager)
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
@@ -114,7 +114,7 @@ class InferContext {
         distribution_(distribution), thread_stat_(thread_stat),
         sequence_stat_(sequence_stat), data_loader_(data_loader),
         parser_(parser), factory_(factory), data_step_id_(id),
-        memory_manager_(memory_manager)
+        infer_data_manager_(infer_data_manager)
   {
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
     infer_data_.options_.reset(new cb::InferOptions(parser_->ModelName()));
@@ -242,7 +242,7 @@ class InferContext {
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
-  const std::shared_ptr<MemoryManager> memory_manager_;
+  const std::shared_ptr<InferDataManager> infer_data_manager_;
 
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably

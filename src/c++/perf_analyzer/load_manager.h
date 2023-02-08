@@ -32,8 +32,8 @@
 
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
+#include "infer_data_manager.h"
 #include "load_worker.h"
-#include "memory_manager.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
@@ -131,7 +131,7 @@ class LoadManager {
 
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
-  std::shared_ptr<MemoryManager> memory_manager_;
+  std::shared_ptr<InferDataManager> infer_data_manager_;
 
   // Map from shared memory key to its starting address and size
   std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;

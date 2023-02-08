@@ -179,7 +179,7 @@ class PerfAnalyzer {
   std::unique_ptr<pa::InferenceProfiler> profiler_;
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<pa::ModelParser> parser_;
-  std::shared_ptr<pa::MemoryManager> memory_manager_;
+  std::shared_ptr<pa::InferDataManager> infer_data_manager_;
   std::vector<pa::PerfStatus> summary_;
 
   //

@@ -26,7 +26,7 @@
 
 #include <algorithm>
 
-#include "memory_manager.h"
+#include "infer_data_manager.h"
 
 #ifdef TRITON_ENABLE_GPU
 #include <cuda_runtime_api.h>
@@ -48,7 +48,7 @@
 namespace triton { namespace perfanalyzer {
 
 
-MemoryManager::~MemoryManager()
+InferDataManager::~InferDataManager()
 {
   cb::Error err;
   if (using_shared_memory_ && backend_.get() != nullptr) {
@@ -84,7 +84,7 @@ MemoryManager::~MemoryManager()
   }
 }
 
-MemoryManager::MemoryManager(
+InferDataManager::InferDataManager(
     const int32_t batch_size, const SharedMemoryType shared_memory_type,
     const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
@@ -96,7 +96,7 @@ MemoryManager::MemoryManager(
 }
 
 cb::Error
-MemoryManager::InitMemoryManager()
+InferDataManager::InitInferDataManager()
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
     return cb::Error::Success;
@@ -211,7 +211,7 @@ MemoryManager::InitMemoryManager()
 }
 
 cb::Error
-MemoryManager::CreateMemoryRegion(
+InferDataManager::CreateMemoryRegion(
     const std::string& shm_region_name, const SharedMemoryType& memory_type,
     const size_t byte_size, void** ptr)
 {
@@ -309,7 +309,7 @@ MemoryManager::CreateMemoryRegion(
 }
 
 cb::Error
-MemoryManager::CopySharedMemory(
+InferDataManager::CopySharedMemory(
     uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
     std::vector<size_t>& byte_size, bool is_shape_tensor,
     std::string& region_name)
@@ -349,7 +349,7 @@ MemoryManager::CopySharedMemory(
 }
 
 cb::Error
-MemoryManager::CreateInferInput(
+InferDataManager::CreateInferInput(
     cb::InferInput** infer_input, const cb::BackendKind kind,
     const std::string& name, const std::vector<int64_t>& dims,
     const std::string& datatype)
@@ -358,7 +358,7 @@ MemoryManager::CreateInferInput(
 }
 
 cb::Error
-MemoryManager::PrepareInfer(InferData& ctx)
+InferDataManager::PrepareInfer(InferData& ctx)
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
     return PrepareInferNoSharedMemoryInfer(ctx);
@@ -368,7 +368,7 @@ MemoryManager::PrepareInfer(InferData& ctx)
 }
 
 cb::Error
-MemoryManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
+InferDataManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -424,7 +424,7 @@ MemoryManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
 }
 
 cb::Error
-MemoryManager::PrepareSharedMemoryInfer(InferData& ctx)
+InferDataManager::PrepareSharedMemoryInfer(InferData& ctx)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -472,7 +472,7 @@ MemoryManager::PrepareSharedMemoryInfer(InferData& ctx)
 }
 
 cb::Error
-MemoryManager::UpdateValidationOutputs(
+InferDataManager::UpdateValidationOutputs(
     const std::vector<const cb::InferRequestedOutput*>& outputs,
     int stream_index, int step_index,
     std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
@@ -525,7 +525,7 @@ MemoryManager::UpdateValidationOutputs(
 }
 
 cb::Error
-MemoryManager::SetInputs(
+InferDataManager::SetInputs(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
     const int step_index)
@@ -539,7 +539,7 @@ MemoryManager::SetInputs(
 }
 
 cb::Error
-MemoryManager::SetInputsNoSharedMemory(
+InferDataManager::SetInputsNoSharedMemory(
     const std::vector<cb::InferInput*>& inputs,
     std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
     const int step_index)
@@ -653,7 +653,7 @@ MemoryManager::SetInputsNoSharedMemory(
 }
 
 cb::Error
-MemoryManager::SetInputsSharedMemory(
+InferDataManager::SetInputsSharedMemory(
     const std::vector<cb::InferInput*>& inputs, const int stream_index,
     const int step_index)
 {

@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "shared_memory_manager.h"
+#include "shared_infer_data_manager.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -36,7 +36,7 @@
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace tritoncapi {
 
-SharedMemoryManager::~SharedMemoryManager()
+SharedInferDataManager::~SharedInferDataManager()
 {
   UnregisterAll(TRITONSERVER_MEMORY_CPU);
   UnregisterAll(TRITONSERVER_MEMORY_GPU);
@@ -44,7 +44,7 @@ SharedMemoryManager::~SharedMemoryManager()
 
 #ifdef TRITON_ENABLE_GPU
 Error
-SharedMemoryManager::RegisterCUDAMemory(
+SharedInferDataManager::RegisterCUDAMemory(
     const std::string& name, void* dev_ptr, const size_t byte_size,
     const int device_id)
 {
@@ -67,7 +67,7 @@ SharedMemoryManager::RegisterCUDAMemory(
 #endif  // TRITON_ENABLE_GPU
 
 Error
-SharedMemoryManager::RegisterSystemMemory(
+SharedInferDataManager::RegisterSystemMemory(
     const std::string& name, void* ptr, const size_t byte_size)
 {
   // Serialize all operations that write/read current shared memory regions
@@ -88,7 +88,7 @@ SharedMemoryManager::RegisterSystemMemory(
 }
 
 Error
-SharedMemoryManager::GetMemoryInfo(
+SharedInferDataManager::GetMemoryInfo(
     const std::string& name, size_t offset, void** shm_mapped_addr,
     TRITONSERVER_MemoryType* memory_type, int64_t* device_id)
 {
@@ -115,7 +115,7 @@ SharedMemoryManager::GetMemoryInfo(
 
 
 Error
-SharedMemoryManager::Unregister(
+SharedInferDataManager::Unregister(
     const std::string& name, TRITONSERVER_MemoryType memory_type)
 {
   // Serialize all operations that write/read current shared memory regions
@@ -125,7 +125,7 @@ SharedMemoryManager::Unregister(
 }
 
 Error
-SharedMemoryManager::UnregisterAll(TRITONSERVER_MemoryType memory_type)
+SharedInferDataManager::UnregisterAll(TRITONSERVER_MemoryType memory_type)
 {
   // Serialize all operations that write/read current shared memory regions
   std::lock_guard<std::mutex> lock(mu_);
@@ -165,7 +165,7 @@ SharedMemoryManager::UnregisterAll(TRITONSERVER_MemoryType memory_type)
 }
 
 Error
-SharedMemoryManager::UnregisterHelper(
+SharedInferDataManager::UnregisterHelper(
     const std::string& name, TRITONSERVER_MemoryType memory_type)
 {
   // Must hold the lock on register_mu_ while calling this function.
