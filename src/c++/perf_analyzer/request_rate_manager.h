@@ -125,6 +125,8 @@ class RequestRateManager : public LoadManager {
       std::chrono::nanoseconds duration,
       std::function<std::chrono::nanoseconds(std::mt19937&)> distribution);
 
+  std::vector<RateSchedulePtr_t> CreateEmptyWorkerSchedules();
+
   void SetScheduleDurations(std::vector<RateSchedulePtr_t>& schedules);
 
   void GiveSchedulesToWorkers(

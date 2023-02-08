@@ -598,9 +598,6 @@ TEST_CASE("request_rate_distribution")
 
 /// Check that the request distribution is correct
 /// for the case where the measurement window is tiny.
-/// The code Used to loop through the schedule many times, and
-/// this exposed a bug. The code no longer needs to loop through
-/// the schedule, but the test is still valid
 ///
 TEST_CASE("request_rate_tiny_window")
 {

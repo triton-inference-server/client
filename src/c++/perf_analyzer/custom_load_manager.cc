@@ -92,35 +92,37 @@ CustomLoadManager::GenerateSchedule()
   RETURN_IF_ERROR(
       ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
 
-  std::vector<RateSchedulePtr_t> worker_schedules =
-      CreateWorkerSchedules(custom_intervals_);
-
+  auto worker_schedules = CreateWorkerSchedules();
   GiveSchedulesToWorkers(worker_schedules);
   return cb::Error::Success;
 }
 
 std::vector<RateSchedulePtr_t>
-CustomLoadManager::CreateWorkerSchedules(const NanoIntervals& custom_intervals)
+CustomLoadManager::CreateWorkerSchedules()
 {
-  std::chrono::nanoseconds next_timestamp(0);
+  std::vector<RateSchedulePtr_t> worker_schedules =
+      CreateEmptyWorkerSchedules();
 
-  std::vector<RateSchedulePtr_t> worker_schedules;
-  for (size_t i = 0; i < workers_.size(); i++) {
-    worker_schedules.push_back(std::make_shared<RateSchedule>());
-  }
-
+  size_t num_workers = workers_.size();
+  size_t num_loops_through_intervals = 0;
   size_t worker_index = 0;
   size_t intervals_index = 0;
 
-  size_t total_count = workers_.size() * custom_intervals.size();
+  std::chrono::nanoseconds next_timestamp(0);
 
-  size_t count = 0;
-  while (count < total_count) {
-    count++;
-    next_timestamp += custom_intervals[intervals_index];
+  // Distribute the custom intervals across the workers X times, where X is the
+  // number of workers. That way it is guaranteed to evenly distribute across
+  // the worker schedules, and every worker schedule will be the same length
+  //
+  while (num_loops_through_intervals < num_workers) {
+    next_timestamp += custom_intervals_[intervals_index];
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
+
     worker_index = (worker_index + 1) % workers_.size();
-    intervals_index = (intervals_index + 1) % custom_intervals.size();
+    intervals_index = (intervals_index + 1) % custom_intervals_.size();
+    if (intervals_index == 0) {
+      num_loops_through_intervals++;
+    }
   }
 
   SetScheduleDurations(worker_schedules);

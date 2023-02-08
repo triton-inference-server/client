@@ -113,12 +113,14 @@ RequestRateManager::GenerateSchedule(const double request_rate)
 
   if (request_distribution_ == Distribution::POISSON) {
     distribution = ScheduleDistribution<Distribution::POISSON>(request_rate);
-    // Poisson distribution needs to generate a full schedule so that the result
-    // is as random and as close to the desired rate as possible
+    // Poisson distribution needs to generate a schedule for the maximum
+    // possible duration to make sure that it is as random and as close to the
+    // desired rate as possible
     max_duration = *gen_duration_;
   } else if (request_distribution_ == Distribution::CONSTANT) {
     distribution = ScheduleDistribution<Distribution::CONSTANT>(request_rate);
-    // Constant distribution only needs one entry per worker
+    // Constant distribution only needs one entry per worker -- that one value
+    // can be repeated over and over to emulate a full schedule of any length
     max_duration = std::chrono::nanoseconds(1);
   } else {
     return;
@@ -134,17 +136,16 @@ RequestRateManager::CreateWorkerSchedules(
     std::function<std::chrono::nanoseconds(std::mt19937&)> distribution)
 {
   std::mt19937 schedule_rng;
-  std::vector<RateSchedulePtr_t> worker_schedules;
 
-  for (size_t i = 0; i < workers_.size(); i++) {
-    worker_schedules.push_back(std::make_shared<RateSchedule>());
-  }
+  std::vector<RateSchedulePtr_t> worker_schedules =
+      CreateEmptyWorkerSchedules();
 
   std::chrono::nanoseconds next_timestamp(0);
   size_t worker_index = 0;
 
   // Generate schedule until we hit max_duration, but also make sure that all
-  // worker schedules are the same length
+  // worker schedules are the same length by continuing until worker_index is
+  // back to 0
   //
   while (next_timestamp < max_duration || worker_index != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
@@ -154,6 +155,16 @@ RequestRateManager::CreateWorkerSchedules(
 
   SetScheduleDurations(worker_schedules);
 
+  return worker_schedules;
+}
+
+std::vector<RateSchedulePtr_t>
+RequestRateManager::CreateEmptyWorkerSchedules()
+{
+  std::vector<RateSchedulePtr_t> worker_schedules;
+  for (size_t i = 0; i < workers_.size(); i++) {
+    worker_schedules.push_back(std::make_shared<RateSchedule>());
+  }
   return worker_schedules;
 }
 

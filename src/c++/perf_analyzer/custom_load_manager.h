@@ -110,8 +110,7 @@ class CustomLoadManager : public RequestRateManager {
 
   cb::Error GenerateSchedule();
 
-  std::vector<RateSchedulePtr_t> CreateWorkerSchedules(
-      const NanoIntervals& custom_intervals);
+  std::vector<RateSchedulePtr_t> CreateWorkerSchedules();
 
   /// Reads the time intervals file and stores intervals in vector
   /// \param path Filesystem path of the time intervals file.
