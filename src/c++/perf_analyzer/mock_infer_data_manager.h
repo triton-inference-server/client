@@ -54,7 +54,7 @@ class MockInferDataManager : public InferDataManager {
     return cb::Error::Success;
   }
 
-  virtual cb::Error CreateInferInput(
+  cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype) override
