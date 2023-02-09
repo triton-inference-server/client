@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include "ischeduler.h"
 #include "load_worker.h"
 #include "model_parser.h"
 
@@ -43,20 +44,17 @@ class TestCustomLoadManager;
 /// If the model is sequence model, each worker has to use multiples contexts
 /// to maintain (sequence) concurrency assigned to worker.
 ///
-class RequestRateWorker : public LoadWorker {
+class RequestRateWorker : public LoadWorker, public IScheduler {
  public:
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
-        : index_(index), id_(index), stride_(stride), is_paused_(false),
-          rounds_(0)
+        : id_(index), stride_(stride), is_paused_(false)
     {
     }
 
-    uint32_t index_;
     uint32_t id_;
     uint32_t stride_;
     bool is_paused_;
-    uint64_t rounds_;
   };
 
   RequestRateWorker(
@@ -75,8 +73,6 @@ class RequestRateWorker : public LoadWorker {
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::chrono::steady_clock::time_point& start_time,
-      std::vector<std::chrono::nanoseconds>& schedule,
-      std::shared_ptr<std::chrono::nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, sequence_stat,
@@ -85,21 +81,21 @@ class RequestRateWorker : public LoadWorker {
             sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
             distribution, wake_signal, wake_mutex, execute),
         thread_config_(thread_config), max_threads_(max_threads),
-        start_time_(start_time), schedule_(schedule),
-        gen_duration_(gen_duration)
+        start_time_(start_time)
   {
   }
 
   void Infer() override;
 
+  /// Provides the schedule that should be followed
+  ///
+  void SetSchedule(RateSchedulePtr_t schedule) override;
+
  private:
+  RateSchedulePtr_t schedule_;
+
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
-  // TODO REFACTOR TMA-1018 why can't we just pass every thread its own personal
-  // schedule instead of passing in the full schedule and making each thread
-  // self-calculate where it should be?
-  std::vector<std::chrono::nanoseconds>& schedule_;
-  std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
 

@@ -55,6 +55,18 @@ RequestRateWorker::Infer()
 }
 
 void
+RequestRateWorker::SetSchedule(RateSchedulePtr_t schedule)
+{
+  schedule_ = schedule;
+}
+
+std::chrono::nanoseconds
+RequestRateWorker::GetNextTimestamp()
+{
+  return schedule_->Next();
+}
+
+void
 RequestRateWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {
@@ -86,19 +98,6 @@ RequestRateWorker::HandleExecuteOff()
   thread_config_->is_paused_ = false;
 }
 
-std::chrono::nanoseconds
-RequestRateWorker::GetNextTimestamp()
-{
-  auto next_timestamp = schedule_[thread_config_->index_] +
-                        (thread_config_->rounds_ * (*gen_duration_));
-
-  thread_config_->index_ = (thread_config_->index_ + thread_config_->stride_);
-  // Loop around the schedule to keep running
-  thread_config_->rounds_ += (thread_config_->index_ / schedule_.size());
-  thread_config_->index_ = thread_config_->index_ % schedule_.size();
-
-  return next_timestamp;
-}
 
 bool
 RequestRateWorker::SleepIfNecessary()

@@ -112,15 +112,6 @@ cb::Error ReadFile(const std::string& path, std::vector<char>* contents);
 cb::Error ReadTextFile(
     const std::string& path, std::vector<std::string>* contents);
 
-// Reads the time intervals in microseconds from file specified by path into
-// vector of time intervals in nanoseconds.
-// \param path The complete path to the file to be read
-// \param contents The time interval vector that will contain the data read.
-// \return error status. Returns Non-Ok if an error is encountered during
-//  read operation.
-cb::Error ReadTimeIntervalsFile(
-    const std::string& path, std::vector<std::chrono::nanoseconds>* contents);
-
 // To check whether the path points to a valid system directory
 bool IsDirectory(const std::string& path);
 
