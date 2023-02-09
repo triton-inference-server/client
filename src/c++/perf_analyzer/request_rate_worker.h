@@ -87,41 +87,19 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   void Infer() override;
 
-  /// Provides schedule information, where the consumer should
-  /// loop through the provided schedule, and then every time it loops back to
-  /// the start add an additional amount equal to the provided schedule_duration
+  /// Provides the schedule that should be followed
   ///
-  void SetSchedule(RateSchedulePtr_t schedule) override
-  {
-    schedule_ = schedule;
-
-    schedule_rounds_ = 0;
-    schedule_index_ = 0;
-  }
+  void SetSchedule(RateSchedulePtr_t schedule) override;
 
  private:
   RateSchedulePtr_t schedule_;
-  size_t schedule_index_ = 0;
-  size_t schedule_rounds_ = 0;
 
   const size_t max_threads_;
   std::chrono::steady_clock::time_point& start_time_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  std::chrono::nanoseconds GetNextTimestamp()
-  {
-    auto next = schedule_->intervals[schedule_index_] +
-                schedule_->duration * schedule_rounds_;
-
-    schedule_index_++;
-    if (schedule_index_ >= schedule_->intervals.size()) {
-      schedule_rounds_++;
-      schedule_index_ = 0;
-    }
-
-    return next;
-  }
+  std::chrono::nanoseconds GetNextTimestamp();
 
   // Request Rate Worker only ever has a single context
   uint32_t GetCtxId() { return 0; }

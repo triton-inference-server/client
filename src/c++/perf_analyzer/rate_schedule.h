@@ -26,17 +26,41 @@
 
 #pragma once
 
-#include "rate_schedule.h"
+#include <chrono>
+#include <memory>
+#include <vector>
 
 namespace triton { namespace perfanalyzer {
 
-/// Interface for worker threads that use a schedule
+using NanoIntervals = std::vector<std::chrono::nanoseconds>;
+
+/// Defines a schedule, where the consumer should
+/// loop through the provided intervals, and then every time it loops back to
+/// the start add an additional amount equal to the duration
 ///
-class IScheduler {
- public:
-  /// Provides the schedule that should be followed
+struct RateSchedule {
+  NanoIntervals intervals;
+  std::chrono::nanoseconds duration;
+
+  /// Returns the next timestamp in the schedule
   ///
-  virtual void SetSchedule(RateSchedulePtr_t schedule) = 0;
+  std::chrono::nanoseconds Next()
+  {
+    auto next = intervals[index_] + duration * rounds_;
+
+    index_++;
+    if (index_ >= intervals.size()) {
+      rounds_++;
+      index_ = 0;
+    }
+    return next;
+  }
+
+ private:
+  size_t rounds_ = 0;
+  size_t index_ = 0;
 };
+
+using RateSchedulePtr_t = std::shared_ptr<RateSchedule>;
 
 }}  // namespace triton::perfanalyzer

@@ -55,6 +55,18 @@ RequestRateWorker::Infer()
 }
 
 void
+RequestRateWorker::SetSchedule(RateSchedulePtr_t schedule)
+{
+  schedule_ = schedule;
+}
+
+std::chrono::nanoseconds
+RequestRateWorker::GetNextTimestamp()
+{
+  return schedule_->Next();
+}
+
+void
 RequestRateWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {

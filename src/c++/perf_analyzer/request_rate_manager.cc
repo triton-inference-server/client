@@ -172,9 +172,9 @@ void
 RequestRateManager::SetScheduleDurations(
     std::vector<RateSchedulePtr_t>& schedules)
 {
-  RateSchedulePtr_t last_worker = schedules.back();
+  RateSchedulePtr_t last_schedule = schedules.back();
 
-  std::chrono::nanoseconds duration = last_worker->intervals.back();
+  std::chrono::nanoseconds duration = last_schedule->intervals.back();
   for (auto schedule : schedules) {
     schedule->duration = duration;
   }
