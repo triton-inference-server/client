@@ -345,13 +345,10 @@ class InferenceProfiler {
       std::vector<PerfStatus>& summary, bool& meets_threshold, bool& is_stable);
 
   /// A helper function for profiling functions.
-  /// \param clean_starts Whether or not to reset load cycle with every
-  /// measurement trials.
   /// \param status_summary Returns the summary of the measurement.
   /// \param is_stable Returns whether the measurement stabilized or not.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ProfileHelper(
-      const bool clean_starts, PerfStatus& status_summary, bool* is_stable);
+  cb::Error ProfileHelper(PerfStatus& status_summary, bool* is_stable);
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies

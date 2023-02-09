@@ -79,9 +79,8 @@ RequestRateManager::RequestRateManager(
       sequence_stat_.emplace_back(new SequenceStat(0));
     }
   }
-  // FIXME TODO TMA-1018 - remove the +1
   gen_duration_.reset(new std::chrono::nanoseconds(
-      (max_trials + 1) * measurement_window_ms * 1000 * 1000));
+      max_trials * measurement_window_ms * NANOS_PER_MILLIS));
 
   threads_config_.reserve(max_threads);
 }
@@ -109,22 +108,86 @@ RequestRateManager::ResetWorkers()
 void
 RequestRateManager::GenerateSchedule(const double request_rate)
 {
+  std::chrono::nanoseconds max_duration;
   std::function<std::chrono::nanoseconds(std::mt19937&)> distribution;
+
   if (request_distribution_ == Distribution::POISSON) {
     distribution = ScheduleDistribution<Distribution::POISSON>(request_rate);
+    // Poisson distribution needs to generate a schedule for the maximum
+    // possible duration to make sure that it is as random and as close to the
+    // desired rate as possible
+    max_duration = *gen_duration_;
   } else if (request_distribution_ == Distribution::CONSTANT) {
     distribution = ScheduleDistribution<Distribution::CONSTANT>(request_rate);
+    // Constant distribution only needs one entry per worker -- that one value
+    // can be repeated over and over to emulate a full schedule of any length
+    max_duration = std::chrono::nanoseconds(1);
   } else {
     return;
   }
-  schedule_.clear();
+
+  auto worker_schedules = CreateWorkerSchedules(max_duration, distribution);
+  GiveSchedulesToWorkers(worker_schedules);
+}
+
+std::vector<RateSchedulePtr_t>
+RequestRateManager::CreateWorkerSchedules(
+    std::chrono::nanoseconds max_duration,
+    std::function<std::chrono::nanoseconds(std::mt19937&)> distribution)
+{
+  std::mt19937 schedule_rng;
+
+  std::vector<RateSchedulePtr_t> worker_schedules =
+      CreateEmptyWorkerSchedules();
 
   std::chrono::nanoseconds next_timestamp(0);
+  size_t worker_index = 0;
 
-  std::mt19937 schedule_rng;
-  while (next_timestamp < *gen_duration_) {
-    schedule_.emplace_back(next_timestamp);
-    next_timestamp = schedule_.back() + distribution(schedule_rng);
+  // Generate schedule until we hit max_duration, but also make sure that all
+  // worker schedules are the same length by continuing until worker_index is
+  // back to 0
+  //
+  while (next_timestamp < max_duration || worker_index != 0) {
+    next_timestamp = next_timestamp + distribution(schedule_rng);
+    worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
+    worker_index = (worker_index + 1) % workers_.size();
+  }
+
+  SetScheduleDurations(worker_schedules);
+
+  return worker_schedules;
+}
+
+std::vector<RateSchedulePtr_t>
+RequestRateManager::CreateEmptyWorkerSchedules()
+{
+  std::vector<RateSchedulePtr_t> worker_schedules;
+  for (size_t i = 0; i < workers_.size(); i++) {
+    worker_schedules.push_back(std::make_shared<RateSchedule>());
+  }
+  return worker_schedules;
+}
+
+void
+RequestRateManager::SetScheduleDurations(
+    std::vector<RateSchedulePtr_t>& schedules)
+{
+  RateSchedulePtr_t last_schedule = schedules.back();
+
+  std::chrono::nanoseconds duration = last_schedule->intervals.back();
+  for (auto schedule : schedules) {
+    schedule->duration = duration;
+  }
+}
+
+
+void
+RequestRateManager::GiveSchedulesToWorkers(
+    const std::vector<RateSchedulePtr_t>& worker_schedules)
+{
+  for (size_t i = 0; i < workers_.size(); i++) {
+    auto w = std::dynamic_pointer_cast<IScheduler>(workers_[i]);
+    w->SetSchedule(worker_schedules[i]);
   }
 }
 
@@ -159,12 +222,6 @@ RequestRateManager::PauseWorkers()
 void
 RequestRateManager::ResumeWorkers()
 {
-  // Reset all the thread counters
-  for (auto& thread_config : threads_config_) {
-    thread_config->index_ = thread_config->id_;
-    thread_config->rounds_ = 0;
-  }
-
   UnpauseAllSequences();
 
   // Update the start_time_ to point to current time
@@ -186,8 +243,8 @@ RequestRateManager::MakeWorker(
       factory_, sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
       shared_memory_type_, batch_size_, sequence_stat_, shared_memory_regions_,
-      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
-      gen_duration_, distribution_);
+      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_,
+      distribution_);
 }
 
 
