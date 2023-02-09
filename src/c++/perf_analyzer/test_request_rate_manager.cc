@@ -36,8 +36,8 @@
 #include "test_utils.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
-using std::chrono::milliseconds;
-using std::chrono::nanoseconds;
+using milliseconds = std::chrono::milliseconds;
+using nanoseconds = std::chrono::nanoseconds;
 
 namespace triton { namespace perfanalyzer {
 
@@ -59,8 +59,6 @@ class RequestRateWorkerMockedInferInput : public RequestRateWorker {
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::chrono::steady_clock::time_point& start_time,
-      std::vector<nanoseconds>& schedule,
-      std::shared_ptr<nanoseconds> gen_duration,
       std::uniform_int_distribution<uint64_t>& distribution)
       : RequestRateWorker(
             id, thread_stat, thread_config, parser, data_loader, backend_kind,
@@ -68,7 +66,7 @@ class RequestRateWorkerMockedInferInput : public RequestRateWorker {
             on_sequence_model, async, max_threads, using_json_data, streaming,
             shared_memory_type, batch_size, sequence_stat,
             shared_memory_regions, wake_signal, wake_mutex, execute,
-            curr_seq_id, start_time, schedule, gen_duration, distribution)
+            curr_seq_id, start_time, distribution)
   {
   }
 
@@ -166,8 +164,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
           start_sequence_id_, sequence_id_range_, on_sequence_model_, async_,
           max_threads_, using_json_data_, streaming_, shared_memory_type_,
           batch_size_, sequence_stat_, shared_memory_regions_, wake_signal_,
-          wake_mutex_, execute_, curr_seq_id_, start_time_, schedule_,
-          gen_duration_, distribution_);
+          wake_mutex_, execute_, curr_seq_id_, start_time_, distribution_);
     }
   }
 
@@ -189,11 +186,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
     //
     while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
+        expected_current_timestamp += expected_time_between_requests;
         auto timestamp =
             std::dynamic_pointer_cast<RequestRateWorkerMockedInferInput>(worker)
                 ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
-        expected_current_timestamp += expected_time_between_requests;
       }
     }
     early_exit = true;
@@ -205,8 +202,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// observable effects are the following:
   ///   - if threads_ is empty, it will populate threads_, threads_stat_, and
   ///   threads_config_ based on max_threads_
-  ///   - each thread config has its index reset to its ID
-  ///   - each thread config has its rounds set to 0
   ///   - start_time_ is updated with a new timestamp
   ///
   void TestResetWorkers()
@@ -231,9 +226,10 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
     SUBCASE("max threads 3, multiple calls")
     {
+      max_threads_ = 3;
+
       // First call will populate threads/config/stat
       //
-      max_threads_ = 3;
       CHECK(start_time_ == old_time);
       ResetWorkers();
       CHECK(start_time_ != old_time);
@@ -241,22 +237,14 @@ class TestRequestRateManager : public TestLoadManagerBase,
       CHECK(threads_stat_.size() == 3);
       CHECK(threads_.size() == 3);
 
-      // Second call will reset thread_config values
+      // Second call will only update start_time
       //
-      for (auto& thread_config : threads_config_) {
-        thread_config->index_ = 99;
-        thread_config->rounds_ = 17;
-      }
       old_time = start_time_;
       ResetWorkers();
       CHECK(start_time_ != old_time);
       CHECK(threads_config_.size() == 3);
       CHECK(threads_stat_.size() == 3);
       CHECK(threads_.size() == 3);
-      for (auto& thread_config : threads_config_) {
-        CHECK(thread_config->index_ == thread_config->id_);
-        CHECK(thread_config->rounds_ == 0);
-      }
     }
   }
 
@@ -392,9 +380,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
   bool& using_json_data_{LoadManager::using_json_data_};
   bool& execute_{RequestRateManager::execute_};
   size_t& batch_size_{LoadManager::batch_size_};
-  std::vector<nanoseconds>& schedule_{RequestRateManager::schedule_};
-  std::shared_ptr<nanoseconds>& gen_duration_{
-      RequestRateManager::gen_duration_};
   std::chrono::steady_clock::time_point& start_time_{
       RequestRateManager::start_time_};
   size_t& max_threads_{LoadManager::max_threads_};
@@ -612,15 +597,14 @@ TEST_CASE("request_rate_distribution")
 }
 
 /// Check that the request distribution is correct
-/// for the case where the measurement window is tiny
-/// and thus the code will loop through the schedule
-/// many times
+/// for the case where the measurement window is tiny.
 ///
 TEST_CASE("request_rate_tiny_window")
 {
   PerfAnalyzerParameters params;
   params.request_distribution = CONSTANT;
   params.measurement_window_ms = 10;
+  params.max_trials = 100;
   uint request_rate = 500;
   uint duration_ms = 1000;
 
@@ -654,41 +638,44 @@ TEST_CASE("request_rate_sequence")
 
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 {
+  bool is_sequence = false;
+  bool is_decoupled;
+  bool expected_enable_stats_value;
+
+  SUBCASE("enable_stats true")
+  {
+    is_decoupled = false;
+    expected_enable_stats_value = true;
+  }
+  SUBCASE("enable_stats false")
+  {
+    is_decoupled = true;
+    expected_enable_stats_value = false;
+  }
+
   PerfAnalyzerParameters params{};
   params.streaming = true;
+
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{nanoseconds(1)};
+  schedule->duration = nanoseconds{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
 
-  SUBCASE("enable_stats true")
-  {
-    TestRequestRateManager trrm(params);
-    trrm.schedule_.push_back(nanoseconds(1));
+  TestRequestRateManager trrm(params, is_sequence, is_decoupled);
 
-    auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+  auto worker = trrm.MakeWorker(thread_stat, thread_config);
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-    early_exit = true;
-    infer_future.get();
+  early_exit = true;
+  infer_future.get();
 
-    CHECK(trrm.stats_->start_stream_enable_stats_value == true);
-  }
-
-  SUBCASE("enable_stats false")
-  {
-    TestRequestRateManager trrm(
-        params, false /* is_sequence */, true /* is_decoupled */);
-    trrm.schedule_.push_back(nanoseconds(1));
-
-    auto worker = trrm.MakeWorker(thread_stat, thread_config);
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
-
-    early_exit = true;
-    infer_future.get();
-
-    CHECK(trrm.stats_->start_stream_enable_stats_value == false);
-  }
+  CHECK(
+      trrm.stats_->start_stream_enable_stats_value ==
+      expected_enable_stats_value);
 }
 
 TEST_CASE(
@@ -766,16 +753,17 @@ TEST_CASE(
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
-  trrm.schedule_.push_back(milliseconds(4));
-  trrm.schedule_.push_back(milliseconds(8));
-  trrm.schedule_.push_back(milliseconds(12));
-  trrm.schedule_.push_back(milliseconds(16));
-  trrm.gen_duration_ = std::make_unique<nanoseconds>(16000000);
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                      milliseconds(12), milliseconds(16)};
+  schedule->duration = nanoseconds{16000000};
+
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
       0, mdl->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   std::this_thread::sleep_for(milliseconds(18));
@@ -981,16 +969,18 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.execute_ = true;
   trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
-  trrm.schedule_.push_back(milliseconds(4));
-  trrm.schedule_.push_back(milliseconds(8));
-  trrm.schedule_.push_back(milliseconds(12));
-  trrm.schedule_.push_back(milliseconds(16));
-  trrm.gen_duration_ = std::make_unique<nanoseconds>(16000000);
+
+  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                      milliseconds(12), milliseconds(16)};
+  schedule->duration = nanoseconds{16000000};
+
   trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
       0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
   trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
+  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
   std::this_thread::sleep_for(milliseconds(18));

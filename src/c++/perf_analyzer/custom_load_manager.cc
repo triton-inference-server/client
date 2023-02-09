@@ -76,22 +76,58 @@ CustomLoadManager::CustomLoadManager(
 cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
-  schedule_.clear();
-  schedule_.emplace_back(0);
-  if (!request_intervals_file_.empty()) {
-    RETURN_IF_ERROR(
-        ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
-    size_t index = 0;
-    while (schedule_.back() < *gen_duration_) {
-      std::chrono::nanoseconds next_timestamp(
-          schedule_.back() + custom_intervals_[index++]);
-      schedule_.emplace_back(next_timestamp);
-      if (index == custom_intervals_.size()) {
-        index = 0;
-      }
+  PauseWorkers();
+  auto status = GenerateSchedule();
+  ResumeWorkers();
+  return status;
+}
+
+cb::Error
+CustomLoadManager::GenerateSchedule()
+{
+  if (request_intervals_file_.empty()) {
+    return cb::Error::Success;
+  }
+
+  RETURN_IF_ERROR(
+      ReadTimeIntervalsFile(request_intervals_file_, &custom_intervals_));
+
+  auto worker_schedules = CreateWorkerSchedules();
+  GiveSchedulesToWorkers(worker_schedules);
+  return cb::Error::Success;
+}
+
+std::vector<RateSchedulePtr_t>
+CustomLoadManager::CreateWorkerSchedules()
+{
+  std::vector<RateSchedulePtr_t> worker_schedules =
+      CreateEmptyWorkerSchedules();
+
+  size_t num_workers = workers_.size();
+  size_t num_loops_through_intervals = 0;
+  size_t worker_index = 0;
+  size_t intervals_index = 0;
+
+  std::chrono::nanoseconds next_timestamp(0);
+
+  // Distribute the custom intervals across the workers X times, where X is the
+  // number of workers. That way it is guaranteed to evenly distribute across
+  // the worker schedules, and every worker schedule will be the same length
+  //
+  while (num_loops_through_intervals < num_workers) {
+    next_timestamp += custom_intervals_[intervals_index];
+    worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
+
+    worker_index = (worker_index + 1) % workers_.size();
+    intervals_index = (intervals_index + 1) % custom_intervals_.size();
+    if (intervals_index == 0) {
+      num_loops_through_intervals++;
     }
   }
-  return cb::Error::Success;
+
+  SetScheduleDurations(worker_schedules);
+
+  return worker_schedules;
 }
 
 cb::Error
@@ -106,13 +142,13 @@ CustomLoadManager::GetCustomRequestRate(double* request_rate)
   }
 
   *request_rate =
-      (custom_intervals_.size() * 1000 * 1000 * 1000) / (total_time_ns);
+      (custom_intervals_.size() * NANOS_PER_SECOND) / (total_time_ns);
   return cb::Error::Success;
 }
 
 cb::Error
 CustomLoadManager::ReadTimeIntervalsFile(
-    const std::string& path, std::vector<std::chrono::nanoseconds>* contents)
+    const std::string& path, NanoIntervals* contents)
 {
   std::ifstream in(path);
   if (!in) {

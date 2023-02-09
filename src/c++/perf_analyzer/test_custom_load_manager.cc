@@ -35,7 +35,7 @@
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
 
-using std::chrono::nanoseconds;
+using nanoseconds = std::chrono::nanoseconds;
 
 namespace triton { namespace perfanalyzer {
 
@@ -77,33 +77,29 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     size_t intervals_index = 0;
 
     PauseWorkers();
-    InitCustomIntervals();
+    GenerateSchedule();
 
     // Keep calling GetNextTimestamp for the entire test_duration to make sure
     // the schedule is exactly as expected
     //
     while (expected_current_timestamp < max_test_duration) {
       for (auto worker : workers_) {
+        expected_current_timestamp += custom_intervals_[intervals_index];
         auto timestamp = std::dynamic_pointer_cast<RequestRateWorker>(worker)
                              ->GetNextTimestamp();
         REQUIRE(timestamp.count() == expected_current_timestamp.count());
-        expected_current_timestamp += custom_intervals_[intervals_index];
         intervals_index = (intervals_index + 1) % custom_intervals_.size();
       }
     }
   }
 
 
-  std::shared_ptr<nanoseconds>& gen_duration_{
-      RequestRateManager::gen_duration_};
-  std::vector<nanoseconds>& schedule_{RequestRateManager::schedule_};
   std::string& request_intervals_file_{
       CustomLoadManager::request_intervals_file_};
-  std::vector<nanoseconds>& custom_intervals_{
-      CustomLoadManager::custom_intervals_};
+  NanoIntervals& custom_intervals_{CustomLoadManager::custom_intervals_};
 
   cb::Error ReadTimeIntervalsFile(
-      const std::string& path, std::vector<nanoseconds>* contents) override
+      const std::string& path, NanoIntervals* contents) override
   {
     return cb::Error::Success;
   }
@@ -190,39 +186,6 @@ TEST_CASE("custom_load_schedule")
   ParameterizeMeasurementWindow();
   TestCustomLoadManager tclm(params, is_sequence, is_decoupled);
   tclm.TestSchedule(intervals, params);
-}
-
-TEST_CASE("testing the InitCustomIntervals function")
-{
-  TestCustomLoadManager tclm{};
-
-  SUBCASE("no file provided")
-  {
-    cb::Error result{tclm.InitCustomIntervals()};
-
-    CHECK(result.Err() == SUCCESS);
-    CHECK(tclm.schedule_.size() == 1);
-    CHECK(tclm.schedule_[0] == nanoseconds(0));
-  }
-
-  SUBCASE("file provided")
-  {
-    tclm.request_intervals_file_ = "nonexistent_file.txt";
-    tclm.gen_duration_ = std::make_unique<nanoseconds>(350000000);
-    tclm.custom_intervals_.push_back(nanoseconds(100000000));
-    tclm.custom_intervals_.push_back(nanoseconds(110000000));
-    tclm.custom_intervals_.push_back(nanoseconds(130000000));
-
-    cb::Error result{tclm.InitCustomIntervals()};
-
-    CHECK(result.Err() == SUCCESS);
-    CHECK(tclm.schedule_.size() == 5);
-    CHECK(tclm.schedule_[0] == nanoseconds(0));
-    CHECK(tclm.schedule_[1] == nanoseconds(100000000));
-    CHECK(tclm.schedule_[2] == nanoseconds(210000000));
-    CHECK(tclm.schedule_[3] == nanoseconds(340000000));
-    CHECK(tclm.schedule_[4] == nanoseconds(440000000));
-  }
 }
 
 TEST_CASE("testing the GetCustomRequestRate function")
