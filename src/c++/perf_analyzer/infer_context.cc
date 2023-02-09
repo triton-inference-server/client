@@ -67,7 +67,7 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateSeqJsonData(infer_data_, sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
     }
 
     sequence_stat_[seq_stat_index]->remaining_queries_--;
@@ -87,7 +87,7 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
     SetInferSequenceOptions(seq_stat_index, infer_data_.options_);
 
     if (using_json_data_) {
-      UpdateSeqJsonData(infer_data_, sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
     }
     sequence_stat_[seq_stat_index]->remaining_queries_--;
 
@@ -184,18 +184,17 @@ InferContext::UpdateJsonData()
 }
 
 void
-InferContext::UpdateSeqJsonData(
-    InferData& infer_data, std::shared_ptr<SequenceStat> seq_stat)
+InferContext::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
 {
   int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
                 seq_stat->remaining_queries_;
   thread_stat_->status_ = UpdateInputs(
-      infer_data.inputs_, infer_data.valid_inputs_, seq_stat->data_stream_id_,
+      infer_data_.inputs_, infer_data_.valid_inputs_, seq_stat->data_stream_id_,
       step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data.outputs_, seq_stat->data_stream_id_, step_id,
-        infer_data.expected_outputs_);
+        infer_data_.outputs_, seq_stat->data_stream_id_, step_id,
+        infer_data_.expected_outputs_);
   }
 }
 

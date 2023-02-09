@@ -178,8 +178,7 @@ class InferContext {
   void UpdateJsonData();
 
   /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(
-      InferData& infer_data, std::shared_ptr<SequenceStat> seq_stat);
+  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
 
   void SetInferSequenceOptions(
       const uint32_t seq_stat_index,
