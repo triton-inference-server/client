@@ -3,14 +3,14 @@
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
 # are met:
-# * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution.
-# * Neither the name of NVIDIA CORPORATION nor the names of its
-# contributors may be used to endorse or promote products derived
-# from this software without specific prior written permission.
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -24,14 +24,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required (VERSION 3.18)
 
 set(
     TRITON_C_API_CLIENT_BACKEND_SRCS
     triton_c_api_backend.cc
     shared_library.cc
     triton_loader.cc
-    shared_infer_data_manager.cc
+    shared_memory_manager.cc
     scoped_defer.cc
 )
 
@@ -39,21 +39,21 @@ set(
     TRITON_C_API_CLIENT_BACKEND_HDRS
     triton_c_api_backend.h
     shared_library.h
-    shared_infer_data_manager.h
+    shared_memory_manager.h
     triton_loader.h
     c_api_infer_results.h
     scoped_defer.h
 )
 
 add_library(
-    triton-c-api-backend-library EXCLUDE_FROM_ALL OBJECT
+    triton-c-api-backend-library  EXCLUDE_FROM_ALL OBJECT
     ${TRITON_C_API_CLIENT_BACKEND_SRCS}
     ${TRITON_C_API_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-    triton-c-api-backend-library
-    grpcclient_static
-    httpclient_static
-    triton-core-serverapi # from repo-core
+  triton-c-api-backend-library
+  grpcclient_static
+  httpclient_static
+  triton-core-serverapi   # from repo-core
 )

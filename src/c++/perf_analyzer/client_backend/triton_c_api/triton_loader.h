@@ -35,8 +35,8 @@
 
 #include "../client_backend.h"
 #include "common.h"
-#include "shared_infer_data_manager.h"
 #include "shared_library.h"
+#include "shared_memory_manager.h"
 #include "triton/core/tritonserver.h"
 
 // If TRITONSERVER error is non-OK, return the corresponding status.
@@ -398,7 +398,7 @@ class TritonLoader : public tc::InferenceServerClient {
     requested_memory_type_ = TRITONSERVER_MEMORY_CPU;
     model_is_loaded_ = false;
     server_is_ready_ = false;
-    shm_manager_ = std::make_unique<SharedInferDataManager>();
+    shm_manager_ = std::make_unique<SharedMemoryManager>();
   }
 
   Error PopulateInternals(
@@ -513,7 +513,7 @@ class TritonLoader : public tc::InferenceServerClient {
   int64_t model_version_{-1};
   bool model_is_loaded_{false};
   bool server_is_ready_{false};
-  std::unique_ptr<SharedInferDataManager> shm_manager_{nullptr};
+  std::unique_ptr<SharedMemoryManager> shm_manager_{nullptr};
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritoncapi
