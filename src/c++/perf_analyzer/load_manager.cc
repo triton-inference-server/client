@@ -29,7 +29,6 @@
 #include <algorithm>
 
 #include "client_backend/client_backend.h"
-#include "shm_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
