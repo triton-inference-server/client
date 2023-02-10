@@ -175,13 +175,13 @@ class InferDataManager {
   /// inference request.
   /// \param ctx The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInferNoSharedMemoryInfer(InferData& ctx);
+  cb::Error PrepareInferNoSharedMemory(InferData& ctx);
 
   /// Helper function to prepare the InferData for sending
   /// inference request in shared memory. \param ctx The target
   /// InferData object. \return cb::Error object indicating
   /// success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferData& ctx);
+  cb::Error PrepareInferSharedMemory(InferData& ctx);
 
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects for all

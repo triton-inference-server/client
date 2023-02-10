@@ -344,14 +344,14 @@ cb::Error
 InferDataManager::PrepareInfer(InferData& ctx)
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    return PrepareInferNoSharedMemoryInfer(ctx);
+    return PrepareInferNoSharedMemory(ctx);
   } else {
-    return PrepareSharedMemoryInfer(ctx);
+    return PrepareInferSharedMemory(ctx);
   }
 }
 
 cb::Error
-InferDataManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
+InferDataManager::PrepareInferNoSharedMemory(InferData& ctx)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -407,7 +407,7 @@ InferDataManager::PrepareInferNoSharedMemoryInfer(InferData& ctx)
 }
 
 cb::Error
-InferDataManager::PrepareSharedMemoryInfer(InferData& ctx)
+InferDataManager::PrepareInferSharedMemory(InferData& ctx)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(

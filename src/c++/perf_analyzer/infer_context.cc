@@ -160,14 +160,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
   }
 }
 
-cb::Error
-InferContext::CreateInferInput(
-    cb::InferInput** infer_input, const cb::BackendKind kind,
-    const std::string& name, const std::vector<int64_t>& dims,
-    const std::string& datatype)
-{
-  return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
-}
 
 void
 InferContext::UpdateJsonData()

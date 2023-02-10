@@ -162,18 +162,6 @@ class InferContext {
   void SendRequest(const uint64_t request_id, const bool delayed);
 
 
-  /// Creates inference input object
-  /// \param infer_input Output parameter storing newly created inference input
-  /// \param kind Backend kind
-  /// \param name Name of inference input
-  /// \param dims Shape of inference input
-  /// \param datatype Data type of inference input
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype);
-
   /// Update inputs based on custom json data
   void UpdateJsonData();
 
