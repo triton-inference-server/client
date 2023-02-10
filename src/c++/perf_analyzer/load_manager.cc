@@ -119,7 +119,6 @@ LoadManager::LoadManager(
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
       max_threads_(max_threads), sequence_length_(sequence_length),
-      shared_memory_type_(shared_memory_type),
       output_shm_size_(output_shm_size), start_sequence_id_(start_sequence_id),
       sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
       using_json_data_(false), curr_seq_id_(0)
@@ -131,7 +130,7 @@ LoadManager::LoadManager(
   data_loader_.reset(new DataLoader(batch_size_));
 
   infer_data_manager_ = std::make_shared<pa::InferDataManager>(
-      batch_size_, shared_memory_type_, output_shm_size_, parser_, factory_,
+      batch_size_, shared_memory_type, output_shm_size_, parser_, factory_,
       data_loader_);
 }
 

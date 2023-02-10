@@ -173,9 +173,9 @@ ConcurrencyManager::MakeWorker(
       id, thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
       factory_, sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_concurrency_, using_json_data_,
-      streaming_, shared_memory_type_, batch_size_, threads_config_,
-      sequence_stat_, wake_signal_, wake_mutex_, active_threads_, execute_,
-      curr_seq_id_, distribution_, infer_data_manager_);
+      streaming_, batch_size_, threads_config_, sequence_stat_, wake_signal_,
+      wake_mutex_, active_threads_, execute_, curr_seq_id_, distribution_,
+      infer_data_manager_);
 }
 
 }}  // namespace triton::perfanalyzer

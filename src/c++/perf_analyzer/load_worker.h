@@ -46,8 +46,7 @@ class LoadWorker : public IWorker {
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      const cb::BackendKind backend_kind,
-      const SharedMemoryType shared_memory_type, const bool on_sequence_model,
+      const cb::BackendKind backend_kind, const bool on_sequence_model,
       const bool async, const bool streaming, const int32_t batch_size,
       const bool using_json_data, const size_t sequence_length,
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
@@ -59,7 +58,6 @@ class LoadWorker : public IWorker {
       : id_(id), thread_stat_(thread_stat), parser_(parser),
         data_loader_(data_loader), factory_(factory),
         sequence_stat_(sequence_stat), backend_kind_(backend_kind),
-        shared_memory_type_(shared_memory_type),
         on_sequence_model_(on_sequence_model), async_(async),
         streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), sequence_length_(sequence_length),
@@ -96,10 +94,9 @@ class LoadWorker : public IWorker {
   {
     return std::make_shared<InferContext>(
         ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, backend_kind_, shared_memory_type_, start_sequence_id_,
-        sequence_id_range_, sequence_length_, curr_seq_id_, distribution_,
-        thread_stat_, sequence_stat_, data_loader_, parser_, factory_,
-        infer_data_manager_);
+        batch_size_, backend_kind_, start_sequence_id_, sequence_id_range_,
+        sequence_length_, curr_seq_id_, distribution_, thread_stat_,
+        sequence_stat_, data_loader_, parser_, factory_, infer_data_manager_);
   }
 
   // Create an inference context and add it to ctxs_
@@ -155,7 +152,6 @@ class LoadWorker : public IWorker {
   const std::shared_ptr<InferDataManager> infer_data_manager_;
 
   const cb::BackendKind backend_kind_;
-  const SharedMemoryType shared_memory_type_;
   const bool on_sequence_model_;
   const bool async_;
   const bool streaming_;

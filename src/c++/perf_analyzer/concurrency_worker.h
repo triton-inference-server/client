@@ -71,7 +71,7 @@ class ConcurrencyWorker : public LoadWorker {
       const uint64_t sequence_id_range, const bool on_sequence_model,
       const bool async, const size_t max_concurrency,
       const bool using_json_data, const bool streaming,
-      const SharedMemoryType shared_memory_type, const int32_t batch_size,
+      const int32_t batch_size,
       std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
@@ -80,10 +80,10 @@ class ConcurrencyWorker : public LoadWorker {
       const std::shared_ptr<InferDataManager>& infer_data_manager)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, sequence_stat,
-            backend_kind, shared_memory_type, on_sequence_model, async,
-            streaming, batch_size, using_json_data, sequence_length,
-            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
-            wake_signal, wake_mutex, execute, infer_data_manager),
+            backend_kind, on_sequence_model, async, streaming, batch_size,
+            using_json_data, sequence_length, start_sequence_id,
+            sequence_id_range, curr_seq_id, distribution, wake_signal,
+            wake_mutex, execute, infer_data_manager),
         thread_config_(thread_config), max_concurrency_(max_concurrency),
         threads_config_(threads_config), active_threads_(active_threads)
   {

@@ -115,7 +115,6 @@ class LoadManager {
   size_t batch_size_;
   size_t max_threads_;
   size_t sequence_length_;
-  SharedMemoryType shared_memory_type_;
   size_t output_shm_size_;
   bool on_sequence_model_;
 
