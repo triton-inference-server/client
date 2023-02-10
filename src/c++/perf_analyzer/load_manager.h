@@ -115,7 +115,6 @@ class LoadManager {
   size_t batch_size_;
   size_t max_threads_;
   size_t sequence_length_;
-  size_t output_shm_size_;
   bool on_sequence_model_;
 
   const uint64_t start_sequence_id_;
