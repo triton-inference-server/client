@@ -144,7 +144,7 @@ LoadManager::InitManager(
   THROW_IF_ERROR(status, "Failed to init manager inputs");
 
   THROW_IF_ERROR(
-      infer_data_manager_->InitInferDataManager(),
+      infer_data_manager_->InitSharedMemory(),
       "Unable to init shared memory in memory manager");
 }
 

@@ -101,7 +101,7 @@ class InferDataManager {
 
   /// Helper function to allocate and prepare shared memory.
   /// \return cb::Error object indicating success or failure.
-  cb::Error InitInferDataManager();
+  cb::Error InitSharedMemory();
 
 
   /// Creates inference input object

@@ -79,7 +79,7 @@ InferDataManager::InferDataManager(
 }
 
 cb::Error
-InferDataManager::InitInferDataManager()
+InferDataManager::InitSharedMemory()
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
     return cb::Error::Success;
