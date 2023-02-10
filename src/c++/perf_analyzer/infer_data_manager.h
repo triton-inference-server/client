@@ -69,7 +69,7 @@ CreateCUDAIPCHandle(
 
 }  // namespace
 
-// Holds information about the shared memory locations
+/// Holds information about the shared memory locations
 struct SharedMemoryData {
   SharedMemoryData(
       size_t byte_size,
@@ -87,8 +87,8 @@ struct SharedMemoryData {
   std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
 };
 
-// Manages infer data to prepare an inference request and the resulting
-// inference output from triton server
+/// Manages infer data to prepare an inference request and the resulting
+/// inference output from triton server
 class InferDataManager {
  public:
   InferDataManager(
