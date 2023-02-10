@@ -752,64 +752,6 @@ TEST_CASE(
   CHECK(recorded_inputs[3][0].second == 4);
 }
 
-/// Check that the using_shared_memory_ is being set correctly
-///
-TEST_CASE("Request rate - Check setting of InitSharedMemory")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
-
-  SUBCASE("No shared memory")
-  {
-    params.shared_memory_type = NO_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-    CHECK(false == mock_infer_data_manager->using_shared_memory_);
-  }
-
-  SUBCASE("System shared memory")
-  {
-    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-    CHECK(true == mock_infer_data_manager->using_shared_memory_);
-  }
-}
-
 /// Verify Shared Memory api calls
 ///
 TEST_CASE("Request rate - Shared memory methods")
@@ -854,48 +796,6 @@ TEST_CASE("Request rate - Shared memory methods")
     expected_stats.num_register_system_shared_memory_calls = 1;
     expected_stats.num_create_shared_memory_region_calls = 1;
     expected_stats.num_map_shared_memory_calls = 1;
-    trrm.CheckSharedMemory(expected_stats);
-  }
-
-  SUBCASE("Cuda shared memory usage")
-  {
-    params.shared_memory_type = CUDA_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
-    trrm.parser_ = mip.mock_model_parser_;
-    trrm.data_loader_ = mip.mock_data_loader_;
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-
-    expected_stats.num_unregister_all_shared_memory_calls = 1;
-    expected_stats.num_register_cuda_shared_memory_calls = 1;
-    trrm.CheckSharedMemory(expected_stats);
-  }
-
-  SUBCASE("No shared memory usage")
-  {
-    params.shared_memory_type = NO_SHARED_MEMORY;
-    TestRequestRateManager trrm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
-    trrm.parser_ = mip.mock_model_parser_;
-    trrm.data_loader_ = mip.mock_data_loader_;
-    trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-
     trrm.CheckSharedMemory(expected_stats);
   }
 

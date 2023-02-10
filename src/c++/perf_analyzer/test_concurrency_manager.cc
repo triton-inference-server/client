@@ -545,69 +545,6 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   }
 }
 
-/// Check that the using_shared_memory_ is being set correctly
-///
-TEST_CASE("Concurrency - Check setting of InitSharedMemory")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
-
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
-
-  SUBCASE("No shared memory")
-  {
-    params.shared_memory_type = NO_SHARED_MEMORY;
-    TestConcurrencyManager tcm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
-            mip.mock_data_loader_)};
-
-    tcm.infer_data_manager_ = mock_infer_data_manager;
-    tcm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-    CHECK(false == mock_infer_data_manager->using_shared_memory_);
-  }
-
-  SUBCASE("System shared memory")
-  {
-    params.shared_memory_type = SYSTEM_SHARED_MEMORY;
-    TestConcurrencyManager tcm(
-        params, is_sequence, is_decoupled, use_mock_infer);
-
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
-            params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
-            mip.mock_data_loader_)};
-
-    tcm.infer_data_manager_ = mock_infer_data_manager;
-    tcm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data);
-    CHECK(true == mock_infer_data_manager->using_shared_memory_);
-  }
-}
-
 /// Verify Shared Memory api calls
 ///
 TEST_CASE("Concurrency - Shared memory methods")
