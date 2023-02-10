@@ -91,9 +91,9 @@ class InferContext {
   InferContext(
       const uint32_t id, const bool async, const bool streaming,
       const bool on_sequence_model, const bool using_json_data,
-      const int32_t batch_size, const cb::BackendKind backend_kind,
-      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-      const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
+      const int32_t batch_size, const uint64_t start_sequence_id,
+      const uint64_t sequence_id_range, const size_t sequence_length,
+      std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::shared_ptr<ThreadStat> thread_stat,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
@@ -104,7 +104,7 @@ class InferContext {
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
-        backend_kind_(backend_kind), start_sequence_id_(start_sequence_id),
+        start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range),
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
         distribution_(distribution), thread_stat_(thread_stat),
@@ -214,7 +214,6 @@ class InferContext {
   const bool on_sequence_model_;
   const bool using_json_data_;
   const int32_t batch_size_;
-  const cb::BackendKind backend_kind_;
   const uint64_t start_sequence_id_;
   const uint64_t sequence_id_range_;
   const size_t sequence_length_;
