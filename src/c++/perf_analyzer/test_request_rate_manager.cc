@@ -383,21 +383,6 @@ TEST_CASE("request_rate_schedule")
   bool use_mock_infer = false;
   double rate;
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
-
 
   const auto& ParameterizeRate{[&]() {
     SUBCASE("rate 10") { rate = 10; }
@@ -468,11 +453,7 @@ TEST_CASE("request_rate_schedule")
 
   TestRequestRateManager trrm(
       params, is_sequence, is_decoupled, use_mock_infer);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
+
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -522,26 +503,9 @@ TEST_CASE("request_rate_infer_type")
   PerfAnalyzerParameters params;
   params.async = async;
   params.streaming = stream;
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
 
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params, false);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
+
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -560,26 +524,8 @@ TEST_CASE("request_rate_distribution")
   SUBCASE("constant") { params.request_distribution = CONSTANT; }
   SUBCASE("poisson") { params.request_distribution = POISSON; }
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
+
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -602,27 +548,8 @@ TEST_CASE("request_rate_tiny_window")
   SUBCASE("one_thread") { params.max_threads = 1; }
   SUBCASE("odd_threads") { params.max_threads = 9; }
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestRequestRateManager trrm(params);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -635,26 +562,8 @@ TEST_CASE("request_rate_tiny_window")
 TEST_CASE("request_rate_multiple")
 {
   PerfAnalyzerParameters params{};
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(PerfAnalyzerParameters{});
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
+
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -668,26 +577,8 @@ TEST_CASE("request_rate_sequence")
 {
   PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
   bool is_sequence_model = true;
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params, is_sequence_model);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.infer_data_manager_ = mock_infer_data_manager;
+
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -1238,26 +1129,7 @@ TEST_CASE("request_rate_deadlock")
 
   ParameterizeDelays();
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestRequestRateManager trrm(params, is_sequence_model);
-  std::shared_ptr<MockInferDataManager> mock_memory_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
-  trrm.memory_manager_ = mock_memory_manager;
   trrm.stats_->SetDelays(delays);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,

@@ -28,23 +28,6 @@
 
 #include "infer_data_manager.h"
 
-#ifdef TRITON_ENABLE_GPU
-#include <cuda_runtime_api.h>
-
-#define RETURN_IF_CUDA_ERR(FUNC)                               \
-  {                                                            \
-    const cudaError_t result = FUNC;                           \
-    if (result != cudaSuccess) {                               \
-      return cb::Error(                                        \
-          "CUDA exception (line " + std::to_string(__LINE__) + \
-              "): " + cudaGetErrorName(result) + " (" +        \
-              cudaGetErrorString(result) + ")",                \
-          pa::GENERIC_ERROR);                                  \
-    }                                                          \
-  }
-
-#endif  // TRITON_ENABLE_GPU
-
 namespace triton { namespace perfanalyzer {
 
 

@@ -238,29 +238,9 @@ TEST_CASE("concurrency_infer_type")
     params.streaming = false;
   }
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestConcurrencyManager tcm(params);
 
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
-
-  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -366,29 +346,9 @@ TEST_CASE("concurrency_concurrency")
     params.max_threads = 4;
   }
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestConcurrencyManager tcm(params);
 
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
-
-  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -403,27 +363,9 @@ TEST_CASE("concurrency_sequence")
 {
   PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
   const bool is_sequence_model{true};
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
 
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
   TestConcurrencyManager tcm(params, is_sequence_model);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -447,29 +389,10 @@ TEST_CASE("concurrency_free_ctx_ids")
 
   bool is_sequence_model{true};
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestConcurrencyManager tcm(params, is_sequence_model);
 
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -857,28 +780,9 @@ TEST_CASE("concurrency_deadlock")
 
   ParameterizeDelays();
 
-  const std::string json_str{R"(
-  {
-    "data": [
-      {
-        "INPUT0": [2000000000]
-      },
-      {
-        "INPUT0": [2000000001]
-      }
-    ]
-  }
-      )"};
-
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
 
   TestConcurrencyManager tcm(params, is_sequence_model);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
-  tcm.infer_data_manager_ = mock_infer_data_manager;
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data);
@@ -892,5 +796,4 @@ TEST_CASE("concurrency_deadlock")
 
   tcm.TestTimeouts();
 }
-
 }}  // namespace triton::perfanalyzer
