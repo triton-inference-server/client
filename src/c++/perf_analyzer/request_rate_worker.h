@@ -69,7 +69,6 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const bool streaming, const SharedMemoryType shared_memory_type,
       const int32_t batch_size,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute, std::atomic<uint64_t>& curr_seq_id,
       std::chrono::steady_clock::time_point& start_time,
@@ -77,10 +76,10 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const std::shared_ptr<InferDataManager>& infer_data_manager)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, sequence_stat,
-            shared_memory_regions, backend_kind, shared_memory_type,
-            on_sequence_model, async, streaming, batch_size, using_json_data,
-            sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
-            distribution, wake_signal, wake_mutex, execute, infer_data_manager),
+            backend_kind, shared_memory_type, on_sequence_model, async,
+            streaming, batch_size, using_json_data, sequence_length,
+            start_sequence_id, sequence_id_range, curr_seq_id, distribution,
+            wake_signal, wake_mutex, execute, infer_data_manager),
         thread_config_(thread_config), max_threads_(max_threads),
         start_time_(start_time)
   {

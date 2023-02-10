@@ -133,9 +133,6 @@ class LoadManager {
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<InferDataManager> infer_data_manager_;
 
-  // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
-
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
 
   // Current sequence id (for issuing new sequences)

@@ -93,7 +93,6 @@ class InferContext {
       const bool on_sequence_model, const bool using_json_data,
       const int32_t batch_size, const cb::BackendKind backend_kind,
       const SharedMemoryType shared_memory_type,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
       const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
@@ -107,7 +106,6 @@ class InferContext {
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
         backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
-        shared_memory_regions_(shared_memory_regions),
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range),
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
@@ -240,9 +238,6 @@ class InferContext {
   // class. We shouldn't have to have a shared uint64 reference passed to all
   // threads Current sequence id (for issuing new sequences)
   std::atomic<uint64_t>& curr_seq_id_;
-
-  // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
 
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
