@@ -74,7 +74,7 @@ InferDataManager::InferDataManager(
     const std::shared_ptr<DataLoader>& data_loader)
     : batch_size_(batch_size), shared_memory_type_(shared_memory_type),
       output_shm_size_(output_shm_size), parser_(parser), factory_(factory),
-      data_loader_(data_loader)
+      data_loader_(data_loader), backend_kind_(factory->Kind())
 {
 }
 
@@ -88,7 +88,6 @@ InferDataManager::InitSharedMemory()
   using_shared_memory_ = true;
   // TMA-1062 remove the factory from this class and use only the backend
   RETURN_IF_ERROR(factory_->CreateClientBackend(&backend_));
-  backend_kind_ = backend_->Kind();
   // Calling this function for the clean start
   backend_->UnregisterAllSharedMemory();
 
