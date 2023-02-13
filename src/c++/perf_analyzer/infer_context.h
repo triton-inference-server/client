@@ -30,28 +30,11 @@
 #include <mutex>
 #include <vector>
 #include "data_loader.h"
+#include "infer_data.h"
+#include "infer_data_manager.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
-
-
-// Holds information about the shared memory locations
-struct SharedMemoryData {
-  SharedMemoryData(
-      size_t byte_size,
-      std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data)
-      : byte_size_(byte_size), data_(std::move(data))
-  {
-  }
-
-  SharedMemoryData() {}
-
-  // Byte size
-  size_t byte_size_;
-
-  // Unique pointer holding the shared memory data
-  std::unique_ptr<uint8_t, std::function<void(uint8_t*)>> data_;
-};
 
 // Holds the status of the inflight sequence
 struct SequenceStat {
@@ -108,48 +91,37 @@ class InferContext {
   InferContext(
       const uint32_t id, const bool async, const bool streaming,
       const bool on_sequence_model, const bool using_json_data,
-      const int32_t batch_size, const cb::BackendKind backend_kind,
-      const SharedMemoryType shared_memory_type,
-      std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions,
-      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-      const size_t sequence_length, std::atomic<uint64_t>& curr_seq_id,
+      const int32_t batch_size, const uint64_t start_sequence_id,
+      const uint64_t sequence_id_range, const size_t sequence_length,
+      std::atomic<uint64_t>& curr_seq_id,
       std::uniform_int_distribution<uint64_t>& distribution,
       std::shared_ptr<ThreadStat> thread_stat,
       std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<cb::ClientBackendFactory> factory)
+      std::shared_ptr<cb::ClientBackendFactory> factory,
+      const std::shared_ptr<InferDataManager>& infer_data_manager)
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
-        backend_kind_(backend_kind), shared_memory_type_(shared_memory_type),
-        shared_memory_regions_(shared_memory_regions),
         start_sequence_id_(start_sequence_id),
         sequence_id_range_(sequence_id_range),
         sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
         distribution_(distribution), thread_stat_(thread_stat),
         sequence_stat_(sequence_stat), data_loader_(data_loader),
-        parser_(parser), factory_(factory), data_step_id_(id)
+        parser_(parser), factory_(factory), data_step_id_(id),
+        infer_data_manager_(infer_data_manager)
   {
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
-    options_.reset(new cb::InferOptions(parser_->ModelName()));
-    options_->model_version_ = parser_->ModelVersion();
-    options_->model_signature_name_ = parser_->ModelSignatureName();
+    infer_data_.options_.reset(new cb::InferOptions(parser_->ModelName()));
+    infer_data_.options_->model_version_ = parser_->ModelVersion();
+    infer_data_.options_->model_signature_name_ = parser_->ModelSignatureName();
 
     thread_stat_->contexts_stat_.emplace_back();
   }
 
   InferContext(InferContext&&) = delete;
   InferContext(const InferContext&) = delete;
-  ~InferContext()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
 
   // Initialize the context. Must be done before any inferences are sent
   void Init();
@@ -185,29 +157,6 @@ class InferContext {
   /// \param delayed Whether the request fell behind its scheduled time.
   void SendRequest(const uint64_t request_id, const bool delayed);
 
-  /// Helper function to prepare the InferContext for sending
-  /// inference request.
-  /// \param ctx The target InferContext object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferContext* ctx);
-
-  /// Helper function to prepare the InferContext for sending
-  /// inference request in shared memory. \param ctx The target
-  /// InferContext object. \return cb::Error object indicating
-  /// success or failure.
-  cb::Error PrepareSharedMemoryInfer(InferContext* ctx);
-
-  /// Creates inference input object
-  /// \param infer_input Output parameter storing newly created inference input
-  /// \param kind Backend kind
-  /// \param name Name of inference input
-  /// \param dims Shape of inference input
-  /// \param datatype Data type of inference input
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -233,7 +182,6 @@ class InferContext {
       int stream_index, int step_index,
       std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
 
-
   cb::Error ValidateOutputs(const cb::InferResult* result_ptr);
 
   /// Updates the input data to use for inference request
@@ -258,30 +206,6 @@ class InferContext {
   /// \return random sequence length
   size_t GetRandomSequenceLength(double offset_ratio);
 
-
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-  /// Helper function to update the shared memory inputs
-  /// \param inputs The vector of pointers to InferInput objects
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputsSharedMemory(
-      const std::vector<cb::InferInput*>& inputs, const int stream_index,
-      const int step_index);
-
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
@@ -290,8 +214,6 @@ class InferContext {
   const bool on_sequence_model_;
   const bool using_json_data_;
   const int32_t batch_size_;
-  const cb::BackendKind backend_kind_;
-  const SharedMemoryType shared_memory_type_;
   const uint64_t start_sequence_id_;
   const uint64_t sequence_id_range_;
   const size_t sequence_length_;
@@ -301,6 +223,7 @@ class InferContext {
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
+  const std::shared_ptr<InferDataManager> infer_data_manager_;
 
   // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
   // we decouple? Used to pick among multiple data streams. Note this probably
@@ -311,9 +234,6 @@ class InferContext {
   // class. We shouldn't have to have a shared uint64 reference passed to all
   // threads Current sequence id (for issuing new sequences)
   std::atomic<uint64_t>& curr_seq_id_;
-
-  // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, SharedMemoryData>& shared_memory_regions_;
 
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
@@ -337,20 +257,7 @@ class InferContext {
 
   // The backend to communicate with the server
   std::unique_ptr<cb::ClientBackend> infer_backend_;
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
+  InferData infer_data_;
 };
 
 }}  // namespace triton::perfanalyzer

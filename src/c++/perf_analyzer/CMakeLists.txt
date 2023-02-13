@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,6 +52,7 @@ set(
   report_writer.cc
   mpi_utils.cc
   metrics_manager.cc
+  infer_data_manager.cc
 )
 
 set(
@@ -78,6 +79,8 @@ set(
   metrics.h
   metrics_manager.h
   test_load_manager_base.h
+  infer_data_manager.h
+  infer_data.h
 )
 
 add_executable(
@@ -163,8 +166,8 @@ add_executable(
   test_metrics_manager.cc
   test_perf_utils.cc
   test_report_writer.cc
-  test_request_rate_manager.cc
   client_backend/triton/test_triton_client_backend.cc
+  test_request_rate_manager.cc
   test_concurrency_manager.cc
   test_custom_load_manager.cc
   $<TARGET_OBJECTS:json-utils-library>
