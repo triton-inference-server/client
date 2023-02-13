@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
+#include "infer_data_manager.h"
 #include "load_worker.h"
 #include "perf_utils.h"
 
@@ -39,7 +40,7 @@ namespace triton { namespace perfanalyzer {
 
 class LoadManager {
  public:
-  virtual ~LoadManager();
+  virtual ~LoadManager() = default;
 
   /// Initialize the Manager class to set up shared memory and inputs
   /// \param string_length The length of the random strings to be generated
@@ -103,30 +104,6 @@ class LoadManager {
       const size_t string_length, const std::string& string_data,
       const bool zero_input, std::vector<std::string>& user_data);
 
-  /// Helper function to allocate and prepare shared memory.
-  /// from shared memory.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error InitSharedMemory();
-
-  /// Create a memory region.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error CreateMemoryRegion(
-      const std::string& shm_region_name, const SharedMemoryType& memory_type,
-      const size_t byte_size, void** ptr);
-
-  /// \brief Helper function to handle copying shared memory to the correct
-  /// memory region
-  /// \param input_shm_ptr Pointer to the shared memory for a specific input
-  /// \param data_ptrs Pointer to the data for the batch
-  /// \param byte_size Size of the data being copied
-  /// \param is_shape_tensor Is the input a shape tensor
-  /// \param region_name Name of the shared memory region
-  /// \return cb::Error object indicating success or failure
-  virtual cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name);
-
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
@@ -138,8 +115,6 @@ class LoadManager {
   size_t batch_size_;
   size_t max_threads_;
   size_t sequence_length_;
-  SharedMemoryType shared_memory_type_;
-  size_t output_shm_size_;
   bool on_sequence_model_;
 
   const uint64_t start_sequence_id_;
@@ -149,15 +124,12 @@ class LoadManager {
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
   bool using_json_data_;
-  bool using_shared_memory_;
 
   std::uniform_int_distribution<uint64_t> distribution_;
 
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
-
-  // Map from shared memory key to its starting address and size
-  std::unordered_map<std::string, SharedMemoryData> shared_memory_regions_;
+  std::shared_ptr<InferDataManager> infer_data_manager_;
 
   std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
 
