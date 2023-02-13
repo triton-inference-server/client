@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -239,12 +239,11 @@ RequestRateManager::MakeWorker(
 {
   size_t id = workers_.size();
   return std::make_shared<RequestRateWorker>(
-      id, thread_stat, thread_config, parser_, data_loader_, backend_->Kind(),
-      factory_, sequence_length_, start_sequence_id_, sequence_id_range_,
+      id, thread_stat, thread_config, parser_, data_loader_, factory_,
+      sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
-      shared_memory_type_, batch_size_, sequence_stat_, shared_memory_regions_,
-      wake_signal_, wake_mutex_, execute_, curr_seq_id_, start_time_,
-      distribution_);
+      batch_size_, sequence_stat_, wake_signal_, wake_mutex_, execute_,
+      curr_seq_id_, start_time_, distribution_, infer_data_manager_);
 }
 
 
