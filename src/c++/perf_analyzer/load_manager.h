@@ -27,6 +27,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <random>
 #include <thread>
 
@@ -35,6 +36,7 @@
 #include "infer_data_manager.h"
 #include "load_worker.h"
 #include "perf_utils.h"
+#include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -49,9 +51,16 @@ class LoadManager {
   /// \param zero_input Whether to use zero for model inputs.
   /// \param user_data The vector containing path/paths to user-provided data
   /// that can be a directory or path to a json data file.
+  /// \param start_sequence_id The starting sequence ID to be used for iterating
+  /// through valid sequence IDs.
+  /// \param sequence_id_range The maximum sequence ID to be used for iterating
+  /// through valid sequence IDs.
+  /// \param sequence_length The base length of new sequences.
   void InitManager(
       const size_t string_length, const std::string& string_data,
-      const bool zero_input, std::vector<std::string>& user_data);
+      const bool zero_input, std::vector<std::string>& user_data,
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const size_t sequence_length);
 
   /// Check if the load manager is working as expected.
   /// \return cb::Error object indicating success or failure.
@@ -86,11 +95,12 @@ class LoadManager {
  protected:
   LoadManager(
       const bool async, const bool streaming, const int32_t batch_size,
-      const size_t max_threads, const size_t sequence_length,
-      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-      const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const SharedMemoryType shared_memory_type,
+      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
+
+  /// Complete any subclass-specific manager initialization tasks.
+  virtual void InitManagerFinalize() {}
 
   /// Helper funtion to retrieve the input data for the inferences
   /// \param string_length The length of the random strings to be generated
@@ -107,34 +117,21 @@ class LoadManager {
   /// Stops all the worker threads generating the request load.
   void StopWorkerThreads();
 
-  void UnpauseAllSequences();
-
  protected:
   bool async_;
   bool streaming_;
   size_t batch_size_;
   size_t max_threads_;
-  size_t sequence_length_;
   bool on_sequence_model_;
-
-  const uint64_t start_sequence_id_;
-  const uint64_t sequence_id_range_;
 
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
 
   bool using_json_data_;
 
-  std::uniform_int_distribution<uint64_t> distribution_;
-
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<InferDataManager> infer_data_manager_;
-
-  std::vector<std::shared_ptr<SequenceStat>> sequence_stat_;
-
-  // Current sequence id (for issuing new sequences)
-  std::atomic<uint64_t> curr_seq_id_;
 
   // Track the workers so they all go out of scope at the
   // same time
@@ -149,9 +146,11 @@ class LoadManager {
   std::condition_variable wake_signal_;
   std::mutex wake_mutex_;
 
+  std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
+
 #ifndef DOCTEST_CONFIG_DISABLE
  protected:
-  LoadManager() : start_sequence_id_(1), sequence_id_range_(UINT32_MAX){};
+  LoadManager() = default;
 #endif
 };
 

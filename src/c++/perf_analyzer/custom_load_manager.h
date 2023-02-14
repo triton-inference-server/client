@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -59,7 +59,6 @@ class CustomLoadManager : public RequestRateManager {
   /// \param max_threads The maximum number of working threads to be spawned.
   /// \param num_of_sequences The number of concurrent sequences that must be
   /// maintained on the server.
-  /// \param sequence_length The base length of each sequence.
   /// \param zero_input Whether to fill the input tensors with zero.
   /// \param input_shapes The shape of the input tensors.
   /// \param user_data The vector containing path/paths to user-provided data
@@ -77,9 +76,7 @@ class CustomLoadManager : public RequestRateManager {
       const uint64_t measurement_window_ms, const size_t max_trials,
       const std::string& request_intervals_file, const int32_t batch_size,
       const size_t max_threads, const uint32_t num_of_sequences,
-      const size_t sequence_length, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       std::unique_ptr<LoadManager>* manager);
@@ -102,9 +99,7 @@ class CustomLoadManager : public RequestRateManager {
       const std::string& request_intervals_file, const int32_t batch_size,
       const uint64_t measurement_window_ms, const size_t max_trials,
       const size_t max_threads, const uint32_t num_of_sequences,
-      const size_t sequence_length, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 

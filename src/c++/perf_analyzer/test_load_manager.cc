@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -42,10 +42,8 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
       : TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         LoadManager(
             params.async, params.streaming, params.batch_size,
-            params.max_threads, params.sequence_length,
-            params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range, GetParser(),
-            GetFactory())
+            params.max_threads, params.shared_memory_type,
+            params.output_shm_size, GetParser(), GetFactory())
   {
   }
 

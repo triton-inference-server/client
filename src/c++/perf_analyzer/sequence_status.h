@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,28 +25,25 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "data_loader.h"
+#include <cstdint>
+#include <mutex>
 
 namespace triton { namespace perfanalyzer {
 
-/// Mock DataLoader class used for testing to allow JSON data to be read
-/// from string, rather than file.
-///
-class MockDataLoader : public DataLoader {
- public:
-  cb::Error ReadDataFromStr(
-      const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
-      const std::shared_ptr<ModelTensorMap>& outputs)
+// Holds the status of the inflight sequence
+struct SequenceStatus {
+  SequenceStatus(uint64_t seq_id = 0)
+      : seq_id_(seq_id), data_stream_id_(0), remaining_queries_(0)
   {
-    rapidjson::Document d{};
-    const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
-    d.Parse<parseFlags>(str.c_str());
-
-    return ParseData(d, inputs, outputs);
-  };
-
-  std::vector<size_t>& step_num_{DataLoader::step_num_};
-  size_t& data_stream_cnt_{DataLoader::data_stream_cnt_};
+  }
+  // The unique correlation id allocated to the sequence
+  uint64_t seq_id_;
+  // The data stream id providing data for the sequence
+  uint64_t data_stream_id_;
+  // The number of queries remaining to complete the sequence
+  size_t remaining_queries_;
+  // A lock to protect sequence data
+  std::mutex mtx_;
 };
 
 }}  // namespace triton::perfanalyzer

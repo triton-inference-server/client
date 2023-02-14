@@ -25,6 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <future>
+#include <memory>
+
 #include "command_line_parser.h"
 #include "concurrency_manager.h"
 #include "doctest.h"
@@ -32,6 +34,7 @@
 #include "mock_data_loader.h"
 #include "mock_infer_data_manager.h"
 #include "mock_model_parser.h"
+#include "sequence_manager.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
 
@@ -61,9 +64,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
         TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         ConcurrencyManager(
             params.async, params.streaming, params.batch_size,
-            params.max_threads, params.max_concurrency, params.sequence_length,
-            params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range, GetParser(),
+            params.max_threads, params.max_concurrency,
+            params.shared_memory_type, params.output_shm_size, GetParser(),
             GetFactory())
   {
   }
@@ -187,8 +189,6 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   bool& execute_{ConcurrencyManager::execute_};
   size_t& batch_size_{LoadManager::batch_size_};
   size_t& max_threads_{LoadManager::max_threads_};
-  std::uniform_int_distribution<uint64_t>& distribution_{
-      LoadManager::distribution_};
   std::shared_ptr<cb::ClientBackendFactory> factory_{
       TestLoadManagerBase::factory_};
   std::shared_ptr<InferDataManager>& infer_data_manager_{
@@ -243,7 +243,8 @@ TEST_CASE("concurrency_infer_type")
 
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   tcm.TestInferType();
 }
@@ -351,7 +352,8 @@ TEST_CASE("concurrency_concurrency")
 
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   tcm.TestConcurrency(response_delay, sleep_time);
 }
@@ -368,7 +370,8 @@ TEST_CASE("concurrency_sequence")
 
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   tcm.TestSequences();
 }
 
@@ -395,7 +398,8 @@ TEST_CASE("concurrency_free_ctx_ids")
 
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   // Have the first request (sequence ID 1) take very long, and all the other
   // requests are fast
@@ -494,7 +498,8 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   }
       )"};
 
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
+  MockInputPipeline mip =
+      TestLoadManagerBase::ProcessCustomJsonData(json_str, is_sequence_model);
 
 
   TestConcurrencyManager tcm(params, is_sequence_model);
@@ -505,10 +510,6 @@ TEST_CASE("Concurrency - shared memory infer input calls")
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_)};
 
   tcm.infer_data_manager_ = mock_infer_data_manager;
-  tcm.InitManager(
-      params.string_length, params.string_data, params.zero_input,
-      params.user_data);
-
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
@@ -521,8 +522,11 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   tcm.execute_ = true;
   tcm.batch_size_ = 1;
   tcm.max_threads_ = 1;
-  tcm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
+
+  tcm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
@@ -583,7 +587,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_system_shared_memory_calls = 1;
@@ -606,7 +611,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_cuda_shared_memory_calls = 1;
@@ -627,7 +633,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.infer_data_manager_ = mock_infer_data_manager;
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     tcm.CheckSharedMemory(expected_stats);
   }
@@ -722,7 +729,8 @@ TEST_CASE("concurrency_deadlock")
 
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   tcm.stats_->SetDelays(delays);
 

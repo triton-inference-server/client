@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -40,17 +40,14 @@ cb::Error
 ConcurrencyManager::Create(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t max_concurrency,
-    const size_t sequence_length, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range,
+    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<ConcurrencyManager> local_manager(new ConcurrencyManager(
       async, streaming, batch_size, max_threads, max_concurrency,
-      sequence_length, shared_memory_type, output_shm_size, start_sequence_id,
-      sequence_id_range, parser, factory));
+      shared_memory_type, output_shm_size, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -60,24 +57,23 @@ ConcurrencyManager::Create(
 ConcurrencyManager::ConcurrencyManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t max_concurrency,
-    const size_t sequence_length, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range,
+    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
-          async, streaming, batch_size, max_threads, sequence_length,
-          shared_memory_type, output_shm_size, start_sequence_id,
-          sequence_id_range, parser, factory),
+          async, streaming, batch_size, max_threads, shared_memory_type,
+          output_shm_size, parser, factory),
       execute_(true), max_concurrency_(max_concurrency)
 {
-  if (on_sequence_model_) {
-    for (uint64_t i = 0; i < max_concurrency_; i++) {
-      sequence_stat_.emplace_back(new SequenceStat(0));
-    }
-  }
-
   threads_config_.reserve(max_threads);
+}
+
+void
+ConcurrencyManager::InitManagerFinalize()
+{
+  if (on_sequence_model_) {
+    sequence_manager_->InitSequenceStatuses(max_concurrency_);
+  }
 }
 
 cb::Error
@@ -154,7 +150,6 @@ void
 ConcurrencyManager::ResumeSequenceWorkers()
 {
   if (on_sequence_model_) {
-    UnpauseAllSequences();
     execute_ = true;
   }
 
@@ -171,11 +166,9 @@ ConcurrencyManager::MakeWorker(
 
   return std::make_shared<ConcurrencyWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
-      sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_concurrency_, using_json_data_,
-      streaming_, batch_size_, threads_config_, sequence_stat_, wake_signal_,
-      wake_mutex_, active_threads_, execute_, curr_seq_id_, distribution_,
-      infer_data_manager_);
+      streaming_, batch_size_, threads_config_, wake_signal_, wake_mutex_,
+      active_threads_, execute_, infer_data_manager_, sequence_manager_);
 }
 
 }}  // namespace triton::perfanalyzer

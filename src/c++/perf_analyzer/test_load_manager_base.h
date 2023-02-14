@@ -26,11 +26,14 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
+
 #include "command_line_parser.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
 #include "mock_data_loader.h"
 #include "mock_model_parser.h"
+#include "sequence_manager.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
@@ -71,10 +74,11 @@ class TestLoadManagerBase {
   // Helper function to process custom json data in testing
   // Creates a model tensor to pass to a mock parser which is consumed by the
   // mock data loader
-  static MockInputPipeline ProcessCustomJsonData(const std::string& json_str)
+  static MockInputPipeline ProcessCustomJsonData(
+      const std::string& json_str, const bool is_sequence_model = false)
   {
     std::shared_ptr<MockModelParser> mmp{
-        std::make_shared<MockModelParser>(false, false)};
+        std::make_shared<MockModelParser>(is_sequence_model, false)};
     ModelTensor model_tensor{};
     model_tensor.datatype_ = "INT32";
     model_tensor.is_optional_ = false;

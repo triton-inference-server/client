@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -202,9 +202,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
         pa::ConcurrencyManager::Create(
             params_->async, params_->streaming, params_->batch_size,
             params_->max_threads, params_->max_concurrency,
-            params_->sequence_length, params_->shared_memory_type,
-            params_->output_shm_size, params_->start_sequence_id,
-            params_->sequence_id_range, parser_, factory, &manager),
+            params_->shared_memory_type, params_->output_shm_size, parser_,
+            factory, &manager),
         "failed to create concurrency manager");
 
   } else if (params_->using_request_rate_range) {
@@ -221,10 +220,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->async, params_->streaming, params_->measurement_window_ms,
             params_->max_trials, params_->request_distribution,
             params_->batch_size, params_->max_threads,
-            params_->num_of_sequences, params_->sequence_length,
-            params_->shared_memory_type, params_->output_shm_size,
-            params_->start_sequence_id, params_->sequence_id_range, parser_,
-            factory, &manager),
+            params_->num_of_sequences, params_->shared_memory_type,
+            params_->output_shm_size, parser_, factory, &manager),
         "failed to create request rate manager");
 
   } else {
@@ -241,16 +238,15 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->async, params_->streaming, params_->measurement_window_ms,
             params_->max_trials, params_->request_intervals_file,
             params_->batch_size, params_->max_threads,
-            params_->num_of_sequences, params_->sequence_length,
-            params_->shared_memory_type, params_->output_shm_size,
-            params_->start_sequence_id, params_->sequence_id_range, parser_,
-            factory, &manager),
+            params_->num_of_sequences, params_->shared_memory_type,
+            params_->output_shm_size, parser_, factory, &manager),
         "failed to create custom load manager");
   }
 
   manager->InitManager(
       params_->string_length, params_->string_data, params_->zero_input,
-      params_->user_data);
+      params_->user_data, params_->start_sequence_id,
+      params_->sequence_id_range, params_->sequence_length);
 
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
