@@ -70,7 +70,6 @@ class RequestRateManager : public LoadManager {
   /// \param max_threads The maximum number of working threads to be spawned.
   /// \param num_of_sequences The number of concurrent sequences that must be
   /// maintained on the server.
-  /// \param sequence_length The base length of each sequence.
   /// \param string_length The length of the string to create for input.
   /// \param string_data The data to use for generating string input.
   /// \param zero_input Whether to fill the input tensors with zero.
@@ -89,9 +88,7 @@ class RequestRateManager : public LoadManager {
       const uint64_t measurement_window_ms, const size_t max_trials,
       Distribution request_distribution, const int32_t batch_size,
       const size_t max_threads, const uint32_t num_of_sequences,
-      const size_t sequence_length, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       std::unique_ptr<LoadManager>* manager);
@@ -111,11 +108,12 @@ class RequestRateManager : public LoadManager {
       const bool async, const bool streaming, Distribution request_distribution,
       const int32_t batch_size, const uint64_t measurement_window_ms,
       const size_t max_trials, const size_t max_threads,
-      const uint32_t num_of_sequences, const size_t sequence_length,
+      const uint32_t num_of_sequences,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
+
+  void InitManagerFinalize() override;
 
   /// Generates and update the request schedule as per the given request rate.
   /// \param request_rate The request rate to use for new schedule.
@@ -149,6 +147,7 @@ class RequestRateManager : public LoadManager {
   Distribution request_distribution_;
   std::chrono::steady_clock::time_point start_time_;
   bool execute_;
+  const size_t num_of_sequences_{0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestRequestRateManager;

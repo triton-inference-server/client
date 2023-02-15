@@ -112,16 +112,12 @@ LoadManager::GetAccumulatedClientStat(cb::InferStat* contexts_stat)
 
 LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
-    const size_t max_threads, const size_t sequence_length,
-    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-    const std::shared_ptr<ModelParser>& parser,
+    const size_t max_threads, const SharedMemoryType shared_memory_type,
+    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
-      max_threads_(max_threads), sequence_length_(sequence_length),
-      start_sequence_id_(start_sequence_id),
-      sequence_id_range_(sequence_id_range), parser_(parser), factory_(factory),
-      using_json_data_(false), curr_seq_id_(0)
+      max_threads_(max_threads), parser_(parser), factory_(factory),
+      using_json_data_(false)
 {
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
@@ -137,7 +133,9 @@ LoadManager::LoadManager(
 void
 LoadManager::InitManager(
     const size_t string_length, const std::string& string_data,
-    const bool zero_input, std::vector<std::string>& user_data)
+    const bool zero_input, std::vector<std::string>& user_data,
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const size_t sequence_length)
 {
   auto status =
       InitManagerInputs(string_length, string_data, zero_input, user_data);
@@ -146,6 +144,12 @@ LoadManager::InitManager(
   THROW_IF_ERROR(
       infer_data_manager_->InitSharedMemory(),
       "Unable to init shared memory in memory manager");
+
+  sequence_manager_ = std::make_shared<SequenceManager>(
+      start_sequence_id, sequence_id_range, sequence_length, using_json_data_,
+      data_loader_);
+
+  InitManagerFinalize();
 }
 
 cb::Error
@@ -166,8 +170,6 @@ LoadManager::InitManagerInputs(
         RETURN_IF_ERROR(data_loader_->ReadDataFromJSON(
             parser_->Inputs(), parser_->Outputs(), json_file));
       }
-      distribution_ = std::uniform_int_distribution<uint64_t>(
-          0, data_loader_->GetDataStreamsCount() - 1);
       std::cout << " Successfully read data for "
                 << data_loader_->GetDataStreamsCount() << " stream/streams";
       if (data_loader_->GetDataStreamsCount() == 1) {
@@ -210,15 +212,6 @@ LoadManager::StopWorkerThreads()
     cnt++;
   }
   threads_.clear();
-}
-
-void
-LoadManager::UnpauseAllSequences()
-{
-  for (auto seq : sequence_stat_) {
-    std::lock_guard<std::mutex> guard(seq->mtx_);
-    seq->paused_ = false;
-  }
 }
 
 }}  // namespace triton::perfanalyzer

@@ -53,6 +53,7 @@ set(
   mpi_utils.cc
   metrics_manager.cc
   infer_data_manager.cc
+  sequence_manager.cc
 )
 
 set(
@@ -81,6 +82,8 @@ set(
   test_load_manager_base.h
   infer_data_manager.h
   infer_data.h
+  sequence_manager.h
+  sequence_status.h
 )
 
 add_executable(
@@ -170,6 +173,7 @@ add_executable(
   test_request_rate_manager.cc
   test_concurrency_manager.cc
   test_custom_load_manager.cc
+  test_sequence_manager.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

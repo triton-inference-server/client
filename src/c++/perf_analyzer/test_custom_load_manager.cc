@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -53,14 +53,13 @@ class TestCustomLoadManager : public TestLoadManagerBase,
         CustomLoadManager(
             params.async, params.streaming, "INTERVALS_FILE", params.batch_size,
             params.measurement_window_ms, params.max_trials, params.max_threads,
-            params.num_of_sequences, params.sequence_length,
-            params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range, GetParser(),
-            GetFactory())
+            params.num_of_sequences, params.shared_memory_type,
+            params.output_shm_size, GetParser(), GetFactory())
   {
     InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
   }
 
   void TestSchedule(
