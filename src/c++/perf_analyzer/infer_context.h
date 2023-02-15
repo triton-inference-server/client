@@ -33,27 +33,9 @@
 #include "infer_data.h"
 #include "infer_data_manager.h"
 #include "perf_utils.h"
+#include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
-
-// Holds the status of the inflight sequence
-struct SequenceStat {
-  SequenceStat(uint64_t seq_id)
-      : seq_id_(seq_id), data_stream_id_(0), remaining_queries_(0)
-  {
-  }
-  // If paused, no more requests should be sent other than a single request to
-  // finish the active sequence
-  bool paused_ = false;
-  // The unique correlation id allocated to the sequence
-  uint64_t seq_id_;
-  // The data stream id providing data for the sequence
-  uint64_t data_stream_id_;
-  // The number of queries remaining to complete the sequence
-  size_t remaining_queries_;
-  // A lock to protect sequence data
-  std::mutex mtx_;
-};
 
 // Holds the running status of the thread.
 struct ThreadStat {
@@ -91,26 +73,19 @@ class InferContext {
   InferContext(
       const uint32_t id, const bool async, const bool streaming,
       const bool on_sequence_model, const bool using_json_data,
-      const int32_t batch_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, const size_t sequence_length,
-      std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution,
-      std::shared_ptr<ThreadStat> thread_stat,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
+      const int32_t batch_size, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<cb::ClientBackendFactory> factory,
-      const std::shared_ptr<InferDataManager>& infer_data_manager)
+      std::shared_ptr<cb::ClientBackendFactory> factory, const bool& execute,
+      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      std::shared_ptr<SequenceManager> sequence_manager)
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
-        start_sequence_id_(start_sequence_id),
-        sequence_id_range_(sequence_id_range),
-        sequence_length_(sequence_length), curr_seq_id_(curr_seq_id),
-        distribution_(distribution), thread_stat_(thread_stat),
-        sequence_stat_(sequence_stat), data_loader_(data_loader),
-        parser_(parser), factory_(factory), data_step_id_(id),
-        infer_data_manager_(infer_data_manager)
+        thread_stat_(thread_stat), data_loader_(data_loader), parser_(parser),
+        factory_(factory), data_step_id_(id), execute_(execute),
+        infer_data_manager_(infer_data_manager),
+        sequence_manager_(sequence_manager)
   {
     thread_stat_->status_ = factory_->CreateClientBackend(&infer_backend_);
     infer_data_.options_.reset(new cb::InferOptions(parser_->ModelName()));
@@ -162,12 +137,7 @@ class InferContext {
   void UpdateJsonData();
 
   /// Update inputs based on custom json data for the given sequence
-  void UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat);
-
-  void SetInferSequenceOptions(
-      const uint32_t seq_stat_index,
-      std::unique_ptr<cb::InferOptions>& options);
-  void InitNewSequence(int seq_stat_index);
+  void UpdateSeqJsonData(size_t seq_stat_index);
 
   /// Updates the expected output data to use for inference request. Empty
   /// vector will be returned if there is no expected output associated to the
@@ -198,14 +168,6 @@ class InferContext {
       std::vector<cb::InferInput*>& valid_inputs, int stream_index,
       int step_index);
 
-  uint64_t GetNextSeqId(int seq_stat_index);
-
-  /// Generate random sequence length based on 'offset_ratio' and
-  /// 'sequence_length_'. (1 +/- 'offset_ratio') * 'sequence_length_'
-  /// \param offset_ratio The offset ratio of the generated length
-  /// \return random sequence length
-  size_t GetRandomSequenceLength(double offset_ratio);
-
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
@@ -214,26 +176,12 @@ class InferContext {
   const bool on_sequence_model_;
   const bool using_json_data_;
   const int32_t batch_size_;
-  const uint64_t start_sequence_id_;
-  const uint64_t sequence_id_range_;
-  const size_t sequence_length_;
 
   std::shared_ptr<ThreadStat> thread_stat_;
-  std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
   const std::shared_ptr<InferDataManager> infer_data_manager_;
-
-  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
-  // we decouple? Used to pick among multiple data streams. Note this probably
-  // gets absorbed into the new sequence class when it is created
-  std::uniform_int_distribution<uint64_t>& distribution_;
-
-  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
-  // class. We shouldn't have to have a shared uint64 reference passed to all
-  // threads Current sequence id (for issuing new sequences)
-  std::atomic<uint64_t>& curr_seq_id_;
 
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
@@ -252,12 +200,15 @@ class InferContext {
 
   size_t GetNumActiveThreads() { return num_active_threads_; }
 
-  std::default_random_engine rng_generator_;
   size_t num_active_threads_{0};
 
   // The backend to communicate with the server
   std::unique_ptr<cb::ClientBackend> infer_backend_;
   InferData infer_data_;
+
+  const bool& execute_{false};
+
+  std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
 };
 
 }}  // namespace triton::perfanalyzer

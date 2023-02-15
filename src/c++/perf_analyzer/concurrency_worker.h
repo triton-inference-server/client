@@ -31,6 +31,7 @@
 #include <random>
 
 #include "load_worker.h"
+#include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -67,22 +68,18 @@ class ConcurrencyWorker : public LoadWorker {
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, const bool on_sequence_model,
-      const bool async, const size_t max_concurrency,
-      const bool using_json_data, const bool streaming,
-      const int32_t batch_size,
+      const bool on_sequence_model, const bool async,
+      const size_t max_concurrency, const bool using_json_data,
+      const bool streaming, const int32_t batch_size,
       std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute, std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution,
-      const std::shared_ptr<InferDataManager>& infer_data_manager)
+      size_t& active_threads, bool& execute,
+      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
-            id, thread_stat, parser, data_loader, factory, sequence_stat,
-            on_sequence_model, async, streaming, batch_size, using_json_data,
-            sequence_length, start_sequence_id, sequence_id_range, curr_seq_id,
-            distribution, wake_signal, wake_mutex, execute, infer_data_manager),
+            id, thread_stat, parser, data_loader, factory, on_sequence_model,
+            async, streaming, batch_size, using_json_data, wake_signal,
+            wake_mutex, execute, infer_data_manager, sequence_manager),
         thread_config_(thread_config), max_concurrency_(max_concurrency),
         threads_config_(threads_config), active_threads_(active_threads)
   {

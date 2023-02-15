@@ -61,16 +61,18 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 {
   // Need lock to protect the order of dispatch across worker threads.
   // This also helps in reporting the realistic latencies.
-  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-  if (!early_exit && !sequence_stat_[seq_stat_index]->paused_) {
-    SetInferSequenceOptions(seq_stat_index, infer_data_.options_);
+  std::lock_guard<std::mutex> guard(
+      sequence_manager_->GetMutex(seq_stat_index));
+  if (!early_exit && execute_) {
+    sequence_manager_->SetInferSequenceOptions(
+        seq_stat_index, infer_data_.options_);
 
     // Update the inputs if required
     if (using_json_data_) {
-      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(seq_stat_index);
     }
 
-    sequence_stat_[seq_stat_index]->remaining_queries_--;
+    sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
     SendRequest(request_id_++, delayed);
   }
@@ -79,17 +81,18 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 void
 InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
 {
-  std::lock_guard<std::mutex> guard(sequence_stat_[seq_stat_index]->mtx_);
-  sequence_stat_[seq_stat_index]->paused_ = true;
+  std::lock_guard<std::mutex> guard(
+      sequence_manager_->GetMutex(seq_stat_index));
 
-  if (sequence_stat_[seq_stat_index]->remaining_queries_ != 0) {
-    sequence_stat_[seq_stat_index]->remaining_queries_ = 1;
-    SetInferSequenceOptions(seq_stat_index, infer_data_.options_);
+  if (sequence_manager_->GetRemainingQueries(seq_stat_index) != 0) {
+    sequence_manager_->SetRemainingQueries(seq_stat_index, 1);
+    sequence_manager_->SetInferSequenceOptions(
+        seq_stat_index, infer_data_.options_);
 
     if (using_json_data_) {
-      UpdateSeqJsonData(sequence_stat_[seq_stat_index]);
+      UpdateSeqJsonData(seq_stat_index);
     }
-    sequence_stat_[seq_stat_index]->remaining_queries_--;
+    sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
     bool is_delayed = false;
     SendRequest(request_id_++, is_delayed);
@@ -176,52 +179,19 @@ InferContext::UpdateJsonData()
 }
 
 void
-InferContext::UpdateSeqJsonData(std::shared_ptr<SequenceStat> seq_stat)
+InferContext::UpdateSeqJsonData(size_t seq_stat_index)
 {
-  int step_id = data_loader_->GetTotalSteps(seq_stat->data_stream_id_) -
-                seq_stat->remaining_queries_;
+  const uint64_t data_stream_id{
+      sequence_manager_->GetDataStreamID(seq_stat_index)};
+  const size_t remaining_queries{
+      sequence_manager_->GetRemainingQueries(seq_stat_index)};
+  int step_id = data_loader_->GetTotalSteps(data_stream_id) - remaining_queries;
   thread_stat_->status_ = UpdateInputs(
-      infer_data_.inputs_, infer_data_.valid_inputs_, seq_stat->data_stream_id_,
-      step_id);
+      infer_data_.inputs_, infer_data_.valid_inputs_, data_stream_id, step_id);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data_.outputs_, seq_stat->data_stream_id_, step_id,
+        infer_data_.outputs_, data_stream_id, step_id,
         infer_data_.expected_outputs_);
-  }
-}
-
-
-void
-InferContext::SetInferSequenceOptions(
-    const uint32_t seq_stat_index, std::unique_ptr<cb::InferOptions>& options)
-{
-  options->sequence_start_ =
-      (sequence_stat_[seq_stat_index]->remaining_queries_ == 0);
-
-  // New sequence must be intialized before setting the id.
-  if (options->sequence_start_) {
-    InitNewSequence(seq_stat_index);
-  }
-  options->sequence_id_ = sequence_stat_[seq_stat_index]->seq_id_;
-  options->sequence_end_ =
-      (sequence_stat_[seq_stat_index]->remaining_queries_ == 1);
-}
-
-void
-InferContext::InitNewSequence(int seq_stat_index)
-{
-  sequence_stat_[seq_stat_index]->seq_id_ = GetNextSeqId(seq_stat_index);
-  if (!using_json_data_) {
-    size_t new_length = GetRandomSequenceLength(0.2);
-    sequence_stat_[seq_stat_index]->remaining_queries_ =
-        new_length == 0 ? 1 : new_length;
-  } else {
-    // Selecting next available data stream based on uniform distribution.
-    sequence_stat_[seq_stat_index]->data_stream_id_ =
-        distribution_(rng_generator_);
-    sequence_stat_[seq_stat_index]->remaining_queries_ =
-        data_loader_->GetTotalSteps(
-            sequence_stat_[seq_stat_index]->data_stream_id_);
   }
 }
 
@@ -283,36 +253,6 @@ InferContext::UpdateInputs(
       inputs, valid_inputs, stream_index, step_index));
 
   return cb::Error::Success;
-}
-
-uint64_t
-InferContext::GetNextSeqId(int seq_stat_index)
-{
-  uint64_t old_seq_id = sequence_stat_[seq_stat_index]->seq_id_;
-  uint64_t next_seq_id =
-      curr_seq_id_++ % sequence_id_range_ + start_sequence_id_;
-
-  // If the next sequence ID is still in use, reuse the same sequence ID
-  // that this sequence_stat used last time
-  //
-  for (uint i = 0; i < sequence_stat_.size(); i++) {
-    if (next_seq_id == sequence_stat_[i]->seq_id_) {
-      next_seq_id = old_seq_id;
-      break;
-    }
-  }
-  return next_seq_id;
-}
-
-size_t
-InferContext::GetRandomSequenceLength(double offset_ratio)
-{
-  int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
-                      sequence_length_;
-  if (int(sequence_length_) + random_offset <= 0) {
-    return 1;
-  }
-  return sequence_length_ + random_offset;
 }
 
 void

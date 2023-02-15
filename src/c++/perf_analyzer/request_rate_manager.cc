@@ -41,18 +41,16 @@ RequestRateManager::Create(
     const uint64_t measurement_window_ms, const size_t max_trials,
     Distribution request_distribution, const int32_t batch_size,
     const size_t max_threads, const uint32_t num_of_sequences,
-    const size_t sequence_length, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const uint64_t start_sequence_id,
-    const uint64_t sequence_id_range,
+    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<RequestRateManager> local_manager(new RequestRateManager(
       async, streaming, request_distribution, batch_size, measurement_window_ms,
-      max_trials, max_threads, num_of_sequences, sequence_length,
-      shared_memory_type, output_shm_size, start_sequence_id, sequence_id_range,
-      parser, factory));
+      max_trials, max_threads, num_of_sequences, shared_memory_type,
+      output_shm_size, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -63,26 +61,27 @@ RequestRateManager::RequestRateManager(
     const bool async, const bool streaming, Distribution request_distribution,
     int32_t batch_size, const uint64_t measurement_window_ms,
     const size_t max_trials, const size_t max_threads,
-    const uint32_t num_of_sequences, const size_t sequence_length,
-    const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-    const std::shared_ptr<ModelParser>& parser,
+    const uint32_t num_of_sequences, const SharedMemoryType shared_memory_type,
+    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
-          async, streaming, batch_size, max_threads, sequence_length,
-          shared_memory_type, output_shm_size, start_sequence_id,
-          sequence_id_range, parser, factory),
-      request_distribution_(request_distribution), execute_(false)
+          async, streaming, batch_size, max_threads, shared_memory_type,
+          output_shm_size, parser, factory),
+      request_distribution_(request_distribution), execute_(false),
+      num_of_sequences_(num_of_sequences)
 {
-  if (on_sequence_model_) {
-    for (uint64_t i = 0; i < num_of_sequences; i++) {
-      sequence_stat_.emplace_back(new SequenceStat(0));
-    }
-  }
   gen_duration_.reset(new std::chrono::nanoseconds(
       max_trials * measurement_window_ms * NANOS_PER_MILLIS));
 
   threads_config_.reserve(max_threads);
+}
+
+void
+RequestRateManager::InitManagerFinalize()
+{
+  if (on_sequence_model_) {
+    sequence_manager_->InitSequenceStatuses(num_of_sequences_);
+  }
 }
 
 cb::Error
@@ -222,8 +221,6 @@ RequestRateManager::PauseWorkers()
 void
 RequestRateManager::ResumeWorkers()
 {
-  UnpauseAllSequences();
-
   // Update the start_time_ to point to current time
   start_time_ = std::chrono::steady_clock::now();
 
@@ -240,10 +237,9 @@ RequestRateManager::MakeWorker(
   size_t id = workers_.size();
   return std::make_shared<RequestRateWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
-      sequence_length_, start_sequence_id_, sequence_id_range_,
       on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
-      batch_size_, sequence_stat_, wake_signal_, wake_mutex_, execute_,
-      curr_seq_id_, start_time_, distribution_, infer_data_manager_);
+      batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
+      infer_data_manager_, sequence_manager_);
 }
 
 

@@ -27,12 +27,14 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 
 #include "data_loader.h"
 #include "infer_context.h"
 #include "iworker.h"
 #include "model_parser.h"
+#include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -45,25 +47,20 @@ class LoadWorker : public IWorker {
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
-      std::vector<std::shared_ptr<SequenceStat>>& sequence_stat,
       const bool on_sequence_model, const bool async, const bool streaming,
       const int32_t batch_size, const bool using_json_data,
-      const size_t sequence_length, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range, std::atomic<uint64_t>& curr_seq_id,
-      std::uniform_int_distribution<uint64_t>& distribution,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute,
-      const std::shared_ptr<InferDataManager>& infer_data_manager)
+      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      std::shared_ptr<SequenceManager> sequence_manager)
       : id_(id), thread_stat_(thread_stat), parser_(parser),
         data_loader_(data_loader), factory_(factory),
-        sequence_stat_(sequence_stat), on_sequence_model_(on_sequence_model),
-        async_(async), streaming_(streaming), batch_size_(batch_size),
-        using_json_data_(using_json_data), sequence_length_(sequence_length),
-        start_sequence_id_(start_sequence_id),
-        sequence_id_range_(sequence_id_range), curr_seq_id_(curr_seq_id),
-        distribution_(distribution), wake_signal_(wake_signal),
+        on_sequence_model_(on_sequence_model), async_(async),
+        streaming_(streaming), batch_size_(batch_size),
+        using_json_data_(using_json_data), wake_signal_(wake_signal),
         wake_mutex_(wake_mutex), execute_(execute),
-        infer_data_manager_(infer_data_manager)
+        infer_data_manager_(infer_data_manager),
+        sequence_manager_(sequence_manager)
   {
   }
 
@@ -92,9 +89,8 @@ class LoadWorker : public IWorker {
   {
     return std::make_shared<InferContext>(
         ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, start_sequence_id_, sequence_id_range_, sequence_length_,
-        curr_seq_id_, distribution_, thread_stat_, sequence_stat_, data_loader_,
-        parser_, factory_, infer_data_manager_);
+        batch_size_, thread_stat_, data_loader_, parser_, factory_, execute_,
+        infer_data_manager_, sequence_manager_);
   }
 
   // Create an inference context and add it to ctxs_
@@ -119,16 +115,6 @@ class LoadWorker : public IWorker {
 
   std::vector<std::shared_ptr<InferContext>> ctxs_;
 
-  // TODO REFACTOR TMA-1019 all sequence related code should be in a single
-  // class. We shouldn't have to have a shared uint64 reference passed to all
-  // threads Current sequence id (for issuing new sequences)
-  std::atomic<uint64_t>& curr_seq_id_;
-
-  // TODO REFACTOR TMA-1019 this created in load manager init in one case. Can
-  // we decouple? Used to pick among multiple data streams. Note this probably
-  // gets absorbed into the new sequence class when it is created
-  std::uniform_int_distribution<uint64_t>& distribution_;
-
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
   // the same cv/mutex into every thread by reference? Used to wake up this
   // thread if it has been put to sleep
@@ -142,8 +128,6 @@ class LoadWorker : public IWorker {
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
 
-  // Sequence stats for all sequences
-  std::vector<std::shared_ptr<SequenceStat>>& sequence_stat_;
   std::shared_ptr<DataLoader> data_loader_;
   const std::shared_ptr<ModelParser> parser_;
   const std::shared_ptr<cb::ClientBackendFactory> factory_;
@@ -154,9 +138,8 @@ class LoadWorker : public IWorker {
   const bool streaming_;
   const int32_t batch_size_;
   const bool using_json_data_;
-  const uint64_t start_sequence_id_;
-  const uint64_t sequence_id_range_;
-  const size_t sequence_length_;
+
+  std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
 };
 
 }}  // namespace triton::perfanalyzer

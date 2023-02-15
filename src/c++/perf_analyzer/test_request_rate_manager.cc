@@ -25,6 +25,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <future>
+#include <memory>
+
 #include "command_line_parser.h"
 #include "common.h"
 #include "doctest.h"
@@ -33,6 +35,7 @@
 #include "mock_infer_data_manager.h"
 #include "mock_model_parser.h"
 #include "request_rate_manager.h"
+#include "sequence_manager.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
 
@@ -69,9 +72,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
         RequestRateManager(
             params.async, params.streaming, params.request_distribution,
             params.batch_size, params.measurement_window_ms, params.max_trials,
-            params.max_threads, params.num_of_sequences, params.sequence_length,
-            params.shared_memory_type, params.output_shm_size,
-            params.start_sequence_id, params.sequence_id_range, GetParser(),
+            params.max_threads, params.num_of_sequences,
+            params.shared_memory_type, params.output_shm_size, GetParser(),
             GetFactory())
   {
   }
@@ -304,8 +306,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
-  std::uniform_int_distribution<uint64_t>& distribution_{
-      LoadManager::distribution_};
   std::shared_ptr<cb::ClientBackendFactory> factory_{
       TestLoadManagerBase::factory_};
   std::shared_ptr<InferDataManager>& infer_data_manager_{
@@ -455,7 +455,8 @@ TEST_CASE("request_rate_schedule")
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestSchedule(rate, params);
 }
 
@@ -507,7 +508,8 @@ TEST_CASE("request_rate_infer_type")
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestInferType();
 }
 
@@ -527,7 +529,8 @@ TEST_CASE("request_rate_distribution")
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -551,7 +554,8 @@ TEST_CASE("request_rate_tiny_window")
   TestRequestRateManager trrm(params);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -565,7 +569,8 @@ TEST_CASE("request_rate_multiple")
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestMultipleRequestRate();
 }
 
@@ -580,7 +585,8 @@ TEST_CASE("request_rate_sequence")
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
   trrm.TestSequences();
 }
 
@@ -615,7 +621,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   auto worker = trrm.MakeWorker(thread_stat, thread_config);
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
@@ -665,10 +672,8 @@ TEST_CASE(
     ParameterizeAsyncAndStreaming(params.async, params.streaming);
   }
 
-  TestRequestRateManager trrm(params, is_sequence_model);
-
   std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(false, false)};
+      std::make_shared<MockModelParser>(is_sequence_model, false)};
   ModelTensor model_tensor{};
   model_tensor.datatype_ = "INT32";
   model_tensor.is_optional_ = false;
@@ -693,6 +698,8 @@ TEST_CASE(
     )"};
   mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
 
+  TestRequestRateManager trrm(params, is_sequence_model);
+
   std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
       std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
@@ -715,13 +722,13 @@ TEST_CASE(
                                       milliseconds(12), milliseconds(16)};
   schedule->duration = nanoseconds{16000000};
 
-  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mdl->GetDataStreamsCount() - 1);
-  trrm.start_time_ = std::chrono::steady_clock::now();
-
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  trrm.start_time_ = std::chrono::steady_clock::now();
+
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
@@ -790,7 +797,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_system_shared_memory_calls = 1;
@@ -814,7 +822,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_cuda_shared_memory_calls = 1;
@@ -836,7 +845,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
-        params.user_data);
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length);
 
     trrm.CheckSharedMemory(expected_stats);
   }
@@ -912,7 +922,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
     ]
   }
       )"};
-  MockInputPipeline mip = TestLoadManagerBase::ProcessCustomJsonData(json_str);
+  MockInputPipeline mip =
+      TestLoadManagerBase::ProcessCustomJsonData(json_str, is_sequence_model);
   std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
       std::make_shared<MockInferDataManager>(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
@@ -935,12 +946,12 @@ TEST_CASE("Request rate - Shared memory infer input calls")
                                       milliseconds(12), milliseconds(16)};
   schedule->duration = nanoseconds{16000000};
 
-  trrm.distribution_ = std::uniform_int_distribution<uint64_t>(
-      0, mip.mock_data_loader_->GetDataStreamsCount() - 1);
-  trrm.start_time_ = std::chrono::steady_clock::now();
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  trrm.start_time_ = std::chrono::steady_clock::now();
 
   std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
@@ -1050,7 +1061,8 @@ TEST_CASE("request_rate_deadlock")
   trrm.stats_->SetDelays(delays);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
-      params.user_data);
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
 
   // Sometimes have a request fail
   if (some_infer_failures) {

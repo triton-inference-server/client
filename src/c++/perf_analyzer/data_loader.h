@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -30,6 +30,10 @@
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class MockDataLoader;
+#endif
 
 class DataLoader {
  public:
@@ -168,6 +172,8 @@ class DataLoader {
   std::vector<uint8_t> input_buf_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend MockDataLoader;
+
  protected:
   DataLoader() = default;
 #endif

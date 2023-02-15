@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -62,7 +62,6 @@ class ConcurrencyManager : public LoadManager {
   /// \param batch_size The batch size used for each request.
   /// \param max_threads The maximum number of working threads to be spawned.
   /// \param max_concurrency The maximum concurrency which will be requested.
-  /// \param sequence_length The base length of each sequence.
   /// \param string_length The length of the string to create for input.
   /// \param string_data The data to use for generating string input.
   /// \param zero_input Whether to fill the input tensors with zero.
@@ -79,9 +78,7 @@ class ConcurrencyManager : public LoadManager {
   static cb::Error Create(
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
-      const size_t sequence_length, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       std::unique_ptr<LoadManager>* manager);
@@ -102,11 +99,11 @@ class ConcurrencyManager : public LoadManager {
   ConcurrencyManager(
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
-      const size_t sequence_length, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const uint64_t start_sequence_id,
-      const uint64_t sequence_id_range,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
+
+  void InitManagerFinalize() override;
 
   // Pause all worker threads that are working on sequences
   //
