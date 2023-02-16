@@ -89,6 +89,11 @@ ResponseAlloc(
   *actual_memory_type = preferred_memory_type;
   *actual_memory_type_id = preferred_memory_type_id;
 
+  // This variable indicates whether the buffer should be freed or not.
+  bool* should_free = new bool;
+  *buffer_userp = should_free;
+  *should_free = false;
+
   // If 'byte_size' is zero just return 'buffer' == nullptr, we don't
   // need to do any other book-keeping.
   if (byte_size == 0) {
@@ -106,6 +111,7 @@ ResponseAlloc(
       *actual_memory_type = TRITONSERVER_MEMORY_CPU;
       *actual_memory_type_id = 0;
       allocated_ptr = malloc(byte_size);
+      *should_free = true;
 
       if (allocated_ptr != nullptr) {
         *buffer = allocated_ptr;
@@ -140,12 +146,16 @@ ResponseRelease(
     size_t byte_size, TRITONSERVER_MemoryType memory_type,
     int64_t memory_type_id)
 {
+  bool* should_free = reinterpret_cast<bool*>(buffer_userp);
   switch (memory_type) {
     case TRITONSERVER_MEMORY_CPU:
-      free(buffer);
+      if (*should_free) {
+        free(buffer);
+      }
       break;
   }
 
+  free(should_free);
   return nullptr;  // Success
 }
 
