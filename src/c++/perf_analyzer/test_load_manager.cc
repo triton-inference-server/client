@@ -319,8 +319,8 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     SUBCASE("All active")
     {
       // If multiple threads are active, their idle times are averaged
-      stat1->accumulated_idle_ns = 5;
-      stat2->accumulated_idle_ns = 7;
+      stat1->idle_timer.idle_ns_ = 5;
+      stat2->idle_timer.idle_ns_ = 7;
       CHECK(GetIdleTime() == 6);
       ResetIdleTime();
       CHECK(GetIdleTime() == 0);
@@ -330,8 +330,8 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     {
       // If a thread has no idle time, it is considered inactive and not
       // factored in to the average
-      stat1->accumulated_idle_ns = 0;
-      stat2->accumulated_idle_ns = 7;
+      stat1->idle_timer.idle_ns_ = 0;
+      stat2->idle_timer.idle_ns_ = 7;
       CHECK(GetIdleTime() == 7);
       ResetIdleTime();
       CHECK(GetIdleTime() == 0);

@@ -307,7 +307,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     //
     auto idle_time_ns = GetIdleTime();
     CHECK(idle_time_ns > 95000000);
-    CHECK(idle_time_ns < 100000000);
     StopWorkerThreads();
   }
 

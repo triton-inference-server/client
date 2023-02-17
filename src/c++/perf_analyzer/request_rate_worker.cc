@@ -111,8 +111,9 @@ RequestRateWorker::SleepIfNecessary()
   if (wait_time.count() < 0) {
     delayed = true;
   } else {
+    thread_stat_->idle_timer.Start();
     std::this_thread::sleep_for(wait_time);
-    thread_stat_->accumulated_idle_ns += wait_time.count();
+    thread_stat_->idle_timer.Stop();
   }
   return delayed;
 }

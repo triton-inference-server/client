@@ -117,14 +117,17 @@ LoadManager::GetIdleTime()
   size_t num_active_threads = 0;
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    if (thread_stat->accumulated_idle_ns) {
-      total += thread_stat->accumulated_idle_ns;
+    thread_stat->idle_timer.Restart();
+    uint64_t idle_time = thread_stat->idle_timer.GetIdleTime();
+    if (idle_time) {
+      total += idle_time;
       num_active_threads++;
     }
   }
 
   // TODO REFACTOR TMA-1043 InferDataManager should have an API to get
-  // num_active_threads. This method isn't fully accurate
+  // num_active_threads. This method of determining active threads isn't fully
+  // accurate
   if (num_active_threads) {
     total /= num_active_threads;
   }
@@ -137,7 +140,7 @@ LoadManager::ResetIdleTime()
 {
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    thread_stat->accumulated_idle_ns = 0;
+    thread_stat->idle_timer.Reset();
   }
 }
 

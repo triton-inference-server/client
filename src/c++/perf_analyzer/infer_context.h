@@ -30,6 +30,7 @@
 #include <mutex>
 #include <vector>
 #include "data_loader.h"
+#include "idle_timer.h"
 #include "infer_data.h"
 #include "infer_data_manager.h"
 #include "perf_utils.h"
@@ -48,9 +49,10 @@ struct ThreadStat {
   // TODO REFACTOR TMA-1046 -- This should be in the InferContext class
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
-
+  std::chrono::_V2::steady_clock::time_point start_time;
   // The total amount of time spent sleeping or waiting
-  uint64_t accumulated_idle_ns{0};
+
+  IdleTimer idle_timer;
 
   // A vector of request timestamps <start_time, end_time>
   // Request latency will be end_time - start_time

@@ -120,9 +120,7 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       it->second.delayed_ = delayed;
     }
 
-    std::chrono::time_point<std::chrono::system_clock> overhead_start,
-        overhead_end;
-    overhead_start = std::chrono::system_clock::now();
+    thread_stat_->idle_timer.Start();
     if (streaming_) {
       thread_stat_->status_ = infer_backend_->AsyncStreamInfer(
           *(infer_data_.options_), infer_data_.valid_inputs_,
@@ -132,19 +130,19 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
           async_callback_func_, *(infer_data_.options_),
           infer_data_.valid_inputs_, infer_data_.outputs_);
     }
-    overhead_end = std::chrono::system_clock::now();
-    auto total = overhead_end - overhead_start;
-    thread_stat_->accumulated_idle_ns += total.count();
+    thread_stat_->idle_timer.Stop();
 
     total_ongoing_requests_++;
   } else {
     std::chrono::time_point<std::chrono::system_clock> start_time_sync,
         end_time_sync;
+    thread_stat_->idle_timer.Start();
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
     thread_stat_->status_ = infer_backend_->Infer(
         &results, *(infer_data_.options_), infer_data_.valid_inputs_,
         infer_data_.outputs_);
+    thread_stat_->idle_timer.Stop();
     if (results != nullptr) {
       if (thread_stat_->status_.IsOk()) {
         thread_stat_->status_ = ValidateOutputs(results);
@@ -160,7 +158,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
-      thread_stat_->accumulated_idle_ns += total.count();
       thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
           delayed));
