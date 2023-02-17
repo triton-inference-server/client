@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -65,7 +65,7 @@ class TFServeInferInput : public InferInput {
       const std::string& datatype);
 
   std::vector<int64_t> shape_;
-  size_t byte_size_;
+  size_t byte_size_{0};
 
   size_t bufs_idx_, buf_pos_;
   std::vector<const uint8_t*> bufs_;

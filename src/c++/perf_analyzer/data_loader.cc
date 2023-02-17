@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -233,7 +233,8 @@ DataLoader::ParseData(
     }
   }
 
-  max_non_sequence_step_id_ = std::max(1, (int)(step_num_[0] / batch_size_));
+  max_non_sequence_step_id_ =
+      std::max(1, (int)(step_num_[0] / (batch_size_ != 0 ? batch_size_ : 1)));
 
   return cb::Error::Success;
 }
