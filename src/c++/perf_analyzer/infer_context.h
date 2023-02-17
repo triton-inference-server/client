@@ -50,7 +50,7 @@ struct ThreadStat {
   std::vector<cb::InferStat> contexts_stat_;
 
   // The total amount of time spent sleeping or waiting
-  uint64_t accumulated_idle_ns;
+  uint64_t accumulated_idle_ns{0};
 
   // A vector of request timestamps <start_time, end_time>
   // Request latency will be end_time - start_time
