@@ -308,6 +308,35 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
       CHECK(stat2->request_timestamps_.size() == 2);
     }
   }
+
+  void TestIdle()
+  {
+    auto stat1 = std::make_shared<ThreadStat>();
+    auto stat2 = std::make_shared<ThreadStat>();
+    threads_stat_.push_back(stat1);
+    threads_stat_.push_back(stat2);
+
+    SUBCASE("All active")
+    {
+      // If multiple threads are active, their idle times are averaged
+      stat1->accumulated_idle_ns = 5;
+      stat2->accumulated_idle_ns = 7;
+      CHECK(GetIdleTime() == 6);
+      ResetIdleTime();
+      CHECK(GetIdleTime() == 0);
+    }
+
+    SUBCASE("One inactive")
+    {
+      // If a thread has no idle time, it is considered inactive and not
+      // factored in to the average
+      stat1->accumulated_idle_ns = 0;
+      stat2->accumulated_idle_ns = 7;
+      CHECK(GetIdleTime() == 7);
+      ResetIdleTime();
+      CHECK(GetIdleTime() == 0);
+    }
+  }
 };
 
 TEST_CASE("load_manager_check_health: Test the public function CheckHealth()")
@@ -349,6 +378,13 @@ TEST_CASE("load_manager_batch_size: Test the public function BatchSize()")
 
   TestLoadManager tlm(params);
   CHECK(tlm.BatchSize() == params.batch_size);
+}
+
+TEST_CASE("load_manager: Test public idle time functions")
+{
+  PerfAnalyzerParameters params;
+  TestLoadManager tlm(params);
+  tlm.TestIdle();
 }
 
 }}  // namespace triton::perfanalyzer
