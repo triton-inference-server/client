@@ -940,6 +940,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
 #else
           Usage("cuda shared memory is not supported when TRITON_ENABLE_GPU=0");
 #endif  // TRITON_ENABLE_GPU
+        } else {
+          Usage(
+              "unsupported --shared-memory type provided: '" +
+              std::string(optarg) + "'. Choices are 'system' or 'cuda'.");
         }
         break;
       }
