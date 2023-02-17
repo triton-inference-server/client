@@ -151,6 +151,8 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       // Add the request timestamp to thread Timestamp vector with proper
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+      auto total = end_time_sync - start_time_sync;
+      thread_stat_->accumulated_idle_ns += total.count();
       thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
           start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
           delayed));

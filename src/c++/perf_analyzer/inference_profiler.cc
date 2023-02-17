@@ -1071,6 +1071,8 @@ InferenceProfiler::Measure(
   cb::InferStat start_stat;
   cb::InferStat end_stat;
 
+  manager_->ResetIdleTime();
+
   // Set current window start time to end of previous window. For first
   // measurement window, capture start time, server side stats, and client side
   // stats.
@@ -1158,15 +1160,18 @@ InferenceProfiler::Summarize(
 
   // Get measurement from requests that fall within the time interval
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
+  uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
   ValidLatencyMeasurement(
       valid_range, valid_sequence_count, delayed_request_count, &latencies);
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
-      start_stat, end_stat, valid_range.second - valid_range.first,
-      latencies.size(), valid_sequence_count, delayed_request_count, summary));
+      start_stat, end_stat, window_duration_ns, latencies.size(),
+      valid_sequence_count, delayed_request_count, summary));
   summary.client_stats.latencies = std::move(latencies);
+
+  SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
@@ -1472,6 +1477,22 @@ InferenceProfiler::SummarizeServerStats(
       std::make_pair(parser_->ModelName(), parser_->ModelVersion()),
       start_status, end_status, server_stats));
   return cb::Error::Success;
+}
+
+void
+InferenceProfiler::SummarizeOverhead(
+    const uint64_t window_duration_ns, const uint64_t idle_ns,
+    PerfStatus& summary)
+{
+  // It is possible for the overhead to be larger than the duration, based on
+  // the way idle windows are added. For that case, just mark 100% overhead
+  if (idle_ns > window_duration_ns) {
+    summary.overhead_pct = 100;
+  } else {
+    uint64_t overhead_ns = window_duration_ns - idle_ns;
+    double overhead_pct = double(overhead_ns) / window_duration_ns * 100;
+    summary.overhead_pct = overhead_pct;
+  }
 }
 
 bool

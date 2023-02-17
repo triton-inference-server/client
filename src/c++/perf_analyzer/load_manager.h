@@ -77,6 +77,15 @@ class LoadManager {
   /// in load manager
   cb::Error GetAccumulatedClientStat(cb::InferStat* contexts_stat);
 
+  /// Returns the amount of valid time each worker thread has averaged in
+  /// nanoseconds
+  ///
+  uint64_t GetIdleTime();
+
+  /// Resets the counter for tracking valid time
+  ///
+  void ResetIdleTime();
+
   /// \return the batch size used for the inference requests
   size_t BatchSize() const { return batch_size_; }
 

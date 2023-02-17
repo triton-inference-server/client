@@ -177,6 +177,7 @@ ConcurrencyWorker::WaitForResponses()
     {
       // If async, then wait for signal from callback.
       std::unique_lock<std::mutex> lk(cb_mtx_);
+      auto start = std::chrono::steady_clock::now();
       cb_cv_.wait(lk, [this] {
         if (notified_) {
           notified_ = false;
@@ -184,6 +185,9 @@ ConcurrencyWorker::WaitForResponses()
         }
         return false;
       });
+      auto end = std::chrono::steady_clock::now();
+      auto duration = end - start;
+      thread_stat_->accumulated_idle_ns += duration.count();
     }
   }
 }
