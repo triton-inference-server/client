@@ -183,6 +183,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     watchdog.stop();
   }
 
+  /// Test that idle time is tracked correctly
   void TestOverhead()
   {
     stats_->SetDelays({1});
