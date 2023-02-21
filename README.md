@@ -1,5 +1,5 @@
 <!--
-# Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -137,7 +137,7 @@ The components of the install packages are:
 * utils [ linux distribution will include `shared_memory` and `cuda_shared_memory`]
 
 The Linux version of the package also includes the
-[perf_analyzer](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/perf_analyzer.md)
+[perf_analyzer](src/c++/perf_analyzer/README.md)
 binary. The perf_analyzer binary is built on Ubuntu 20.04 and may not
 run on other Linux distributions. To run the perf_analyzer the
 following dependency must be installed:
