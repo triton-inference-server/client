@@ -1507,12 +1507,12 @@ InferenceProfiler::SummarizeOverhead(
   // it as 0% overhead (100% idle) in that case
   //
   if (idle_ns > window_duration_ns) {
-    summary.overhead_pct = 0;
-  } else {
-    uint64_t overhead_ns = window_duration_ns - idle_ns;
-    double overhead_pct = double(overhead_ns) / window_duration_ns * 100;
-    summary.overhead_pct = overhead_pct;
+    throw std::runtime_error("Idle time can't be larger than window");
   }
+
+  uint64_t overhead_ns = window_duration_ns - idle_ns;
+  double overhead_pct = double(overhead_ns) / window_duration_ns * 100;
+  summary.overhead_pct = overhead_pct;
 }
 
 bool
