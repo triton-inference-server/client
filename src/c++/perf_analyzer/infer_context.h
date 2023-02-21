@@ -49,9 +49,8 @@ struct ThreadStat {
   // TODO REFACTOR TMA-1046 -- This should be in the InferContext class
   // The statistics of the InferContext
   std::vector<cb::InferStat> contexts_stat_;
-  std::chrono::_V2::steady_clock::time_point start_time;
-  // The total amount of time spent sleeping or waiting
 
+  // Tracks the amount of time this thread spent sleeping or waiting
   IdleTimer idle_timer;
 
   // A vector of request timestamps <start_time, end_time>

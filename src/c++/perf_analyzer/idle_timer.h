@@ -38,12 +38,19 @@ class IdleTimer {
  public:
   void Start()
   {
+    if (is_idle_) {
+      throw std::runtime_error("Can't start a timer that is already active\n");
+    }
     is_idle_ = true;
     start_time_ = std::chrono::steady_clock::now();
   }
 
   void Stop()
   {
+    if (!is_idle_) {
+      throw std::runtime_error("Can't stop a timer that isn't active\n");
+    }
+
     is_idle_ = false;
     auto end = std::chrono::steady_clock::now();
     auto duration = end - start_time_;
@@ -61,7 +68,7 @@ class IdleTimer {
     }
   }
 
-  /// Reset the time counter
+  /// Reset the time counter, and restart the timer if it is active
   ///
   void Reset()
   {

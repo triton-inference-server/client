@@ -665,7 +665,7 @@ TEST_CASE("InferenceProfiler: Test SummarizeOverhead")
   SUBCASE("normal")
   {
     tip.SummarizeOverhead(100, 63, status);
-    CHECK(status.overhead_pct == 37);
+    CHECK(status.overhead_pct == doctest::Approx(37));
   }
   SUBCASE("normal 2")
   {
@@ -674,8 +674,8 @@ TEST_CASE("InferenceProfiler: Test SummarizeOverhead")
   }
   SUBCASE("overflow")
   {
-    tip.SummarizeOverhead(100, 101, status);
-    CHECK(status.overhead_pct == 0);
+    CHECK_THROWS_AS(
+        tip.SummarizeOverhead(100, 101, status), const std::exception&);
   }
 }
 
