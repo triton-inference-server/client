@@ -23,74 +23,65 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#pragma once
-#include <chrono>
-#include <stdexcept>
+
+#include "doctest.h"
+#include "idle_timer.h"
 
 namespace triton { namespace perfanalyzer {
 
-#ifndef DOCTEST_CONFIG_DISABLE
-class TestLoadManager;
-#endif
+TEST_CASE("idle_timer: basic usage")
+{
+  IdleTimer timer;
+  CHECK(0 == timer.GetIdleTime());
+  timer.Start();
+  timer.Stop();
+  CHECK(0 < timer.GetIdleTime());
+  timer.Reset();
+  CHECK(0 == timer.GetIdleTime());
+}
 
+TEST_CASE("idle_timer: restart when inactive")
+{
+  IdleTimer timer;
+  CHECK(0 == timer.GetIdleTime());
+  timer.Restart();
+  CHECK(0 == timer.GetIdleTime());
+  CHECK_NOTHROW(timer.Start());
+}
 
-/// Class to track idle periods of time
-///
-class IdleTimer {
- public:
-  void Start()
-  {
-    if (is_idle_) {
-      throw std::runtime_error("Can't start a timer that is already active\n");
-    }
-    is_idle_ = true;
-    start_time_ = std::chrono::steady_clock::now();
-  }
+TEST_CASE("idle_timer: restart when active")
+{
+  IdleTimer timer;
+  timer.Start();
+  timer.Restart();
+  CHECK(0 < timer.GetIdleTime());
+  CHECK_NOTHROW(timer.Stop());
+}
 
-  void Stop()
-  {
-    if (!is_idle_) {
-      throw std::runtime_error("Can't stop a timer that isn't active\n");
-    }
+TEST_CASE("idle_timer: reset when active")
+{
+  IdleTimer timer;
+  timer.Start();
+  timer.Stop();
+  timer.Start();
+  timer.Reset();
+  CHECK(0 == timer.GetIdleTime());
+  CHECK_NOTHROW(timer.Stop());
+  CHECK(0 < timer.GetIdleTime());
+}
 
-    is_idle_ = false;
-    auto end = std::chrono::steady_clock::now();
-    auto duration = end - start_time_;
-    idle_ns_ += duration.count();
-  }
+TEST_CASE("idle_timer: double start")
+{
+  IdleTimer timer;
+  timer.Start();
+  CHECK_THROWS_AS(timer.Start();, const std::exception&);
+}
 
-  /// Restart the timer. This means that if the timer was already active, then
-  /// stop it (and count the pending time), and then restart it
-  ///
-  void Restart()
-  {
-    if (is_idle_) {
-      Stop();
-      Start();
-    }
-  }
+TEST_CASE("idle_timer: stop without start")
+{
+  IdleTimer timer;
+  CHECK_THROWS_AS(timer.Stop();, const std::exception&);
+}
 
-  /// Reset the time counter, and restart the timer if it is active
-  ///
-  void Reset()
-  {
-    Restart();
-    idle_ns_ = 0;
-  }
-
-  /// Returns the number of nanoseconds this timer has counted as being idle
-  ///
-  uint64_t GetIdleTime() { return idle_ns_; }
-
- private:
-  uint64_t idle_ns_{0};
-  bool is_idle_{false};
-  std::chrono::_V2::steady_clock::time_point start_time_;
-
-
-#ifndef DOCTEST_CONFIG_DISABLE
-  friend TestLoadManager;
-#endif
-};
 
 }}  // namespace triton::perfanalyzer
