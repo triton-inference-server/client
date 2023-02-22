@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <thread>
 #include "doctest.h"
 #include "idle_timer.h"
 
@@ -32,20 +33,21 @@ namespace triton { namespace perfanalyzer {
 TEST_CASE("idle_timer: basic usage")
 {
   IdleTimer timer;
-  CHECK(0 == timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() == 0);
   timer.Start();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Stop();
-  CHECK(0 < timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() > 0);
   timer.Reset();
-  CHECK(0 == timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() == 0);
 }
 
 TEST_CASE("idle_timer: restart when inactive")
 {
   IdleTimer timer;
-  CHECK(0 == timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() == 0);
   timer.Restart();
-  CHECK(0 == timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() == 0);
   CHECK_NOTHROW(timer.Start());
 }
 
@@ -53,8 +55,9 @@ TEST_CASE("idle_timer: restart when active")
 {
   IdleTimer timer;
   timer.Start();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Restart();
-  CHECK(0 < timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() > 0);
   CHECK_NOTHROW(timer.Stop());
 }
 
@@ -62,25 +65,29 @@ TEST_CASE("idle_timer: reset when active")
 {
   IdleTimer timer;
   timer.Start();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Stop();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Start();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Reset();
-  CHECK(0 == timer.GetIdleTime());
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  CHECK(timer.GetIdleTime() == 0);
   CHECK_NOTHROW(timer.Stop());
-  CHECK(0 < timer.GetIdleTime());
+  CHECK(timer.GetIdleTime() > 0);
 }
 
 TEST_CASE("idle_timer: double start")
 {
   IdleTimer timer;
   timer.Start();
-  CHECK_THROWS_AS(timer.Start();, const std::exception&);
+  CHECK_THROWS_AS(timer.Start(), const std::exception&);
 }
 
 TEST_CASE("idle_timer: stop without start")
 {
   IdleTimer timer;
-  CHECK_THROWS_AS(timer.Stop();, const std::exception&);
+  CHECK_THROWS_AS(timer.Stop(), const std::exception&);
 }
 
 
