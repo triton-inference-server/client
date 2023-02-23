@@ -177,11 +177,11 @@ InferContext::UpdateJsonData()
   int step_id =
       (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
   data_step_id_ += GetNumActiveThreads();
-  thread_stat_->status_ = infer_data_manager_->UpdateInputs(
-      infer_data_.inputs_, infer_data_.valid_inputs_, 0, step_id);
+  thread_stat_->status_ =
+      infer_data_manager_->UpdateInputs(0, step_id, infer_data_);
   if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data_.outputs_, 0, step_id, infer_data_.expected_outputs_);
+    thread_stat_->status_ =
+        infer_data_manager_->UpdateValidationOutputs(0, step_id, infer_data_);
   }
 }
 
@@ -193,12 +193,11 @@ InferContext::UpdateSeqJsonData(size_t seq_stat_index)
   const size_t remaining_queries{
       sequence_manager_->GetRemainingQueries(seq_stat_index)};
   int step_id = data_loader_->GetTotalSteps(data_stream_id) - remaining_queries;
-  thread_stat_->status_ = infer_data_manager_->UpdateInputs(
-      infer_data_.inputs_, infer_data_.valid_inputs_, data_stream_id, step_id);
+  thread_stat_->status_ =
+      infer_data_manager_->UpdateInputs(data_stream_id, step_id, infer_data_);
   if (thread_stat_->status_.IsOk()) {
     thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data_.outputs_, data_stream_id, step_id,
-        infer_data_.expected_outputs_);
+        data_stream_id, step_id, infer_data_);
   }
 }
 

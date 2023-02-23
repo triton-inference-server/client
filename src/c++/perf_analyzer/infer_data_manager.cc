@@ -363,8 +363,7 @@ InferDataManager::PrepareInferNoSharedMemory(InferData& infer_data)
     RETURN_IF_ERROR(PrepareInferOutputNoSharedMemory(output.first, infer_data));
   }
 
-  RETURN_IF_ERROR(UpdateValidationOutputs(
-      infer_data.outputs_, 0, 0, infer_data.expected_outputs_));
+  RETURN_IF_ERROR(UpdateValidationOutputs(0, 0, infer_data));
 
   return cb::Error::Success;
 }
@@ -488,9 +487,7 @@ InferDataManager::PrepareInferOutputSharedMemory(
 
 cb::Error
 InferDataManager::UpdateInputs(
-    const std::vector<cb::InferInput*>& inputs,
-    std::vector<cb::InferInput*>& valid_inputs, int stream_index,
-    int step_index)
+    int stream_index, int step_index, InferData& infer_data)
 {
   // Validate update parameters here
   size_t data_stream_count = data_loader_->GetDataStreamsCount();
@@ -509,18 +506,16 @@ InferDataManager::UpdateInputs(
         pa::GENERIC_ERROR);
   }
 
-  RETURN_IF_ERROR(SetInputs(inputs, valid_inputs, stream_index, step_index));
+  RETURN_IF_ERROR(SetInputs(stream_index, step_index, infer_data));
 
   return cb::Error::Success;
 }
 
 cb::Error
 InferDataManager::UpdateValidationOutputs(
-    const std::vector<const cb::InferRequestedOutput*>& outputs,
-    int stream_index, int step_index,
-    std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data)
+    int stream_index, int step_index, InferData& infer_data)
 {
-  data.clear();
+  infer_data.expected_outputs_.clear();
   // Validate update parameters here
   size_t data_stream_count = data_loader_->GetDataStreamsCount();
   if (stream_index < 0 || stream_index >= (int)data_stream_count) {
@@ -538,7 +533,7 @@ InferDataManager::UpdateValidationOutputs(
         pa::GENERIC_ERROR);
   }
 
-  for (const auto& output : outputs) {
+  for (const auto& output : infer_data.outputs_) {
     const auto& model_output = (*(parser_->Outputs()))[output->Name()];
     const uint8_t* data_ptr;
     size_t batch1_bytesize;
@@ -561,7 +556,7 @@ InferDataManager::UpdateValidationOutputs(
       }
     }
     if (!output_data.empty()) {
-      data.emplace_back(std::move(output_data));
+      infer_data.expected_outputs_.emplace_back(std::move(output_data));
     }
   }
   return cb::Error::Success;
@@ -569,28 +564,23 @@ InferDataManager::UpdateValidationOutputs(
 
 cb::Error
 InferDataManager::SetInputs(
-    const std::vector<cb::InferInput*>& inputs,
-    std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-    const int step_index)
+    const int stream_index, const int step_index, InferData& infer_data)
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    return SetInputsNoSharedMemory(
-        inputs, valid_inputs, stream_index, step_index);
+    return SetInputsNoSharedMemory(stream_index, step_index, infer_data);
   } else {
-    return SetInputsSharedMemory(inputs, stream_index, step_index);
+    return SetInputsSharedMemory(stream_index, step_index, infer_data);
   }
 }
 
 cb::Error
 InferDataManager::SetInputsNoSharedMemory(
-    const std::vector<cb::InferInput*>& inputs,
-    std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-    const int step_index)
+    const int stream_index, const int step_index, InferData& infer_data)
 {
   // Reset inputs for this inference request
-  valid_inputs.clear();
+  infer_data.valid_inputs_.clear();
 
-  for (const auto& input : inputs) {
+  for (const auto& input : infer_data.inputs_) {
     RETURN_IF_ERROR(input->Reset());
 
     const auto& model_input = (*(parser_->Inputs()))[input->Name()];
@@ -683,7 +673,7 @@ InferDataManager::SetInputsNoSharedMemory(
     // some inferences did not, this is an invalid case and an error is
     // thrown.
     if (missing_data_cnt == 0) {
-      valid_inputs.push_back(input);
+      infer_data.valid_inputs_.push_back(input);
     } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
       return cb::Error(
           "For batch sizes larger than 1, the same set of inputs must be "
@@ -697,10 +687,9 @@ InferDataManager::SetInputsNoSharedMemory(
 
 cb::Error
 InferDataManager::SetInputsSharedMemory(
-    const std::vector<cb::InferInput*>& inputs, const int stream_index,
-    const int step_index)
+    const int stream_index, const int step_index, InferData& infer_data)
 {
-  for (const auto& input : inputs) {
+  for (const auto& input : infer_data.inputs_) {
     RETURN_IF_ERROR(input->Reset());
     const auto& model_input = (*(parser_->Inputs()))[input->Name()];
 
