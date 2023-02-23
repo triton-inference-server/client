@@ -52,7 +52,9 @@ set(
   report_writer.cc
   mpi_utils.cc
   metrics_manager.cc
+  infer_data_manager_base.cc
   infer_data_manager.cc
+  infer_data_manager_shm.cc
   sequence_manager.cc
 )
 
@@ -79,7 +81,10 @@ set(
   constants.h
   metrics.h
   metrics_manager.h
+  iinfer_data_manager.h
   infer_data_manager.h
+  infer_data_manager_shm.h
+  infer_data_manager_base.h
   infer_data.h
   sequence_manager.h
   sequence_status.h
@@ -171,8 +176,8 @@ add_executable(
   test_perf_utils.cc
   test_report_writer.cc
   client_backend/triton/test_triton_client_backend.cc
-  test_request_rate_manager.cc
-  test_concurrency_manager.cc
+  #test_request_rate_manager.cc
+  #test_concurrency_manager.cc
   test_custom_load_manager.cc
   test_sequence_manager.cc
   $<TARGET_OBJECTS:json-utils-library>

@@ -51,7 +51,7 @@ class LoadWorker : public IWorker {
       const int32_t batch_size, const bool using_json_data,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       bool& execute,
-      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : id_(id), thread_stat_(thread_stat), parser_(parser),
         data_loader_(data_loader), factory_(factory),
@@ -131,7 +131,7 @@ class LoadWorker : public IWorker {
   std::shared_ptr<DataLoader> data_loader_;
   const std::shared_ptr<ModelParser> parser_;
   const std::shared_ptr<cb::ClientBackendFactory> factory_;
-  const std::shared_ptr<InferDataManager> infer_data_manager_;
+  const std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   const bool on_sequence_model_;
   const bool async_;

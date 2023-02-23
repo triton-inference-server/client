@@ -24,6 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "iinfer_data_manager.h"
+// FIXME shouldn't need this -- make factory
+#include "infer_data_manager.h"
+#include "infer_data_manager_shm.h"
+
 #include "load_manager.h"
 
 #include <algorithm>
@@ -158,9 +163,15 @@ LoadManager::LoadManager(
 
   data_loader_.reset(new DataLoader(batch_size_));
 
-  infer_data_manager_ = std::make_shared<pa::InferDataManager>(
-      batch_size_, shared_memory_type, output_shm_size, parser_, factory_,
-      data_loader_);
+  // FIXME
+  if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
+    infer_data_manager_ = std::make_shared<InferDataManager>(
+        batch_size_, parser_, factory_, data_loader_);
+  } else {
+    infer_data_manager_ = std::make_shared<InferDataManagerShm>(
+        batch_size_, shared_memory_type, output_shm_size, parser_, factory_,
+        data_loader_);
+  }
 }
 
 void
@@ -175,8 +186,7 @@ LoadManager::InitManager(
   THROW_IF_ERROR(status, "Failed to init manager inputs");
 
   THROW_IF_ERROR(
-      infer_data_manager_->InitSharedMemory(),
-      "Unable to init shared memory in memory manager");
+      infer_data_manager_->Init(), "Unable to init infer data manager");
 
   sequence_manager_ = std::make_shared<SequenceManager>(
       start_sequence_id, sequence_id_range, sequence_length, using_json_data_,

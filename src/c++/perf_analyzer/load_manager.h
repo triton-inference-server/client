@@ -33,7 +33,7 @@
 
 #include "client_backend/client_backend.h"
 #include "data_loader.h"
-#include "infer_data_manager.h"
+#include "iinfer_data_manager.h"
 #include "load_worker.h"
 #include "perf_utils.h"
 #include "sequence_manager.h"
@@ -140,7 +140,7 @@ class LoadManager {
 
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
-  std::shared_ptr<InferDataManager> infer_data_manager_;
+  std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   // Track the workers so they all go out of scope at the
   // same time

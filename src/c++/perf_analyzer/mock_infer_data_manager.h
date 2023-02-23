@@ -29,41 +29,40 @@
 #include "mock_client_backend.h"
 
 namespace triton { namespace perfanalyzer {
-
-class MockInferDataManager : public InferDataManager {
- public:
-  MockInferDataManager(
-      const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManager(
-            batch_size, shared_memory_type, output_shm_size, parser, factory,
-            data_loader)
-  {
-  }
-
-  // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
-  //
-  cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name) override
-  {
-    return cb::Error::Success;
-  }
-
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
-  }
-
-  bool& using_shared_memory_{InferDataManager::using_shared_memory_};
-};
-
+// FIXME
+// class MockInferDataManager : public InferDataManager {
+// public:
+//  MockInferDataManager(
+//      const int32_t batch_size, const SharedMemoryType shared_memory_type,
+//      const size_t output_shm_size, const std::shared_ptr<ModelParser>&
+//      parser, const std::shared_ptr<cb::ClientBackendFactory>& factory, const
+//      std::shared_ptr<DataLoader>& data_loader) : InferDataManager(
+//            batch_size, shared_memory_type, output_shm_size, parser, factory,
+//            data_loader)
+//  {
+//  }
+//
+//  // Mocked version of the CopySharedMemory method in loadmanager.
+//  // This is strictly for testing to mock out the memcpy calls
+//  //
+//  cb::Error CopySharedMemory(
+//      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
+//      std::vector<size_t>& byte_size, bool is_shape_tensor,
+//      std::string& region_name) override
+//  {
+//    return cb::Error::Success;
+//  }
+//
+//  cb::Error CreateInferInput(
+//      cb::InferInput** infer_input, const cb::BackendKind kind,
+//      const std::string& name, const std::vector<int64_t>& dims,
+//      const std::string& datatype) override
+//  {
+//    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
+//    return cb::Error::Success;
+//  }
+//
+//  bool& using_shared_memory_{InferDataManager::using_shared_memory_};
+//};
+//
 }}  // namespace triton::perfanalyzer

@@ -29,48 +29,43 @@
 #include "constants.h"
 #include "data_loader.h"
 #include "infer_data.h"
-#include "infer_data_manager_base.h"
 #include "model_parser.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
-/// Manages infer data to prepare an inference request and the resulting
-/// inference output from triton server
-class InferDataManager : public InferDataManagerBase {
+/// Interface for classes that manager infer data to prepare an inference
+/// request and the resulting inference output from triton server
+///
+class IInferDataManager {
  public:
-  InferDataManager(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManagerBase(batch_size, parser, factory, data_loader)
-  {
-  }
-
-  /// Helper function to allocate and prepare shared memory.
+  /// Initialize this object
   /// \return cb::Error object indicating success or failure.
-  cb::Error Init() override { return cb::Error::Success; };
+  virtual cb::Error Init() = 0;
 
   /// Populate the target InferData object with input and output objects
   /// according to the model's shape
   /// \param infer_data The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferData& infer_data) override;
+  virtual cb::Error PrepareInfer(InferData& infer_data) = 0;
 
- protected:
-  cb::Error PrepareInferInput(
-      const std::string& name, const ModelTensor& model_tensor,
-      InferData& infer_data);
-
-  cb::Error PrepareInferOutput(const std::string& name, InferData& infer_data);
-
-  /// Helper function to update the inputs
+  /// Updates the input data to use for inference request
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const int stream_index, const int step_index, InferData& infer_data);
+  virtual cb::Error UpdateInputs(
+      int stream_index, int step_index, InferData& infer_data) = 0;
+
+  /// Updates the expected output data to use for inference request. Empty
+  /// vector will be returned if there is no expected output associated to the
+  /// step.
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \param infer_data The target InferData object
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error UpdateValidationOutputs(
+      int stream_index, int step_index, InferData& infer_data) = 0;
 };
 
 }}  // namespace triton::perfanalyzer

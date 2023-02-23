@@ -31,8 +31,8 @@
 #include <vector>
 #include "data_loader.h"
 #include "idle_timer.h"
+#include "iinfer_data_manager.h"
 #include "infer_data.h"
-#include "infer_data_manager.h"
 #include "perf_utils.h"
 #include "sequence_manager.h"
 
@@ -82,7 +82,7 @@ class InferContext {
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
       std::shared_ptr<cb::ClientBackendFactory> factory, const bool& execute,
-      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
@@ -158,7 +158,7 @@ class InferContext {
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
-  const std::shared_ptr<InferDataManager> infer_data_manager_;
+  const std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;

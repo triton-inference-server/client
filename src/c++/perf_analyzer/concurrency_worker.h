@@ -74,7 +74,7 @@ class ConcurrencyWorker : public LoadWorker {
       std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute,
-      const std::shared_ptr<InferDataManager>& infer_data_manager,
+      const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, on_sequence_model,
