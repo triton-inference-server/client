@@ -322,7 +322,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   bool& streaming_{LoadManager::streaming_};
   std::shared_ptr<cb::ClientBackendFactory> factory_{
       TestLoadManagerBase::factory_};
-  std::shared_ptr<InferDataManager>& infer_data_manager_{
+  std::shared_ptr<IInferDataManager>& infer_data_manager_{
       LoadManager::infer_data_manager_};
 
  private:
@@ -714,17 +714,15 @@ TEST_CASE(
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
+  trrm.infer_data_manager_ =
+      MockInferDataManagerFactory::CreateMockInferDataManager(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mmp, trrm.factory_, mdl)};
-
+          mmp, trrm.factory_, mdl);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
-  trrm.infer_data_manager_ = mock_infer_data_manager;
   trrm.parser_ = mmp;
   trrm.data_loader_ = mdl;
   trrm.using_json_data_ = true;
@@ -801,12 +799,13 @@ TEST_CASE("Request rate - Shared memory methods")
     params.shared_memory_type = SYSTEM_SHARED_MEMORY;
     TestRequestRateManager trrm(
         params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
+
+    trrm.infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
+            mip.mock_data_loader_);
+
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
@@ -826,12 +825,13 @@ TEST_CASE("Request rate - Shared memory methods")
     params.shared_memory_type = CUDA_SHARED_MEMORY;
     TestRequestRateManager trrm(
         params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
+
+    trrm.infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
+            mip.mock_data_loader_);
+
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
@@ -849,12 +849,13 @@ TEST_CASE("Request rate - Shared memory methods")
     params.shared_memory_type = NO_SHARED_MEMORY;
     TestRequestRateManager trrm(
         params, is_sequence, is_decoupled, use_mock_infer);
-    std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-        std::make_shared<MockInferDataManager>(
+
+    trrm.infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
             params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_)};
-    trrm.infer_data_manager_ = mock_infer_data_manager;
+            mip.mock_data_loader_);
+
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
     trrm.InitManager(
@@ -938,16 +939,16 @@ TEST_CASE("Request rate - Shared memory infer input calls")
       )"};
   MockInputPipeline mip =
       TestLoadManagerBase::ProcessCustomJsonData(json_str, is_sequence_model);
-  std::shared_ptr<MockInferDataManager> mock_infer_data_manager{
-      std::make_shared<MockInferDataManager>(
+
+  trrm.infer_data_manager_ =
+      MockInferDataManagerFactory::CreateMockInferDataManager(
           params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_)};
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
       std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
 
-  trrm.infer_data_manager_ = mock_infer_data_manager;
   trrm.parser_ = mip.mock_model_parser_;
   trrm.data_loader_ = mip.mock_data_loader_;
   trrm.using_json_data_ = true;
