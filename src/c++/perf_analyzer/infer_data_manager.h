@@ -118,9 +118,9 @@ class InferDataManager {
 
   /// Wrapper function to prepare the InferData for sending
   /// inference request.
-  /// \param ctx The target InferData object.
+  /// \param infer_data The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferData& ctx);
+  cb::Error PrepareInfer(InferData& infer_data);
 
 
   /// Updates the expected output data to use for inference request. Empty
@@ -173,15 +173,15 @@ class InferDataManager {
 
   /// Helper function to prepare the InferData for sending
   /// inference request.
-  /// \param ctx The target InferData object.
+  /// \param infer_data The target InferData object.
   /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInferNoSharedMemory(InferData& ctx);
+  cb::Error PrepareInferNoSharedMemory(InferData& infer_data);
 
   /// Helper function to prepare the InferData for sending
-  /// inference request in shared memory. \param ctx The target
-  /// InferData object. \return cb::Error object indicating
-  /// success or failure.
-  cb::Error PrepareInferSharedMemory(InferData& ctx);
+  /// inference request in shared memory.
+  /// \param infer_data The target InferData object.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error PrepareInferSharedMemory(InferData& infer_data);
 
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects for all

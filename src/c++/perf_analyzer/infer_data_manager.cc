@@ -31,6 +31,17 @@
 namespace triton { namespace perfanalyzer {
 
 
+InferDataManager::InferDataManager(
+    const int32_t batch_size, const SharedMemoryType shared_memory_type,
+    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+    const std::shared_ptr<cb::ClientBackendFactory>& factory,
+    const std::shared_ptr<DataLoader>& data_loader)
+    : batch_size_(batch_size), shared_memory_type_(shared_memory_type),
+      output_shm_size_(output_shm_size), parser_(parser), factory_(factory),
+      data_loader_(data_loader), backend_kind_(factory->Kind())
+{
+}
+
 InferDataManager::~InferDataManager()
 {
   cb::Error err;
@@ -67,16 +78,6 @@ InferDataManager::~InferDataManager()
   }
 }
 
-InferDataManager::InferDataManager(
-    const int32_t batch_size, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
-    const std::shared_ptr<cb::ClientBackendFactory>& factory,
-    const std::shared_ptr<DataLoader>& data_loader)
-    : batch_size_(batch_size), shared_memory_type_(shared_memory_type),
-      output_shm_size_(output_shm_size), parser_(parser), factory_(factory),
-      data_loader_(data_loader), backend_kind_(factory->Kind())
-{
-}
 
 cb::Error
 InferDataManager::InitSharedMemory()
@@ -340,17 +341,17 @@ InferDataManager::CreateInferInput(
 }
 
 cb::Error
-InferDataManager::PrepareInfer(InferData& ctx)
+InferDataManager::PrepareInfer(InferData& infer_data)
 {
   if (shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY) {
-    return PrepareInferNoSharedMemory(ctx);
+    return PrepareInferNoSharedMemory(infer_data);
   } else {
-    return PrepareInferSharedMemory(ctx);
+    return PrepareInferSharedMemory(infer_data);
   }
 }
 
 cb::Error
-InferDataManager::PrepareInferNoSharedMemory(InferData& ctx)
+InferDataManager::PrepareInferNoSharedMemory(InferData& infer_data)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
@@ -371,7 +372,7 @@ InferDataManager::PrepareInferNoSharedMemory(InferData& ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx.inputs_.push_back(infer_input);
+    infer_data.inputs_.push_back(infer_input);
 
 
     data_ptr = nullptr;
@@ -380,7 +381,7 @@ InferDataManager::PrepareInferNoSharedMemory(InferData& ctx)
 
     // Add optional input to request if data was found
     if (data_ptr != nullptr) {
-      ctx.valid_inputs_.push_back(infer_input);
+      infer_data.valid_inputs_.push_back(infer_input);
     }
 
     if (!shape.empty()) {
@@ -397,16 +398,16 @@ InferDataManager::PrepareInferNoSharedMemory(InferData& ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx.outputs_.push_back(requested_output);
+    infer_data.outputs_.push_back(requested_output);
   }
-  RETURN_IF_ERROR(
-      UpdateValidationOutputs(ctx.outputs_, 0, 0, ctx.expected_outputs_));
+  RETURN_IF_ERROR(UpdateValidationOutputs(
+      infer_data.outputs_, 0, 0, infer_data.expected_outputs_));
 
   return cb::Error::Success;
 }
 
 cb::Error
-InferDataManager::PrepareInferSharedMemory(InferData& ctx)
+InferDataManager::PrepareInferSharedMemory(InferData& infer_data)
 {
   for (const auto& input : *(parser_->Inputs())) {
     std::string region_name(
@@ -427,11 +428,11 @@ InferDataManager::PrepareInferSharedMemory(InferData& ctx)
     RETURN_IF_ERROR(CreateInferInput(
         &infer_input, backend_kind_, input.first, shape,
         input.second.datatype_));
-    ctx.inputs_.push_back(infer_input);
+    infer_data.inputs_.push_back(infer_input);
 
     // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
     // currently, and will be implemented in the associated story.
-    ctx.valid_inputs_.push_back(infer_input);
+    infer_data.valid_inputs_.push_back(infer_input);
 
     RETURN_IF_ERROR(infer_input->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
@@ -444,7 +445,7 @@ InferDataManager::PrepareInferSharedMemory(InferData& ctx)
     cb::InferRequestedOutput* requested_output;
     RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
         &requested_output, backend_kind_, output.first));
-    ctx.outputs_.push_back(requested_output);
+    infer_data.outputs_.push_back(requested_output);
 
     RETURN_IF_ERROR(requested_output->SetSharedMemory(
         region_name, shared_memory_regions_[region_name].byte_size_));
