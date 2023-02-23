@@ -42,21 +42,22 @@ TEST_CASE("idle_timer: basic usage")
   CHECK(timer.GetIdleTime() == 0);
 }
 
-TEST_CASE("idle_timer: restart when inactive")
+TEST_CASE("idle_timer: GetIdleTime when inactive")
 {
   IdleTimer timer;
   CHECK(timer.GetIdleTime() == 0);
-  timer.Restart();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   CHECK(timer.GetIdleTime() == 0);
   CHECK_NOTHROW(timer.Start());
 }
 
-TEST_CASE("idle_timer: restart when active")
+TEST_CASE("idle_timer: GetIdleTime when active")
 {
   IdleTimer timer;
   timer.Start();
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  timer.Restart();
+  CHECK(timer.GetIdleTime() > 0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   CHECK(timer.GetIdleTime() > 0);
   CHECK_NOTHROW(timer.Stop());
 }
@@ -72,8 +73,6 @@ TEST_CASE("idle_timer: reset when active")
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
   timer.Reset();
   std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  CHECK(timer.GetIdleTime() == 0);
-  CHECK_NOTHROW(timer.Stop());
   CHECK(timer.GetIdleTime() > 0);
 }
 

@@ -59,17 +59,6 @@ class IdleTimer {
     idle_ns_ += duration.count();
   }
 
-  /// Restart the timer. This means that if the timer was already active, then
-  /// stop it (and count the pending time), and then restart it
-  ///
-  void Restart()
-  {
-    if (is_idle_) {
-      Stop();
-      Start();
-    }
-  }
-
   /// Reset the time counter, and restart the timer if it is active
   ///
   void Reset()
@@ -79,13 +68,27 @@ class IdleTimer {
   }
 
   /// Returns the number of nanoseconds this timer has counted as being idle
+  /// If the timer was already active, then it will first stop (and count the
+  /// pending time), and then start back up
   ///
-  uint64_t GetIdleTime() { return idle_ns_; }
+  uint64_t GetIdleTime()
+  {
+    Restart();
+    return idle_ns_;
+  }
 
  private:
   uint64_t idle_ns_{0};
   bool is_idle_{false};
   std::chrono::_V2::steady_clock::time_point start_time_;
+
+  void Restart()
+  {
+    if (is_idle_) {
+      Stop();
+      Start();
+    }
+  }
 
 
 #ifndef DOCTEST_CONFIG_DISABLE

@@ -117,7 +117,6 @@ LoadManager::GetIdleTime()
   size_t num_active_threads = 0;
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    thread_stat->idle_timer.Restart();
     uint64_t idle_time = thread_stat->idle_timer.GetIdleTime();
     if (idle_time) {
       total += idle_time;

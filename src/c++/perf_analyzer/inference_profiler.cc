@@ -1484,13 +1484,17 @@ InferenceProfiler::SummarizeOverhead(
     const uint64_t window_duration_ns, const uint64_t idle_ns,
     PerfStatus& summary)
 {
+  // The window start/stop is not instantaneous. It is possible that the PA
+  // overhead is smaller than the delay in the window start/stop process. Treat
+  // it as 0% overhead (100% idle) in that case
+  //
   if (idle_ns > window_duration_ns) {
-    throw std::runtime_error("Idle time can't be larger than window");
+    summary.overhead_pct = 0;
+  } else {
+    uint64_t overhead_ns = window_duration_ns - idle_ns;
+    double overhead_pct = double(overhead_ns) / window_duration_ns * 100;
+    summary.overhead_pct = overhead_pct;
   }
-
-  uint64_t overhead_ns = window_duration_ns - idle_ns;
-  double overhead_pct = double(overhead_ns) / window_duration_ns * 100;
-  summary.overhead_pct = overhead_pct;
 }
 
 bool
