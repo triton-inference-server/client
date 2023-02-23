@@ -355,51 +355,14 @@ InferDataManager::PrepareInferNoSharedMemory(InferData& infer_data)
 {
   // Initialize inputs
   for (const auto& input : *(parser_->Inputs())) {
-    const uint8_t* data_ptr{nullptr};
-    size_t batch1_bytesize;
-    // Set input shape before getting the input data
-    std::vector<int64_t> shape;
-    RETURN_IF_ERROR(data_loader_->GetInputShape(input.second, 0, 0, &shape));
-    if (shape.empty() && (backend_kind_ == cb::BackendKind::TRITON)) {
-      return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
-    }
-
-    if ((parser_->MaxBatchSize() != 0) && (!input.second.is_shape_tensor_)) {
-      shape.insert(shape.begin(), (int64_t)batch_size_);
-    }
-
-    cb::InferInput* infer_input;
-    RETURN_IF_ERROR(CreateInferInput(
-        &infer_input, backend_kind_, input.first, shape,
-        input.second.datatype_));
-    infer_data.inputs_.push_back(infer_input);
-
-
-    data_ptr = nullptr;
-    RETURN_IF_ERROR(data_loader_->GetInputData(
-        input.second, 0, 0, &data_ptr, &batch1_bytesize));
-
-    // Add optional input to request if data was found
-    if (data_ptr != nullptr) {
-      infer_data.valid_inputs_.push_back(infer_input);
-    }
-
-    if (!shape.empty()) {
-      size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
-      for (size_t i = 0; i < max_count; ++i) {
-        RETURN_IF_ERROR(infer_input->AppendRaw(data_ptr, batch1_bytesize));
-      }
-    }
+    RETURN_IF_ERROR(
+        PrepareInferInputNoSharedMemory(input.first, input.second, infer_data));
   }
 
   for (const auto& output : *(parser_->Outputs())) {
-    std::string region_name(TensorToRegionName(output.first));
-
-    cb::InferRequestedOutput* requested_output;
-    RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
-        &requested_output, backend_kind_, output.first));
-    infer_data.outputs_.push_back(requested_output);
+    RETURN_IF_ERROR(PrepareInferOutputNoSharedMemory(output.first, infer_data));
   }
+
   RETURN_IF_ERROR(UpdateValidationOutputs(
       infer_data.outputs_, 0, 0, infer_data.expected_outputs_));
 
@@ -410,46 +373,143 @@ cb::Error
 InferDataManager::PrepareInferSharedMemory(InferData& infer_data)
 {
   for (const auto& input : *(parser_->Inputs())) {
-    std::string region_name(
-        TensorToRegionName(input.first) + "_" + std::to_string(0) + "_" +
-        std::to_string(0));
-
-    std::vector<int64_t> shape;
-    RETURN_IF_ERROR(data_loader_->GetInputShape(input.second, 0, 0, &shape));
-    if (!shape.empty()) {
-      if ((parser_->MaxBatchSize() != 0) && (!input.second.is_shape_tensor_)) {
-        shape.insert(shape.begin(), (int64_t)batch_size_);
-      }
-    } else {
-      return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
-    }
-
-    cb::InferInput* infer_input;
-    RETURN_IF_ERROR(CreateInferInput(
-        &infer_input, backend_kind_, input.first, shape,
-        input.second.datatype_));
-    infer_data.inputs_.push_back(infer_input);
-
-    // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
-    // currently, and will be implemented in the associated story.
-    infer_data.valid_inputs_.push_back(infer_input);
-
-    RETURN_IF_ERROR(infer_input->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].byte_size_));
-    const uint8_t* data_ptr{nullptr};
+    RETURN_IF_ERROR(
+        PrepareInferInputSharedMemory(input.first, input.second, infer_data));
   }
 
   for (const auto& output : *(parser_->Outputs())) {
-    std::string region_name(TensorToRegionName(output.first));
-
-    cb::InferRequestedOutput* requested_output;
-    RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
-        &requested_output, backend_kind_, output.first));
-    infer_data.outputs_.push_back(requested_output);
-
-    RETURN_IF_ERROR(requested_output->SetSharedMemory(
-        region_name, shared_memory_regions_[region_name].byte_size_));
+    RETURN_IF_ERROR(PrepareInferOutputSharedMemory(output.first, infer_data));
   }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManager::PrepareInferInputNoSharedMemory(
+    const std::string& name, const ModelTensor& model_tensor,
+    InferData& infer_data)
+{
+  std::vector<int64_t> shape;
+  RETURN_IF_ERROR(data_loader_->GetInputShape(model_tensor, 0, 0, &shape));
+  if (shape.empty() && (backend_kind_ == cb::BackendKind::TRITON)) {
+    return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
+  }
+
+  if ((parser_->MaxBatchSize() != 0) && (!model_tensor.is_shape_tensor_)) {
+    shape.insert(shape.begin(), (int64_t)batch_size_);
+  }
+
+  cb::InferInput* infer_input;
+  RETURN_IF_ERROR(CreateInferInput(
+      &infer_input, backend_kind_, name, shape, model_tensor.datatype_));
+  infer_data.inputs_.push_back(infer_input);
+
+
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_bytesize;
+  RETURN_IF_ERROR(data_loader_->GetInputData(
+      model_tensor, 0, 0, &data_ptr, &batch1_bytesize));
+
+  // Add optional input to request if data was found
+  if (data_ptr != nullptr) {
+    infer_data.valid_inputs_.push_back(infer_input);
+  }
+
+  if (!shape.empty()) {
+    size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
+    for (size_t i = 0; i < max_count; ++i) {
+      RETURN_IF_ERROR(infer_input->AppendRaw(data_ptr, batch1_bytesize));
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManager::PrepareInferInputSharedMemory(
+    const std::string& name, const ModelTensor& model_tensor,
+    InferData& infer_data)
+{
+  std::vector<int64_t> shape;
+  RETURN_IF_ERROR(data_loader_->GetInputShape(model_tensor, 0, 0, &shape));
+  if (!shape.empty()) {
+    if ((parser_->MaxBatchSize() != 0) && (!model_tensor.is_shape_tensor_)) {
+      shape.insert(shape.begin(), (int64_t)batch_size_);
+    }
+  } else {
+    return cb::Error("unable to set shape for the input", pa::GENERIC_ERROR);
+  }
+
+  cb::InferInput* infer_input;
+  RETURN_IF_ERROR(CreateInferInput(
+      &infer_input, backend_kind_, name, shape, model_tensor.datatype_));
+  infer_data.inputs_.push_back(infer_input);
+
+  // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+  // currently, and will be implemented in the associated story.
+  infer_data.valid_inputs_.push_back(infer_input);
+
+  std::string region_name(
+      TensorToRegionName(name) + "_" + std::to_string(0) + "_" +
+      std::to_string(0));
+  RETURN_IF_ERROR(infer_input->SetSharedMemory(
+      region_name, shared_memory_regions_[region_name].byte_size_));
+
+  return cb::Error::Success;
+}
+
+
+cb::Error
+InferDataManager::PrepareInferOutputNoSharedMemory(
+    const std::string& name, InferData& infer_data)
+{
+  cb::InferRequestedOutput* requested_output;
+  RETURN_IF_ERROR(
+      cb::InferRequestedOutput::Create(&requested_output, backend_kind_, name));
+  infer_data.outputs_.push_back(requested_output);
+
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManager::PrepareInferOutputSharedMemory(
+    const std::string& name, InferData& infer_data)
+{
+  cb::InferRequestedOutput* requested_output;
+  RETURN_IF_ERROR(
+      cb::InferRequestedOutput::Create(&requested_output, backend_kind_, name));
+  infer_data.outputs_.push_back(requested_output);
+
+  std::string region_name(TensorToRegionName(name));
+  RETURN_IF_ERROR(requested_output->SetSharedMemory(
+      region_name, shared_memory_regions_[region_name].byte_size_));
+
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManager::UpdateInputs(
+    const std::vector<cb::InferInput*>& inputs,
+    std::vector<cb::InferInput*>& valid_inputs, int stream_index,
+    int step_index)
+{
+  // Validate update parameters here
+  size_t data_stream_count = data_loader_->GetDataStreamsCount();
+  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
+    return cb::Error(
+        "stream_index for retrieving the data should be less than " +
+            std::to_string(data_stream_count) + ", got " +
+            std::to_string(stream_index),
+        pa::GENERIC_ERROR);
+  }
+  size_t step_count = data_loader_->GetTotalSteps(stream_index);
+  if (step_index < 0 || step_index >= (int)step_count) {
+    return cb::Error(
+        "step_id for retrieving the data should be less than " +
+            std::to_string(step_count) + ", got " + std::to_string(step_index),
+        pa::GENERIC_ERROR);
+  }
+
+  RETURN_IF_ERROR(SetInputs(inputs, valid_inputs, stream_index, step_index));
 
   return cb::Error::Success;
 }

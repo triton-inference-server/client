@@ -137,41 +137,13 @@ class InferContext {
   /// \param delayed Whether the request fell behind its scheduled time.
   void SendRequest(const uint64_t request_id, const bool delayed);
 
-
   /// Update inputs based on custom json data
   void UpdateJsonData();
 
   /// Update inputs based on custom json data for the given sequence
   void UpdateSeqJsonData(size_t seq_stat_index);
 
-  /// Updates the expected output data to use for inference request. Empty
-  /// vector will be returned if there is no expected output associated to the
-  /// step.
-  /// \param outputs The vector of outputs to get the expected data
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \param data The vector of pointer and size of the expected outputs
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateValidationOutputs(
-      const std::vector<const cb::InferRequestedOutput*>& outputs,
-      int stream_index, int step_index,
-      std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
-
   cb::Error ValidateOutputs(const cb::InferResult* result_ptr);
-
-  /// Updates the input data to use for inference request
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, int stream_index,
-      int step_index);
 
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);

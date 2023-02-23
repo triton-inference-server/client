@@ -103,25 +103,25 @@ class InferDataManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error InitSharedMemory();
 
-
-  /// Creates inference input object
-  /// \param infer_input Output parameter storing newly created inference input
-  /// \param kind Backend kind
-  /// \param name Name of inference input
-  /// \param dims Shape of inference input
-  /// \param datatype Data type of inference input
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype);
-
   /// Wrapper function to prepare the InferData for sending
   /// inference request.
   /// \param infer_data The target InferData object.
   /// \return cb::Error object indicating success or failure.
   cb::Error PrepareInfer(InferData& infer_data);
 
+  /// Updates the input data to use for inference request
+  /// \param inputs The vector of pointers to InferInput objects for all
+  /// possible inputs, potentially including optional inputs with no provided
+  /// data
+  /// \param valid_inputs The vector of pointers to InferInput objects to be
+  /// used for inference request.
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \return cb::Error object indicating success or failure.
+  cb::Error UpdateInputs(
+      const std::vector<cb::InferInput*>& inputs,
+      std::vector<cb::InferInput*>& valid_inputs, int stream_index,
+      int step_index);
 
   /// Updates the expected output data to use for inference request. Empty
   /// vector will be returned if there is no expected output associated to the
@@ -136,22 +136,19 @@ class InferDataManager {
       int stream_index, int step_index,
       std::vector<std::vector<std::pair<const uint8_t*, size_t>>>& data);
 
-  /// Helper function to update the inputs
-  /// \param inputs The vector of pointers to InferInput objects for all
-  /// possible inputs, potentially including optional inputs with no provided
-  /// data
-  /// \param valid_inputs The vector of pointers to InferInput objects to be
-  /// used for inference request.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
-      const std::vector<cb::InferInput*>& inputs,
-      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
-      const int step_index);
-
-
  protected:
+  /// Creates inference input object
+  /// \param infer_input Output parameter storing newly created inference input
+  /// \param kind Backend kind
+  /// \param name Name of inference input
+  /// \param dims Shape of inference input
+  /// \param datatype Data type of inference input
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error CreateInferInput(
+      cb::InferInput** infer_input, const cb::BackendKind kind,
+      const std::string& name, const std::vector<int64_t>& dims,
+      const std::string& datatype);
+
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.
   cb::Error CreateMemoryRegion(
@@ -183,6 +180,34 @@ class InferDataManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error PrepareInferSharedMemory(InferData& infer_data);
 
+  cb::Error PrepareInferInputNoSharedMemory(
+      const std::string& name, const ModelTensor& model_tensor,
+      InferData& infer_data);
+
+  cb::Error PrepareInferInputSharedMemory(
+      const std::string& name, const ModelTensor& model_tensor,
+      InferData& infer_data);
+
+  cb::Error PrepareInferOutputNoSharedMemory(
+      const std::string& name, InferData& infer_data);
+
+  cb::Error PrepareInferOutputSharedMemory(
+      const std::string& name, InferData& infer_data);
+
+  /// Helper function to update the inputs
+  /// \param inputs The vector of pointers to InferInput objects for all
+  /// possible inputs, potentially including optional inputs with no provided
+  /// data
+  /// \param valid_inputs The vector of pointers to InferInput objects to be
+  /// used for inference request.
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \return cb::Error object indicating success or failure.
+  cb::Error SetInputs(
+      const std::vector<cb::InferInput*>& inputs,
+      std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
+      const int step_index);
+
   /// Helper function to update the inputs
   /// \param inputs The vector of pointers to InferInput objects for all
   /// possible inputs, potentially including optional inputs with no provided
@@ -196,7 +221,6 @@ class InferDataManager {
       const std::vector<cb::InferInput*>& inputs,
       std::vector<cb::InferInput*>& valid_inputs, const int stream_index,
       const int step_index);
-
 
   /// Helper function to update the shared memory inputs
   /// \param inputs The vector of pointers to InferInput objects
