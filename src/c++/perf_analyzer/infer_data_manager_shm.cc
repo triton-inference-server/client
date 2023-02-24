@@ -315,21 +315,21 @@ InferDataManagerShm::CopySharedMemory(
 }
 
 cb::Error
-InferDataManagerShm::PrepareInfer(InferData& infer_data)
+InferDataManagerShm::InitInferData(InferData& infer_data)
 {
   for (const auto& input : *(parser_->Inputs())) {
-    RETURN_IF_ERROR(PrepareInferInput(input.first, input.second, infer_data));
+    RETURN_IF_ERROR(InitInferDataInput(input.first, input.second, infer_data));
   }
 
   for (const auto& output : *(parser_->Outputs())) {
-    RETURN_IF_ERROR(PrepareInferOutput(output.first, infer_data));
+    RETURN_IF_ERROR(InitInferDataOutput(output.first, infer_data));
   }
 
   return cb::Error::Success;
 }
 
 cb::Error
-InferDataManagerShm::PrepareInferInput(
+InferDataManagerShm::InitInferDataInput(
     const std::string& name, const ModelTensor& model_tensor,
     InferData& infer_data)
 {
@@ -362,7 +362,7 @@ InferDataManagerShm::PrepareInferInput(
 }
 
 cb::Error
-InferDataManagerShm::PrepareInferOutput(
+InferDataManagerShm::InitInferDataOutput(
     const std::string& name, InferData& infer_data)
 {
   cb::InferRequestedOutput* requested_output;
@@ -378,7 +378,7 @@ InferDataManagerShm::PrepareInferOutput(
 }
 
 cb::Error
-InferDataManagerShm::SetInputs(
+InferDataManagerShm::UpdateInputs(
     const int stream_index, const int step_index, InferData& infer_data)
 {
   for (const auto& input : infer_data.inputs_) {

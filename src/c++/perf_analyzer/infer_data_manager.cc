@@ -30,25 +30,9 @@
 
 namespace triton { namespace perfanalyzer {
 
-cb::Error
-InferDataManager::PrepareInfer(InferData& infer_data)
-{
-  // Initialize inputs
-  for (const auto& input : *(parser_->Inputs())) {
-    RETURN_IF_ERROR(PrepareInferInput(input.first, input.second, infer_data));
-  }
-
-  for (const auto& output : *(parser_->Outputs())) {
-    RETURN_IF_ERROR(PrepareInferOutput(output.first, infer_data));
-  }
-
-  RETURN_IF_ERROR(UpdateValidationOutputs(0, 0, infer_data));
-
-  return cb::Error::Success;
-}
 
 cb::Error
-InferDataManager::PrepareInferInput(
+InferDataManager::InitInferDataInput(
     const std::string& name, const ModelTensor& model_tensor,
     InferData& infer_data)
 {
@@ -88,7 +72,7 @@ InferDataManager::PrepareInferInput(
 }
 
 cb::Error
-InferDataManager::PrepareInferOutput(
+InferDataManager::InitInferDataOutput(
     const std::string& name, InferData& infer_data)
 {
   cb::InferRequestedOutput* requested_output;
@@ -100,7 +84,7 @@ InferDataManager::PrepareInferOutput(
 }
 
 cb::Error
-InferDataManager::SetInputs(
+InferDataManager::UpdateInputs(
     const int stream_index, const int step_index, InferData& infer_data)
 {
   // Reset inputs for this inference request

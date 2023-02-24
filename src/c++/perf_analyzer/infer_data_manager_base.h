@@ -35,8 +35,8 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// Manages infer data to prepare an inference request and the resulting
-/// inference output from triton server
+/// Base class for Infer Data managers
+///
 class InferDataManagerBase : public IInferDataManager {
  public:
   InferDataManagerBase(
@@ -48,22 +48,22 @@ class InferDataManagerBase : public IInferDataManager {
   {
   }
 
+  /// Initialize this object. Must be called before any other functions
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error Init() override { return cb::Error::Success; }
+
+  /// Populate the target InferData object with input and output objects
+  /// according to the model's shape
+  /// \param infer_data The target InferData object.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error InitInferData(InferData& infer_data) override;
+
   /// Updates the input data to use for inference request
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateInputs(
-      int stream_index, int step_index, InferData& infer_data) override;
-
-  /// Updates the expected output data to use for inference request. Empty
-  /// vector will be returned if there is no expected output associated to the
-  /// step.
-  /// \param stream_index The data stream to use for next data
-  /// \param step_index The step index to use for next data
-  /// \param infer_data The target InferData object
-  /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateValidationOutputs(
+  cb::Error UpdateInferData(
       int stream_index, int step_index, InferData& infer_data) override;
 
  protected:
@@ -74,9 +74,23 @@ class InferDataManagerBase : public IInferDataManager {
   std::unique_ptr<cb::ClientBackend> backend_;
   cb::BackendKind backend_kind_;
 
-  // FIXME
-  virtual cb::Error SetInputs(
+  /// Helper function to update the inputs
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \param infer_data The target InferData object
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error UpdateInputs(
       const int stream_index, const int step_index, InferData& infer_data) = 0;
+
+  /// Updates the expected output data to use for inference request. Empty
+  /// vector will be returned if there is no expected output associated to the
+  /// step.
+  /// \param stream_index The data stream to use for next data
+  /// \param step_index The step index to use for next data
+  /// \param infer_data The target InferData object
+  /// \return cb::Error object indicating success or failure.
+  cb::Error UpdateValidationOutputs(
+      int stream_index, int step_index, InferData& infer_data);
 
   /// Creates inference input object
   /// \param infer_input Output parameter storing newly created inference input
@@ -89,6 +103,15 @@ class InferDataManagerBase : public IInferDataManager {
       cb::InferInput** infer_input, const cb::BackendKind kind,
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype);
+
+  virtual cb::Error InitInferDataInput(
+      const std::string& name, const ModelTensor& model_tensor,
+      InferData& infer_data) = 0;
+
+  virtual cb::Error InitInferDataOutput(
+      const std::string& name, InferData& infer_data) = 0;
+
+  cb::Error ValidateDataIndexes(int stream_index, int step_index);
 };
 
 }}  // namespace triton::perfanalyzer

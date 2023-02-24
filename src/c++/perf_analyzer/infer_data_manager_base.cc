@@ -31,28 +31,28 @@
 namespace triton { namespace perfanalyzer {
 
 cb::Error
-InferDataManagerBase::UpdateInputs(
+InferDataManagerBase::InitInferData(InferData& infer_data)
+{
+  // Initialize inputs
+  for (const auto& input : *(parser_->Inputs())) {
+    RETURN_IF_ERROR(InitInferDataInput(input.first, input.second, infer_data));
+  }
+
+  for (const auto& output : *(parser_->Outputs())) {
+    RETURN_IF_ERROR(InitInferDataOutput(output.first, infer_data));
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManagerBase::UpdateInferData(
     int stream_index, int step_index, InferData& infer_data)
 {
-  // Validate update parameters here
-  size_t data_stream_count = data_loader_->GetDataStreamsCount();
-  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
-    return cb::Error(
-        "stream_index for retrieving the data should be less than " +
-            std::to_string(data_stream_count) + ", got " +
-            std::to_string(stream_index),
-        pa::GENERIC_ERROR);
-  }
-  size_t step_count = data_loader_->GetTotalSteps(stream_index);
-  if (step_index < 0 || step_index >= (int)step_count) {
-    return cb::Error(
-        "step_id for retrieving the data should be less than " +
-            std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::GENERIC_ERROR);
-  }
-
-  RETURN_IF_ERROR(SetInputs(stream_index, step_index, infer_data));
-
+  RETURN_IF_ERROR(ValidateDataIndexes(stream_index, step_index));
+  RETURN_IF_ERROR(UpdateInputs(stream_index, step_index, infer_data));
+  RETURN_IF_ERROR(
+      UpdateValidationOutputs(stream_index, step_index, infer_data));
   return cb::Error::Success;
 }
 
@@ -60,23 +60,9 @@ cb::Error
 InferDataManagerBase::UpdateValidationOutputs(
     int stream_index, int step_index, InferData& infer_data)
 {
+  RETURN_IF_ERROR(ValidateDataIndexes(stream_index, step_index));
+
   infer_data.expected_outputs_.clear();
-  // Validate update parameters here
-  size_t data_stream_count = data_loader_->GetDataStreamsCount();
-  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
-    return cb::Error(
-        "stream_index for retrieving the data should be less than " +
-            std::to_string(data_stream_count) + ", got " +
-            std::to_string(stream_index),
-        pa::GENERIC_ERROR);
-  }
-  size_t step_count = data_loader_->GetTotalSteps(stream_index);
-  if (step_index < 0 || step_index >= (int)step_count) {
-    return cb::Error(
-        "step_id for retrieving the data should be less than " +
-            std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::GENERIC_ERROR);
-  }
 
   for (const auto& output : infer_data.outputs_) {
     const auto& model_output = (*(parser_->Outputs()))[output->Name()];
@@ -114,6 +100,27 @@ InferDataManagerBase::CreateInferInput(
     const std::string& datatype)
 {
   return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
+}
+
+cb::Error
+InferDataManagerBase::ValidateDataIndexes(int stream_index, int step_index)
+{
+  size_t data_stream_count = data_loader_->GetDataStreamsCount();
+  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
+    return cb::Error(
+        "stream_index for retrieving the data should be less than " +
+            std::to_string(data_stream_count) + ", got " +
+            std::to_string(stream_index),
+        pa::GENERIC_ERROR);
+  }
+  size_t step_count = data_loader_->GetTotalSteps(stream_index);
+  if (step_index < 0 || step_index >= (int)step_count) {
+    return cb::Error(
+        "step_id for retrieving the data should be less than " +
+            std::to_string(step_count) + ", got " + std::to_string(step_index),
+        pa::GENERIC_ERROR);
+  }
+  return cb::Error::Success;
 }
 
 }}  // namespace triton::perfanalyzer

@@ -47,29 +47,20 @@ class InferDataManager : public InferDataManagerBase {
   {
   }
 
-  /// Helper function to allocate and prepare shared memory.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error Init() override { return cb::Error::Success; };
-
-  /// Populate the target InferData object with input and output objects
-  /// according to the model's shape
-  /// \param infer_data The target InferData object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error PrepareInfer(InferData& infer_data) override;
-
  protected:
-  cb::Error PrepareInferInput(
+  cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,
-      InferData& infer_data);
+      InferData& infer_data) override;
 
-  cb::Error PrepareInferOutput(const std::string& name, InferData& infer_data);
+  cb::Error InitInferDataOutput(
+      const std::string& name, InferData& infer_data) override;
 
   /// Helper function to update the inputs
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
-  cb::Error SetInputs(
+  cb::Error UpdateInputs(
       const int stream_index, const int step_index, InferData& infer_data);
 };
 
