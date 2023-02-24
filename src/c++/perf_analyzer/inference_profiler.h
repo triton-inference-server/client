@@ -241,19 +241,19 @@ class InferenceProfiler {
   template <typename T>
   cb::Error Profile(
       const T start, const T end, const T step, const SearchMode search_mode,
-      std::vector<PerfStatus>& summary)
+      std::vector<PerfStatus>& summary_list)
   {
     cb::Error err;
     bool meets_threshold, is_stable;
     if (search_mode == SearchMode::NONE) {
-      err = Profile(summary, meets_threshold, is_stable);
+      err = Profile(summary_list, meets_threshold, is_stable);
       if (!err.IsOk()) {
         return err;
       }
     } else if (search_mode == SearchMode::LINEAR) {
       T current_value = start;
       do {
-        err = Profile(current_value, summary, meets_threshold, is_stable);
+        err = Profile(current_value, summary_list, meets_threshold, is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -267,11 +267,11 @@ class InferenceProfiler {
             "Failed to obtain stable measurement.", pa::STABILITY_ERROR);
       }
     } else {
-      err = Profile(start, summary, meets_threshold, is_stable);
+      err = Profile(start, summary_list, meets_threshold, is_stable);
       if (!err.IsOk() || (!meets_threshold)) {
         return err;
       }
-      err = Profile(end, summary, meets_threshold, is_stable);
+      err = Profile(end, summary_list, meets_threshold, is_stable);
       if (!err.IsOk() || (meets_threshold)) {
         return err;
       }
@@ -280,7 +280,7 @@ class InferenceProfiler {
       T this_end = end;
       while ((this_end - this_start) > step) {
         T current_value = (this_end + this_start) / 2;
-        err = Profile(current_value, summary, meets_threshold, is_stable);
+        err = Profile(current_value, summary_list, meets_threshold, is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -317,35 +317,37 @@ class InferenceProfiler {
   /// measures (we can't get the exact server status right before the first
   /// request and right after the last request in the measurement window).
   /// \param concurrent_request_count The concurrency level for the measurement.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the setting meets the threshold.
-  /// \param is_stable Returns whether the measurement is stable.
+  /// \param summary_list Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the setting meets the
+  /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const size_t concurrent_request_count, std::vector<PerfStatus>& summary,
-      bool& meets_threshold, bool& is_stable);
+      const size_t concurrent_request_count,
+      std::vector<PerfStatus>& summary_list, bool& meets_threshold,
+      bool& is_stable);
 
   /// Similar to above function, but instead of setting the concurrency, it
   /// sets the specified request rate for measurements.
   /// \param request_rate The request rate for inferences.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the setting meets the threshold.
-  /// \param is_stable Returns whether the measurement is stable.
+  /// \param summary_list Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the setting meets the
+  /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const double request_rate, std::vector<PerfStatus>& summary,
+      const double request_rate, std::vector<PerfStatus>& summary_list,
       bool& meets_threshold, bool& is_stable);
 
   /// Measures throughput and latencies for custom load without controling
   /// request rate nor concurrency. Requires load manager to be loaded with
   /// a file specifying the time intervals.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the measurement met the threshold.
-  /// \param is_stable Returns whether the measurement is stable.
+  /// \param summary_list Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the measurement met the
+  /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
-      std::vector<PerfStatus>& summary, bool& meets_threshold, bool& is_stable);
+      std::vector<PerfStatus>& summary_list, bool& meets_threshold,
+      bool& is_stable);
 
   /// A helper function for profiling functions.
   /// \param status_summary Returns the summary of the measurement.
