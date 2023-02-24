@@ -183,6 +183,20 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     watchdog.stop();
   }
 
+  /// Test that idle time is tracked correctly
+  void TestOverhead()
+  {
+    stats_->SetDelays({1});
+    ChangeConcurrencyLevel(params_.max_concurrency);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // During a run of 100 ms (100,000,000 ns), make sure that the idle time is
+    // at least 95% of that
+    //
+    auto idle_time_ns = GetIdleTime();
+    CHECK(idle_time_ns > 95000000);
+    StopWorkerThreads();
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -741,4 +755,37 @@ TEST_CASE("concurrency_deadlock")
 
   tcm.TestTimeouts();
 }
+
+TEST_CASE("concurrency_overhead")
+{
+  PerfAnalyzerParameters params{};
+  SUBCASE("sync, conc 1")
+  {
+    params.async = false;
+    params.max_concurrency = 1;
+  }
+  SUBCASE("sync, conc 4")
+  {
+    params.async = false;
+    params.max_concurrency = 4;
+  }
+  SUBCASE("async, conc 1")
+  {
+    params.async = true;
+    params.max_concurrency = 1;
+  }
+  SUBCASE("async, conc 1")
+  {
+    params.async = true;
+    params.max_concurrency = 4;
+  }
+  TestConcurrencyManager tcm(params, false);
+  tcm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  tcm.TestOverhead();
+}
+
 }}  // namespace triton::perfanalyzer

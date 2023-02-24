@@ -129,6 +129,13 @@ class TestInferenceProfiler : public InferenceProfiler {
     InferenceProfiler::GetMetricFirstPerGPU<T>(
         input_metric_maps, output_metric_map);
   }
+
+  void SummarizeOverhead(
+      const uint64_t window_duration_ns, const uint64_t idle_ns,
+      PerfStatus& summary)
+  {
+    InferenceProfiler::SummarizeOverhead(window_duration_ns, idle_ns, summary);
+  }
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -648,6 +655,27 @@ TEST_CASE("test the ReportPrometheusMetrics function")
         captured_cout.str() ==
         "Too many GPUs on system to print out individual Prometheus metrics, "
         "use the CSV output feature to see metrics.\n");
+  }
+}
+
+TEST_CASE("InferenceProfiler: Test SummarizeOverhead")
+{
+  TestInferenceProfiler tip{};
+  PerfStatus status;
+  SUBCASE("normal")
+  {
+    tip.SummarizeOverhead(100, 63, status);
+    CHECK(status.overhead_pct == doctest::Approx(37));
+  }
+  SUBCASE("normal 2")
+  {
+    tip.SummarizeOverhead(234, 56, status);
+    CHECK(status.overhead_pct == doctest::Approx(76.068));
+  }
+  SUBCASE("overflow")
+  {
+    tip.SummarizeOverhead(100, 101, status);
+    CHECK(status.overhead_pct == doctest::Approx(0));
   }
 }
 

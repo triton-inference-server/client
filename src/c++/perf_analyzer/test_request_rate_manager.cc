@@ -296,6 +296,20 @@ class TestRequestRateManager : public TestLoadManagerBase,
     watchdog.stop();
   }
 
+  /// Test that idle time is tracked correctly
+  void TestOverhead(uint request_rate)
+  {
+    stats_->SetDelays({1});
+    ChangeRequestRate(request_rate);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // During a run of 100 ms (100,000,000 ns), make sure that the idle time is
+    // at least 95% of that
+    //
+    auto idle_time_ns = GetIdleTime();
+    CHECK(idle_time_ns > 95000000);
+    StopWorkerThreads();
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -1071,4 +1085,38 @@ TEST_CASE("request_rate_deadlock")
 
   trrm.TestTimeouts();
 }
+
+TEST_CASE("request_rate_overhead")
+{
+  uint rate;
+  PerfAnalyzerParameters params{};
+  SUBCASE("sync, rate 10")
+  {
+    params.async = false;
+    rate = 10;
+  }
+  SUBCASE("sync, rate 100")
+  {
+    params.async = false;
+    rate = 100;
+  }
+  SUBCASE("async, rate 10")
+  {
+    params.async = true;
+    rate = 10;
+  }
+  SUBCASE("async, rate 100")
+  {
+    params.async = true;
+    rate = 100;
+  }
+  TestRequestRateManager trrm(params, false);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  trrm.TestOverhead(rate);
+}
+
 }}  // namespace triton::perfanalyzer

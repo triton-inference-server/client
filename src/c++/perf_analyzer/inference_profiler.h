@@ -152,6 +152,7 @@ struct PerfStatus {
   ServerSideStats server_stats;
   ClientSideStats client_stats;
   std::vector<Metrics> metrics{};
+  double overhead_pct;
   bool on_sequence_model;
 
   // placeholder for the latency value that is used for conditional checking
@@ -500,6 +501,16 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       ServerSideStats* server_stats);
+
+  /// Calculate the overhead and put the results into the summary
+  ///
+  /// \param window_duration_ns The duration of the window
+  /// \param idle_ns The average worker idle time during the window
+  /// \param summary The summary object to be updated with overhead stats
+  ///
+  void SummarizeOverhead(
+      const uint64_t window_duration_ns, const uint64_t idle_ns,
+      PerfStatus& summary);
 
   /// Returns true if all MPI ranks (models) are stable. Should only be run if
   /// and only if IsMPIRun() returns true.

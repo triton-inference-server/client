@@ -79,7 +79,6 @@ set(
   constants.h
   metrics.h
   metrics_manager.h
-  test_load_manager_base.h
   infer_data_manager.h
   infer_data.h
   sequence_manager.h
@@ -164,6 +163,8 @@ add_executable(
   mock_data_loader.h
   test_inference_profiler.cc
   test_command_line_parser.cc
+  test_idle_timer.cc
+  test_load_manager_base.h
   test_load_manager.cc
   test_model_parser.cc
   test_metrics_manager.cc

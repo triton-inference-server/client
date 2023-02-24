@@ -110,6 +110,39 @@ LoadManager::GetAccumulatedClientStat(cb::InferStat* contexts_stat)
   return cb::Error::Success;
 }
 
+uint64_t
+LoadManager::GetIdleTime()
+{
+  uint64_t total{0};
+  size_t num_active_threads = 0;
+  for (auto& thread_stat : threads_stat_) {
+    std::lock_guard<std::mutex> lock(thread_stat->mu_);
+    uint64_t idle_time = thread_stat->idle_timer.GetIdleTime();
+    if (idle_time) {
+      total += idle_time;
+      num_active_threads++;
+    }
+  }
+
+  // TODO REFACTOR TMA-1043 InferDataManager should have an API to get
+  // num_active_threads. This method of determining active threads isn't fully
+  // accurate
+  if (num_active_threads) {
+    total /= num_active_threads;
+  }
+
+  return total;
+}
+
+void
+LoadManager::ResetIdleTime()
+{
+  for (auto& thread_stat : threads_stat_) {
+    std::lock_guard<std::mutex> lock(thread_stat->mu_);
+    thread_stat->idle_timer.Reset();
+  }
+}
+
 LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const SharedMemoryType shared_memory_type,
