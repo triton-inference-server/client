@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #include <chrono>
+#include <mutex>
 #include <stdexcept>
 
 namespace triton { namespace perfanalyzer {
@@ -40,23 +41,14 @@ class IdleTimer {
  public:
   void Start()
   {
-    if (is_idle_) {
-      throw std::runtime_error("Can't start a timer that is already active\n");
-    }
-    is_idle_ = true;
-    start_time_ = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lk(mtx_);
+    StartImpl();
   }
 
   void Stop()
   {
-    if (!is_idle_) {
-      throw std::runtime_error("Can't stop a timer that isn't active\n");
-    }
-
-    is_idle_ = false;
-    auto end = std::chrono::steady_clock::now();
-    auto duration = end - start_time_;
-    idle_ns_ += duration.count();
+    std::lock_guard<std::mutex> lk(mtx_);
+    StopImpl();
   }
 
   /// Reset the time counter, and restart the timer if it is active
@@ -78,16 +70,40 @@ class IdleTimer {
   }
 
  private:
+  std::mutex mtx_;
   uint64_t idle_ns_{0};
   bool is_idle_{false};
   std::chrono::_V2::steady_clock::time_point start_time_;
 
   void Restart()
   {
+    std::lock_guard<std::mutex> lk(mtx_);
     if (is_idle_) {
-      Stop();
-      Start();
+      StopImpl();
+      StartImpl();
     }
+  }
+
+  void StartImpl()
+  {
+    if (is_idle_) {
+      throw std::runtime_error("Can't start a timer that is already active\n");
+    }
+
+    is_idle_ = true;
+    start_time_ = std::chrono::steady_clock::now();
+  }
+
+  void StopImpl()
+  {
+    if (!is_idle_) {
+      throw std::runtime_error("Can't stop a timer that isn't active\n");
+    }
+
+    is_idle_ = false;
+    auto end = std::chrono::steady_clock::now();
+    auto duration = end - start_time_;
+    idle_ns_ += duration.count();
   }
 
 
