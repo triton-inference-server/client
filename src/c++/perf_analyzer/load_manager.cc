@@ -24,10 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "iinfer_data_manager.h"
-// FIXME shouldn't need this -- make factory
-#include "infer_data_manager.h"
-#include "infer_data_manager_shm.h"
+#include "infer_data_manager_factory.h"
 
 #include "load_manager.h"
 
@@ -163,15 +160,9 @@ LoadManager::LoadManager(
 
   data_loader_.reset(new DataLoader(batch_size_));
 
-  // FIXME
-  if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
-    infer_data_manager_ = std::make_shared<InferDataManager>(
-        batch_size_, parser_, factory_, data_loader_);
-  } else {
-    infer_data_manager_ = std::make_shared<InferDataManagerShm>(
-        batch_size_, shared_memory_type, output_shm_size, parser_, factory_,
-        data_loader_);
-  }
+  infer_data_manager_ = InferDataManagerFactory::CreateInferDataManager(
+      batch_size, shared_memory_type, output_shm_size, parser, factory,
+      data_loader_);
 }
 
 void

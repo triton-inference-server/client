@@ -81,6 +81,7 @@ set(
   constants.h
   metrics.h
   metrics_manager.h
+  infer_data_manager_factory.h
   iinfer_data_manager.h
   infer_data_manager.h
   infer_data_manager_shm.h
