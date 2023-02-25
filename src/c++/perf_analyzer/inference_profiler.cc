@@ -28,8 +28,11 @@
 
 #include <math.h>
 #include <algorithm>
+#include <iomanip>
+#include <iostream>
 #include <limits>
 #include <queue>
+#include <sstream>
 #include <stdexcept>
 #include "client_backend/client_backend.h"
 #include "doctest.h"
@@ -323,7 +326,8 @@ cb::Error
 ReportClientSideStats(
     const ClientSideStats& stats, const int64_t percentile,
     const cb::ProtocolType protocol, const bool verbose,
-    const bool on_sequence_model, const bool include_lib_stats)
+    const bool on_sequence_model, const bool include_lib_stats,
+    const double overhead_pct)
 {
   const uint64_t avg_latency_us = stats.avg_latency_ns / 1000;
   const uint64_t std_us = stats.std_us;
@@ -371,6 +375,13 @@ ReportClientSideStats(
     }
   }
 
+  std::stringstream client_overhead{""};
+  if (verbose) {
+    client_overhead << "    "
+                    << "Overhead percentage: " << std::fixed
+                    << std::setprecision(2) << overhead_pct << "%\n";
+  }
+
   std::cout << "    Request count: " << stats.request_count << std::endl;
   if (stats.delayed_request_count != 0) {
     std::cout << "    Delayed Request Count: " << stats.delayed_request_count
@@ -382,6 +393,7 @@ ReportClientSideStats(
   }
   std::cout << "    Throughput: " << stats.infer_per_sec << " infer/sec"
             << std::endl;
+  std::cout << client_overhead.str();
   if (percentile == -1) {
     std::cout << "    Avg latency: " << avg_latency_us << " usec"
               << " (standard deviation " << std_us << " usec)" << std::endl;
@@ -408,7 +420,7 @@ Report(
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
       summary.client_stats, percentile, protocol, verbose,
-      summary.on_sequence_model, include_lib_stats);
+      summary.on_sequence_model, include_lib_stats, summary.overhead_pct);
 
   if (include_server_stats) {
     std::cout << "  Server: " << std::endl;
@@ -493,13 +505,13 @@ InferenceProfiler::InferenceProfiler(
 cb::Error
 InferenceProfiler::Profile(
     const size_t concurrent_request_count,
-    std::vector<PerfStatus>& summary_list, bool& meets_threshold,
+    std::vector<PerfStatus>& perf_status_vec, bool& meets_threshold,
     bool& is_stable)
 {
   cb::Error err;
-  PerfStatus status_summary;
+  PerfStatus perf_status;
 
-  status_summary.concurrency = concurrent_request_count;
+  perf_status.concurrency = concurrent_request_count;
 
   is_stable = false;
   meets_threshold = true;
@@ -507,11 +519,11 @@ InferenceProfiler::Profile(
   RETURN_IF_ERROR(dynamic_cast<ConcurrencyManager*>(manager_.get())
                       ->ChangeConcurrencyLevel(concurrent_request_count));
 
-  err = ProfileHelper(status_summary, &is_stable);
+  err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    summary_list.push_back(status_summary);
+    perf_status_vec.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
+        perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -532,7 +544,7 @@ InferenceProfiler::Profile(
       meets_threshold = false;
     } else {
       err = Report(
-          status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
+          perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
@@ -548,13 +560,13 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const double request_rate, std::vector<PerfStatus>& summary_list,
+    const double request_rate, std::vector<PerfStatus>& perf_status_vec,
     bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
-  PerfStatus status_summary;
+  PerfStatus perf_status;
 
-  status_summary.request_rate = request_rate;
+  perf_status.request_rate = request_rate;
 
   is_stable = false;
   meets_threshold = true;
@@ -564,11 +576,11 @@ InferenceProfiler::Profile(
   std::cout << "Request Rate: " << request_rate
             << " inference requests per seconds" << std::endl;
 
-  err = ProfileHelper(status_summary, &is_stable);
+  err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    summary_list.push_back(status_summary);
+    perf_status_vec.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
+        perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -579,7 +591,7 @@ InferenceProfiler::Profile(
       meets_threshold = false;
     } else {
       err = Report(
-          status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
+          perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
@@ -595,25 +607,25 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    std::vector<PerfStatus>& summary_list, bool& meets_threshold,
+    std::vector<PerfStatus>& perf_status_vec, bool& meets_threshold,
     bool& is_stable)
 {
   cb::Error err;
-  PerfStatus status_summary;
+  PerfStatus perf_status;
 
   RETURN_IF_ERROR(
       dynamic_cast<CustomLoadManager*>(manager_.get())->InitCustomIntervals());
   RETURN_IF_ERROR(dynamic_cast<CustomLoadManager*>(manager_.get())
-                      ->GetCustomRequestRate(&status_summary.request_rate));
+                      ->GetCustomRequestRate(&perf_status.request_rate));
 
   is_stable = false;
   meets_threshold = true;
 
-  err = ProfileHelper(status_summary, &is_stable);
+  err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    summary_list.push_back(status_summary);
+    perf_status_vec.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
-        status_summary.stabilizing_latency_ns / NANOS_PER_MILLIS;
+        perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
         (latency_threshold_ms_ != NO_LIMIT)) {
       std::cerr << "Measured latency went over the set limit of "
@@ -624,7 +636,7 @@ InferenceProfiler::Profile(
       meets_threshold = false;
     } else {
       err = Report(
-          status_summary, percentile_, protocol_, verbose_, include_lib_stats_,
+          perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_);
       if (!err.IsOk()) {
         std::cerr << err;
@@ -639,13 +651,14 @@ InferenceProfiler::Profile(
 }
 
 cb::Error
-InferenceProfiler::ProfileHelper(PerfStatus& status_summary, bool* is_stable)
+InferenceProfiler::ProfileHelper(
+    PerfStatus& experiment_perf_status, bool* is_stable)
 {
   // Start measurement
   LoadStatus load_status;
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
-  std::deque<PerfStatus> perf_status_list;
+  std::deque<PerfStatus> measurement_perf_status_list;
   all_timestamps_.clear();
   previous_window_end_ns_ = 0;
 
@@ -655,27 +668,28 @@ InferenceProfiler::ProfileHelper(PerfStatus& status_summary, bool* is_stable)
   RETURN_IF_ERROR(manager_->SwapTimestamps(empty_timestamps));
 
   do {
-    PerfStatus measurement_summary;
+    PerfStatus measurement_perf_status;
     RETURN_IF_ERROR(manager_->CheckHealth());
 
     if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
-      error.push(Measure(measurement_summary, measurement_window_ms_, false));
+      error.push(
+          Measure(measurement_perf_status, measurement_window_ms_, false));
     } else {
       error.push(
-          Measure(measurement_summary, measurement_request_count_, true));
+          Measure(measurement_perf_status, measurement_request_count_, true));
     }
-    perf_status_list.push_back(measurement_summary);
+    measurement_perf_status_list.push_back(measurement_perf_status);
 
     if (error.size() > load_parameters_.stability_window) {
       error.pop();
-      perf_status_list.pop_front();
+      measurement_perf_status_list.pop_front();
     }
 
     if (error.back().IsOk()) {
       load_status.infer_per_sec.push_back(
-          measurement_summary.client_stats.infer_per_sec);
+          measurement_perf_status.client_stats.infer_per_sec);
       load_status.latencies.push_back(
-          measurement_summary.stabilizing_latency_ns);
+          measurement_perf_status.stabilizing_latency_ns);
     } else {
       load_status.infer_per_sec.push_back(0);
       load_status.latencies.push_back(std::numeric_limits<uint64_t>::max());
@@ -692,16 +706,18 @@ InferenceProfiler::ProfileHelper(PerfStatus& status_summary, bool* is_stable)
                   << " infer/sec. ";
         if (extra_percentile_) {
           std::cout << "p" << percentile_ << " latency: "
-                    << (measurement_summary.client_stats.percentile_latency_ns
-                            .find(percentile_)
+                    << (measurement_perf_status.client_stats
+                            .percentile_latency_ns.find(percentile_)
                             ->second /
                         1000)
                     << " usec" << std::endl;
         } else {
           std::cout << "Avg latency: "
-                    << (measurement_summary.client_stats.avg_latency_ns / 1000)
-                    << " usec (std " << measurement_summary.client_stats.std_us
-                    << " usec)" << std::endl;
+                    << (measurement_perf_status.client_stats.avg_latency_ns /
+                        1000)
+                    << " usec (std "
+                    << measurement_perf_status.client_stats.std_us << " usec)"
+                    << std::endl;
         }
       } else {
         std::cout << "  Pass [" << (completed_trials + 1)
@@ -734,7 +750,8 @@ InferenceProfiler::ProfileHelper(PerfStatus& status_summary, bool* is_stable)
 
   // Only merge the results if the results have stabilized.
   if (*is_stable) {
-    RETURN_IF_ERROR(MergePerfStatusReports(perf_status_list, status_summary));
+    RETURN_IF_ERROR(MergePerfStatusReports(
+        measurement_perf_status_list, experiment_perf_status));
   }
 
   if (early_exit) {
@@ -913,15 +930,16 @@ InferenceProfiler::MergeServerSideStats(
 
 cb::Error
 InferenceProfiler::MergePerfStatusReports(
-    std::deque<PerfStatus>& perf_status_reports, PerfStatus& status_summary)
+    std::deque<PerfStatus>& perf_status_reports,
+    PerfStatus& experiment_perf_status)
 {
   auto& perf_status = perf_status_reports[0];
 
   // Make sure that the perf status reports profiling settings match with each
   // other.
   for (size_t i = 1; i < perf_status_reports.size(); i++) {
-    perf_status.concurrency = status_summary.concurrency;
-    perf_status.request_rate = status_summary.request_rate;
+    perf_status.concurrency = experiment_perf_status.concurrency;
+    perf_status.request_rate = experiment_perf_status.request_rate;
 
     if (perf_status_reports[i].on_sequence_model !=
         perf_status.on_sequence_model) {
@@ -941,95 +959,101 @@ InferenceProfiler::MergePerfStatusReports(
     }
   }
 
-  status_summary.batch_size = perf_status.batch_size;
-  status_summary.on_sequence_model = perf_status.on_sequence_model;
+  experiment_perf_status.batch_size = perf_status.batch_size;
+  experiment_perf_status.on_sequence_model = perf_status.on_sequence_model;
 
   // Initialize the client stats for the merged report.
-  status_summary.client_stats.request_count = 0;
-  status_summary.client_stats.sequence_count = 0;
-  status_summary.client_stats.delayed_request_count = 0;
-  status_summary.client_stats.duration_ns = 0;
-  status_summary.client_stats.avg_latency_ns = 0;
-  status_summary.client_stats.percentile_latency_ns.clear();
-  status_summary.client_stats.latencies.clear();
-  status_summary.client_stats.std_us = 0;
-  status_summary.client_stats.avg_request_time_ns = 0;
-  status_summary.client_stats.avg_send_time_ns = 0;
-  status_summary.client_stats.avg_receive_time_ns = 0;
-  status_summary.client_stats.infer_per_sec = 0;
-  status_summary.client_stats.sequence_per_sec = 0;
-  status_summary.client_stats.completed_count = 0;
-  status_summary.stabilizing_latency_ns = 0;
+  experiment_perf_status.client_stats.request_count = 0;
+  experiment_perf_status.client_stats.sequence_count = 0;
+  experiment_perf_status.client_stats.delayed_request_count = 0;
+  experiment_perf_status.client_stats.duration_ns = 0;
+  experiment_perf_status.client_stats.avg_latency_ns = 0;
+  experiment_perf_status.client_stats.percentile_latency_ns.clear();
+  experiment_perf_status.client_stats.latencies.clear();
+  experiment_perf_status.client_stats.std_us = 0;
+  experiment_perf_status.client_stats.avg_request_time_ns = 0;
+  experiment_perf_status.client_stats.avg_send_time_ns = 0;
+  experiment_perf_status.client_stats.avg_receive_time_ns = 0;
+  experiment_perf_status.client_stats.infer_per_sec = 0;
+  experiment_perf_status.client_stats.sequence_per_sec = 0;
+  experiment_perf_status.client_stats.completed_count = 0;
+  experiment_perf_status.stabilizing_latency_ns = 0;
 
   std::vector<ServerSideStats> server_side_stats;
   for (auto& perf_status : perf_status_reports) {
     // Aggregated Client Stats
-    status_summary.client_stats.request_count +=
+    experiment_perf_status.client_stats.request_count +=
         perf_status.client_stats.request_count;
-    status_summary.client_stats.sequence_count +=
+    experiment_perf_status.client_stats.sequence_count +=
         perf_status.client_stats.sequence_count;
-    status_summary.client_stats.delayed_request_count +=
+    experiment_perf_status.client_stats.delayed_request_count +=
         perf_status.client_stats.delayed_request_count;
-    status_summary.client_stats.duration_ns +=
+    experiment_perf_status.client_stats.duration_ns +=
         perf_status.client_stats.duration_ns;
 
     server_side_stats.push_back(perf_status.server_stats);
 
-    status_summary.client_stats.latencies.insert(
-        status_summary.client_stats.latencies.end(),
+    experiment_perf_status.client_stats.latencies.insert(
+        experiment_perf_status.client_stats.latencies.end(),
         perf_status.client_stats.latencies.begin(),
         perf_status.client_stats.latencies.end());
+    // Accumulate the overhead percentage here to remove extra traversals
+    experiment_perf_status.overhead_pct += perf_status.overhead_pct;
   }
+
+  // Calculate the average overhead_pct for the experiment.
+  experiment_perf_status.overhead_pct /= perf_status_reports.size();
 
   if (include_lib_stats_) {
     for (auto& perf_status : perf_status_reports) {
-      status_summary.client_stats.completed_count +=
+      experiment_perf_status.client_stats.completed_count +=
           perf_status.client_stats.completed_count;
 
-      status_summary.client_stats.avg_request_time_ns +=
+      experiment_perf_status.client_stats.avg_request_time_ns +=
           perf_status.client_stats.avg_request_time_ns *
           perf_status.client_stats.completed_count;
 
-      status_summary.client_stats.avg_send_time_ns +=
+      experiment_perf_status.client_stats.avg_send_time_ns +=
           perf_status.client_stats.avg_send_time_ns *
           perf_status.client_stats.completed_count;
 
-      status_summary.client_stats.avg_receive_time_ns +=
+      experiment_perf_status.client_stats.avg_receive_time_ns +=
           perf_status.client_stats.avg_receive_time_ns *
           perf_status.client_stats.completed_count;
     }
 
-    if (status_summary.client_stats.completed_count != 0) {
-      status_summary.client_stats.avg_request_time_ns =
-          status_summary.client_stats.avg_request_time_ns /
-          status_summary.client_stats.completed_count;
+    if (experiment_perf_status.client_stats.completed_count != 0) {
+      experiment_perf_status.client_stats.avg_request_time_ns =
+          experiment_perf_status.client_stats.avg_request_time_ns /
+          experiment_perf_status.client_stats.completed_count;
 
-      status_summary.client_stats.avg_send_time_ns =
-          status_summary.client_stats.avg_send_time_ns /
-          status_summary.client_stats.completed_count;
+      experiment_perf_status.client_stats.avg_send_time_ns =
+          experiment_perf_status.client_stats.avg_send_time_ns /
+          experiment_perf_status.client_stats.completed_count;
 
-      status_summary.client_stats.avg_receive_time_ns =
-          status_summary.client_stats.avg_receive_time_ns /
-          status_summary.client_stats.completed_count;
+      experiment_perf_status.client_stats.avg_receive_time_ns =
+          experiment_perf_status.client_stats.avg_receive_time_ns /
+          experiment_perf_status.client_stats.completed_count;
     }
   }
 
-  RETURN_IF_ERROR(
-      MergeServerSideStats(server_side_stats, status_summary.server_stats));
+  RETURN_IF_ERROR(MergeServerSideStats(
+      server_side_stats, experiment_perf_status.server_stats));
 
   std::sort(
-      status_summary.client_stats.latencies.begin(),
-      status_summary.client_stats.latencies.end());
+      experiment_perf_status.client_stats.latencies.begin(),
+      experiment_perf_status.client_stats.latencies.end());
 
   float client_duration_sec =
-      (float)status_summary.client_stats.duration_ns / NANOS_PER_SECOND;
-  status_summary.client_stats.sequence_per_sec =
-      status_summary.client_stats.sequence_count / client_duration_sec;
-  status_summary.client_stats.infer_per_sec =
-      (status_summary.client_stats.request_count * status_summary.batch_size) /
+      (float)experiment_perf_status.client_stats.duration_ns / NANOS_PER_SECOND;
+  experiment_perf_status.client_stats.sequence_per_sec =
+      experiment_perf_status.client_stats.sequence_count / client_duration_sec;
+  experiment_perf_status.client_stats.infer_per_sec =
+      (experiment_perf_status.client_stats.request_count *
+       experiment_perf_status.batch_size) /
       client_duration_sec;
-  RETURN_IF_ERROR(
-      SummarizeLatency(status_summary.client_stats.latencies, status_summary));
+  RETURN_IF_ERROR(SummarizeLatency(
+      experiment_perf_status.client_stats.latencies, experiment_perf_status));
 
   if (should_collect_metrics_) {
     // Put all Metric objects in a flat vector so they're easier to merge
@@ -1044,7 +1068,7 @@ InferenceProfiler::MergePerfStatusReports(
 
     Metrics merged_metrics{};
     RETURN_IF_ERROR(MergeMetrics(all_metrics, merged_metrics));
-    status_summary.metrics.push_back(std::move(merged_metrics));
+    experiment_perf_status.metrics.push_back(std::move(merged_metrics));
   }
 
   return cb::Error::Success;
@@ -1067,8 +1091,7 @@ InferenceProfiler::GetServerSideStatus(
 // Used for measurement
 cb::Error
 InferenceProfiler::Measure(
-    PerfStatus& status_summary, uint64_t measurement_window,
-    bool is_count_based)
+    PerfStatus& perf_status, uint64_t measurement_window, bool is_count_based)
 {
   std::map<cb::ModelIdentifier, cb::ModelStatistics> start_status;
   std::map<cb::ModelIdentifier, cb::ModelStatistics> end_status;
@@ -1126,7 +1149,7 @@ InferenceProfiler::Measure(
   previous_window_end_ns_ = window_end_ns;
 
   if (should_collect_metrics_) {
-    metrics_manager_->GetLatestMetrics(status_summary.metrics);
+    metrics_manager_->GetLatestMetrics(perf_status.metrics);
   }
 
   // Get server status and then print report on difference between
@@ -1146,7 +1169,7 @@ InferenceProfiler::Measure(
       current_timestamps.end());
 
   RETURN_IF_ERROR(Summarize(
-      start_status, end_status, start_stat, end_stat, status_summary,
+      start_status, end_status, start_stat, end_stat, perf_status,
       window_start_ns, window_end_ns));
 
   return cb::Error::Success;

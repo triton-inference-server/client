@@ -354,13 +354,14 @@ PerfAnalyzer::Profile()
   if (params_->targeting_concurrency()) {
     err = profiler_->Profile<size_t>(
         params_->concurrency_range.start, params_->concurrency_range.end,
-        params_->concurrency_range.step, params_->search_mode, summary_);
+        params_->concurrency_range.step, params_->search_mode,
+        perf_status_vec_);
   } else {
     err = profiler_->Profile<double>(
         params_->request_rate_range[pa::SEARCH_RANGE::kSTART],
         params_->request_rate_range[pa::SEARCH_RANGE::kEND],
         params_->request_rate_range[pa::SEARCH_RANGE::kSTEP],
-        params_->search_mode, summary_);
+        params_->search_mode, perf_status_vec_);
   }
 
   params_->mpi_driver->MPIBarrierWorld();
@@ -378,7 +379,7 @@ PerfAnalyzer::Profile()
 void
 PerfAnalyzer::WriteReport()
 {
-  if (!summary_.size()) {
+  if (!perf_status_vec_.size()) {
     return;
   }
 
@@ -390,7 +391,7 @@ PerfAnalyzer::WriteReport()
     std::cout << "p" << params_->percentile << " Batch Latency" << std::endl;
   }
 
-  for (pa::PerfStatus& status : summary_) {
+  for (pa::PerfStatus& status : perf_status_vec_) {
     if (params_->targeting_concurrency()) {
       std::cout << "Concurrency: " << status.concurrency << ", ";
     } else {
@@ -408,7 +409,7 @@ PerfAnalyzer::WriteReport()
 
   FAIL_IF_ERR(
       pa::ReportWriter::Create(
-          params_->filename, params_->targeting_concurrency(), summary_,
+          params_->filename, params_->targeting_concurrency(), perf_status_vec_,
           params_->verbose_csv, profiler_->IncludeServerStats(),
           params_->percentile, parser_, &writer, should_output_metrics),
       "failed to create report writer");
