@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -1173,6 +1173,8 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
+  SummarizeSendRequestRate(manager_->GetSendRequestRate(), summary);
+
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
         start_status, end_status, &(summary.server_stats)));
@@ -1335,6 +1337,13 @@ InferenceProfiler::SummarizeClientStat(
   }
 
   return cb::Error::Success;
+}
+
+void
+InferenceProfiler::SummarizeSendRequestRate(
+    const double send_request_rate, PerfStatus& summary)
+{
+  summary.send_request_rate = send_request_rate;
 }
 
 cb::Error

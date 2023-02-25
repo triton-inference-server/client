@@ -83,6 +83,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     }
   }
 
+  void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType()
@@ -786,6 +788,32 @@ TEST_CASE("concurrency_overhead")
       params.sequence_length);
 
   tcm.TestOverhead();
+}
+
+TEST_CASE(
+    "send_request_rate_concurrency_manager: testing logic around detecting "
+    "send request rate")
+{
+  PerfAnalyzerParameters params{};
+
+  SUBCASE("sync") { params.async = false; }
+  SUBCASE("async") { params.async = true; }
+
+  TestConcurrencyManager tcm(params);
+
+  tcm.stats_->SetDelays({10});
+
+  tcm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  tcm.ChangeConcurrencyLevel(4);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  tcm.StopWorkerThreads();
+
+  double send_request_rate{tcm.GetSendRequestRate()};
+  CHECK(send_request_rate == doctest::Approx(400).epsilon(0.1));
 }
 
 }}  // namespace triton::perfanalyzer

@@ -143,6 +143,42 @@ LoadManager::ResetIdleTime()
   }
 }
 
+double
+LoadManager::GetSendRequestRate()
+{
+  double send_request_rate{0.0};
+  std::chrono::steady_clock::time_point now{std::chrono::steady_clock::now()};
+  size_t num_requests_sent{0};
+  std::chrono::steady_clock::time_point earliest_send{
+      std::chrono::steady_clock::time_point::max()};
+  std::chrono::steady_clock::time_point latest_send{
+      std::chrono::steady_clock::time_point::min()};
+
+  for (auto& thread_stat : threads_stat_) {
+    std::lock_guard<std::mutex> lock(thread_stat->mu_);
+    if (thread_stat->request_send_times_.empty() == false &&
+        thread_stat->request_send_times_.front() < earliest_send) {
+      earliest_send = thread_stat->request_send_times_.front();
+    }
+    if (thread_stat->request_send_times_.empty() == false &&
+        thread_stat->request_send_times_.back() > latest_send) {
+      latest_send = thread_stat->request_send_times_.back();
+    }
+    num_requests_sent += thread_stat->request_send_times_.size();
+    thread_stat->request_send_times_.clear();
+  }
+
+  const std::chrono::nanoseconds window_duration_ns{latest_send -
+                                                    earliest_send};
+  const double window_duration_s{window_duration_ns.count() /
+                                 static_cast<double>(NANOS_PER_SECOND)};
+  if (window_duration_s > 0.0) {
+    send_request_rate = num_requests_sent / window_duration_s;
+  }
+
+  return send_request_rate;
+}
+
 LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const SharedMemoryType shared_memory_type,

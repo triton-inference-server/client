@@ -47,6 +47,9 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
   {
   }
 
+  std::vector<std::shared_ptr<ThreadStat>>& threads_stat_{
+      LoadManager::threads_stat_};
+
   /// Test the public function CheckHealth
   ///
   /// It will return a bad result if any of the thread stats
@@ -385,6 +388,36 @@ TEST_CASE("load_manager: Test public idle time functions")
   PerfAnalyzerParameters params;
   TestLoadManager tlm(params);
   tlm.TestIdle();
+}
+
+TEST_CASE(
+    "send_request_rate_load_manager: testing the GetSendRequestRate function")
+{
+  PerfAnalyzerParameters params{};
+
+  TestLoadManager tlm(params);
+
+  std::shared_ptr<ThreadStat> thread_stat_1{std::make_shared<ThreadStat>()};
+  std::shared_ptr<ThreadStat> thread_stat_2{std::make_shared<ThreadStat>()};
+
+  std::chrono::steady_clock::time_point start_time{
+      std::chrono::steady_clock::time_point::min()};
+
+  thread_stat_1->request_send_times_ = {
+      start_time + std::chrono::milliseconds(0),
+      start_time + std::chrono::milliseconds(500),
+      start_time + std::chrono::milliseconds(1000)};
+  thread_stat_2->request_send_times_ = {
+      start_time + std::chrono::milliseconds(0),
+      start_time + std::chrono::milliseconds(500),
+      start_time + std::chrono::milliseconds(1000)};
+
+  tlm.threads_stat_.push_back(thread_stat_1);
+  tlm.threads_stat_.push_back(thread_stat_2);
+
+  double result{tlm.GetSendRequestRate()};
+
+  CHECK(result == doctest::Approx(6.0));
 }
 
 }}  // namespace triton::perfanalyzer
