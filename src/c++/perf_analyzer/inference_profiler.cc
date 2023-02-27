@@ -327,7 +327,7 @@ ReportClientSideStats(
     const ClientSideStats& stats, const int64_t percentile,
     const cb::ProtocolType protocol, const bool verbose,
     const bool on_sequence_model, const bool include_lib_stats,
-    const double overhead_pct)
+    const double overhead_pct, const double send_request_rate)
 {
   const uint64_t avg_latency_us = stats.avg_latency_ns / 1000;
   const uint64_t std_us = stats.std_us;
@@ -376,10 +376,14 @@ ReportClientSideStats(
   }
 
   std::stringstream client_overhead{""};
+  std::stringstream send_rate{""};
   if (verbose) {
     client_overhead << "    "
                     << "Client overhead: " << std::fixed << std::setprecision(2)
                     << overhead_pct << "%\n";
+    send_rate << "    "
+              << "Send request rate: " << std::fixed << std::setprecision(2)
+              << send_request_rate << "\n";
   }
 
   std::cout << "    Request count: " << stats.request_count << std::endl;
@@ -394,6 +398,8 @@ ReportClientSideStats(
   std::cout << "    Throughput: " << stats.infer_per_sec << " infer/sec"
             << std::endl;
   std::cout << client_overhead.str();
+  std::cout << send_rate.str();
+
   if (percentile == -1) {
     std::cout << "    Avg latency: " << avg_latency_us << " usec"
               << " (standard deviation " << std_us << " usec)" << std::endl;
@@ -420,7 +426,8 @@ Report(
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
       summary.client_stats, percentile, protocol, verbose,
-      summary.on_sequence_model, include_lib_stats, summary.overhead_pct);
+      summary.on_sequence_model, include_lib_stats, summary.overhead_pct,
+      summary.send_request_rate);
 
   if (include_server_stats) {
     std::cout << "  Server: " << std::endl;
