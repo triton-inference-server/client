@@ -716,15 +716,9 @@ InferenceProfiler::ProfileHelper(
                     << (measurement_perf_status.client_stats.avg_latency_ns /
                         1000)
                     << " usec (std "
-                    << measurement_perf_status.client_stats.std_us
-                    << " usec). ";
-          // << std::endl;
+                    << measurement_perf_status.client_stats.std_us << " usec). "
+                    << std::endl;
         }
-        std::stringstream overhead_pct_ss;
-        overhead_pct_ss << "Client overhead: " << std::fixed
-                        << std::setprecision(2)
-                        << measurement_perf_status.overhead_pct << "%";
-        std::cout << overhead_pct_ss.str() << std::endl;
       } else {
         std::cout << "  Pass [" << (completed_trials + 1)
                   << "] cb::Error: " << error.back().Message() << std::endl;
