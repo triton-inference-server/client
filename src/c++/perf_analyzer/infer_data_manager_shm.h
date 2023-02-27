@@ -109,12 +109,6 @@ class InferDataManagerShm : public InferDataManagerBase {
   /// \return cb::Error object indicating success or failure.
   cb::Error Init() override;
 
-  /// Populate the target InferData object with input and output objects
-  /// according to the model's shape
-  /// \param infer_data The target InferData object.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error InitInferData(InferData& infer_data) override;
-
  protected:
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.

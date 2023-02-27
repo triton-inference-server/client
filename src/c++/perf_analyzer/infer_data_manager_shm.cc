@@ -315,20 +315,6 @@ InferDataManagerShm::CopySharedMemory(
 }
 
 cb::Error
-InferDataManagerShm::InitInferData(InferData& infer_data)
-{
-  for (const auto& input : *(parser_->Inputs())) {
-    RETURN_IF_ERROR(InitInferDataInput(input.first, input.second, infer_data));
-  }
-
-  for (const auto& output : *(parser_->Outputs())) {
-    RETURN_IF_ERROR(InitInferDataOutput(output.first, infer_data));
-  }
-
-  return cb::Error::Success;
-}
-
-cb::Error
 InferDataManagerShm::InitInferDataInput(
     const std::string& name, const ModelTensor& model_tensor,
     InferData& infer_data)
