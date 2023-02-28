@@ -1173,7 +1173,8 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
-  SummarizeSendRequestRate(manager_->GetSendRequestRate(), summary);
+  SummarizeSendRequestRate(
+      window_duration_ns, manager_->GetNumSentRequests(), summary);
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
@@ -1341,9 +1342,12 @@ InferenceProfiler::SummarizeClientStat(
 
 void
 InferenceProfiler::SummarizeSendRequestRate(
-    const double send_request_rate, PerfStatus& summary)
+    const uint64_t window_duration_ns, const size_t num_sent_requests,
+    PerfStatus& summary)
 {
-  summary.send_request_rate = send_request_rate;
+  summary.send_request_rate =
+      num_sent_requests /
+      (window_duration_ns / static_cast<double>(NANOS_PER_SECOND));
 }
 
 cb::Error

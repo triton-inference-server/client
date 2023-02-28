@@ -99,18 +99,17 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
   }
 }
 
-std::chrono::steady_clock::time_point origin{std::chrono::steady_clock::now()};
-
 void
 InferContext::SendRequest(const uint64_t request_id, const bool delayed)
 {
-  std::cout << (std::chrono::steady_clock::now() - origin).count() / 1000000.0
-            << "ms" << std::endl;
-
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
 
+  {
+    std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+    thread_stat_->num_sent_requests_++;
+  }
   if (async_) {
     infer_data_.options_->request_id_ = std::to_string(request_id);
     {
@@ -123,8 +122,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
-      thread_stat_->request_send_times_.push_back(
-          std::chrono::steady_clock::now());
     }
 
     thread_stat_->idle_timer.Start();
@@ -146,11 +143,6 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
     thread_stat_->idle_timer.Start();
     start_time_sync = std::chrono::system_clock::now();
     cb::InferResult* results = nullptr;
-    {
-      std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-      thread_stat_->request_send_times_.push_back(
-          std::chrono::steady_clock::now());
-    }
     thread_stat_->status_ = infer_backend_->Infer(
         &results, *(infer_data_.options_), infer_data_.valid_inputs_,
         infer_data_.outputs_);

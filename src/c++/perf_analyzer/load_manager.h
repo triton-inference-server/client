@@ -86,9 +86,10 @@ class LoadManager {
   ///
   void ResetIdleTime();
 
-  /// Calculates and returns the combined send request rate from worker threads.
-  /// \return The combined send request rate from worker threads.
-  double GetSendRequestRate();
+  /// Calculates and returns the total number of sent requests across all
+  /// threads.
+  /// \return The total number of sent requests across all threads.
+  const size_t GetNumSentRequests();
 
   /// \return the batch size used for the inference requests
   size_t BatchSize() const { return batch_size_; }

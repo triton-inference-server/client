@@ -143,40 +143,18 @@ LoadManager::ResetIdleTime()
   }
 }
 
-double
-LoadManager::GetSendRequestRate()
+const size_t
+LoadManager::GetNumSentRequests()
 {
-  double send_request_rate{0.0};
-  std::chrono::steady_clock::time_point now{std::chrono::steady_clock::now()};
-  size_t num_requests_sent{0};
-  std::chrono::steady_clock::time_point earliest_send{
-      std::chrono::steady_clock::time_point::max()};
-  std::chrono::steady_clock::time_point latest_send{
-      std::chrono::steady_clock::time_point::min()};
+  size_t num_sent_requests{0};
 
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    if (thread_stat->request_send_times_.empty() == false &&
-        thread_stat->request_send_times_.front() < earliest_send) {
-      earliest_send = thread_stat->request_send_times_.front();
-    }
-    if (thread_stat->request_send_times_.empty() == false &&
-        thread_stat->request_send_times_.back() > latest_send) {
-      latest_send = thread_stat->request_send_times_.back();
-    }
-    num_requests_sent += thread_stat->request_send_times_.size();
-    thread_stat->request_send_times_.clear();
+    num_sent_requests += thread_stat->num_sent_requests_;
+    thread_stat->num_sent_requests_ = 0;
   }
 
-  const std::chrono::nanoseconds window_duration_ns{latest_send -
-                                                    earliest_send};
-  const double window_duration_s{window_duration_ns.count() /
-                                 static_cast<double>(NANOS_PER_SECOND)};
-  if (window_duration_s > 0.0) {
-    send_request_rate = num_requests_sent / window_duration_s;
-  }
-
-  return send_request_rate;
+  return num_sent_requests;
 }
 
 LoadManager::LoadManager(

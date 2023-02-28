@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -48,6 +48,14 @@ class TestInferenceProfiler : public InferenceProfiler {
   {
     InferenceProfiler inference_profiler{};
     return inference_profiler.GetMeanAndStdDev(latencies);
+  }
+
+  void SummarizeSendRequestRate(
+      const uint64_t window_duration_ns, const size_t num_sent_requests,
+      PerfStatus& summary)
+  {
+    InferenceProfiler::SummarizeSendRequestRate(
+        window_duration_ns, num_sent_requests, summary);
   }
 
   static bool TestCheckWithinThreshold(
@@ -677,6 +685,26 @@ TEST_CASE("InferenceProfiler: Test SummarizeOverhead")
     tip.SummarizeOverhead(100, 101, status);
     CHECK(status.overhead_pct == doctest::Approx(0));
   }
+}
+
+TEST_CASE(
+    "summarize_send_request_rate: testing the SummarizeSendRequestRate "
+    "function")
+{
+  TestInferenceProfiler tip{};
+  PerfStatus perf_status;
+
+  tip.SummarizeSendRequestRate(1000000000, 100, perf_status);
+
+  CHECK(perf_status.send_request_rate == doctest::Approx(100));
+
+  tip.SummarizeSendRequestRate(2000000000, 100, perf_status);
+
+  CHECK(perf_status.send_request_rate == doctest::Approx(50));
+
+  tip.SummarizeSendRequestRate(500000000, 100, perf_status);
+
+  CHECK(perf_status.send_request_rate == doctest::Approx(200));
 }
 
 }}  // namespace triton::perfanalyzer

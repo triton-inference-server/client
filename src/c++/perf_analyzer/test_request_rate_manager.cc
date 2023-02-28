@@ -1125,7 +1125,7 @@ std::chrono::steady_clock::time_point mk_start{};
 
 TEST_CASE(
     "send_request_rate_request_rate_manager: testing logic around detecting "
-    "send request rate")
+    "send request count")
 {
   PerfAnalyzerParameters params{};
 
@@ -1143,8 +1143,9 @@ TEST_CASE(
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   trrm.StopWorkerThreads();
 
-  double send_request_rate{trrm.GetSendRequestRate()};
-  CHECK(send_request_rate == doctest::Approx(1000).epsilon(0.1));
+  const size_t num_sent_requests{trrm.GetNumSentRequests()};
+
+  CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
 }
 
 }}  // namespace triton::perfanalyzer

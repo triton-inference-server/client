@@ -391,7 +391,7 @@ TEST_CASE("load_manager: Test public idle time functions")
 }
 
 TEST_CASE(
-    "send_request_rate_load_manager: testing the GetSendRequestRate function")
+    "send_request_rate_load_manager: testing the GetNumSentRequests function")
 {
   PerfAnalyzerParameters params{};
 
@@ -403,21 +403,17 @@ TEST_CASE(
   std::chrono::steady_clock::time_point start_time{
       std::chrono::steady_clock::time_point::min()};
 
-  thread_stat_1->request_send_times_ = {
-      start_time + std::chrono::milliseconds(0),
-      start_time + std::chrono::milliseconds(500),
-      start_time + std::chrono::milliseconds(1000)};
-  thread_stat_2->request_send_times_ = {
-      start_time + std::chrono::milliseconds(0),
-      start_time + std::chrono::milliseconds(500),
-      start_time + std::chrono::milliseconds(1000)};
+  thread_stat_1->num_sent_requests_ = 6;
+  thread_stat_2->num_sent_requests_ = 5;
 
   tlm.threads_stat_.push_back(thread_stat_1);
   tlm.threads_stat_.push_back(thread_stat_2);
 
-  double result{tlm.GetSendRequestRate()};
+  const size_t result{tlm.GetNumSentRequests()};
 
-  CHECK(result == doctest::Approx(6.0));
+  CHECK(result == 11);
+  CHECK(thread_stat_1->num_sent_requests_ == 0);
+  CHECK(thread_stat_2->num_sent_requests_ == 0);
 }
 
 }}  // namespace triton::perfanalyzer
