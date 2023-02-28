@@ -375,17 +375,6 @@ ReportClientSideStats(
     }
   }
 
-  std::stringstream client_overhead{""};
-  std::stringstream send_rate{""};
-  if (verbose) {
-    client_overhead << "    "
-                    << "Client overhead: " << std::fixed << std::setprecision(2)
-                    << overhead_pct << "%\n";
-    send_rate << "    "
-              << "Send request rate: " << std::fixed << std::setprecision(2)
-              << send_request_rate << "\n";
-  }
-
   std::cout << "    Request count: " << stats.request_count << std::endl;
   if (stats.delayed_request_count != 0) {
     std::cout << "    Delayed Request Count: " << stats.delayed_request_count
@@ -397,8 +386,19 @@ ReportClientSideStats(
   }
   std::cout << "    Throughput: " << stats.infer_per_sec << " infer/sec"
             << std::endl;
-  std::cout << client_overhead.str();
-  std::cout << send_rate.str();
+
+  if (verbose) {
+    std::stringstream client_overhead{""};
+    std::stringstream send_rate{""};
+    client_overhead << "    "
+                    << "Client overhead: " << std::fixed << std::setprecision(2)
+                    << overhead_pct << "%";
+    send_rate << "    "
+              << "Send request rate: " << std::fixed << std::setprecision(2)
+              << send_request_rate << "";
+    std::cout << client_overhead.str() << std::endl;
+    std::cout << send_rate.str() << std::endl;
+  }
 
   if (percentile == -1) {
     std::cout << "    Avg latency: " << avg_latency_us << " usec"
@@ -421,7 +421,7 @@ Report(
     const cb::ProtocolType protocol, const bool verbose,
     const bool include_lib_stats, const bool include_server_stats,
     const std::shared_ptr<ModelParser>& parser,
-    const bool should_collect_metrics)
+    const bool should_collect_metrics, const double overhead_pct_threshold)
 {
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
@@ -439,6 +439,10 @@ Report(
     ReportPrometheusMetrics(summary.metrics.front());
   }
 
+  if (summary.overhead_pct > overhead_pct_threshold) {
+    std::cout << "[WARNING] Overhead percentage exceeds threshold!!!"
+              << std::endl;
+  }
   return cb::Error::Success;
 }
 
@@ -455,14 +459,14 @@ InferenceProfiler::Create(
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-    const bool should_collect_metrics)
+    const bool should_collect_metrics, const double overhead_pct_threshold)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
-      measurement_mode, mpi_driver, metrics_interval_ms,
-      should_collect_metrics));
+      measurement_mode, mpi_driver, metrics_interval_ms, should_collect_metrics,
+      overhead_pct_threshold));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -477,7 +481,8 @@ InferenceProfiler::InferenceProfiler(
     std::shared_ptr<cb::ClientBackend> profile_backend,
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-    const uint64_t metrics_interval_ms, const bool should_collect_metrics)
+    const uint64_t metrics_interval_ms, const bool should_collect_metrics,
+    const double overhead_pct_threshold)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -485,7 +490,8 @@ InferenceProfiler::InferenceProfiler(
       manager_(std::move(manager)),
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
-      should_collect_metrics_(should_collect_metrics)
+      should_collect_metrics_(should_collect_metrics),
+      overhead_pct_threshold_(overhead_pct_threshold)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -552,7 +558,8 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_, should_collect_metrics_);
+          include_server_stats_, parser_, should_collect_metrics_,
+          overhead_pct_threshold_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;
@@ -599,7 +606,8 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_, should_collect_metrics_);
+          include_server_stats_, parser_, should_collect_metrics_,
+          overhead_pct_threshold_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;
@@ -644,7 +652,8 @@ InferenceProfiler::Profile(
     } else {
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
-          include_server_stats_, parser_, should_collect_metrics_);
+          include_server_stats_, parser_, should_collect_metrics_,
+          overhead_pct_threshold_);
       if (!err.IsOk()) {
         std::cerr << err;
         meets_threshold = false;

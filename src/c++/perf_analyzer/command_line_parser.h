@@ -127,6 +127,8 @@ struct PerfAnalyzerParameters {
         using_concurrency_range || using_old_options ||
         !(using_request_rate_range || using_custom_intervals));
   }
+
+  double overhead_pct_threshold{10.0};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

@@ -214,6 +214,8 @@ class InferenceProfiler {
   /// \param metrics_interval_ms The interval at which the server-side metrics
   /// \param should_collect_metrics Whether server-side inference server metrics
   /// should be collected.
+  /// \param overhead_pct_threshold User set threshold above which the PA
+  /// overhead is too significant to provide useable results.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -225,7 +227,7 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics);
+      const bool should_collect_metrics, const double overhead_pct_threshold);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -308,7 +310,8 @@ class InferenceProfiler {
       std::shared_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-      const uint64_t metrics_interval_ms, const bool should_collect_metrics);
+      const uint64_t metrics_interval_ms, const bool should_collect_metrics,
+      const double overhead_pct_threshold);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -672,6 +675,10 @@ class InferenceProfiler {
 
   /// Whether server-side inference server metrics should be collected.
   bool should_collect_metrics_{false};
+
+  /// User set threshold above which the PA overhead is too significant to
+  /// provide useable results.
+  const double overhead_pct_threshold_{0.0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
