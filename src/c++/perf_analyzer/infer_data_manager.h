@@ -47,6 +47,10 @@ class InferDataManager : public InferDataManagerBase {
   {
   }
 
+  /// Initialize this object. Must be called before any other functions
+  /// \return cb::Error object indicating success or failure.
+  cb::Error Init() override { return cb::Error::Success; }
+
  protected:
   cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,

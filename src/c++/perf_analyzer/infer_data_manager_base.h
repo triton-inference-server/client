@@ -48,10 +48,6 @@ class InferDataManagerBase : public IInferDataManager {
   {
   }
 
-  /// Initialize this object. Must be called before any other functions
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error Init() override { return cb::Error::Success; }
-
   /// Populate the target InferData object with input and output objects
   /// according to the model's shape
   /// \param infer_data The target InferData object.
