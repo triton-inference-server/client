@@ -94,15 +94,6 @@ InferDataManagerBase::UpdateValidationOutputs(
 }
 
 cb::Error
-InferDataManagerBase::CreateInferInput(
-    cb::InferInput** infer_input, const cb::BackendKind kind,
-    const std::string& name, const std::vector<int64_t>& dims,
-    const std::string& datatype)
-{
-  return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
-}
-
-cb::Error
 InferDataManagerBase::ValidateDataIndexes(int stream_index, int step_index)
 {
   size_t data_stream_count = data_loader_->GetDataStreamsCount();
@@ -122,5 +113,15 @@ InferDataManagerBase::ValidateDataIndexes(int stream_index, int step_index)
   }
   return cb::Error::Success;
 }
+
+cb::Error
+InferDataManagerBase::CreateInferInput(
+    cb::InferInput** infer_input, const cb::BackendKind kind,
+    const std::string& name, const std::vector<int64_t>& dims,
+    const std::string& datatype)
+{
+  return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
+}
+
 
 }}  // namespace triton::perfanalyzer
