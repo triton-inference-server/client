@@ -391,7 +391,8 @@ TEST_CASE("load_manager: Test public idle time functions")
 }
 
 TEST_CASE(
-    "send_request_rate_load_manager: testing the GetNumSentRequests function")
+    "send_request_rate_load_manager: testing the GetAndResetNumSentRequests "
+    "function")
 {
   PerfAnalyzerParameters params{};
 
@@ -406,14 +407,14 @@ TEST_CASE(
   thread_stat_1->num_sent_requests_ = 6;
   thread_stat_2->num_sent_requests_ = 5;
 
-  tlm.threads_stat_.push_back(thread_stat_1);
-  tlm.threads_stat_.push_back(thread_stat_2);
+  tlm.threads_stat_ = {thread_stat_1, thread_stat_2};
 
-  const size_t result{tlm.GetNumSentRequests()};
+  const size_t result{tlm.GetAndResetNumSentRequests()};
 
   CHECK(result == 11);
-  CHECK(thread_stat_1->num_sent_requests_ == 0);
-  CHECK(thread_stat_2->num_sent_requests_ == 0);
+  CHECK(tlm.threads_stat_.size() == 2);
+  CHECK(tlm.threads_stat_[0]->num_sent_requests_ == 0);
+  CHECK(tlm.threads_stat_[1]->num_sent_requests_ == 0);
 }
 
 }}  // namespace triton::perfanalyzer

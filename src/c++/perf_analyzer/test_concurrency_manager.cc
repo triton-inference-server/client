@@ -812,7 +812,7 @@ TEST_CASE(
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   tcm.StopWorkerThreads();
 
-  const size_t num_sent_requests{tcm.GetNumSentRequests()};
+  const size_t num_sent_requests{tcm.GetAndResetNumSentRequests()};
 
   CHECK(num_sent_requests == doctest::Approx(40).epsilon(0.1));
 }

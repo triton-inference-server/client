@@ -144,7 +144,7 @@ LoadManager::ResetIdleTime()
 }
 
 const size_t
-LoadManager::GetNumSentRequests()
+LoadManager::GetAndResetNumSentRequests()
 {
   size_t num_sent_requests{0};
 

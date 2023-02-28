@@ -1143,7 +1143,7 @@ TEST_CASE(
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   trrm.StopWorkerThreads();
 
-  const size_t num_sent_requests{trrm.GetNumSentRequests()};
+  const size_t num_sent_requests{trrm.GetAndResetNumSentRequests()};
 
   CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
 }

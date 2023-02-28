@@ -469,13 +469,13 @@ class InferenceProfiler {
       PerfStatus& summary);
 
   /// Adds the send request rate metric to the summary object.
-  /// \param window_duration_ns The duration of the window.
+  /// \param window_duration_s The duration of the window in seconds.
   /// \param num_sent_requests The number of requests sent during the last
   /// window.
   /// \param summary The summary object to be updated with the send request rate
   /// metric.
   void SummarizeSendRequestRate(
-      const uint64_t window_duration_ns, const size_t num_sent_requests,
+      const double window_duration_s, const size_t num_sent_requests,
       PerfStatus& summary);
 
   /// \param model_identifier A pair of model_name and model_version to identify

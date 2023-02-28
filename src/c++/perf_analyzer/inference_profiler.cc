@@ -1173,8 +1173,11 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
+  double window_duration_s{window_duration_ns /
+                           static_cast<double>(NANOS_PER_SECOND)};
+
   SummarizeSendRequestRate(
-      window_duration_ns, manager_->GetNumSentRequests(), summary);
+      window_duration_s, manager_->GetAndResetNumSentRequests(), summary);
 
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
@@ -1342,12 +1345,14 @@ InferenceProfiler::SummarizeClientStat(
 
 void
 InferenceProfiler::SummarizeSendRequestRate(
-    const uint64_t window_duration_ns, const size_t num_sent_requests,
+    const double window_duration_s, const size_t num_sent_requests,
     PerfStatus& summary)
 {
-  summary.send_request_rate =
-      num_sent_requests /
-      (window_duration_ns / static_cast<double>(NANOS_PER_SECOND));
+  if (window_duration_s <= 0.0) {
+    throw std::runtime_error("window_duration_s must be positive");
+  }
+
+  summary.send_request_rate = num_sent_requests / window_duration_s;
 }
 
 cb::Error

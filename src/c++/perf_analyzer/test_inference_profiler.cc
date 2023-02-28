@@ -51,11 +51,11 @@ class TestInferenceProfiler : public InferenceProfiler {
   }
 
   void SummarizeSendRequestRate(
-      const uint64_t window_duration_ns, const size_t num_sent_requests,
+      const double window_duration_s, const size_t num_sent_requests,
       PerfStatus& summary)
   {
     InferenceProfiler::SummarizeSendRequestRate(
-        window_duration_ns, num_sent_requests, summary);
+        window_duration_s, num_sent_requests, summary);
   }
 
   static bool TestCheckWithinThreshold(
@@ -694,17 +694,34 @@ TEST_CASE(
   TestInferenceProfiler tip{};
   PerfStatus perf_status;
 
-  tip.SummarizeSendRequestRate(1000000000, 100, perf_status);
+  SUBCASE("invalid zero window duration")
+  {
+    double window_duration_s{0.0};
+    size_t num_sent_requests{0};
+    CHECK_THROWS_WITH_AS(
+        tip.SummarizeSendRequestRate(
+            window_duration_s, num_sent_requests, perf_status),
+        "window_duration_s must be positive", std::runtime_error);
+  }
 
-  CHECK(perf_status.send_request_rate == doctest::Approx(100));
+  SUBCASE("invalid negative window duration")
+  {
+    double window_duration_s{-1.0};
+    size_t num_sent_requests{0};
+    CHECK_THROWS_WITH_AS(
+        tip.SummarizeSendRequestRate(
+            window_duration_s, num_sent_requests, perf_status),
+        "window_duration_s must be positive", std::runtime_error);
+  }
 
-  tip.SummarizeSendRequestRate(2000000000, 100, perf_status);
-
-  CHECK(perf_status.send_request_rate == doctest::Approx(50));
-
-  tip.SummarizeSendRequestRate(500000000, 100, perf_status);
-
-  CHECK(perf_status.send_request_rate == doctest::Approx(200));
+  SUBCASE("regular case")
+  {
+    double window_duration_s{2.0};
+    size_t num_sent_requests{100};
+    tip.SummarizeSendRequestRate(
+        window_duration_s, num_sent_requests, perf_status);
+    CHECK(perf_status.send_request_rate == doctest::Approx(50));
+  }
 }
 
 }}  // namespace triton::perfanalyzer
