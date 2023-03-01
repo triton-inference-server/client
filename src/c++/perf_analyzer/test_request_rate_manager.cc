@@ -690,29 +690,45 @@ TEST_CASE(
 
   std::shared_ptr<MockModelParser> mmp{
       std::make_shared<MockModelParser>(is_sequence_model, false)};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+
   ModelTensor model_tensor{};
   model_tensor.datatype_ = "INT32";
   model_tensor.is_optional_ = false;
   model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
+  model_tensor.name_ = "INPUT1";
   model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
   (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+
+  ModelTensor model_tensor2{};
+  model_tensor2.datatype_ = "INT32";
+  model_tensor2.is_optional_ = false;
+  model_tensor2.is_shape_tensor_ = false;
+  model_tensor2.name_ = "INPUT2";
+  model_tensor2.shape_ = {1};
+  (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
 
   std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   const std::string json_str{R"(
 {
   "data": [
     {
-      "INPUT0": [2000000000]
+      "INPUT1": [11],
+      "INPUT2": [21]
     },
     {
-      "INPUT0": [2000000001]
+      "INPUT1": [12],
+      "INPUT2": [22]
     }
   ]
 }
     )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  auto ret = mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+  if (!ret.IsOk()) {
+    std::cout << ret.Message();
+    REQUIRE(true == false);
+  }
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
@@ -754,23 +770,23 @@ TEST_CASE(
 
   const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
-      2000000000);
+  REQUIRE(trrm.stats_->recorded_inputs.size() >= 8);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) == 11);
   CHECK(recorded_inputs[0][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
-      2000000001);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) == 21);
   CHECK(recorded_inputs[1][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
-      2000000000);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) == 12);
   CHECK(recorded_inputs[2][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
-      2000000001);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) == 22);
   CHECK(recorded_inputs[3][0].second == 4);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) == 11);
+  CHECK(recorded_inputs[4][0].second == 4);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) == 21);
+  CHECK(recorded_inputs[5][0].second == 4);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) == 12);
+  CHECK(recorded_inputs[6][0].second == 4);
+  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) == 22);
+  CHECK(recorded_inputs[7][0].second == 4);
 }
 
 /// Verify Shared Memory api calls
