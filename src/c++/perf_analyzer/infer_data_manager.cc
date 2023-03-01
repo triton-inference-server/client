@@ -97,8 +97,8 @@ cb::Error
 InferDataManager::UpdateInputs(
     const int stream_index, const int step_index, InferData& infer_data)
 {
-  // FIXME update this to point valid_inputs to the correct pregenerated inputs
-  // via stream_index/step_index
+  // FIXME TKG update this to point valid_inputs to the correct pregenerated
+  // inputs via stream_index/step_index
 
   // Reset inputs for this inference request
   infer_data.valid_inputs_.clear();

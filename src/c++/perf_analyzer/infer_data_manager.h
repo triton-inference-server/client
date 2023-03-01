@@ -52,6 +52,8 @@ class InferDataManager : public InferDataManagerBase {
   cb::Error Init() override;
 
  protected:
+  std::map<int, std::map<int, std::vector<cb::InferInput*>>> input_map_;
+
   cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,
       InferData& infer_data) override;
