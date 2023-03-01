@@ -25,84 +25,51 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include "data_loader.h"
+#include "iinfer_data_manager.h"
 #include "infer_data_manager.h"
 #include "infer_data_manager_shm.h"
-#include "mock_client_backend.h"
+#include "model_parser.h"
 
 namespace triton { namespace perfanalyzer {
 
-
-class MockInferDataManagerShm : public InferDataManagerShm {
+class InferDataManagerFactory {
  public:
-  MockInferDataManagerShm(
-      const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManagerShm(
-            batch_size, shared_memory_type, output_shm_size, parser, factory,
-            data_loader)
-  {
-  }
-
-  // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
-  //
-  cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name) override
-  {
-    return cb::Error::Success;
-  }
-
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
-  }
-};
-
-
-class MockInferDataManager : public InferDataManager {
- public:
-  MockInferDataManager(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManager(batch_size, parser, factory, data_loader)
-  {
-  }
-
-  cb::Error CreateInferInput(
-      cb::InferInput** infer_input, const cb::BackendKind kind,
-      const std::string& name, const std::vector<int64_t>& dims,
-      const std::string& datatype) override
-  {
-    *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
-    return cb::Error::Success;
-  }
-};
-
-class MockInferDataManagerFactory {
- public:
-  static std::shared_ptr<IInferDataManager> CreateMockInferDataManager(
+  static std::shared_ptr<IInferDataManager> CreateInferDataManager(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
       const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
-      return std::make_shared<MockInferDataManager>(
+      return CreateInferDataManagerNoShm(
           batch_size, parser, factory, data_loader);
     } else {
-      return std::make_shared<MockInferDataManagerShm>(
+      return CreateInferDataManagerShm(
           batch_size, shared_memory_type, output_shm_size, parser, factory,
           data_loader);
     }
+  }
+
+ private:
+  static std::shared_ptr<IInferDataManager> CreateInferDataManagerNoShm(
+      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<cb::ClientBackendFactory>& factory,
+      const std::shared_ptr<DataLoader>& data_loader)
+  {
+    return std::make_shared<InferDataManager>(
+        batch_size, parser, factory, data_loader);
+  }
+
+  static std::shared_ptr<IInferDataManager> CreateInferDataManagerShm(
+      const int32_t batch_size, const SharedMemoryType shared_memory_type,
+      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<cb::ClientBackendFactory>& factory,
+      const std::shared_ptr<DataLoader>& data_loader)
+  {
+    return std::make_shared<InferDataManagerShm>(
+        batch_size, shared_memory_type, output_shm_size, parser, factory,
+        data_loader);
   }
 };
 

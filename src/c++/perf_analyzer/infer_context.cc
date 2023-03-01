@@ -31,7 +31,7 @@ namespace triton { namespace perfanalyzer {
 void
 InferContext::Init()
 {
-  thread_stat_->status_ = infer_data_manager_->PrepareInfer(infer_data_);
+  thread_stat_->status_ = infer_data_manager_->InitInferData(infer_data_);
   if (!thread_stat_->status_.IsOk()) {
     return;
   }
@@ -178,11 +178,7 @@ InferContext::UpdateJsonData()
       (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
   data_step_id_ += GetNumActiveThreads();
   thread_stat_->status_ =
-      UpdateInputs(infer_data_.inputs_, infer_data_.valid_inputs_, 0, step_id);
-  if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data_.outputs_, 0, step_id, infer_data_.expected_outputs_);
-  }
+      infer_data_manager_->UpdateInferData(0, step_id, infer_data_);
 }
 
 void
@@ -193,13 +189,8 @@ InferContext::UpdateSeqJsonData(size_t seq_stat_index)
   const size_t remaining_queries{
       sequence_manager_->GetRemainingQueries(seq_stat_index)};
   int step_id = data_loader_->GetTotalSteps(data_stream_id) - remaining_queries;
-  thread_stat_->status_ = UpdateInputs(
-      infer_data_.inputs_, infer_data_.valid_inputs_, data_stream_id, step_id);
-  if (thread_stat_->status_.IsOk()) {
-    thread_stat_->status_ = infer_data_manager_->UpdateValidationOutputs(
-        infer_data_.outputs_, data_stream_id, step_id,
-        infer_data_.expected_outputs_);
-  }
+  thread_stat_->status_ = infer_data_manager_->UpdateInferData(
+      data_stream_id, step_id, infer_data_);
 }
 
 cb::Error
@@ -229,36 +220,6 @@ InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
       }
     }
   }
-  return cb::Error::Success;
-}
-
-
-cb::Error
-InferContext::UpdateInputs(
-    const std::vector<cb::InferInput*>& inputs,
-    std::vector<cb::InferInput*>& valid_inputs, int stream_index,
-    int step_index)
-{
-  // Validate update parameters here
-  size_t data_stream_count = data_loader_->GetDataStreamsCount();
-  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
-    return cb::Error(
-        "stream_index for retrieving the data should be less than " +
-            std::to_string(data_stream_count) + ", got " +
-            std::to_string(stream_index),
-        pa::GENERIC_ERROR);
-  }
-  size_t step_count = data_loader_->GetTotalSteps(stream_index);
-  if (step_index < 0 || step_index >= (int)step_count) {
-    return cb::Error(
-        "step_id for retrieving the data should be less than " +
-            std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::GENERIC_ERROR);
-  }
-
-  RETURN_IF_ERROR(infer_data_manager_->SetInputs(
-      inputs, valid_inputs, stream_index, step_index));
-
   return cb::Error::Success;
 }
 

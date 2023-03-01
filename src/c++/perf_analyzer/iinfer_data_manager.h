@@ -29,43 +29,33 @@
 #include "constants.h"
 #include "data_loader.h"
 #include "infer_data.h"
-#include "infer_data_manager_base.h"
 #include "model_parser.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
-/// Manages infer data to prepare an inference request and the resulting
-/// inference output from triton server
-class InferDataManager : public InferDataManagerBase {
+/// Interface for classes that manage infer data preparation for inference
+///
+class IInferDataManager {
  public:
-  InferDataManager(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManagerBase(batch_size, parser, factory, data_loader)
-  {
-  }
-
   /// Initialize this object. Must be called before any other functions
   /// \return cb::Error object indicating success or failure.
-  cb::Error Init() override { return cb::Error::Success; }
+  virtual cb::Error Init() = 0;
 
- protected:
-  cb::Error InitInferDataInput(
-      const std::string& name, const ModelTensor& model_tensor,
-      InferData& infer_data) override;
+  /// Populate the target InferData object with input and output objects
+  /// according to the model's shape
+  /// \param infer_data The target InferData object.
+  /// \return cb::Error object indicating success or failure.
+  virtual cb::Error InitInferData(InferData& infer_data) = 0;
 
-  cb::Error InitInferDataOutput(
-      const std::string& name, InferData& infer_data) override;
-
-  /// Helper function to update the inputs
+  /// Updates the input and expected output data in the target infer_data for an
+  /// inference request
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
-  cb::Error UpdateInputs(
-      const int stream_index, const int step_index, InferData& infer_data);
+  virtual cb::Error UpdateInferData(
+      int stream_index, int step_index, InferData& infer_data) = 0;
 };
 
 }}  // namespace triton::perfanalyzer
