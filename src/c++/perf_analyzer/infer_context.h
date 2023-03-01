@@ -59,7 +59,7 @@ struct ThreadStat {
   // A lock to protect thread data
   std::mutex mu_;
   // The number of sent requests by this thread.
-  size_t num_sent_requests_{0};
+  std::atomic<size_t> num_sent_requests_{0};
 };
 
 /// The properties of an asynchronous request required in

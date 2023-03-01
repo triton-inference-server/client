@@ -106,10 +106,7 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-    thread_stat_->num_sent_requests_++;
-  }
+  thread_stat_->num_sent_requests_++;
   if (async_) {
     infer_data_.options_->request_id_ = std::to_string(request_id);
     {

@@ -149,7 +149,6 @@ LoadManager::GetAndResetNumSentRequests()
   size_t num_sent_requests{0};
 
   for (auto& thread_stat : threads_stat_) {
-    std::lock_guard<std::mutex> lock(thread_stat->mu_);
     num_sent_requests += thread_stat->num_sent_requests_;
     thread_stat->num_sent_requests_ = 0;
   }
