@@ -30,12 +30,22 @@
 
 namespace triton { namespace perfanalyzer {
 
+cb::Error
+InferDataManager::Init()
+{
+  // FIXME TKG update this to create a mapping of infer input objects
+  // similar to shm's CreateAndPopulateInputMemoryRegion
+  return cb::Error::Success;
+}
 
 cb::Error
 InferDataManager::InitInferDataInput(
     const std::string& name, const ModelTensor& model_tensor,
     InferData& infer_data)
 {
+  // FIXME TKG update this to no longer create and populate inputs.
+  // How can it determine validity of valid_inputs?
+
   std::vector<int64_t> shape;
   RETURN_IF_ERROR(data_loader_->GetInputShape(model_tensor, 0, 0, &shape));
   if (shape.empty() && (backend_kind_ == cb::BackendKind::TRITON)) {
@@ -87,6 +97,9 @@ cb::Error
 InferDataManager::UpdateInputs(
     const int stream_index, const int step_index, InferData& infer_data)
 {
+  // FIXME update this to point valid_inputs to the correct pregenerated inputs
+  // via stream_index/step_index
+
   // Reset inputs for this inference request
   infer_data.valid_inputs_.clear();
 
