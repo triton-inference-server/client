@@ -472,7 +472,8 @@ TEST_CASE("request_rate_schedule")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestSchedule(rate, params);
 }
 
@@ -525,7 +526,8 @@ TEST_CASE("request_rate_infer_type")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestInferType();
 }
 
@@ -546,7 +548,8 @@ TEST_CASE("request_rate_distribution")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -571,7 +574,8 @@ TEST_CASE("request_rate_tiny_window")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestDistribution(request_rate, duration_ms);
 }
 
@@ -586,7 +590,8 @@ TEST_CASE("request_rate_multiple")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestMultipleRequestRate();
 }
 
@@ -602,7 +607,8 @@ TEST_CASE("request_rate_sequence")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   trrm.TestSequences();
 }
 
@@ -638,7 +644,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   auto worker = trrm.MakeWorker(thread_stat, thread_config);
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
@@ -739,7 +746,8 @@ TEST_CASE(
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   trrm.start_time_ = std::chrono::steady_clock::now();
 
@@ -813,7 +821,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_system_shared_memory_calls = 1;
@@ -839,7 +848,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_cuda_shared_memory_calls = 1;
@@ -863,7 +873,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     trrm.CheckSharedMemory(expected_stats);
   }
@@ -966,7 +977,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   trrm.start_time_ = std::chrono::steady_clock::now();
 
@@ -1079,7 +1091,8 @@ TEST_CASE("request_rate_deadlock")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   // Sometimes have a request fail
   if (some_infer_failures) {
@@ -1117,7 +1130,8 @@ TEST_CASE("request_rate_overhead")
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   trrm.TestOverhead(rate);
 }

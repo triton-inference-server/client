@@ -181,6 +181,8 @@ add_executable(
   test_concurrency_manager.cc
   test_custom_load_manager.cc
   test_sequence_manager.cc
+  mock_sequence_manager.h
+  test_infer_context.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

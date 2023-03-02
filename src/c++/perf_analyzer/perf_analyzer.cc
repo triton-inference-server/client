@@ -246,7 +246,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
   manager->InitManager(
       params_->string_length, params_->string_data, params_->zero_input,
       params_->user_data, params_->start_sequence_id,
-      params_->sequence_id_range, params_->sequence_length);
+      params_->sequence_id_range, params_->sequence_length,
+      params_->sequence_length_specified, params_->sequence_length_variation);
 
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(

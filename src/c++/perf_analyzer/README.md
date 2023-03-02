@@ -300,7 +300,9 @@ The performance of some models is highly dependent on the data used.
 For such cases you can provide data to be used with every inference
 request made by analyzer in a JSON file. The perf_analyzer will use
 the provided data in a round-robin order when sending inference
-requests.
+requests. For sequence models, if a sequence length is specified via
+`--sequence-length`, perf_analyzer will also loop through the provided data in a
+round-robin order up to the specified sequence length.
 
 Each entry in the "data" array must specify all input tensors with the
 exact size expected by the model from a single batch. The following

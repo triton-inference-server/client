@@ -66,6 +66,11 @@ class InferDataManager : public InferDataManagerBase {
   /// \return cb::Error object indicating success or failure.
   cb::Error UpdateInputs(
       const int stream_index, const int step_index, InferData& infer_data);
+
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  InferDataManager() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

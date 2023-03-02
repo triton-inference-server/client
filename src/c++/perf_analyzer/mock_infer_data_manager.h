@@ -77,6 +77,11 @@ class MockInferDataManager : public InferDataManager {
   {
   }
 
+  MockInferDataManager(bool use_mock_update_infer_data = false)
+      : use_mock_update_infer_data_(use_mock_update_infer_data)
+  {
+  }
+
   cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
       const std::string& name, const std::vector<int64_t>& dims,
@@ -85,6 +90,21 @@ class MockInferDataManager : public InferDataManager {
     *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
     return cb::Error::Success;
   }
+
+  cb::Error UpdateInferData(
+      int stream_index, int step_index, InferData& infer_data) override
+  {
+    if (use_mock_update_infer_data_) {
+      update_infer_data_step_index_values_.push_back(step_index);
+      return cb::Error::Success;
+    } else {
+      return InferDataManager::UpdateInferData(
+          stream_index, step_index, infer_data);
+    }
+  }
+
+  std::vector<int> update_infer_data_step_index_values_{};
+  const bool use_mock_update_infer_data_{false};
 };
 
 class MockInferDataManagerFactory {

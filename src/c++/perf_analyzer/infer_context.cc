@@ -185,11 +185,14 @@ InferContext::UpdateJsonData()
 void
 InferContext::UpdateSeqJsonData(size_t seq_stat_index)
 {
-  const uint64_t data_stream_id{
-      sequence_manager_->GetDataStreamID(seq_stat_index)};
+  const size_t sequence_length{
+      sequence_manager_->GetSequenceLength(seq_stat_index)};
   const size_t remaining_queries{
       sequence_manager_->GetRemainingQueries(seq_stat_index)};
-  int step_id = data_loader_->GetTotalSteps(data_stream_id) - remaining_queries;
+  const uint64_t data_stream_id{
+      sequence_manager_->GetDataStreamID(seq_stat_index)};
+  const size_t total_steps{data_loader_->GetTotalSteps(data_stream_id)};
+  int step_id = (sequence_length - remaining_queries) % total_steps;
   thread_stat_->status_ = infer_data_manager_->UpdateInferData(
       data_stream_id, step_id, infer_data_);
 }

@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,44 +25,30 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "data_loader.h"
+#include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
-/// Mock DataLoader class used for testing to allow JSON data to be read
-/// from string, rather than file.
-///
-class MockDataLoader : public DataLoader {
+class MockSequenceManager : public SequenceManager {
  public:
-  MockDataLoader(const bool use_mock_get_total_steps = false)
-      : use_mock_get_total_steps_(use_mock_get_total_steps)
+  const size_t GetSequenceLength(size_t sequence_status_index) const override
   {
+    return sequence_length_;
   }
 
-  cb::Error ReadDataFromStr(
-      const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
-      const std::shared_ptr<ModelTensorMap>& outputs)
+  const size_t GetRemainingQueries(size_t sequence_status_index) const override
   {
-    rapidjson::Document d{};
-    const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
-    d.Parse<parseFlags>(str.c_str());
-
-    return ParseData(d, inputs, outputs);
-  };
-
-  size_t GetTotalSteps(size_t stream_id) override
-  {
-    if (use_mock_get_total_steps_) {
-      return total_steps_;
-    } else {
-      return DataLoader::GetTotalSteps(stream_id);
-    }
+    return remaining_queries_;
   }
 
-  const bool use_mock_get_total_steps_{false};
-  std::vector<size_t>& step_num_{DataLoader::step_num_};
-  size_t& data_stream_cnt_{DataLoader::data_stream_cnt_};
-  size_t total_steps_{0};
+  const uint64_t GetDataStreamID(size_t sequence_status_index) const override
+  {
+    return data_stream_id_;
+  }
+
+  size_t sequence_length_{0};
+  size_t remaining_queries_{0};
+  uint64_t data_stream_id_{0};
 };
 
 }}  // namespace triton::perfanalyzer

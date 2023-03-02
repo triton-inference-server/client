@@ -34,10 +34,12 @@ class TestSequenceManager : public SequenceManager {
  public:
   TestSequenceManager(
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-      const size_t sequence_length, const bool using_json_data,
+      const size_t sequence_length, const bool sequence_length_specified,
+      const double sequence_length_variation, const bool using_json_data,
       std::shared_ptr<DataLoader> data_loader)
       : SequenceManager(
             start_sequence_id, sequence_id_range, sequence_length,
+            sequence_length_specified, sequence_length_variation,
             using_json_data, data_loader)
   {
   }
@@ -73,6 +75,8 @@ TEST_CASE(
   const uint64_t start_sequence_id{1};
   const uint64_t sequence_id_range{UINT32_MAX};
   const size_t sequence_length{20};
+  const bool sequence_length_specified{false};
+  const double sequence_length_variation{0.2};
   bool using_json_data{false};
   std::shared_ptr<MockDataLoader> data_loader{
       std::make_shared<MockDataLoader>()};
@@ -86,7 +90,8 @@ TEST_CASE(
     sequence_statuses[seq_stat_index]->remaining_queries_ = 2;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -102,7 +107,8 @@ TEST_CASE(
     sequence_statuses[seq_stat_index]->remaining_queries_ = 0;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -118,7 +124,8 @@ TEST_CASE(
     sequence_statuses[seq_stat_index]->remaining_queries_ = 1;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -137,7 +144,8 @@ TEST_CASE(
     data_loader->data_stream_cnt_ = 1;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -158,16 +166,20 @@ TEST_CASE("init_new_sequence: testing the InitNewSequence function")
   std::uniform_int_distribution<uint64_t> distribution(0, 0);
   const uint64_t start_sequence_id{1};
   const uint64_t sequence_id_range{UINT32_MAX};
-  const size_t sequence_length{20};
+  size_t sequence_length{20};
+  bool sequence_length_specified{false};
+  const double sequence_length_variation{0.2};
   bool using_json_data{false};
   std::shared_ptr<MockDataLoader> data_loader{
       std::make_shared<MockDataLoader>()};
   int seq_stat_index{0};
+  size_t expected_sequence_length{0};
 
   SUBCASE("not using json data")
   {
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -184,8 +196,29 @@ TEST_CASE("init_new_sequence: testing the InitNewSequence function")
     data_loader->step_num_.push_back(5);
     data_loader->data_stream_cnt_ = 1;
 
+    SUBCASE("sequence length not specified")
+    {
+      sequence_length_specified = false;
+      expected_sequence_length = 5;
+    }
+
+    SUBCASE("sequence length specified, smaller than input data")
+    {
+      sequence_length_specified = true;
+      sequence_length = 4;
+      expected_sequence_length = 4;
+    }
+
+    SUBCASE("sequence length specified, larger than input data")
+    {
+      sequence_length_specified = true;
+      sequence_length = 6;
+      expected_sequence_length = 6;
+    }
+
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 5;
@@ -193,7 +226,12 @@ TEST_CASE("init_new_sequence: testing the InitNewSequence function")
     tsm.InitNewSequence(seq_stat_index);
 
     CHECK(tsm.sequence_statuses_[seq_stat_index]->seq_id_ == 6);
-    CHECK(tsm.sequence_statuses_[seq_stat_index]->remaining_queries_ == 5);
+    CHECK(
+        tsm.sequence_statuses_[seq_stat_index]->remaining_queries_ ==
+        expected_sequence_length);
+    CHECK(
+        tsm.sequence_statuses_[seq_stat_index]->sequence_length_ ==
+        expected_sequence_length);
   }
 }
 
@@ -204,6 +242,8 @@ TEST_CASE("get_next_seq_id: testing the GetNextSeqId function")
   uint64_t start_sequence_id{0};
   uint64_t sequence_id_range{0};
   const size_t sequence_length{20};
+  const bool sequence_length_specified{false};
+  const double sequence_length_variation{0.2};
   const bool using_json_data{false};
   std::shared_ptr<MockDataLoader> data_loader{
       std::make_shared<MockDataLoader>()};
@@ -216,7 +256,8 @@ TEST_CASE("get_next_seq_id: testing the GetNextSeqId function")
     sequence_id_range = 2;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 3;
@@ -234,7 +275,8 @@ TEST_CASE("get_next_seq_id: testing the GetNextSeqId function")
     sequence_id_range = 2;
 
     TestSequenceManager tsm(
-        start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
         data_loader);
     tsm.sequence_statuses_ = sequence_statuses;
     tsm.curr_seq_id_ = 3;
@@ -253,6 +295,8 @@ TEST_CASE(
   const uint64_t start_sequence_id{0};
   const uint64_t sequence_id_range{0};
   size_t sequence_length{20};
+  const bool sequence_length_specified{false};
+  const double sequence_length_variation{0.2};
   const bool using_json_data{false};
   std::shared_ptr<MockDataLoader> data_loader{
       std::make_shared<MockDataLoader>()};
@@ -260,7 +304,8 @@ TEST_CASE(
   double offset_ratio{0.2};
 
   TestSequenceManager tsm(
-      start_sequence_id, sequence_id_range, sequence_length, using_json_data,
+      start_sequence_id, sequence_id_range, sequence_length,
+      sequence_length_specified, sequence_length_variation, using_json_data,
       data_loader);
   tsm.sequence_statuses_ = sequence_statuses;
   tsm.curr_seq_id_ = 3;
