@@ -90,6 +90,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
+  void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
+
   void TestSchedule(double rate, PerfAnalyzerParameters params)
   {
     PauseWorkers();
@@ -1118,6 +1120,33 @@ TEST_CASE("request_rate_overhead")
       params.sequence_length);
 
   trrm.TestOverhead(rate);
+}
+
+std::chrono::steady_clock::time_point mk_start{};
+
+TEST_CASE(
+    "send_request_rate_request_rate_manager: testing logic around detecting "
+    "send request count")
+{
+  PerfAnalyzerParameters params{};
+
+  SUBCASE("sync") { params.async = false; }
+  SUBCASE("async") { params.async = true; }
+
+  TestRequestRateManager trrm(params);
+
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length);
+
+  trrm.ChangeRequestRate(1000);
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  trrm.StopWorkerThreads();
+
+  const size_t num_sent_requests{trrm.GetAndResetNumSentRequests()};
+
+  CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
 }
 
 }}  // namespace triton::perfanalyzer

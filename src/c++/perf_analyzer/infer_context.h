@@ -58,6 +58,8 @@ struct ThreadStat {
   TimestampVector request_timestamps_;
   // A lock to protect thread data
   std::mutex mu_;
+  // The number of sent requests by this thread.
+  std::atomic<size_t> num_sent_requests_{0};
 };
 
 /// The properties of an asynchronous request required in

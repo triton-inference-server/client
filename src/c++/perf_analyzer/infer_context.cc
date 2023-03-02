@@ -106,6 +106,7 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
     return;
   }
 
+  thread_stat_->num_sent_requests_++;
   if (async_) {
     infer_data_.options_->request_id_ = std::to_string(request_id);
     {

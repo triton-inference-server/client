@@ -145,6 +145,19 @@ LoadManager::ResetIdleTime()
   }
 }
 
+const size_t
+LoadManager::GetAndResetNumSentRequests()
+{
+  size_t num_sent_requests{0};
+
+  for (auto& thread_stat : threads_stat_) {
+    num_sent_requests += thread_stat->num_sent_requests_;
+    thread_stat->num_sent_requests_ = 0;
+  }
+
+  return num_sent_requests;
+}
+
 LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const SharedMemoryType shared_memory_type,

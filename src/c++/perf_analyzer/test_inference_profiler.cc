@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -48,6 +48,14 @@ class TestInferenceProfiler : public InferenceProfiler {
   {
     InferenceProfiler inference_profiler{};
     return inference_profiler.GetMeanAndStdDev(latencies);
+  }
+
+  void SummarizeSendRequestRate(
+      const double window_duration_s, const size_t num_sent_requests,
+      PerfStatus& summary)
+  {
+    InferenceProfiler::SummarizeSendRequestRate(
+        window_duration_s, num_sent_requests, summary);
   }
 
   static bool TestCheckWithinThreshold(
@@ -676,6 +684,43 @@ TEST_CASE("InferenceProfiler: Test SummarizeOverhead")
   {
     tip.SummarizeOverhead(100, 101, status);
     CHECK(status.overhead_pct == doctest::Approx(0));
+  }
+}
+
+TEST_CASE(
+    "summarize_send_request_rate: testing the SummarizeSendRequestRate "
+    "function")
+{
+  TestInferenceProfiler tip{};
+  PerfStatus perf_status;
+
+  SUBCASE("invalid zero window duration")
+  {
+    double window_duration_s{0.0};
+    size_t num_sent_requests{0};
+    CHECK_THROWS_WITH_AS(
+        tip.SummarizeSendRequestRate(
+            window_duration_s, num_sent_requests, perf_status),
+        "window_duration_s must be positive", std::runtime_error);
+  }
+
+  SUBCASE("invalid negative window duration")
+  {
+    double window_duration_s{-1.0};
+    size_t num_sent_requests{0};
+    CHECK_THROWS_WITH_AS(
+        tip.SummarizeSendRequestRate(
+            window_duration_s, num_sent_requests, perf_status),
+        "window_duration_s must be positive", std::runtime_error);
+  }
+
+  SUBCASE("regular case")
+  {
+    double window_duration_s{2.0};
+    size_t num_sent_requests{100};
+    tip.SummarizeSendRequestRate(
+        window_duration_s, num_sent_requests, perf_status);
+    CHECK(perf_status.send_request_rate == doctest::Approx(50));
   }
 }
 

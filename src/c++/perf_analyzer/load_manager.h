@@ -86,6 +86,11 @@ class LoadManager {
   ///
   void ResetIdleTime();
 
+  /// Calculates and returns the total number of sent requests across all
+  /// threads. Resets individual number of sent requests per thread.
+  /// \return The total number of sent requests across all threads.
+  const size_t GetAndResetNumSentRequests();
+
   /// \return the batch size used for the inference requests
   size_t BatchSize() const { return batch_size_; }
 

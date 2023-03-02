@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -1173,6 +1173,12 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
+  double window_duration_s{window_duration_ns /
+                           static_cast<double>(NANOS_PER_SECOND)};
+
+  SummarizeSendRequestRate(
+      window_duration_s, manager_->GetAndResetNumSentRequests(), summary);
+
   if (include_server_stats_) {
     RETURN_IF_ERROR(SummarizeServerStats(
         start_status, end_status, &(summary.server_stats)));
@@ -1335,6 +1341,18 @@ InferenceProfiler::SummarizeClientStat(
   }
 
   return cb::Error::Success;
+}
+
+void
+InferenceProfiler::SummarizeSendRequestRate(
+    const double window_duration_s, const size_t num_sent_requests,
+    PerfStatus& summary)
+{
+  if (window_duration_s <= 0.0) {
+    throw std::runtime_error("window_duration_s must be positive");
+  }
+
+  summary.send_request_rate = num_sent_requests / window_duration_s;
 }
 
 cb::Error

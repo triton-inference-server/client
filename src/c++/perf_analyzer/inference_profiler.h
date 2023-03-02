@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -157,6 +157,8 @@ struct PerfStatus {
 
   // placeholder for the latency value that is used for conditional checking
   uint64_t stabilizing_latency_ns;
+  // Metric for requests sent per second
+  double send_request_rate{0.0};
 };
 
 cb::Error ReportPrometheusMetrics(const Metrics& metrics);
@@ -464,6 +466,16 @@ class InferenceProfiler {
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
       const uint64_t duration_ns, const size_t valid_request_count,
       const size_t delayed_request_count, const size_t valid_sequence_count,
+      PerfStatus& summary);
+
+  /// Adds the send request rate metric to the summary object.
+  /// \param window_duration_s The duration of the window in seconds.
+  /// \param num_sent_requests The number of requests sent during the last
+  /// window.
+  /// \param summary The summary object to be updated with the send request rate
+  /// metric.
+  void SummarizeSendRequestRate(
+      const double window_duration_s, const size_t num_sent_requests,
       PerfStatus& summary);
 
   /// \param model_identifier A pair of model_name and model_version to identify
