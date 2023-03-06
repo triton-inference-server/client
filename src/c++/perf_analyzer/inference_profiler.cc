@@ -391,11 +391,11 @@ ReportClientSideStats(
     std::stringstream client_overhead{""};
     std::stringstream send_rate{""};
     client_overhead << "    "
-                    << "Client overhead: " << std::fixed << std::setprecision(2)
-                    << overhead_pct << "%";
+                    << "Avg client overhead: " << std::fixed
+                    << std::setprecision(2) << overhead_pct << "%";
     send_rate << "    "
-              << "Send request rate: " << std::fixed << std::setprecision(2)
-              << send_request_rate << "";
+              << "Avg send request rate: " << std::fixed << std::setprecision(2)
+              << send_request_rate << " infer/sec";
     std::cout << client_overhead.str() << std::endl;
     std::cout << send_rate.str() << std::endl;
   }
@@ -1013,12 +1013,15 @@ InferenceProfiler::MergePerfStatusReports(
         experiment_perf_status.client_stats.latencies.end(),
         perf_status.client_stats.latencies.begin(),
         perf_status.client_stats.latencies.end());
-    // Accumulate the overhead percentage here to remove extra traversals
+    // Accumulate the overhead percentage and send rate here to remove extra
+    // traversals
     experiment_perf_status.overhead_pct += perf_status.overhead_pct;
+    experiment_perf_status.send_request_rate += perf_status.send_request_rate;
   }
 
   // Calculate the average overhead_pct for the experiment.
   experiment_perf_status.overhead_pct /= perf_status_reports.size();
+  experiment_perf_status.send_request_rate /= perf_status_reports.size();
 
   if (include_lib_stats_) {
     for (auto& perf_status : perf_status_reports) {
