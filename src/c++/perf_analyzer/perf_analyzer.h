@@ -179,7 +179,7 @@ class PerfAnalyzer {
   std::unique_ptr<pa::InferenceProfiler> profiler_;
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<pa::ModelParser> parser_;
-  std::vector<pa::PerfStatus> perf_status_vec_;
+  std::vector<pa::PerfStatus> perf_statuses_;
 
   //
   // Helper methods

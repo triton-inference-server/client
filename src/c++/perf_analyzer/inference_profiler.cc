@@ -440,7 +440,8 @@ Report(
   }
 
   if (summary.overhead_pct > overhead_pct_threshold) {
-    std::cout << "[WARNING] Overhead percentage exceeds threshold!!!"
+    std::cout << "[WARNING] Perf Analyzer is not able to keep up with the "
+                 "desired load. The results may not be accurate."
               << std::endl;
   }
   return cb::Error::Success;
@@ -518,7 +519,7 @@ InferenceProfiler::InferenceProfiler(
 cb::Error
 InferenceProfiler::Profile(
     const size_t concurrent_request_count,
-    std::vector<PerfStatus>& perf_status_vec, bool& meets_threshold,
+    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
   cb::Error err;
@@ -534,7 +535,7 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_status_vec.push_back(perf_status);
+    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -574,7 +575,7 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const double request_rate, std::vector<PerfStatus>& perf_status_vec,
+    const double request_rate, std::vector<PerfStatus>& perf_statuses,
     bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
@@ -592,7 +593,7 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_status_vec.push_back(perf_status);
+    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -622,7 +623,7 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    std::vector<PerfStatus>& perf_status_vec, bool& meets_threshold,
+    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
   cb::Error err;
@@ -638,7 +639,7 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_status_vec.push_back(perf_status);
+    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -674,7 +675,7 @@ InferenceProfiler::ProfileHelper(
   LoadStatus load_status;
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
-  std::deque<PerfStatus> measurement_perf_status_list;
+  std::deque<PerfStatus> measurement_perf_statuses;
   all_timestamps_.clear();
   previous_window_end_ns_ = 0;
 
@@ -694,11 +695,11 @@ InferenceProfiler::ProfileHelper(
       error.push(
           Measure(measurement_perf_status, measurement_request_count_, true));
     }
-    measurement_perf_status_list.push_back(measurement_perf_status);
+    measurement_perf_statuses.push_back(measurement_perf_status);
 
     if (error.size() > load_parameters_.stability_window) {
       error.pop();
-      measurement_perf_status_list.pop_front();
+      measurement_perf_statuses.pop_front();
     }
 
     if (error.back().IsOk()) {
@@ -767,7 +768,7 @@ InferenceProfiler::ProfileHelper(
   // Only merge the results if the results have stabilized.
   if (*is_stable) {
     RETURN_IF_ERROR(MergePerfStatusReports(
-        measurement_perf_status_list, experiment_perf_status));
+        measurement_perf_statuses, experiment_perf_status));
   }
 
   if (early_exit) {
@@ -1014,7 +1015,7 @@ InferenceProfiler::MergePerfStatusReports(
         perf_status.client_stats.latencies.begin(),
         perf_status.client_stats.latencies.end());
     // Accumulate the overhead percentage and send rate here to remove extra
-    // traversals
+    // traversals over the perf_status_reports
     experiment_perf_status.overhead_pct += perf_status.overhead_pct;
     experiment_perf_status.send_request_rate += perf_status.send_request_rate;
   }
