@@ -190,10 +190,9 @@ class InferContext {
   std::unique_ptr<cb::ClientBackend> infer_backend_;
   InferData infer_data_;
 
-  const bool execute_placeholder_{
-      false};  // FIXME: update build to use C++17 instead of C++14. This is a
-               // workaround since C++14 doesn't have std::optional, but C++17
-               // does.
+  // FIXME: update build to use C++17 instead of C++14. This is a workaround
+  // since C++14 doesn't have std::optional, but C++17 does.
+  const bool execute_placeholder_{false};
   std::reference_wrapper<const bool> execute_{execute_placeholder_};
 
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};

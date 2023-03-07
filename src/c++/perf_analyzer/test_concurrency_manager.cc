@@ -811,7 +811,8 @@ TEST_CASE(
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.ChangeConcurrencyLevel(4);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
