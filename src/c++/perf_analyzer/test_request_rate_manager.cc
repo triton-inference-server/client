@@ -660,6 +660,7 @@ TEST_CASE(
   bool is_sequence_model{false};
 
   std::vector<int32_t> expected_results;
+  bool expect_parsing_failure = false;
 
   std::shared_ptr<MockModelParser> mmp{
       std::make_shared<MockModelParser>(is_sequence_model, false)};
@@ -679,8 +680,7 @@ TEST_CASE(
   model_tensor2.name_ = "INPUT2";
   model_tensor2.shape_ = {1};
 
-
-  const std::string json_str{R"(
+  std::string normal_json_str{R"(
 {
   "data": [
     {
@@ -694,6 +694,22 @@ TEST_CASE(
   ]
 }
     )"};
+
+  std::string optional_json_str{R"(
+{
+  "data": [
+    {
+      "INPUT1": [11]
+    },
+    {
+      "INPUT1": [12],
+      "INPUT2": [22]
+    }
+  ]
+}
+    )"};
+
+  std::string json_str = normal_json_str;
 
   const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
     SUBCASE("sync non-streaming")
@@ -729,19 +745,44 @@ TEST_CASE(
 
 
   const auto& ParameterizeTensors{[&]() {
-    SUBCASE("ONE TENSOR")
+    SUBCASE("one tensor")
     {
       (*mmp->inputs_)[model_tensor.name_] = model_tensor;
       expected_results = {11, 12, 11, 12};
       ParameterizeSequence();
     }
-    SUBCASE("TWO TENSORS")
+    SUBCASE("two tensors")
     {
       expected_results = {11, 21, 12, 22, 11, 21, 12, 22};
       (*mmp->inputs_)[model_tensor.name_] = model_tensor;
       (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
 
       ParameterizeSequence();
+    }
+    SUBCASE("two tensors one missing")
+    {
+      SUBCASE("not optional -- expect parsing fail")
+      {
+        json_str = optional_json_str;
+        expect_parsing_failure = true;
+        model_tensor2.is_optional_ = false;
+        expected_results = {11, -1, 12, 22, 11, -1, 12, 22};
+        (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+
+        ParameterizeSequence();
+      }
+      SUBCASE("optional")
+      {
+        json_str = optional_json_str;
+        expect_parsing_failure = false;
+        model_tensor2.is_optional_ = true;
+        expected_results = {11, -1, 12, 22, 11, -1, 12, 22};
+        (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+
+        ParameterizeSequence();
+      }
     }
   }};
 
@@ -750,9 +791,10 @@ TEST_CASE(
 
   std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
   auto ret = mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+
+  REQUIRE(ret.IsOk() != expect_parsing_failure);
   if (!ret.IsOk()) {
-    std::cout << ret.Message();
-    REQUIRE(true == false);
+    return;
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -797,9 +839,12 @@ TEST_CASE(
 
   REQUIRE(trrm.stats_->recorded_inputs.size() >= expected_results.size());
   for (size_t i = 0; i < expected_results.size(); i++) {
-    CHECK(
-        *reinterpret_cast<const int32_t*>(recorded_inputs[i][0].first) ==
-        expected_results[i]);
+    // -1 means the data was optional and unspecified
+    if (expected_results[i] != -1) {
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[i][0].first) ==
+          expected_results[i]);
+    }
     CHECK(recorded_inputs[i][0].second == 4);
   }
 }
