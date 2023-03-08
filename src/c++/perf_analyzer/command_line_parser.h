@@ -127,6 +127,13 @@ struct PerfAnalyzerParameters {
         using_concurrency_range || using_old_options ||
         !(using_request_rate_range || using_custom_intervals));
   }
+
+  // Sets the threshold for PA client overhead.
+  // Overhead is defined as the percentage of time when PA is doing work and
+  // requests are not outstanding to the triton server. If the overhead
+  // percentage exceeds the threshold, a warning is displayed.
+  //
+  double overhead_pct_threshold{50.0};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

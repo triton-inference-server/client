@@ -214,6 +214,8 @@ class InferenceProfiler {
   /// \param metrics_interval_ms The interval at which the server-side metrics
   /// \param should_collect_metrics Whether server-side inference server metrics
   /// should be collected.
+  /// \param overhead_pct_threshold User set threshold above which the PA
+  /// overhead is too significant to provide useable results.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -225,7 +227,7 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics);
+      const bool should_collect_metrics, const double overhead_pct_threshold);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -241,19 +243,19 @@ class InferenceProfiler {
   template <typename T>
   cb::Error Profile(
       const T start, const T end, const T step, const SearchMode search_mode,
-      std::vector<PerfStatus>& summary)
+      std::vector<PerfStatus>& perf_statuses)
   {
     cb::Error err;
     bool meets_threshold, is_stable;
     if (search_mode == SearchMode::NONE) {
-      err = Profile(summary, meets_threshold, is_stable);
+      err = Profile(perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk()) {
         return err;
       }
     } else if (search_mode == SearchMode::LINEAR) {
       T current_value = start;
       do {
-        err = Profile(current_value, summary, meets_threshold, is_stable);
+        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -267,11 +269,11 @@ class InferenceProfiler {
             "Failed to obtain stable measurement.", pa::STABILITY_ERROR);
       }
     } else {
-      err = Profile(start, summary, meets_threshold, is_stable);
+      err = Profile(start, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (!meets_threshold)) {
         return err;
       }
-      err = Profile(end, summary, meets_threshold, is_stable);
+      err = Profile(end, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (meets_threshold)) {
         return err;
       }
@@ -280,7 +282,7 @@ class InferenceProfiler {
       T this_end = end;
       while ((this_end - this_start) > step) {
         T current_value = (this_end + this_start) / 2;
-        err = Profile(current_value, summary, meets_threshold, is_stable);
+        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -306,7 +308,8 @@ class InferenceProfiler {
       std::shared_ptr<cb::ClientBackend> profile_backend,
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
-      const uint64_t metrics_interval_ms, const bool should_collect_metrics);
+      const uint64_t metrics_interval_ms, const bool should_collect_metrics,
+      const double overhead_pct_threshold);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -317,35 +320,38 @@ class InferenceProfiler {
   /// measures (we can't get the exact server status right before the first
   /// request and right after the last request in the measurement window).
   /// \param concurrent_request_count The concurrency level for the measurement.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the setting meets the threshold.
+  /// \param perf_statuses Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the setting meets the
+  /// threshold.
   /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const size_t concurrent_request_count, std::vector<PerfStatus>& summary,
-      bool& meets_threshold, bool& is_stable);
+      const size_t concurrent_request_count,
+      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+      bool& is_stable);
 
   /// Similar to above function, but instead of setting the concurrency, it
   /// sets the specified request rate for measurements.
   /// \param request_rate The request rate for inferences.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the setting meets the threshold.
-  /// \param is_stable Returns whether the measurement is stable.
+  /// \param perf_statuses Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the setting meets the
+  /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const double request_rate, std::vector<PerfStatus>& summary,
+      const double request_rate, std::vector<PerfStatus>& perf_statuses,
       bool& meets_threshold, bool& is_stable);
 
   /// Measures throughput and latencies for custom load without controling
   /// request rate nor concurrency. Requires load manager to be loaded with
   /// a file specifying the time intervals.
-  /// \param summary Appends the measurements summary at the end of this list.
-  /// \param meets_threshold Returns whether the measurement met the threshold.
-  /// \param is_stable Returns whether the measurement is stable.
+  /// \param perf_statuses Appends the measurements summary at the end of this
+  /// list. \param meets_threshold Returns whether the measurement met the
+  /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
-      std::vector<PerfStatus>& summary, bool& meets_threshold, bool& is_stable);
+      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+      bool& is_stable);
 
   /// A helper function for profiling functions.
   /// \param status_summary Returns the summary of the measurement.
@@ -668,6 +674,10 @@ class InferenceProfiler {
 
   /// Whether server-side inference server metrics should be collected.
   bool should_collect_metrics_{false};
+
+  /// User set threshold above which the PA overhead is too significant to
+  /// provide useable results.
+  const double overhead_pct_threshold_{0.0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
