@@ -658,6 +658,43 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
   bool is_sequence_model{false};
+
+  std::vector<int32_t> expected_results;
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(is_sequence_model, false)};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+
+  ModelTensor model_tensor{};
+  model_tensor.datatype_ = "INT32";
+  model_tensor.is_optional_ = false;
+  model_tensor.is_shape_tensor_ = false;
+  model_tensor.name_ = "INPUT1";
+  model_tensor.shape_ = {1};
+
+  ModelTensor model_tensor2{};
+  model_tensor2.datatype_ = "INT32";
+  model_tensor2.is_optional_ = false;
+  model_tensor2.is_shape_tensor_ = false;
+  model_tensor2.name_ = "INPUT2";
+  model_tensor2.shape_ = {1};
+
+
+  const std::string json_str{R"(
+{
+  "data": [
+    {
+      "INPUT1": [11],
+      "INPUT2": [21]
+    },
+    {
+      "INPUT1": [12],
+      "INPUT2": [22]
+    }
+  ]
+}
+    )"};
+
   const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
     SUBCASE("sync non-streaming")
     {
@@ -676,54 +713,42 @@ TEST_CASE(
     }
   }};
 
-  SUBCASE("non-sequence")
-  {
-    is_sequence_model = false;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-  SUBCASE("sequence")
-  {
-    is_sequence_model = true;
-    params.num_of_sequences = 1;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
+  const auto& ParameterizeSequence{[&]() {
+    SUBCASE("non-sequence")
+    {
+      is_sequence_model = false;
+      ParameterizeAsyncAndStreaming(params.async, params.streaming);
+    }
+    SUBCASE("sequence")
+    {
+      is_sequence_model = true;
+      params.num_of_sequences = 1;
+      ParameterizeAsyncAndStreaming(params.async, params.streaming);
+    }
+  }};
 
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(is_sequence_model, false)};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
 
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT1";
-  model_tensor.shape_ = {1};
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+  const auto& ParameterizeTensors{[&]() {
+    SUBCASE("ONE TENSOR")
+    {
+      (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+      expected_results = {11, 12, 11, 12};
+      ParameterizeSequence();
+    }
+    SUBCASE("TWO TENSORS")
+    {
+      expected_results = {11, 21, 12, 22, 11, 21, 12, 22};
+      (*mmp->inputs_)[model_tensor.name_] = model_tensor;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
 
-  ModelTensor model_tensor2{};
-  model_tensor2.datatype_ = "INT32";
-  model_tensor2.is_optional_ = false;
-  model_tensor2.is_shape_tensor_ = false;
-  model_tensor2.name_ = "INPUT2";
-  model_tensor2.shape_ = {1};
-  (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
+    }
+  }};
+
+  ParameterizeTensors();
+
 
   std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
-  const std::string json_str{R"(
-{
-  "data": [
-    {
-      "INPUT1": [11],
-      "INPUT2": [21]
-    },
-    {
-      "INPUT1": [12],
-      "INPUT2": [22]
-    }
-  ]
-}
-    )"};
-
   auto ret = mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
   if (!ret.IsOk()) {
     std::cout << ret.Message();
@@ -770,23 +795,13 @@ TEST_CASE(
 
   const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() >= 8);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) == 11);
-  CHECK(recorded_inputs[0][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) == 21);
-  CHECK(recorded_inputs[1][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) == 12);
-  CHECK(recorded_inputs[2][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) == 22);
-  CHECK(recorded_inputs[3][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) == 11);
-  CHECK(recorded_inputs[4][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) == 21);
-  CHECK(recorded_inputs[5][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) == 12);
-  CHECK(recorded_inputs[6][0].second == 4);
-  CHECK(*reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) == 22);
-  CHECK(recorded_inputs[7][0].second == 4);
+  REQUIRE(trrm.stats_->recorded_inputs.size() >= expected_results.size());
+  for (size_t i = 0; i < expected_results.size(); i++) {
+    CHECK(
+        *reinterpret_cast<const int32_t*>(recorded_inputs[i][0].first) ==
+        expected_results[i]);
+    CHECK(recorded_inputs[i][0].second == 4);
+  }
 }
 
 /// Verify Shared Memory api calls
