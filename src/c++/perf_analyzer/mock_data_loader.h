@@ -34,6 +34,17 @@ namespace triton { namespace perfanalyzer {
 ///
 class MockDataLoader : public DataLoader {
  public:
+  MockDataLoader() = default;
+  MockDataLoader(size_t batch_size) : DataLoader(batch_size) {}
+
+  cb::Error ReadDataFromJSON(
+      const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs,
+      const std::string& json_file) override
+  {
+    return ReadDataFromStr(json_file, inputs, outputs);
+  }
+
   cb::Error ReadDataFromStr(
       const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
       const std::shared_ptr<ModelTensorMap>& outputs)

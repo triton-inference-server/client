@@ -39,6 +39,7 @@ class MockModelParser : public ModelParser {
       scheduler_type_ = ModelParser::SEQUENCE;
     }
     is_decoupled_ = is_decoupled_model;
+    max_batch_size_ = 64;
   }
 
   std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};

@@ -142,6 +142,7 @@ InferDataManager::UpdateInputs(
         }
       }
       data_ptr = nullptr;
+      // FIXME TKG -- the hardcoded 0 here seems wrong?
       RETURN_IF_ERROR(data_loader_->GetInputData(
           model_input, stream_index,
           (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,

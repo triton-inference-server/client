@@ -39,10 +39,6 @@ class DataLoader {
  public:
   DataLoader(size_t batch_size);
 
-  /// Returns the total number of data steps that can be supported by a
-  /// non-sequence model.
-  size_t GetTotalStepsNonSequence() { return max_non_sequence_step_id_; }
-
   /// Returns the total number of data streams available.
   size_t GetDataStreamsCount() { return data_stream_cnt_; }
 
@@ -72,7 +68,7 @@ class DataLoader {
   /// \param json_file The json file containing the user-provided input
   /// data.
   /// Returns error object indicating status
-  cb::Error ReadDataFromJSON(
+  virtual cb::Error ReadDataFromJSON(
       const std::shared_ptr<ModelTensorMap>& inputs,
       const std::shared_ptr<ModelTensorMap>& outputs,
       const std::string& json_file);
@@ -156,8 +152,6 @@ class DataLoader {
   // A vector containing the supported step number for respective stream
   // ids.
   std::vector<size_t> step_num_;
-  // The maximum supported data step id for non-sequence model.
-  size_t max_non_sequence_step_id_;
 
   // User provided input data, it will be preferred over synthetic data
   std::unordered_map<std::string, std::vector<char>> input_data_;

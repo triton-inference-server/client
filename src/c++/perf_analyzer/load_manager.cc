@@ -185,6 +185,11 @@ LoadManager::InitManager(
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
     const size_t sequence_length)
 {
+  if (on_sequence_model_ && batch_size_ > 1) {
+    std::cerr << "error: sequence models do not support batching" << std::endl;
+    throw PerfAnalyzerException(GENERIC_ERROR);
+  }
+
   auto status =
       InitManagerInputs(string_length, string_data, zero_input, user_data);
   THROW_IF_ERROR(status, "Failed to init manager inputs");

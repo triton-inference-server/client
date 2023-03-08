@@ -233,8 +233,6 @@ DataLoader::ParseData(
     }
   }
 
-  max_non_sequence_step_id_ =
-      std::max(1, (int)(step_num_[0] / (batch_size_ != 0 ? batch_size_ : 1)));
 
   return cb::Error::Success;
 }
@@ -327,6 +325,7 @@ DataLoader::GetInputData(
 
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {
+    // FIXME TKG isn't this the same validation code?
     // validate if the indices conform to the vector sizes
     if (stream_id < 0 || stream_id >= (int)data_stream_cnt_) {
       return cb::Error(
