@@ -49,7 +49,7 @@ struct PerfAnalyzerParameters {
   bool max_threads_specified = false;
   size_t sequence_length = 20;  // average length of a sentence
   bool sequence_length_specified = false;
-  double sequence_length_variation = 0.2;
+  double sequence_length_variation = 20.0;
   int32_t percentile = -1;
   std::vector<std::string> user_data;
   std::unordered_map<std::string, std::vector<int64_t>> input_shapes;

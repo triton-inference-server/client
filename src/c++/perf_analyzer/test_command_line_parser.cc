@@ -529,20 +529,20 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("non-negative")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-length",
-                          "0.3"};
+      char* argv[argc] = {app_name, "-m", model_name,
+                          "--sequence-length-variation", "33.3"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      exp->sequence_length_variation = 0.3;
+      exp->sequence_length_variation = 33.3;
     }
 
     SUBCASE("negative")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name,
-                          "--sequence-length-variation", "-0.1"};
+                          "--sequence-length-variation", "-10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
@@ -550,7 +550,7 @@ TEST_CASE("Testing Command Line Parser")
           "Usage Message", parser.GetUsageMessage(),
           "sequence length variation must be positive");
 
-      exp->sequence_length_variation = -0.1;
+      exp->sequence_length_variation = -10.0;
     }
   }
 

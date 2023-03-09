@@ -129,7 +129,10 @@ SequenceManager::InitNewSequence(int seq_stat_index)
         sequence_statuses_[seq_stat_index]->data_stream_id_};
     const size_t total_steps{data_loader_->GetTotalSteps(data_stream_id)};
     if (sequence_length_specified_) {
-      sequence_statuses_[seq_stat_index]->sequence_length_ = sequence_length_;
+      const size_t varied_sequence_length{
+          GetRandomSequenceLength(sequence_length_variation_)};
+      sequence_statuses_[seq_stat_index]->sequence_length_ =
+          varied_sequence_length;
     } else {
       sequence_statuses_[seq_stat_index]->sequence_length_ = total_steps;
     }
@@ -160,8 +163,8 @@ SequenceManager::GetNextSeqId(int seq_stat_index)
 size_t
 SequenceManager::GetRandomSequenceLength(double offset_ratio)
 {
-  int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
-                      sequence_length_;
+  int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio /
+                      100.0 * sequence_length_;
   if (int(sequence_length_) + random_offset <= 0) {
     return 1;
   }

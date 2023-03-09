@@ -76,7 +76,7 @@ struct AsyncRequestProperties {
 };
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class TestInferContext;
+class MockInferContext;
 #endif
 
 /// Sends inference requests to the server
@@ -142,7 +142,7 @@ class InferContext {
   /// A helper function to issue inference request to the server.
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  void SendRequest(const uint64_t request_id, const bool delayed);
+  virtual void SendRequest(const uint64_t request_id, const bool delayed);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -158,7 +158,7 @@ class InferContext {
   const bool async_{false};
   const bool streaming_{false};
   const bool on_sequence_model_{false};
-  const bool using_json_data_{false};
+  bool using_json_data_{false};
   const int32_t batch_size_{0};
 
   std::shared_ptr<ThreadStat> thread_stat_;
@@ -198,7 +198,7 @@ class InferContext {
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend TestInferContext;
+  friend MockInferContext;
 
  protected:
   InferContext() = default;

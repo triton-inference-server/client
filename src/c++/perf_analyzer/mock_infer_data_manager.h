@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include "gmock/gmock.h"
 #include "infer_data_manager.h"
 #include "infer_data_manager_shm.h"
 #include "mock_client_backend.h"
@@ -69,18 +70,30 @@ class MockInferDataManagerShm : public InferDataManagerShm {
 
 class MockInferDataManager : public InferDataManager {
  public:
+  MockInferDataManager() { SetupMocks(); }
+
   MockInferDataManager(
       const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
       : InferDataManager(batch_size, parser, factory, data_loader)
   {
+    SetupMocks();
   }
 
-  MockInferDataManager(bool use_mock_update_infer_data = false)
-      : use_mock_update_infer_data_(use_mock_update_infer_data)
+  void SetupMocks()
   {
+    ON_CALL(*this, UpdateInferData(testing::_, testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                int stream_index, int step_index,
+                InferData& infer_data) -> cb::Error {
+              return this->InferDataManager::UpdateInferData(
+                  stream_index, step_index, infer_data);
+            });
   }
+
+  MOCK_METHOD(cb::Error, UpdateInferData, (int, int, InferData&), (override));
 
   cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
@@ -90,21 +103,6 @@ class MockInferDataManager : public InferDataManager {
     *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
     return cb::Error::Success;
   }
-
-  cb::Error UpdateInferData(
-      int stream_index, int step_index, InferData& infer_data) override
-  {
-    if (use_mock_update_infer_data_) {
-      update_infer_data_step_index_values_.push_back(step_index);
-      return cb::Error::Success;
-    } else {
-      return InferDataManager::UpdateInferData(
-          stream_index, step_index, infer_data);
-    }
-  }
-
-  std::vector<int> update_infer_data_step_index_values_{};
-  const bool use_mock_update_infer_data_{false};
 };
 
 class MockInferDataManagerFactory {

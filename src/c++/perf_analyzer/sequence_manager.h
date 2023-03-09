@@ -38,7 +38,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class TestSequenceManager;
+class MockSequenceManager;
 #endif
 
 /// Manages operations related to preparing requests to sequence models.
@@ -80,13 +80,13 @@ class SequenceManager {
   /// \param sequence_status_index The index of the sequence status object.
   /// \return The data stream ID for the specified sequence status object.
   ///
-  virtual const uint64_t GetDataStreamID(size_t sequence_status_index) const;
+  const uint64_t GetDataStreamID(size_t sequence_status_index) const;
 
   /// Gets the remaining queries for the specified sequence status object.
   /// \param sequence_status_index The index of the sequence status object.
   /// \return The remaining queries for the specified sequence status object.
   ///
-  virtual const size_t GetRemainingQueries(size_t sequence_status_index) const;
+  const size_t GetRemainingQueries(size_t sequence_status_index) const;
 
   /// Sets the remaining queries for the specified sequence status object.
   /// \param sequence_status_index The index of the sequence status object.
@@ -114,7 +114,7 @@ class SequenceManager {
   /// having its options set.
   /// \param options The options object for the request that is being prepared.
   ///
-  void SetInferSequenceOptions(
+  virtual void SetInferSequenceOptions(
       const uint32_t seq_stat_index,
       std::unique_ptr<cb::InferOptions>& options);
 
@@ -122,14 +122,14 @@ class SequenceManager {
   /// \param sequence_status_index The index of the sequence status object.
   /// \return The sequence length for the specified sequence status object.
   ///
-  virtual const size_t GetSequenceLength(size_t sequence_status_index) const;
+  const size_t GetSequenceLength(size_t sequence_status_index) const;
 
  private:
   /// Initializes values for a sequence status object.
   /// \param seq_stat_index The index for the sequence status object that is
   /// being initialized.
   ///
-  void InitNewSequence(int seq_stat_index);
+  virtual void InitNewSequence(int seq_stat_index);
 
   /// Determines an appropriate next sequence ID for a renewed sequence status
   /// object.
@@ -138,13 +138,13 @@ class SequenceManager {
   /// \return The potentially new sequence ID to be used by a renewed sequence
   /// status object.
   ///
-  uint64_t GetNextSeqId(int seq_stat_index);
+  virtual uint64_t GetNextSeqId(int seq_stat_index);
 
   /// Generates a random sequence length based on a threshold.
   /// \param offset_ratio The offset ratio/threshold of the generated length.
   /// \return A random sequence length.
   ///
-  size_t GetRandomSequenceLength(double offset_ratio);
+  virtual size_t GetRandomSequenceLength(double offset_ratio);
 
   /// Data structure holding sequence status objects
   ///
@@ -197,7 +197,7 @@ class SequenceManager {
   std::default_random_engine rng_generator_{};
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend TestSequenceManager;
+  friend MockSequenceManager;
 
  protected:
   SequenceManager() = default;

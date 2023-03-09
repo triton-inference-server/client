@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,39 +25,23 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "data_loader.h"
 #include "gmock/gmock.h"
+#include "infer_context.h"
 
 namespace triton { namespace perfanalyzer {
 
-/// Mock DataLoader class used for testing to allow JSON data to be read
-/// from string, rather than file.
-///
-class MockDataLoader : public DataLoader {
+class MockInferContext : public InferContext {
  public:
-  MockDataLoader()
-  {
-    ON_CALL(*this, GetTotalSteps(testing::_))
-        .WillByDefault([this](size_t stream_id) -> size_t {
-          return this->DataLoader::GetTotalSteps(stream_id);
-        });
-  }
+  MOCK_METHOD(void, SendRequest, (const uint64_t, const bool), (override));
 
-  MOCK_METHOD(size_t, GetTotalSteps, (size_t), (override));
-
-  cb::Error ReadDataFromStr(
-      const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
-      const std::shared_ptr<ModelTensorMap>& outputs)
-  {
-    rapidjson::Document d{};
-    const unsigned int parseFlags = rapidjson::kParseNanAndInfFlag;
-    d.Parse<parseFlags>(str.c_str());
-
-    return ParseData(d, inputs, outputs);
-  };
-
-  std::vector<size_t>& step_num_{DataLoader::step_num_};
-  size_t& data_stream_cnt_{DataLoader::data_stream_cnt_};
+  std::shared_ptr<SequenceManager>& sequence_manager_{
+      InferContext::sequence_manager_};
+  std::shared_ptr<DataLoader>& data_loader_{InferContext::data_loader_};
+  std::shared_ptr<IInferDataManager>& infer_data_manager_{
+      InferContext::infer_data_manager_};
+  std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
+  std::reference_wrapper<const bool>& execute_{InferContext::execute_};
+  bool& using_json_data_{InferContext::using_json_data_};
 };
 
 }}  // namespace triton::perfanalyzer
