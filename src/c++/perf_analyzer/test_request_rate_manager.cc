@@ -312,6 +312,126 @@ class TestRequestRateManager : public TestLoadManagerBase,
     StopWorkerThreads();
   }
 
+  void TestCustomData(
+      std::vector<ModelTensor>& tensors, const std::string json_str,
+      std::vector<std::vector<int32_t>>& expected_results,
+      bool expect_init_failure, bool expect_thread_failure)
+  {
+    std::shared_ptr<MockDataLoader> mdl{
+        std::make_shared<MockDataLoader>(params_.batch_size)};
+
+    std::shared_ptr<MockModelParser> mmp{
+        std::make_shared<MockModelParser>(on_sequence_model_, false)};
+    mmp->inputs_ = std::make_shared<ModelTensorMap>();
+    for (auto t : tensors) {
+      (*mmp->inputs_)[t.name_] = t;
+    }
+
+    infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
+            params_.batch_size, params_.shared_memory_type,
+            params_.output_shm_size, mmp, factory_, mdl);
+
+    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+
+    parser_ = mmp;
+    data_loader_ = mdl;
+    using_json_data_ = true;
+    execute_ = true;
+    max_threads_ = 1;
+    RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+    schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                        milliseconds(12), milliseconds(16)};
+    schedule->duration = nanoseconds{16000000};
+
+
+    // Temporarily suppress output
+    // FIXME TKG -- should I suppress it?
+    // auto old_cout = std::cout.rdbuf(nullptr);
+    // auto old_cerr = std::cerr.rdbuf(nullptr);
+    if (expect_init_failure) {
+      REQUIRE_THROWS_AS(
+          InitManager(
+              params_.string_length, params_.string_data, params_.zero_input,
+              params_.user_data, params_.start_sequence_id,
+              params_.sequence_id_range, params_.sequence_length,
+              params.sequence_length_specified,
+              params.sequence_length_variation),
+          PerfAnalyzerException);
+      // std::cout.rdbuf(old_cout);
+      // std::cerr.rdbuf(old_cerr);
+      return;
+    } else {
+      REQUIRE_NOTHROW(InitManager(
+          params_.string_length, params_.string_data, params_.zero_input,
+          params_.user_data, params_.start_sequence_id,
+          params_.sequence_id_range, params_.sequence_length,
+          params.sequence_length_specified, params.sequence_length_variation));
+    }
+    // Restore output
+    // std::cout.rdbuf(old_cout);
+    // std::cerr.rdbuf(old_cerr);
+
+    start_time_ = std::chrono::steady_clock::now();
+
+    std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
+    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+    std::this_thread::sleep_for(milliseconds(18));
+
+    early_exit = true;
+    infer_future.get();
+
+
+    if (!thread_stat->status_.IsOk() && !expect_thread_failure) {
+      std::cout << "Unexpected thread failure: "
+                << thread_stat->status_.Message() << std::endl;
+    }
+
+    REQUIRE(thread_stat->status_.IsOk() != expect_thread_failure);
+    if (!thread_stat->status_.IsOk()) {
+      return;
+    }
+
+    const auto& recorded_inputs{stats_->recorded_inputs};
+
+    // FIXME TKG remove this debug
+    std::cout << "TKG -- values are: ";
+    for (auto x : recorded_inputs) {
+      std::cout << "[";
+      for (auto y : x) {
+        std::cout << *reinterpret_cast<const int32_t*>(y.first) << ",";
+      }
+      std::cout << "],";
+    }
+    std::cout << std::endl;
+
+    std::cout << "TKG -- expected are: ";
+    for (auto x : expected_results) {
+      std::cout << "[";
+      for (auto y : x) {
+        std::cout << y << ",";
+      }
+      std::cout << "],";
+    }
+    std::cout << std::endl;
+
+
+    REQUIRE(recorded_inputs.size() >= expected_results.size());
+    for (size_t i = 0; i < expected_results.size(); i++) {
+      REQUIRE(expected_results[i].size() == recorded_inputs[i].size());
+      for (size_t j = 0; j < expected_results[i].size(); j++) {
+        CHECK(
+            *reinterpret_cast<const int32_t*>(recorded_inputs[i][j].first) ==
+            expected_results[i][j]);
+        CHECK(recorded_inputs[i][j].second == 4);
+      }
+    }
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -666,13 +786,11 @@ TEST_CASE(
   PerfAnalyzerParameters params{};
   params.user_data = {"fake_file.json"};
   bool is_sequence_model{false};
+
   std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
   bool expect_init_failure = false;
   bool expect_thread_failure = false;
-
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(is_sequence_model, false)};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
 
   ModelTensor model_tensor1{};
   model_tensor1.datatype_ = "INT32";
@@ -786,7 +904,7 @@ TEST_CASE(
   const auto& ParameterizeTensors{[&]() {
     SUBCASE("one tensor")
     {
-      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      tensors.push_back(model_tensor1);
       switch (params.batch_size) {
         case 1:
           expected_results = {{1}, {2}, {3}, {1}};
@@ -822,8 +940,8 @@ TEST_CASE(
         default:
           REQUIRE(false);
       }
-      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
-      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      tensors.push_back(model_tensor1);
+      tensors.push_back(model_tensor2);
       ParameterizeSequence();
     }
     SUBCASE("two tensors one missing")
@@ -833,8 +951,8 @@ TEST_CASE(
         json_str = optional_json_str;
         expect_init_failure = true;
         model_tensor2.is_optional_ = false;
-        (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
-        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+        tensors.push_back(model_tensor1);
+        tensors.push_back(model_tensor2);
         ParameterizeSequence();
       }
       SUBCASE("optional")
@@ -859,8 +977,8 @@ TEST_CASE(
         }
 
 
-        (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
-        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+        tensors.push_back(model_tensor1);
+        tensors.push_back(model_tensor2);
         ParameterizeSequence();
       }
     }
@@ -884,8 +1002,8 @@ TEST_CASE(
           REQUIRE(false);
       }
 
-      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
-      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      tensors.push_back(model_tensor1);
+      tensors.push_back(model_tensor2);
       ParameterizeSequence();
     }
     SUBCASE("shape tensor - valid")
@@ -915,9 +1033,8 @@ TEST_CASE(
           REQUIRE(false);
       }
 
-
-      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
-      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      tensors.push_back(model_tensor1);
+      tensors.push_back(model_tensor2);
       ParameterizeSequence();
     }
   }};
@@ -941,115 +1058,13 @@ TEST_CASE(
   }};
 
   ParameterizeBatchSize();
-
-
   params.user_data = {json_str};
-  std::shared_ptr<MockDataLoader> mdl{
-      std::make_shared<MockDataLoader>(params.batch_size)};
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
-  trrm.infer_data_manager_ =
-      MockInferDataManagerFactory::CreateMockInferDataManager(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mmp, trrm.factory_, mdl);
-
-  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
-
-  trrm.parser_ = mmp;
-  trrm.data_loader_ = mdl;
-  trrm.using_json_data_ = true;
-  trrm.execute_ = true;
-  trrm.max_threads_ = 1;
-  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                      milliseconds(12), milliseconds(16)};
-  schedule->duration = nanoseconds{16000000};
-
-  // Temporarily suppress output
-  // FIXME TKG -- should I suppress it?
-  // auto old_cout = std::cout.rdbuf(nullptr);
-  // auto old_cerr = std::cerr.rdbuf(nullptr);
-  if (expect_init_failure) {
-    REQUIRE_THROWS_AS(
-        trrm.InitManager(
-            params.string_length, params.string_data, params.zero_input,
-            params.user_data, params.start_sequence_id,
-            params.sequence_id_range, params.sequence_length,
-            params.sequence_length_specified, params.sequence_length_variation),
-        PerfAnalyzerException);
-    // std::cout.rdbuf(old_cout);
-    // std::cerr.rdbuf(old_cerr);
-    return;
-  } else {
-    REQUIRE_NOTHROW(trrm.InitManager(
-        params.string_length, params.string_data, params.zero_input,
-        params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length, params.sequence_length_specified,
-        params.sequence_length_variation));
-  }
-  // Restore output
-  // std::cout.rdbuf(old_cout);
-  // std::cerr.rdbuf(old_cerr);
-
-  trrm.start_time_ = std::chrono::steady_clock::now();
-
-  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
-  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
-
-  std::this_thread::sleep_for(milliseconds(18));
-
-  early_exit = true;
-  infer_future.get();
-
-
-  if (!thread_stat->status_.IsOk() && !expect_thread_failure) {
-    std::cout << "Unexpected thread failure: " << thread_stat->status_.Message()
-              << std::endl;
-  }
-
-  REQUIRE(thread_stat->status_.IsOk() != expect_thread_failure);
-  if (!thread_stat->status_.IsOk()) {
-    return;
-  }
-
-  const auto& recorded_inputs{trrm.stats_->recorded_inputs};
-
-  // FIXME TKG remove this debug
-  std::cout << "TKG -- values are: ";
-  for (auto x : recorded_inputs) {
-    std::cout << "[";
-    for (auto y : x) {
-      std::cout << *reinterpret_cast<const int32_t*>(y.first) << ",";
-    }
-    std::cout << "],";
-  }
-  std::cout << std::endl;
-
-  std::cout << "TKG -- expected are: ";
-  for (auto x : expected_results) {
-    std::cout << "[";
-    for (auto y : x) {
-      std::cout << y << ",";
-    }
-    std::cout << "],";
-  }
-  std::cout << std::endl;
-
-
-  REQUIRE(recorded_inputs.size() >= expected_results.size());
-  for (size_t i = 0; i < expected_results.size(); i++) {
-    REQUIRE(expected_results[i].size() == recorded_inputs[i].size());
-    for (size_t j = 0; j < expected_results[i].size(); j++) {
-      CHECK(
-          *reinterpret_cast<const int32_t*>(recorded_inputs[i][j].first) ==
-          expected_results[i][j]);
-      CHECK(recorded_inputs[i][j].second == 4);
-    }
-  }
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
 }
 
 /// Verify Shared Memory api calls
