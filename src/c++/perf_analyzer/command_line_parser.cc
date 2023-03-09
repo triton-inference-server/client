@@ -434,9 +434,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --sequence-length: Indicates the base length of a "
                    "sequence used for sequence models. A sequence with length "
-                   "x will be composed of x requests to be sent as the "
+                   "X will be composed of X requests to be sent as the "
                    "elements in the sequence. The actual length of the sequence"
-                   "will be within +/- X% of the base length, where X defaults "
+                   "will be within +/- Y% of the base length, where Y defaults "
                    "to 20% and is customizable via "
                    "`--sequence-length-variation`. If sequence length is "
                    "unspecified and input data is provided, the sequence "
@@ -447,7 +447,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --sequence-length-variation: The percentage variation in "
                    "length of sequences. This flag is only valid when "
-                   "not using user-provided input data and when "
+                   "not using user-provided input data or when "
                    "`--sequence-length` is specified while using user-provided "
                    "input data. Default is 20.",
                    18)
