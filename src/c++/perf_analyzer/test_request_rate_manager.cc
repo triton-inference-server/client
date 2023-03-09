@@ -366,10 +366,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     for (size_t i = 0; i < expected_inputs.size(); i++) {
       REQUIRE(expected_inputs[i].size() == recorded_inputs[i].size());
       for (size_t j = 0; j < expected_inputs[i].size(); j++) {
-        CHECK(
-            *reinterpret_cast<const int32_t*>(recorded_inputs[i][j].first) ==
-            expected_inputs[i][j]);
-        CHECK(recorded_inputs[i][j].second == 4);
+        CHECK(recorded_inputs[i][j].data == expected_inputs[i][j]);
+        CHECK(recorded_inputs[i][j].size == 4);
       }
     }
   }

@@ -35,6 +35,23 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
+struct MockRecordedInput {
+  MockRecordedInput(int32_t data_in, size_t size_in)
+      : string_data(""), data(data_in), size(size_in), is_string(false)
+  {
+  }
+
+  MockRecordedInput(std::string string_in, size_t size_in)
+      : string_data(string_in), data(0), size(size_in), is_string(false)
+  {
+  }
+
+  std::string string_data;
+  bool is_string;
+  int32_t data;
+  size_t size;
+};
+
 /// Mock class of an InferInput
 ///
 class MockInferInput : public InferInput {
@@ -56,7 +73,10 @@ class MockInferInput : public InferInput {
 
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
-    recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
+    if (input) {
+      int32_t val = *reinterpret_cast<const int32_t*>(input);
+      recorded_inputs_.push_back(MockRecordedInput(val, input_byte_size));
+    }
     ++append_raw_calls_;
     return Error::Success;
   }
@@ -69,7 +89,7 @@ class MockInferInput : public InferInput {
   }
 
   const std::vector<int64_t> dims_{};
-  std::vector<std::pair<const uint8_t*, size_t>> recorded_inputs_{};
+  std::vector<MockRecordedInput> recorded_inputs_{};
   std::atomic<size_t> append_raw_calls_{0};
   std::atomic<size_t> set_shared_memory_calls_{0};
 };
@@ -274,7 +294,7 @@ class MockClientStats {
   // request. If there are multiple inputs due to batching and/or the model
   // having multiple inputs, all of those from the same request will be in the
   // same second level vector
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
+  std::vector<std::vector<MockRecordedInput>> recorded_inputs{};
 
   void CaptureRequest(
       ReqType type, const InferOptions& options,
@@ -287,7 +307,7 @@ class MockClientStats {
 
     // Group all values across all inputs together into a single vector, and
     // then record it
-    std::vector<std::pair<const uint8_t*, size_t>> tmp_inputs;
+    std::vector<MockRecordedInput> tmp_inputs;
     for (const auto& input : inputs) {
       auto x = static_cast<const MockInferInput*>(input)->recorded_inputs_;
       tmp_inputs.insert(tmp_inputs.end(), x.begin(), x.end());
