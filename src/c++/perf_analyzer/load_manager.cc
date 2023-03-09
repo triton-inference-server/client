@@ -186,6 +186,8 @@ LoadManager::InitManager(
     const size_t sequence_length, const bool sequence_length_specified,
     const double sequence_length_variation)
 {
+  // Note, this is already caught by the CLI, but adding it here for extra
+  // protection
   if (on_sequence_model_ && batch_size_ > 1) {
     std::cerr << "error: sequence models do not support batching" << std::endl;
     throw PerfAnalyzerException(GENERIC_ERROR);
