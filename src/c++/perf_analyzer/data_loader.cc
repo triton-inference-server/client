@@ -325,22 +325,8 @@ DataLoader::GetInputData(
 
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {
-    // FIXME TKG isn't this the same validation code?
-    // validate if the indices conform to the vector sizes
-    if (stream_id < 0 || stream_id >= (int)data_stream_cnt_) {
-      return cb::Error(
-          "stream_id for retrieving the data should be less than " +
-              std::to_string(data_stream_cnt_) + ", got " +
-              std::to_string(stream_id),
-          pa::GENERIC_ERROR);
-    }
-    if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
-      return cb::Error(
-          "step_id for retrieving the data should be less than " +
-              std::to_string(step_num_[stream_id]) + ", got " +
-              std::to_string(step_id),
-          pa::GENERIC_ERROR);
-    }
+    RETURN_IF_ERROR(ValidateIndexes(stream_id, step_id));
+
     std::string key_name(
         input.name_ + "_" + std::to_string(stream_id) + "_" +
         std::to_string(step_id));
@@ -391,21 +377,8 @@ DataLoader::GetOutputData(
   *batch1_size = 0;
   // If json data is available then try to retrieve the data from there
   if (!output_data_.empty()) {
-    // validate if the indices conform to the vector sizes
-    if (stream_id < 0 || stream_id >= (int)data_stream_cnt_) {
-      return cb::Error(
-          "stream_id for retrieving the data should be less than " +
-              std::to_string(data_stream_cnt_) + ", got " +
-              std::to_string(stream_id),
-          pa::GENERIC_ERROR);
-    }
-    if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
-      return cb::Error(
-          "step_id for retrieving the data should be less than " +
-              std::to_string(step_num_[stream_id]) + ", got " +
-              std::to_string(step_id),
-          pa::GENERIC_ERROR);
-    }
+    RETURN_IF_ERROR(ValidateIndexes(stream_id, step_id));
+
     std::string key_name(
         output_name + "_" + std::to_string(stream_id) + "_" +
         std::to_string(step_id));
@@ -418,6 +391,27 @@ DataLoader::GetOutputData(
   }
   return cb::Error::Success;
 }
+
+cb::Error
+DataLoader::ValidateIndexes(int stream_id, int step_id)
+{
+  if (stream_id < 0 || stream_id >= (int)data_stream_cnt_) {
+    return cb::Error(
+        "stream_id for retrieving the data should be less than " +
+            std::to_string(data_stream_cnt_) + ", got " +
+            std::to_string(stream_id),
+        pa::GENERIC_ERROR);
+  }
+  if (step_id < 0 || step_id >= (int)step_num_[stream_id]) {
+    return cb::Error(
+        "step_id for retrieving the data should be less than " +
+            std::to_string(step_num_[stream_id]) + ", got " +
+            std::to_string(step_id),
+        pa::GENERIC_ERROR);
+  }
+  return cb::Error::Success;
+}
+
 
 cb::Error
 DataLoader::GetInputShape(

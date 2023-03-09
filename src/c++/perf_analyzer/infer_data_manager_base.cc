@@ -49,7 +49,7 @@ cb::Error
 InferDataManagerBase::UpdateInferData(
     int stream_index, int step_index, InferData& infer_data)
 {
-  RETURN_IF_ERROR(ValidateDataIndexes(stream_index, step_index));
+  RETURN_IF_ERROR(data_loader_->ValidateIndexes(stream_index, step_index));
   RETURN_IF_ERROR(UpdateInputs(stream_index, step_index, infer_data));
   RETURN_IF_ERROR(
       UpdateValidationOutputs(stream_index, step_index, infer_data));
@@ -60,7 +60,7 @@ cb::Error
 InferDataManagerBase::UpdateValidationOutputs(
     int stream_index, int step_index, InferData& infer_data)
 {
-  RETURN_IF_ERROR(ValidateDataIndexes(stream_index, step_index));
+  RETURN_IF_ERROR(data_loader_->ValidateIndexes(stream_index, step_index));
 
   infer_data.expected_outputs_.clear();
 
@@ -89,27 +89,6 @@ InferDataManagerBase::UpdateValidationOutputs(
     if (!output_data.empty()) {
       infer_data.expected_outputs_.emplace_back(std::move(output_data));
     }
-  }
-  return cb::Error::Success;
-}
-
-cb::Error
-InferDataManagerBase::ValidateDataIndexes(int stream_index, int step_index)
-{
-  size_t data_stream_count = data_loader_->GetDataStreamsCount();
-  if (stream_index < 0 || stream_index >= (int)data_stream_count) {
-    return cb::Error(
-        "stream_index for retrieving the data should be less than " +
-            std::to_string(data_stream_count) + ", got " +
-            std::to_string(stream_index),
-        pa::GENERIC_ERROR);
-  }
-  size_t step_count = data_loader_->GetTotalSteps(stream_index);
-  if (step_index < 0 || step_index >= (int)step_count) {
-    return cb::Error(
-        "step_id for retrieving the data should be less than " +
-            std::to_string(step_count) + ", got " + std::to_string(step_index),
-        pa::GENERIC_ERROR);
   }
   return cb::Error::Success;
 }
