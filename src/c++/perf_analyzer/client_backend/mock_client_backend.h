@@ -270,6 +270,10 @@ class MockClientStats {
   SeqStatus sequence_status;
   SharedMemoryStats memory_stats;
 
+  // Each entry in the top vector is a list of all inputs for an inference
+  // request. If there are multiple inputs due to batching and/or the model
+  // having multiple inputs, all of those from the same request will be in the
+  // same second level vector
   std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
 
   void CaptureRequest(
