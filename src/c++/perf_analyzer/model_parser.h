@@ -41,6 +41,7 @@ struct ModelTensor {
   std::string name_;
   std::string datatype_;
   std::vector<int64_t> shape_;
+  // Indicates if this tensor holds shape information for other tensors
   bool is_shape_tensor_;
   bool is_optional_;
 };

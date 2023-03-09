@@ -281,10 +281,14 @@ class MockClientStats {
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
 
+    // Group all values across all inputs together into a single vector, and
+    // then record it
+    std::vector<std::pair<const uint8_t*, size_t>> tmp_inputs;
     for (const auto& input : inputs) {
-      recorded_inputs.push_back(
-          static_cast<const MockInferInput*>(input)->recorded_inputs_);
+      auto x = static_cast<const MockInferInput*>(input)->recorded_inputs_;
+      tmp_inputs.insert(tmp_inputs.end(), x.begin(), x.end());
     }
+    recorded_inputs.push_back(tmp_inputs);
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);

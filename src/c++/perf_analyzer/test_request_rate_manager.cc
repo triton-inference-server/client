@@ -664,7 +664,89 @@ TEST_CASE(
     "correctly")
 {
   PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
   bool is_sequence_model{false};
+  std::vector<std::vector<int32_t>> expected_results;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  std::shared_ptr<MockModelParser> mmp{
+      std::make_shared<MockModelParser>(is_sequence_model, false)};
+  mmp->inputs_ = std::make_shared<ModelTensorMap>();
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2{};
+  model_tensor2.datatype_ = "INT32";
+  model_tensor2.is_optional_ = false;
+  model_tensor2.is_shape_tensor_ = false;
+  model_tensor2.name_ = "INPUT2";
+  model_tensor2.shape_ = {1};
+
+  std::string normal_json_str{R"(
+  {
+   "data": [
+     {
+       "INPUT1": [1],
+       "INPUT2": [21]
+     },
+     {
+       "INPUT1": [2],
+       "INPUT2": [22]
+     },
+     {
+       "INPUT1": [3],
+       "INPUT2": [23]
+     }     
+   ]
+  }
+     )"};
+
+
+  std::string optional_json_str{R"(
+{
+  "data": [
+    {
+      "INPUT1": [1]
+    },
+    {
+      "INPUT1": [2],
+      "INPUT2": [22]
+    },
+    {
+      "INPUT1": [3]
+    }
+  ]
+}
+    )"};
+
+
+  std::string shape_json_str{R"(
+{
+  "data": [
+    {
+      "INPUT1": [1],
+      "INPUT2": [21]
+    },
+    {
+      "INPUT1": [1],
+      "INPUT2": [22]
+    },
+    {
+      "INPUT1": [1],
+      "INPUT2": [23]
+    }     
+  ]
+ }
+     )"};
+
+  std::string json_str = normal_json_str;
+
   const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
     SUBCASE("sync non-streaming")
     {
@@ -683,43 +765,187 @@ TEST_CASE(
     }
   }};
 
-  SUBCASE("non-sequence")
-  {
-    is_sequence_model = false;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-  SUBCASE("sequence")
-  {
-    is_sequence_model = true;
-    params.num_of_sequences = 1;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(is_sequence_model, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
-  const std::string json_str{R"(
-{
-  "data": [
+  const auto& ParameterizeSequence{[&]() {
+    SUBCASE("non-sequence")
     {
-      "INPUT0": [2000000000]
-    },
-    {
-      "INPUT0": [2000000001]
+      is_sequence_model = false;
+      ParameterizeAsyncAndStreaming(params.async, params.streaming);
     }
-  ]
-}
-    )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+    SUBCASE("sequence")
+    {
+      // sequence models do not support batching
+      if (params.batch_size > 1) {
+        expect_init_failure = true;
+      }
+      is_sequence_model = true;
+      params.num_of_sequences = 1;
+      ParameterizeAsyncAndStreaming(params.async, params.streaming);
+    }
+  }};
+
+  const auto& ParameterizeTensors{[&]() {
+    SUBCASE("one tensor")
+    {
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1}, {2}, {3}, {1}};
+          break;
+        case 2:
+          expected_results = {{1, 2}, {3, 1}, {2, 3}, {1, 2}};
+          break;
+        case 4:
+          expected_results = {
+              {1, 2, 3, 1}, {2, 3, 1, 2}, {3, 1, 2, 3}, {1, 2, 3, 1}};
+          break;
+        default:
+          REQUIRE(false);
+      }
+      ParameterizeSequence();
+    }
+    SUBCASE("two tensors")
+    {
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+          break;
+        case 2:
+          expected_results = {
+              {1, 2, 21, 22}, {3, 1, 23, 21}, {2, 3, 22, 23}, {1, 2, 21, 22}};
+          break;
+        case 4:
+          expected_results = {{1, 2, 3, 1, 21, 22, 23, 21},
+                              {2, 3, 1, 2, 22, 23, 21, 22},
+                              {3, 1, 2, 3, 23, 21, 22, 23},
+                              {1, 2, 3, 1, 21, 22, 23, 21}};
+          break;
+        default:
+          REQUIRE(false);
+      }
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
+    }
+    SUBCASE("two tensors one missing")
+    {
+      SUBCASE("not optional -- expect parsing fail")
+      {
+        json_str = optional_json_str;
+        expect_init_failure = true;
+        model_tensor2.is_optional_ = false;
+        (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+        ParameterizeSequence();
+      }
+      SUBCASE("optional")
+      {
+        json_str = optional_json_str;
+        expect_init_failure = false;
+        model_tensor2.is_optional_ = true;
+
+        switch (params.batch_size) {
+          case 1:
+            expected_results = {{1}, {2, 22}, {3}, {1}};
+            break;
+          case 2:
+          case 4:
+            // For batch sizes larger than 1, the same set of inputs must be
+            // specified for each batch. You cannot use different set of
+            // optional inputs for each individual batch.
+            expect_thread_failure = true;
+            break;
+          default:
+            REQUIRE(false);
+        }
+
+
+        (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+        (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+        ParameterizeSequence();
+      }
+    }
+    SUBCASE("shape tensor - invalid")
+    {
+      // Test the case where is_shape_tensor is true and is NOT the same across
+      // a batch: it will fail for batch size > 1
+      model_tensor1.is_shape_tensor_ = true;
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+          break;
+        case 2:
+          expect_thread_failure = true;
+          break;
+        case 4:
+          expect_thread_failure = true;
+          break;
+        default:
+          REQUIRE(false);
+      }
+
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
+    }
+    SUBCASE("shape tensor - valid")
+    {
+      // Test the case where is_shape_tensor is true and is the same across a
+      // batch: it only ends up in each batch once
+      model_tensor1.is_shape_tensor_ = true;
+      json_str = shape_json_str;
+      expect_thread_failure = false;
+      model_tensor2.is_optional_ = true;
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+          break;
+        case 2:
+          expected_results = {
+              {1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+          break;
+        case 4:
+          expected_results = {{1, 21, 22, 23, 21},
+                              {1, 22, 23, 21, 22},
+                              {1, 23, 21, 22, 23},
+                              {1, 21, 22, 23, 21}};
+          break;
+        default:
+          REQUIRE(false);
+      }
+
+
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
+    }
+  }};
+
+  const auto& ParameterizeBatchSize{[&]() {
+    SUBCASE("batchsize = 1")
+    {
+      params.batch_size = 1;
+      ParameterizeTensors();
+    }
+    SUBCASE("batchsize = 2")
+    {
+      params.batch_size = 2;
+      ParameterizeTensors();
+    }
+    SUBCASE("batchsize = 4")
+    {
+      params.batch_size = 4;
+      ParameterizeTensors();
+    }
+  }};
+
+  ParameterizeBatchSize();
+
+
+  params.user_data = {json_str};
+  std::shared_ptr<MockDataLoader> mdl{
+      std::make_shared<MockDataLoader>(params.batch_size)};
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
@@ -736,18 +962,37 @@ TEST_CASE(
   trrm.data_loader_ = mdl;
   trrm.using_json_data_ = true;
   trrm.execute_ = true;
-  trrm.batch_size_ = 1;
   trrm.max_threads_ = 1;
   RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
   schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
                                       milliseconds(12), milliseconds(16)};
   schedule->duration = nanoseconds{16000000};
 
-  trrm.InitManager(
-      params.string_length, params.string_data, params.zero_input,
-      params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length, params.sequence_length_specified,
-      params.sequence_length_variation);
+  // Temporarily suppress output
+  // FIXME TKG -- should I suppress it?
+  // auto old_cout = std::cout.rdbuf(nullptr);
+  // auto old_cerr = std::cerr.rdbuf(nullptr);
+  if (expect_init_failure) {
+    REQUIRE_THROWS_AS(
+        trrm.InitManager(
+            params.string_length, params.string_data, params.zero_input,
+            params.user_data, params.start_sequence_id,
+            params.sequence_id_range, params.sequence_length,
+            params.sequence_length_specified, params.sequence_length_variation),
+        PerfAnalyzerException);
+    // std::cout.rdbuf(old_cout);
+    // std::cerr.rdbuf(old_cerr);
+    return;
+  } else {
+    REQUIRE_NOTHROW(trrm.InitManager(
+        params.string_length, params.string_data, params.zero_input,
+        params.user_data, params.start_sequence_id, params.sequence_id_range,
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation));
+  }
+  // Restore output
+  // std::cout.rdbuf(old_cout);
+  // std::cerr.rdbuf(old_cerr);
 
   trrm.start_time_ = std::chrono::steady_clock::now();
 
@@ -760,25 +1005,51 @@ TEST_CASE(
   early_exit = true;
   infer_future.get();
 
+
+  if (!thread_stat->status_.IsOk() && !expect_thread_failure) {
+    std::cout << "Unexpected thread failure: " << thread_stat->status_.Message()
+              << std::endl;
+  }
+
+  REQUIRE(thread_stat->status_.IsOk() != expect_thread_failure);
+  if (!thread_stat->status_.IsOk()) {
+    return;
+  }
+
   const auto& recorded_inputs{trrm.stats_->recorded_inputs};
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[0][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[1][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[2][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[3][0].second == 4);
+  // FIXME TKG remove this debug
+  std::cout << "TKG -- values are: ";
+  for (auto x : recorded_inputs) {
+    std::cout << "[";
+    for (auto y : x) {
+      std::cout << *reinterpret_cast<const int32_t*>(y.first) << ",";
+    }
+    std::cout << "],";
+  }
+  std::cout << std::endl;
+
+  std::cout << "TKG -- expected are: ";
+  for (auto x : expected_results) {
+    std::cout << "[";
+    for (auto y : x) {
+      std::cout << y << ",";
+    }
+    std::cout << "],";
+  }
+  std::cout << std::endl;
+
+
+  REQUIRE(recorded_inputs.size() >= expected_results.size());
+  for (size_t i = 0; i < expected_results.size(); i++) {
+    REQUIRE(expected_results[i].size() == recorded_inputs[i].size());
+    for (size_t j = 0; j < expected_results[i].size(); j++) {
+      CHECK(
+          *reinterpret_cast<const int32_t*>(recorded_inputs[i][j].first) ==
+          expected_results[i][j]);
+      CHECK(recorded_inputs[i][j].second == 4);
+    }
+  }
 }
 
 /// Verify Shared Memory api calls

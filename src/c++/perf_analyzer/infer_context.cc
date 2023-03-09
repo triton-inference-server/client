@@ -175,8 +175,7 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
 void
 InferContext::UpdateJsonData()
 {
-  int step_id =
-      (data_step_id_ % data_loader_->GetTotalStepsNonSequence()) * batch_size_;
+  int step_id = (data_step_id_ * batch_size_) % data_loader_->GetTotalSteps(0);
   data_step_id_ += GetNumActiveThreads();
   thread_stat_->status_ =
       infer_data_manager_->UpdateInferData(0, step_id, infer_data_);
