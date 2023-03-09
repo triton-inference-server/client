@@ -718,6 +718,26 @@ TEST_CASE(
 }
     )"};
 
+
+  std::string shape_json_str{R"(
+{
+  "data": [
+    {
+      "INPUT1": [1],
+      "INPUT2": [21]
+    },
+    {
+      "INPUT1": [1],
+      "INPUT2": [22]
+    },
+    {
+      "INPUT1": [1],
+      "INPUT2": [23]
+    }     
+  ]
+ }
+     )"};
+
   std::string json_str = normal_json_str;
 
   const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
@@ -837,19 +857,61 @@ TEST_CASE(
         ParameterizeSequence();
       }
     }
-  }};
-
-  const auto& ParameterizeShapeTensor{[&]() {
-    // FIXME TKG enable this
-    // SUBCASE("yes shape tensor")
-    // {
-    //   model_tensor1.is_shape_tensor_ = true;
-    //   ParameterizeTensors();
-    // }
-    SUBCASE("not shape tensor")
+    SUBCASE("shape tensor - invalid")
     {
-      model_tensor1.is_shape_tensor_ = false;
-      ParameterizeTensors();
+      // Test the case where is_shape_tensor is true and is NOT the same across
+      // a batch: it will fail for batch size > 1
+      model_tensor1.is_shape_tensor_ = true;
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+          break;
+        case 2:
+          expect_thread_failure = true;
+          break;
+        case 4:
+          expect_thread_failure = true;
+          break;
+        default:
+          REQUIRE(false);
+      }
+
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
+    }
+    SUBCASE("shape tensor - valid")
+    {
+      // Test the case where is_shape_tensor is true and is the same across a
+      // batch: it only ends up in each batch once
+      model_tensor1.is_shape_tensor_ = true;
+      json_str = shape_json_str;
+      expect_thread_failure = false;
+      model_tensor2.is_optional_ = true;
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+          break;
+        case 2:
+          expected_results = {
+              {1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+          break;
+        case 4:
+          expected_results = {{1, 21, 22, 23, 21},
+                              {1, 22, 23, 21, 22},
+                              {1, 23, 21, 22, 23},
+                              {1, 21, 22, 23, 21}};
+          break;
+        default:
+          REQUIRE(false);
+      }
+
+
+      (*mmp->inputs_)[model_tensor1.name_] = model_tensor1;
+      (*mmp->inputs_)[model_tensor2.name_] = model_tensor2;
+      ParameterizeSequence();
     }
   }};
 
@@ -857,17 +919,17 @@ TEST_CASE(
     SUBCASE("batchsize = 1")
     {
       params.batch_size = 1;
-      ParameterizeShapeTensor();
+      ParameterizeTensors();
     }
     SUBCASE("batchsize = 2")
     {
       params.batch_size = 2;
-      ParameterizeShapeTensor();
+      ParameterizeTensors();
     }
     SUBCASE("batchsize = 4")
     {
       params.batch_size = 4;
-      ParameterizeShapeTensor();
+      ParameterizeTensors();
     }
   }};
 
@@ -900,8 +962,9 @@ TEST_CASE(
   schedule->duration = nanoseconds{16000000};
 
   // Temporarily suppress output
-  auto old_cout = std::cout.rdbuf(nullptr);
-  auto old_cerr = std::cerr.rdbuf(nullptr);
+  // FIXME TKG -- should I suppress it?
+  // auto old_cout = std::cout.rdbuf(nullptr);
+  // auto old_cerr = std::cerr.rdbuf(nullptr);
   if (expect_init_failure) {
     REQUIRE_THROWS_AS(
         trrm.InitManager(
@@ -909,8 +972,8 @@ TEST_CASE(
             params.user_data, params.start_sequence_id,
             params.sequence_id_range, params.sequence_length),
         PerfAnalyzerException);
-    std::cout.rdbuf(old_cout);
-    std::cerr.rdbuf(old_cerr);
+    // std::cout.rdbuf(old_cout);
+    // std::cerr.rdbuf(old_cerr);
     return;
   } else {
     REQUIRE_NOTHROW(trrm.InitManager(
@@ -919,8 +982,8 @@ TEST_CASE(
         params.sequence_length));
   }
   // Restore output
-  std::cout.rdbuf(old_cout);
-  std::cerr.rdbuf(old_cerr);
+  // std::cout.rdbuf(old_cout);
+  // std::cerr.rdbuf(old_cerr);
 
   trrm.start_time_ = std::chrono::steady_clock::now();
 
