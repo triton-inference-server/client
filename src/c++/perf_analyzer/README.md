@@ -303,7 +303,7 @@ the provided data in a round-robin order when sending inference
 requests. For sequence models, if a sequence length is specified via
 `--sequence-length`, perf_analyzer will also loop through the provided data in a
 round-robin order up to the specified sequence length (with a percentage
-variation customizable viq `--sequence-length-variation`). Otherwise, the
+variation customizable via `--sequence-length-variation`). Otherwise, the
 sequence length will be the number of inputs specified in user-provided input 
 data.
 
