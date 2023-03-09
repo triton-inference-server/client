@@ -312,39 +312,23 @@ class TestRequestRateManager : public TestLoadManagerBase,
     StopWorkerThreads();
   }
 
+  /// Helper function that will setup and run a case to verify custom data
+  /// behavior
+  /// \param tensors Vector of input ModelTensors
+  /// \param json_str The custom data json text
+  /// \param expected_results Vector of expected inputs for each inference
+  /// \param expect_init_failure True if InitManager is expected to throw an
+  /// error
+  /// \param expect_thread_failure True if the thread is expected to have
+  /// an error
   void TestCustomData(
       std::vector<ModelTensor>& tensors, const std::string json_str,
-      std::vector<std::vector<int32_t>>& expected_results,
+      std::vector<std::vector<int32_t>>& expected_inputs,
       bool expect_init_failure, bool expect_thread_failure)
   {
-    std::shared_ptr<MockDataLoader> mdl{
-        std::make_shared<MockDataLoader>(params_.batch_size)};
+    params_.user_data = {json_str};
 
-    std::shared_ptr<MockModelParser> mmp{
-        std::make_shared<MockModelParser>(on_sequence_model_, false)};
-    mmp->inputs_ = std::make_shared<ModelTensorMap>();
-    for (auto t : tensors) {
-      (*mmp->inputs_)[t.name_] = t;
-    }
-
-    infer_data_manager_ =
-        MockInferDataManagerFactory::CreateMockInferDataManager(
-            params_.batch_size, params_.shared_memory_type,
-            params_.output_shm_size, mmp, factory_, mdl);
-
-    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
-
-    parser_ = mmp;
-    data_loader_ = mdl;
-    using_json_data_ = true;
-    execute_ = true;
-    max_threads_ = 1;
-    RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-    schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                        milliseconds(12), milliseconds(16)};
-    schedule->duration = nanoseconds{16000000};
+    TestCustomDataSetup(tensors);
 
     if (expect_init_failure) {
       REQUIRE_THROWS_AS(
@@ -364,37 +348,27 @@ class TestRequestRateManager : public TestLoadManagerBase,
           params.sequence_length_specified, params.sequence_length_variation));
     }
 
-    start_time_ = std::chrono::steady_clock::now();
+    auto thread_status = TestCustomDataRunThread();
 
-    std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
-    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
-
-    std::this_thread::sleep_for(milliseconds(18));
-
-    early_exit = true;
-    infer_future.get();
-
-
-    if (!thread_stat->status_.IsOk() && !expect_thread_failure) {
-      std::cout << "Unexpected thread failure: "
-                << thread_stat->status_.Message() << std::endl;
+    if (!thread_status.IsOk() && !expect_thread_failure) {
+      std::cout << "Unexpected thread failure: " << thread_status.Message()
+                << std::endl;
     }
 
-    REQUIRE(thread_stat->status_.IsOk() != expect_thread_failure);
-    if (!thread_stat->status_.IsOk()) {
+    REQUIRE(thread_status.IsOk() != expect_thread_failure);
+    if (!thread_status.IsOk()) {
       return;
     }
 
     const auto& recorded_inputs{stats_->recorded_inputs};
 
-    REQUIRE(recorded_inputs.size() >= expected_results.size());
-    for (size_t i = 0; i < expected_results.size(); i++) {
-      REQUIRE(expected_results[i].size() == recorded_inputs[i].size());
-      for (size_t j = 0; j < expected_results[i].size(); j++) {
+    REQUIRE(recorded_inputs.size() >= expected_inputs.size());
+    for (size_t i = 0; i < expected_inputs.size(); i++) {
+      REQUIRE(expected_inputs[i].size() == recorded_inputs[i].size());
+      for (size_t j = 0; j < expected_inputs[i].size(); j++) {
         CHECK(
             *reinterpret_cast<const int32_t*>(recorded_inputs[i][j].first) ==
-            expected_results[i][j]);
+            expected_inputs[i][j]);
         CHECK(recorded_inputs[i][j].second == 4);
       }
     }
@@ -417,6 +391,55 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
  private:
   bool use_mock_infer_;
+
+  void TestCustomDataSetup(std::vector<ModelTensor>& tensors)
+  {
+    std::shared_ptr<MockDataLoader> mdl{
+        std::make_shared<MockDataLoader>(params_.batch_size)};
+
+    std::shared_ptr<MockModelParser> mmp{
+        std::make_shared<MockModelParser>(on_sequence_model_, false)};
+    mmp->inputs_ = std::make_shared<ModelTensorMap>();
+    for (auto t : tensors) {
+      (*mmp->inputs_)[t.name_] = t;
+    }
+
+    infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
+            params_.batch_size, params_.shared_memory_type,
+            params_.output_shm_size, mmp, factory_, mdl);
+
+    parser_ = mmp;
+    data_loader_ = mdl;
+    using_json_data_ = true;
+    execute_ = true;
+    max_threads_ = 1;
+  }
+
+  cb::Error TestCustomDataRunThread()
+  {
+    RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+    schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                        milliseconds(12), milliseconds(16)};
+    schedule->duration = nanoseconds{16000000};
+
+    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+    std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
+    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+
+    start_time_ = std::chrono::steady_clock::now();
+    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+    std::this_thread::sleep_for(milliseconds(18));
+
+    early_exit = true;
+    infer_future.get();
+
+    return thread_stat->status_;
+  }
+
 
   void CheckCallDistribution(int request_rate)
   {
@@ -1026,7 +1049,6 @@ TEST_CASE(
   }};
 
   ParameterizeBatchSize();
-  params.user_data = {json_str};
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
