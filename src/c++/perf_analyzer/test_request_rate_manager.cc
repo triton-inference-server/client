@@ -346,11 +346,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
                                         milliseconds(12), milliseconds(16)};
     schedule->duration = nanoseconds{16000000};
 
-
-    // Temporarily suppress output
-    // FIXME TKG -- should I suppress it?
-    // auto old_cout = std::cout.rdbuf(nullptr);
-    // auto old_cerr = std::cerr.rdbuf(nullptr);
     if (expect_init_failure) {
       REQUIRE_THROWS_AS(
           InitManager(
@@ -360,8 +355,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
               params.sequence_length_specified,
               params.sequence_length_variation),
           PerfAnalyzerException);
-      // std::cout.rdbuf(old_cout);
-      // std::cerr.rdbuf(old_cerr);
       return;
     } else {
       REQUIRE_NOTHROW(InitManager(
@@ -370,9 +363,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
           params_.sequence_id_range, params_.sequence_length,
           params.sequence_length_specified, params.sequence_length_variation));
     }
-    // Restore output
-    // std::cout.rdbuf(old_cout);
-    // std::cerr.rdbuf(old_cerr);
 
     start_time_ = std::chrono::steady_clock::now();
 
@@ -397,28 +387,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
 
     const auto& recorded_inputs{stats_->recorded_inputs};
-
-    // FIXME TKG remove this debug
-    std::cout << "TKG -- values are: ";
-    for (auto x : recorded_inputs) {
-      std::cout << "[";
-      for (auto y : x) {
-        std::cout << *reinterpret_cast<const int32_t*>(y.first) << ",";
-      }
-      std::cout << "],";
-    }
-    std::cout << std::endl;
-
-    std::cout << "TKG -- expected are: ";
-    for (auto x : expected_results) {
-      std::cout << "[";
-      for (auto y : x) {
-        std::cout << y << ",";
-      }
-      std::cout << "],";
-    }
-    std::cout << std::endl;
-
 
     REQUIRE(recorded_inputs.size() >= expected_results.size());
     for (size_t i = 0; i < expected_results.size(); i++) {
