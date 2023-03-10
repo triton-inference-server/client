@@ -260,7 +260,8 @@ TEST_CASE("concurrency_infer_type")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.TestInferType();
 }
@@ -369,7 +370,8 @@ TEST_CASE("concurrency_concurrency")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.TestConcurrency(response_delay, sleep_time);
 }
@@ -387,7 +389,8 @@ TEST_CASE("concurrency_sequence")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
   tcm.TestSequences();
 }
 
@@ -415,7 +418,8 @@ TEST_CASE("concurrency_free_ctx_ids")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   // Have the first request (sequence ID 1) take very long, and all the other
   // requests are fast
@@ -540,7 +544,8 @@ TEST_CASE("Concurrency - shared memory infer input calls")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
@@ -601,7 +606,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_system_shared_memory_calls = 1;
@@ -625,7 +631,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     expected_stats.num_unregister_all_shared_memory_calls = 1;
     expected_stats.num_register_cuda_shared_memory_calls = 1;
@@ -645,7 +652,8 @@ TEST_CASE("Concurrency - Shared memory methods")
     tcm.InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
 
     tcm.CheckSharedMemory(expected_stats);
   }
@@ -741,7 +749,8 @@ TEST_CASE("concurrency_deadlock")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.stats_->SetDelays(delays);
 
@@ -780,7 +789,8 @@ TEST_CASE("concurrency_overhead")
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.TestOverhead();
 }
@@ -801,7 +811,8 @@ TEST_CASE(
   tcm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length);
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
 
   tcm.ChangeConcurrencyLevel(4);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));

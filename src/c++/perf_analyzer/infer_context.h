@@ -26,6 +26,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -73,6 +74,10 @@ struct AsyncRequestProperties {
   // Whether or not the request is delayed as per schedule.
   bool delayed_;
 };
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class MockInferContext;
+#endif
 
 /// Sends inference requests to the server
 class InferContext {
@@ -137,7 +142,7 @@ class InferContext {
   /// A helper function to issue inference request to the server.
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  void SendRequest(const uint64_t request_id, const bool delayed);
+  virtual void SendRequest(const uint64_t request_id, const bool delayed);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -150,17 +155,17 @@ class InferContext {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
-  const bool async_;
-  const bool streaming_;
-  const bool on_sequence_model_;
-  const bool using_json_data_;
-  const int32_t batch_size_;
+  const bool async_{false};
+  const bool streaming_{false};
+  const bool on_sequence_model_{false};
+  bool using_json_data_{false};
+  const int32_t batch_size_{0};
 
   std::shared_ptr<ThreadStat> thread_stat_;
   std::shared_ptr<DataLoader> data_loader_;
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;
-  const std::shared_ptr<IInferDataManager> infer_data_manager_;
+  std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   uint64_t request_id_ = 0;
   std::map<std::string, AsyncRequestProperties> async_req_map_;
@@ -175,7 +180,7 @@ class InferContext {
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
  private:
-  const uint32_t id_;
+  const uint32_t id_{0};
 
   size_t GetNumActiveThreads() { return num_active_threads_; }
 
@@ -185,9 +190,19 @@ class InferContext {
   std::unique_ptr<cb::ClientBackend> infer_backend_;
   InferData infer_data_;
 
-  const bool& execute_{false};
+  // FIXME: update build to use C++17 instead of C++14. This is a workaround
+  // since C++14 doesn't have std::optional, but C++17 does.
+  const bool execute_placeholder_{false};
+  std::reference_wrapper<const bool> execute_{execute_placeholder_};
 
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend MockInferContext;
+
+ protected:
+  InferContext() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

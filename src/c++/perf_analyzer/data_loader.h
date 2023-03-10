@@ -49,7 +49,7 @@ class DataLoader {
   /// Returns the total data steps supported for a requested data stream
   /// id.
   /// \param stream_id The target stream id
-  size_t GetTotalSteps(size_t stream_id)
+  virtual size_t GetTotalSteps(size_t stream_id)
   {
     if (stream_id < data_stream_cnt_) {
       return step_num_[stream_id];

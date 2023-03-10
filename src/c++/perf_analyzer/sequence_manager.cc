@@ -30,10 +30,13 @@ namespace triton { namespace perfanalyzer {
 
 SequenceManager::SequenceManager(
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-    const size_t sequence_length, const bool using_json_data,
+    const size_t sequence_length, const bool sequence_length_specified,
+    const double sequence_length_variation, const bool using_json_data,
     std::shared_ptr<DataLoader> data_loader)
     : start_sequence_id_(start_sequence_id),
       sequence_id_range_(sequence_id_range), sequence_length_(sequence_length),
+      sequence_length_specified_(sequence_length_specified),
+      sequence_length_variation_(sequence_length_variation),
       using_json_data_(using_json_data), data_loader_(data_loader)
 {
   distribution_ = std::uniform_int_distribution<uint64_t>(
@@ -104,21 +107,37 @@ SequenceManager::SetInferSequenceOptions(
       (sequence_statuses_[seq_stat_index]->remaining_queries_ == 1);
 }
 
+const size_t
+SequenceManager::GetSequenceLength(size_t sequence_status_index) const
+{
+  return sequence_statuses_.at(sequence_status_index)->sequence_length_;
+}
+
 void
 SequenceManager::InitNewSequence(int seq_stat_index)
 {
   sequence_statuses_[seq_stat_index]->seq_id_ = GetNextSeqId(seq_stat_index);
   if (!using_json_data_) {
-    size_t new_length = GetRandomSequenceLength(0.2);
+    size_t new_length = GetRandomSequenceLength(sequence_length_variation_);
     sequence_statuses_[seq_stat_index]->remaining_queries_ =
         new_length == 0 ? 1 : new_length;
   } else {
     // Selecting next available data stream based on uniform distribution.
     sequence_statuses_[seq_stat_index]->data_stream_id_ =
         distribution_(rng_generator_);
+    const uint64_t data_stream_id{
+        sequence_statuses_[seq_stat_index]->data_stream_id_};
+    const size_t total_steps{data_loader_->GetTotalSteps(data_stream_id)};
+    if (sequence_length_specified_) {
+      const size_t varied_sequence_length{
+          GetRandomSequenceLength(sequence_length_variation_)};
+      sequence_statuses_[seq_stat_index]->sequence_length_ =
+          varied_sequence_length;
+    } else {
+      sequence_statuses_[seq_stat_index]->sequence_length_ = total_steps;
+    }
     sequence_statuses_[seq_stat_index]->remaining_queries_ =
-        data_loader_->GetTotalSteps(
-            sequence_statuses_[seq_stat_index]->data_stream_id_);
+        sequence_statuses_[seq_stat_index]->sequence_length_;
   }
 }
 
@@ -144,8 +163,8 @@ SequenceManager::GetNextSeqId(int seq_stat_index)
 size_t
 SequenceManager::GetRandomSequenceLength(double offset_ratio)
 {
-  int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio *
-                      sequence_length_;
+  int random_offset = ((2.0 * rand() / double(RAND_MAX)) - 1.0) * offset_ratio /
+                      100.0 * sequence_length_;
   if (int(sequence_length_) + random_offset <= 0) {
     return 1;
   }

@@ -25,27 +25,23 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <cstdint>
-#include <mutex>
+#include "gmock/gmock.h"
+#include "infer_context.h"
 
 namespace triton { namespace perfanalyzer {
 
-// Holds the status of the inflight sequence
-struct SequenceStatus {
-  SequenceStatus(uint64_t seq_id = 0)
-      : seq_id_(seq_id), data_stream_id_(0), remaining_queries_(0)
-  {
-  }
-  // The unique correlation id allocated to the sequence
-  uint64_t seq_id_;
-  // The data stream id providing data for the sequence
-  uint64_t data_stream_id_;
-  // The number of queries remaining to complete the sequence
-  size_t remaining_queries_;
-  // The length of the sequence
-  size_t sequence_length_{0};
-  // A lock to protect sequence data
-  std::mutex mtx_;
+class MockInferContext : public InferContext {
+ public:
+  MOCK_METHOD(void, SendRequest, (const uint64_t, const bool), (override));
+
+  std::shared_ptr<SequenceManager>& sequence_manager_{
+      InferContext::sequence_manager_};
+  std::shared_ptr<DataLoader>& data_loader_{InferContext::data_loader_};
+  std::shared_ptr<IInferDataManager>& infer_data_manager_{
+      InferContext::infer_data_manager_};
+  std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
+  std::reference_wrapper<const bool>& execute_{InferContext::execute_};
+  bool& using_json_data_{InferContext::using_json_data_};
 };
 
 }}  // namespace triton::perfanalyzer

@@ -183,7 +183,8 @@ LoadManager::InitManager(
     const size_t string_length, const std::string& string_data,
     const bool zero_input, std::vector<std::string>& user_data,
     const uint64_t start_sequence_id, const uint64_t sequence_id_range,
-    const size_t sequence_length)
+    const size_t sequence_length, const bool sequence_length_specified,
+    const double sequence_length_variation)
 {
   auto status =
       InitManagerInputs(string_length, string_data, zero_input, user_data);
@@ -193,7 +194,8 @@ LoadManager::InitManager(
       infer_data_manager_->Init(), "Unable to init infer data manager");
 
   sequence_manager_ = std::make_shared<SequenceManager>(
-      start_sequence_id, sequence_id_range, sequence_length, using_json_data_,
+      start_sequence_id, sequence_id_range, sequence_length,
+      sequence_length_specified, sequence_length_variation, using_json_data_,
       data_loader_);
 
   InitManagerFinalize();

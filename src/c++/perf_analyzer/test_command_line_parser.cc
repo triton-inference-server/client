@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -521,6 +521,36 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->sequence_length = 20;
+    }
+  }
+
+  SUBCASE("Option : --sequence-length-variation")
+  {
+    SUBCASE("non-negative")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name,
+                          "--sequence-length-variation", "33.3"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->sequence_length_variation = 33.3;
+    }
+
+    SUBCASE("negative")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name,
+                          "--sequence-length-variation", "-10"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      REQUIRE(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "sequence length variation must be positive");
+
+      exp->sequence_length_variation = -10.0;
     }
   }
 

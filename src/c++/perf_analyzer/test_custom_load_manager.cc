@@ -59,7 +59,8 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     InitManager(
         params.string_length, params.string_data, params.zero_input,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
-        params.sequence_length);
+        params.sequence_length, params.sequence_length_specified,
+        params.sequence_length_variation);
   }
 
   void TestSchedule(

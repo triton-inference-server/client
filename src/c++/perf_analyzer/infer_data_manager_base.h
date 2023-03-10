@@ -108,6 +108,11 @@ class InferDataManagerBase : public IInferDataManager {
 
   virtual cb::Error InitInferDataOutput(
       const std::string& name, InferData& infer_data) = 0;
+
+#ifndef DOCTEST_CONFIG_DISABLE
+ protected:
+  InferDataManagerBase() = default;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer

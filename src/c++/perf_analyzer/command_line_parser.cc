@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -116,6 +116,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--output-shared-memory-size <size in bytes>" << std::endl;
   std::cerr << "\t--shape <name:shape>" << std::endl;
   std::cerr << "\t--sequence-length <length>" << std::endl;
+  std::cerr << "\t--sequence-length-variation <variation>" << std::endl;
   std::cerr << "\t--sequence-id-range <start:end>" << std::endl;
   std::cerr << "\t--string-length <length>" << std::endl;
   std::cerr << "\t--string-data <string>" << std::endl;
@@ -433,9 +434,22 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --sequence-length: Indicates the base length of a "
                    "sequence used for sequence models. A sequence with length "
-                   "x will be composed of x requests to be sent as the "
-                   "elements in the sequence. The length of the actual "
-                   "sequence will be within +/- 20% of the base length.",
+                   "X will be composed of X requests to be sent as the "
+                   "elements in the sequence. The actual length of the sequence"
+                   "will be within +/- Y% of the base length, where Y defaults "
+                   "to 20% and is customizable via "
+                   "`--sequence-length-variation`. If sequence length is "
+                   "unspecified and input data is provided, the sequence "
+                   "length will be the number of inputs in the user-provided "
+                   "input data. Default is 20.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --sequence-length-variation: The percentage variation in "
+                   "length of sequences. This flag is only valid when "
+                   "not using user-provided input data or when "
+                   "`--sequence-length` is specified while using user-provided "
+                   "input data. Default is 20.",
                    18)
             << std::endl;
   std::cerr
@@ -730,6 +744,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"collect-metrics", no_argument, 0, 49},
       {"metrics-url", required_argument, 0, 50},
       {"metrics-interval", required_argument, 0, 51},
+      {"sequence-length-variation", required_argument, 0, 52},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -747,6 +762,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       case 2:
         params_->sequence_length = std::atoi(optarg);
+        params_->sequence_length_specified = true;
         break;
       case 3:
         params_->percentile = std::atoi(optarg);
@@ -1173,6 +1189,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->metrics_interval_ms_specified = true;
         break;
       }
+      case 52: {
+        params_->sequence_length_variation = std::stod(optarg);
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1303,6 +1323,9 @@ CLParser::VerifyOptions()
     std::cerr << "WARNING: using an invalid sequence length. Perf Analyzer will"
               << " use default value if it is measuring on sequence model."
               << std::endl;
+  }
+  if (params_->sequence_length_variation < 0.0) {
+    Usage("sequence length variation must be positive");
   }
   if (params_->start_sequence_id == 0) {
     params_->start_sequence_id = 1;

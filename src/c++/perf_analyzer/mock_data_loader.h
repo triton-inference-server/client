@@ -26,6 +26,7 @@
 #pragma once
 
 #include "data_loader.h"
+#include "gmock/gmock.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -34,6 +35,16 @@ namespace triton { namespace perfanalyzer {
 ///
 class MockDataLoader : public DataLoader {
  public:
+  MockDataLoader()
+  {
+    ON_CALL(*this, GetTotalSteps(testing::_))
+        .WillByDefault([this](size_t stream_id) -> size_t {
+          return this->DataLoader::GetTotalSteps(stream_id);
+        });
+  }
+
+  MOCK_METHOD(size_t, GetTotalSteps, (size_t), (override));
+
   cb::Error ReadDataFromStr(
       const std::string& str, const std::shared_ptr<ModelTensorMap>& inputs,
       const std::shared_ptr<ModelTensorMap>& outputs)
