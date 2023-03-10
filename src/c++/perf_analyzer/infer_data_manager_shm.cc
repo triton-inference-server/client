@@ -77,132 +77,119 @@ InferDataManagerShm::Init()
 
   // Allocate the shared memory for outputs
   for (const auto& output : *(parser_->Outputs())) {
-    RETURN_IF_ERROR(CreateOutputMemoryRegion(output.first, output.second));
+    const std::string& name = output.first;
+    const ModelTensor& tensor = output.second;
+    int64_t batch1_bytesize = ByteSize(tensor.shape_, tensor.datatype_);
+    if (batch1_bytesize < 0) {
+      batch1_bytesize = output_shm_size_;
+    }
+    uint8_t* output_shm_ptr;
+    size_t alloc_size = batch1_bytesize * batch_size_;
+    std::string region_name(TensorToRegionName(name));
+    RETURN_IF_ERROR(CreateMemoryRegion(
+        region_name, shared_memory_type_, alloc_size,
+        reinterpret_cast<void**>(&output_shm_ptr)));
   }
 
   for (const auto& input : *(parser_->Inputs())) {
-    RETURN_IF_ERROR(
-        CreateAndPopulateInputMemoryRegion(input.first, input.second));
-  }
-  return cb::Error::Success;
-}
+    const std::string& name = input.first;
+    const ModelTensor& tensor = input.second;
+    for (int i = 0; i < (int)data_loader_->GetDataStreamsCount(); i++) {
+      for (int j = 0; j < (int)data_loader_->GetTotalSteps(i); j += 1) {
+        // Extract the data for requested batch size
+        std::vector<const uint8_t*> data_ptrs;
+        std::vector<size_t> byte_size;
+        size_t alloc_size = 0;
+        size_t count = 0;
+        size_t max_count = tensor.is_shape_tensor_ ? 1 : batch_size_;
+        std::vector<int64_t> shape;
+        std::vector<int64_t> prev_shape;
+        while (count < max_count) {
+          const uint8_t* data_ptr{nullptr};
+          size_t batch1_bytesize;
 
-cb::Error
-InferDataManagerShm::CreateOutputMemoryRegion(
-    const std::string& name, const ModelTensor& tensor)
-{
-  int64_t batch1_bytesize = ByteSize(tensor.shape_, tensor.datatype_);
-  if (batch1_bytesize < 0) {
-    batch1_bytesize = output_shm_size_;
-  }
-  uint8_t* output_shm_ptr;
-  size_t alloc_size = batch1_bytesize * batch_size_;
-  std::string region_name(TensorToRegionName(name));
-  RETURN_IF_ERROR(CreateMemoryRegion(
-      region_name, shared_memory_type_, alloc_size,
-      reinterpret_cast<void**>(&output_shm_ptr)));
-  return cb::Error::Success;
-}
+          RETURN_IF_ERROR(data_loader_->GetInputShape(
+              tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &shape));
+          if (!shape.empty()) {
+            if (count == 0) {
+              prev_shape = shape;
+            } else {
+              if (!std::equal(shape.begin(), shape.end(), prev_shape.begin())) {
+                return cb::Error(
+                    "can not batch tensors with different shapes together "
+                    "(input '" +
+                        name + "' expected shape " +
+                        ShapeVecToString(prev_shape) + " and received " +
+                        ShapeVecToString(shape),
+                    pa::GENERIC_ERROR);
+              }
+            }
+          }
 
-cb::Error
-InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
-    const std::string& name, const ModelTensor& tensor)
-{
-  for (int i = 0; i < (int)data_loader_->GetDataStreamsCount(); i++) {
-    for (int j = 0; j < (int)data_loader_->GetTotalSteps(i); j += 1) {
-      // Extract the data for requested batch size
-      std::vector<const uint8_t*> data_ptrs;
-      std::vector<size_t> byte_size;
-      size_t alloc_size = 0;
-      size_t count = 0;
-      size_t max_count = tensor.is_shape_tensor_ ? 1 : batch_size_;
-      std::vector<int64_t> shape;
-      std::vector<int64_t> prev_shape;
-      while (count < max_count) {
-        const uint8_t* data_ptr{nullptr};
-        size_t batch1_bytesize;
+          RETURN_IF_ERROR(data_loader_->GetInputData(
+              tensor, i, (j + count) % data_loader_->GetTotalSteps(i),
+              &data_ptr, &batch1_bytesize));
 
-        RETURN_IF_ERROR(data_loader_->GetInputShape(
-            tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &shape));
-        if (!shape.empty()) {
-          if (count == 0) {
-            prev_shape = shape;
-          } else {
-            if (!std::equal(shape.begin(), shape.end(), prev_shape.begin())) {
+          // FIXME: TMA-765 - Shared memory mode does not support optional
+          // inputs, currently, and will be implemented in the associated story.
+          if (data_ptr == nullptr) {
+            return cb::Error(
+                "Shared memory support in Perf Analyzer does not support "
+                "optional inputs at this time");
+          }
+
+          data_ptrs.push_back(data_ptr);
+          byte_size.push_back(batch1_bytesize);
+          alloc_size += batch1_bytesize;
+          count++;
+        }
+
+        // Validate if the shape tensors specified in the batch are identical.
+        while (count < batch_size_) {
+          const uint8_t* data_ptr{nullptr};
+          size_t batch1_bytesize;
+          RETURN_IF_ERROR(data_loader_->GetInputData(
+              tensor, i, (j + count) % data_loader_->GetTotalSteps(i),
+              &data_ptr, &batch1_bytesize));
+
+          // FIXME: TMA-765 - Shared memory mode does not support optional
+          // inputs, currently, and will be implemented in the associated story.
+          if (data_ptr == nullptr) {
+            return cb::Error(
+                "Shared memory support in Perf Analyzer does not support "
+                "optional inputs at this time");
+          }
+
+          if (batch1_bytesize != byte_size.back()) {
+            return cb::Error(
+                "The shape tensors should be identical in a batch (mismatch "
+                "in size)",
+                pa::GENERIC_ERROR);
+          }
+
+          for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
+            if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
               return cb::Error(
-                  "can not batch tensors with different shapes together "
-                  "(input '" +
-                      name + "' expected shape " +
-                      ShapeVecToString(prev_shape) + " and received " +
-                      ShapeVecToString(shape),
+                  "The shape tensors should be identical in a batch "
+                  "(mismatch in content)",
                   pa::GENERIC_ERROR);
             }
           }
+          count++;
         }
 
-        RETURN_IF_ERROR(data_loader_->GetInputData(
-            tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &data_ptr,
-            &batch1_bytesize));
-
-        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
-        // currently, and will be implemented in the associated story.
-        if (data_ptr == nullptr) {
-          return cb::Error(
-              "Shared memory support in Perf Analyzer does not support "
-              "optional inputs at this time");
-        }
-
-        data_ptrs.push_back(data_ptr);
-        byte_size.push_back(batch1_bytesize);
-        alloc_size += batch1_bytesize;
-        count++;
+        // Generate the shared memory region name
+        std::string region_name(
+            TensorToRegionName(name) + "_" + std::to_string(i) + "_" +
+            std::to_string(j));
+        uint8_t* input_shm_ptr;
+        RETURN_IF_ERROR(CreateMemoryRegion(
+            region_name, shared_memory_type_, alloc_size,
+            reinterpret_cast<void**>(&input_shm_ptr)));
+        RETURN_IF_ERROR(CopySharedMemory(
+            input_shm_ptr, data_ptrs, byte_size, tensor.is_shape_tensor_,
+            region_name));
       }
-
-      // Validate if the shape tensors specified in the batch are identical.
-      while (count < batch_size_) {
-        const uint8_t* data_ptr{nullptr};
-        size_t batch1_bytesize;
-        RETURN_IF_ERROR(data_loader_->GetInputData(
-            tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &data_ptr,
-            &batch1_bytesize));
-
-        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
-        // currently, and will be implemented in the associated story.
-        if (data_ptr == nullptr) {
-          return cb::Error(
-              "Shared memory support in Perf Analyzer does not support "
-              "optional inputs at this time");
-        }
-
-        if (batch1_bytesize != byte_size.back()) {
-          return cb::Error(
-              "The shape tensors should be identical in a batch (mismatch "
-              "in size)",
-              pa::GENERIC_ERROR);
-        }
-
-        for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
-          if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
-            return cb::Error(
-                "The shape tensors should be identical in a batch "
-                "(mismatch in content)",
-                pa::GENERIC_ERROR);
-          }
-        }
-        count++;
-      }
-
-      // Generate the shared memory region name
-      std::string region_name(
-          TensorToRegionName(name) + "_" + std::to_string(i) + "_" +
-          std::to_string(j));
-      uint8_t* input_shm_ptr;
-      RETURN_IF_ERROR(CreateMemoryRegion(
-          region_name, shared_memory_type_, alloc_size,
-          reinterpret_cast<void**>(&input_shm_ptr)));
-      RETURN_IF_ERROR(CopySharedMemory(
-          input_shm_ptr, data_ptrs, byte_size, tensor.is_shape_tensor_,
-          region_name));
     }
   }
   return cb::Error::Success;
