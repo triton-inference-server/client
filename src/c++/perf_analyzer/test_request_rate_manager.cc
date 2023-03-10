@@ -1099,12 +1099,12 @@ TEST_CASE(
       params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
       ParameterizeBatchSize();
     }
-    SUBCASE("no_shared_memory")
+    SUBCASE("system_shared_memory")
     {
       params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
       ParameterizeBatchSize();
     }
-    SUBCASE("no_shared_memory")
+    SUBCASE("cuda_shared_memory")
     {
       params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
       ParameterizeBatchSize();
