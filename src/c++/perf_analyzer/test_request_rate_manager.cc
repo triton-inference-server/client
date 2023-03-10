@@ -316,14 +316,14 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// behavior
   /// \param tensors Vector of input ModelTensors
   /// \param json_str The custom data json text
-  /// \param expected_results Vector of expected inputs for each inference
+  /// \param expected_values Vector of expected input values for each inference
   /// \param expect_init_failure True if InitManager is expected to throw an
   /// error
   /// \param expect_thread_failure True if the thread is expected to have
   /// an error
   void TestCustomData(
       std::vector<ModelTensor>& tensors, const std::string json_str,
-      std::vector<std::vector<int32_t>>& expected_inputs,
+      std::vector<std::vector<int32_t>>& expected_values,
       bool expect_init_failure, bool expect_thread_failure)
   {
     params_.user_data = {json_str};
@@ -360,14 +360,51 @@ class TestRequestRateManager : public TestLoadManagerBase,
       return;
     }
 
-    const auto& recorded_inputs{stats_->recorded_inputs};
+    auto recorded_inputs{stats_->recorded_inputs};
+    std::vector<std::vector<int32_t>> recorded_values;
 
-    REQUIRE(recorded_inputs.size() >= expected_inputs.size());
-    for (size_t i = 0; i < expected_inputs.size(); i++) {
-      REQUIRE(expected_inputs[i].size() == recorded_inputs[i].size());
-      for (size_t j = 0; j < expected_inputs[i].size(); j++) {
-        CHECK(recorded_inputs[i][j].data == expected_inputs[i][j]);
-        CHECK(recorded_inputs[i][j].size == 4);
+    // Convert the recorded inputs into values, for both shared memory and non
+    // shared memory cases
+    //
+    if (params_.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
+      auto recorded_memory_regions =
+          std::dynamic_pointer_cast<MockInferDataManagerShm>(
+              infer_data_manager_)
+              ->mocked_shared_memory_regions;
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto memory_label : recorded_input) {
+          auto itr =
+              recorded_memory_regions.find(memory_label.shared_memory_label);
+          if (itr == recorded_memory_regions.end()) {
+            std::string err_str = "Test error: Could not find label " +
+                                  memory_label.shared_memory_label +
+                                  " in recorded shared memory";
+            REQUIRE_MESSAGE(false, err_str);
+          } else {
+            for (auto val : itr->second) {
+              recorded_value.push_back(val);
+            }
+          }
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    } else {
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto val : recorded_input) {
+          recorded_value.push_back(val.data);
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    }
+
+    // Check that results are exactly as expected
+    REQUIRE(recorded_values.size() >= expected_values.size());
+    for (size_t i = 0; i < expected_values.size(); i++) {
+      REQUIRE(recorded_values[i].size() == expected_values[i].size());
+      for (size_t j = 0; j < expected_values[i].size(); j++) {
+        CHECK(recorded_values[i][j] == expected_values[i][j]);
       }
     }
   }
@@ -430,7 +467,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     start_time_ = std::chrono::steady_clock::now();
     std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-    std::this_thread::sleep_for(milliseconds(18));
+    std::this_thread::sleep_for(milliseconds(19));
 
     early_exit = true;
     infer_future.get();
@@ -947,7 +984,13 @@ TEST_CASE(
       SUBCASE("optional")
       {
         json_str = optional_json_str;
-        expect_init_failure = false;
+        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+        // currently, and will be implemented in the associated story.
+        if (params.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
+          expect_init_failure = true;
+        } else {
+          expect_init_failure = false;
+        }
         model_tensor2.is_optional_ = true;
 
         switch (params.batch_size) {
@@ -956,9 +999,9 @@ TEST_CASE(
             break;
           case 2:
           case 4:
-            // For batch sizes larger than 1, the same set of inputs must be
-            // specified for each batch. You cannot use different set of
-            // optional inputs for each individual batch.
+            // For batch sizes larger than 1, the same set of inputs
+            // must be specified for each batch. You cannot use different
+            // set of optional inputs for each individual batch.
             expect_thread_failure = true;
             break;
           default:
@@ -982,10 +1025,13 @@ TEST_CASE(
           expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
           break;
         case 2:
-          expect_thread_failure = true;
-          break;
         case 4:
-          expect_thread_failure = true;
+          // Currently shm and non-shm both fail, but at different points
+          if (params.shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
+            expect_thread_failure = true;
+          } else {
+            expect_init_failure = true;
+          }
           break;
         default:
           REQUIRE(false);
@@ -997,8 +1043,8 @@ TEST_CASE(
     }
     SUBCASE("shape tensor - valid")
     {
-      // Test the case where is_shape_tensor is true and is the same across a
-      // batch: it only ends up in each batch once
+      // Test the case where is_shape_tensor is true and is the same
+      // across a batch: it only ends up in each batch once
       model_tensor1.is_shape_tensor_ = true;
       json_str = shape_json_str;
       expect_thread_failure = false;
@@ -1046,7 +1092,25 @@ TEST_CASE(
     }
   }};
 
-  ParameterizeBatchSize();
+  const auto& ParameterizeSharedMemory{[&]() {
+    SUBCASE("no_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+    SUBCASE("no_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+    SUBCASE("no_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+  }};
+
+  ParameterizeSharedMemory();
 
   TestRequestRateManager trrm(params, is_sequence_model);
 

@@ -109,7 +109,7 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
     const std::string& name, const ModelTensor& tensor)
 {
   for (int i = 0; i < (int)data_loader_->GetDataStreamsCount(); i++) {
-    for (int j = 0; j < (int)data_loader_->GetTotalSteps(i); j += batch_size_) {
+    for (int j = 0; j < (int)data_loader_->GetTotalSteps(i); j += 1) {
       // Extract the data for requested batch size
       std::vector<const uint8_t*> data_ptrs;
       std::vector<size_t> byte_size;
@@ -119,7 +119,7 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
       std::vector<int64_t> shape;
       std::vector<int64_t> prev_shape;
       while (count < max_count) {
-        const uint8_t* data_ptr;
+        const uint8_t* data_ptr{nullptr};
         size_t batch1_bytesize;
 
         RETURN_IF_ERROR(data_loader_->GetInputShape(
@@ -143,6 +143,15 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
         RETURN_IF_ERROR(data_loader_->GetInputData(
             tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &data_ptr,
             &batch1_bytesize));
+
+        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+        // currently, and will be implemented in the associated story.
+        if (data_ptr == nullptr) {
+          return cb::Error(
+              "Shared memory support in Perf Analyzer does not support "
+              "optional inputs at this time");
+        }
+
         data_ptrs.push_back(data_ptr);
         byte_size.push_back(batch1_bytesize);
         alloc_size += batch1_bytesize;
@@ -151,11 +160,20 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
 
       // Validate if the shape tensors specified in the batch are identical.
       while (count < batch_size_) {
-        const uint8_t* data_ptr;
+        const uint8_t* data_ptr{nullptr};
         size_t batch1_bytesize;
         RETURN_IF_ERROR(data_loader_->GetInputData(
             tensor, i, (j + count) % data_loader_->GetTotalSteps(i), &data_ptr,
             &batch1_bytesize));
+
+        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+        // currently, and will be implemented in the associated story.
+        if (data_ptr == nullptr) {
+          return cb::Error(
+              "Shared memory support in Perf Analyzer does not support "
+              "optional inputs at this time");
+        }
+
         if (batch1_bytesize != byte_size.back()) {
           return cb::Error(
               "The shape tensors should be identical in a batch (mismatch "

@@ -37,16 +37,16 @@ namespace triton { namespace perfanalyzer { namespace clientbackend {
 
 struct MockRecordedInput {
   MockRecordedInput(int32_t data_in, size_t size_in)
-      : string_data(""), data(data_in), size(size_in), is_string(false)
+      : shared_memory_label(""), data(data_in), size(size_in), is_string(false)
   {
   }
 
-  MockRecordedInput(std::string string_in, size_t size_in)
-      : string_data(string_in), data(0), size(size_in), is_string(false)
+  MockRecordedInput(std::string label_in, size_t size_in)
+      : shared_memory_label(label_in), data(0), size(size_in), is_string(false)
   {
   }
 
-  std::string string_data;
+  std::string shared_memory_label;
   bool is_string;
   int32_t data;
   size_t size;
@@ -84,6 +84,7 @@ class MockInferInput : public InferInput {
   Error SetSharedMemory(
       const std::string& name, size_t byte_size, size_t offset = 0)
   {
+    recorded_inputs_.push_back(MockRecordedInput(name, byte_size));
     ++set_shared_memory_calls_;
     return Error::Success;
   }
