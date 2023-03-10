@@ -35,13 +35,16 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
-struct MockRecordedInput {
-  MockRecordedInput(int32_t data_in, size_t size_in)
+// Holds information (either the raw data or a shared memory label) for an
+// inference input
+//
+struct TestRecordedInput {
+  TestRecordedInput(int32_t data_in, size_t size_in)
       : shared_memory_label(""), data(data_in), size(size_in), is_string(false)
   {
   }
 
-  MockRecordedInput(std::string label_in, size_t size_in)
+  TestRecordedInput(std::string label_in, size_t size_in)
       : shared_memory_label(label_in), data(0), size(size_in), is_string(false)
   {
   }
@@ -75,7 +78,7 @@ class MockInferInput : public InferInput {
   {
     if (input) {
       int32_t val = *reinterpret_cast<const int32_t*>(input);
-      recorded_inputs_.push_back(MockRecordedInput(val, input_byte_size));
+      recorded_inputs_.push_back(TestRecordedInput(val, input_byte_size));
     }
     ++append_raw_calls_;
     return Error::Success;
@@ -84,13 +87,13 @@ class MockInferInput : public InferInput {
   Error SetSharedMemory(
       const std::string& name, size_t byte_size, size_t offset = 0)
   {
-    recorded_inputs_.push_back(MockRecordedInput(name, byte_size));
+    recorded_inputs_.push_back(TestRecordedInput(name, byte_size));
     ++set_shared_memory_calls_;
     return Error::Success;
   }
 
   const std::vector<int64_t> dims_{};
-  std::vector<MockRecordedInput> recorded_inputs_{};
+  std::vector<TestRecordedInput> recorded_inputs_{};
   std::atomic<size_t> append_raw_calls_{0};
   std::atomic<size_t> set_shared_memory_calls_{0};
 };
@@ -295,7 +298,7 @@ class MockClientStats {
   // request. If there are multiple inputs due to batching and/or the model
   // having multiple inputs, all of those from the same request will be in the
   // same second level vector
-  std::vector<std::vector<MockRecordedInput>> recorded_inputs{};
+  std::vector<std::vector<TestRecordedInput>> recorded_inputs{};
 
   void CaptureRequest(
       ReqType type, const InferOptions& options,
@@ -308,7 +311,7 @@ class MockClientStats {
 
     // Group all values across all inputs together into a single vector, and
     // then record it
-    std::vector<MockRecordedInput> tmp_inputs;
+    std::vector<TestRecordedInput> tmp_inputs;
     for (const auto& input : inputs) {
       auto x = static_cast<const MockInferInput*>(input)->recorded_inputs_;
       tmp_inputs.insert(tmp_inputs.end(), x.begin(), x.end());
