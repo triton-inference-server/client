@@ -36,6 +36,7 @@ namespace triton { namespace perfanalyzer {
 class MockDataLoader : public DataLoader {
  public:
   MockDataLoader() { SetupMocks(); }
+  MockDataLoader(size_t batch_size) : DataLoader(batch_size) { SetupMocks(); }
 
   void SetupMocks()
   {
@@ -48,7 +49,6 @@ class MockDataLoader : public DataLoader {
 
   MOCK_METHOD(size_t, GetTotalSteps, (size_t), (override));
 
-  MockDataLoader(size_t batch_size) : DataLoader(batch_size) { SetupMocks(); }
 
   cb::Error ReadDataFromJSON(
       const std::shared_ptr<ModelTensorMap>& inputs,
