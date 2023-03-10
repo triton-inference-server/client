@@ -826,54 +826,21 @@ TEST_CASE(
   model_tensor1.name_ = "INPUT1";
   model_tensor1.shape_ = {1};
 
-  ModelTensor model_tensor2{};
-  model_tensor2.datatype_ = "INT32";
-  model_tensor2.is_optional_ = false;
-  model_tensor2.is_shape_tensor_ = false;
+  ModelTensor model_tensor2 = model_tensor1;
   model_tensor2.name_ = "INPUT2";
-  model_tensor2.shape_ = {1};
 
-  std::string normal_json_str{R"({
+  std::string json_str{R"({
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
      { "INPUT1": [3], "INPUT2": [23] }     
    ]})"};
 
-
-  std::string optional_json_str{R"({
-  "data": [
-    { "INPUT1": [1] },
-    { "INPUT1": [2], "INPUT2": [22] },
-    { "INPUT1": [3] }
-  ]})"};
-
-  std::string shape_json_str{R"({
-  "data": [
-    { "INPUT1": [1], "INPUT2": [21] },
-    { "INPUT1": [1], "INPUT2": [22] },
-    { "INPUT1": [1], "INPUT2": [23] }     
-  ]})"};
-
-  std::string json_str = normal_json_str;
-
-  const auto& ParameterizeSequence{[&]() {
-    SUBCASE("non-sequence") { is_sequence_model = false; }
-    SUBCASE("sequence")
-    {
-      // sequence models do not support batching
-      if (params.batch_size > 1) {
-        expect_init_failure = true;
-      }
-      is_sequence_model = true;
-      params.num_of_sequences = 1;
-    }
-  }};
-
   const auto& ParameterizeTensors{[&]() {
     SUBCASE("one tensor")
     {
       tensors.push_back(model_tensor1);
+
       switch (params.batch_size) {
         case 1:
           expected_results = {{1}, {2}, {3}, {1}};
@@ -888,10 +855,12 @@ TEST_CASE(
         default:
           REQUIRE(false);
       }
-      ParameterizeSequence();
     }
     SUBCASE("two tensors")
     {
+      tensors.push_back(model_tensor1);
+      tensors.push_back(model_tensor2);
+
       switch (params.batch_size) {
         case 1:
           expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
@@ -909,111 +878,6 @@ TEST_CASE(
         default:
           REQUIRE(false);
       }
-      tensors.push_back(model_tensor1);
-      tensors.push_back(model_tensor2);
-      ParameterizeSequence();
-    }
-    SUBCASE("two tensors one missing")
-    {
-      SUBCASE("not optional -- expect parsing fail")
-      {
-        json_str = optional_json_str;
-        expect_init_failure = true;
-        model_tensor2.is_optional_ = false;
-        tensors.push_back(model_tensor1);
-        tensors.push_back(model_tensor2);
-        ParameterizeSequence();
-      }
-      SUBCASE("optional")
-      {
-        json_str = optional_json_str;
-        // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
-        // currently, and will be implemented in the associated story.
-        if (params.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
-          expect_init_failure = true;
-        } else {
-          expect_init_failure = false;
-        }
-        model_tensor2.is_optional_ = true;
-
-        switch (params.batch_size) {
-          case 1:
-            expected_results = {{1}, {2, 22}, {3}, {1}};
-            break;
-          case 2:
-          case 4:
-            // For batch sizes larger than 1, the same set of inputs
-            // must be specified for each batch. You cannot use different
-            // set of optional inputs for each individual batch.
-            expect_thread_failure = true;
-            break;
-          default:
-            REQUIRE(false);
-        }
-
-
-        tensors.push_back(model_tensor1);
-        tensors.push_back(model_tensor2);
-        ParameterizeSequence();
-      }
-    }
-    SUBCASE("shape tensor - invalid")
-    {
-      // Test the case where is_shape_tensor is true and is NOT the same across
-      // a batch: it will fail for batch size > 1
-      model_tensor1.is_shape_tensor_ = true;
-
-      switch (params.batch_size) {
-        case 1:
-          expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
-          break;
-        case 2:
-        case 4:
-          // Currently shm and non-shm both fail, but at different points
-          if (params.shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
-            expect_thread_failure = true;
-          } else {
-            expect_init_failure = true;
-          }
-          break;
-        default:
-          REQUIRE(false);
-      }
-
-      tensors.push_back(model_tensor1);
-      tensors.push_back(model_tensor2);
-      ParameterizeSequence();
-    }
-    SUBCASE("shape tensor - valid")
-    {
-      // Test the case where is_shape_tensor is true and is the same
-      // across a batch: it only ends up in each batch once
-      model_tensor1.is_shape_tensor_ = true;
-      json_str = shape_json_str;
-      expect_thread_failure = false;
-      model_tensor2.is_optional_ = true;
-
-      switch (params.batch_size) {
-        case 1:
-          expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
-          break;
-        case 2:
-          expected_results = {
-              {1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
-          break;
-        case 4:
-          expected_results = {{1, 21, 22, 23, 21},
-                              {1, 22, 23, 21, 22},
-                              {1, 23, 21, 22, 23},
-                              {1, 21, 22, 23, 21}};
-          break;
-        default:
-          REQUIRE(false);
-      }
-
-      tensors.push_back(model_tensor1);
-      tensors.push_back(model_tensor2);
-      ParameterizeSequence();
     }
   }};
 
@@ -1056,6 +920,198 @@ TEST_CASE(
   ParameterizeSharedMemory();
 
   TestRequestRateManager trrm(params, is_sequence_model);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+TEST_CASE("custom_json_data: handling is_shape_tensor")
+{
+  // Test the case where is_shape_tensor is true and is the same
+  // across a batch: it only ends up in each batch once
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [1], "INPUT2": [22] },
+     { "INPUT1": [1], "INPUT2": [23] }     
+   ]})"};
+
+  model_tensor1.is_shape_tensor_ = true;
+  model_tensor2.is_optional_ = true;
+
+  SUBCASE("batch 1")
+  {
+    params.batch_size = 1;
+    expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+  }
+  SUBCASE("batch 2")
+  {
+    params.batch_size = 2;
+    expected_results = {{1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+  }
+  SUBCASE("batch 4")
+  {
+    params.batch_size = 4;
+    expected_results = {{1, 21, 22, 23, 21},
+                        {1, 22, 23, 21, 22},
+                        {1, 23, 21, 22, 23},
+                        {1, 21, 22, 23, 21}};
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
+{
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [2], "INPUT2": [22] },
+     { "INPUT1": [3], "INPUT2": [23] }     
+   ]})"};
+
+
+  SUBCASE("no batching is ok")
+  {
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 1;
+    expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+  }
+  SUBCASE("batching - no shm")
+  {
+    // Currently shm and non-shm both fail for batching, but at different points
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 2;
+    params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+    expect_thread_failure = true;
+  }
+  SUBCASE("batching - shm")
+  {
+    // Currently shm and non-shm both fail for batching, but at different points
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 2;
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    expect_init_failure = true;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+
+TEST_CASE("custom_json_data: handling of optional tensors")
+{
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+  "data": [
+    { "INPUT1": [1] },
+    { "INPUT1": [2], "INPUT2": [22] },
+    { "INPUT1": [3] }
+  ]})"};
+
+  SUBCASE("normal")
+  {
+    model_tensor2.is_optional_ = true;
+    params.batch_size = 1;
+    expected_results = {{1}, {2, 22}, {3}, {1}};
+  }
+  SUBCASE("tensor not optional -- expect parsing fail")
+  {
+    model_tensor2.is_optional_ = false;
+    expect_init_failure = true;
+  }
+  SUBCASE("shared memory not supported")
+  {
+    model_tensor2.is_optional_ = true;
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+    // currently, and will be implemented in the associated story.
+    expect_init_failure = true;
+  }
+  SUBCASE("batching with mismatching data")
+  {
+    model_tensor2.is_optional_ = true;
+    params.batch_size = 2;
+    // For batch sizes larger than 1, the same set of inputs
+    // must be specified for each batch. You cannot use different
+    // set of optional inputs for each individual batch.
+    expect_thread_failure = true;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
       tensors, json_str, expected_results, expect_init_failure,
