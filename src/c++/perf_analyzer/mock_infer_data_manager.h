@@ -124,10 +124,10 @@ class MockInferDataManagerFactory {
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
-      return std::make_shared<MockInferDataManager>(
+      return std::make_shared<testing::NiceMock<MockInferDataManager>>(
           batch_size, parser, factory, data_loader);
     } else {
-      return std::make_shared<MockInferDataManagerShm>(
+      return std::make_shared<testing::NiceMock<MockInferDataManagerShm>>(
           batch_size, shared_memory_type, output_shm_size, parser, factory,
           data_loader);
     }

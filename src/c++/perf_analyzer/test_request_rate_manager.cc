@@ -336,8 +336,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
               params_.string_length, params_.string_data, params_.zero_input,
               params_.user_data, params_.start_sequence_id,
               params_.sequence_id_range, params_.sequence_length,
-              params.sequence_length_specified,
-              params.sequence_length_variation),
+              params_.sequence_length_specified,
+              params_.sequence_length_variation),
           PerfAnalyzerException);
       return;
     } else {
@@ -345,7 +345,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
           params_.string_length, params_.string_data, params_.zero_input,
           params_.user_data, params_.start_sequence_id,
           params_.sequence_id_range, params_.sequence_length,
-          params.sequence_length_specified, params.sequence_length_variation));
+          params_.sequence_length_specified,
+          params_.sequence_length_variation));
     }
 
     auto thread_status = TestCustomDataRunThread();
