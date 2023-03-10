@@ -49,8 +49,12 @@ def _get_error(response):
     indicates the error. If no error then return None
     """
     if response.status_code != 200:
-        error_response = json.loads(response.read())
-        return InferenceServerException(msg=error_response["error"])
+        body = response.read()
+        try:
+            error_response = json.loads(body)
+            return InferenceServerException(msg=error_response["error"], status=str(response.status_code))
+        except json.JSONDecodeError:
+            return InferenceServerException(msg=body, status=str(response.status_code))
     else:
         return None
 
