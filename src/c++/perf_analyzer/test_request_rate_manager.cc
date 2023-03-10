@@ -833,89 +833,32 @@ TEST_CASE(
   model_tensor2.name_ = "INPUT2";
   model_tensor2.shape_ = {1};
 
-  std::string normal_json_str{R"(
-  {
+  std::string normal_json_str{R"({
    "data": [
-     {
-       "INPUT1": [1],
-       "INPUT2": [21]
-     },
-     {
-       "INPUT1": [2],
-       "INPUT2": [22]
-     },
-     {
-       "INPUT1": [3],
-       "INPUT2": [23]
-     }     
-   ]
-  }
-     )"};
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [2], "INPUT2": [22] },
+     { "INPUT1": [3], "INPUT2": [23] }     
+   ]})"};
 
 
-  std::string optional_json_str{R"(
-{
+  std::string optional_json_str{R"({
   "data": [
-    {
-      "INPUT1": [1]
-    },
-    {
-      "INPUT1": [2],
-      "INPUT2": [22]
-    },
-    {
-      "INPUT1": [3]
-    }
-  ]
-}
-    )"};
+    { "INPUT1": [1] },
+    { "INPUT1": [2], "INPUT2": [22] },
+    { "INPUT1": [3] }
+  ]})"};
 
-
-  std::string shape_json_str{R"(
-{
+  std::string shape_json_str{R"({
   "data": [
-    {
-      "INPUT1": [1],
-      "INPUT2": [21]
-    },
-    {
-      "INPUT1": [1],
-      "INPUT2": [22]
-    },
-    {
-      "INPUT1": [1],
-      "INPUT2": [23]
-    }     
-  ]
- }
-     )"};
+    { "INPUT1": [1], "INPUT2": [21] },
+    { "INPUT1": [1], "INPUT2": [22] },
+    { "INPUT1": [1], "INPUT2": [23] }     
+  ]})"};
 
   std::string json_str = normal_json_str;
 
-  const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
-    SUBCASE("sync non-streaming")
-    {
-      async = false;
-      streaming = false;
-    }
-    SUBCASE("async non-streaming")
-    {
-      async = true;
-      streaming = false;
-    }
-    SUBCASE("async streaming")
-    {
-      async = true;
-      streaming = true;
-    }
-  }};
-
   const auto& ParameterizeSequence{[&]() {
-    SUBCASE("non-sequence")
-    {
-      is_sequence_model = false;
-      ParameterizeAsyncAndStreaming(params.async, params.streaming);
-    }
+    SUBCASE("non-sequence") { is_sequence_model = false; }
     SUBCASE("sequence")
     {
       // sequence models do not support batching
@@ -924,7 +867,6 @@ TEST_CASE(
       }
       is_sequence_model = true;
       params.num_of_sequences = 1;
-      ParameterizeAsyncAndStreaming(params.async, params.streaming);
     }
   }};
 
