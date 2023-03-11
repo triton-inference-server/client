@@ -1,4 +1,4 @@
-# Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -687,7 +687,8 @@ class InferenceServerClient():
                     timeout=None,
                     client_timeout=None,
                     headers=None,
-                    compression_algorithm=None):
+                    compression_algorithm=None,
+                    parameters=None):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
@@ -709,7 +710,8 @@ class InferenceServerClient():
                                          sequence_start=sequence_start,
                                          sequence_end=sequence_end,
                                          priority=priority,
-                                         timeout=timeout)
+                                         timeout=timeout,
+                                         parameters=parameters)
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
