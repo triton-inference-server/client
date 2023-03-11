@@ -61,8 +61,7 @@ if version.parse(grpc.__version__) >= version.parse('1.43.0') and version.parse(
         f"Imported version of grpc is {grpc.__version__}. There is a memory "
         "leak in certain Python GRPC versions (1.43.0 to be specific). Please "
         "use versions <1.43.0 or >=1.51.1 to avoid leaks "
-        "(see https://github.com/grpc/grpc/issues/28513)."
-    )
+        "(see https://github.com/grpc/grpc/issues/28513).")
 
 
 def get_error_grpc(rpc_error):
@@ -78,7 +77,7 @@ def raise_error_grpc(rpc_error):
 
 def _get_inference_request(model_name, inputs, model_version, request_id,
                            outputs, sequence_id, sequence_start, sequence_end,
-                           priority, timeout):
+                           priority, timeout, parameters):
     request = service_pb2.ModelInferRequest()
     request.model_name = model_name
     request.model_version = model_version
@@ -102,6 +101,24 @@ def _get_inference_request(model_name, inputs, model_version, request_id,
         request.parameters['priority'].int64_param = priority
     if timeout is not None:
         request.parameters['timeout'].int64_param = timeout
+
+    for key, value in parameters.items():
+        if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
+            raise_error(
+                f'Parameter "{key}" is a reserved parameter and cannot be specified.'
+            )
+        else:
+            if isinstance(value, str):
+                request.parameters[key].string_param = value
+            elif isinstance(value, bool):
+                request.parameters[key].bool_param = value
+            elif isinstance(value, int):
+                request.parameters[key].int64_param = value
+            else:
+                raise_error(
+                    f'The parameter datatype "{type(value)}" for key "{key}" is not supported.'
+                )
+
     return request
 
 
@@ -1335,7 +1352,8 @@ class InferenceServerClient:
               timeout=None,
               client_timeout=None,
               headers=None,
-              compression_algorithm=None):
+              compression_algorithm=None,
+              parameters=None):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1399,6 +1417,9 @@ class InferenceServerClient:
             Optional grpc compression algorithm to be used on client side.
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
+        parameters : dict
+            Optional custom parameters to be included in the inference 
+            request.
 
         Returns
         -------
@@ -1428,7 +1449,8 @@ class InferenceServerClient:
                                          sequence_start=sequence_start,
                                          sequence_end=sequence_end,
                                          priority=priority,
-                                         timeout=timeout)
+                                         timeout=timeout,
+                                         parameters=parameters)
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 

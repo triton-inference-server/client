@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -80,7 +80,8 @@ def _get_query_string(query_params):
 
 
 def _get_inference_request(inputs, request_id, outputs, sequence_id,
-                           sequence_start, sequence_end, priority, timeout):
+                           sequence_start, sequence_end, priority, timeout,
+                           custom_parameters):
     infer_request = {}
     parameters = {}
     if request_id != "":
@@ -105,6 +106,14 @@ def _get_inference_request(inputs, request_id, outputs, sequence_id,
         # no outputs specified so set 'binary_data_output' True in the
         # request so that all outputs are returned in binary format
         parameters['binary_data_output'] = True
+
+    for key, value in custom_parameters.items():
+        if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
+            raise_error(
+                f'Parameter "{key}" is a reserved parameter and cannot be specified.'
+            )
+        else:
+            parameters[key] = value
 
     if parameters:
         infer_request['parameters'] = parameters
@@ -1360,7 +1369,8 @@ class InferenceServerClient:
               headers=None,
               query_params=None,
               request_compression_algorithm=None,
-              response_compression_algorithm=None):
+              response_compression_algorithm=None,
+              parameters=None):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1426,6 +1436,8 @@ class InferenceServerClient:
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
+        parameters: dict
+            Optional fields to be included in the 'parameters' fields.
 
         Returns
         -------
@@ -1446,7 +1458,8 @@ class InferenceServerClient:
             sequence_start=sequence_start,
             sequence_end=sequence_end,
             priority=priority,
-            timeout=timeout)
+            timeout=timeout,
+            custom_parameters=parameters)
 
         if request_compression_algorithm == "gzip":
             if headers is None:
