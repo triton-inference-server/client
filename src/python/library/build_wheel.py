@@ -198,6 +198,8 @@ if __name__ == '__main__':
     if FLAGS.linux:
         if os.uname().machine == "aarch64":
             platform_name = "manylinux2014_aarch64"
+        elif os.uname().machine == "ppc64le":
+            platform_name = "manylinux2014_ppc64le" 
         else:
             platform_name = "manylinux1_x86_64"
         args = [
