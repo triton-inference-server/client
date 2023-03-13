@@ -1482,7 +1482,8 @@ class InferenceServerClient:
                     timeout=None,
                     client_timeout=None,
                     headers=None,
-                    compression_algorithm=None):
+                    compression_algorithm=None,
+                    parameters=None):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1552,6 +1553,9 @@ class InferenceServerClient:
             Optional grpc compression algorithm to be used on client side.
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
+        parameters : dict
+            Optional custom parameters to be included in the inference
+            request.
 
         Raises
         ------
@@ -1587,7 +1591,8 @@ class InferenceServerClient:
                                          sequence_start=sequence_start,
                                          sequence_end=sequence_end,
                                          priority=priority,
-                                         timeout=timeout)
+                                         timeout=timeout,
+                                         parameters=parameters)
         if self._verbose:
             print("async_infer, metadata {}\n{}".format(metadata, request))
 
@@ -1683,7 +1688,8 @@ class InferenceServerClient:
                            sequence_start=False,
                            sequence_end=False,
                            priority=0,
-                           timeout=None):
+                           timeout=None,
+                           parameters=None):
         """Runs an asynchronous inference over gRPC bi-directional streaming
         API. A stream must be established with a call to start_stream()
         before calling this function. All the results will be provided to the
@@ -1737,6 +1743,9 @@ class InferenceServerClient:
             respected by the model that is configured with dynamic batching. 
             See here for more details: 
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
+        parameters : dict
+            Optional custom parameters to be included in the inference
+            request.
         Raises
         ------
         InferenceServerException
@@ -1760,7 +1769,8 @@ class InferenceServerClient:
                                          sequence_start=sequence_start,
                                          sequence_end=sequence_end,
                                          priority=priority,
-                                         timeout=timeout)
+                                         timeout=timeout,
+                                         parameters=parameters)
         if self._verbose:
             print("async_stream_infer\n{}".format(request))
         # Enqueues the request to the stream

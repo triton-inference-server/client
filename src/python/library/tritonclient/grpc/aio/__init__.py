@@ -796,6 +796,9 @@ class InferenceServerClient():
                     inputs["priority"] = 0
                 if "timeout" not in inputs:
                     inputs["timeout"] = None
+                if "parameters" not in inputs:
+                    inputs["parameters"] = None
+
                 yield _get_inference_request(
                     model_name=inputs["model_name"],
                     inputs=inputs["inputs"],
@@ -806,7 +809,8 @@ class InferenceServerClient():
                     sequence_start=inputs["sequence_start"],
                     sequence_end=inputs["sequence_end"],
                     priority=inputs["priority"],
-                    timeout=inputs["timeout"])
+                    timeout=inputs["timeout"],
+                    parameters=inputs["parameters"])
 
         try:
             response_iterator = self._client_stub.ModelStreamInfer(
