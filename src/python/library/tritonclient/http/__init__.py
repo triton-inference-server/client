@@ -107,13 +107,14 @@ def _get_inference_request(inputs, request_id, outputs, sequence_id,
         # request so that all outputs are returned in binary format
         parameters['binary_data_output'] = True
 
-    for key, value in custom_parameters.items():
-        if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
-            raise_error(
-                f'Parameter "{key}" is a reserved parameter and cannot be specified.'
-            )
-        else:
-            parameters[key] = value
+    if custom_parameters:
+        for key, value in custom_parameters.items():
+            if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
+                raise_error(
+                    f'Parameter "{key}" is a reserved parameter and cannot be specified.'
+                )
+            else:
+                parameters[key] = value
 
     if parameters:
         infer_request['parameters'] = parameters
