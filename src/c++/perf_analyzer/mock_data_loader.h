@@ -33,10 +33,13 @@ namespace triton { namespace perfanalyzer {
 /// Mock DataLoader class used for testing to allow JSON data to be read
 /// from string, rather than file.
 ///
-class MockDataLoader : public DataLoader {
+class NaggyMockDataLoader : public DataLoader {
  public:
-  MockDataLoader() { SetupMocks(); }
-  MockDataLoader(size_t batch_size) : DataLoader(batch_size) { SetupMocks(); }
+  NaggyMockDataLoader() { SetupMocks(); }
+  NaggyMockDataLoader(size_t batch_size) : DataLoader(batch_size)
+  {
+    SetupMocks();
+  }
 
   void SetupMocks()
   {
@@ -44,7 +47,6 @@ class MockDataLoader : public DataLoader {
         .WillByDefault([this](size_t stream_id) -> size_t {
           return this->DataLoader::GetTotalSteps(stream_id);
         });
-    EXPECT_CALL(*this, GetTotalSteps(testing::_)).Times(testing::AnyNumber());
   }
 
   MOCK_METHOD(size_t, GetTotalSteps, (size_t), (override));
@@ -72,5 +74,9 @@ class MockDataLoader : public DataLoader {
   std::vector<size_t>& step_num_{DataLoader::step_num_};
   size_t& data_stream_cnt_{DataLoader::data_stream_cnt_};
 };
+
+// Non-naggy version of Mock Data Loader (won't warn when using default gmock
+// mocked function)
+using MockDataLoader = testing::NiceMock<NaggyMockDataLoader>;
 
 }}  // namespace triton::perfanalyzer

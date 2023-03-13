@@ -32,7 +32,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class MockDataLoader;
+class NaggyMockDataLoader;
 #endif
 
 class DataLoader {
@@ -169,7 +169,7 @@ class DataLoader {
   std::vector<uint8_t> input_buf_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend MockDataLoader;
+  friend NaggyMockDataLoader;
 
  protected:
   DataLoader() = default;
