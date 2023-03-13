@@ -1021,6 +1021,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   }
   SUBCASE("batching - no shm")
   {
+    // FIXME: TMA-765
     // Currently shm and non-shm both fail for batching, but at different points
     model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
@@ -1029,6 +1030,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   }
   SUBCASE("batching - shm")
   {
+    // FIXME: TMA-765
     // Currently shm and non-shm both fail for batching, but at different points
     model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
