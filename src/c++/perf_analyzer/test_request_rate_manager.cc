@@ -351,14 +351,10 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     auto thread_status = TestCustomDataRunThread();
 
-    if (!thread_status.IsOk() && !expect_thread_failure) {
-      std::cout << "Unexpected thread failure: " << thread_status.Message()
-                << std::endl;
-    }
-
-    REQUIRE(thread_status.IsOk() != expect_thread_failure);
-    if (!thread_status.IsOk()) {
-      return;
+    if (expect_thread_failure) {
+      REQUIRE(!thread_status.IsOk());
+    } else {
+      REQUIRE_MESSAGE(thread_status.IsOk(), thread_status.Message());
     }
 
     auto recorded_inputs{stats_->recorded_inputs};
