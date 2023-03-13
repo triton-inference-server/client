@@ -357,44 +357,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
       REQUIRE_MESSAGE(thread_status.IsOk(), thread_status.Message());
     }
 
-    auto recorded_inputs{stats_->recorded_inputs};
-    std::vector<std::vector<int32_t>> recorded_values;
-
-    // Convert the recorded inputs into values, for both shared memory and non
-    // shared memory cases
-    //
-    if (params_.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
-      auto recorded_memory_regions =
-          std::dynamic_pointer_cast<MockInferDataManagerShm>(
-              infer_data_manager_)
-              ->mocked_shared_memory_regions;
-      for (auto recorded_input : recorded_inputs) {
-        std::vector<int32_t> recorded_value;
-        for (auto memory_label : recorded_input) {
-          auto itr =
-              recorded_memory_regions.find(memory_label.shared_memory_label);
-          if (itr == recorded_memory_regions.end()) {
-            std::string err_str = "Test error: Could not find label " +
-                                  memory_label.shared_memory_label +
-                                  " in recorded shared memory";
-            REQUIRE_MESSAGE(false, err_str);
-          } else {
-            for (auto val : itr->second) {
-              recorded_value.push_back(val);
-            }
-          }
-        }
-        recorded_values.push_back(recorded_value);
-      }
-    } else {
-      for (auto recorded_input : recorded_inputs) {
-        std::vector<int32_t> recorded_value;
-        for (auto val : recorded_input) {
-          recorded_value.push_back(val.data);
-        }
-        recorded_values.push_back(recorded_value);
-      }
-    }
+    auto recorded_values = GetRecordedInputValues();
 
     // Check that results are exactly as expected
     REQUIRE(recorded_values.size() >= expected_values.size());
@@ -528,6 +491,52 @@ class TestRequestRateManager : public TestLoadManagerBase,
       time_between_requests.push_back(diff_ns.count());
     }
     return time_between_requests;
+  }
+
+  // Gets the inputs recorded in the mock backend
+  // Returns a vector of vector of int32_t. Each entry in the parent vector is a
+  // list of all input values for a single inference request
+  //
+  std::vector<std::vector<int32_t>> GetRecordedInputValues()
+  {
+    auto recorded_inputs{stats_->recorded_inputs};
+    std::vector<std::vector<int32_t>> recorded_values;
+    // Convert the recorded inputs into values, for both shared memory and non
+    // shared memory cases
+    //
+    if (params_.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
+      auto recorded_memory_regions =
+          std::dynamic_pointer_cast<MockInferDataManagerShm>(
+              infer_data_manager_)
+              ->mocked_shared_memory_regions;
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto memory_label : recorded_input) {
+          auto itr =
+              recorded_memory_regions.find(memory_label.shared_memory_label);
+          if (itr == recorded_memory_regions.end()) {
+            std::string err_str = "Test error: Could not find label " +
+                                  memory_label.shared_memory_label +
+                                  " in recorded shared memory";
+            REQUIRE_MESSAGE(false, err_str);
+          } else {
+            for (auto val : itr->second) {
+              recorded_value.push_back(val);
+            }
+          }
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    } else {
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto val : recorded_input) {
+          recorded_value.push_back(val.data);
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    }
+    return recorded_values;
   }
 };
 
