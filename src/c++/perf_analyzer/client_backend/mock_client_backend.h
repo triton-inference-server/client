@@ -310,12 +310,14 @@ class MockClientStats {
 
     // Group all values across all inputs together into a single vector, and
     // then record it
-    std::vector<TestRecordedInput> tmp_inputs;
+    std::vector<TestRecordedInput> request_inputs;
     for (const auto& input : inputs) {
-      auto x = static_cast<const MockInferInput*>(input)->recorded_inputs_;
-      tmp_inputs.insert(tmp_inputs.end(), x.begin(), x.end());
+      auto recorded_inputs =
+          static_cast<const MockInferInput*>(input)->recorded_inputs_;
+      request_inputs.insert(
+          request_inputs.end(), recorded_inputs.begin(), recorded_inputs.end());
     }
-    recorded_inputs.push_back(tmp_inputs);
+    recorded_inputs.push_back(request_inputs);
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);
