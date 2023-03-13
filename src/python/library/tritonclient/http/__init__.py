@@ -1519,7 +1519,8 @@ class InferenceServerClient:
                     headers=None,
                     query_params=None,
                     request_compression_algorithm=None,
-                    response_compression_algorithm=None):
+                    response_compression_algorithm=None,
+                    parameters=None):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'. Even though this call is
         non-blocking, however, the actual number of concurrent requests to
@@ -1591,6 +1592,9 @@ class InferenceServerClient:
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
+        parameters : dict
+            Optional custom parameters to be included in the inference 
+            request.
 
         Returns
         -------
@@ -1614,7 +1618,8 @@ class InferenceServerClient:
             sequence_start=sequence_start,
             sequence_end=sequence_end,
             priority=priority,
-            timeout=timeout)
+            timeout=timeout,
+            custom_parameters=parameters)
 
         if request_compression_algorithm == "gzip":
             if headers is None:
