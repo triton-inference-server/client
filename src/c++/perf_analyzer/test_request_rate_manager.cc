@@ -328,7 +328,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
     params_.user_data = {json_str};
 
-    TestCustomDataSetup(tensors);
+    CustomDataTestSetup(tensors);
 
     if (expect_init_failure) {
       REQUIRE_THROWS_AS(
@@ -349,7 +349,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
           params_.sequence_length_variation));
     }
 
-    auto thread_status = TestCustomDataRunThread();
+    auto thread_status = CustomDataTestRunThread();
 
     if (expect_thread_failure) {
       REQUIRE(!thread_status.IsOk());
@@ -424,7 +424,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
  private:
   bool use_mock_infer_;
 
-  void TestCustomDataSetup(std::vector<ModelTensor>& tensors)
+  void CustomDataTestSetup(std::vector<ModelTensor>& tensors)
   {
     std::shared_ptr<MockDataLoader> mdl{
         std::make_shared<MockDataLoader>(params_.batch_size)};
@@ -448,7 +448,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     max_threads_ = 1;
   }
 
-  cb::Error TestCustomDataRunThread()
+  cb::Error CustomDataTestRunThread()
   {
     RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
     schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
