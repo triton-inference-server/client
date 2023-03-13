@@ -102,22 +102,23 @@ def _get_inference_request(model_name, inputs, model_version, request_id,
     if timeout is not None:
         request.parameters['timeout'].int64_param = timeout
 
-    for key, value in parameters.items():
-        if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
-            raise_error(
-                f'Parameter "{key}" is a reserved parameter and cannot be specified.'
-            )
-        else:
-            if isinstance(value, str):
-                request.parameters[key].string_param = value
-            elif isinstance(value, bool):
-                request.parameters[key].bool_param = value
-            elif isinstance(value, int):
-                request.parameters[key].int64_param = value
-            else:
+    if parameters:
+        for key, value in parameters.items():
+            if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
                 raise_error(
-                    f'The parameter datatype "{type(value)}" for key "{key}" is not supported.'
+                    f'Parameter "{key}" is a reserved parameter and cannot be specified.'
                 )
+            else:
+                if isinstance(value, str):
+                    request.parameters[key].string_param = value
+                elif isinstance(value, bool):
+                    request.parameters[key].bool_param = value
+                elif isinstance(value, int):
+                    request.parameters[key].int64_param = value
+                else:
+                    raise_error(
+                        f'The parameter datatype "{type(value)}" for key "{key}" is not supported.'
+                    )
 
     return request
 
