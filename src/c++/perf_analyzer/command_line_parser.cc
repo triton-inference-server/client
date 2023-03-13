@@ -104,6 +104,8 @@ CLParser::Usage(const std::string& msg)
                "profiling>"
             << std::endl;
   std::cerr << "\t--percentile <percentile>" << std::endl;
+  std::cerr << "\t--overhead-percentage-threshold <thresold value (0 - 100)>"
+            << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-t <number of concurrent requests>" << std::endl;
   std::cerr << "\t-c <maximum concurrency>" << std::endl;
@@ -372,6 +374,15 @@ CLParser::Usage(const std::string& msg)
              "that the average latency is used to determine stability",
              18)
       << std::endl;
+  std::cerr << FormatMessage(
+                   " --overhead-percentage-threshold: The percentage of total "
+                   "time that PA is doing work and requests are not "
+                   "outstanding to triton server. If the overhead percentage "
+                   "exceeds the threshold, a warning is displayed to the user. "
+                   "The default value is 50 indicating that 50% of the run "
+                   "time is PA overhead. The valid range is 0.0 - 100.0.",
+                   18)
+            << std::endl;
   std::cerr << std::endl;
   std::cerr << "II. INPUT DATA OPTIONS: " << std::endl;
   std::cerr << std::setw(9) << std::left
@@ -745,6 +756,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"metrics-url", required_argument, 0, 50},
       {"metrics-interval", required_argument, 0, 51},
       {"sequence-length-variation", required_argument, 0, 52},
+      {"overhead-percentage-threshold", required_argument, 0, 53},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1193,6 +1205,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->sequence_length_variation = std::stod(optarg);
         break;
       }
+      case 53: {
+        params_->overhead_pct_threshold = std::stod(optarg) / 100;
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1479,6 +1495,12 @@ CLParser::VerifyOptions()
 
   if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
+  }
+
+  if (params_->overhead_pct_threshold < 0.0 ||
+      params_->overhead_pct_threshold > 100.0) {
+    Usage(
+        "Overhead percentage threshold must be a value between 0.0 and 100.0");
   }
 }
 
