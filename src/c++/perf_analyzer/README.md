@@ -81,7 +81,7 @@ Tensorflow model: `simple`.
 ### Step 1: Start Triton Container
 
 ```bash
-export RELEASE=<yy.mm> # e.g. for February of 2023, do `export RELEASE=23.02`
+export RELEASE=<yy.mm> # e.g. to use the release from the end of February of 2023, do `export RELEASE=23.02`
 
 docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-py3
 
