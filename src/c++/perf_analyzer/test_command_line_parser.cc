@@ -1238,46 +1238,46 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(!parser.UsageCalled());
 
-      exp->overhead_pct_threshold = 10.0;
+      exp->overhead_pct_threshold = 10;
     }
 
     SUBCASE("set to max")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name,
-                          "--overhead-percentage-threshold", "100.0"};
+                          "--overhead-percentage-threshold", "100"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(!parser.UsageCalled());
 
-      exp->overhead_pct_threshold = 100.0;
+      exp->overhead_pct_threshold = 100;
     }
 
     SUBCASE("set to min")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name,
-                          "--overhead-percentage-threshold", "0.0"};
+                          "--overhead-percentage-threshold", "0"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(!parser.UsageCalled());
 
-      exp->overhead_pct_threshold = 0.0;
+      exp->overhead_pct_threshold = 0;
     }
 
     SUBCASE("negative value")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name,
-                          "--overhead-percentage-threshold", "-10.0"};
+                          "--overhead-percentage-threshold", "-10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
 
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "Overhead percentage threshold must be a value between 0.0 and "
-          "100.0");
+          "Overhead percentage threshold must be a value between 0 and "
+          "100");
     }
   }
 

@@ -421,7 +421,7 @@ Report(
     const cb::ProtocolType protocol, const bool verbose,
     const bool include_lib_stats, const bool include_server_stats,
     const std::shared_ptr<ModelParser>& parser,
-    const bool should_collect_metrics, const double overhead_pct_threshold)
+    const bool should_collect_metrics, const int overhead_pct_threshold)
 {
   std::cout << "  Client: " << std::endl;
   ReportClientSideStats(
@@ -439,7 +439,7 @@ Report(
     ReportPrometheusMetrics(summary.metrics.front());
   }
 
-  if (summary.overhead_pct > overhead_pct_threshold) {
+  if (summary.overhead_pct > (double)overhead_pct_threshold) {
     std::cout << "[WARNING] Perf Analyzer is not able to keep up with the "
                  "desired load. The results may not be accurate."
               << std::endl;
@@ -460,7 +460,7 @@ InferenceProfiler::Create(
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-    const bool should_collect_metrics, const double overhead_pct_threshold)
+    const bool should_collect_metrics, const int overhead_pct_threshold)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
@@ -483,7 +483,7 @@ InferenceProfiler::InferenceProfiler(
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-    const double overhead_pct_threshold)
+    const int overhead_pct_threshold)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),

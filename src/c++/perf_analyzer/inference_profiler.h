@@ -227,7 +227,7 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics, const double overhead_pct_threshold);
+      const bool should_collect_metrics, const int overhead_pct_threshold);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -309,7 +309,7 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold);
+      const int overhead_pct_threshold);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -677,7 +677,7 @@ class InferenceProfiler {
 
   /// User set threshold above which the PA overhead is too significant to
   /// provide useable results.
-  const double overhead_pct_threshold_{0.0};
+  const int overhead_pct_threshold_{0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;

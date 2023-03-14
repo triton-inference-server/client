@@ -1206,7 +1206,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 53: {
-        params_->overhead_pct_threshold = std::stod(optarg) / 100;
+        params_->overhead_pct_threshold = std::stoi(optarg) / 100;
         break;
       }
       case 'v':
@@ -1497,10 +1497,9 @@ CLParser::VerifyOptions()
     Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 
-  if (params_->overhead_pct_threshold < 0.0 ||
-      params_->overhead_pct_threshold > 100.0) {
-    Usage(
-        "Overhead percentage threshold must be a value between 0.0 and 100.0");
+  if (params_->overhead_pct_threshold < 0 ||
+      params_->overhead_pct_threshold > 100) {
+    Usage("Overhead percentage threshold must be a value between 0 and 100");
   }
 }
 

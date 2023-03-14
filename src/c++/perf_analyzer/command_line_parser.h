@@ -135,7 +135,7 @@ struct PerfAnalyzerParameters {
   // requests are not outstanding to the triton server. If the overhead
   // percentage exceeds the threshold, a warning is displayed.
   //
-  double overhead_pct_threshold{50.0};
+  int overhead_pct_threshold{50};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;
