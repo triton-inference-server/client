@@ -32,13 +32,16 @@ namespace triton { namespace perfanalyzer {
 
 class MockModelParser : public ModelParser {
  public:
-  MockModelParser(bool is_sequence_model, bool is_decoupled_model)
+  MockModelParser(
+      bool is_sequence_model, bool is_decoupled_model,
+      size_t max_batch_size = 64)
       : ModelParser(clientbackend::BackendKind::TRITON)
   {
     if (is_sequence_model) {
       scheduler_type_ = ModelParser::SEQUENCE;
     }
     is_decoupled_ = is_decoupled_model;
+    max_batch_size_ = max_batch_size;
   }
 
   std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};

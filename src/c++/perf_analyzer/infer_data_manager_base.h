@@ -88,8 +88,6 @@ class InferDataManagerBase : public IInferDataManager {
   cb::Error UpdateValidationOutputs(
       int stream_index, int step_index, InferData& infer_data);
 
-  cb::Error ValidateDataIndexes(int stream_index, int step_index);
-
   /// Creates inference input object
   /// \param infer_input Output parameter storing newly created inference input
   /// \param kind Backend kind

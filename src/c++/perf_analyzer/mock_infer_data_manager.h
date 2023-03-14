@@ -47,13 +47,20 @@ class MockInferDataManagerShm : public InferDataManagerShm {
   }
 
   // Mocked version of the CopySharedMemory method in loadmanager.
-  // This is strictly for testing to mock out the memcpy calls
+  // Tracks the mapping of shared memory label to data
   //
   cb::Error CopySharedMemory(
       uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
       std::vector<size_t>& byte_size, bool is_shape_tensor,
       std::string& region_name) override
   {
+    std::vector<int32_t> vals;
+
+    for (size_t i = 0; i < data_ptrs.size(); i++) {
+      int32_t val = *reinterpret_cast<const int32_t*>(data_ptrs[i]);
+      vals.push_back(val);
+    }
+    mocked_shared_memory_regions.insert(std::make_pair(region_name, vals));
     return cb::Error::Success;
   }
 
@@ -65,6 +72,9 @@ class MockInferDataManagerShm : public InferDataManagerShm {
     *infer_input = new cb::MockInferInput(kind, name, dims, datatype);
     return cb::Error::Success;
   }
+
+  // Tracks the mapping of shared memory label to data
+  std::map<std::string, std::vector<int32_t>> mocked_shared_memory_regions;
 };
 
 
@@ -114,10 +124,10 @@ class MockInferDataManagerFactory {
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
-      return std::make_shared<MockInferDataManager>(
+      return std::make_shared<testing::NiceMock<MockInferDataManager>>(
           batch_size, parser, factory, data_loader);
     } else {
-      return std::make_shared<MockInferDataManagerShm>(
+      return std::make_shared<testing::NiceMock<MockInferDataManagerShm>>(
           batch_size, shared_memory_type, output_shm_size, parser, factory,
           data_loader);
     }

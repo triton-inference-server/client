@@ -35,6 +35,25 @@
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
+// Holds information (either the raw data or a shared memory label) for an
+// inference input
+//
+struct TestRecordedInput {
+  TestRecordedInput(int32_t data_in, size_t size_in)
+      : shared_memory_label(""), data(data_in), size(size_in)
+  {
+  }
+
+  TestRecordedInput(std::string label_in, size_t size_in)
+      : shared_memory_label(label_in), data(0), size(size_in)
+  {
+  }
+
+  std::string shared_memory_label;
+  int32_t data;
+  size_t size;
+};
+
 /// Mock class of an InferInput
 ///
 class MockInferInput : public InferInput {
@@ -56,7 +75,10 @@ class MockInferInput : public InferInput {
 
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override
   {
-    recorded_inputs_.push_back(std::make_pair(input, input_byte_size));
+    if (input) {
+      int32_t val = *reinterpret_cast<const int32_t*>(input);
+      recorded_inputs_.push_back(TestRecordedInput(val, input_byte_size));
+    }
     ++append_raw_calls_;
     return Error::Success;
   }
@@ -64,12 +86,13 @@ class MockInferInput : public InferInput {
   Error SetSharedMemory(
       const std::string& name, size_t byte_size, size_t offset = 0)
   {
+    recorded_inputs_.push_back(TestRecordedInput(name, byte_size));
     ++set_shared_memory_calls_;
     return Error::Success;
   }
 
   const std::vector<int64_t> dims_{};
-  std::vector<std::pair<const uint8_t*, size_t>> recorded_inputs_{};
+  std::vector<TestRecordedInput> recorded_inputs_{};
   std::atomic<size_t> append_raw_calls_{0};
   std::atomic<size_t> set_shared_memory_calls_{0};
 };
@@ -270,7 +293,11 @@ class MockClientStats {
   SeqStatus sequence_status;
   SharedMemoryStats memory_stats;
 
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> recorded_inputs{};
+  // Each entry in the top vector is a list of all inputs for an inference
+  // request. If there are multiple inputs due to batching and/or the model
+  // having multiple inputs, all of those from the same request will be in the
+  // same second level vector
+  std::vector<std::vector<TestRecordedInput>> recorded_inputs{};
 
   void CaptureRequest(
       ReqType type, const InferOptions& options,
@@ -281,10 +308,16 @@ class MockClientStats {
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
 
+    // Group all values across all inputs together into a single vector, and
+    // then record it
+    std::vector<TestRecordedInput> request_inputs;
     for (const auto& input : inputs) {
-      recorded_inputs.push_back(
-          static_cast<const MockInferInput*>(input)->recorded_inputs_);
+      auto recorded_inputs =
+          static_cast<const MockInferInput*>(input)->recorded_inputs_;
+      request_inputs.insert(
+          request_inputs.end(), recorded_inputs.begin(), recorded_inputs.end());
     }
+    recorded_inputs.push_back(request_inputs);
 
     UpdateCallCount(type);
     UpdateSeqStatus(options);

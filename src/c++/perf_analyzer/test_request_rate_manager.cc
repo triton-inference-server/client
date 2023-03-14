@@ -312,6 +312,63 @@ class TestRequestRateManager : public TestLoadManagerBase,
     StopWorkerThreads();
   }
 
+  /// Helper function that will setup and run a case to verify custom data
+  /// behavior
+  /// \param tensors Vector of input ModelTensors
+  /// \param json_str The custom data json text
+  /// \param expected_values Vector of expected input values for each inference
+  /// \param expect_init_failure True if InitManager is expected to throw an
+  /// error
+  /// \param expect_thread_failure True if the thread is expected to have
+  /// an error
+  void TestCustomData(
+      std::vector<ModelTensor>& tensors, const std::string json_str,
+      std::vector<std::vector<int32_t>>& expected_values,
+      bool expect_init_failure, bool expect_thread_failure)
+  {
+    params_.user_data = {json_str};
+
+    CustomDataTestSetup(tensors);
+
+    if (expect_init_failure) {
+      REQUIRE_THROWS_AS(
+          InitManager(
+              params_.string_length, params_.string_data, params_.zero_input,
+              params_.user_data, params_.start_sequence_id,
+              params_.sequence_id_range, params_.sequence_length,
+              params_.sequence_length_specified,
+              params_.sequence_length_variation),
+          PerfAnalyzerException);
+      return;
+    } else {
+      REQUIRE_NOTHROW(InitManager(
+          params_.string_length, params_.string_data, params_.zero_input,
+          params_.user_data, params_.start_sequence_id,
+          params_.sequence_id_range, params_.sequence_length,
+          params_.sequence_length_specified,
+          params_.sequence_length_variation));
+    }
+
+    auto thread_status = CustomDataTestRunThread();
+
+    if (expect_thread_failure) {
+      REQUIRE(!thread_status.IsOk());
+    } else {
+      REQUIRE_MESSAGE(thread_status.IsOk(), thread_status.Message());
+    }
+
+    auto recorded_values = GetRecordedInputValues();
+
+    // Check that results are exactly as expected
+    REQUIRE(recorded_values.size() >= expected_values.size());
+    for (size_t i = 0; i < expected_values.size(); i++) {
+      REQUIRE(recorded_values[i].size() == expected_values[i].size());
+      for (size_t j = 0; j < expected_values[i].size(); j++) {
+        CHECK(recorded_values[i][j] == expected_values[i][j]);
+      }
+    }
+  }
+
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
   bool& using_json_data_{LoadManager::using_json_data_};
@@ -329,6 +386,55 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
  private:
   bool use_mock_infer_;
+
+  void CustomDataTestSetup(std::vector<ModelTensor>& tensors)
+  {
+    std::shared_ptr<MockDataLoader> mdl{
+        std::make_shared<MockDataLoader>(params_.batch_size)};
+
+    std::shared_ptr<MockModelParser> mmp{
+        std::make_shared<MockModelParser>(on_sequence_model_, false)};
+    mmp->inputs_ = std::make_shared<ModelTensorMap>();
+    for (auto t : tensors) {
+      (*mmp->inputs_)[t.name_] = t;
+    }
+
+    infer_data_manager_ =
+        MockInferDataManagerFactory::CreateMockInferDataManager(
+            params_.batch_size, params_.shared_memory_type,
+            params_.output_shm_size, mmp, factory_, mdl);
+
+    parser_ = mmp;
+    data_loader_ = mdl;
+    using_json_data_ = true;
+    execute_ = true;
+    max_threads_ = 1;
+  }
+
+  cb::Error CustomDataTestRunThread()
+  {
+    RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
+    schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
+                                        milliseconds(12), milliseconds(16)};
+    schedule->duration = nanoseconds{16000000};
+
+    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
+    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
+        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+    std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
+    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
+
+    start_time_ = std::chrono::steady_clock::now();
+    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+
+    std::this_thread::sleep_for(milliseconds(19));
+
+    early_exit = true;
+    infer_future.get();
+
+    return thread_stat->status_;
+  }
+
 
   void CheckCallDistribution(int request_rate)
   {
@@ -385,6 +491,52 @@ class TestRequestRateManager : public TestLoadManagerBase,
       time_between_requests.push_back(diff_ns.count());
     }
     return time_between_requests;
+  }
+
+  // Gets the inputs recorded in the mock backend
+  // Returns a vector of vector of int32_t. Each entry in the parent vector is a
+  // list of all input values for a single inference request
+  //
+  std::vector<std::vector<int32_t>> GetRecordedInputValues()
+  {
+    auto recorded_inputs{stats_->recorded_inputs};
+    std::vector<std::vector<int32_t>> recorded_values;
+    // Convert the recorded inputs into values, for both shared memory and non
+    // shared memory cases
+    //
+    if (params_.shared_memory_type != SharedMemoryType::NO_SHARED_MEMORY) {
+      auto recorded_memory_regions =
+          std::dynamic_pointer_cast<MockInferDataManagerShm>(
+              infer_data_manager_)
+              ->mocked_shared_memory_regions;
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto memory_label : recorded_input) {
+          auto itr =
+              recorded_memory_regions.find(memory_label.shared_memory_label);
+          if (itr == recorded_memory_regions.end()) {
+            std::string err_str = "Test error: Could not find label " +
+                                  memory_label.shared_memory_label +
+                                  " in recorded shared memory";
+            REQUIRE_MESSAGE(false, err_str);
+          } else {
+            for (auto val : itr->second) {
+              recorded_value.push_back(val);
+            }
+          }
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    } else {
+      for (auto recorded_input : recorded_inputs) {
+        std::vector<int32_t> recorded_value;
+        for (auto val : recorded_input) {
+          recorded_value.push_back(val.data);
+        }
+        recorded_values.push_back(recorded_value);
+      }
+    }
+    return recorded_values;
   }
 };
 
@@ -664,121 +816,313 @@ TEST_CASE(
     "correctly")
 {
   PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
   bool is_sequence_model{false};
-  const auto& ParameterizeAsyncAndStreaming{[](bool& async, bool& streaming) {
-    SUBCASE("sync non-streaming")
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [2], "INPUT2": [22] },
+     { "INPUT1": [3], "INPUT2": [23] }     
+   ]})"};
+
+  const auto& ParameterizeTensors{[&]() {
+    SUBCASE("one tensor")
     {
-      async = false;
-      streaming = false;
+      tensors.push_back(model_tensor1);
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1}, {2}, {3}, {1}};
+          break;
+        case 2:
+          expected_results = {{1, 2}, {3, 1}, {2, 3}, {1, 2}};
+          break;
+        case 4:
+          expected_results = {
+              {1, 2, 3, 1}, {2, 3, 1, 2}, {3, 1, 2, 3}, {1, 2, 3, 1}};
+          break;
+        default:
+          REQUIRE(false);
+      }
     }
-    SUBCASE("async non-streaming")
+    SUBCASE("two tensors")
     {
-      async = true;
-      streaming = false;
-    }
-    SUBCASE("async streaming")
-    {
-      async = true;
-      streaming = true;
+      tensors.push_back(model_tensor1);
+      tensors.push_back(model_tensor2);
+
+      switch (params.batch_size) {
+        case 1:
+          expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+          break;
+        case 2:
+          expected_results = {
+              {1, 2, 21, 22}, {3, 1, 23, 21}, {2, 3, 22, 23}, {1, 2, 21, 22}};
+          break;
+        case 4:
+          expected_results = {{1, 2, 3, 1, 21, 22, 23, 21},
+                              {2, 3, 1, 2, 22, 23, 21, 22},
+                              {3, 1, 2, 3, 23, 21, 22, 23},
+                              {1, 2, 3, 1, 21, 22, 23, 21}};
+          break;
+        default:
+          REQUIRE(false);
+      }
     }
   }};
 
-  SUBCASE("non-sequence")
-  {
-    is_sequence_model = false;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-  SUBCASE("sequence")
-  {
-    is_sequence_model = true;
-    params.num_of_sequences = 1;
-    ParameterizeAsyncAndStreaming(params.async, params.streaming);
-  }
-
-  std::shared_ptr<MockModelParser> mmp{
-      std::make_shared<MockModelParser>(is_sequence_model, false)};
-  ModelTensor model_tensor{};
-  model_tensor.datatype_ = "INT32";
-  model_tensor.is_optional_ = false;
-  model_tensor.is_shape_tensor_ = false;
-  model_tensor.name_ = "INPUT0";
-  model_tensor.shape_ = {1};
-  mmp->inputs_ = std::make_shared<ModelTensorMap>();
-  (*mmp->inputs_)[model_tensor.name_] = model_tensor;
-
-  std::shared_ptr<MockDataLoader> mdl{std::make_shared<MockDataLoader>()};
-  const std::string json_str{R"(
-{
-  "data": [
+  const auto& ParameterizeBatchSize{[&]() {
+    SUBCASE("batchsize = 1")
     {
-      "INPUT0": [2000000000]
-    },
-    {
-      "INPUT0": [2000000001]
+      params.batch_size = 1;
+      ParameterizeTensors();
     }
-  ]
-}
-    )"};
-  mdl->ReadDataFromStr(json_str, mmp->Inputs(), mmp->Outputs());
+    SUBCASE("batchsize = 2")
+    {
+      params.batch_size = 2;
+      ParameterizeTensors();
+    }
+    SUBCASE("batchsize = 4")
+    {
+      params.batch_size = 4;
+      ParameterizeTensors();
+    }
+  }};
+
+  const auto& ParameterizeSharedMemory{[&]() {
+    SUBCASE("no_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+    SUBCASE("system_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+    SUBCASE("cuda_shared_memory")
+    {
+      params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
+      ParameterizeBatchSize();
+    }
+  }};
+
+  ParameterizeSharedMemory();
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
-  trrm.infer_data_manager_ =
-      MockInferDataManagerFactory::CreateMockInferDataManager(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mmp, trrm.factory_, mdl);
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
 
-  std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+TEST_CASE("custom_json_data: handling is_shape_tensor")
+{
+  // Test the case where is_shape_tensor is true and is the same
+  // across a batch: it only ends up in each batch once
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
 
-  trrm.parser_ = mmp;
-  trrm.data_loader_ = mdl;
-  trrm.using_json_data_ = true;
-  trrm.execute_ = true;
-  trrm.batch_size_ = 1;
-  trrm.max_threads_ = 1;
-  RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                      milliseconds(12), milliseconds(16)};
-  schedule->duration = nanoseconds{16000000};
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
 
-  trrm.InitManager(
-      params.string_length, params.string_data, params.zero_input,
-      params.user_data, params.start_sequence_id, params.sequence_id_range,
-      params.sequence_length, params.sequence_length_specified,
-      params.sequence_length_variation);
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
 
-  trrm.start_time_ = std::chrono::steady_clock::now();
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
 
-  std::shared_ptr<IWorker> worker{trrm.MakeWorker(thread_stat, thread_config)};
-  std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
-  std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+  std::string json_str{R"({
+   "data": [
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [1], "INPUT2": [22] },
+     { "INPUT1": [1], "INPUT2": [23] }     
+   ]})"};
 
-  std::this_thread::sleep_for(milliseconds(18));
+  model_tensor1.is_shape_tensor_ = true;
+  model_tensor2.is_optional_ = true;
 
-  early_exit = true;
-  infer_future.get();
+  SUBCASE("batch 1")
+  {
+    params.batch_size = 1;
+    expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+  }
+  SUBCASE("batch 2")
+  {
+    params.batch_size = 2;
+    expected_results = {{1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+  }
+  SUBCASE("batch 4")
+  {
+    params.batch_size = 4;
+    expected_results = {{1, 21, 22, 23, 21},
+                        {1, 22, 23, 21, 22},
+                        {1, 23, 21, 22, 23},
+                        {1, 21, 22, 23, 21}};
+  }
 
-  const auto& recorded_inputs{trrm.stats_->recorded_inputs};
+  TestRequestRateManager trrm(params, is_sequence_model);
 
-  REQUIRE(trrm.stats_->recorded_inputs.size() >= 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[0][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[0][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[1][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[1][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[2][0].first) ==
-      2000000000);
-  CHECK(recorded_inputs[2][0].second == 4);
-  CHECK(
-      *reinterpret_cast<const int32_t*>(recorded_inputs[3][0].first) ==
-      2000000001);
-  CHECK(recorded_inputs[3][0].second == 4);
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
+{
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT1": [1], "INPUT2": [21] },
+     { "INPUT1": [2], "INPUT2": [22] },
+     { "INPUT1": [3], "INPUT2": [23] }     
+   ]})"};
+
+
+  SUBCASE("no batching is ok")
+  {
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 1;
+    expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+  }
+  SUBCASE("batching - no shm")
+  {
+    // FIXME: TMA-765
+    // Currently shm and non-shm both fail for batching, but at different points
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 2;
+    params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+    expect_thread_failure = true;
+  }
+  SUBCASE("batching - shm")
+  {
+    // FIXME: TMA-765
+    // Currently shm and non-shm both fail for batching, but at different points
+    model_tensor1.is_shape_tensor_ = true;
+    params.batch_size = 2;
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    expect_init_failure = true;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+
+TEST_CASE("custom_json_data: handling of optional tensors")
+{
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+  "data": [
+    { "INPUT1": [1] },
+    { "INPUT1": [2], "INPUT2": [22] },
+    { "INPUT1": [3] }
+  ]})"};
+
+  SUBCASE("normal")
+  {
+    model_tensor2.is_optional_ = true;
+    params.batch_size = 1;
+    expected_results = {{1}, {2, 22}, {3}, {1}};
+  }
+  SUBCASE("tensor not optional -- expect parsing fail")
+  {
+    model_tensor2.is_optional_ = false;
+    expect_init_failure = true;
+  }
+  SUBCASE("shared memory not supported")
+  {
+    model_tensor2.is_optional_ = true;
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
+    // currently, and will be implemented in the associated story.
+    expect_init_failure = true;
+  }
+  SUBCASE("batching with mismatching data")
+  {
+    model_tensor2.is_optional_ = true;
+    params.batch_size = 2;
+    // For batch sizes larger than 1, the same set of inputs
+    // must be specified for each batch. You cannot use different
+    // set of optional inputs for each individual batch.
+    expect_thread_failure = true;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
 }
 
 /// Verify Shared Memory api calls
