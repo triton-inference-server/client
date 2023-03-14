@@ -38,7 +38,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class MockSequenceManager;
+class NaggyMockSequenceManager;
 #endif
 
 /// Manages operations related to preparing requests to sequence models.
@@ -140,6 +140,11 @@ class SequenceManager {
   ///
   virtual uint64_t GetNextSeqId(int seq_stat_index);
 
+  virtual uint64_t GetNewDataStreamId()
+  {
+    return distribution_(rng_generator_);
+  }
+
   /// Generates a random sequence length based on a threshold.
   /// \param offset_ratio The offset ratio/threshold of the generated length.
   /// \return A random sequence length.
@@ -197,7 +202,7 @@ class SequenceManager {
   std::default_random_engine rng_generator_{};
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend MockSequenceManager;
+  friend NaggyMockSequenceManager;
 
  protected:
   SequenceManager() = default;

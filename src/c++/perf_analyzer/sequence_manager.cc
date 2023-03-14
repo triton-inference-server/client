@@ -123,8 +123,7 @@ SequenceManager::InitNewSequence(int seq_stat_index)
         new_length == 0 ? 1 : new_length;
   } else {
     // Selecting next available data stream based on uniform distribution.
-    sequence_statuses_[seq_stat_index]->data_stream_id_ =
-        distribution_(rng_generator_);
+    sequence_statuses_[seq_stat_index]->data_stream_id_ = GetNewDataStreamId();
     const uint64_t data_stream_id{
         sequence_statuses_[seq_stat_index]->data_stream_id_};
     const size_t total_steps{data_loader_->GetTotalSteps(data_stream_id)};

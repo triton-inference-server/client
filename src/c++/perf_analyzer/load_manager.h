@@ -167,6 +167,12 @@ class LoadManager {
 
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
 
+  virtual std::shared_ptr<SequenceManager> MakeSequenceManager(
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const size_t sequence_length, const bool sequence_length_specified,
+      const double sequence_length_variation, const bool using_json_data,
+      std::shared_ptr<DataLoader> data_loader);
+
 #ifndef DOCTEST_CONFIG_DISABLE
  protected:
   LoadManager() = default;

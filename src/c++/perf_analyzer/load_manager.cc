@@ -200,7 +200,7 @@ LoadManager::InitManager(
   THROW_IF_ERROR(
       infer_data_manager_->Init(), "Unable to init infer data manager");
 
-  sequence_manager_ = std::make_shared<SequenceManager>(
+  sequence_manager_ = MakeSequenceManager(
       start_sequence_id, sequence_id_range, sequence_length,
       sequence_length_specified, sequence_length_variation, using_json_data_,
       data_loader_);
@@ -268,6 +268,19 @@ LoadManager::StopWorkerThreads()
     cnt++;
   }
   threads_.clear();
+}
+
+std::shared_ptr<SequenceManager>
+LoadManager::MakeSequenceManager(
+    const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+    const size_t sequence_length, const bool sequence_length_specified,
+    const double sequence_length_variation, const bool using_json_data,
+    std::shared_ptr<DataLoader> data_loader)
+{
+  return std::make_shared<SequenceManager>(
+      start_sequence_id, sequence_id_range, sequence_length,
+      sequence_length_specified, sequence_length_variation, using_json_data,
+      data_loader);
 }
 
 }}  // namespace triton::perfanalyzer
