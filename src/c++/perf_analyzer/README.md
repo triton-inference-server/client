@@ -112,7 +112,7 @@ curl -v localhost:8000/v2/health/ready
 # detatch (CTRL-p CTRL-q)
 ```
 
-### Step 4: Start Triton SDK Server
+### Step 4: Start Triton SDK Container
 
 ```bash
 docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
