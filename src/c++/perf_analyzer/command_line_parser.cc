@@ -104,7 +104,7 @@ CLParser::Usage(const std::string& msg)
                "profiling>"
             << std::endl;
   std::cerr << "\t--percentile <percentile>" << std::endl;
-  std::cerr << "\t--overhead-percentage-threshold <thresold value (0 - 100)>"
+  std::cerr << "\t--overhead-percentage-threshold <thresold value>"
             << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-t <number of concurrent requests>" << std::endl;
@@ -375,12 +375,12 @@ CLParser::Usage(const std::string& msg)
              18)
       << std::endl;
   std::cerr << FormatMessage(
-                   " --overhead-percentage-threshold: The percentage of total "
-                   "time that PA is doing work and requests are not "
+                   " --overhead-percentage-threshold: Sets the threshold for "
+                   "overhead work done by PA. Overhead work is the percentage "
+                   "of total time that PA is doing work and requests are not "
                    "outstanding to triton server. If the overhead percentage "
                    "exceeds the threshold, a warning is displayed to the user. "
-                   "The default value is 50 indicating that 50% of the run "
-                   "time is PA overhead. The valid range is 0.0 - 100.0.",
+                   "The default value is 50.",
                    18)
             << std::endl;
   std::cerr << std::endl;
