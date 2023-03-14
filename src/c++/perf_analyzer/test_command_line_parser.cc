@@ -1229,6 +1229,17 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --overhead-percentage-threshold")
   {
+    SUBCASE("default value")
+    {
+      int argc = 3;
+      char* argv[argc] = {app_name, "-m", model_name};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      REQUIRE(!parser.UsageCalled());
+
+      exp->overhead_pct_threshold = 50;
+    }
+
     SUBCASE("set to 10")
     {
       int argc = 5;
