@@ -1206,7 +1206,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 53: {
-        params_->overhead_pct_threshold = std::stoi(optarg) / 100;
+        params_->overhead_pct_threshold = std::stoi(optarg);
         break;
       }
       case 'v':
