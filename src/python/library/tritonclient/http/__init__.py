@@ -1259,7 +1259,8 @@ class InferenceServerClient:
                               sequence_start=False,
                               sequence_end=False,
                               priority=0,
-                              timeout=None):
+                              timeout=None,
+                              parameters=None):
         """Generate a request body for inference using the supplied 'inputs'
         requesting the outputs specified by 'outputs'.
 
@@ -1304,6 +1305,8 @@ class InferenceServerClient:
             for the model. This option is only respected by the model that is 
             configured with dynamic batching. See here for more details: 
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
+        parameters: dict
+            Optional fields to be included in the 'parameters' fields.
 
         Returns
         -------
@@ -1326,7 +1329,8 @@ class InferenceServerClient:
                                       sequence_start=sequence_start,
                                       sequence_end=sequence_end,
                                       priority=priority,
-                                      timeout=timeout)
+                                      timeout=timeout,
+                                      custom_parameters=parameters)
 
     @staticmethod
     def parse_response_body(response_body,
