@@ -159,7 +159,10 @@ Inferences/Second vs. Client Average Batch Latency
 Concurrency: 1, throughput: 1407.84 infer/sec, latency 708 usec
 ```
 
-We can see from the output that Perf Analyzer measured that the model was able to complete approximately 1407.84 inferences per second, with an average latency of 708 microseconds per inference request.
+We can see from the output that the model was able to complete approximately
+1407.84 inferences per second, with an average latency of 708 microseconds per
+inference request. Concurrency of 1 meant that Perf Analyzer attempted to always
+have 1 outgoing request at all times.
 
 ## Request Concurrency
 
