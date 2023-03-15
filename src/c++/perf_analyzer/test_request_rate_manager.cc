@@ -408,7 +408,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     auto recorded_values = GetRecordedInputValues();
 
     // Check that results are exactly as expected
-    REQUIRE(recorded_values.size() >= expected_values.size());
+    REQUIRE(recorded_values.size() == expected_values.size());
     for (size_t i = 0; i < expected_values.size(); i++) {
       REQUIRE(recorded_values[i].size() == expected_values[i].size());
       for (size_t j = 0; j < expected_values[i].size(); j++) {
