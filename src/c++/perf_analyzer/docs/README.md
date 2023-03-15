@@ -28,10 +28,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # **Perf Analyzer Documentation**
 
-| [Installation](README.md#installation) |
-| -------------------------------------- |
+| [Installation](README.md#installation) | [Getting Started](README.md#getting-started) |
+| -------------------------------------- | -------------------------------------- |
 
 ## **Installation**
 
 See the [Installation Guide](install.md) for details on how to install Perf
 Analyzer.
+
+## **Getting Started**
+
+The [Quick Start Guide](../README.md#quick-start) will show you how to use Perf
+Analyzer to profile a simple PyTorch model.
