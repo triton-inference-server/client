@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -80,7 +80,8 @@ def _get_query_string(query_params):
 
 
 def _get_inference_request(inputs, request_id, outputs, sequence_id,
-                           sequence_start, sequence_end, priority, timeout):
+                           sequence_start, sequence_end, priority, timeout,
+                           custom_parameters):
     infer_request = {}
     parameters = {}
     if request_id != "":
@@ -105,6 +106,15 @@ def _get_inference_request(inputs, request_id, outputs, sequence_id,
         # no outputs specified so set 'binary_data_output' True in the
         # request so that all outputs are returned in binary format
         parameters['binary_data_output'] = True
+
+    if custom_parameters:
+        for key, value in custom_parameters.items():
+            if key == 'sequence_id' or key == 'sequence_start' or key == 'sequence_end' or key == 'priority' or key == 'binary_data_output':
+                raise_error(
+                    f'Parameter "{key}" is a reserved parameter and cannot be specified.'
+                )
+            else:
+                parameters[key] = value
 
     if parameters:
         infer_request['parameters'] = parameters
@@ -1249,7 +1259,8 @@ class InferenceServerClient:
                               sequence_start=False,
                               sequence_end=False,
                               priority=0,
-                              timeout=None):
+                              timeout=None,
+                              parameters=None):
         """Generate a request body for inference using the supplied 'inputs'
         requesting the outputs specified by 'outputs'.
 
@@ -1294,6 +1305,8 @@ class InferenceServerClient:
             for the model. This option is only respected by the model that is 
             configured with dynamic batching. See here for more details: 
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
+        parameters: dict
+            Optional fields to be included in the 'parameters' fields.
 
         Returns
         -------
@@ -1316,7 +1329,8 @@ class InferenceServerClient:
                                       sequence_start=sequence_start,
                                       sequence_end=sequence_end,
                                       priority=priority,
-                                      timeout=timeout)
+                                      timeout=timeout,
+                                      custom_parameters=parameters)
 
     @staticmethod
     def parse_response_body(response_body,
@@ -1360,7 +1374,8 @@ class InferenceServerClient:
               headers=None,
               query_params=None,
               request_compression_algorithm=None,
-              response_compression_algorithm=None):
+              response_compression_algorithm=None,
+              parameters=None):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1426,6 +1441,8 @@ class InferenceServerClient:
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
+        parameters: dict
+            Optional fields to be included in the 'parameters' fields.
 
         Returns
         -------
@@ -1446,7 +1463,8 @@ class InferenceServerClient:
             sequence_start=sequence_start,
             sequence_end=sequence_end,
             priority=priority,
-            timeout=timeout)
+            timeout=timeout,
+            custom_parameters=parameters)
 
         if request_compression_algorithm == "gzip":
             if headers is None:
@@ -1505,7 +1523,8 @@ class InferenceServerClient:
                     headers=None,
                     query_params=None,
                     request_compression_algorithm=None,
-                    response_compression_algorithm=None):
+                    response_compression_algorithm=None,
+                    parameters=None):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'. Even though this call is
         non-blocking, however, the actual number of concurrent requests to
@@ -1577,6 +1596,9 @@ class InferenceServerClient:
             Note that the response may not be compressed if the server does not
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
+        parameters : dict
+            Optional custom parameters to be included in the inference 
+            request.
 
         Returns
         -------
@@ -1600,7 +1622,8 @@ class InferenceServerClient:
             sequence_start=sequence_start,
             sequence_end=sequence_end,
             priority=priority,
-            timeout=timeout)
+            timeout=timeout,
+            custom_parameters=parameters)
 
         if request_compression_algorithm == "gzip":
             if headers is None:
