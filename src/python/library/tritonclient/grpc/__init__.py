@@ -2173,6 +2173,7 @@ class _InferStream:
         self._verbose = verbose
         self._request_queue = queue.Queue()
         self._handler = None
+        self._active = True
 
     def __del__(self):
         self.close()
@@ -2220,7 +2221,13 @@ class _InferStream:
             The protobuf message holding the ModelInferRequest
 
         """
-        self._request_queue.put(request)
+        if self._active:
+            self._request_queue.put(request)
+        else:
+            raise_error(
+                'The stream is no longer in valid state, the error detail '
+                'is reported through provided callback. A new stream should '
+                'be started after stopping the current stream.')
 
     def _get_request(self):
         """Returns the request details in the order they were added.
@@ -2259,6 +2266,11 @@ class _InferStream:
                     result = InferResult(response.infer_response)
                 self._callback(result=result, error=error)
         except grpc.RpcError as rpc_error:
+            # On GRPC error, refresh the active state to indicate if the stream
+            # can still be used. The stream won't be closed here as the thread
+            # executing this function is managed by stream and may cause
+            # circular wait
+            self._active = responses.is_active()
             error = get_error_grpc(rpc_error)
             self._callback(result=None, error=error)
 
