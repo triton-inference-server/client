@@ -36,6 +36,10 @@
 namespace triton { namespace perfanalyzer {
 
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class MockConcurrencyWorker;
+#endif
+
 /// Worker thread for the ConcurrencyManager
 ///
 /// The worker maintains concurrency in different ways:
@@ -139,6 +143,10 @@ class ConcurrencyWorker : public LoadWorker {
         &ConcurrencyWorker::AsyncCallbackFinalize, this,
         std::placeholders::_1));
   }
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend MockConcurrencyWorker;
+#endif
 };
 
 }}  // namespace triton::perfanalyzer
