@@ -34,6 +34,7 @@
 #include "mock_data_loader.h"
 #include "mock_infer_data_manager.h"
 #include "mock_model_parser.h"
+#include "mock_request_rate_worker.h"
 #include "mock_sequence_manager.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
@@ -44,20 +45,6 @@ using milliseconds = std::chrono::milliseconds;
 using nanoseconds = std::chrono::nanoseconds;
 
 namespace triton { namespace perfanalyzer {
-
-class MockRequestRateWorker : public IWorker {
- public:
-  MockRequestRateWorker(
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
-      : thread_config_(thread_config)
-  {
-  }
-
-  void Infer() override { thread_config_->is_paused_ = true; }
-
- private:
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config_;
-};
 
 /// Class to test the RequestRateManager
 ///
@@ -82,12 +69,19 @@ class TestRequestRateManager : public TestLoadManagerBase,
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
-    uint32_t id = workers_.size();
+    size_t id = workers_.size();
+    auto worker = std::make_shared<testing::NiceMock<MockRequestRateWorker>>(
+        id, thread_stat, thread_config, parser_, data_loader_, factory_,
+        on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+        batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
+        infer_data_manager_, sequence_manager_);
+
     if (use_mock_infer_) {
-      return std::make_shared<MockRequestRateWorker>(thread_config);
-    } else {
-      return RequestRateManager::MakeWorker(thread_stat, thread_config);
+      EXPECT_CALL(*worker, Infer())
+          .WillRepeatedly(testing::Invoke(
+              worker.get(), &MockRequestRateWorker::EmptyInfer));
     }
+    return worker;
   }
 
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
@@ -314,6 +308,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   /// Helper function that will setup and run a case to verify custom data
   /// behavior
+  /// \param num_requests Integer number of requests to send during the test
   /// \param tensors Vector of input ModelTensors
   /// \param json_str The custom data json text
   /// \param expected_values Vector of expected input values for each inference
@@ -322,7 +317,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// \param expect_thread_failure True if the thread is expected to have
   /// an error
   void TestCustomData(
-      std::vector<ModelTensor>& tensors, const std::string json_str,
+      size_t num_requests, std::vector<ModelTensor>& tensors,
+      const std::string json_str,
       std::vector<std::vector<int32_t>>& expected_values,
       bool expect_init_failure, bool expect_thread_failure)
   {
@@ -331,7 +327,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
       // The rest of the test is invalid if init failed
       return;
     }
-    auto thread_status = CustomDataTestRunThread();
+    auto thread_status = CustomDataTestSendRequests(num_requests);
     CustomDataTestCheckResults(
         thread_status, expect_thread_failure, expected_values);
   }
@@ -383,26 +379,18 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
-  cb::Error CustomDataTestRunThread()
+  cb::Error CustomDataTestSendRequests(size_t num_requests)
   {
-    RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-    schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                        milliseconds(12), milliseconds(16)};
-    schedule->duration = nanoseconds{16000000};
-
     std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
         std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
     std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
-    std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
 
-    start_time_ = std::chrono::steady_clock::now();
-    std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
+    auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
 
-    std::this_thread::sleep_for(milliseconds(50));
-
-    early_exit = true;
-    infer_future.get();
+    for (size_t i = 0; i < num_requests; i++) {
+      mock_worker->SendInferRequest();
+    }
 
     return thread_stat->status_;
   }
@@ -866,6 +854,8 @@ TEST_CASE(
      { "INPUT1": [3], "INPUT2": [23] }     
    ]})"};
 
+  size_t num_requests = 4;
+
   const auto& ParameterizeTensors{[&]() {
     SUBCASE("one tensor")
     {
@@ -952,7 +942,7 @@ TEST_CASE(
   TestRequestRateManager trrm(params, is_sequence_model);
 
   trrm.TestCustomData(
-      tensors, json_str, expected_results, expect_init_failure,
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
       expect_thread_failure);
 }
 
@@ -989,6 +979,8 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
   model_tensor1.is_shape_tensor_ = true;
   model_tensor2.is_optional_ = true;
 
+  size_t num_requests = 4;
+
   SUBCASE("batch 1")
   {
     params.batch_size = 1;
@@ -1014,7 +1006,7 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      tensors, json_str, expected_results, expect_init_failure,
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
       expect_thread_failure);
 }
 
@@ -1046,6 +1038,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
      { "INPUT1": [3], "INPUT2": [23] }     
    ]})"};
 
+  size_t num_requests = 4;
 
   SUBCASE("no batching is ok")
   {
@@ -1078,7 +1071,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      tensors, json_str, expected_results, expect_init_failure,
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
       expect_thread_failure);
 }
 
@@ -1110,6 +1103,8 @@ TEST_CASE("custom_json_data: handling of optional tensors")
     { "INPUT1": [2], "INPUT2": [22] },
     { "INPUT1": [3] }
   ]})"};
+
+  size_t num_requests = 4;
 
   SUBCASE("normal")
   {
@@ -1146,7 +1141,7 @@ TEST_CASE("custom_json_data: handling of optional tensors")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      tensors, json_str, expected_results, expect_init_failure,
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
       expect_thread_failure);
 }
 
@@ -1182,6 +1177,8 @@ TEST_CASE("custom_json_data: multiple streams")
     { "INPUT1": [202], "INPUT2": [222] }
   ]]})"};
 
+  size_t num_requests = 10;
+
   SUBCASE("yes sequence")
   {
     // Sequences will randomly pick among all streams
@@ -1198,7 +1195,7 @@ TEST_CASE("custom_json_data: multiple streams")
     // rest will be ignored
     is_sequence_model = false;
     expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}, {2, 22},
-                        {3, 23}, {1, 21}, {2, 22}, {3, 23}};
+                        {3, 23}, {1, 21}, {2, 22}, {3, 23}, {1, 21}};
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1226,7 +1223,7 @@ TEST_CASE("custom_json_data: multiple streams")
         GetNewDataStreamId())
         .Times(0);
   }
-  auto thread_status = trrm.CustomDataTestRunThread();
+  auto thread_status = trrm.CustomDataTestSendRequests(num_requests);
   trrm.CustomDataTestCheckResults(
       thread_status, expect_thread_failure, expected_results);
 }
