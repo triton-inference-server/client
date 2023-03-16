@@ -44,6 +44,9 @@ option(TRITON_ENABLE_PERF_ANALYZER_TS "Enable TorchServe support for Performance
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
+# Include ZLIB to client build
+option(TRITON_ENABLE_ADDITIONAL_DEPS "Include additional dependencies" OFF)
+
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/third_party repo")
