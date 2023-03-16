@@ -31,28 +31,16 @@
 #include "concurrency_manager.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
+#include "mock_concurrency_worker.h"
 #include "mock_data_loader.h"
 #include "mock_infer_data_manager.h"
 #include "mock_model_parser.h"
+#include "mock_sequence_manager.h"
 #include "sequence_manager.h"
 #include "test_load_manager_base.h"
 #include "test_utils.h"
 
 namespace triton { namespace perfanalyzer {
-
-class MockConcurrencyWorker : public IWorker {
- public:
-  MockConcurrencyWorker(
-      std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config)
-      : thread_config_(thread_config)
-  {
-  }
-
-  void Infer() override { thread_config_->is_paused_ = true; }
-
- private:
-  std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config_;
-};
 
 class TestConcurrencyManager : public TestLoadManagerBase,
                                public ConcurrencyManager {
@@ -74,13 +62,20 @@ class TestConcurrencyManager : public TestLoadManagerBase,
       std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
   {
-    uint32_t id = workers_.size();
+    size_t id = workers_.size();
+
+    auto worker = std::make_shared<MockConcurrencyWorker>(
+        id, thread_stat, thread_config, parser_, data_loader_, factory_,
+        on_sequence_model_, async_, max_concurrency_, using_json_data_,
+        streaming_, batch_size_, threads_config_, wake_signal_, wake_mutex_,
+        active_threads_, execute_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
-      return std::make_shared<MockConcurrencyWorker>(thread_config);
-    } else {
-      return ConcurrencyManager::MakeWorker(thread_stat, thread_config);
+      EXPECT_CALL(*worker, Infer())
+          .WillRepeatedly(testing::Invoke(
+              worker.get(), &MockConcurrencyWorker::EmptyInfer));
     }
+    return worker;
   }
 
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
@@ -201,6 +196,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<DataLoader>& data_loader_{LoadManager::data_loader_};
+  std::shared_ptr<SequenceManager>& sequence_manager_{
+      LoadManager::sequence_manager_};
   bool& using_json_data_{LoadManager::using_json_data_};
   bool& execute_{ConcurrencyManager::execute_};
   size_t& batch_size_{LoadManager::batch_size_};
@@ -222,6 +219,19 @@ class TestConcurrencyManager : public TestLoadManagerBase,
           stats_->num_active_infer_calls ==
           doctest::Approx(params_.max_concurrency).epsilon(0.25));
     }
+  }
+
+
+  std::shared_ptr<SequenceManager> MakeSequenceManager(
+      const uint64_t start_sequence_id, const uint64_t sequence_id_range,
+      const size_t sequence_length, const bool sequence_length_specified,
+      const double sequence_length_variation, const bool using_json_data,
+      std::shared_ptr<DataLoader> data_loader) override
+  {
+    return std::make_shared<MockSequenceManager>(
+        start_sequence_id, sequence_id_range, sequence_length,
+        sequence_length_specified, sequence_length_variation, using_json_data,
+        data_loader);
   }
 };
 

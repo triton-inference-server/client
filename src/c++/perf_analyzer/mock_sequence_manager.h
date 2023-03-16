@@ -30,11 +30,11 @@
 
 namespace triton { namespace perfanalyzer {
 
-class MockSequenceManager : public SequenceManager {
+class NaggyMockSequenceManager : public SequenceManager {
  public:
-  MockSequenceManager() { SetupMocks(); }
+  NaggyMockSequenceManager() { SetupMocks(); }
 
-  MockSequenceManager(
+  NaggyMockSequenceManager(
       const uint64_t start_sequence_id, const uint64_t sequence_id_range,
       const size_t sequence_length, const bool sequence_length_specified,
       const double sequence_length_variation, const bool using_json_data,
@@ -68,6 +68,9 @@ class MockSequenceManager : public SequenceManager {
         .WillByDefault([this](double offset_ratio) -> size_t {
           return this->SequenceManager::GetRandomSequenceLength(offset_ratio);
         });
+    ON_CALL(*this, GetNewDataStreamId()).WillByDefault([this]() -> size_t {
+      return this->SequenceManager::GetNewDataStreamId();
+    });
   }
 
   MOCK_METHOD(
@@ -76,10 +79,13 @@ class MockSequenceManager : public SequenceManager {
   MOCK_METHOD(void, InitNewSequence, (int), (override));
   MOCK_METHOD(uint64_t, GetNextSeqId, (int), (override));
   MOCK_METHOD(size_t, GetRandomSequenceLength, (double), (override));
+  MOCK_METHOD(uint64_t, GetNewDataStreamId, (), (override));
 
   std::vector<std::shared_ptr<SequenceStatus>>& sequence_statuses_{
       SequenceManager::sequence_statuses_};
   std::atomic<uint64_t>& curr_seq_id_{SequenceManager::curr_seq_id_};
 };
+
+using MockSequenceManager = testing::NiceMock<NaggyMockSequenceManager>;
 
 }}  // namespace triton::perfanalyzer

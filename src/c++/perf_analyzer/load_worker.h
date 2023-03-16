@@ -94,7 +94,7 @@ class LoadWorker : public IWorker {
   }
 
   // Create an inference context and add it to ctxs_
-  void CreateContext();
+  virtual void CreateContext();
 
   // Any code that needs to execute after the Context has been created
   virtual void CreateContextFinalize(std::shared_ptr<InferContext> ctx) = 0;
