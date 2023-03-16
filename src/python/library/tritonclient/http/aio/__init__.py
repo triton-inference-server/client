@@ -1,4 +1,4 @@
-# Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -680,7 +680,8 @@ class InferenceServerClient:
                               sequence_start=False,
                               sequence_end=False,
                               priority=0,
-                              timeout=None):
+                              timeout=None,
+                              parameters=None):
         """Refer to tritonclient.http.InferenceServerClient
 
         """
@@ -691,7 +692,8 @@ class InferenceServerClient:
                                       sequence_start=sequence_start,
                                       sequence_end=sequence_end,
                                       priority=priority,
-                                      timeout=timeout)
+                                      timeout=timeout,
+                                      custom_parameters=parameters)
 
     @staticmethod
     def parse_response_body(response_body,
@@ -718,7 +720,8 @@ class InferenceServerClient:
                     headers=None,
                     query_params=None,
                     request_compression_algorithm=None,
-                    response_compression_algorithm=None):
+                    response_compression_algorithm=None,
+                    parameters=None):
         """Refer to tritonclient.http.InferenceServerClient
 
         """
@@ -730,7 +733,8 @@ class InferenceServerClient:
             sequence_start=sequence_start,
             sequence_end=sequence_end,
             priority=priority,
-            timeout=timeout)
+            timeout=timeout,
+            custom_parameters=parameters)
 
         if request_compression_algorithm == "gzip":
             if headers is None:

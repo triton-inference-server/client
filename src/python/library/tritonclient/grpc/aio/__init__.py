@@ -1,4 +1,4 @@
-# Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -687,7 +687,8 @@ class InferenceServerClient():
                     timeout=None,
                     client_timeout=None,
                     headers=None,
-                    compression_algorithm=None):
+                    compression_algorithm=None,
+                    parameters=None):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
@@ -709,7 +710,8 @@ class InferenceServerClient():
                                          sequence_start=sequence_start,
                                          sequence_end=sequence_end,
                                          priority=priority,
-                                         timeout=timeout)
+                                         timeout=timeout,
+                                         parameters=parameters)
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
@@ -794,6 +796,9 @@ class InferenceServerClient():
                     inputs["priority"] = 0
                 if "timeout" not in inputs:
                     inputs["timeout"] = None
+                if "parameters" not in inputs:
+                    inputs["parameters"] = None
+
                 yield _get_inference_request(
                     model_name=inputs["model_name"],
                     inputs=inputs["inputs"],
@@ -804,7 +809,8 @@ class InferenceServerClient():
                     sequence_start=inputs["sequence_start"],
                     sequence_end=inputs["sequence_end"],
                     priority=inputs["priority"],
-                    timeout=inputs["timeout"])
+                    timeout=inputs["timeout"],
+                    parameters=inputs["parameters"])
 
         try:
             response_iterator = self._client_stub.ModelStreamInfer(
