@@ -1181,6 +1181,21 @@ TEST_CASE("custom_json_data: multiple streams")
 
   size_t num_requests = 10;
 
+  const auto& ParameterizeMemory{[&]() {
+    SUBCASE("No shared memory")
+    {
+      params.shared_memory_type = NO_SHARED_MEMORY;
+    }
+    SUBCASE("system shared memory")
+    {
+      params.shared_memory_type = SYSTEM_SHARED_MEMORY;
+    }
+    SUBCASE("cuda shared memory")
+    {
+      params.shared_memory_type = CUDA_SHARED_MEMORY;
+    }
+  }};
+
   SUBCASE("yes sequence")
   {
     // Sequences will randomly pick among all streams
@@ -1190,6 +1205,7 @@ TEST_CASE("custom_json_data: multiple streams")
     expected_results = {{201, 221}, {202, 222}, {201, 221}, {202, 222},
                         {1, 21},    {2, 22},    {3, 23},    {1, 21},
                         {2, 22},    {3, 23}};
+    ParameterizeMemory();
   }
   SUBCASE("no sequence")
   {
@@ -1198,6 +1214,7 @@ TEST_CASE("custom_json_data: multiple streams")
     is_sequence_model = false;
     expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}, {2, 22},
                         {3, 23}, {1, 21}, {2, 22}, {3, 23}, {1, 21}};
+    ParameterizeMemory();
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
