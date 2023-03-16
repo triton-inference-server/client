@@ -1224,28 +1224,24 @@ TEST_CASE("custom_json_data: multiple streams")
 
   trrm.CustomDataTestSetup(tensors, json_str, expect_init_failure);
 
-  if (!expect_init_failure) {
-    if (is_sequence_model) {
-      // Force GetNewDataStreamId to return 1 twice and 0 every time after
-      EXPECT_CALL(
-          *std::dynamic_pointer_cast<MockSequenceManager>(
-              trrm.sequence_manager_),
-          GetNewDataStreamId())
-          .WillOnce(testing::Return(1))
-          .WillOnce(testing::Return(1))
-          .WillRepeatedly(testing::Return(0));
-    } else {
-      // Expect that GetNewDataStreamId will never be called
-      EXPECT_CALL(
-          *std::dynamic_pointer_cast<MockSequenceManager>(
-              trrm.sequence_manager_),
-          GetNewDataStreamId())
-          .Times(0);
-    }
-    auto thread_status = trrm.CustomDataTestSendRequests(num_requests);
-    trrm.CustomDataTestCheckResults(
-        thread_status, expect_thread_failure, expected_results);
+  if (is_sequence_model) {
+    // Force GetNewDataStreamId to return 1 twice and 0 every time after
+    EXPECT_CALL(
+        *std::dynamic_pointer_cast<MockSequenceManager>(trrm.sequence_manager_),
+        GetNewDataStreamId())
+        .WillOnce(testing::Return(1))
+        .WillOnce(testing::Return(1))
+        .WillRepeatedly(testing::Return(0));
+  } else {
+    // Expect that GetNewDataStreamId will never be called
+    EXPECT_CALL(
+        *std::dynamic_pointer_cast<MockSequenceManager>(trrm.sequence_manager_),
+        GetNewDataStreamId())
+        .Times(0);
   }
+  auto thread_status = trrm.CustomDataTestSendRequests(num_requests);
+  trrm.CustomDataTestCheckResults(
+      thread_status, expect_thread_failure, expected_results);
 }
 
 /// Verify Shared Memory api calls
