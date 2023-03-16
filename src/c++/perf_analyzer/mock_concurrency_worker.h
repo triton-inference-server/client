@@ -31,9 +31,9 @@
 
 namespace triton { namespace perfanalyzer {
 
-class MockConcurrencyWorker : public ConcurrencyWorker {
+class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
  public:
-  MockConcurrencyWorker(
+  NaggyMockConcurrencyWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
@@ -54,18 +54,17 @@ class MockConcurrencyWorker : public ConcurrencyWorker {
             active_threads, execute, infer_data_manager, sequence_manager)
   {
     ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      return ConcurrencyWorker::Infer();
+      ConcurrencyWorker::Infer();
     });
   }
 
   MOCK_METHOD(void, Infer, (), (override));
 
   void EmptyInfer() { thread_config_->is_paused_ = true; }
-
- private:
-  bool context_created{false};
-  std::shared_ptr<ThreadConfig>& thread_config_{
-      ConcurrencyWorker::thread_config_};
 };
+
+// Non-naggy version of Mock (won't warn when using default gmock
+// mocked function)
+using MockConcurrencyWorker = testing::NiceMock<NaggyMockConcurrencyWorker>;
 
 }}  // namespace triton::perfanalyzer

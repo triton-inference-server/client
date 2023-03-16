@@ -64,7 +64,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
   {
     size_t id = workers_.size();
 
-    auto worker = std::make_shared<testing::NiceMock<MockConcurrencyWorker>>(
+    auto worker = std::make_shared<MockConcurrencyWorker>(
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_concurrency_, using_json_data_,
         streaming_, batch_size_, threads_config_, wake_signal_, wake_mutex_,

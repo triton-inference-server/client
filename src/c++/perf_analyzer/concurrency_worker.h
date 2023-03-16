@@ -37,7 +37,7 @@ namespace triton { namespace perfanalyzer {
 
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class MockConcurrencyWorker;
+class NaggyMockConcurrencyWorker;
 #endif
 
 /// Worker thread for the ConcurrencyManager
@@ -145,7 +145,7 @@ class ConcurrencyWorker : public LoadWorker {
   }
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend MockConcurrencyWorker;
+  friend NaggyMockConcurrencyWorker;
 #endif
 };
 

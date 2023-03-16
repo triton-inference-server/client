@@ -31,9 +31,9 @@
 
 namespace triton { namespace perfanalyzer {
 
-class MockRequestRateWorker : public RequestRateWorker {
+class NaggyMockRequestRateWorker : public RequestRateWorker {
  public:
-  MockRequestRateWorker(
+  NaggyMockRequestRateWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
@@ -53,29 +53,26 @@ class MockRequestRateWorker : public RequestRateWorker {
             infer_data_manager, sequence_manager)
   {
     ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      return RequestRateWorker::Infer();
+      RequestRateWorker::Infer();
     });
   }
 
   MOCK_METHOD(void, Infer, (), (override));
 
+  void CreateContext() override { RequestRateWorker::CreateContext(); }
+
   void SendInferRequest()
   {
-    if (!context_created) {
-      CreateContext();
-      context_created = true;
-    }
     if (thread_stat_->status_.IsOk()) {
       LoadWorker::SendInferRequest(0, false);
     }
   }
 
   void EmptyInfer() { thread_config_->is_paused_ = true; }
-
- private:
-  bool context_created{false};
-  std::shared_ptr<ThreadConfig>& thread_config_{
-      RequestRateWorker::thread_config_};
 };
+
+// Non-naggy version of Mock (won't warn when using default gmock
+// mocked function)
+using MockRequestRateWorker = testing::NiceMock<NaggyMockRequestRateWorker>;
 
 }}  // namespace triton::perfanalyzer

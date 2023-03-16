@@ -36,7 +36,7 @@ namespace triton { namespace perfanalyzer {
 
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class MockRequestRateWorker;
+class NaggyMockRequestRateWorker;
 class TestRequestRateManager;
 class TestCustomLoadManager;
 #endif
@@ -121,7 +121,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   }
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend MockRequestRateWorker;
+  friend NaggyMockRequestRateWorker;
   friend TestCustomLoadManager;
   friend TestRequestRateManager;
 

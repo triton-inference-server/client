@@ -70,7 +70,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
       std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
-    auto worker = std::make_shared<testing::NiceMock<MockRequestRateWorker>>(
+    auto worker = std::make_shared<MockRequestRateWorker>(
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
         batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
@@ -387,6 +387,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
 
     auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
+
+    mock_worker->CreateContext();
 
     for (size_t i = 0; i < num_requests; i++) {
       mock_worker->SendInferRequest();
