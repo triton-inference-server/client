@@ -300,7 +300,9 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC Threads::Threads
   )
   if (TRITON_ENABLE_ADDITIONAL_DEPS)
-    target_link_libraries(PRIVATE ZLIB::ZLIB)
+    target_link_libraries(
+      httpclient_static
+      PRIVATE ZLIB::ZLIB)
   endif () # TRITON_ENABLE_ADDITIONAL_DEPS
 
   # libhttpclient.so

@@ -267,7 +267,6 @@ cmake flags:
 -DTRITON_COMMON_REPO_TAG=r21.10
 -DTRITON_THIRD_PARTY_REPO_TAG=r21.10
 -DTRITON_CORE_REPO_TAG=r21.10
--DTRITON_BACKEND_REPO_TAG=r21.10
 ```
 
 Then use *make* to build the clients and examples.
@@ -316,7 +315,6 @@ cmake flags:
 -DTRITON_COMMON_REPO_TAG=r21.10
 -DTRITON_THIRD_PARTY_REPO_TAG=r21.10
 -DTRITON_CORE_REPO_TAG=r21.10
--DTRITON_BACKEND_REPO_TAG=r21.10
 ```
 
 Then use msbuild.exe to build.
