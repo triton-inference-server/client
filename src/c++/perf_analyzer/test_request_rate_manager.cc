@@ -1050,17 +1050,13 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   }
   SUBCASE("batching - no shm")
   {
-    // FIXME: TMA-765
-    // Currently shm and non-shm both fail for batching, but at different points
     model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
-    expect_thread_failure = true;
+    expect_init_failure = true;
   }
   SUBCASE("batching - shm")
   {
-    // FIXME: TMA-765
-    // Currently shm and non-shm both fail for batching, but at different points
     model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
@@ -1134,7 +1130,7 @@ TEST_CASE("custom_json_data: handling of optional tensors")
     // For batch sizes larger than 1, the same set of inputs
     // must be specified for each batch. You cannot use different
     // set of optional inputs for each individual batch.
-    expect_thread_failure = true;
+    expect_init_failure = true;
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);

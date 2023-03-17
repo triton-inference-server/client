@@ -33,8 +33,100 @@ namespace triton { namespace perfanalyzer {
 cb::Error
 InferDataManager::Init()
 {
+  RETURN_IF_ERROR(CreateAndPopulateInputs());
   return cb::Error::Success;
 }
+
+cb::Error
+InferDataManager::CreateAndPopulateInputs()
+{
+  for (const auto& input : *(parser_->Inputs())) {
+    const std::string& name = input.first;
+    const ModelTensor& tensor = input.second;
+    for (int stream_id = 0;
+         stream_id < (int)data_loader_->GetDataStreamsCount(); stream_id++) {
+      for (int step_id = 0;
+           step_id < (int)data_loader_->GetTotalSteps(stream_id);
+           step_id += 1) {
+        RETURN_IF_ERROR(
+            CreateAndPopulateInput(name, tensor, stream_id, step_id));
+      }
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManager::CreateAndPopulateInput(
+    const std::string& name, const ModelTensor& tensor, int stream_id,
+    int step_id)
+{
+  // Extract the data for requested batch size
+  std::vector<const uint8_t*> data_ptrs;
+  std::vector<size_t> byte_size;
+  size_t count = 0;
+
+  RETURN_IF_ERROR(
+      GetInputData(name, tensor, stream_id, step_id, data_ptrs, byte_size));
+
+  if (tensor.is_shape_tensor_) {
+    RETURN_IF_ERROR(
+        ValidateShapeTensor(tensor, stream_id, step_id, data_ptrs, byte_size));
+  }
+
+  std::vector<int64_t> shape;
+  RETURN_IF_ERROR(
+      data_loader_->GetInputShape(tensor, stream_id, step_id, &shape));
+  if (!shape.empty()) {
+    if ((parser_->MaxBatchSize() != 0) && (!tensor.is_shape_tensor_)) {
+      shape.insert(shape.begin(), (int64_t)batch_size_);
+    }
+  }
+
+  cb::InferInput* input;
+  RETURN_IF_ERROR(
+      CreateInferInput(&input, backend_kind_, name, shape, tensor.datatype_));
+
+
+  // Number of missing pieces of data for optional inputs
+  int missing_data_cnt = 0;
+
+  for (size_t i = 0; i < data_ptrs.size(); i++) {
+    if (data_ptrs[i] == nullptr) {
+      missing_data_cnt++;
+    } else {
+      RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
+    }
+  }
+
+  // If all optional inputs had data provided, this is a valid input. But if
+  // some inferences in the batch provided data for an optional input and
+  // some inferences did not, this is an invalid case and an error is
+  // thrown.
+  if (missing_data_cnt == 0) {
+    inputs_.insert({{name, stream_id, step_id}, input});
+  } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
+    return cb::Error(
+        "For batch sizes larger than 1, the same set of inputs must be "
+        "specified for each batch. You cannot use different set of "
+        "optional "
+        "inputs for each individual batch.");
+  }
+
+  return cb::Error::Success;
+}
+
+cb::InferInput*
+InferDataManager::GetInput(const std::string& name, int stream_id, int step_id)
+{
+  auto input = inputs_.find({name, stream_id, step_id});
+  if (input == inputs_.end()) {
+    return nullptr;
+  } else {
+    return input->second;
+  }
+}
+
 
 cb::Error
 InferDataManager::InitInferDataInput(
@@ -96,57 +188,12 @@ InferDataManager::UpdateInputs(
   infer_data.valid_inputs_.clear();
 
   for (const auto& input : infer_data.inputs_) {
-    RETURN_IF_ERROR(input->Reset());
-
-    const auto& tensor = (*(parser_->Inputs()))[input->Name()];
     const auto& name = input->Name();
 
-    // Extract the data for requested batch size
-    std::vector<const uint8_t*> data_ptrs;
-    std::vector<size_t> byte_size;
-    size_t count = 0;
-
-    RETURN_IF_ERROR(GetInputData(
-        name, tensor, stream_index, step_index, data_ptrs, byte_size));
-
-    if (tensor.is_shape_tensor_) {
-      RETURN_IF_ERROR(ValidateShapeTensor(
-          tensor, stream_index, step_index, data_ptrs, byte_size));
-    }
-
-    std::vector<int64_t> shape;
-    RETURN_IF_ERROR(
-        data_loader_->GetInputShape(tensor, stream_index, step_index, &shape));
-    if (!shape.empty()) {
-      if ((parser_->MaxBatchSize() != 0) && (!tensor.is_shape_tensor_)) {
-        shape.insert(shape.begin(), (int64_t)batch_size_);
-      }
-      input->SetShape(shape);
-    }
-
-    // Number of missing pieces of data for optional inputs
-    int missing_data_cnt = 0;
-
-    for (size_t i = 0; i < data_ptrs.size(); i++) {
-      if (data_ptrs[i] == nullptr) {
-        missing_data_cnt++;
-      } else {
-        RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
-      }
-    }
-
-    // If all optional inputs had data provided, this is a valid input. But if
-    // some inferences in the batch provided data for an optional input and
-    // some inferences did not, this is an invalid case and an error is
-    // thrown.
-    if (missing_data_cnt == 0) {
-      infer_data.valid_inputs_.push_back(input);
-    } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
-      return cb::Error(
-          "For batch sizes larger than 1, the same set of inputs must be "
-          "specified for each batch. You cannot use different set of "
-          "optional "
-          "inputs for each individual batch.");
+    // FIXME TKG -- needs to look at name as well
+    cb::InferInput* tmp_input = GetInput(name, stream_index, step_index);
+    if (tmp_input != nullptr) {
+      infer_data.valid_inputs_.push_back(tmp_input);
     }
   }
   return cb::Error::Success;

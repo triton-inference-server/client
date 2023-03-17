@@ -52,6 +52,16 @@ class InferDataManager : public InferDataManagerBase {
   cb::Error Init() override;
 
  protected:
+  std::map<std::tuple<std::string, int, int>, cb::InferInput*> inputs_;
+
+  // FIXME TKG stream_id vs stream_index
+  cb::Error CreateAndPopulateInputs();
+  cb::Error CreateAndPopulateInput(
+      const std::string& name, const ModelTensor& model_tensor, int stream_id,
+      int step_id);
+
+  cb::InferInput* GetInput(const std::string& name, int stream_id, int step_id);
+
   cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,
       InferData& infer_data) override;
