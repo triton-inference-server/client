@@ -70,6 +70,18 @@ class InferDataManagerBase : public IInferDataManager {
   std::unique_ptr<cb::ClientBackend> backend_;
   cb::BackendKind backend_kind_;
 
+  // FIXME docuemnt
+  cb::Error GetInputData(
+      const std::string& name, const ModelTensor& tensor, int stream_id,
+      int step_id, std::vector<const uint8_t*>& data_ptrs,
+      std::vector<size_t>& byte_size);
+
+  // FIXME document
+  cb::Error ValidateShapeTensor(
+      const ModelTensor& tensor, int stream_id, int step_id,
+      const std::vector<const uint8_t*>& data_ptrs,
+      const std::vector<size_t>& byte_size);
+
   /// Helper function to update the inputs
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data

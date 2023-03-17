@@ -49,7 +49,7 @@ class InferDataManager : public InferDataManagerBase {
 
   /// Initialize this object. Must be called before any other functions
   /// \return cb::Error object indicating success or failure.
-  cb::Error Init() override { return cb::Error::Success; }
+  cb::Error Init() override;
 
  protected:
   cb::Error InitInferDataInput(

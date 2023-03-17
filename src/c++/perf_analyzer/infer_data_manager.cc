@@ -30,6 +30,11 @@
 
 namespace triton { namespace perfanalyzer {
 
+cb::Error
+InferDataManager::Init()
+{
+  return cb::Error::Success;
+}
 
 cb::Error
 InferDataManager::InitInferDataInput(
@@ -93,88 +98,40 @@ InferDataManager::UpdateInputs(
   for (const auto& input : infer_data.inputs_) {
     RETURN_IF_ERROR(input->Reset());
 
-    const auto& model_input = (*(parser_->Inputs()))[input->Name()];
+    const auto& tensor = (*(parser_->Inputs()))[input->Name()];
+    const auto& name = input->Name();
 
-    const uint8_t* data_ptr{nullptr};
-    size_t batch1_bytesize;
-    const int* set_shape_values = nullptr;
-    int set_shape_value_cnt = 0;
+    // Extract the data for requested batch size
+    std::vector<const uint8_t*> data_ptrs;
+    std::vector<size_t> byte_size;
+    size_t count = 0;
+
+    RETURN_IF_ERROR(GetInputData(
+        name, tensor, stream_index, step_index, data_ptrs, byte_size));
+
+    if (tensor.is_shape_tensor_) {
+      RETURN_IF_ERROR(ValidateShapeTensor(
+          tensor, stream_index, step_index, data_ptrs, byte_size));
+    }
+
+    std::vector<int64_t> shape;
+    RETURN_IF_ERROR(
+        data_loader_->GetInputShape(tensor, stream_index, step_index, &shape));
+    if (!shape.empty()) {
+      if ((parser_->MaxBatchSize() != 0) && (!tensor.is_shape_tensor_)) {
+        shape.insert(shape.begin(), (int64_t)batch_size_);
+      }
+      input->SetShape(shape);
+    }
 
     // Number of missing pieces of data for optional inputs
     int missing_data_cnt = 0;
 
-    for (size_t i = 0; i < batch_size_; ++i) {
-      std::vector<int64_t> shape;
-      RETURN_IF_ERROR(data_loader_->GetInputShape(
-          model_input, stream_index,
-          (step_index + i) % data_loader_->GetTotalSteps(stream_index),
-          &shape));
-      if ((parser_->MaxBatchSize() != 0) && (!model_input.is_shape_tensor_)) {
-        shape.insert(shape.begin(), (int64_t)batch_size_);
-      }
-      if (!shape.empty()) {
-        if (i == 0) {
-          input->SetShape(shape);
-        } else {
-          if (!std::equal(shape.begin(), shape.end(), input->Shape().begin())) {
-            return cb::Error(
-                "can not batch tensors with different shapes together "
-                "(input '" +
-                    input->Name() + "' expected shape " +
-                    ShapeVecToString(input->Shape(), true /* skip_first */) +
-                    " and received " +
-                    ShapeVecToString(shape, true /* skip_first */),
-                pa::GENERIC_ERROR);
-          }
-        }
-      }
-      data_ptr = nullptr;
-      RETURN_IF_ERROR(data_loader_->GetInputData(
-          model_input, stream_index,
-          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
-          &batch1_bytesize));
-
-      // Update number of missing pieces of data for optional inputs to
-      // potentially detect error
-      if (data_ptr == nullptr) {
+    for (size_t i = 0; i < data_ptrs.size(); i++) {
+      if (data_ptrs[i] == nullptr) {
         missing_data_cnt++;
-        continue;
-      }
-
-      if (!model_input.is_shape_tensor_) {
-        RETURN_IF_ERROR(input->AppendRaw(data_ptr, batch1_bytesize));
       } else {
-        if (i == 0) {
-          // Set data only once for shape tensors
-          RETURN_IF_ERROR(input->AppendRaw(data_ptr, batch1_bytesize));
-          set_shape_values = (const int*)data_ptr;
-          set_shape_value_cnt = batch1_bytesize / sizeof(int);
-        } else {
-          // Validate if the shape values are identical in the batch
-          bool is_identical = true;
-          if ((size_t)set_shape_value_cnt != (batch1_bytesize / sizeof(int))) {
-            is_identical = false;
-          } else {
-            for (int i = 0; i < set_shape_value_cnt; i++) {
-              if (*(set_shape_values + i) != *((const int*)data_ptr + i)) {
-                is_identical = false;
-                break;
-              }
-            }
-          }
-          if (!is_identical) {
-            return cb::Error(
-                "can not batch shape tensors with different values together "
-                "(input '" +
-                    input->Name() + "' expected shape values" +
-                    ShapeTensorValuesToString(
-                        set_shape_values, set_shape_value_cnt) +
-                    " and received " +
-                    ShapeTensorValuesToString(
-                        (int*)data_ptr, (batch1_bytesize / sizeof(int))),
-                pa::GENERIC_ERROR);
-          }
-        }
+        RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
       }
     }
 

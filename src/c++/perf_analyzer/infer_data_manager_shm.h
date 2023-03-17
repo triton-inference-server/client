@@ -110,6 +110,12 @@ class InferDataManagerShm : public InferDataManagerBase {
   cb::Error Init() override;
 
  protected:
+  cb::Error CreateOutputMemoryRegions();
+  cb::Error CreateAndPopulateInputMemoryRegions();
+  cb::Error CreateAndPopulateInputMemoryRegion(
+      const std::string& name, const ModelTensor& tensor, int stream_id,
+      int step_id);
+
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.
   cb::Error CreateMemoryRegion(
