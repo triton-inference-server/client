@@ -353,7 +353,8 @@ InferDataManagerShm::InitInferDataOutput(
 
 cb::Error
 InferDataManagerShm::UpdateInputs(
-    const int stream_index, const int step_index, InferData& infer_data)
+    const size_t thread_id, const int stream_index, const int step_index,
+    InferData& infer_data)
 {
   for (const auto& input : infer_data.inputs_) {
     RETURN_IF_ERROR(input->Reset());

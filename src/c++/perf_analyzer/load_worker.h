@@ -88,9 +88,9 @@ class LoadWorker : public IWorker {
   virtual std::shared_ptr<InferContext> CreateInferContext()
   {
     return std::make_shared<InferContext>(
-        ctxs_.size(), async_, streaming_, on_sequence_model_, using_json_data_,
-        batch_size_, thread_stat_, data_loader_, parser_, factory_, execute_,
-        infer_data_manager_, sequence_manager_);
+        id_, ctxs_.size(), async_, streaming_, on_sequence_model_,
+        using_json_data_, batch_size_, thread_stat_, data_loader_, parser_,
+        factory_, execute_, infer_data_manager_, sequence_manager_);
   }
 
   // Create an inference context and add it to ctxs_

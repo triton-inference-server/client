@@ -60,27 +60,33 @@ TEST_CASE("update_seq_json_data: testing the UpdateSeqJsonData function")
 
   testing::Sequence seq;
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 0, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 0, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 1, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 1, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 2, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 2, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 0, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 0, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 1, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 1, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
   EXPECT_CALL(
-      *mock_infer_data_manager, UpdateInferData(testing::_, 2, testing::_))
+      *mock_infer_data_manager,
+      UpdateInferData(testing::_, testing::_, 2, testing::_))
       .InSequence(seq)
       .WillOnce(testing::Return(cb::Error::Success));
 

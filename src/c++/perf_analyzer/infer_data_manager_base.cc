@@ -129,10 +129,11 @@ InferDataManagerBase::InitInferData(InferData& infer_data)
 
 cb::Error
 InferDataManagerBase::UpdateInferData(
-    int stream_index, int step_index, InferData& infer_data)
+    size_t thread_id, int stream_index, int step_index, InferData& infer_data)
 {
   RETURN_IF_ERROR(data_loader_->ValidateIndexes(stream_index, step_index));
-  RETURN_IF_ERROR(UpdateInputs(stream_index, step_index, infer_data));
+  RETURN_IF_ERROR(
+      UpdateInputs(thread_id, stream_index, step_index, infer_data));
   RETURN_IF_ERROR(
       UpdateValidationOutputs(stream_index, step_index, infer_data));
   return cb::Error::Success;

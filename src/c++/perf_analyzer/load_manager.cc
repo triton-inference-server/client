@@ -174,8 +174,8 @@ LoadManager::LoadManager(
   data_loader_.reset(new DataLoader(batch_size_));
 
   infer_data_manager_ = InferDataManagerFactory::CreateInferDataManager(
-      batch_size, shared_memory_type, output_shm_size, parser, factory,
-      data_loader_);
+      max_threads, batch_size, shared_memory_type, output_shm_size, parser,
+      factory, data_loader_);
 }
 
 void

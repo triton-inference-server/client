@@ -40,10 +40,12 @@ namespace triton { namespace perfanalyzer {
 class InferDataManager : public InferDataManagerBase {
  public:
   InferDataManager(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const int32_t batch_size,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManagerBase(batch_size, parser, factory, data_loader)
+      : max_threads_(max_threads),
+        InferDataManagerBase(batch_size, parser, factory, data_loader)
   {
   }
 
@@ -52,15 +54,17 @@ class InferDataManager : public InferDataManagerBase {
   cb::Error Init() override;
 
  protected:
-  std::map<std::tuple<std::string, int, int>, cb::InferInput*> inputs_;
+  const size_t max_threads_{1};
+  std::map<std::tuple<size_t, std::string, int, int>, cb::InferInput*> inputs_;
 
-  // FIXME TKG stream_id vs stream_index
   cb::Error CreateAndPopulateInputs();
   cb::Error CreateAndPopulateInput(
-      const std::string& name, const ModelTensor& model_tensor, int stream_id,
-      int step_id);
+      const size_t thread_id, const std::string& name,
+      const ModelTensor& model_tensor, int stream_id, int step_id);
 
-  cb::InferInput* GetInput(const std::string& name, int stream_id, int step_id);
+  cb::InferInput* GetInput(
+      const size_t thread_id, const std::string& name, int stream_id,
+      int step_id);
 
   cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,
@@ -70,12 +74,14 @@ class InferDataManager : public InferDataManagerBase {
       const std::string& name, InferData& infer_data) override;
 
   /// Helper function to update the inputs
+  /// FIXME
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
   cb::Error UpdateInputs(
-      const int stream_index, const int step_index, InferData& infer_data);
+      const size_t thread_id, const int stream_index, const int step_index,
+      InferData& infer_data);
 
 #ifndef DOCTEST_CONFIG_DISABLE
  protected:

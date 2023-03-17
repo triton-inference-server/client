@@ -350,7 +350,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params_.batch_size, params_.shared_memory_type,
+            params_.max_threads, params_.batch_size, params_.shared_memory_type,
             params_.output_shm_size, mmp, factory_, mdl);
 
     parser_ = mmp;
@@ -1271,7 +1271,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1298,7 +1298,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1323,7 +1323,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1414,8 +1414,9 @@ TEST_CASE("Request rate - Shared memory infer input calls")
 
   trrm.infer_data_manager_ =
       MockInferDataManagerFactory::CreateMockInferDataManager(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
+          params.max_threads, params.batch_size, params.shared_memory_type,
+          params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+          mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{

@@ -83,27 +83,30 @@ class MockInferDataManager : public InferDataManager {
   MockInferDataManager() { SetupMocks(); }
 
   MockInferDataManager(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const int32_t batch_size,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManager(batch_size, parser, factory, data_loader)
+      : InferDataManager(max_threads, batch_size, parser, factory, data_loader)
   {
     SetupMocks();
   }
 
   void SetupMocks()
   {
-    ON_CALL(*this, UpdateInferData(testing::_, testing::_, testing::_))
+    ON_CALL(
+        *this, UpdateInferData(testing::_, testing::_, testing::_, testing::_))
         .WillByDefault(
             [this](
-                int stream_index, int step_index,
+                size_t thread_id, int stream_index, int step_index,
                 InferData& infer_data) -> cb::Error {
               return this->InferDataManager::UpdateInferData(
-                  stream_index, step_index, infer_data);
+                  thread_id, stream_index, step_index, infer_data);
             });
   }
 
-  MOCK_METHOD(cb::Error, UpdateInferData, (int, int, InferData&), (override));
+  MOCK_METHOD(
+      cb::Error, UpdateInferData, (size_t, int, int, InferData&), (override));
 
   cb::Error CreateInferInput(
       cb::InferInput** infer_input, const cb::BackendKind kind,
@@ -118,14 +121,15 @@ class MockInferDataManager : public InferDataManager {
 class MockInferDataManagerFactory {
  public:
   static std::shared_ptr<IInferDataManager> CreateMockInferDataManager(
-      const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const int32_t batch_size,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
       return std::make_shared<testing::NiceMock<MockInferDataManager>>(
-          batch_size, parser, factory, data_loader);
+          max_threads, batch_size, parser, factory, data_loader);
     } else {
       return std::make_shared<testing::NiceMock<MockInferDataManagerShm>>(
           batch_size, shared_memory_type, output_shm_size, parser, factory,

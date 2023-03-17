@@ -40,16 +40,20 @@ InferDataManager::Init()
 cb::Error
 InferDataManager::CreateAndPopulateInputs()
 {
-  for (const auto& input : *(parser_->Inputs())) {
-    const std::string& name = input.first;
-    const ModelTensor& tensor = input.second;
-    for (int stream_id = 0;
-         stream_id < (int)data_loader_->GetDataStreamsCount(); stream_id++) {
-      for (int step_id = 0;
-           step_id < (int)data_loader_->GetTotalSteps(stream_id);
-           step_id += 1) {
-        RETURN_IF_ERROR(
-            CreateAndPopulateInput(name, tensor, stream_id, step_id));
+  // All combinations of thread + input + stream + step
+  //
+  for (size_t thread_id = 0; thread_id < max_threads_; thread_id++) {
+    for (const auto& input : *(parser_->Inputs())) {
+      const std::string& name = input.first;
+      const ModelTensor& tensor = input.second;
+      for (int stream_id = 0;
+           stream_id < (int)data_loader_->GetDataStreamsCount(); stream_id++) {
+        for (int step_id = 0;
+             step_id < (int)data_loader_->GetTotalSteps(stream_id);
+             step_id += 1) {
+          RETURN_IF_ERROR(CreateAndPopulateInput(
+              thread_id, name, tensor, stream_id, step_id));
+        }
       }
     }
   }
@@ -58,8 +62,8 @@ InferDataManager::CreateAndPopulateInputs()
 
 cb::Error
 InferDataManager::CreateAndPopulateInput(
-    const std::string& name, const ModelTensor& tensor, int stream_id,
-    int step_id)
+    const size_t thread_id, const std::string& name, const ModelTensor& tensor,
+    int stream_id, int step_id)
 {
   // Extract the data for requested batch size
   std::vector<const uint8_t*> data_ptrs;
@@ -104,7 +108,7 @@ InferDataManager::CreateAndPopulateInput(
   // some inferences did not, this is an invalid case and an error is
   // thrown.
   if (missing_data_cnt == 0) {
-    inputs_.insert({{name, stream_id, step_id}, input});
+    inputs_.insert({{thread_id, name, stream_id, step_id}, input});
   } else if (missing_data_cnt > 0 && missing_data_cnt < batch_size_) {
     return cb::Error(
         "For batch sizes larger than 1, the same set of inputs must be "
@@ -117,9 +121,10 @@ InferDataManager::CreateAndPopulateInput(
 }
 
 cb::InferInput*
-InferDataManager::GetInput(const std::string& name, int stream_id, int step_id)
+InferDataManager::GetInput(
+    const size_t thread_id, const std::string& name, int stream_id, int step_id)
 {
-  auto input = inputs_.find({name, stream_id, step_id});
+  auto input = inputs_.find({thread_id, name, stream_id, step_id});
   if (input == inputs_.end()) {
     return nullptr;
   } else {
@@ -182,7 +187,8 @@ InferDataManager::InitInferDataOutput(
 
 cb::Error
 InferDataManager::UpdateInputs(
-    const int stream_index, const int step_index, InferData& infer_data)
+    const size_t thread_id, const int stream_index, const int step_index,
+    InferData& infer_data)
 {
   // Reset inputs for this inference request
   infer_data.valid_inputs_.clear();
@@ -190,8 +196,8 @@ InferDataManager::UpdateInputs(
   for (const auto& input : infer_data.inputs_) {
     const auto& name = input->Name();
 
-    // FIXME TKG -- needs to look at name as well
-    cb::InferInput* tmp_input = GetInput(name, stream_index, step_index);
+    cb::InferInput* tmp_input =
+        GetInput(thread_id, name, stream_index, step_index);
     if (tmp_input != nullptr) {
       infer_data.valid_inputs_.push_back(tmp_input);
     }
