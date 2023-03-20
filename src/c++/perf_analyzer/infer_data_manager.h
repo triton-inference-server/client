@@ -74,7 +74,7 @@ class InferDataManager : public InferDataManagerBase {
       const std::string& name, InferData& infer_data) override;
 
   /// Helper function to update the inputs
-  /// FIXME
+  /// \param thread_id The ID of the calling thread
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object

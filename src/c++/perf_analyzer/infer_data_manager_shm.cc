@@ -105,6 +105,8 @@ InferDataManagerShm::CreateOutputMemoryRegions()
 cb::Error
 InferDataManagerShm::CreateAndPopulateInputMemoryRegions()
 {
+  // All combinations of input + stream + step
+  //
   for (const auto& input : *(parser_->Inputs())) {
     const std::string& name = input.first;
     const ModelTensor& tensor = input.second;
@@ -126,7 +128,6 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
     const std::string& name, const ModelTensor& tensor, int stream_id,
     int step_id)
 {
-  // Extract the data for requested batch size
   std::vector<const uint8_t*> data_ptrs;
   std::vector<size_t> byte_size;
   size_t count = 0;

@@ -65,7 +65,6 @@ InferDataManager::CreateAndPopulateInput(
     const size_t thread_id, const std::string& name, const ModelTensor& tensor,
     int stream_id, int step_id)
 {
-  // Extract the data for requested batch size
   std::vector<const uint8_t*> data_ptrs;
   std::vector<size_t> byte_size;
   size_t count = 0;

@@ -72,13 +72,29 @@ class InferDataManagerBase : public IInferDataManager {
   std::unique_ptr<cb::ClientBackend> backend_;
   cb::BackendKind backend_kind_;
 
-  // FIXME docuemnt
+  /// Gets the input data for the specified Input at the specified stream_id +
+  /// step_id combination, and adds it to data_ptrs. The byte size of the data
+  /// is added to byte_size.
+  /// \param name The name of the input to get data for
+  /// \param tensor The ModelTensor of the input to get data for
+  /// \param stream_id The ID of the stream to get data for
+  /// \param step_id The ID of the step within the stream
+  /// \param data_ptrs Pointer to the data for the batch
+  /// \param byte_size Size of the input data
+  /// \return cb::Error object indicating success or failure.
   cb::Error GetInputData(
       const std::string& name, const ModelTensor& tensor, int stream_id,
       int step_id, std::vector<const uint8_t*>& data_ptrs,
       std::vector<size_t>& byte_size);
 
-  // FIXME document
+  /// For the case of an input with is_shape_tensor true, validate that
+  /// it follows all rules, and throw an error if it does not
+  /// \param tensor The ModelTensor of the input to validate
+  /// \param stream_id The ID of the stream to validate
+  /// \param step_id The ID of the step within the stream
+  /// \param data_ptrs Pointer to the data for the batch
+  /// \param byte_size Size of the input data
+  /// \return cb::Error object indicating success or failure.
   cb::Error ValidateShapeTensor(
       const ModelTensor& tensor, int stream_id, int step_id,
       const std::vector<const uint8_t*>& data_ptrs,
