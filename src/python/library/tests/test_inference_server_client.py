@@ -43,7 +43,9 @@ json_error_response = """{
 
 
 class TestInferenceServerClient(unittest.TestCase):
-    """Testing the various methods in InferenceServerClient to ensure proper functionality"""
+    """
+    Testing the various methods in InferenceServerClient to ensure proper functionality
+    """
 
     @patch('geventhttpclient.response.HTTPSocketResponse._read_headers',
            MagicMock(return_value=None))
@@ -53,6 +55,10 @@ class TestInferenceServerClient(unittest.TestCase):
     @patch('tritonclient.http.InferenceServerClient._get',
            MagicMock(return_value={"status_code": 200}))
     def test_get_method_success(self):
+        """
+        Verify that a 200 return code on a get call is a success and does not throw an error
+        """
+
         url = "dummy_url"
         self.client = InferenceServerClient(url)
         self.assertEqual(self.client._get(url, None, None)['status_code'], 200)
@@ -62,12 +68,20 @@ class TestInferenceServerClient(unittest.TestCase):
     @patch('geventhttpclient.response.HTTPSocketResponse.read',
            MagicMock(return_value=json_error_response))
     def test_get_method_failure(self):
+        """
+        Verify that non 200 return codes are raising an exception in the client
+        """
+
         with self.assertRaises(InferenceServerException):
             _raise_if_error(self.response)
 
     @patch('tritonclient.http.InferenceServerClient._post',
            MagicMock(return_value={"status_code": 200}))
     def test_post_method_success(self):
+        """
+        Verify that a 200 return code on a post call is a success and does not throw an error
+        """
+
         url = "dummy_url"
         body = "dummy_body"
         self.client = InferenceServerClient(url)
@@ -79,5 +93,9 @@ class TestInferenceServerClient(unittest.TestCase):
     @patch('geventhttpclient.response.HTTPSocketResponse.read',
            MagicMock(return_value="error_string"))
     def test_error_plain_text(self):
+        """
+        Verify that a non JSON response from the server raises an error
+        """
+
         with self.assertRaises(rapidjson.JSONDecodeError):
             _raise_if_error(self.response)
