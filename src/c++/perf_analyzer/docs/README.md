@@ -48,6 +48,6 @@ model input data, the performance measurement modes, the performance metrics and
 outputs, how to benchmark different servers, and more.
 
 - [Perf Analyzer CLI](cli.md)
-- [Data Guide](data_guide.md)
+- [Input Data](input_data.md)
 - [Measurements & Metrics](measurements_metrics.md)
 - [Benchmarking](benchmarking.md)
