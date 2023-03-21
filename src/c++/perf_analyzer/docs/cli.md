@@ -59,7 +59,7 @@ Specifies the kind of service for Perf Analyzer to generate load for. Note: in
 order to use `torchserve` backend, the `--input-data` option must point to a
 JSON file holding data in the following format:
 
-```JSON
+```
 {
   "data": [
     {
