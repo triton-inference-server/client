@@ -49,4 +49,5 @@ outputs, how to benchmark different servers, and more.
 
 - [Perf Analyzer CLI](cli.md)
 - [Data Guide](data_guide.md)
-- [Measurements](measurements.md)
+- [Measurements & Metrics](measurements_metrics.md)
+- [Benchmarking](benchmarking.md)
