@@ -112,8 +112,7 @@ InferDataManager::CreateAndPopulateInput(
     return cb::Error(
         "For batch sizes larger than 1, the same set of inputs must be "
         "specified for each batch. You cannot use different set of "
-        "optional "
-        "inputs for each individual batch.");
+        "optional inputs for each individual batch.");
   }
 
   return cb::Error::Success;

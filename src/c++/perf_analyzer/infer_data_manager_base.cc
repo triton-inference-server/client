@@ -79,7 +79,8 @@ InferDataManagerBase::ValidateShapeTensor(
     const std::vector<const uint8_t*>& data_ptrs,
     const std::vector<size_t>& byte_size)
 {
-  // Validate if the shape tensors specified in the batch are identical.
+  // Validate that steps 1 through N are exactly the same as step 0, since step
+  // 0 is the only one we send for shape tensors
   for (size_t count = 1; count < batch_size_; count++) {
     int local_step_id =
         (step_id + count) % data_loader_->GetTotalSteps(stream_id);
