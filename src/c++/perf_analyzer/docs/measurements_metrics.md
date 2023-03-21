@@ -1,29 +1,27 @@
 <!--
-# Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of NVIDIA CORPORATION nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
 # Measurement Modes
@@ -46,7 +44,50 @@ Perf Analyzer will start the window duration at 1 second and potentially
 dynamically increase it until `X` requests have completed (via
 `--measurement-request-count=X`, default is `50`).
 
-# Visualization
+# Metrics
+
+## How Throughput is Calculated
+
+Perf Analyzer calculates throughput to be the total number of requests completed
+during a measurement, divided by the duration of the measurement, in seconds.
+
+## How Latency is Calculated
+
+For each request concurrency level perf*analyzer reports latency and
+throughput as seen from the \_client* (that is, as seen by
+perf_analyzer) and also the average request latency on the server.
+
+The server latency measures the total time from when the request is
+received at the server until the response is sent from the
+server. Because of the HTTP and GRPC libraries used to implement the
+server endpoints, total server latency is typically more accurate for
+HTTP requests as it measures time from first byte received until last
+byte sent. For both HTTP and GRPC the total server latency is
+broken-down into the following components:
+
+- _queue_: The average time spent in the inference schedule queue by a
+  request waiting for an instance of the model to become available.
+- _compute_: The average time spent performing the actual inference,
+  including any time needed to copy data to/from the GPU.
+
+The client latency time is broken-down further for HTTP and GRPC as
+follows:
+
+- HTTP: _send/recv_ indicates the time on the client spent sending the
+  request and receiving the response. _response wait_ indicates time
+  waiting for the response from the server.
+- GRPC: _(un)marshal request/response_ indicates the time spent
+  marshalling the request data into the GRPC protobuf and
+  unmarshalling the response data from the GRPC protobuf. _response
+  wait_ indicates time writing the GRPC request to the network,
+  waiting for the response, and reading the GRPC response from the
+  network.
+
+Use the verbose (-v) option to perf_analyzer to see more output,
+including the stabilization passes run for each request concurrency
+level.
+
+# Reports
 
 ## Visualizing Latency vs. Throughput
 
@@ -77,8 +118,6 @@ components of the latency. Follow these steps:
 - From the File menu select "Import..."
 - Select "Upload" and upload the file
 - Select "Replace data at selected cell" and then select the "Import data" button
-
-# Metrics
 
 ## Server-side Prometheus metrics
 

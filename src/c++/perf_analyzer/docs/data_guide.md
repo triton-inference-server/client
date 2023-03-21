@@ -1,34 +1,30 @@
 <!--
-# Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of NVIDIA CORPORATION nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Data Guide
-
-## Input Data
+# Input Data
 
 Use the --help option to see complete documentation for all input
 data options. By default perf_analyzer sends random data to all the
@@ -56,7 +52,7 @@ perf_analyzer to send batch-size 4 requests of shape [ 3, 224, 224 ]:
 $ perf_analyzer -m mymodel -b 4 --shape IMAGE:3,224,224
 ```
 
-## Real Input Data
+# Real Input Data
 
 The performance of some models is highly dependent on the data used.
 For such cases you can provide data to be used with every inference
@@ -244,7 +240,7 @@ Note that for STRING type an element is represented by a 4-byte unsigned integer
 the length followed by the actual bytes. The byte array to be encoded using base64 must
 include the 4-byte unsigned integers.
 
-### Output Validation
+## Output Validation
 
 When real input data is provided, it is optional to request perf analyzer to
 validate the inference output for the input data.
@@ -279,13 +275,13 @@ and OUTPUT1, all tensors have shape [4, 4] and data type INT32:
 Besides the above example, the validation outputs can be specified in the same
 variations described in "real input data" section.
 
-## Shared Memory
+# Shared Memory
 
 By default perf_analyzer sends input tensor data and receives output
 tensor data over the network. You can instead instruct perf_analyzer to
 use system shared memory or CUDA shared memory to communicate tensor
 data. By using these options you can model the performance that you
 can achieve by using shared memory in your application. Use
-[--shared-memory=system](cli.md#--shared-memory=[none|system|cuda])
+[--shared-memory=system](cli.md#--shared-memorynonesystemcuda])
 to use system (CPU) shared memory or --shared-memory=cuda to use CUDA
 shared memory.

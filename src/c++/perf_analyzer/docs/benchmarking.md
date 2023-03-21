@@ -1,44 +1,44 @@
 <!--
-# Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+ * Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+ * Neither the name of NVIDIA CORPORATION nor the names of its
+   contributors may be used to endorse or promote products derived
+   from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Benchmarking
+# Benchmarking Triton via HTTP/gRPC endpoint
 
-## Benchmarking Triton directly via C API
+This is the default mode for Perf Analyzer.
+
+# Benchmarking Triton directly via C API
 
 Besides using HTTP or gRPC server endpoints to communicate with Triton, perf_analyzer also allows user to benchmark Triton directly using C API. HTTP/gRPC endpoints introduce an additional latency in the pipeline which may not be of interest to the user who is using Triton via C API within their application. Specifically, this feature is useful to benchmark bare minimum Triton without additional overheads from HTTP/gRPC communication.
 
-### Prerequisite
+## Prerequisite
 
 Pull the Triton SDK and the Inference Server container images on target machine.
 Since you will need access to the Tritonserver install, it might be easier if
 you copy the perf_analyzer binary to the Inference Server container.
 
-### Required Parameters
+## Required Parameters
 
 Use the --help option to see complete list of supported command line arguments.
 By default perf_analyzer expects the Triton instance to already be running. You can configure the C API mode using the [`--service-kind`](cli.md#--service-kind=[triton|triton_c_api|tfserving|torchserve]) option. In additon, you will need to point
@@ -51,7 +51,7 @@ An example run would look like:
 perf_analyzer -m graphdef_int32_int32_int32 --service-kind=triton_c_api --triton-server-directory=/opt/tritonserver --model-repository=/workspace/qa/L0_perf_analyzer_capi/models
 ```
 
-### Non-supported functionalities
+## Non-supported functionalities
 
 There are a few functionalities that are missing from the C API. They are:
 
@@ -61,7 +61,7 @@ There are a few functionalities that are missing from the C API. They are:
 4. For additonal known non-working cases, please refer to
    [qa/L0_perf_analyzer_capi/test.sh](https://github.com/triton-inference-server/server/blob/main/qa/L0_perf_analyzer_capi/test.sh#L239-L277)
 
-## Benchmarking TensorFlow Serving
+# Benchmarking TensorFlow Serving
 
 perf_analyzer can also be used to benchmark models deployed on
 [TensorFlow Serving](https://github.com/tensorflow/serving) using
@@ -138,7 +138,7 @@ The following points are important for interpreting the results:
    on CPU models on Triton, try running Triton with the environment
    variable `TF_ENABLE_ONEDNN_OPTS=1`.
 
-## Benchmarking TorchServe
+# Benchmarking TorchServe
 
 perf_analyzer can also be used to benchmark
 [TorchServe](https://github.com/pytorch/serve) using the
@@ -194,7 +194,7 @@ guarantee optimum tuning for TorchServe. However, a single benchmarking
 tool that can be used to stress the inference servers in an identical
 manner is important for performance analysis.
 
-## Advantages of using Perf Analyzer over third-party benchmark suites
+# Advantages of using Perf Analyzer over third-party benchmark suites
 
 Triton Inference Server offers the entire serving solution which
 includes [client libraries](https://github.com/triton-inference-server/client)
