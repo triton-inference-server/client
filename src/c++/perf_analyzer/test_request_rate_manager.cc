@@ -1042,6 +1042,90 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
       expect_thread_failure);
 }
 
+TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
+{
+  // Test the case where is_shape_tensor is true and is_optional_ is true
+  // and data for that input is completely omitted
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = false;
+  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT2": [21] },
+     { "INPUT2": [22] },
+     { "INPUT2": [23] }     
+   ]})"};
+
+  model_tensor1.is_shape_tensor_ = true;
+  model_tensor1.is_optional_ = true;
+
+  size_t num_requests = 4;
+
+  const auto& ParameterizeBatch{[&]() {
+    SUBCASE("batch 1")
+    {
+      params.batch_size = 1;
+      expected_results = {{21}, {22}, {23}, {21}};
+    }
+    SUBCASE("batch 2")
+    {
+      params.batch_size = 2;
+      expected_results = {{21, 22}, {23, 21}, {22, 23}, {21, 22}};
+    }
+    SUBCASE("batch 4")
+    {
+      params.batch_size = 4;
+      expected_results = {{21, 22, 23, 21},
+                          {22, 23, 21, 22},
+                          {23, 21, 22, 23},
+                          {21, 22, 23, 21}};
+    }
+  }};
+
+  SUBCASE("no shm")
+  {
+    params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+    ParameterizeBatch();
+  }
+  SUBCASE("system shm")
+  {
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    ParameterizeBatch();
+    expect_init_failure = true;
+  }
+  SUBCASE("cuda shm")
+  {
+    params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
+    ParameterizeBatch();
+    expect_init_failure = true;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
 TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
 {
   PerfAnalyzerParameters params{};
@@ -1084,9 +1168,9 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
       json_str = R"({
    "data": [
      { "INPUT2": [21] },
-     { "INPUT1": [1], "INPUT2": [22] }
+     { "INPUT2": [22] }
    ]})";
-      expected_results = {{21}, {1, 22}, {21}, {1, 22}};
+      expected_results = {{21}, {22}, {21}, {22}};
     }
   }};
 
