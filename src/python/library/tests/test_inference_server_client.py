@@ -94,8 +94,8 @@ class TestInferenceServerClient(unittest.TestCase):
            MagicMock(return_value="error_string"))
     def test_error_plain_text(self):
         """
-        Verify that a non JSON response from the server raises an error
+        Verify that a non JSON response returns an InferenceServerException and not a JSONDecodeError
         """
 
-        with self.assertRaises(rapidjson.JSONDecodeError):
+        with self.assertRaises(InferenceServerException):
             _raise_if_error(self.response)
