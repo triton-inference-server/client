@@ -591,5 +591,3 @@ Default is `1`.
 
 Alias for `--input-data=zero`. See `--input-data` option documentation for
 details.
-
-<br>
