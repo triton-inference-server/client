@@ -90,10 +90,6 @@ InferDataManagerBase::ValidateShapeTensor(
     RETURN_IF_ERROR(data_loader_->GetInputData(
         tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
 
-    if (data_ptr == nullptr) {
-      return cb::Error("Shape Tensor can't be optional");
-    }
-
     if (batch1_bytesize != byte_size.back()) {
       return cb::Error(
           "The shape tensors should be identical in a batch (mismatch "
