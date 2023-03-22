@@ -41,9 +41,9 @@ you copy the perf_analyzer binary to the Inference Server container.
 ## Required Parameters
 
 Use the --help option to see complete list of supported command line arguments.
-By default perf_analyzer expects the Triton instance to already be running. You can configure the C API mode using the [`--service-kind`](cli.md#--service-kind=[triton|triton_c_api|tfserving|torchserve]) option. In additon, you will need to point
-perf_analyzer to the Triton server library path using the [`--triton-server-directory`](cli.md#--triton-server-directory=<path>) option and the model
-repository path using the [`--model-repository`](cli.md#--model-repository=<path>) option.
+By default perf_analyzer expects the Triton instance to already be running. You can configure the C API mode using the [`--service-kind`](cli.md#--service-kindtritontriton_c_apitfservingtorchserve) option. In additon, you will need to point
+perf_analyzer to the Triton server library path using the [`--triton-server-directory`](cli.md#--triton-server-directorypath) option and the model
+repository path using the [`--model-repository`](cli.md#--model-repositorypath) option.
 If the server is run successfully, there is a prompt: "server is alive!" and perf_analyzer will print the stats, as normal.
 An example run would look like:
 
@@ -56,7 +56,7 @@ perf_analyzer -m graphdef_int32_int32_int32 --service-kind=triton_c_api --triton
 There are a few functionalities that are missing from the C API. They are:
 
 1. Async mode (`-a`)
-2. Using shared memory mode ([`--shared-memory=cuda`](cli.md#--shared-memory=[none|system|cuda]) or `--shared-memory=system`)
+2. Using shared memory mode ([`--shared-memory=cuda`](cli.md#--shared-memorynonesystemcuda) or `--shared-memory=system`)
 3. Request rate range mode
 4. For additonal known non-working cases, please refer to
    [qa/L0_perf_analyzer_capi/test.sh](https://github.com/triton-inference-server/server/blob/main/qa/L0_perf_analyzer_capi/test.sh#L239-L277)
@@ -65,7 +65,7 @@ There are a few functionalities that are missing from the C API. They are:
 
 perf_analyzer can also be used to benchmark models deployed on
 [TensorFlow Serving](https://github.com/tensorflow/serving) using
-the [`--service-kind`](cli.md#--service-kind=[triton|triton_c_api|tfserving|torchserve]) option. The support is however only available
+the [`--service-kind`](cli.md#--service-kindtritontriton_c_apitfservingtorchserve) option. The support is however only available
 through gRPC protocol.
 
 Following invocation demonstrates how to configure perf_analyzer
@@ -113,7 +113,7 @@ The following points are important for interpreting the results:
    concurrent threads serving requests. When benchmarking at a higher
    request concurrency, you can see higher throughput because of this.  
    Unlike TFS, by default Triton is configured with only a single
-   [instance count](model_configuration.md#instance-groups). Hence, at a higher request concurrency, most
+   [instance count](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#instance-groups). Hence, at a higher request concurrency, most
    of the requests are blocked on the instance availability. To
    configure Triton to behave like TFS, set the instance count to a
    reasonably high value and then set
@@ -142,7 +142,7 @@ The following points are important for interpreting the results:
 
 perf_analyzer can also be used to benchmark
 [TorchServe](https://github.com/pytorch/serve) using the
-[`--service-kind`](cli.md#--service-kind=[triton|triton_c_api|tfserving|torchserve]) option. The support is however only available through
+[`--service-kind`](cli.md#--service-kindtritontriton_c_apitfservingtorchserve) option. The support is however only available through
 HTTP protocol. It also requires input to be provided via JSON file.
 
 Following invocation demonstrates how to configure perf_analyzer to
@@ -203,7 +203,7 @@ Using third-party benchmark suites like jmeter fails to take advantage of the
 optimized libraries. Some of these optimizations includes but are not limited
 to:
 
-1. Using [binary tensor data extension](../protocol/extension_binary_data.md) with HTTP requests.
+1. Using [binary tensor data extension](https://github.com/triton-inference-server/server/blob/main/docs/protocol/extension_binary_data.md#binary-tensor-data-extension) with HTTP requests.
 2. Effective re-use of gRPC message allocation in subsequent requests.
 3. Avoiding extra memory copy via libcurl interface.
 

@@ -31,7 +31,7 @@ Currently, Perf Analyzer has 2 measurement modes.
 ## Time Windows
 
 When using time windows measurement mode
-([`--measurement-mode=time_windows`](cli.md#--measurement-mode=[time_windows|count_windows])),
+([`--measurement-mode=time_windows`](cli.md#--measurement-modetime_windowscount_windows)),
 Perf Analyzer will count how many requests have completed during a window of
 duration `X` (in milliseconds, via `--measurement-interval=X`, default is
 `5000`). This is the default measurement mode.
@@ -39,10 +39,10 @@ duration `X` (in milliseconds, via `--measurement-interval=X`, default is
 ## Count Windows
 
 When using count windows measurement mode
-([`--measurement-mode=count_windows`](cli.md#--measurement-mode=[time_windows|count_windows])),
+([`--measurement-mode=count_windows`](cli.md#--measurement-modetime_windowscount_windows)),
 Perf Analyzer will start the window duration at 1 second and potentially
 dynamically increase it until `X` requests have completed (via
-`--measurement-request-count=X`, default is `50`).
+[`--measurement-request-count=X`](cli.md#--measurement-request-countn), default is `50`).
 
 # Metrics
 
@@ -127,10 +127,10 @@ use the [`--collect-metrics`](cli.md#--collect-metrics) CLI option.
 
 Perf Analyzer defaults to access the metrics endpoint at
 `localhost:8002/metrics`. If the metrics are accessible at a different url, use
-the [`--metrics-url <url>`](cli.md#--metrics-url=<url>) CLI option to specify that.
+the [`--metrics-url <url>`](cli.md#--metrics-urlurl) CLI option to specify that.
 
 Perf Analyzer defaults to access the metrics endpoint every 1000 milliseconds.
-To use a different accessing interval, use the [`--metrics-interval <interval>`](cli.md#--metrics-interval=<n>)
+To use a different accessing interval, use the [`--metrics-interval <interval>`](cli.md#--metrics-intervaln)
 CLI option (specify in milliseconds).
 
 Because Perf Analyzer can collect the server-side metrics multiple times per
@@ -146,7 +146,7 @@ per sweep (concurrency/request rate). Here are how they are aggregated:
 
 Note that all metrics are per-GPU in the case of multi-GPU systems.
 
-To output these server-side metrics to a CSV file, use the [`-f <filename>`](cli.md#-f&nbsp<path>) and
+To output these server-side metrics to a CSV file, use the [`-f <filename>`](cli.md#-f-path) and
 [`--verbose-csv`](cli.md#--verbose-csv) CLI options. The output CSV will contain one column per metric.
 The value of each column will be a `key:value` pair (`GPU UUID:metric value`).
 Each `key:value` pair will be delimited by a semicolon (`;`) to indicate metric
