@@ -34,10 +34,43 @@ changes in performance as you experiment with different optimization strategies.
 
 <br>
 
+# Features
+
+### Request Sending Modes
+
+- [Concurrency Mode]() simlulates traffic by maintaining a specific concurrency
+  of outgoing requests to the server
+
+- [Request Rate Mode]() simulates traffic by sending consecutive requests at a
+  specific rate to the server
+
+- [Custom Interval Mode]() simulates traffic by sending consecutive requests at
+  specific intervals to the server
+
+### Performance Measurement Modes
+
+- [Time Windows Mode]() measures model performance repeatedly over a specific time
+  interval until performance has stabilized
+
+- [Count Windows Mode]() measures model performance repeatedly over a specific
+  number of requests until performance has stabilized
+
+### Other Features
+
+- [Sequence Models]() and [Ensemble Models]() can be profiled in addition to
+  standard/stateless models
+
+- [Input Data]() to model inferences can be auto-generated or specified as well
+  as verifying output
+
+- [TensorFlow Serving]() and [TorchServe]() can be used as the inference server
+  in addition to the default [Triton]() server
+
+<br>
+
 # Quick Start
 
-The steps below will guide you through using Perf Analyzer to profile a simple
-Tensorflow model: `simple`.
+The steps below will guide you on how to start using Perf Analyzer.
 
 ### Step 1: Start Triton Container
 
@@ -55,9 +88,7 @@ docker run --gpus all --rm -it --net host nvcr.io/nvidia/tritonserver:${RELEASE}
 # inside triton container
 git clone --depth 1 https://github.com/triton-inference-server/server
 
-mkdir model_repository
-
-cp -r server/docs/examples/model_repository/simple model_repository
+mkdir model_repository ; cp -r server/docs/examples/model_repository/simple model_repository
 ```
 
 ### Step 3: Start Triton Server
@@ -66,9 +97,8 @@ cp -r server/docs/examples/model_repository/simple model_repository
 # inside triton container
 tritonserver --model-repository $(pwd)/model_repository &> server.log &
 
-# confirm server is ready
+# confirm server is ready, look for 'HTTP/1.1 200 OK'
 curl -v localhost:8000/v2/health/ready
-# look for 'HTTP/1.1 200 OK'
 
 # detatch (CTRL-p CTRL-q)
 ```
@@ -129,7 +159,6 @@ have 1 outgoing request at all times.
 
 # Documentation
 
-- [Quick Start](README.md#quick-start)
 - [Installation](docs/install.md)
 - [Perf Analyzer CLI](docs/cli.md)
 
