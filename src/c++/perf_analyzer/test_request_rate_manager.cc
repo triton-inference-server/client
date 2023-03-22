@@ -1057,12 +1057,14 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
 
   ModelTensor model_tensor1{};
   model_tensor1.datatype_ = "INT32";
-  model_tensor1.is_optional_ = false;
-  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.is_optional_ = true;
+  model_tensor1.is_shape_tensor_ = true;
   model_tensor1.name_ = "INPUT1";
   model_tensor1.shape_ = {1};
 
   ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.is_shape_tensor_ = false;
+  model_tensor2.is_optional_ = false;
   model_tensor2.name_ = "INPUT2";
 
   std::string json_str{R"({
@@ -1072,8 +1074,6 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
      { "INPUT2": [23] }     
    ]})"};
 
-  model_tensor1.is_shape_tensor_ = true;
-  model_tensor1.is_optional_ = true;
 
   size_t num_requests = 4;
 
