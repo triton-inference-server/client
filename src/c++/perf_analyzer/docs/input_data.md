@@ -52,7 +52,7 @@ perf_analyzer to send batch-size 4 requests of shape [ 3, 224, 224 ]:
 $ perf_analyzer -m mymodel -b 4 --shape IMAGE:3,224,224
 ```
 
-# Real Input Data
+## Real Input Data
 
 The performance of some models is highly dependent on the data used.
 For such cases you can provide data to be used with every inference
@@ -240,7 +240,7 @@ Note that for STRING type an element is represented by a 4-byte unsigned integer
 the length followed by the actual bytes. The byte array to be encoded using base64 must
 include the 4-byte unsigned integers.
 
-## Output Validation
+### Output Validation
 
 When real input data is provided, it is optional to request perf analyzer to
 validate the inference output for the input data.

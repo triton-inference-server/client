@@ -24,7 +24,7 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Benchmarking Triton via HTTP/gRPC endpoint
+# Benchmarking Triton via HTTP or gRPC endpoint
 
 This is the default mode for Perf Analyzer.
 
