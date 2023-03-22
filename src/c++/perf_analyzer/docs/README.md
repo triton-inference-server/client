@@ -28,8 +28,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # **Perf Analyzer Documentation**
 
-| [Installation](README.md#installation) | [Getting Started](README.md#getting-started) |
-| -------------------------------------- | -------------------------------------- |
+| [Installation](README.md#installation) | [Getting Started](README.md#getting-started) | [User Guide](README.md#user-guide) |
+| -------------------------------------- | -------------------------------------- | -------------------------------------- |
 
 ## **Installation**
 
@@ -40,3 +40,11 @@ Analyzer.
 
 The [Quick Start Guide](../README.md#quick-start) will show you how to use Perf
 Analyzer to profile a simple PyTorch model.
+
+## **User Guide**
+
+The User Guide describes the Perf Analyzer command line options, how to specify
+model input data, the performance measurement modes, the performance metrics and
+outputs, how to benchmark different servers, and more.
+
+- [Perf Analyzer CLI](cli.md)
