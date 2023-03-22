@@ -49,13 +49,13 @@ This document details the Perf Analyzer command line interface:
 
 Prints a description of the Perf Analyzer command line interface.
 
-#### `-m`
+#### `-m <string>`
 
 Specifies the model name for Perf Analyzer to run.
 
 This is a required option.
 
-#### `-x`
+#### `-x <string>`
 
 Specifies the version of the model to be used. If not specified the most
 recent version (the highest numbered version) of the model will be used.
@@ -302,7 +302,7 @@ all strings needed by batch-1, each in a new line, listed in row-major order.
 
 Default is `random`.
 
-#### `-b`
+#### `-b <n>`
 
 Specifies the batch size for each request sent.
 
@@ -395,7 +395,7 @@ Default is `none`.
 
 ## Server Options
 
-#### `-u`
+#### `-u <url>`
 
 Specifies the URL for the server.
 
@@ -576,7 +576,7 @@ Enables dynamic concurrency mode. Perf Analyzer will search along
 concurrencies up to the maximum concurrency specified via `-c <n>`. Cannot be
 used with `--concurrency-range`.
 
-#### `-t`
+#### `-t <n>`
 
 **DEPRECATED**
 
