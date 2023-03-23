@@ -93,8 +93,9 @@ InferDataManager::CreateAndPopulateInput(
 
   // Number of missing pieces of data for optional inputs
   int missing_data_cnt = 0;
+  int total_cnt = data_ptrs.size();
 
-  for (size_t i = 0; i < data_ptrs.size(); i++) {
+  for (size_t i = 0; i < total_cnt; i++) {
     if (data_ptrs[i] == nullptr) {
       missing_data_cnt++;
     } else {
@@ -108,9 +109,7 @@ InferDataManager::CreateAndPopulateInput(
   // thrown.
   if (missing_data_cnt == 0) {
     inputs_.insert({{thread_id, name, stream_id, step_id}, input});
-  } else if (
-      missing_data_cnt > 0 && missing_data_cnt < batch_size_ &&
-      !tensor.is_shape_tensor_) {
+  } else if (missing_data_cnt > 0 && missing_data_cnt < total_cnt) {
     return cb::Error(
         "For batch sizes larger than 1, the same set of inputs must be "
         "specified for each batch. You cannot use different set of "
