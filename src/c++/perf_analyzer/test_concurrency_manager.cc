@@ -536,8 +536,9 @@ TEST_CASE("Concurrency - shared memory infer input calls")
 
   tcm.infer_data_manager_ =
       MockInferDataManagerFactory::CreateMockInferDataManager(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_);
+          params.max_threads, params.batch_size, params.shared_memory_type,
+          params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
+          mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
@@ -609,7 +610,7 @@ TEST_CASE("Concurrency - Shared memory methods")
 
     tcm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_);
 
@@ -634,7 +635,7 @@ TEST_CASE("Concurrency - Shared memory methods")
 
     tcm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_);
 
@@ -656,7 +657,7 @@ TEST_CASE("Concurrency - Shared memory methods")
         params, is_sequence, is_decoupled, use_mock_infer);
     tcm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, tcm.factory_,
             mip.mock_data_loader_);
     tcm.InitManager(

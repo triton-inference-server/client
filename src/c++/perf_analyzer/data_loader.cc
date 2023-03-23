@@ -322,6 +322,7 @@ DataLoader::GetInputData(
     const uint8_t** data_ptr, size_t* batch1_size)
 {
   bool data_found = false;
+  *batch1_size = 0;
 
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {

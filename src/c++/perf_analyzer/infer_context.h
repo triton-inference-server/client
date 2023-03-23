@@ -83,15 +83,16 @@ class MockInferContext;
 class InferContext {
  public:
   InferContext(
-      const uint32_t id, const bool async, const bool streaming,
-      const bool on_sequence_model, const bool using_json_data,
-      const int32_t batch_size, std::shared_ptr<ThreadStat> thread_stat,
+      const size_t thread_id, const uint32_t id, const bool async,
+      const bool streaming, const bool on_sequence_model,
+      const bool using_json_data, const int32_t batch_size,
+      std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<DataLoader> data_loader,
       std::shared_ptr<ModelParser> parser,
       std::shared_ptr<cb::ClientBackendFactory> factory, const bool& execute,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
-      : id_(id), async_(async), streaming_(streaming),
+      : thread_id_(thread_id), id_(id), async_(async), streaming_(streaming),
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
         thread_stat_(thread_stat), data_loader_(data_loader), parser_(parser),
@@ -181,6 +182,7 @@ class InferContext {
 
  private:
   const uint32_t id_{0};
+  const size_t thread_id_{0};
 
   size_t GetNumActiveThreads() { return num_active_threads_; }
 

@@ -110,6 +110,12 @@ class InferDataManagerShm : public InferDataManagerBase {
   cb::Error Init() override;
 
  protected:
+  cb::Error CreateOutputMemoryRegions();
+  cb::Error CreateAndPopulateInputMemoryRegions();
+  cb::Error CreateAndPopulateInputMemoryRegion(
+      const std::string& name, const ModelTensor& tensor, int stream_id,
+      int step_id);
+
   /// Create a memory region.
   /// \return cb::Error object indicating success or failure.
   cb::Error CreateMemoryRegion(
@@ -137,12 +143,13 @@ class InferDataManagerShm : public InferDataManagerBase {
       const std::string& name, InferData& infer_data) override;
 
   /// Helper function to update the inputs
+  /// \param thread_id The ID of the calling thread
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
   virtual cb::Error UpdateInputs(
-      const int stream_index, const int step_index,
+      size_t thread_id, const int stream_index, const int step_index,
       InferData& infer_data) override;
 
   SharedMemoryType shared_memory_type_;

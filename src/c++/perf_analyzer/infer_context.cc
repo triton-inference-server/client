@@ -178,7 +178,7 @@ InferContext::UpdateJsonData()
   int step_id = (data_step_id_ * batch_size_) % data_loader_->GetTotalSteps(0);
   data_step_id_ += GetNumActiveThreads();
   thread_stat_->status_ =
-      infer_data_manager_->UpdateInferData(0, step_id, infer_data_);
+      infer_data_manager_->UpdateInferData(thread_id_, 0, step_id, infer_data_);
 }
 
 void
@@ -193,7 +193,7 @@ InferContext::UpdateSeqJsonData(size_t seq_stat_index)
   const size_t total_steps{data_loader_->GetTotalSteps(data_stream_id)};
   int step_id = (sequence_length - remaining_queries) % total_steps;
   thread_stat_->status_ = infer_data_manager_->UpdateInferData(
-      data_stream_id, step_id, infer_data_);
+      thread_id_, data_stream_id, step_id, infer_data_);
 }
 
 cb::Error

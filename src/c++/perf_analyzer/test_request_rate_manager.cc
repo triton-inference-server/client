@@ -350,7 +350,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params_.batch_size, params_.shared_memory_type,
+            params_.max_threads, params_.batch_size, params_.shared_memory_type,
             params_.output_shm_size, mmp, factory_, mdl);
 
     parser_ = mmp;
@@ -983,23 +983,137 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
 
   size_t num_requests = 4;
 
-  SUBCASE("batch 1")
+
+  const auto& ParameterizeBatch{[&]() {
+    SUBCASE("batch 1")
+    {
+      params.batch_size = 1;
+      expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+    }
+    SUBCASE("batch 2")
+    {
+      params.batch_size = 2;
+      expected_results = {{1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+    }
+    SUBCASE("batch 4")
+    {
+      params.batch_size = 4;
+      expected_results = {{1, 21, 22, 23, 21},
+                          {1, 22, 23, 21, 22},
+                          {1, 23, 21, 22, 23},
+                          {1, 21, 22, 23, 21}};
+    }
+  }};
+
+  // Being optional should have no impact
+  SUBCASE("optional = 0,0")
   {
-    params.batch_size = 1;
-    expected_results = {{1, 21}, {1, 22}, {1, 23}, {1, 21}};
+    model_tensor1.is_optional_ = false;
+    model_tensor2.is_optional_ = false;
+    ParameterizeBatch();
   }
-  SUBCASE("batch 2")
+  SUBCASE("optional = 0,1")
   {
-    params.batch_size = 2;
-    expected_results = {{1, 21, 22}, {1, 23, 21}, {1, 22, 23}, {1, 21, 22}};
+    model_tensor1.is_optional_ = false;
+    model_tensor2.is_optional_ = true;
+    ParameterizeBatch();
   }
-  SUBCASE("batch 4")
+  SUBCASE("optional = 1,0")
   {
-    params.batch_size = 4;
-    expected_results = {{1, 21, 22, 23, 21},
-                        {1, 22, 23, 21, 22},
-                        {1, 23, 21, 22, 23},
-                        {1, 21, 22, 23, 21}};
+    model_tensor1.is_optional_ = true;
+    model_tensor2.is_optional_ = false;
+    ParameterizeBatch();
+  }
+  SUBCASE("optional = 1,1")
+  {
+    model_tensor1.is_optional_ = true;
+    model_tensor2.is_optional_ = true;
+    ParameterizeBatch();
+  }
+
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  tensors.push_back(model_tensor1);
+  tensors.push_back(model_tensor2);
+
+  trrm.TestCustomData(
+      num_requests, tensors, json_str, expected_results, expect_init_failure,
+      expect_thread_failure);
+}
+
+TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
+{
+  // Test the case where is_shape_tensor is true and is_optional_ is true
+  // and data for that input is completely omitted
+  PerfAnalyzerParameters params{};
+  params.user_data = {"fake_file.json"};
+  bool is_sequence_model{false};
+
+  std::vector<std::vector<int32_t>> expected_results;
+  std::vector<ModelTensor> tensors;
+  bool expect_init_failure = false;
+  bool expect_thread_failure = false;
+
+  ModelTensor model_tensor1{};
+  model_tensor1.datatype_ = "INT32";
+  model_tensor1.is_optional_ = true;
+  model_tensor1.is_shape_tensor_ = true;
+  model_tensor1.name_ = "INPUT1";
+  model_tensor1.shape_ = {1};
+
+  ModelTensor model_tensor2 = model_tensor1;
+  model_tensor2.is_shape_tensor_ = false;
+  model_tensor2.is_optional_ = false;
+  model_tensor2.name_ = "INPUT2";
+
+  std::string json_str{R"({
+   "data": [
+     { "INPUT2": [21] },
+     { "INPUT2": [22] },
+     { "INPUT2": [23] }     
+   ]})"};
+
+
+  size_t num_requests = 4;
+
+  const auto& ParameterizeBatch{[&]() {
+    SUBCASE("batch 1")
+    {
+      params.batch_size = 1;
+      expected_results = {{21}, {22}, {23}, {21}};
+    }
+    SUBCASE("batch 2")
+    {
+      params.batch_size = 2;
+      expected_results = {{21, 22}, {23, 21}, {22, 23}, {21, 22}};
+    }
+    SUBCASE("batch 4")
+    {
+      params.batch_size = 4;
+      expected_results = {{21, 22, 23, 21},
+                          {22, 23, 21, 22},
+                          {23, 21, 22, 23},
+                          {21, 22, 23, 21}};
+    }
+  }};
+
+  SUBCASE("no shm")
+  {
+    params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+    ParameterizeBatch();
+  }
+  SUBCASE("system shm")
+  {
+    params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
+    ParameterizeBatch();
+    expect_init_failure = true;
+  }
+  SUBCASE("cuda shm")
+  {
+    params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
+    ParameterizeBatch();
+    expect_init_failure = true;
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1025,46 +1139,60 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
 
   ModelTensor model_tensor1{};
   model_tensor1.datatype_ = "INT32";
-  model_tensor1.is_optional_ = false;
-  model_tensor1.is_shape_tensor_ = false;
+  model_tensor1.is_optional_ = true;
+  model_tensor1.is_shape_tensor_ = true;
   model_tensor1.name_ = "INPUT1";
   model_tensor1.shape_ = {1};
 
   ModelTensor model_tensor2 = model_tensor1;
   model_tensor2.name_ = "INPUT2";
 
-  std::string json_str{R"({
+  size_t num_requests = 4;
+
+  std::string json_str;
+
+
+  const auto& ParameterizeJson{[&]() {
+    SUBCASE("different data")
+    {
+      json_str = R"({
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
      { "INPUT1": [3], "INPUT2": [23] }     
-   ]})"};
+   ]})";
+      expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+    }
+    SUBCASE("missing data")
+    {
+      json_str = R"({
+   "data": [
+     { "INPUT2": [21] },
+     { "INPUT2": [22] }
+   ]})";
+      expected_results = {{21}, {22}, {21}, {22}};
+    }
+  }};
 
-  size_t num_requests = 4;
 
   SUBCASE("no batching is ok")
   {
-    model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 1;
-    expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
+    ParameterizeJson();
   }
   SUBCASE("batching - no shm")
   {
-    // FIXME: TMA-765
-    // Currently shm and non-shm both fail for batching, but at different points
-    model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
-    expect_thread_failure = true;
+    expect_init_failure = true;
+    ParameterizeJson();
   }
   SUBCASE("batching - shm")
   {
-    // FIXME: TMA-765
-    // Currently shm and non-shm both fail for batching, but at different points
-    model_tensor1.is_shape_tensor_ = true;
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
     expect_init_failure = true;
+    ParameterizeJson();
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1134,7 +1262,7 @@ TEST_CASE("custom_json_data: handling of optional tensors")
     // For batch sizes larger than 1, the same set of inputs
     // must be specified for each batch. You cannot use different
     // set of optional inputs for each individual batch.
-    expect_thread_failure = true;
+    expect_init_failure = true;
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1275,7 +1403,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1302,7 +1430,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1327,7 +1455,7 @@ TEST_CASE("Request rate - Shared memory methods")
 
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
-            params.batch_size, params.shared_memory_type,
+            params.max_threads, params.batch_size, params.shared_memory_type,
             params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
             mip.mock_data_loader_);
 
@@ -1418,8 +1546,9 @@ TEST_CASE("Request rate - Shared memory infer input calls")
 
   trrm.infer_data_manager_ =
       MockInferDataManagerFactory::CreateMockInferDataManager(
-          params.batch_size, params.shared_memory_type, params.output_shm_size,
-          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
+          params.max_threads, params.batch_size, params.shared_memory_type,
+          params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
+          mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{

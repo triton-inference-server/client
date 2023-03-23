@@ -31,6 +31,85 @@
 namespace triton { namespace perfanalyzer {
 
 cb::Error
+InferDataManagerBase::GetInputData(
+    const std::string& name, const ModelTensor& tensor, int stream_id,
+    int step_id, std::vector<const uint8_t*>& data_ptrs,
+    std::vector<size_t>& byte_size)
+{
+  size_t max_count = tensor.is_shape_tensor_ ? 1 : batch_size_;
+  std::vector<int64_t> shape;
+  std::vector<int64_t> prev_shape;
+
+  for (size_t count = 0; count < max_count; count++) {
+    int local_step_id =
+        (step_id + count) % data_loader_->GetTotalSteps(stream_id);
+    const uint8_t* data_ptr{nullptr};
+    size_t batch1_bytesize;
+
+    RETURN_IF_ERROR(
+        data_loader_->GetInputShape(tensor, stream_id, local_step_id, &shape));
+    if (!shape.empty()) {
+      if (count == 0) {
+        prev_shape = shape;
+      } else {
+        if (!std::equal(shape.begin(), shape.end(), prev_shape.begin())) {
+          return cb::Error(
+              "can not batch tensors with different shapes together "
+              "(input '" +
+                  name + "' expected shape " + ShapeVecToString(prev_shape) +
+                  " and received " + ShapeVecToString(shape),
+              pa::GENERIC_ERROR);
+        }
+      }
+    }
+
+    RETURN_IF_ERROR(data_loader_->GetInputData(
+        tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
+
+    data_ptrs.push_back(data_ptr);
+    byte_size.push_back(batch1_bytesize);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+InferDataManagerBase::ValidateShapeTensor(
+    const ModelTensor& tensor, int stream_id, int step_id,
+    const std::vector<const uint8_t*>& data_ptrs,
+    const std::vector<size_t>& byte_size)
+{
+  // Validate that steps 1 through N are exactly the same as step 0, since step
+  // 0 is the only one we send for shape tensors
+  for (size_t count = 1; count < batch_size_; count++) {
+    int local_step_id =
+        (step_id + count) % data_loader_->GetTotalSteps(stream_id);
+
+    const uint8_t* data_ptr{nullptr};
+    size_t batch1_bytesize;
+    RETURN_IF_ERROR(data_loader_->GetInputData(
+        tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
+
+    if (batch1_bytesize != byte_size.back()) {
+      return cb::Error(
+          "The shape tensors should be identical in a batch (mismatch "
+          "in size)",
+          pa::GENERIC_ERROR);
+    }
+
+    for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
+      if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
+        return cb::Error(
+            "The shape tensors should be identical in a batch "
+            "(mismatch in content)",
+            pa::GENERIC_ERROR);
+      }
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
 InferDataManagerBase::InitInferData(InferData& infer_data)
 {
   // Initialize inputs
@@ -47,10 +126,11 @@ InferDataManagerBase::InitInferData(InferData& infer_data)
 
 cb::Error
 InferDataManagerBase::UpdateInferData(
-    int stream_index, int step_index, InferData& infer_data)
+    size_t thread_id, int stream_index, int step_index, InferData& infer_data)
 {
   RETURN_IF_ERROR(data_loader_->ValidateIndexes(stream_index, step_index));
-  RETURN_IF_ERROR(UpdateInputs(stream_index, step_index, infer_data));
+  RETURN_IF_ERROR(
+      UpdateInputs(thread_id, stream_index, step_index, infer_data));
   RETURN_IF_ERROR(
       UpdateValidationOutputs(stream_index, step_index, infer_data));
   return cb::Error::Success;

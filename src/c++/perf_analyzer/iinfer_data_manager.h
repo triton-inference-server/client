@@ -50,12 +50,14 @@ class IInferDataManager {
 
   /// Updates the input and expected output data in the target infer_data for an
   /// inference request
+  /// \param thread_id The ID of the calling thread
   /// \param stream_index The data stream to use for next data
   /// \param step_index The step index to use for next data
   /// \param infer_data The target InferData object
   /// \return cb::Error object indicating success or failure.
   virtual cb::Error UpdateInferData(
-      int stream_index, int step_index, InferData& infer_data) = 0;
+      size_t thread_id, int stream_index, int step_index,
+      InferData& infer_data) = 0;
 };
 
 }}  // namespace triton::perfanalyzer

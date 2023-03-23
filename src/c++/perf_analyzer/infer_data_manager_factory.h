@@ -36,14 +36,15 @@ namespace triton { namespace perfanalyzer {
 class InferDataManagerFactory {
  public:
   static std::shared_ptr<IInferDataManager> CreateInferDataManager(
-      const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const int32_t batch_size,
+      const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
       return CreateInferDataManagerNoShm(
-          batch_size, parser, factory, data_loader);
+          max_threads, batch_size, parser, factory, data_loader);
     } else {
       return CreateInferDataManagerShm(
           batch_size, shared_memory_type, output_shm_size, parser, factory,
@@ -53,12 +54,13 @@ class InferDataManagerFactory {
 
  private:
   static std::shared_ptr<IInferDataManager> CreateInferDataManagerNoShm(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t max_threads, const int32_t batch_size,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     return std::make_shared<InferDataManager>(
-        batch_size, parser, factory, data_loader);
+        max_threads, batch_size, parser, factory, data_loader);
   }
 
   static std::shared_ptr<IInferDataManager> CreateInferDataManagerShm(
