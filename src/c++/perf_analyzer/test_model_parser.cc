@@ -193,6 +193,8 @@ TEST_CASE(
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
@@ -201,6 +203,8 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq));
 
@@ -223,6 +227,10 @@ TEST_CASE(
           .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
@@ -231,6 +239,10 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
           .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))

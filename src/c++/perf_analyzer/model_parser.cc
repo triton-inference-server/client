@@ -284,16 +284,54 @@ ModelParser::InitTorchServe(
 }
 
 cb::Error
+ModelParser::DetermineComposingModelMap(
+    const rapidjson::Document& config, const std::string& model_version,
+    std::unique_ptr<cb::ClientBackend>& backend)
+{
+  if (config.HasMember("platform") &&
+      std::string(config["platform"].GetString()).compare("ensemble") == 0) {
+    const auto step_itr = config["ensemble_scheduling"].FindMember("step");
+    for (const auto& step : step_itr->value.GetArray()) {
+      std::string step_model_version;
+      int64_t model_version_int;
+      RETURN_IF_ERROR(GetInt(step["model_version"], &model_version_int));
+      if (model_version_int == -1) {
+        step_model_version = "";
+      } else {
+        step_model_version = std::to_string(model_version_int);
+      }
+
+      (*composing_models_map_)[config["name"].GetString()].emplace(
+          std::string(step["model_name"].GetString()), step_model_version);
+
+      // FIXME this results in calling ModelConfig multiple times for each
+      // composing model
+      rapidjson::Document composing_model_config;
+      RETURN_IF_ERROR(backend->ModelConfig(
+          &composing_model_config, step["model_name"].GetString(),
+          step_model_version));
+      RETURN_IF_ERROR(DetermineComposingModelMap(
+          composing_model_config, step_model_version, backend));
+    }
+  }
+
+  return cb::Error::Success;
+}
+
+
+cb::Error
 ModelParser::DetermineSchedulerType(
     const rapidjson::Document& config, const std::string& model_version,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
+  // FIXME best location for this?
+  RETURN_IF_ERROR(DetermineComposingModelMap(config, model_version, backend));
+
   scheduler_type_ = NONE;
   const auto& ensemble_itr = config.FindMember("ensemble_scheduling");
   if (ensemble_itr != config.MemberEnd()) {
     bool is_sequential = false;
-    RETURN_IF_ERROR(GetEnsembleSchedulerType(
-        config, model_version, backend, &is_sequential));
+    RETURN_IF_ERROR(GetComposingSchedulerType(backend, &is_sequential));
     if (is_sequential) {
       scheduler_type_ = ENSEMBLE_SEQUENCE;
     } else {
@@ -314,45 +352,29 @@ ModelParser::DetermineSchedulerType(
 }
 
 cb::Error
-ModelParser::GetEnsembleSchedulerType(
-    const rapidjson::Document& config, const std::string& model_version,
+ModelParser::GetComposingSchedulerType(
     std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential)
 {
-  const auto& sequence_itr = config.FindMember("sequence_batching");
-  if (sequence_itr != config.MemberEnd()) {
-    *is_sequential = true;
-  }
-
-  if (std::string(config["platform"].GetString()).compare("ensemble") == 0) {
-    const auto step_itr = config["ensemble_scheduling"].FindMember("step");
-    for (const auto& step : step_itr->value.GetArray()) {
-      std::string step_model_version;
-      int64_t model_version_int;
-      RETURN_IF_ERROR(GetInt(step["model_version"], &model_version_int));
-      if (model_version_int == -1) {
-        step_model_version = "";
-      } else {
-        step_model_version = std::to_string(model_version_int);
-      }
-      (*composing_models_map_)[config["name"].GetString()].emplace(
-          std::string(step["model_name"].GetString()), step_model_version);
-
-      rapidjson::Document model_config;
+  for (auto parent_composing_models : *composing_models_map_.get()) {
+    auto& composing_models = parent_composing_models.second;
+    for (auto composing_model : composing_models) {
+      rapidjson::Document config;
       RETURN_IF_ERROR(backend->ModelConfig(
-          &model_config, step["model_name"].GetString(), step_model_version));
-      RETURN_IF_ERROR(GetEnsembleSchedulerType(
-          model_config, step_model_version, backend, is_sequential));
+          &config, composing_model.first, composing_model.second));
 
-      // Check if composing model has response caching enabled.
-      const auto cache_itr = model_config.FindMember("response_cache");
+      const auto& sequence_itr = config.FindMember("sequence_batching");
+      if (sequence_itr != config.MemberEnd()) {
+        *is_sequential = true;
+      }
+
+      const auto cache_itr = config.FindMember("response_cache");
       // response_cache_enabled_ set globally for reporting purposes if any
       // composing model has it enabled, so don't overwrite it if already set
-      if (cache_itr != model_config.MemberEnd() && !response_cache_enabled_) {
+      if (cache_itr != config.MemberEnd() && !response_cache_enabled_) {
         response_cache_enabled_ = cache_itr->value["enable"].GetBool();
       }
     }
   }
-
   return cb::Error::Success;
 }
 

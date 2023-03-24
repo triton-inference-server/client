@@ -167,12 +167,15 @@ class ModelParser {
   bool is_decoupled_;
 
  private:
+  cb::Error DetermineComposingModelMap(
+      const rapidjson::Document& config, const std::string& model_version,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
   cb::Error DetermineSchedulerType(
       const rapidjson::Document& config, const std::string& model_version,
       std::unique_ptr<cb::ClientBackend>& backend);
 
-  cb::Error GetEnsembleSchedulerType(
-      const rapidjson::Document& config, const std::string& model_version,
+  cb::Error GetComposingSchedulerType(
       std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential);
 
   /// In the json produced by protobuf, int64 and uint64 values are
