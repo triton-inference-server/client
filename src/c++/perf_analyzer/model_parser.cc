@@ -40,7 +40,7 @@ ModelParser::InitTriton(
   model_name_ = metadata["name"].GetString();
   model_version_ = model_version;
 
-  RETURN_IF_ERROR(GetSchedulerType(config, model_version, backend));
+  RETURN_IF_ERROR(DetermineSchedulerType(config, model_version, backend));
 
   max_batch_size_ = 0;
   const auto bs_itr = config.FindMember("max_batch_size");
@@ -284,7 +284,7 @@ ModelParser::InitTorchServe(
 }
 
 cb::Error
-ModelParser::GetSchedulerType(
+ModelParser::DetermineSchedulerType(
     const rapidjson::Document& config, const std::string& model_version,
     std::unique_ptr<cb::ClientBackend>& backend)
 {

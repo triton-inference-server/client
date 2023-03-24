@@ -32,6 +32,8 @@ namespace triton { namespace perfanalyzer {
 
 class MockModelParser : public ModelParser {
  public:
+  MockModelParser() : ModelParser(clientbackend::BackendKind::TRITON) {}
+
   MockModelParser(
       bool is_sequence_model, bool is_decoupled_model,
       size_t max_batch_size = 64)
@@ -42,6 +44,20 @@ class MockModelParser : public ModelParser {
     }
     is_decoupled_ = is_decoupled_model;
     max_batch_size_ = max_batch_size;
+  }
+
+  // Expose private function
+  cb::Error GetInt(const rapidjson::Value& value, int64_t* integer_value)
+  {
+    return ModelParser::GetInt(value, integer_value);
+  }
+
+  // Expose private function
+  cb::Error DetermineSchedulerType(
+      const rapidjson::Document& config, const std::string& model_version,
+      std::unique_ptr<cb::ClientBackend>& backend)
+  {
+    return ModelParser::DetermineSchedulerType(config, model_version, backend);
   }
 
   std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};

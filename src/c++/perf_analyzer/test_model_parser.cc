@@ -30,39 +30,21 @@
 #include "constants.h"
 #include "doctest.h"
 #include "mock_client_backend.h"
-#include "model_parser.h"
+#include "mock_model_parser.h"
 
 namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
-class TestModelParser {
- public:
-  static cb::Error GetInt(const rapidjson::Value& value, int64_t* integer_value)
-  {
-    ModelParser mp{};
-    return mp.GetInt(value, integer_value);
-  }
-
-  static ModelParser::ModelSchedulerType GetSchedulerType(
-      const rapidjson::Document& config, const std::string& model_version,
-      std::unique_ptr<cb::ClientBackend>& backend)
-  {
-    ModelParser mp{};
-    mp.composing_models_map_ = std::make_shared<ComposingModelMap>();
-    mp.GetSchedulerType(config, model_version, backend);
-    return mp.SchedulerType();
-  }
-};
-
 TEST_CASE("ModelParser: testing the GetInt function")
 {
   int64_t integer_value{0};
+  MockModelParser mmp;
 
   SUBCASE("valid string")
   {
     rapidjson::Value value("100");
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == SUCCESS);
     CHECK(integer_value == 100);
   }
@@ -70,7 +52,7 @@ TEST_CASE("ModelParser: testing the GetInt function")
   SUBCASE("invalid string, alphabet")
   {
     rapidjson::Value value("abc");
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == GENERIC_ERROR);
     CHECK(result.Message() == "unable to convert 'abc' to integer");
     CHECK(integer_value == 0);
@@ -79,7 +61,7 @@ TEST_CASE("ModelParser: testing the GetInt function")
   SUBCASE("invalid string, number out of range")
   {
     rapidjson::Value value("9223372036854775808");
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == GENERIC_ERROR);
     CHECK(
         result.Message() ==
@@ -90,7 +72,7 @@ TEST_CASE("ModelParser: testing the GetInt function")
   SUBCASE("valid int, lowest Int64")
   {
     rapidjson::Value value(2147483648);
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == SUCCESS);
     CHECK(integer_value == 2147483648);
   }
@@ -98,7 +80,7 @@ TEST_CASE("ModelParser: testing the GetInt function")
   SUBCASE("valid int, highest Int32")
   {
     rapidjson::Value value(2147483647);
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == SUCCESS);
     CHECK(integer_value == 2147483647);
   }
@@ -106,14 +88,19 @@ TEST_CASE("ModelParser: testing the GetInt function")
   SUBCASE("invalid floating point")
   {
     rapidjson::Value value(100.1);
-    cb::Error result{TestModelParser::GetInt(value, &integer_value)};
+    cb::Error result{mmp.GetInt(value, &integer_value)};
     CHECK(result.Err() == GENERIC_ERROR);
     CHECK(result.Message() == "failed to parse the integer value");
     CHECK(integer_value == 0);
   }
 }
 
-TEST_CASE("ModelParser: determining scheduler type")
+TEST_CASE(
+    "ModelParser: determining scheduler type" *
+    doctest::description(
+        "This test confirms the behavior and all side-effects "
+        "of DetermineSchedulerType(). This includes setting the "
+        "value of scheduler_type_ and composing_models_map_"))
 {
   const char no_batching[] = R"({})";
   const char seq_batching[] = R"({ "sequence_batching":{} })";
@@ -134,6 +121,23 @@ TEST_CASE("ModelParser: determining scheduler type")
     }
   })";
 
+  const char nested_ensemble[] = R"({
+    "name": "ModelA",
+    "platform": "ensemble",
+    "ensemble_scheduling": {
+      "step": [{
+          "model_name": "ModelC",
+          "model_version": -1
+        },
+        {
+          "model_name": "ModelD",
+          "model_version": -1
+        }
+      ]
+    }
+  })";
+
+
   std::string model_version = "";
 
   std::shared_ptr<cb::MockClientStats> stats =
@@ -143,7 +147,8 @@ TEST_CASE("ModelParser: determining scheduler type")
 
 
   rapidjson::Document config;
-  ModelParser::ModelSchedulerType expected_result;
+  ModelParser::ModelSchedulerType expected_type;
+  ComposingModelMap expected_composing_model_map;
 
   auto SetJsonPtrNoSeq = [](rapidjson::Document* model_config) {
     model_config->Parse(R"({ "platform":"none" })");
@@ -156,77 +161,95 @@ TEST_CASE("ModelParser: determining scheduler type")
   };
 
   auto SetJsonPtrNestedEnsemble =
-      [&ensemble](rapidjson::Document* model_config) {
-        model_config->Parse(ensemble);
+      [&nested_ensemble](rapidjson::Document* model_config) {
+        model_config->Parse(nested_ensemble);
         return cb::Error::Success;
       };
 
   SUBCASE("No batching")
   {
     config.Parse(no_batching);
-    expected_result = ModelParser::ModelSchedulerType::NONE;
+    expected_type = ModelParser::ModelSchedulerType::NONE;
   }
   SUBCASE("Sequence batching")
   {
     config.Parse(seq_batching);
-    expected_result = ModelParser::ModelSchedulerType::SEQUENCE;
+    expected_type = ModelParser::ModelSchedulerType::SEQUENCE;
   }
   SUBCASE("Dynamic batching")
   {
     config.Parse(dyn_batching);
-    expected_result = ModelParser::ModelSchedulerType::DYNAMIC;
+    expected_type = ModelParser::ModelSchedulerType::DYNAMIC;
   }
-  SUBCASE("Ensemble no sequences")
+  SUBCASE("Ensemble")
   {
     config.Parse(ensemble);
 
-    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
 
-    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE;
+    SUBCASE("no sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+      expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
+    }
+    SUBCASE("yes sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq));
+
+      expected_type = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
+    }
   }
-  SUBCASE("Ensemble yes sequences")
+  SUBCASE("Nested Ensemble")
   {
     config.Parse(ensemble);
 
-    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq));
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+    expected_composing_model_map["ModelA"].emplace("ModelC", "");
+    expected_composing_model_map["ModelA"].emplace("ModelD", "");
 
-    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
+    SUBCASE("no sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+      expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
+    }
+    SUBCASE("yes sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+      expected_type = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
+    }
   }
-  SUBCASE("Nested Ensemble no sequences")
-  {
-    config.Parse(ensemble);
-
-    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
-
-    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE;
-  }
-  SUBCASE("Nested Ensemble yes sequences")
-  {
-    config.Parse(ensemble);
-
-    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
-        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
-
-    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
-  }
-
-  TestModelParser tmp;
 
   std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
 
-  auto scheduler_type = tmp.GetSchedulerType(config, model_version, backend);
-  CHECK(scheduler_type == expected_result);
+  MockModelParser mmp;
+  mmp.DetermineSchedulerType(config, model_version, backend);
+
+  auto actual_type = mmp.SchedulerType();
+  CHECK(actual_type == expected_type);
+
+  auto actual_composing_model_map = *mmp.GetComposingModelMap().get();
+  CHECK(actual_composing_model_map == expected_composing_model_map);
 
   // Destruct gmock objects to determine gmock-related test failure
   backend.reset();
