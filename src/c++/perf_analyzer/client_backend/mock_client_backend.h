@@ -32,6 +32,7 @@
 #include <thread>
 #include "../doctest.h"
 #include "client_backend.h"
+#include "gmock/gmock.h"
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 
@@ -255,9 +256,9 @@ class MockClientStats {
     response_statuses_.clear();
     for (bool success : statuses) {
       if (success) {
-        response_statuses_.push_back(cb::Error::Success);
+        response_statuses_.push_back(Error::Success);
       } else {
-        response_statuses_.push_back(cb::Error("Injected test error"));
+        response_statuses_.push_back(Error("Injected test error"));
       }
     }
   }
@@ -274,7 +275,7 @@ class MockClientStats {
     return val;
   }
 
-  cb::Error GetNextReturnStatus()
+  Error GetNextReturnStatus()
   {
     std::lock_guard<std::mutex> lock(mtx_);
 
@@ -345,7 +346,7 @@ class MockClientStats {
  private:
   std::vector<std::chrono::milliseconds> response_delays_{
       std::chrono::milliseconds{0}};
-  std::vector<cb::Error> response_statuses_{cb::Error::Success};
+  std::vector<Error> response_statuses_{Error::Success};
   std::atomic<size_t> response_delays_index_{0};
   std::atomic<size_t> response_statuses_index_{0};
 
@@ -405,6 +406,11 @@ class MockClientStats {
 class MockClientBackend : public ClientBackend {
  public:
   MockClientBackend(std::shared_ptr<MockClientStats> stats) { stats_ = stats; }
+
+  MOCK_METHOD(
+      Error, ModelConfig,
+      (rapidjson::Document*, const std::string&, const std::string&),
+      (override));
 
   Error Infer(
       InferResult** result, const InferOptions& options,

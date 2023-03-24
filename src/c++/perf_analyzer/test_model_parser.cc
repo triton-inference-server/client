@@ -29,7 +29,10 @@
 #include "client_backend/client_backend.h"
 #include "constants.h"
 #include "doctest.h"
+#include "mock_client_backend.h"
 #include "model_parser.h"
+
+namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
@@ -40,9 +43,19 @@ class TestModelParser {
     ModelParser mp{};
     return mp.GetInt(value, integer_value);
   }
+
+  static ModelParser::ModelSchedulerType GetSchedulerType(
+      const rapidjson::Document& config, const std::string& model_version,
+      std::unique_ptr<cb::ClientBackend>& backend)
+  {
+    ModelParser mp{};
+    mp.composing_models_map_ = std::make_shared<ComposingModelMap>();
+    mp.GetSchedulerType(config, model_version, backend);
+    return mp.SchedulerType();
+  }
 };
 
-TEST_CASE("testing the GetInt function")
+TEST_CASE("ModelParser: testing the GetInt function")
 {
   int64_t integer_value{0};
 
@@ -98,6 +111,125 @@ TEST_CASE("testing the GetInt function")
     CHECK(result.Message() == "failed to parse the integer value");
     CHECK(integer_value == 0);
   }
+}
+
+TEST_CASE("ModelParser: determining scheduler type")
+{
+  const char no_batching[] = R"({})";
+  const char seq_batching[] = R"({ "sequence_batching":{} })";
+  const char dyn_batching[] = R"({ "dynamic_batching":{} })";
+  const char ensemble[] = R"({
+    "name": "EnsembleModel",
+    "platform": "ensemble",
+    "ensemble_scheduling": {
+      "step": [{
+          "model_name": "ModelA",
+          "model_version": -1
+        },
+        {
+          "model_name": "ModelB",
+          "model_version": -1
+        }
+      ]
+    }
+  })";
+
+  std::string model_version = "";
+
+  std::shared_ptr<cb::MockClientStats> stats =
+      std::make_shared<cb::MockClientStats>();
+  std::unique_ptr<cb::MockClientBackend> mock_backend =
+      std::make_unique<cb::MockClientBackend>(stats);
+
+
+  rapidjson::Document config;
+  ModelParser::ModelSchedulerType expected_result;
+
+  auto SetJsonPtrNoSeq = [](rapidjson::Document* model_config) {
+    model_config->Parse(R"({ "platform":"none" })");
+    return cb::Error::Success;
+  };
+
+  auto SetJsonPtrYesSeq = [](rapidjson::Document* model_config) {
+    model_config->Parse(R"({ "sequence_batching":{}, "platform":"none" })");
+    return cb::Error::Success;
+  };
+
+  auto SetJsonPtrNestedEnsemble =
+      [&ensemble](rapidjson::Document* model_config) {
+        model_config->Parse(ensemble);
+        return cb::Error::Success;
+      };
+
+  SUBCASE("No batching")
+  {
+    config.Parse(no_batching);
+    expected_result = ModelParser::ModelSchedulerType::NONE;
+  }
+  SUBCASE("Sequence batching")
+  {
+    config.Parse(seq_batching);
+    expected_result = ModelParser::ModelSchedulerType::SEQUENCE;
+  }
+  SUBCASE("Dynamic batching")
+  {
+    config.Parse(dyn_batching);
+    expected_result = ModelParser::ModelSchedulerType::DYNAMIC;
+  }
+  SUBCASE("Ensemble no sequences")
+  {
+    config.Parse(ensemble);
+
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE;
+  }
+  SUBCASE("Ensemble yes sequences")
+  {
+    config.Parse(ensemble);
+
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq));
+
+    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
+  }
+  SUBCASE("Nested Ensemble no sequences")
+  {
+    config.Parse(ensemble);
+
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE;
+  }
+  SUBCASE("Nested Ensemble yes sequences")
+  {
+    config.Parse(ensemble);
+
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
+        .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+
+    expected_result = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
+  }
+
+  TestModelParser tmp;
+
+  std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
+
+  auto scheduler_type = tmp.GetSchedulerType(config, model_version, backend);
+  CHECK(scheduler_type == expected_result);
+
+  // Destruct gmock objects to determine gmock-related test failure
+  backend.reset();
 }
 
 }}  // namespace triton::perfanalyzer

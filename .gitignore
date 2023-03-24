@@ -1,5 +1,6 @@
 #VSCode
 /.vscode
+src/.vscode
 src/c++/.vscode
 src/python/.vscode
 

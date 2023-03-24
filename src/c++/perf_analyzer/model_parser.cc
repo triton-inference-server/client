@@ -39,29 +39,8 @@ ModelParser::InitTriton(
 {
   model_name_ = metadata["name"].GetString();
   model_version_ = model_version;
-  // Get the scheduler type for the model
-  scheduler_type_ = NONE;
-  const auto& ensemble_itr = config.FindMember("ensemble_scheduling");
-  if (ensemble_itr != config.MemberEnd()) {
-    bool is_sequential = false;
-    RETURN_IF_ERROR(GetEnsembleSchedulerType(
-        config, model_version, backend, &is_sequential));
-    if (is_sequential) {
-      scheduler_type_ = ENSEMBLE_SEQUENCE;
-    } else {
-      scheduler_type_ = ENSEMBLE;
-    }
-  } else {
-    const auto& sequence_itr = config.FindMember("sequence_batching");
-    if (sequence_itr != config.MemberEnd()) {
-      scheduler_type_ = SEQUENCE;
-    } else {
-      const auto& dynamic_itr = config.FindMember("dynamic_batching");
-      if (dynamic_itr != config.MemberEnd()) {
-        scheduler_type_ = DYNAMIC;
-      }
-    }
-  }
+
+  RETURN_IF_ERROR(GetSchedulerType(config, model_version, backend));
 
   max_batch_size_ = 0;
   const auto bs_itr = config.FindMember("max_batch_size");
@@ -301,6 +280,36 @@ ModelParser::InitTorchServe(
   // Supports only a single input file
   it->second.shape_.push_back(1);
 
+  return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::GetSchedulerType(
+    const rapidjson::Document& config, const std::string& model_version,
+    std::unique_ptr<cb::ClientBackend>& backend)
+{
+  scheduler_type_ = NONE;
+  const auto& ensemble_itr = config.FindMember("ensemble_scheduling");
+  if (ensemble_itr != config.MemberEnd()) {
+    bool is_sequential = false;
+    RETURN_IF_ERROR(GetEnsembleSchedulerType(
+        config, model_version, backend, &is_sequential));
+    if (is_sequential) {
+      scheduler_type_ = ENSEMBLE_SEQUENCE;
+    } else {
+      scheduler_type_ = ENSEMBLE;
+    }
+  } else {
+    const auto& sequence_itr = config.FindMember("sequence_batching");
+    if (sequence_itr != config.MemberEnd()) {
+      scheduler_type_ = SEQUENCE;
+    } else {
+      const auto& dynamic_itr = config.FindMember("dynamic_batching");
+      if (dynamic_itr != config.MemberEnd()) {
+        scheduler_type_ = DYNAMIC;
+      }
+    }
+  }
   return cb::Error::Success;
 }
 

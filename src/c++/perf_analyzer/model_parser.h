@@ -167,6 +167,10 @@ class ModelParser {
   bool is_decoupled_;
 
  private:
+  cb::Error GetSchedulerType(
+      const rapidjson::Document& config, const std::string& model_version,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
   cb::Error GetEnsembleSchedulerType(
       const rapidjson::Document& config, const std::string& model_version,
       std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential);
