@@ -70,6 +70,8 @@ class MockModelParser : public ModelParser {
     return ModelParser::DetermineSchedulerType(config, backend);
   }
 
+  std::shared_ptr<ComposingModelMap>& composing_models_map_{
+      ModelParser::composing_models_map_};
   std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};
 };
 

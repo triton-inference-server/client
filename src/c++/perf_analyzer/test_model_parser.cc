@@ -157,11 +157,96 @@ TEST_CASE("ModelParser: testing the GetInt function")
 }
 
 TEST_CASE(
-    "ModelParser: determining scheduler type" *
+    "ModelParser: DetermineComposingModelMap" *
     doctest::description(
-        "This test confirms the behavior and all side-effects "
-        "of DetermineSchedulerType(). This includes setting the "
-        "value of scheduler_type_ and populating composing_models_map_"))
+        "This test confirms that the composing model map will be correctly "
+        "populated by DetermineComposingModelMap()"))
+{
+  std::shared_ptr<cb::MockClientStats> stats =
+      std::make_shared<cb::MockClientStats>();
+  std::unique_ptr<cb::MockClientBackend> mock_backend =
+      std::make_unique<cb::MockClientBackend>(stats);
+
+  rapidjson::Document config;
+  std::vector<cb::ModelIdentifier> composing_models;
+  ComposingModelMap expected_composing_model_map;
+
+  SUBCASE("No Ensemble")
+  {
+    SUBCASE("No batching") { config.Parse(TestModelParser::no_batching); }
+    SUBCASE("Seq batching") { config.Parse(TestModelParser::seq_batching); }
+    SUBCASE("Dynamic batching") { config.Parse(TestModelParser::dyn_batching); }
+  }
+  SUBCASE("Ensemble")
+  {
+    config.Parse(TestModelParser::ensemble);
+
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+
+    SUBCASE("no sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
+    }
+    SUBCASE("yes sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq));
+    }
+  }
+  SUBCASE("Nested Ensemble")
+  {
+    config.Parse(TestModelParser::ensemble);
+
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+    expected_composing_model_map["ModelA"].emplace("ModelC", "");
+    expected_composing_model_map["ModelA"].emplace("ModelD", "");
+
+    SUBCASE("no sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
+    }
+    SUBCASE("yes sequences")
+    {
+      EXPECT_CALL(
+          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
+    }
+  }
+
+  std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
+
+  MockModelParser mmp;
+
+  mmp.DetermineComposingModelMap(composing_models, config, backend);
+
+  auto actual_composing_model_map = *mmp.GetComposingModelMap().get();
+  CHECK(actual_composing_model_map == expected_composing_model_map);
+
+  // Destruct gmock objects to determine gmock-related test failure
+  backend.reset();
+}
+
+TEST_CASE(
+    "ModelParser: determining scheduler type" *
+    doctest::description("This test confirms that scheduler_type_ will be set "
+                         "correctly by DetermineSchedulerType()"))
 {
   std::shared_ptr<cb::MockClientStats> stats =
       std::make_shared<cb::MockClientStats>();
@@ -171,7 +256,8 @@ TEST_CASE(
 
   rapidjson::Document config;
   ModelParser::ModelSchedulerType expected_type;
-  ComposingModelMap expected_composing_model_map;
+
+  ComposingModelMap input_composing_model_map;
 
 
   SUBCASE("No batching")
@@ -193,15 +279,13 @@ TEST_CASE(
   {
     config.Parse(TestModelParser::ensemble);
 
-    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
-    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+    input_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
+    input_composing_model_map["EnsembleModel"].emplace("ModelB", "");
 
     SUBCASE("no sequences")
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
@@ -211,8 +295,6 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq));
 
@@ -223,20 +305,15 @@ TEST_CASE(
   {
     config.Parse(TestModelParser::ensemble);
 
-    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
-    expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
-    expected_composing_model_map["ModelA"].emplace("ModelC", "");
-    expected_composing_model_map["ModelA"].emplace("ModelD", "");
+    input_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
+    input_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+    input_composing_model_map["ModelA"].emplace("ModelC", "");
+    input_composing_model_map["ModelA"].emplace("ModelD", "");
 
     SUBCASE("no sequences")
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(
-              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
           .WillOnce(
               testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
@@ -249,11 +326,6 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(
-              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
           .WillOnce(
               testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
           .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
@@ -267,16 +339,12 @@ TEST_CASE(
   std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
 
   MockModelParser mmp;
-
-  std::vector<cb::ModelIdentifier> composing_models;
-  mmp.DetermineComposingModelMap(composing_models, config, backend);
+  mmp.composing_models_map_ =
+      std::make_shared<ComposingModelMap>(input_composing_model_map);
   mmp.DetermineSchedulerType(config, backend);
 
   auto actual_type = mmp.SchedulerType();
   CHECK(actual_type == expected_type);
-
-  auto actual_composing_model_map = *mmp.GetComposingModelMap().get();
-  CHECK(actual_composing_model_map == expected_composing_model_map);
 
   // Destruct gmock objects to determine gmock-related test failure
   backend.reset();
