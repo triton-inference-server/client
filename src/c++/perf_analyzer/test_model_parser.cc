@@ -100,7 +100,7 @@ TEST_CASE(
     doctest::description(
         "This test confirms the behavior and all side-effects "
         "of DetermineSchedulerType(). This includes setting the "
-        "value of scheduler_type_ and composing_models_map_"))
+        "value of scheduler_type_ and populating composing_models_map_"))
 {
   const char no_batching[] = R"({})";
   const char seq_batching[] = R"({ "sequence_batching":{} })";
@@ -111,7 +111,7 @@ TEST_CASE(
     "ensemble_scheduling": {
       "step": [{
           "model_name": "ModelA",
-          "model_version": -1
+          "model_version": 2
         },
         {
           "model_name": "ModelB",
@@ -185,7 +185,7 @@ TEST_CASE(
   {
     config.Parse(ensemble);
 
-    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
 
     SUBCASE("no sequences")
@@ -215,7 +215,7 @@ TEST_CASE(
   {
     config.Parse(ensemble);
 
-    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "");
+    expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
     expected_composing_model_map["ModelA"].emplace("ModelC", "");
     expected_composing_model_map["ModelA"].emplace("ModelD", "");
