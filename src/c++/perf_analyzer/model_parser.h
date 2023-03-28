@@ -81,6 +81,7 @@ class ModelParser {
   /// \param metadata The metadata of the target model.
   /// \param config The config of the target model.
   /// \param model_version The version of target model.
+  /// \param composing_models A list of BLS composing models
   /// \param input_shapes The user provided default shapes which will be use
   /// if a certain input has wildcard in its dimension.
   /// \param backend The backend object.
@@ -88,6 +89,7 @@ class ModelParser {
   cb::Error InitTriton(
       const rapidjson::Document& metadata, const rapidjson::Document& config,
       const std::string& model_version,
+      const std::vector<cb::ModelIdentifier>& composing_models,
       const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
       std::unique_ptr<cb::ClientBackend>& backend);
 

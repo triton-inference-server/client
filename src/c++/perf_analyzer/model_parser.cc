@@ -34,14 +34,13 @@ cb::Error
 ModelParser::InitTriton(
     const rapidjson::Document& metadata, const rapidjson::Document& config,
     const std::string& model_version,
+    const std::vector<cb::ModelIdentifier>& composing_models,
     const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   model_name_ = metadata["name"].GetString();
   model_version_ = model_version;
 
-  // FIXME pipe this:
-  std::vector<cb::ModelIdentifier> composing_models;
   RETURN_IF_ERROR(
       DetermineComposingModelMap(composing_models, config, backend));
 
@@ -294,8 +293,6 @@ ModelParser::DetermineComposingModelMap(
     const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
-  // FIXME -- is model version needed?
-
   RETURN_IF_ERROR(AddComposingModels(composing_models, config));
   RETURN_IF_ERROR(AddEnsembleComposingModels(config, backend));
 
@@ -335,8 +332,6 @@ ModelParser::AddEnsembleComposingModels(
       (*composing_models_map_)[config["name"].GetString()].emplace(
           std::string(step["model_name"].GetString()), step_model_version);
 
-      // FIXME this results in calling ModelConfig multiple times for each
-      // composing model
       rapidjson::Document composing_model_config;
       RETURN_IF_ERROR(backend->ModelConfig(
           &composing_model_config, step["model_name"].GetString(),
