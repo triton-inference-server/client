@@ -36,6 +36,44 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+class TestModelParser {
+ public:
+  constexpr static const char* no_batching = R"({})";
+  constexpr static const char* seq_batching = R"({ "sequence_batching":{} })";
+  constexpr static const char* dyn_batching = R"({ "dynamic_batching":{} })";
+  constexpr static const char* ensemble = R"({
+    "name": "EnsembleModel",
+    "platform": "ensemble",
+    "ensemble_scheduling": {
+      "step": [{
+          "model_name": "ModelA",
+          "model_version": 2
+        },
+        {
+          "model_name": "ModelB",
+          "model_version": -1
+        }
+      ]
+    }
+  })";
+
+  constexpr static const char* nested_ensemble = R"({
+    "name": "ModelA",
+    "platform": "ensemble",
+    "ensemble_scheduling": {
+      "step": [{
+          "model_name": "ModelC",
+          "model_version": -1
+        },
+        {
+          "model_name": "ModelD",
+          "model_version": -1
+        }
+      ]
+    }
+  })";
+};
+
 TEST_CASE("ModelParser: testing the GetInt function")
 {
   int64_t integer_value{0};
@@ -102,42 +140,6 @@ TEST_CASE(
         "of DetermineSchedulerType(). This includes setting the "
         "value of scheduler_type_ and populating composing_models_map_"))
 {
-  const char no_batching[] = R"({})";
-  const char seq_batching[] = R"({ "sequence_batching":{} })";
-  const char dyn_batching[] = R"({ "dynamic_batching":{} })";
-  const char ensemble[] = R"({
-    "name": "EnsembleModel",
-    "platform": "ensemble",
-    "ensemble_scheduling": {
-      "step": [{
-          "model_name": "ModelA",
-          "model_version": 2
-        },
-        {
-          "model_name": "ModelB",
-          "model_version": -1
-        }
-      ]
-    }
-  })";
-
-  const char nested_ensemble[] = R"({
-    "name": "ModelA",
-    "platform": "ensemble",
-    "ensemble_scheduling": {
-      "step": [{
-          "model_name": "ModelC",
-          "model_version": -1
-        },
-        {
-          "model_name": "ModelD",
-          "model_version": -1
-        }
-      ]
-    }
-  })";
-
-
   std::string model_version = "";
 
   std::shared_ptr<cb::MockClientStats> stats =
@@ -160,30 +162,29 @@ TEST_CASE(
     return cb::Error::Success;
   };
 
-  auto SetJsonPtrNestedEnsemble =
-      [&nested_ensemble](rapidjson::Document* model_config) {
-        model_config->Parse(nested_ensemble);
-        return cb::Error::Success;
-      };
+  auto SetJsonPtrNestedEnsemble = [](rapidjson::Document* model_config) {
+    model_config->Parse(TestModelParser::nested_ensemble);
+    return cb::Error::Success;
+  };
 
   SUBCASE("No batching")
   {
-    config.Parse(no_batching);
+    config.Parse(TestModelParser::no_batching);
     expected_type = ModelParser::ModelSchedulerType::NONE;
   }
   SUBCASE("Sequence batching")
   {
-    config.Parse(seq_batching);
+    config.Parse(TestModelParser::seq_batching);
     expected_type = ModelParser::ModelSchedulerType::SEQUENCE;
   }
   SUBCASE("Dynamic batching")
   {
-    config.Parse(dyn_batching);
+    config.Parse(TestModelParser::dyn_batching);
     expected_type = ModelParser::ModelSchedulerType::DYNAMIC;
   }
   SUBCASE("Ensemble")
   {
-    config.Parse(ensemble);
+    config.Parse(TestModelParser::ensemble);
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
@@ -213,7 +214,7 @@ TEST_CASE(
   }
   SUBCASE("Nested Ensemble")
   {
-    config.Parse(ensemble);
+    config.Parse(TestModelParser::ensemble);
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");

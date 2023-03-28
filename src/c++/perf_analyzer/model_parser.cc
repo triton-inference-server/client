@@ -294,6 +294,8 @@ ModelParser::DetermineComposingModelMap(
     const rapidjson::Document& config, const std::string& model_version,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
+  // FIXME -- is model version needed?
+
   RETURN_IF_ERROR(AddComposingModels(composing_models, config));
   RETURN_IF_ERROR(AddEnsembleComposingModels(config, model_version, backend));
 
