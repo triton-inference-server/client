@@ -38,9 +38,14 @@ namespace triton { namespace perfanalyzer {
 
 class TestModelParser {
  public:
-  constexpr static const char* no_batching = R"({})";
-  constexpr static const char* seq_batching = R"({ "sequence_batching":{} })";
-  constexpr static const char* dyn_batching = R"({ "dynamic_batching":{} })";
+  constexpr static const char* no_batching = R"({ "platform":"not_ensemble" })";
+
+  constexpr static const char* seq_batching =
+      R"({ "platform":"not_ensemble", "sequence_batching":{} })";
+
+  constexpr static const char* dyn_batching =
+      R"({ "platform":"not_ensemble", "dynamic_batching":{} })";
+
   constexpr static const char* ensemble = R"({
     "name": "EnsembleModel",
     "platform": "ensemble",
@@ -72,6 +77,24 @@ class TestModelParser {
       ]
     }
   })";
+
+  static cb::Error SetJsonPtrNoSeq(rapidjson::Document* model_config)
+  {
+    model_config->Parse(no_batching);
+    return cb::Error::Success;
+  };
+
+  static cb::Error SetJsonPtrYesSeq(rapidjson::Document* model_config)
+  {
+    model_config->Parse(seq_batching);
+    return cb::Error::Success;
+  };
+
+  static cb::Error SetJsonPtrNestedEnsemble(rapidjson::Document* model_config)
+  {
+    model_config->Parse(nested_ensemble);
+    return cb::Error::Success;
+  };
 };
 
 TEST_CASE("ModelParser: testing the GetInt function")
@@ -152,20 +175,6 @@ TEST_CASE(
   ModelParser::ModelSchedulerType expected_type;
   ComposingModelMap expected_composing_model_map;
 
-  auto SetJsonPtrNoSeq = [](rapidjson::Document* model_config) {
-    model_config->Parse(R"({ "platform":"none" })");
-    return cb::Error::Success;
-  };
-
-  auto SetJsonPtrYesSeq = [](rapidjson::Document* model_config) {
-    model_config->Parse(R"({ "sequence_batching":{}, "platform":"none" })");
-    return cb::Error::Success;
-  };
-
-  auto SetJsonPtrNestedEnsemble = [](rapidjson::Document* model_config) {
-    model_config->Parse(TestModelParser::nested_ensemble);
-    return cb::Error::Success;
-  };
 
   SUBCASE("No batching")
   {
@@ -193,10 +202,10 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
     }
@@ -204,10 +213,10 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq));
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
     }
@@ -225,14 +234,16 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE;
     }
@@ -240,14 +251,16 @@ TEST_CASE(
     {
       EXPECT_CALL(
           *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrYesSeq))
-          .WillOnce(testing::WithArg<0>(SetJsonPtrNoSeq));
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(
+              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
+          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
       expected_type = ModelParser::ModelSchedulerType::ENSEMBLE_SEQUENCE;
     }
