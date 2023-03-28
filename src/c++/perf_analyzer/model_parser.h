@@ -168,6 +168,15 @@ class ModelParser {
 
  private:
   cb::Error DetermineComposingModelMap(
+      const std::vector<cb::ModelIdentifier>& composing_models,
+      const rapidjson::Document& config, const std::string& model_version,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
+  cb::Error AddComposingModels(
+      const std::vector<cb::ModelIdentifier>& composing_models,
+      const rapidjson::Document& config);
+
+  cb::Error AddEnsembleComposingModels(
       const rapidjson::Document& config, const std::string& model_version,
       std::unique_ptr<cb::ClientBackend>& backend);
 

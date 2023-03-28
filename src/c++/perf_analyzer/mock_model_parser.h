@@ -54,11 +54,12 @@ class MockModelParser : public ModelParser {
 
   // Expose private function
   cb::Error DetermineComposingModelMap(
+      const std::vector<cb::ModelIdentifier>& composing_models,
       const rapidjson::Document& config, const std::string& model_version,
       std::unique_ptr<cb::ClientBackend>& backend)
   {
     return ModelParser::DetermineComposingModelMap(
-        config, model_version, backend);
+        composing_models, config, model_version, backend);
   }
 
   // Expose private function

@@ -255,7 +255,10 @@ TEST_CASE(
   std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
 
   MockModelParser mmp;
-  mmp.DetermineComposingModelMap(config, model_version, backend);
+
+  std::vector<cb::ModelIdentifier> composing_models;
+  mmp.DetermineComposingModelMap(
+      composing_models, config, model_version, backend);
   mmp.DetermineSchedulerType(config, model_version, backend);
 
   auto actual_type = mmp.SchedulerType();

@@ -40,7 +40,10 @@ ModelParser::InitTriton(
   model_name_ = metadata["name"].GetString();
   model_version_ = model_version;
 
-  RETURN_IF_ERROR(DetermineComposingModelMap(config, model_version, backend));
+  // FIXME pipe this:
+  std::vector<cb::ModelIdentifier> composing_models;
+  RETURN_IF_ERROR(DetermineComposingModelMap(
+      composing_models, config, model_version, backend));
 
   RETURN_IF_ERROR(DetermineSchedulerType(config, model_version, backend));
 
@@ -287,6 +290,30 @@ ModelParser::InitTorchServe(
 
 cb::Error
 ModelParser::DetermineComposingModelMap(
+    const std::vector<cb::ModelIdentifier>& composing_models,
+    const rapidjson::Document& config, const std::string& model_version,
+    std::unique_ptr<cb::ClientBackend>& backend)
+{
+  RETURN_IF_ERROR(AddComposingModels(composing_models, config));
+  RETURN_IF_ERROR(AddEnsembleComposingModels(config, model_version, backend));
+
+  return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::AddComposingModels(
+    const std::vector<cb::ModelIdentifier>& composing_models,
+    const rapidjson::Document& config)
+{
+  for (auto i : composing_models) {
+    (*composing_models_map_)[config["name"].GetString()].insert(i);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::AddEnsembleComposingModels(
     const rapidjson::Document& config, const std::string& model_version,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
@@ -312,7 +339,7 @@ ModelParser::DetermineComposingModelMap(
       RETURN_IF_ERROR(backend->ModelConfig(
           &composing_model_config, step["model_name"].GetString(),
           step_model_version));
-      RETURN_IF_ERROR(DetermineComposingModelMap(
+      RETURN_IF_ERROR(AddEnsembleComposingModels(
           composing_model_config, step_model_version, backend));
     }
   }
