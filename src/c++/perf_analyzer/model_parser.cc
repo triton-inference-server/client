@@ -40,6 +40,8 @@ ModelParser::InitTriton(
   model_name_ = metadata["name"].GetString();
   model_version_ = model_version;
 
+  RETURN_IF_ERROR(DetermineComposingModelMap(config, model_version, backend));
+
   RETURN_IF_ERROR(DetermineSchedulerType(config, model_version, backend));
 
   max_batch_size_ = 0;
@@ -324,9 +326,6 @@ ModelParser::DetermineSchedulerType(
     const rapidjson::Document& config, const std::string& model_version,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
-  // FIXME best location for this?
-  RETURN_IF_ERROR(DetermineComposingModelMap(config, model_version, backend));
-
   scheduler_type_ = NONE;
   const auto& ensemble_itr = config.FindMember("ensemble_scheduling");
   if (ensemble_itr != config.MemberEnd()) {
