@@ -745,6 +745,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"metrics-url", required_argument, 0, 50},
       {"metrics-interval", required_argument, 0, 51},
       {"sequence-length-variation", required_argument, 0, 52},
+      {"composing-models", required_argument, 0, 53},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1191,6 +1192,17 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 52: {
         params_->sequence_length_variation = std::stod(optarg);
+        break;
+      }
+      case 53: {
+        // FIXME document this arg!
+        std::string arg = optarg;
+        std::stringstream ss(arg);
+        while (ss.good()) {
+          std::string substr;
+          getline(ss, substr, ',');
+          params_->composing_models.push_back({substr, ""});
+        }
         break;
       }
       case 'v':

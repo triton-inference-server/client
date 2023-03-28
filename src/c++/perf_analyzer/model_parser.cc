@@ -351,8 +351,8 @@ ModelParser::DetermineSchedulerType(
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   scheduler_type_ = NONE;
-  const auto& ensemble_itr = config.FindMember("ensemble_scheduling");
-  if (ensemble_itr != config.MemberEnd()) {
+  // FIXME do I need more options here? BLS?
+  if (composing_models_map_->size() != 0) {
     bool is_sequential = false;
     RETURN_IF_ERROR(GetComposingSchedulerType(backend, &is_sequential));
     if (is_sequential) {

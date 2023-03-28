@@ -100,12 +100,10 @@ PerfAnalyzer::CreateAnalyzerObjects()
             &model_config, params_->model_name, params_->model_version),
         "failed to get model config");
 
-    // FIXME pipe this
-    std::vector<cb::ModelIdentifier> composing_models;
     FAIL_IF_ERR(
         parser_->InitTriton(
             model_metadata, model_config, params_->model_version,
-            composing_models, params_->input_shapes, backend_),
+            params_->composing_models, params_->input_shapes, backend_),
         "failed to create model parser");
   } else if (params_->kind == cb::BackendKind::TENSORFLOW_SERVING) {
     rapidjson::Document model_metadata;

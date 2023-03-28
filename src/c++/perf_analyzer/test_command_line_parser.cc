@@ -1225,6 +1225,8 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->metrics_interval_ms = 0;
     }
+
+    // FIXME add test for new arg
   }
 
   if (check_params) {
