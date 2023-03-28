@@ -55,19 +55,19 @@ class MockModelParser : public ModelParser {
   // Expose private function
   cb::Error DetermineComposingModelMap(
       const std::vector<cb::ModelIdentifier>& composing_models,
-      const rapidjson::Document& config, const std::string& model_version,
+      const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend)
   {
     return ModelParser::DetermineComposingModelMap(
-        composing_models, config, model_version, backend);
+        composing_models, config, backend);
   }
 
   // Expose private function
   cb::Error DetermineSchedulerType(
-      const rapidjson::Document& config, const std::string& model_version,
+      const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend)
   {
-    return ModelParser::DetermineSchedulerType(config, model_version, backend);
+    return ModelParser::DetermineSchedulerType(config, backend);
   }
 
   std::shared_ptr<ModelTensorMap>& inputs_{ModelParser::inputs_};

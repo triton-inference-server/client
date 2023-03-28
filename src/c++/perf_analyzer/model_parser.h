@@ -169,7 +169,7 @@ class ModelParser {
  private:
   cb::Error DetermineComposingModelMap(
       const std::vector<cb::ModelIdentifier>& composing_models,
-      const rapidjson::Document& config, const std::string& model_version,
+      const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
   cb::Error AddComposingModels(
@@ -177,11 +177,11 @@ class ModelParser {
       const rapidjson::Document& config);
 
   cb::Error AddEnsembleComposingModels(
-      const rapidjson::Document& config, const std::string& model_version,
+      const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
   cb::Error DetermineSchedulerType(
-      const rapidjson::Document& config, const std::string& model_version,
+      const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
   cb::Error GetComposingSchedulerType(

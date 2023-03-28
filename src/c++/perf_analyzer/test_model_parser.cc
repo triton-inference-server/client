@@ -163,8 +163,6 @@ TEST_CASE(
         "of DetermineSchedulerType(). This includes setting the "
         "value of scheduler_type_ and populating composing_models_map_"))
 {
-  std::string model_version = "";
-
   std::shared_ptr<cb::MockClientStats> stats =
       std::make_shared<cb::MockClientStats>();
   std::unique_ptr<cb::MockClientBackend> mock_backend =
@@ -271,9 +269,8 @@ TEST_CASE(
   MockModelParser mmp;
 
   std::vector<cb::ModelIdentifier> composing_models;
-  mmp.DetermineComposingModelMap(
-      composing_models, config, model_version, backend);
-  mmp.DetermineSchedulerType(config, model_version, backend);
+  mmp.DetermineComposingModelMap(composing_models, config, backend);
+  mmp.DetermineSchedulerType(config, backend);
 
   auto actual_type = mmp.SchedulerType();
   CHECK(actual_type == expected_type);

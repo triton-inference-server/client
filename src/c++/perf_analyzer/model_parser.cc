@@ -42,10 +42,10 @@ ModelParser::InitTriton(
 
   // FIXME pipe this:
   std::vector<cb::ModelIdentifier> composing_models;
-  RETURN_IF_ERROR(DetermineComposingModelMap(
-      composing_models, config, model_version, backend));
+  RETURN_IF_ERROR(
+      DetermineComposingModelMap(composing_models, config, backend));
 
-  RETURN_IF_ERROR(DetermineSchedulerType(config, model_version, backend));
+  RETURN_IF_ERROR(DetermineSchedulerType(config, backend));
 
   max_batch_size_ = 0;
   const auto bs_itr = config.FindMember("max_batch_size");
@@ -291,13 +291,13 @@ ModelParser::InitTorchServe(
 cb::Error
 ModelParser::DetermineComposingModelMap(
     const std::vector<cb::ModelIdentifier>& composing_models,
-    const rapidjson::Document& config, const std::string& model_version,
+    const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   // FIXME -- is model version needed?
 
   RETURN_IF_ERROR(AddComposingModels(composing_models, config));
-  RETURN_IF_ERROR(AddEnsembleComposingModels(config, model_version, backend));
+  RETURN_IF_ERROR(AddEnsembleComposingModels(config, backend));
 
   return cb::Error::Success;
 }
@@ -316,7 +316,7 @@ ModelParser::AddComposingModels(
 
 cb::Error
 ModelParser::AddEnsembleComposingModels(
-    const rapidjson::Document& config, const std::string& model_version,
+    const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   if (config.HasMember("platform") &&
@@ -341,8 +341,8 @@ ModelParser::AddEnsembleComposingModels(
       RETURN_IF_ERROR(backend->ModelConfig(
           &composing_model_config, step["model_name"].GetString(),
           step_model_version));
-      RETURN_IF_ERROR(AddEnsembleComposingModels(
-          composing_model_config, step_model_version, backend));
+      RETURN_IF_ERROR(
+          AddEnsembleComposingModels(composing_model_config, backend));
     }
   }
 
@@ -352,7 +352,7 @@ ModelParser::AddEnsembleComposingModels(
 
 cb::Error
 ModelParser::DetermineSchedulerType(
-    const rapidjson::Document& config, const std::string& model_version,
+    const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   scheduler_type_ = NONE;
