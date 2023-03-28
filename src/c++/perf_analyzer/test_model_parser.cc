@@ -38,13 +38,14 @@ namespace triton { namespace perfanalyzer {
 
 class TestModelParser {
  public:
-  constexpr static const char* no_batching = R"({ "platform":"not_ensemble" })";
+  constexpr static const char* no_batching =
+      R"({ "name": "NoBatchingModel", "platform":"not_ensemble" })";
 
   constexpr static const char* seq_batching =
-      R"({ "platform":"not_ensemble", "sequence_batching":{} })";
+      R"({ "name": "SeqBatchingModel", "platform":"not_ensemble", "sequence_batching":{} })";
 
   constexpr static const char* dyn_batching =
-      R"({ "platform":"not_ensemble", "dynamic_batching":{} })";
+      R"({ "name": "DynBatchingModel", "platform":"not_ensemble", "dynamic_batching":{} })";
 
   constexpr static const char* ensemble = R"({
     "name": "EnsembleModel",
@@ -168,73 +169,65 @@ TEST_CASE(
       std::make_unique<cb::MockClientBackend>(stats);
 
   rapidjson::Document config;
-  std::vector<cb::ModelIdentifier> composing_models;
+  std::vector<cb::ModelIdentifier> input_composing_models;
   ComposingModelMap expected_composing_model_map;
+
+  std::string parent_model_name;
+
+
+  const auto& ParameterizeListedComposingModels{[&]() {
+    SUBCASE("No listed composing models") {}
+    SUBCASE("Yes listed composing models")
+    {
+      input_composing_models.push_back({"ListedModelA", ""});
+      input_composing_models.push_back({"ListedModelB", ""});
+      expected_composing_model_map[parent_model_name].emplace(
+          "ListedModelA", "");
+      expected_composing_model_map[parent_model_name].emplace(
+          "ListedModelB", "");
+    }
+  }};
 
   SUBCASE("No Ensemble")
   {
-    SUBCASE("No batching") { config.Parse(TestModelParser::no_batching); }
-    SUBCASE("Seq batching") { config.Parse(TestModelParser::seq_batching); }
-    SUBCASE("Dynamic batching") { config.Parse(TestModelParser::dyn_batching); }
+    config.Parse(TestModelParser::no_batching);
+    parent_model_name = "NoBatchingModel";
+    ParameterizeListedComposingModels();
   }
   SUBCASE("Ensemble")
   {
     config.Parse(TestModelParser::ensemble);
+    parent_model_name = "EnsembleModel";
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
-    SUBCASE("no sequences")
-    {
-      EXPECT_CALL(
-          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
-    }
-    SUBCASE("yes sequences")
-    {
-      EXPECT_CALL(
-          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq));
-    }
+    ParameterizeListedComposingModels();
   }
   SUBCASE("Nested Ensemble")
   {
     config.Parse(TestModelParser::ensemble);
+    parent_model_name = "EnsembleModel";
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
     expected_composing_model_map["ModelA"].emplace("ModelC", "");
     expected_composing_model_map["ModelA"].emplace("ModelD", "");
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(
+            testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+        .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
 
-    SUBCASE("no sequences")
-    {
-      EXPECT_CALL(
-          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(
-              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
-    }
-    SUBCASE("yes sequences")
-    {
-      EXPECT_CALL(
-          *mock_backend, ModelConfig(testing::_, testing::_, testing::_))
-          .WillOnce(
-              testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrYesSeq))
-          .WillOnce(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
-    }
+    ParameterizeListedComposingModels();
   }
 
   std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
 
   MockModelParser mmp;
 
-  mmp.DetermineComposingModelMap(composing_models, config, backend);
+  mmp.DetermineComposingModelMap(input_composing_models, config, backend);
 
   auto actual_composing_model_map = *mmp.GetComposingModelMap().get();
   CHECK(actual_composing_model_map == expected_composing_model_map);
