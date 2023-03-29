@@ -1225,8 +1225,54 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->metrics_interval_ms = 0;
     }
+  }
 
-    // FIXME add test for new arg
+  SUBCASE("Option : --bls-composing-models")
+  {
+    SUBCASE("normal lists")
+    {
+      int argc = 5;
+
+      SUBCASE("a,b,c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a,b,c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b, c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b, c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a,b, c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a,b, c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b,c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b,c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b,  c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b,  c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+
+      CHECK(!parser.UsageCalled());
+      REQUIRE(act->bls_composing_models.size() == 3);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[1].first, "b");
+      CHECK_STRING(act->bls_composing_models[2].first, "c");
+      CHECK_STRING(act->bls_composing_models[0].second, "");
+      CHECK_STRING(act->bls_composing_models[1].second, "");
+      CHECK_STRING(act->bls_composing_models[2].second, "");
+    }
   }
 
   if (check_params) {

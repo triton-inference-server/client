@@ -613,7 +613,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr
       << FormatMessage(
-             "--trace-level: Specify a trace level. OFF to disable tracing, "
+             " --trace-level: Specify a trace level. OFF to disable tracing, "
              "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
              "may be specified multiple times to trace multiple "
              "informations. Default is OFF.",
@@ -681,6 +681,11 @@ CLParser::Usage(const std::string& msg)
                    "inference server metrics. Default is 1000.",
                    18)
             << std::endl;
+  std::cerr << FormatMessage(
+                   " --bls-composing-models: A comma separated list of all "
+                   "bls composing models that may be called by the model",
+                   18)
+            << std::endl;
   exit(GENERIC_ERROR);
 }
 
@@ -745,7 +750,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"metrics-url", required_argument, 0, 50},
       {"metrics-interval", required_argument, 0, 51},
       {"sequence-length-variation", required_argument, 0, 52},
-      {"composing-models", required_argument, 0, 53},
+      {"bls-composing-models", required_argument, 0, 53},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1199,9 +1204,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
         std::string arg = optarg;
         std::stringstream ss(arg);
         while (ss.good()) {
-          std::string substr;
-          getline(ss, substr, ',');
-          params_->bls_composing_models.push_back({substr, "3"});
+          if (ss.peek() == ' ') {
+            ss.ignore();
+          } else {
+            std::string substr;
+            getline(ss, substr, ',');
+            params_->bls_composing_models.push_back({substr, ""});
+          }
         }
         break;
       }
