@@ -53,7 +53,7 @@ struct PerfAnalyzerParameters {
   int32_t percentile = -1;
   std::vector<std::string> user_data;
   std::unordered_map<std::string, std::vector<int64_t>> input_shapes;
-  std::vector<cb::ModelIdentifier> composing_models;
+  std::vector<cb::ModelIdentifier> bls_composing_models;
   uint64_t measurement_window_ms = 5000;
   bool using_concurrency_range = false;
   Range<uint64_t> concurrency_range{1, 1, 1};

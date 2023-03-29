@@ -1201,7 +1201,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         while (ss.good()) {
           std::string substr;
           getline(ss, substr, ',');
-          params_->composing_models.push_back({substr, ""});
+          params_->bls_composing_models.push_back({substr, "3"});
         }
         break;
       }

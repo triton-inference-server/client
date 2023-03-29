@@ -34,7 +34,7 @@ cb::Error
 ModelParser::InitTriton(
     const rapidjson::Document& metadata, const rapidjson::Document& config,
     const std::string& model_version,
-    const std::vector<cb::ModelIdentifier>& composing_models,
+    const std::vector<cb::ModelIdentifier>& bls_composing_models,
     const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
@@ -42,7 +42,7 @@ ModelParser::InitTriton(
   model_version_ = model_version;
 
   RETURN_IF_ERROR(
-      DetermineComposingModelMap(composing_models, config, backend));
+      DetermineComposingModelMap(bls_composing_models, config, backend));
 
   RETURN_IF_ERROR(DetermineSchedulerType(config, backend));
 
@@ -289,23 +289,23 @@ ModelParser::InitTorchServe(
 
 cb::Error
 ModelParser::DetermineComposingModelMap(
-    const std::vector<cb::ModelIdentifier>& composing_models,
+    const std::vector<cb::ModelIdentifier>& bls_composing_models,
     const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
-  RETURN_IF_ERROR(AddComposingModels(composing_models, config));
+  RETURN_IF_ERROR(AddBLSComposingModels(bls_composing_models, config));
   RETURN_IF_ERROR(AddEnsembleComposingModels(config, backend));
 
   return cb::Error::Success;
 }
 
 cb::Error
-ModelParser::AddComposingModels(
-    const std::vector<cb::ModelIdentifier>& composing_models,
+ModelParser::AddBLSComposingModels(
+    const std::vector<cb::ModelIdentifier>& bls_composing_models,
     const rapidjson::Document& config)
 {
-  for (auto i : composing_models) {
-    (*composing_models_map_)[config["name"].GetString()].insert(i);
+  for (auto model : bls_composing_models) {
+    (*composing_models_map_)[config["name"].GetString()].insert(model);
   }
 
   return cb::Error::Success;

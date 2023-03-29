@@ -169,7 +169,7 @@ TEST_CASE(
       std::make_unique<cb::MockClientBackend>(stats);
 
   rapidjson::Document config;
-  std::vector<cb::ModelIdentifier> input_composing_models;
+  std::vector<cb::ModelIdentifier> input_bls_composing_models;
   ComposingModelMap expected_composing_model_map;
 
   std::string parent_model_name;
@@ -179,8 +179,8 @@ TEST_CASE(
     SUBCASE("No listed composing models") {}
     SUBCASE("Yes listed composing models")
     {
-      input_composing_models.push_back({"ListedModelA", ""});
-      input_composing_models.push_back({"ListedModelB", ""});
+      input_bls_composing_models.push_back({"ListedModelA", ""});
+      input_bls_composing_models.push_back({"ListedModelB", ""});
       expected_composing_model_map[parent_model_name].emplace(
           "ListedModelA", "");
       expected_composing_model_map[parent_model_name].emplace(
@@ -227,7 +227,7 @@ TEST_CASE(
 
   MockModelParser mmp;
 
-  mmp.DetermineComposingModelMap(input_composing_models, config, backend);
+  mmp.DetermineComposingModelMap(input_bls_composing_models, config, backend);
 
   auto actual_composing_model_map = *mmp.GetComposingModelMap().get();
   CHECK(actual_composing_model_map == expected_composing_model_map);
