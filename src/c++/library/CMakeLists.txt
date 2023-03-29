@@ -246,9 +246,10 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
-  if (TRITON_ENABLE_ADDITIONAL_DEPS)
-    find_package(ZLIB REQUIRED)
-  endif() # TRITON_ENABLE_ADDITIONAL_DEPS
+  # libz.a
+  # set(ZLIB_USE_STATIC_LIBS "ON")
+  # set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  # find_package(ZLIB REQUIRED)
 
   #
   # libhttpclient.so and libhttpclient_static.a
@@ -299,11 +300,13 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE CURL::libcurl
       PUBLIC Threads::Threads
   )
-  if (TRITON_ENABLE_ADDITIONAL_DEPS)
-    target_link_libraries(
-      httpclient_static
-      PRIVATE ZLIB::ZLIB)
-  endif () # TRITON_ENABLE_ADDITIONAL_DEPS
+
+  # libz.a
+  # SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  # target_link_libraries(
+  #   httpclient_static
+  #   PRIVATE ZLIB::ZLIB
+  # )
 
   # libhttpclient.so
   add_library(

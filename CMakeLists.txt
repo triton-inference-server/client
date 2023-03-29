@@ -44,9 +44,6 @@ option(TRITON_ENABLE_PERF_ANALYZER_TS "Enable TorchServe support for Performance
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
-# Include ZLIB to client build
-option(TRITON_ENABLE_ADDITIONAL_DEPS "Include additional dependencies" OFF)
-
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/third_party repo")
@@ -60,6 +57,7 @@ if(NOT TRITON_ENABLE_PYTHON_GRPC)
   set(TRITON_COMMON_ENABLE_PROTOBUF_PYTHON OFF)
 endif()
 
+SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 #
 # Dependencies
 #
@@ -165,7 +163,6 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
       -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
       -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
       -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
-      -DTRITON_ENABLE_ADDITIONAL_DEPS:BOOL=${TRITON_ENABLE_ADDITIONAL_DEPS}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
     DEPENDS ${_cc_client_depends}
