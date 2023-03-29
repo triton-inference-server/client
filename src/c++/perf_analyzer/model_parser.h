@@ -169,8 +169,10 @@ class ModelParser {
   bool is_decoupled_;
 
  private:
+  /// Populate composing_models_map_ based on any bls composing models passed in
+  /// via the CLI as well as any ensemble or nested ensemble models
   cb::Error DetermineComposingModelMap(
-      const std::vector<cb::ModelIdentifier>& composing_models,
+      const std::vector<cb::ModelIdentifier>& bls_composing_models,
       const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
@@ -182,10 +184,13 @@ class ModelParser {
       const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
+  /// Populate scheduler_type_ based on the scheduler type of the parent model
+  /// as well as any composing models
   cb::Error DetermineSchedulerType(
       const rapidjson::Document& config,
       std::unique_ptr<cb::ClientBackend>& backend);
 
+  /// Sets is_sequential to true if any of the composing models are sequential
   cb::Error GetComposingSchedulerType(
       std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential);
 

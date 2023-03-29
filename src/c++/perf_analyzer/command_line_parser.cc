@@ -1200,16 +1200,17 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 53: {
-        // FIXME document this arg!
         std::string arg = optarg;
         std::stringstream ss(arg);
         while (ss.good()) {
           if (ss.peek() == ' ') {
             ss.ignore();
           } else {
-            std::string substr;
-            getline(ss, substr, ',');
-            params_->bls_composing_models.push_back({substr, ""});
+            std::string model_name;
+            getline(ss, model_name, ',');
+            std::string model_version = "";
+            params_->bls_composing_models.push_back(
+                {model_name, model_version});
           }
         }
         break;
