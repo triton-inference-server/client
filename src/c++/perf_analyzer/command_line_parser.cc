@@ -683,7 +683,7 @@ CLParser::Usage(const std::string& msg)
             << std::endl;
   std::cerr << FormatMessage(
                    " --bls-composing-models: A comma separated list of all "
-                   "bls composing models that may be called by the model",
+                   "BLS composing models that may be called by the model.",
                    18)
             << std::endl;
   exit(GENERIC_ERROR);

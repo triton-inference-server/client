@@ -178,7 +178,8 @@ class ModelParser {
 
   cb::Error AddBLSComposingModels(
       const std::vector<cb::ModelIdentifier>& bls_composing_models,
-      const rapidjson::Document& config);
+      const rapidjson::Document& config,
+      std::unique_ptr<cb::ClientBackend>& backend);
 
   cb::Error AddEnsembleComposingModels(
       const rapidjson::Document& config,

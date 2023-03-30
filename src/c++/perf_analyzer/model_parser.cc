@@ -293,7 +293,7 @@ ModelParser::DetermineComposingModelMap(
     const rapidjson::Document& config,
     std::unique_ptr<cb::ClientBackend>& backend)
 {
-  RETURN_IF_ERROR(AddBLSComposingModels(bls_composing_models, config));
+  RETURN_IF_ERROR(AddBLSComposingModels(bls_composing_models, config, backend));
   RETURN_IF_ERROR(AddEnsembleComposingModels(config, backend));
 
   return cb::Error::Success;
@@ -302,10 +302,17 @@ ModelParser::DetermineComposingModelMap(
 cb::Error
 ModelParser::AddBLSComposingModels(
     const std::vector<cb::ModelIdentifier>& bls_composing_models,
-    const rapidjson::Document& config)
+    const rapidjson::Document& config,
+    std::unique_ptr<cb::ClientBackend>& backend)
 {
   for (auto model : bls_composing_models) {
     (*composing_models_map_)[config["name"].GetString()].insert(model);
+
+    rapidjson::Document composing_model_config;
+    RETURN_IF_ERROR(backend->ModelConfig(
+        &composing_model_config, model.first, model.second));
+    RETURN_IF_ERROR(
+        AddEnsembleComposingModels(composing_model_config, backend));
   }
 
   return cb::Error::Success;
@@ -351,7 +358,7 @@ ModelParser::DetermineSchedulerType(
     std::unique_ptr<cb::ClientBackend>& backend)
 {
   scheduler_type_ = NONE;
-  // FIXME do I need more options here? BLS?
+
   if (composing_models_map_->size() != 0) {
     bool is_sequential = false;
     RETURN_IF_ERROR(GetComposingSchedulerType(backend, &is_sequential));

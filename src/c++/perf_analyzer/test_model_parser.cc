@@ -186,6 +186,8 @@ TEST_CASE(
       expected_composing_model_map[parent_model_name].emplace(
           "ListedModelB", "");
     }
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
   }};
 
   SUBCASE("No Ensemble")
@@ -198,18 +200,18 @@ TEST_CASE(
   {
     config.Parse(TestModelParser::ensemble);
     parent_model_name = "EnsembleModel";
+    ParameterizeListedComposingModels();
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
     EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
         .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
-
-    ParameterizeListedComposingModels();
   }
   SUBCASE("Nested Ensemble")
   {
     config.Parse(TestModelParser::ensemble);
     parent_model_name = "EnsembleModel";
+    ParameterizeListedComposingModels();
 
     expected_composing_model_map["EnsembleModel"].emplace("ModelA", "2");
     expected_composing_model_map["EnsembleModel"].emplace("ModelB", "");
@@ -219,8 +221,23 @@ TEST_CASE(
         .WillOnce(
             testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
         .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
+  }
+  SUBCASE("BLS with an Ensemble")
+  {
+    config.Parse(TestModelParser::no_batching);
+    parent_model_name = "NoBatchingModel";
 
-    ParameterizeListedComposingModels();
+    input_bls_composing_models.push_back({"ModelA", ""});
+    input_bls_composing_models.push_back({"ModelB", ""});
+
+    expected_composing_model_map[parent_model_name].emplace("ModelA", "");
+    expected_composing_model_map[parent_model_name].emplace("ModelB", "");
+    expected_composing_model_map["ModelA"].emplace("ModelC", "");
+    expected_composing_model_map["ModelA"].emplace("ModelD", "");
+    EXPECT_CALL(*mock_backend, ModelConfig(testing::_, testing::_, testing::_))
+        .WillOnce(
+            testing::WithArg<0>(TestModelParser::SetJsonPtrNestedEnsemble))
+        .WillRepeatedly(testing::WithArg<0>(TestModelParser::SetJsonPtrNoSeq));
   }
 
   std::unique_ptr<cb::ClientBackend> backend = std::move(mock_backend);
