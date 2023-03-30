@@ -29,6 +29,7 @@
 
 #include <getopt.h>
 
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -683,7 +684,12 @@ CLParser::Usage(const std::string& msg)
             << std::endl;
   std::cerr << FormatMessage(
                    " --bls-composing-models: A comma separated list of all "
-                   "BLS composing models that may be called by the model.",
+                   "BLS composing models (with optional model version number "
+                   "after a colon for each) that may be called by the input "
+                   "BLS model. For example, 'modelA:3,modelB' would specify "
+                   "that modelA and modelB are composing models that may be "
+                   "called by the input BLS model, and that modelA will use "
+                   "version 3, while modelB's version is unspecified",
                    18)
             << std::endl;
   exit(GENERIC_ERROR);
@@ -1201,17 +1207,28 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 53: {
         std::string arg = optarg;
+
+        // Remove all spaces in the string
+        arg.erase(std::remove_if(arg.begin(), arg.end(), ::isspace), arg.end());
+
         std::stringstream ss(arg);
         while (ss.good()) {
-          if (ss.peek() == ' ') {
-            ss.ignore();
+          std::string model_name;
+          std::string model_version{""};
+          std::string tmp_model_name;
+
+          getline(ss, tmp_model_name, ',');
+
+          size_t colon_pos = tmp_model_name.find(":");
+
+          if (colon_pos == std::string::npos) {
+            model_name = tmp_model_name;
           } else {
-            std::string model_name;
-            getline(ss, model_name, ',');
-            std::string model_version = "";
-            params_->bls_composing_models.push_back(
-                {model_name, model_version});
+            model_name = tmp_model_name.substr(0, colon_pos);
+            model_version = tmp_model_name.substr(colon_pos + 1);
           }
+
+          params_->bls_composing_models.push_back({model_name, model_version});
         }
         break;
       }

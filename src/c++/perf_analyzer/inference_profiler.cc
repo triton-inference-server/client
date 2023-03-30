@@ -1410,16 +1410,28 @@ InferenceProfiler::DetermineStatsModelVersion(
   // If model_version is an empty string then look in the end status to find
   // the latest (highest valued version) and use that as the version.
   int64_t status_model_version = -1;
+  bool multiple_found = false;
   if (model_identifier.second.empty()) {
     for (const auto& id : stats) {
       // Model name should match
       if (model_identifier.first.compare(id.first.first) == 0) {
         int64_t this_version = std::stoll(id.first.second);
+        if (status_model_version != -1) {
+          multiple_found = true;
+        }
         status_model_version = std::max(status_model_version, this_version);
       }
     }
   } else {
     status_model_version = std::stoll(model_identifier.second);
+  }
+
+  if (multiple_found) {
+    std::cerr << "WARNING: Multiple versions of model "
+              << model_identifier.first
+              << " are loaded in the triton server, and the version to use was "
+                 "unspecified. The stats for that model may be inaccurate."
+              << std::endl;
   }
 
   return status_model_version;
