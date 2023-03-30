@@ -1438,6 +1438,44 @@ InferenceProfiler::DetermineStatsModelVersion(
 }
 
 cb::Error
+InferenceProfiler::SummarizeServerStats(
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
+    ServerSideStats* server_stats)
+{
+  RETURN_IF_ERROR(SummarizeServerStats(
+      std::make_pair(parser_->ModelName(), parser_->ModelVersion()),
+      start_status, end_status, server_stats));
+  return cb::Error::Success;
+}
+
+cb::Error
+InferenceProfiler::SummarizeServerStats(
+    const cb::ModelIdentifier& model_identifier,
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
+    ServerSideStats* server_stats)
+{
+  RETURN_IF_ERROR(SummarizeServerStatsHelper(
+      model_identifier, start_status, end_status, server_stats));
+
+  // Summarize the composing models, if any.
+  for (auto composing_model_identifier :
+       (*parser_->GetComposingModelMap())[model_identifier.first]) {
+    int64_t version_to_use =
+        DetermineStatsModelVersion(composing_model_identifier, end_status);
+    composing_model_identifier.second = std::to_string(version_to_use);
+    auto it = server_stats->composing_models_stat
+                  .emplace(composing_model_identifier, ServerSideStats())
+                  .first;
+    RETURN_IF_ERROR(SummarizeServerStats(
+        composing_model_identifier, start_status, end_status, &(it->second)));
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
 InferenceProfiler::SummarizeServerStatsHelper(
     const cb::ModelIdentifier& model_identifier,
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
@@ -1528,44 +1566,6 @@ InferenceProfiler::SummarizeServerStatsHelper(
         end_itr->second.cache_miss_time_ns_ - start_cache_miss_time_ns;
   }
 
-  return cb::Error::Success;
-}
-
-cb::Error
-InferenceProfiler::SummarizeServerStats(
-    const cb::ModelIdentifier& model_identifier,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
-    ServerSideStats* server_stats)
-{
-  RETURN_IF_ERROR(SummarizeServerStatsHelper(
-      model_identifier, start_status, end_status, server_stats));
-
-  // Summarize the composing models, if any.
-  for (auto composing_model_identifier :
-       (*parser_->GetComposingModelMap())[model_identifier.first]) {
-    int64_t version_to_use =
-        DetermineStatsModelVersion(composing_model_identifier, end_status);
-    composing_model_identifier.second = std::to_string(version_to_use);
-    auto it = server_stats->composing_models_stat
-                  .emplace(composing_model_identifier, ServerSideStats())
-                  .first;
-    RETURN_IF_ERROR(SummarizeServerStats(
-        composing_model_identifier, start_status, end_status, &(it->second)));
-  }
-
-  return cb::Error::Success;
-}
-
-cb::Error
-InferenceProfiler::SummarizeServerStats(
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
-    ServerSideStats* server_stats)
-{
-  RETURN_IF_ERROR(SummarizeServerStats(
-      std::make_pair(parser_->ModelName(), parser_->ModelVersion()),
-      start_status, end_status, server_stats));
   return cb::Error::Success;
 }
 
