@@ -1402,18 +1402,16 @@ InferenceProfiler::SummarizeSendRequestRate(
   summary.send_request_rate = num_sent_requests / window_duration_s;
 }
 
-cb::Error
-InferenceProfiler::SummarizeServerStatsHelper(
+int64_t
+InferenceProfiler::DetermineStatsModelVersion(
     const cb::ModelIdentifier& model_identifier,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
-    ServerSideStats* server_stats)
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats)
 {
   // If model_version is an empty string then look in the end status to find
   // the latest (highest valued version) and use that as the version.
   int64_t status_model_version = -1;
   if (model_identifier.second.empty()) {
-    for (const auto& id : end_status) {
+    for (const auto& id : stats) {
       // Model name should match
       if (model_identifier.first.compare(id.first.first) == 0) {
         int64_t this_version = std::stoll(id.first.second);
@@ -1424,6 +1422,18 @@ InferenceProfiler::SummarizeServerStatsHelper(
     status_model_version = std::stoll(model_identifier.second);
   }
 
+  return status_model_version;
+}
+
+cb::Error
+InferenceProfiler::SummarizeServerStatsHelper(
+    const cb::ModelIdentifier& model_identifier,
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
+    ServerSideStats* server_stats)
+{
+  int64_t status_model_version =
+      DetermineStatsModelVersion(model_identifier, end_status);
   if (status_model_version == -1) {
     return cb::Error(
         "failed to determine the requested model version", pa::GENERIC_ERROR);
@@ -1520,8 +1530,11 @@ InferenceProfiler::SummarizeServerStats(
       model_identifier, start_status, end_status, server_stats));
 
   // Summarize the composing models, if any.
-  for (const auto& composing_model_identifier :
+  for (auto composing_model_identifier :
        (*parser_->GetComposingModelMap())[model_identifier.first]) {
+    int64_t version_to_use =
+        DetermineStatsModelVersion(composing_model_identifier, end_status);
+    composing_model_identifier.second = std::to_string(version_to_use);
     auto it = server_stats->composing_models_stat
                   .emplace(composing_model_identifier, ServerSideStats())
                   .first;
