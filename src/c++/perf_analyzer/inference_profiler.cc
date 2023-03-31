@@ -1402,28 +1402,39 @@ InferenceProfiler::SummarizeSendRequestRate(
   summary.send_request_rate = num_sent_requests / window_duration_s;
 }
 
-int64_t
+cb::Error
 InferenceProfiler::DetermineStatsModelVersion(
     const cb::ModelIdentifier& model_identifier,
-    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats)
+    const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats,
+    int64_t* status_model_version)
 {
-  // If model_version is an empty string then look in the end status to find
-  // the latest (highest valued version) and use that as the version.
-  int64_t status_model_version = -1;
+  // If model_version is an empty string then look in the stats to find the
+  // version with valid stats. If multiple versions have valid stats, use the
+  // highest numbered one and print a warning
+  *status_model_version = -1;
   bool multiple_found = false;
   if (model_identifier.second.empty()) {
     for (const auto& id : stats) {
-      // Model name should match
       if (model_identifier.first.compare(id.first.first) == 0) {
-        int64_t this_version = std::stoll(id.first.second);
-        if (status_model_version != -1) {
-          multiple_found = true;
+        if (id.second.inference_count_ > 0) {
+          int64_t this_version = std::stoll(id.first.second);
+          if (*status_model_version != -1) {
+            multiple_found = true;
+          }
+          *status_model_version = std::max(*status_model_version, this_version);
         }
-        status_model_version = std::max(status_model_version, this_version);
       }
     }
   } else {
-    status_model_version = std::stoll(model_identifier.second);
+    const auto& itr = stats.find(model_identifier);
+    if (itr != stats.end()) {
+      *status_model_version = std::stoll(model_identifier.second);
+    }
+  }
+
+  if (*status_model_version == -1) {
+    return cb::Error(
+        "failed to find the requested model version", pa::GENERIC_ERROR);
   }
 
   if (multiple_found) {
@@ -1434,7 +1445,7 @@ InferenceProfiler::DetermineStatsModelVersion(
               << std::endl;
   }
 
-  return status_model_version;
+  return cb::Error::Success;
 }
 
 cb::Error
@@ -1462,9 +1473,10 @@ InferenceProfiler::SummarizeServerStats(
   // Summarize the composing models, if any.
   for (auto composing_model_identifier :
        (*parser_->GetComposingModelMap())[model_identifier.first]) {
-    int64_t version_to_use =
-        DetermineStatsModelVersion(composing_model_identifier, end_status);
-    composing_model_identifier.second = std::to_string(version_to_use);
+    int64_t model_version;
+    RETURN_IF_ERROR(DetermineStatsModelVersion(
+        composing_model_identifier, end_status, &model_version));
+    composing_model_identifier.second = std::to_string(model_version);
     auto it = server_stats->composing_models_stat
                   .emplace(composing_model_identifier, ServerSideStats())
                   .first;
@@ -1482,15 +1494,12 @@ InferenceProfiler::SummarizeServerStatsHelper(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     ServerSideStats* server_stats)
 {
-  int64_t status_model_version =
-      DetermineStatsModelVersion(model_identifier, end_status);
-  if (status_model_version == -1) {
-    return cb::Error(
-        "failed to determine the requested model version", pa::GENERIC_ERROR);
-  }
+  int64_t model_version;
+  RETURN_IF_ERROR(
+      DetermineStatsModelVersion(model_identifier, end_status, &model_version));
 
   const std::pair<std::string, std::string> this_id(
-      model_identifier.first, std::to_string(status_model_version));
+      model_identifier.first, std::to_string(model_version));
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
