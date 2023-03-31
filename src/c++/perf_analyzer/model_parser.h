@@ -81,6 +81,7 @@ class ModelParser {
   /// \param metadata The metadata of the target model.
   /// \param config The config of the target model.
   /// \param model_version The version of target model.
+  /// \param bls_composing_models A list of BLS composing model identifiers
   /// \param input_shapes The user provided default shapes which will be use
   /// if a certain input has wildcard in its dimension.
   /// \param backend The backend object.
@@ -88,6 +89,7 @@ class ModelParser {
   cb::Error InitTriton(
       const rapidjson::Document& metadata, const rapidjson::Document& config,
       const std::string& model_version,
+      const std::vector<cb::ModelIdentifier>& bls_composing_models,
       const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
       std::unique_ptr<cb::ClientBackend>& backend);
 
@@ -167,8 +169,30 @@ class ModelParser {
   bool is_decoupled_;
 
  private:
-  cb::Error GetEnsembleSchedulerType(
-      const rapidjson::Document& config, const std::string& model_version,
+  /// Populate composing_models_map_ based on any bls composing models passed in
+  /// via the CLI as well as any ensemble or nested ensemble models
+  cb::Error DetermineComposingModelMap(
+      const std::vector<cb::ModelIdentifier>& bls_composing_models,
+      const rapidjson::Document& config,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
+  cb::Error AddBLSComposingModels(
+      const std::vector<cb::ModelIdentifier>& bls_composing_models,
+      const rapidjson::Document& config,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
+  cb::Error AddEnsembleComposingModels(
+      const rapidjson::Document& config,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
+  /// Populate scheduler_type_ based on the scheduler type of the parent model
+  /// as well as any composing models
+  cb::Error DetermineSchedulerType(
+      const rapidjson::Document& config,
+      std::unique_ptr<cb::ClientBackend>& backend);
+
+  /// Sets is_sequential to true if any of the composing models are sequential
+  cb::Error GetComposingSchedulerType(
       std::unique_ptr<cb::ClientBackend>& backend, bool* is_sequential);
 
   /// In the json produced by protobuf, int64 and uint64 values are

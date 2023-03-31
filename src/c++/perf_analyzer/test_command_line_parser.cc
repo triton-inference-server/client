@@ -1227,6 +1227,132 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
+  SUBCASE("Option : --bls-composing-models")
+  {
+    int argc = 5;
+
+    SUBCASE("one model")
+    {
+      char* argv[argc] = {app_name, "-m", model_name, "--bls-composing-models",
+                          "a"};
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(act->bls_composing_models.size() == 1);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[0].second, "");
+    }
+    SUBCASE("lists with no version")
+    {
+      SUBCASE("a,b,c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a,b,c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b, c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b, c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a,b, c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a,b, c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b,c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b,c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a, b,  c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a, b,  c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+
+      CHECK(!parser.UsageCalled());
+      REQUIRE(act->bls_composing_models.size() == 3);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[1].first, "b");
+      CHECK_STRING(act->bls_composing_models[2].first, "c");
+      CHECK_STRING(act->bls_composing_models[0].second, "");
+      CHECK_STRING(act->bls_composing_models[1].second, "");
+      CHECK_STRING(act->bls_composing_models[2].second, "");
+    }
+    SUBCASE("list with version")
+    {
+      SUBCASE("a:1,b:2,c:1")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a:1,b:2,c:1"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a:1, b:2, c:1")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a:1, b:2, c:1"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a:1,  b:2, c:1")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a:1,  b:2, c:1"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      SUBCASE("a:1 ,  b:2, c:1")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a:1 ,  b:2, c:1"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      CHECK(!parser.UsageCalled());
+      REQUIRE(act->bls_composing_models.size() == 3);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[1].first, "b");
+      CHECK_STRING(act->bls_composing_models[2].first, "c");
+      CHECK_STRING(act->bls_composing_models[0].second, "1");
+      CHECK_STRING(act->bls_composing_models[1].second, "2");
+      CHECK_STRING(act->bls_composing_models[2].second, "1");
+    }
+    SUBCASE("list with some versions")
+    {
+      SUBCASE("a,b:3,c")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a,b:3,c"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      CHECK(!parser.UsageCalled());
+      REQUIRE(act->bls_composing_models.size() == 3);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[1].first, "b");
+      CHECK_STRING(act->bls_composing_models[2].first, "c");
+      CHECK_STRING(act->bls_composing_models[0].second, "");
+      CHECK_STRING(act->bls_composing_models[1].second, "3");
+      CHECK_STRING(act->bls_composing_models[2].second, "");
+    }
+    SUBCASE("multiple versions of the same model")
+    {
+      SUBCASE("a:1,b:2,a:2")
+      {
+        char* argv[argc] = {app_name, "-m", model_name,
+                            "--bls-composing-models", "a:1,b,a:2"};
+        REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      }
+      CHECK(!parser.UsageCalled());
+      REQUIRE(act->bls_composing_models.size() == 3);
+      CHECK_STRING(act->bls_composing_models[0].first, "a");
+      CHECK_STRING(act->bls_composing_models[1].first, "b");
+      CHECK_STRING(act->bls_composing_models[2].first, "a");
+      CHECK_STRING(act->bls_composing_models[0].second, "1");
+      CHECK_STRING(act->bls_composing_models[1].second, "");
+      CHECK_STRING(act->bls_composing_models[2].second, "2");
+    }
+  }
+
   if (check_params) {
     CHECK_PARAMS(act, exp);
   }

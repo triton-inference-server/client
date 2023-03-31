@@ -99,10 +99,11 @@ PerfAnalyzer::CreateAnalyzerObjects()
         backend_->ModelConfig(
             &model_config, params_->model_name, params_->model_version),
         "failed to get model config");
+
     FAIL_IF_ERR(
         parser_->InitTriton(
             model_metadata, model_config, params_->model_version,
-            params_->input_shapes, backend_),
+            params_->bls_composing_models, params_->input_shapes, backend_),
         "failed to create model parser");
   } else if (params_->kind == cb::BackendKind::TENSORFLOW_SERVING) {
     rapidjson::Document model_metadata;

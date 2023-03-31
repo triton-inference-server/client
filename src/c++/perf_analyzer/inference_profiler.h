@@ -484,6 +484,38 @@ class InferenceProfiler {
       const double window_duration_s, const size_t num_sent_requests,
       PerfStatus& summary);
 
+  /// Given a model_identifier to gather stats for, and a map of ALL stats,
+  /// determine which version of the model should be gathered
+  /// \param model_identifier A pair of model_name and model_version to identify
+  /// a specific model
+  /// \param stats The stats for all models
+  int64_t DetermineStatsModelVersion(
+      const cb::ModelIdentifier& model_identifier,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats);
+
+  /// \param start_status The model status at the start of the measurement.
+  /// \param end_status The model status at the end of the measurement.
+  /// \param server_stats Returns the summary that the fields recorded by server
+  /// are set.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error SummarizeServerStats(
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
+      ServerSideStats* server_stats);
+
+  /// \param model_identifier A pair of model_name and model_version to identify
+  /// a specific model.
+  /// \param start_status The model status at the start of the measurement.
+  /// \param end_status The model status at the end of the measurement.
+  /// \param server_stats Returns the summary that the fields recorded by server
+  /// are set.
+  /// \return cb::Error object indicating success or failure.
+  cb::Error SummarizeServerStats(
+      const cb::ModelIdentifier& model_identifier,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
+      ServerSideStats* server_stats);
+
   /// \param model_identifier A pair of model_name and model_version to identify
   /// a specific model.
   /// \param start_status The model status at the start of the measurement.
@@ -493,29 +525,6 @@ class InferenceProfiler {
   /// \return cb::Error object indicating success or failure.
   cb::Error SummarizeServerStatsHelper(
       const cb::ModelIdentifier& model_identifier,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
-      ServerSideStats* server_stats);
-
-  /// \param model_identifier A pair of model_name and model_version to identify
-  /// a specific model.
-  /// \param start_status The model status at the start of the measurement.
-  /// \param end_status The model status at the end of the measurement.
-  /// \param server_stats Returns the summary that the fields recorded by server
-  /// are set.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeServerStats(
-      const cb::ModelIdentifier& model_identifier,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
-      ServerSideStats* server_stats);
-
-  /// \param start_status The model status at the start of the measurement.
-  /// \param end_status The model status at the end of the measurement.
-  /// \param server_stats Returns the summary that the fields recorded by server
-  /// are set.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeServerStats(
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       ServerSideStats* server_stats);
