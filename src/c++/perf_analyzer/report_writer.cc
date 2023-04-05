@@ -260,7 +260,7 @@ ReportWriter::GenerateReport()
             ofs << "Server Cache Hit,";
             ofs << "Server Cache Miss,";
           }
-          ofs << "Client Recv";
+          ofs << "Client Recv" << std::endl;
 
           for (pa::PerfStatus& status : summary_) {
             auto it = status.server_stats.composing_models_stat.find(
