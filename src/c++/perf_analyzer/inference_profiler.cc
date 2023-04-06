@@ -1410,8 +1410,10 @@ InferenceProfiler::DetermineStatsModelVersion(
     int64_t* status_model_version)
 {
   // If model_version is unspecified then look in the stats to find the
-  // version with valid stats. If multiple versions have valid stats, use the
-  // highest numbered one and print a warning
+  // version with stats that incremented during the measurement.
+  //
+  // If multiple versions had incremented stats, use the highest numbered one
+  // and print a warning
   *status_model_version = -1;
   bool multiple_found = false;
   bool version_unspecified = model_identifier.second.empty();
