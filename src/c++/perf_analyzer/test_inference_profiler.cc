@@ -741,8 +741,8 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
   cb::ModelIdentifier model_identifier;
   cb::ModelStatistics old_stats;
   cb::ModelStatistics new_stats;
-  old_stats.inference_count_ = 1;
-  new_stats.inference_count_ = 2;
+  old_stats.queue_count_ = 1;
+  new_stats.queue_count_ = 2;
 
   int64_t expected_model_version;
   bool expect_warning = false;

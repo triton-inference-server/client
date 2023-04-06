@@ -1427,15 +1427,15 @@ InferenceProfiler::DetermineStatsModelVersion(
           model_identifier.first.compare(end_id.first) == 0;
 
       if (is_correct_model_name) {
-        uint64_t end_inference_count = end_stat.inference_count_;
-        uint64_t start_inference_count = 0;
+        uint64_t end_queue_count = end_stat.queue_count_;
+        uint64_t start_queue_count = 0;
 
         const auto& itr = start_stats.find(end_id);
         if (itr != start_stats.end()) {
-          start_inference_count = itr->second.inference_count_;
+          start_queue_count = itr->second.queue_count_;
         }
 
-        if (end_inference_count > start_inference_count) {
+        if (end_queue_count > start_queue_count) {
           int64_t this_version = std::stoll(end_id.second);
           if (*status_model_version != -1) {
             multiple_found = true;
