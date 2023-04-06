@@ -148,11 +148,12 @@ class TestInferenceProfiler : public InferenceProfiler {
 
   cb::Error DetermineStatsModelVersion(
       const cb::ModelIdentifier& model_identifier,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version)
   {
     return InferenceProfiler::DetermineStatsModelVersion(
-        model_identifier, stats, model_version);
+        model_identifier, start_stats, end_stats, model_version);
   }
 };
 
@@ -738,70 +739,92 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
 {
   TestInferenceProfiler tip{};
   cb::ModelIdentifier model_identifier;
-  cb::ModelStatistics empty_stats;
-  cb::ModelStatistics valid_stats;
-  empty_stats.inference_count_ = 0;
-  valid_stats.inference_count_ = 100;
+  cb::ModelStatistics old_stats;
+  cb::ModelStatistics new_stats;
+  old_stats.inference_count_ = 1;
+  new_stats.inference_count_ = 2;
 
   int64_t expected_model_version;
   bool expect_warning = false;
   bool expect_exception = false;
 
-  std::map<cb::ModelIdentifier, cb::ModelStatistics> stats_map;
+  std::map<cb::ModelIdentifier, cb::ModelStatistics> start_stats_map;
+  std::map<cb::ModelIdentifier, cb::ModelStatistics> end_stats_map;
 
-  SUBCASE("One entry - unspecified")
+  SUBCASE("One entry - unspecified - valid and in start")
   {
     model_identifier = {"ModelA", ""};
-    stats_map.insert({{"ModelA", "3"}, valid_stats});
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
     expected_model_version = 3;
+  }
+  SUBCASE("One entry - unspecified - valid and not in start")
+  {
+    model_identifier = {"ModelA", ""};
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("One entry - unspecified - invalid")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    expect_exception = true;
+    expected_model_version = -1;
   }
   SUBCASE("One entry - match")
   {
     model_identifier = {"ModelA", "3"};
-    stats_map.insert({{"ModelA", "3"}, valid_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
     expected_model_version = 3;
   }
   SUBCASE("One entry - miss")
   {
     model_identifier = {"ModelA", "2"};
-    stats_map.insert({{"ModelA", "3"}, valid_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
     expect_exception = true;
     expected_model_version = -1;
   }
   SUBCASE("Two entries - unspecified case 1")
   {
     model_identifier = {"ModelA", ""};
-    stats_map.insert({{"ModelA", "3"}, valid_stats});
-    stats_map.insert({{"ModelA", "4"}, empty_stats});
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
     expected_model_version = 3;
   }
   SUBCASE("Two entries - unspecified case 2")
   {
     model_identifier = {"ModelA", ""};
-    stats_map.insert({{"ModelA", "3"}, empty_stats});
-    stats_map.insert({{"ModelA", "4"}, valid_stats});
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, new_stats});
     expected_model_version = 4;
   }
   SUBCASE("Two entries - unspecified case 3")
   {
     model_identifier = {"ModelA", ""};
-    stats_map.insert({{"ModelA", "3"}, valid_stats});
-    stats_map.insert({{"ModelA", "4"}, valid_stats});
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    end_stats_map.insert({{"ModelA", "4"}, new_stats});
     expected_model_version = 4;
     expect_warning = 1;
   }
   SUBCASE("Two entries - specified hit")
   {
     model_identifier = {"ModelA", "3"};
-    stats_map.insert({{"ModelA", "3"}, empty_stats});
-    stats_map.insert({{"ModelA", "4"}, empty_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
     expected_model_version = 3;
   }
   SUBCASE("Two entries - specified miss")
   {
     model_identifier = {"ModelA", "2"};
-    stats_map.insert({{"ModelA", "3"}, empty_stats});
-    stats_map.insert({{"ModelA", "4"}, empty_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
     expected_model_version = -1;
     expect_exception = true;
   }
@@ -813,7 +836,7 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
   int64_t result_model_version;
   cb::Error result;
   result = tip.DetermineStatsModelVersion(
-      model_identifier, stats_map, &result_model_version);
+      model_identifier, start_stats_map, end_stats_map, &result_model_version);
 
   CHECK(result_model_version == expected_model_version);
   CHECK(result.IsOk() != expect_exception);

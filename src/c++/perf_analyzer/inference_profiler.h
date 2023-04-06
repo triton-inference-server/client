@@ -488,11 +488,13 @@ class InferenceProfiler {
   /// determine which version of the model should be gathered
   /// \param model_identifier A pair of model_name and model_version to identify
   /// a specific model
-  /// \param stats The stats for all models
-  /// \param model_version The determined model version
+  /// \param start_stats The stats for all models at the start of the
+  /// measurement \param end_stats The stats for all models at the end of the
+  /// measurement \param model_version The determined model version
   cb::Error DetermineStatsModelVersion(
       const cb::ModelIdentifier& model_identifier,
-      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& stats,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
 
   /// \param start_status The model status at the start of the measurement.
