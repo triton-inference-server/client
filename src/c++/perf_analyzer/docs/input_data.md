@@ -29,7 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Use the --help option to see complete documentation for all input
 data options. By default perf_analyzer sends random data to all the
 inputs of your model. You can select a different input data mode with
-the [`--input-data`](cli.md#--input-datazerorandompath) option:
+the [`--input-data`](cli.md#-input-datazerorandompath) option:
 
 - _random_: (default) Send random data for each input.
 - _zero_: Send zeros for each input.
@@ -59,10 +59,10 @@ For such cases you can provide data to be used with every inference
 request made by analyzer in a JSON file. The perf_analyzer will use
 the provided data in a round-robin order when sending inference
 requests. For sequence models, if a sequence length is specified via
-[`--sequence-length`](cli.md#--sequence-lengthn), perf_analyzer will
+[`--sequence-length`](cli.md#-sequence-lengthn), perf_analyzer will
 also loop through the provided data in a round-robin order up to the
 specified sequence length (with a percentage variation customizable
-via [`--sequence-length-variation`](cli.md#--sequence-length-variationn)).
+via [`--sequence-length-variation`](cli.md#-sequence-length-variationn)).
 Otherwise, the sequence length will be the number of inputs specified in
 user-provided input data.
 
@@ -282,6 +282,6 @@ tensor data over the network. You can instead instruct perf_analyzer to
 use system shared memory or CUDA shared memory to communicate tensor
 data. By using these options you can model the performance that you
 can achieve by using shared memory in your application. Use
-[--shared-memory=system](cli.md#--shared-memorynonesystemcuda])
+[--shared-memory=system](cli.md#-shared-memorynonesystemcuda)
 to use system (CPU) shared memory or --shared-memory=cuda to use CUDA
 shared memory.
