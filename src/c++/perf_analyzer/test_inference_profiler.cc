@@ -144,6 +144,17 @@ class TestInferenceProfiler : public InferenceProfiler {
   {
     InferenceProfiler::SummarizeOverhead(window_duration_ns, idle_ns, summary);
   }
+
+
+  cb::Error DetermineStatsModelVersion(
+      const cb::ModelIdentifier& model_identifier,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
+      const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
+      int64_t* model_version)
+  {
+    return InferenceProfiler::DetermineStatsModelVersion(
+        model_identifier, start_stats, end_stats, model_version);
+  }
 };
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
@@ -722,6 +733,116 @@ TEST_CASE(
         window_duration_s, num_sent_requests, perf_status);
     CHECK(perf_status.send_request_rate == doctest::Approx(50));
   }
+}
+
+TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
+{
+  TestInferenceProfiler tip{};
+  cb::ModelIdentifier model_identifier;
+  cb::ModelStatistics old_stats;
+  cb::ModelStatistics new_stats;
+  old_stats.queue_count_ = 1;
+  new_stats.queue_count_ = 2;
+
+  int64_t expected_model_version;
+  bool expect_warning = false;
+  bool expect_exception = false;
+
+  std::map<cb::ModelIdentifier, cb::ModelStatistics> start_stats_map;
+  std::map<cb::ModelIdentifier, cb::ModelStatistics> end_stats_map;
+
+  SUBCASE("One entry - unspecified - valid and in start")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("One entry - unspecified - valid and not in start")
+  {
+    model_identifier = {"ModelA", ""};
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("One entry - unspecified - invalid")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    expect_exception = true;
+    expected_model_version = -1;
+  }
+  SUBCASE("One entry - match")
+  {
+    model_identifier = {"ModelA", "3"};
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("One entry - miss")
+  {
+    model_identifier = {"ModelA", "2"};
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    expect_exception = true;
+    expected_model_version = -1;
+  }
+  SUBCASE("Two entries - unspecified case 1")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("Two entries - unspecified case 2")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, new_stats});
+    expected_model_version = 4;
+  }
+  SUBCASE("Two entries - unspecified case 3")
+  {
+    model_identifier = {"ModelA", ""};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    start_stats_map.insert({{"ModelA", "4"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    end_stats_map.insert({{"ModelA", "4"}, new_stats});
+    expected_model_version = 4;
+    expect_warning = 1;
+  }
+  SUBCASE("Two entries - specified hit")
+  {
+    model_identifier = {"ModelA", "3"};
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
+    expected_model_version = 3;
+  }
+  SUBCASE("Two entries - specified miss")
+  {
+    model_identifier = {"ModelA", "2"};
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "4"}, old_stats});
+    expected_model_version = -1;
+    expect_exception = true;
+  }
+
+
+  std::stringstream captured_cerr;
+  std::streambuf* old = std::cerr.rdbuf(captured_cerr.rdbuf());
+
+  int64_t result_model_version;
+  cb::Error result;
+  result = tip.DetermineStatsModelVersion(
+      model_identifier, start_stats_map, end_stats_map, &result_model_version);
+
+  CHECK(result_model_version == expected_model_version);
+  CHECK(result.IsOk() != expect_exception);
+  CHECK(captured_cerr.str().empty() != expect_warning);
+
+  std::cerr.rdbuf(old);
 }
 
 }}  // namespace triton::perfanalyzer
