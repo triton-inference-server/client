@@ -523,7 +523,7 @@ InferenceProfiler::Profile(
     bool& is_stable)
 {
   cb::Error err;
-  PerfStatus perf_status;
+  PerfStatus perf_status{};
 
   perf_status.concurrency = concurrent_request_count;
 
@@ -535,7 +535,6 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -557,6 +556,7 @@ InferenceProfiler::Profile(
       }
       meets_threshold = false;
     } else {
+      perf_statuses.push_back(perf_status);
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_,
@@ -579,7 +579,7 @@ InferenceProfiler::Profile(
     bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
-  PerfStatus perf_status;
+  PerfStatus perf_status{};
 
   perf_status.request_rate = request_rate;
 
@@ -593,7 +593,6 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -605,6 +604,7 @@ InferenceProfiler::Profile(
       std::cerr << "Failed to obtain stable measurement." << std::endl;
       meets_threshold = false;
     } else {
+      perf_statuses.push_back(perf_status);
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_,
@@ -627,7 +627,7 @@ InferenceProfiler::Profile(
     bool& is_stable)
 {
   cb::Error err;
-  PerfStatus perf_status;
+  PerfStatus perf_status{};
 
   RETURN_IF_ERROR(
       dynamic_cast<CustomLoadManager*>(manager_.get())->InitCustomIntervals());
@@ -639,7 +639,6 @@ InferenceProfiler::Profile(
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
-    perf_statuses.push_back(perf_status);
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
     if ((stabilizing_latency_ms >= latency_threshold_ms_) &&
@@ -651,6 +650,7 @@ InferenceProfiler::Profile(
       std::cerr << "Failed to obtain stable measurement." << std::endl;
       meets_threshold = false;
     } else {
+      perf_statuses.push_back(perf_status);
       err = Report(
           perf_status, percentile_, protocol_, verbose_, include_lib_stats_,
           include_server_stats_, parser_, should_collect_metrics_,
