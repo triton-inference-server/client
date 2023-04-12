@@ -221,8 +221,9 @@ components of the latency. Follow these steps:
 
 ### Server-side Prometheus metrics
 
-Perf Analyzer can collect [server-side metrics](metrics.md#gpu-metrics), such as
-GPU utilization and GPU power usage. To enable the collection of these metrics,
+Perf Analyzer can collect
+[server-side metrics](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/metrics.md#gpu-metrics)
+, such as GPU utilization and GPU power usage. To enable the collection of these metrics,
 use the `--collect-metrics` CLI option.
 
 Perf Analyzer defaults to access the metrics endpoint at
@@ -545,7 +546,9 @@ For gRPC, see the following options:
 
 More details here: https://grpc.github.io/grpc/cpp/structgrpc_1_1_ssl_credentials_options.html
 
-The [inference protocol gRPC SSL/TLS section](../customization_guide/inference_protocols.md#ssltls) describes server-side options to configure SSL/TLS in Triton's gRPC endpoint.
+The
+[inference protocol gRPC SSL/TLS section](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#ssltls)
+describes server-side options to configure SSL/TLS in Triton's gRPC endpoint.
 
 For HTTPS, the following options are exposed:
 
@@ -643,7 +646,8 @@ TensorFlow Session. There is a resource limit on the number of
 concurrent threads serving requests. When benchmarking at a higher
 request concurrency, you can see higher throughput because of this.  
 Unlike TFS, by default Triton is configured with only a single
-[instance count](model_configuration.md#instance-groups). Hence, at a higher request concurrency, most
+[instance count](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#instance-groups)
+. Hence, at a higher request concurrency, most
 of the requests are blocked on the instance availability. To
 configure Triton to behave like TFS, set the instance count to a
 reasonably high value and then set
@@ -732,7 +736,9 @@ that are optimized for Triton.
 Using third-party benchmark suites like jmeter fails to take advantage of the
 optimized libraries. Some of these optimizations includes but are not limited
 to:
-1. Using [binary tensor data extension](../protocol/extension_binary_data.md) with HTTP requests.
+1. Using
+[binary tensor data extension](https://github.com/triton-inference-server/server/blob/main/docs/protocol/extension_binary_data.md)
+with HTTP requests.
 2. Effective re-use of gRPC message allocation in subsequent requests.
 3. Avoiding extra memory copy via libcurl interface.
 
