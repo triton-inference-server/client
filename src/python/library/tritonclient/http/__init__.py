@@ -1755,7 +1755,9 @@ class InferInput:
     def __init__(self, name, shape, datatype):
         self._name = name
         self._shape = shape
-        self._datatype = datatype
+        # Support both TYPE_<DTYPE> and <DTYPE> as datatype rather than
+        # requiring user to remove the "TYPE_" prefix.
+        self._datatype = datatype.replace("TYPE_", "")
         self._parameters = {}
         self._data = None
         self._raw_data = None

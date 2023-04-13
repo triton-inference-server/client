@@ -156,6 +156,9 @@ def np_to_triton_dtype(np_dtype):
 
 
 def triton_to_np_dtype(dtype):
+    # Support both TYPE_<DTYPE> and <DTYPE> as datatype rather than
+    # requiring user to remove the "TYPE_" prefix.
+    dtype = dtype.replace("TYPE_", "")
     if dtype == "BOOL":
         return bool
     elif dtype == "INT8":

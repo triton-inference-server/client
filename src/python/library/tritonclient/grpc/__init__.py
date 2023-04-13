@@ -1799,7 +1799,9 @@ class InferInput:
         self._input.name = name
         self._input.ClearField('shape')
         self._input.shape.extend(shape)
-        self._input.datatype = datatype
+        # Support both TYPE_<DTYPE> and <DTYPE> as datatype rather than
+        # requiring user to remove the "TYPE_" prefix.
+        self._input.datatype = datatype.replace("TYPE_", "")
         self._raw_content = None
 
     def name(self):
