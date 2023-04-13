@@ -166,3 +166,53 @@ Concurrency,...,Avg GPU Utilization,Avg GPU Power Usage,Max GPU Memory Usage,Tot
 2,...,gpu_uuid_0:0.25;gpu_uuid_1:0.6;,gpu_uuid_0:25.6;gpu_uuid_1:77.2;,gpu_uuid_0:11000;gpu_uuid_1:17000;,gpu_uuid_0:50000;gpu_uuid_1:75000;,
 3,...,gpu_uuid_0:0.87;gpu_uuid_1:0.9;,gpu_uuid_0:87.1;gpu_uuid_1:71.7;,gpu_uuid_0:15000;gpu_uuid_1:22000;,gpu_uuid_0:50000;gpu_uuid_1:75000;,
 ```
+
+## Communication Protocol
+
+By default, Perf Analyzer uses HTTP to communicate with Triton. The gRPC
+protocol can be specificed with the [`-i [http|grpc]`](cli.md#-i-httpgrpc)
+option. If GRPC is selected the [`--streaming`](cli.md#--streaming) option can
+also be specified for gRPC streaming.
+
+### SSL/TLS Support
+
+Perf Analyzer can be used to benchmark Triton service behind SSL/TLS-enabled
+endpoints. These options can help in establishing secure connection with the
+endpoint and profile the server.
+
+For gRPC, see the following options:
+
+* [`--ssl-grpc-use-ssl`](cli.md#--ssl-grpc-use-ssl)
+* [`--ssl-grpc-root-certifications-file=<path>`](cli.md#--ssl-grpc-root-certifications-filepath)
+* [`--ssl-grpc-private-key-file=<path>`](cli.md#--ssl-grpc-private-key-filepath)
+* [`--ssl-grpc-certificate-chain-file=<path>`](cli.md#--ssl-grpc-certificate-chain-filepath)
+
+More details here:
+https://grpc.github.io/grpc/cpp/structgrpc_1_1_ssl_credentials_options.html
+
+The
+[inference protocol gRPC SSL/TLS section](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#ssltls)
+describes server-side options to configure SSL/TLS in Triton's gRPC endpoint.
+
+For HTTPS, the following options are exposed:
+
+* [`--ssl-https-verify-peer`](cli.md#--ssl-https-verify-peer01)
+* [`--ssl-https-verify-host`](cli.md#--ssl-https-verify-host012)
+* [`--ssl-https-ca-certificates-file`](cli.md#--ssl-https-ca-certificates-filepath)
+* [`--ssl-https-client-certificate-file`](cli.md#--ssl-https-client-certificate-filepath)
+* [`--ssl-https-client-certificate-type`](cli.md#--ssl-https-client-certificate-typepemder)
+* [`--ssl-https-private-key-file`](cli.md#--ssl-https-private-key-filepath)
+* [`--ssl-https-private-key-type`](cli.md#--ssl-https-private-key-typepemder)
+
+See [`--help`](cli.md#--help) for full documentation.
+
+Unlike gRPC, Triton's HTTP server endpoint can not be configured with SSL/TLS
+support.
+
+Note: Just providing these `--ssl-http-*` options to Perf Analyzer does not
+ensure the SSL/TLS is used in communication. If SSL/TLS is not enabled on the
+service endpoint, these options have no effect. The intent of exposing these
+options to a user of Perf Analyzer is to allow them to configure Perf Analyzer
+to benchmark Triton service behind SSL/TLS-enabled endpoints. In other words, if
+Triton is running behind a HTTPS server proxy, then these options would allow
+Perf Analyzer to profile Triton via exposed HTTPS proxy.
