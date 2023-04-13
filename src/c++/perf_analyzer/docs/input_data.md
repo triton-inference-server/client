@@ -282,6 +282,6 @@ tensor data over the network. You can instead instruct perf_analyzer to
 use system shared memory or CUDA shared memory to communicate tensor
 data. By using these options you can model the performance that you
 can achieve by using shared memory in your application. Use
-[--shared-memory=system](cli.md#--shared-memorynonesystemcuda])
+[--shared-memory=system](cli.md#--shared-memorynonesystemcuda)
 to use system (CPU) shared memory or --shared-memory=cuda to use CUDA
 shared memory.

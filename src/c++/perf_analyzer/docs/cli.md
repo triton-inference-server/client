@@ -86,6 +86,15 @@ via the `--triton-server-directory` and `--model-repository` options.
 
 Default is `triton`.
 
+#### `--bls-composing-models=<string>`
+
+Specifies the list of all BLS composing models as a comma separated list of 
+model names (with optional model version number after a colon for each) that may
+be called by the input BLS model. For example,
+`--bls-composing-models=modelA:3,modelB` would specify that modelA and modelB
+are composing models that may be called by the input BLS model, and that modelA
+will use version 3, while modelB's version is unspecified.
+
 #### `--model-signature-name=<string>`
 
 Specifies the signature name of the saved model to use.
@@ -308,11 +317,11 @@ Specifies the batch size for each request sent.
 
 Default is `1`.
 
-#### `--shape=<shape>`
+#### `--shape=<string>`
 
 Specifies the shape used for the specified input. The argument must be
 specified as 'name:shape' where the shape is a comma-separated list for
-dimension sizes. For example `--shape input_name:1,2,3` indicates that the
+dimension sizes. For example `--shape=input_name:1,2,3` indicates that the
 input `input_name` has tensor shape [ 1, 2, 3 ]. `--shape` may be specified
 multiple times to specify shapes for different inputs.
 
