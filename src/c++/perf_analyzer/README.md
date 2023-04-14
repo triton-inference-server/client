@@ -38,33 +38,40 @@ changes in performance as you experiment with different optimization strategies.
 
 ### Request Sending Modes
 
-- [Concurrency Mode]() simlulates traffic by maintaining a specific concurrency
-  of outgoing requests to the server
+- [Concurrency Mode](docs/request_sending_modes.md#concurrency-mode) simlulates
+  traffic by maintaining a specific concurrency of outgoing requests to the
+  server
 
-- [Request Rate Mode]() simulates traffic by sending consecutive requests at a
-  specific rate to the server
+- [Request Rate Mode](docs/request_sending_modes.md#request-rate-mode) simulates
+  traffic by sending consecutive requests at a specific rate to the server
 
-- [Custom Interval Mode]() simulates traffic by sending consecutive requests at
-  specific intervals to the server
+- [Custom Interval Mode](docs/request_sending_modes.md#custom-interval-mode)
+  simulates traffic by sending consecutive requests at specific intervals to the
+  server
 
 ### Performance Measurement Modes
 
-- [Time Windows Mode]() measures model performance repeatedly over a specific time
-  interval until performance has stabilized
+- [Time Windows Mode](docs/measurements_metrics.md#time-windows) measures model
+  performance repeatedly over a specific time interval until performance has
+  stabilized
 
-- [Count Windows Mode]() measures model performance repeatedly over a specific
-  number of requests until performance has stabilized
+- [Count Windows Mode](docs/measurements_metrics.md#count-windows) measures
+  model performance repeatedly over a specific number of requests until
+  performance has stabilized
 
 ### Other Features
 
-- [Sequence Models]() and [Ensemble Models]() can be profiled in addition to
-  standard/stateless models
+- [Sequence Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#stateful-models)
+  and
+  [Ensemble Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#ensemble-models)
+  can be profiled in addition to standard/stateless models
 
-- [Input Data]() to model inferences can be auto-generated or specified as well
-  as verifying output
+- [Input Data](docs/input_data.md) to model inferences can be auto-generated or
+  specified as well as verifying output
 
-- [TensorFlow Serving]() and [TorchServe]() can be used as the inference server
-  in addition to the default [Triton]() server
+- [TensorFlow Serving](docs/benchmarking.md#benchmarking-tensorflow-serving) and
+  [TorchServe](docs/benchmarking.md#benchmarking-torchserve) can be used as the
+  inference server in addition to the default Triton server
 
 <br>
 
@@ -161,6 +168,10 @@ have 1 outgoing request at all times.
 
 - [Installation](docs/install.md)
 - [Perf Analyzer CLI](docs/cli.md)
+- [Request Sending Modes](docs/request_sending_modes.md)
+- [Input Data](docs/input_data.md)
+- [Measurements & Metrics](docs/measurements_metrics.md)
+- [Benchmarking](docs/benchmarking.md)
 
 <br>
 

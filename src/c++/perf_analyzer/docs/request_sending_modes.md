@@ -26,29 +26,41 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# **Perf Analyzer Documentation**
+# Request Sending Modes
 
-| [Installation](README.md#installation) | [Getting Started](README.md#getting-started) | [User Guide](README.md#user-guide) |
-| -------------------------------------- | -------------------------------------------- | ---------------------------------- |
+Perf Analyzer has several modes for generating inference request traffic for a
+model.
 
-## **Installation**
+## Concurrency Mode
 
-See the [Installation Guide](install.md) for details on how to install Perf
-Analyzer.
+In concurrency mode, Perf Analyzer attempts to send inference requests to the
+server such that N requests are always outstanding during profiling. For
+example, when using
+[`--concurrency-range=4`](cli.md#--concurrency-rangestartendstep), Perf Analyzer
+will to attempt to have 4 outgoing inference requests at all times during
+profiling.
 
-## **Getting Started**
+## Request Rate Mode
 
-The [Quick Start Guide](../README.md#quick-start) will show you how to use Perf
-Analyzer to profile a simple PyTorch model.
+In request rate mode, Perf Analyzer attempts to send N inference requests per
+second to the server during profiling. For example, when using
+[`--request-rate-range=20](cli.md#--request-rate-rangestartendstep), Perf
+Analyzer will attempt to send 20 requests per second during profiling.
 
-## **User Guide**
+## Custom Interval Mode
 
-The User Guide describes the Perf Analyzer command line options, how to specify
-model input data, the performance measurement modes, the performance metrics and
-outputs, how to benchmark different servers, and more.
+In custom interval mode, Perf Analyzer attempts to send inference requests
+according to intervals (between requests, looping if necessary) provided by the
+user in the form of a text file with one time interval (in microseconds) per
+line. For example, when using
+[`--request-intervals=my_intervals.txt`](cli.md#--request-intervalspath),
+where `my_intervals.txt` contains:
 
-- [Perf Analyzer CLI](cli.md)
-- [Request Sending Modes](request_sending_modes.md)
-- [Input Data](input_data.md)
-- [Measurements & Metrics](measurements_metrics.md)
-- [Benchmarking](benchmarking.md)
+```
+100000
+200000
+500000
+```
+
+Perf Analyzer will attempt to send requests at the following times: 0.1s, 0.3s,
+0.8s, 0.9s, 1.1s, 1.6s, and so on, during profiling.
