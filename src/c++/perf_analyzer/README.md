@@ -36,17 +36,17 @@ changes in performance as you experiment with different optimization strategies.
 
 # Features
 
-### Request Sending Modes
+### Inference Load Modes
 
 - [Concurrency Mode](docs/request_sending_modes.md#concurrency-mode) simlulates
-  traffic by maintaining a specific concurrency of outgoing requests to the
+  load by maintaining a specific concurrency of outgoing requests to the
   server
 
 - [Request Rate Mode](docs/request_sending_modes.md#request-rate-mode) simulates
-  traffic by sending consecutive requests at a specific rate to the server
+  load by sending consecutive requests at a specific rate to the server
 
 - [Custom Interval Mode](docs/request_sending_modes.md#custom-interval-mode)
-  simulates traffic by sending consecutive requests at specific intervals to the
+  simulates load by sending consecutive requests at specific intervals to the
   server
 
 ### Performance Measurement Modes
@@ -168,7 +168,7 @@ have 1 outgoing request at all times.
 
 - [Installation](docs/install.md)
 - [Perf Analyzer CLI](docs/cli.md)
-- [Request Sending Modes](docs/request_sending_modes.md)
+- [Inference Load Modes](docs/inference_load_modes.md)
 - [Input Data](docs/input_data.md)
 - [Measurements & Metrics](docs/measurements_metrics.md)
 - [Benchmarking](docs/benchmarking.md)
