@@ -31,7 +31,8 @@ data options. By default perf_analyzer sends random data to all the
 inputs of your model. You can select a different input data mode with
 the [`--input-data`](cli.md#--input-datazerorandompath) option:
 
-- _random_: (default) Send random data for each input.
+- _random_: (default) Send random data for each input. Note: Perf Analyzer only
+  generates random data once per input and reuses that for all inferences
 - _zero_: Send zeros for each input.
 - directory path: A path to a directory containing a binary file for each input, named the same as the input. Each binary file must contain the data required for that input for a batch-1 request. Each file should contain the raw binary representation of the input in row-major order.
 - file path: A path to a JSON file containing data to be used with every inference request. See the "Real Input Data" section for further details. --input-data can be provided multiple times with different file paths to specific multiple JSON files.
