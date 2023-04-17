@@ -38,7 +38,7 @@ Analyzer.
 
 ## **Getting Started**
 
-The [Quick Start Guide](../README.md#quick-start) will show you how to use Perf
+The [Quick Start Guide](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#quick-start) will show you how to use Perf
 Analyzer to profile a simple PyTorch model.
 
 ## **User Guide**
