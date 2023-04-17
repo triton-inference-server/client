@@ -1,5 +1,5 @@
 <!--
-Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -292,15 +292,14 @@ Specifies type of data that will be used for input in inference requests. The
 available options are `zero`, `random`, and a path to a directory or a JSON
 file.
 
-When pointing to a JSON file, the user must adhere to the format described
-[here](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#input-data).
-By specifying JSON data, users can control data used with every request.
-Multiple data streams can be specified for a sequence model, and Perf Analyzer
-will select a data stream in a round-robin fashion for every new sequence.
-Muliple JSON files can also be provided
-(`--input-data json_file1.json --input-data json_file2.json`
-and so on) and Perf Analyzer will append data streams from each file. When
-using `--service-kind=torchserve`, make sure this option points to a JSON file.
+When pointing to a JSON file, the user must adhere to the format described in
+the [input data documentation](input_data.md). By specifying JSON data, users
+can control data used with every request. Multiple data streams can be specified
+for a sequence model, and Perf Analyzer will select a data stream in a
+round-robin fashion for every new sequence. Muliple JSON files can also be
+provided (`--input-data json_file1.json --input-data json_file2.json` and so on)
+and Perf Analyzer will append data streams from each file. When using
+`--service-kind=torchserve`, make sure this option points to a JSON file.
 
 If the option is path to a directory then the directory must contain a binary
 text file for each non-string/string input respectively, named the same as the
@@ -391,14 +390,14 @@ Default is `false`.
 
 #### `-H <string>`
 
-Specifies the header that will be added to HTTP requests (ignored for GRPC
+Specifies the header that will be added to HTTP requests (ignored for gRPC
 requests). The header must be specified as 'Header:Value'. `-H` may be
 specified multiple times to add multiple headers.
 
 #### `--grpc-compression-algorithm=[none|gzip|deflate]`
 
 Specifies the compression algorithm to be used by gRPC when sending requests.
-Only supported when grpc protocol is being used.
+Only supported when gRPC protocol is being used.
 
 Default is `none`.
 

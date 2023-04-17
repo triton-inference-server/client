@@ -1,5 +1,5 @@
 <!--
-Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -30,11 +30,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Triton SDK Container
 
-The recommended way to "install" Perf Analyzer is to run the pre-built executable from within the
-Triton SDK docker container available on the [NVIDIA GPU Cloud
-Catalog](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver). As long
-as the SDK container has its network exposed to the address and port of the
-inference server, Perf Analyzer will be able to run.
+The recommended way to "install" Perf Analyzer is to run the pre-built
+executable from within the Triton SDK docker container available on the
+[NVIDIA GPU Cloud Catalog](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
+As long as the SDK container has its network exposed to the address and port of
+the inference server, Perf Analyzer will be able to run.
 
 ```bash
 export RELEASE=<yy.mm> # e.g. to use the release from the end of February of 2023, do `export RELEASE=23.02`
@@ -61,12 +61,12 @@ perf_analyzer -m <model>
 ```
 
 **Warning**: If any runtime dependencies are missing, Perf Analyzer will produce
-errors showing which ones are missing. You will need to manually install
-them.
+errors showing which ones are missing. You will need to manually install them.
 
 ## Build from Source
 
-The Triton SDK container is used for building in so that some build and runtime dependencies are already installed.
+The Triton SDK container is used for building, so some build and runtime
+dependencies are already installed.
 
 ```bash
 export RELEASE=<yy.mm> # e.g. to use the release from the end of February of 2023, do `export RELEASE=23.02`
@@ -93,15 +93,14 @@ make -j8 cc-clients
 perf_analyzer -m <model>
 ```
 
-* To enable [CUDA shared
-memory](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#shared-memory),
-add `-DTRITON_ENABLE_GPU=ON` to the `cmake` command.
-* To enable [C API
-mode](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#benchmarking-triton-directly-via-c-api),
-add `-DTRITON_ENABLE_PERF_ANALYZER_C_API=ON` to the `cmake` command.
-* To enable [TorchServe
-backend](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#benchmarking-torchserve),
-add `-DTRITON_ENABLE_PERF_ANALYZER_TS=ON` to the `cmake` command.
-* To enable [Tensorflow Serving
-backend](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/README.md#benchmarking-tensorflow-serving),
-add `-DTRITON_ENABLE_PERF_ANALYZER_TFS=ON` to the `cmake` command.
+- To enable
+  [CUDA shared memory](input_data.md#shared-memory), add
+  `-DTRITON_ENABLE_GPU=ON` to the `cmake` command.
+- To enable
+  [C API mode](benchmarking.md#benchmarking-triton-directly-via-c-api), add
+  `-DTRITON_ENABLE_PERF_ANALYZER_C_API=ON` to the `cmake` command.
+- To enable [TorchServe backend](benchmarking.md#benchmarking-torchserve), add
+  `-DTRITON_ENABLE_PERF_ANALYZER_TS=ON` to the `cmake` command.
+- To enable
+  [Tensorflow Serving backend](benchmarking.md#benchmarking-tensorflow-serving),
+  add `-DTRITON_ENABLE_PERF_ANALYZER_TFS=ON` to the `cmake` command.
