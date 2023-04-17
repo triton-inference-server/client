@@ -69,6 +69,9 @@ broken-down into the following components:
   request waiting for an instance of the model to become available.
 - _compute_: The average time spent performing the actual inference,
   including any time needed to copy data to/from the GPU.
+- _overhead_: The average time spent in the endpoint that cannot be correctly
+  captured in the send/receive time with the way the GRPC and HTTP libraries are
+  structured
 
 The client latency time is broken-down further for HTTP and GRPC as
 follows:
