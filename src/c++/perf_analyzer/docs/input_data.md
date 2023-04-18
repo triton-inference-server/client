@@ -254,7 +254,7 @@ shapes:
 }
 ```
 
-Note that for STRING type, an element is represented by a 4-byte unsigned
+Note that for `STRING` type, an element is represented by a 4-byte unsigned
 integer giving the length followed by the actual bytes. The byte array to be
 encoded using base64 must include the 4-byte unsigned integers.
 
@@ -290,7 +290,7 @@ and data type `INT32`:
 ```
 
 Besides the above example, the validation outputs can be specified in the same
-variations described in real input data section.
+variations described in the real input data section.
 
 # Shared Memory
 

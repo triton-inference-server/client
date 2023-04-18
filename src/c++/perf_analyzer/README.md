@@ -125,43 +125,6 @@ docker run --gpus all --rm -it --net host nvcr.io/nvidia/tritonserver:${RELEASE}
 perf_analyzer -m simple
 ```
 
-### Step 6: Observe and Analyze Output
-
-```
-$ perf_analyzer -m simple
-*** Measurement Settings ***
-  Batch size: 1
-  Service Kind: Triton
-  Using "time_windows" mode for stabilization
-  Measurement window: 5000 msec
-  Using synchronous calls for inference
-  Stabilizing using average latency
-
-Request concurrency: 1
-  Client: 
-    Request count: 25348
-    Throughput: 1407.84 infer/sec
-    Avg latency: 708 usec (standard deviation 663 usec)
-    p50 latency: 690 usec
-    p90 latency: 881 usec
-    p95 latency: 926 usec
-    p99 latency: 1031 usec
-    Avg HTTP time: 700 usec (send/recv 102 usec + response wait 598 usec)
-  Server: 
-    Inference count: 25348
-    Execution count: 25348
-    Successful request count: 25348
-    Avg request latency: 382 usec (overhead 41 usec + queue 41 usec + compute input 26 usec + compute infer 257 usec + compute output 16 usec)
-
-Inferences/Second vs. Client Average Batch Latency
-Concurrency: 1, throughput: 1407.84 infer/sec, latency 708 usec
-```
-
-We can see from the output that the model was able to complete approximately
-1407.84 inferences per second, with an average latency of 708 microseconds per
-inference request. Concurrency of 1 meant that Perf Analyzer attempted to always
-have 1 outgoing request at all times.
-
 <br>
 
 # Documentation

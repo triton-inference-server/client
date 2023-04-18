@@ -41,7 +41,7 @@ additional overheads from HTTP/gRPC communication.
 
 ## Prerequisite
 
-Pull the Triton SDK and the Inference Server container images on target machine.
+Pull the Triton SDK and the Triton Server container images on target machine.
 Since you will need access to the `tritonserver` install, it might be easier if
 you copy the `perf_analyzer` binary to the Inference Server container.
 
@@ -60,7 +60,7 @@ the model repository path using the
 An example run would look like:
 
 ```
-$ perf_analyzer -m my_model --service-kind=triton_c_api --triton-server-directory=/opt/tritonserver --model-repository=/my_model_repository
+$ perf_analyzer -m my_model --service-kind=triton_c_api --triton-server-directory=/opt/tritonserver --model-repository=/my/model/repository
 ...
 *** Measurement Settings ***
   Service Kind: Triton C-API
@@ -94,12 +94,7 @@ Concurrency: 1, throughput: 19.6095 infer/sec, latency 50951 usec
 There are a few functionalities that are missing from C API mode. They are:
 
 1. Async mode ([`--async`](cli.md#--async))
-2. Shared memory mode
-   ([`--shared-memory=cuda`](cli.md#--shared-memorynonesystemcuda) or
-   [`--shared-memory=system`](cli.md#--shared-memorynonesystemcuda))
-3. Request rate mode
-   ([`--request-rate-range`](cli.md#--request-rate-rangestartendstep))
-4. For additonal known non-working cases, please refer to
+2. For additonal known non-working cases, please refer to
    [qa/L0_perf_analyzer_capi/test.sh](https://github.com/triton-inference-server/server/blob/main/qa/L0_perf_analyzer_capi/test.sh#L239-L277)
 
 # Benchmarking TensorFlow Serving
