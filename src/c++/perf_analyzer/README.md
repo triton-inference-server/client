@@ -38,14 +38,14 @@ changes in performance as you experiment with different optimization strategies.
 
 ### Inference Load Modes
 
-- [Concurrency Mode](docs/request_sending_modes.md#concurrency-mode) simlulates
+- [Concurrency Mode](docs/inference_load_modes.md#concurrency-mode) simlulates
   load by maintaining a specific concurrency of outgoing requests to the
   server
 
-- [Request Rate Mode](docs/request_sending_modes.md#request-rate-mode) simulates
+- [Request Rate Mode](docs/inference_load_modes.md#request-rate-mode) simulates
   load by sending consecutive requests at a specific rate to the server
 
-- [Custom Interval Mode](docs/request_sending_modes.md#custom-interval-mode)
+- [Custom Interval Mode](docs/inference_load_modes.md#custom-interval-mode)
   simulates load by sending consecutive requests at specific intervals to the
   server
 
@@ -124,6 +124,9 @@ docker run --gpus all --rm -it --net host nvcr.io/nvidia/tritonserver:${RELEASE}
 # inside sdk container
 perf_analyzer -m simple
 ```
+
+See the full [quick start guide](docs/quick_start.md) for additional tips on
+how to analyze output.
 
 <br>
 
