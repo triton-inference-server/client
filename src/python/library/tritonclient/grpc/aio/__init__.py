@@ -31,7 +31,7 @@ from tritonclient.grpc import _get_inference_request, _grpc_compression_type
 from tritonclient.grpc import InferInput, InferRequestedOutput
 
 
-class InferenceServerClient():
+class InferenceServerClient:
     """This feature is currently in beta and may be subject to change.
     
     An analogy of the tritonclient.grpc.InferenceServerClient to enable 
