@@ -47,9 +47,9 @@ you copy the `perf_analyzer` binary to the Inference Server container.
 
 ## Required parameters
 
-Use the `--help` option to see a complete list of supported command line
-arguments. By default, Perf Analyzer expects the Triton instance to already be
-running. You can configure C API mode using the
+Use the [`--help`](cli.md#--help) option to see a complete list of supported
+command line arguments. By default, Perf Analyzer expects the Triton instance to
+already be running. You can configure C API mode using the
 [`--service-kind`](cli.md#--service-kindtritontriton_c_apitfservingtorchserve)
 option. In additon, you will need to point Perf Analyzer to the Triton server
 library path using the
