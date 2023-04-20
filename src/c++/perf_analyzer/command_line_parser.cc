@@ -168,8 +168,8 @@ CLParser::Usage(const std::string& msg)
              "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
              "content file>\"]}, {...}...]}. The type of file here will depend "
              "on the model. In order to use \"triton_c_api\" you must specify "
-             "the Triton server install path and the model repository "
-             "path via the --library-name and --model-repo flags",
+             "the Triton server install path and the model repository path via "
+             "the --triton-server-directory and --model-repository flags",
              18)
       << std::endl;
 
