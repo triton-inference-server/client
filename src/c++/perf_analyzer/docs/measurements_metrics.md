@@ -35,7 +35,8 @@ Currently, Perf Analyzer has 2 measurement modes.
 When using time windows measurement mode
 ([`--measurement-mode=time_windows`](cli.md#--measurement-modetime_windowscount_windows)),
 Perf Analyzer will count how many requests have completed during a window of
-duration `X` (in milliseconds, via `--measurement-interval=X`, default is
+duration `X` (in milliseconds, via
+[`--measurement-interval=X`](cli.md#--measurement-intervaln), default is
 `5000`). This is the default measurement mode.
 
 ## Count Windows
