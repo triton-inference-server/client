@@ -44,7 +44,7 @@ profiling.
 
 In request rate mode, Perf Analyzer attempts to send N inference requests per
 second to the server during profiling. For example, when using
-[`--request-rate-range=20](cli.md#--request-rate-rangestartendstep), Perf
+[`--request-rate-range=20`](cli.md#--request-rate-rangestartendstep), Perf
 Analyzer will attempt to send 20 requests per second during profiling.
 
 ## Custom Interval Mode
