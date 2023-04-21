@@ -78,6 +78,30 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     return worker;
   }
 
+
+  void TestReconfigThreads(
+      const size_t concurrent_request_count,
+      std::vector<ConcurrencyWorker::ThreadConfig>& expected_configs)
+  {
+    ConcurrencyManager::ReconfigThreads(concurrent_request_count);
+
+    auto expected_size = expected_configs.size();
+
+    // Check that the correct number of threads are created
+    //
+    CHECK(threads_.size() == expected_size);
+
+    // Check that threads_config has correct concurrency and seq stat index
+    // offset
+    for (auto i = 0; i < expected_configs.size(); i++) {
+      CHECK(
+          threads_config_[i]->concurrency_ == expected_configs[i].concurrency_);
+      CHECK(
+          threads_config_[i]->seq_stat_index_offset_ ==
+          expected_configs[i].seq_stat_index_offset_);
+    }
+  }
+
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
 
   /// Test that the correct Infer function is called in the backend
@@ -833,5 +857,55 @@ TEST_CASE(
 
   CHECK(num_sent_requests == doctest::Approx(40).epsilon(0.1));
 }
+
+TEST_CASE(
+    "reconfigure_threads" *
+    doctest::description(
+        "This test confirms the side-effects of ReconfigureThreads(). Namely, "
+        "that the correct number of threads are created and that they are "
+        "configured properly"))
+{
+  PerfAnalyzerParameters params{};
+  std::vector<ConcurrencyWorker::ThreadConfig> expected_config_values;
+  std::vector<size_t> expected_concurrencies;
+  std::vector<size_t> expected_seq_stat_index_offsets;
+  size_t target_concurrency = 0;
+
+  SUBCASE("normal")
+  {
+    params.max_threads = 10;
+    target_concurrency = 5;
+
+    expected_concurrencies = {1, 1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3, 4};
+  }
+  SUBCASE("thread_limited")
+  {
+    params.max_threads = 5;
+    target_concurrency = 10;
+
+    expected_concurrencies = {2, 2, 2, 2, 2};
+    expected_seq_stat_index_offsets = {0, 2, 4, 6, 8};
+  }
+  SUBCASE("unbalanced")
+  {
+    params.max_threads = 6;
+    target_concurrency = 14;
+
+    expected_concurrencies = {3, 3, 2, 2, 2, 2};
+    expected_seq_stat_index_offsets = {0, 3, 6, 8, 10, 12};
+  }
+
+  for (auto i = 0; i < expected_concurrencies.size(); i++) {
+    ConcurrencyWorker::ThreadConfig tc(i);
+    tc.concurrency_ = expected_concurrencies[i];
+    tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    expected_config_values.push_back(tc);
+  }
+
+  TestConcurrencyManager tcm(params);
+  tcm.TestReconfigThreads(target_concurrency, expected_config_values);
+}
+
 
 }}  // namespace triton::perfanalyzer
