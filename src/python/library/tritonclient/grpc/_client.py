@@ -140,7 +140,6 @@ class InferenceServerClient:
     ------
     Exception
         If unable to create a client.
-
     """
 
     def __init__(self,

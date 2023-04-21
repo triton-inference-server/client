@@ -30,6 +30,17 @@ from tritonclient.grpc import service_pb2
 
 
 def get_error_grpc(rpc_error):
+    """Convert a gRPC error to an InferenceServerException.
+
+    Parameters
+    ----------
+    rpc_error : grpc.RpcError
+        The gRPC error
+
+    Returns
+    -------
+    InferenceServerException
+    """
     return InferenceServerException(
         msg=rpc_error.details(),
         status=str(rpc_error.code()),
@@ -37,6 +48,17 @@ def get_error_grpc(rpc_error):
 
 
 def raise_error_grpc(rpc_error):
+    """Raise an InferenceServerException from a gRPC error.
+
+    Parameters
+    ----------
+    rpc_error : grpc.RpcError
+        The gRPC error
+
+    Raises
+    -------
+    InferenceServerException
+    """
     raise get_error_grpc(rpc_error) from None
 
 

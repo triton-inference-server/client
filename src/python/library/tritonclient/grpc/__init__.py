@@ -33,7 +33,6 @@ except ModuleNotFoundError as error:
         'Specify \'grpc\' or \'all\' while installing the tritonclient '
         'package to include the support') from error
 
-import grpc
 from packaging import version
 import warnings
 from tritonclient.grpc import model_config_pb2
@@ -44,6 +43,9 @@ from ._client import KeepAliveOptions
 from ._infer_input import InferInput
 from ._infer_result import InferResult
 from ._requested_output import InferRequestedOutput
+from ._client import MAX_GRPC_MESSAGE_SIZE
+from tritonclient.utils import *
+from ._utils import raise_error, raise_error_grpc
 
 # Check grpc version and issue warnings if grpc version is known to have
 # memory leakage issue.
