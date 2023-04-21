@@ -232,12 +232,7 @@ ConcurrencyWorker::ResetFreeCtxIds()
 uint32_t
 ConcurrencyWorker::GetSeqStatIndex(uint32_t ctx_id)
 {
-  size_t offset = 0;
-  for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-    offset += threads_config_[i]->concurrency_;
-  }
-
-  return (offset + ctx_id);
+  return (thread_config_->seq_stat_index_offset_ + ctx_id);
 }
 
 uint32_t
