@@ -25,10 +25,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from tritonclient.grpc import *
-from tritonclient.grpc import _get_inference_request, _grpc_compression_type
-
-# In case user try to import dependency from here
-from tritonclient.grpc import InferInput, InferRequestedOutput
+from .._utils import _get_inference_request, _grpc_compression_type
+import base64
 
 
 class InferenceServerClient:

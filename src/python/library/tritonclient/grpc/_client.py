@@ -32,7 +32,7 @@ from ._utils import raise_error_grpc, raise_error, _grpc_compression_type, _get_
 from ._infer_result import InferResult
 from ._infer_stream import _InferStream, _RequestIterator
 from google.protobuf.json_format import MessageToJson
-import json
+import rapidjson as json
 import base64
 
 # Should be kept consistent with the value specified in
