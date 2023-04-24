@@ -30,6 +30,7 @@ try:
     from ._infer_input import InferInput
     from ._requested_output import InferRequestedOutput
     from ._utils import InferenceServerException
+    from ._infer_result import InferResult
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'

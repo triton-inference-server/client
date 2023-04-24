@@ -32,7 +32,10 @@ except ModuleNotFoundError as error:
     ) from error
 
 from tritonclient.http import *
+from urllib.parse import quote
 from .._utils import _get_query_string, _get_inference_request
+from .._infer_result import InferResult
+import rapidjson as json
 
 # In case user try to import dependency from here
 from tritonclient.http import InferInput, InferRequestedOutput

@@ -24,6 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gevent
+import gevent.pool
 from tritonclient.utils import raise_error
 from ._utils import _raise_if_error, _get_query_string, _get_inference_request
 from ._infer_result import InferResult
