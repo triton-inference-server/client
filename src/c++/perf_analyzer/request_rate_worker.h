@@ -64,6 +64,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
     size_t seq_stat_index_offset_;
 
     bool is_paused_;
+    uint32_t num_of_sequences_;
   };
 
   RequestRateWorker(
@@ -122,6 +123,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
+    // FIXME: need to update this from max_threads to size of threads
     ctx->SetNumActiveThreads(max_threads_);
   }
 
