@@ -196,6 +196,19 @@ RequestRateManager::PauseWorkers()
   // Pause all the threads
   execute_ = false;
 
+  ReconfigureThreads();
+
+  // Wait to see all threads are paused.
+  for (auto& thread_config : threads_config_) {
+    while (!thread_config->is_paused_) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
+
+void
+RequestRateManager::ReconfigureThreads()
+{
   if (threads_.empty()) {
     size_t num_of_threads = max_threads_;
     if (on_sequence_model_) {
@@ -223,13 +236,6 @@ RequestRateManager::PauseWorkers()
       threads_config_[i]->num_of_sequences_ = num_of_seq;
       threads_config_[i]->seq_stat_index_offset_ = seq_offset;
       seq_offset += num_of_seq;
-    }
-  }
-
-  // Wait to see all threads are paused.
-  for (auto& thread_config : threads_config_) {
-    while (!thread_config->is_paused_) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 }
