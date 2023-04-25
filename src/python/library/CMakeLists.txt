@@ -28,21 +28,6 @@ cmake_minimum_required (VERSION 3.18)
 
 add_subdirectory(tritonclient)
 
-# Needed for the backwards-compatibility
-# Remove when moving completely to the
-# new structure.
-if(${TRITON_ENABLE_PYTHON_GRPC})
-  file(COPY tritongrpcclient DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_GRPC
-if(${TRITON_ENABLE_PYTHON_HTTP})
-  file(COPY tritonhttpclient DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_HTTP
-file(COPY tritonclientutils DESTINATION .)
-if (NOT WIN32)
-  file(COPY tritonshmutils DESTINATION .)
-endif() # NOT WIN32
-####################################
-
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION ${TRITON_VERSION})
 configure_file(LICENSE.txt LICENSE.txt COPYONLY)
 configure_file(setup.py setup.py @ONLY)
