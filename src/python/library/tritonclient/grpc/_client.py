@@ -34,6 +34,8 @@ from ._infer_stream import _InferStream, _RequestIterator
 from google.protobuf.json_format import MessageToJson
 import rapidjson as json
 import base64
+from ._interceptor import ClientStreamInterceptor, ClientInterceptor
+from .._client import InferenceServerClientBase
 
 # Should be kept consistent with the value specified in
 # src/core/constants.h, which specifies MAX_GRPC_MESSAGE_SIZE
@@ -84,7 +86,7 @@ class KeepAliveOptions:
         self.http2_max_pings_without_data = http2_max_pings_without_data
 
 
-class InferenceServerClient:
+class InferenceServerClient(InferenceServerClientBase):
     """An InferenceServerClient object is used to perform any kind of
     communication with the InferenceServer using gRPC protocol. Most
     of the methods are thread-safe except start_stream, stop_stream
@@ -152,7 +154,7 @@ class InferenceServerClient:
                  creds=None,
                  keepalive_options=None,
                  channel_args=None):
-
+        super().__init__()
         # Explicitly check "is not None" here to support passing an empty
         # list to specify setting no channel arguments.
         if channel_args is not None:
@@ -194,8 +196,12 @@ class InferenceServerClient:
             self._channel = grpc.secure_channel(url, creds, options=channel_opt)
         else:
             self._channel = grpc.insecure_channel(url, options=channel_opt)
+        self._intercept_channel = grpc.intercept_channel(
+            self._channel, ClientInterceptor(self._plugin),
+            ClientStreamInterceptor(self._plugin))
+
         self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
-            self._channel)
+            self._intercept_channel)
         self._verbose = verbose
         self._stream = None
 
@@ -214,6 +220,7 @@ class InferenceServerClient:
 
         """
         self.stop_stream()
+        self._intercept_channel.close()
         self._channel.close()
 
     def is_server_live(self, headers=None):

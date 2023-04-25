@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,19 +23,15 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+class InferenceServerClientBase:
 
-cmake_minimum_required (VERSION 3.18)
+    def __init__(self):
+        self._plugin = None
+        pass
 
-if(${TRITON_ENABLE_PYTHON_HTTP})
-  file(COPY http DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_HTTP
+    def _pre_call(self, request):
+        if self._plugin != None:
+            self._plugin.execute(request)
 
-if(${TRITON_ENABLE_PYTHON_GRPC})
-  file(COPY grpc DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_GRPC
-
-file(COPY _client.py DESTINATION .)
-file(COPY _plugin.py DESTINATION .)
-file(COPY __init__.py DESTINATION .)
-
-add_subdirectory(utils)
+    def register_plugin(self, plugin):
+        self._plugin = plugin

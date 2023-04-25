@@ -35,6 +35,8 @@ import rapidjson as json
 import base64
 import zlib
 import gzip
+from .._client import InferenceServerClientBase
+from ._request import Request
 
 
 class InferAsyncRequest:
@@ -91,7 +93,7 @@ class InferAsyncRequest:
         return InferResult(response, self._verbose)
 
 
-class InferenceServerClient:
+class InferenceServerClient(InferenceServerClientBase):
     """An InferenceServerClient object is used to perform any kind of
     communication with the InferenceServer using http protocol. None
     of the methods are thread safe. The object is intended to be used
@@ -214,6 +216,13 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        request = Request(headers, query_params, None, request_uri)
+
+        # Call the triton client plugin
+        request = self._pre_call(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
 
         if self._base_uri is not None:
@@ -255,6 +264,13 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        request = Request(headers, query_params, request_body, request_uri)
+
+        # Call the triton client plugin
+        request = self._pre_call(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
 
         if self._base_uri is not None:

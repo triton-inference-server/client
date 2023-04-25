@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,19 +23,31 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import grpc
+from ._request import Request
 
-cmake_minimum_required (VERSION 3.18)
 
-if(${TRITON_ENABLE_PYTHON_HTTP})
-  file(COPY http DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_HTTP
+class ClientInterceptor(grpc.UnaryUnaryClientInterceptor):
 
-if(${TRITON_ENABLE_PYTHON_GRPC})
-  file(COPY grpc DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_GRPC
+    def __init__(self, plugin):
+        self._plugin = plugin
 
-file(COPY _client.py DESTINATION .)
-file(COPY _plugin.py DESTINATION .)
-file(COPY __init__.py DESTINATION .)
+    def intercept_unary_unary(self, continuation, client_call_details, request):
+        if self._plugin != None:
+            triton_request = Request(client_call_details.metadata)
+            self._plugin(triton_request)
+        return continuation(client_call_details, request)
 
-add_subdirectory(utils)
+
+class ClientStreamInterceptor(grpc.StreamStreamClientInterceptor):
+
+    def __init__(self, plugin):
+        self._plugin = plugin
+
+    def intercept_stream_stream(self, continuation, client_call_details,
+                                request_iterator):
+        request = Request(client_call_details.metadata)
+        if self._plugin != None:
+            self._plugin(request)
+        response_iterator = continuation(client_call_details, request_iterator)
+        return response_iterator

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,18 +24,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required (VERSION 3.18)
 
-if(${TRITON_ENABLE_PYTHON_HTTP})
-  file(COPY http DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_HTTP
+class Request:
 
-if(${TRITON_ENABLE_PYTHON_GRPC})
-  file(COPY grpc DESTINATION .)
-endif() # TRITON_ENABLE_PYTHON_GRPC
-
-file(COPY _client.py DESTINATION .)
-file(COPY _plugin.py DESTINATION .)
-file(COPY __init__.py DESTINATION .)
-
-add_subdirectory(utils)
+    def __init__(self, headers, query_params, body, uri):
+        # headers is part of the public API
+        self.headers = headers
+        self._body = body
+        self._query_params = query_params
+        self._uri = uri

@@ -36,6 +36,8 @@ from urllib.parse import quote
 from .._utils import _get_query_string, _get_inference_request
 from .._infer_result import InferResult
 import rapidjson as json
+from ..._client import InferenceServerClientBase
+from .._request import Request
 
 # In case user try to import dependency from here
 from tritonclient.http import InferInput, InferRequestedOutput
@@ -64,7 +66,7 @@ async def _raise_if_error(response):
         raise error
 
 
-class InferenceServerClient:
+class InferenceServerClient(InferenceServerClientBase):
     """This feature is currently in beta and may be subject to change.
     
     An analogy of the tritonclient.http.InferenceServerClient to enable 
@@ -124,6 +126,13 @@ class InferenceServerClient:
         aiohttp.ClientResponse
             The response from server.
         """
+        request = Request(headers, query_params, None, request_uri)
+
+        # Call the triton client plugin
+        request = self._pre_call(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
         req_url = self._url + "/" + request_uri
         if query_params is not None:
@@ -160,6 +169,13 @@ class InferenceServerClient:
         aiohttp.ClientResponse
             The response from server.
         """
+        request = Request(headers, query_params, request_body, request_uri)
+
+        # Call the triton client plugin
+        request = self._pre_call(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
         req_url = self._url + "/" + request_uri
         if query_params is not None:
