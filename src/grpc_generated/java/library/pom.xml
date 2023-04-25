@@ -32,7 +32,7 @@
 		<dependency> <!-- necessary for Java 9+ -->
 			<groupId>org.apache.tomcat</groupId>
 			<artifactId>tomcat-annotations-api</artifactId>
-			<version>10.1.4</version>
+			<version>11.0.0-M5</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency> <!-- necessary for Java 11+ -->
