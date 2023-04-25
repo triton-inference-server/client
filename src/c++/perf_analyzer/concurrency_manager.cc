@@ -132,15 +132,20 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     // and spread the remaining value
     size_t avg_concurrency = concurrent_request_count / threads_.size();
     size_t threads_add_one = concurrent_request_count % threads_.size();
-
+    size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
     for (size_t i = 0; i < threads_stat_.size(); i++) {
-      threads_config_[i]->concurrency_ =
-          avg_concurrency + (i < threads_add_one ? 1 : 0);
-      if (threads_config_[i]->concurrency_) {
+      size_t concurrency = avg_concurrency + (i < threads_add_one ? 1 : 0);
+
+      threads_config_[i]->concurrency_ = concurrency;
+      threads_config_[i]->seq_stat_index_offset_ = seq_stat_index_offset;
+      seq_stat_index_offset += concurrency;
+
+      if (concurrency) {
         active_threads_++;
       }
     }
+
     // TODO REFACTOR TMA-1043 the memory manager should have API to set
     // num_active_threads in constructor, as well as overwrite it here
   }
@@ -167,8 +172,8 @@ ConcurrencyManager::MakeWorker(
   return std::make_shared<ConcurrencyWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
       on_sequence_model_, async_, max_concurrency_, using_json_data_,
-      streaming_, batch_size_, threads_config_, wake_signal_, wake_mutex_,
-      active_threads_, execute_, infer_data_manager_, sequence_manager_);
+      streaming_, batch_size_, wake_signal_, wake_mutex_, active_threads_,
+      execute_, infer_data_manager_, sequence_manager_);
 }
 
 }}  // namespace triton::perfanalyzer

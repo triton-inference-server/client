@@ -42,7 +42,6 @@ class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
       const bool on_sequence_model, const bool async,
       const size_t max_concurrency, const bool using_json_data,
       const bool streaming, const int32_t batch_size,
-      std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
@@ -50,8 +49,8 @@ class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
       : ConcurrencyWorker(
             id, thread_stat, thread_config, parser, data_loader, factory,
             on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, batch_size, threads_config, wake_signal, wake_mutex,
-            active_threads, execute, infer_data_manager, sequence_manager)
+            streaming, batch_size, wake_signal, wake_mutex, active_threads,
+            execute, infer_data_manager, sequence_manager)
   {
     ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
       ConcurrencyWorker::Infer();

@@ -52,12 +52,17 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
  public:
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
-        : id_(index), stride_(stride), is_paused_(false)
+        : id_(index), stride_(stride), seq_stat_index_offset_(0),
+          is_paused_(false)
     {
     }
 
     uint32_t id_;
     uint32_t stride_;
+
+    // The starting sequence stat index for this worker
+    size_t seq_stat_index_offset_;
+
     bool is_paused_;
   };
 
@@ -104,7 +109,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override
   {
-    return (rand() % sequence_manager_->GetNumSequenceStatuses());
+    return (thread_config_->seq_stat_index_offset_ + ctx_id);
   }
 
   void CompleteOngoingSequences() override;
