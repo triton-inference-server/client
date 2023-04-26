@@ -224,18 +224,18 @@ RequestRateManager::ReconfigThreads()
           MakeWorker(threads_stat_.back(), threads_config_.back()));
 
       threads_.emplace_back(&IWorker::Infer, workers_.back());
-    }
 
-    // Compute the number of sequences for each thread (take floor)
-    // and spread the remaining value
-    size_t avg_num_seqs = num_of_sequences_ / threads_.size();
-    size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
-    size_t seq_offset = 0;
-    for (size_t i = 0; i < threads_.size(); i++) {
-      size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
-      threads_config_[i]->num_of_sequences_ = num_of_seq;
-      threads_config_[i]->seq_stat_index_offset_ = seq_offset;
-      seq_offset += num_of_seq;
+      // Compute the number of sequences for each thread (take floor)
+      // and spread the remaining value
+      size_t avg_num_seqs = num_of_sequences_ / threads_.size();
+      size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
+      size_t seq_offset = 0;
+      for (size_t i = 0; i < threads_.size(); i++) {
+        size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
+        threads_config_[i]->num_of_sequences_ = num_of_seq;
+        threads_config_[i]->seq_stat_index_offset_ = seq_offset;
+        seq_offset += num_of_seq;
+      }
     }
   }
 }
