@@ -37,6 +37,7 @@ try:
     from ._client import MAX_GRPC_MESSAGE_SIZE
     from tritonclient.utils import *
     from ._utils import raise_error, raise_error_grpc
+    from .._plugin import InferenceServerClientPlugin
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include grpc support. '

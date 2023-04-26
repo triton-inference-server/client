@@ -23,15 +23,28 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from tritonclient.utils import raise_error
+
+
 class InferenceServerClientBase:
 
     def __init__(self):
         self._plugin = None
-        pass
 
     def _pre_call(self, request):
         if self._plugin != None:
             self._plugin.execute(request)
 
     def register_plugin(self, plugin):
-        self._plugin = plugin
+        if self._plugin is None:
+            self._plugin = plugin
+        else:
+            raise_error("A plugin is already registered. Please "
+                        "unregister the previous plugin first before"
+                        " registering a new plugin.")
+
+    def unregister_plugin(self):
+        if self._plugin is None:
+            raise_error("No plugin has been registered.")
+
+        self._plugin = None

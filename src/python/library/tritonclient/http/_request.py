@@ -27,9 +27,6 @@
 
 class Request:
 
-    def __init__(self, headers, query_params, body, uri):
+    def __init__(self, headers):
         # headers is part of the public API
-        self.headers = headers
-        self._body = body
-        self._query_params = query_params
-        self._uri = uri
+        self.headers = headers if headers is not None else {}

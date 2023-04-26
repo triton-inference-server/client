@@ -26,7 +26,7 @@
 from abc import ABC, abstractmethod
 
 
-class AbstractInferenceServerClientPlugin(ABC):
+class InferenceServerClientPlugin(ABC):
 
     @abstractmethod
     def execute(self, request):

@@ -35,7 +35,7 @@ class ClientInterceptor(grpc.UnaryUnaryClientInterceptor):
     def intercept_unary_unary(self, continuation, client_call_details, request):
         if self._plugin != None:
             triton_request = Request(client_call_details.metadata)
-            self._plugin(triton_request)
+            self._plugin.execute(triton_request)
         return continuation(client_call_details, request)
 
 
@@ -48,6 +48,6 @@ class ClientStreamInterceptor(grpc.StreamStreamClientInterceptor):
                                 request_iterator):
         request = Request(client_call_details.metadata)
         if self._plugin != None:
-            self._plugin(request)
+            self._plugin.execute(request)
         response_iterator = continuation(client_call_details, request_iterator)
         return response_iterator

@@ -165,6 +165,7 @@ class InferenceServerClient(InferenceServerClientBase):
                  ssl_options=None,
                  ssl_context_factory=None,
                  insecure=False):
+        super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
         scheme = "https://" if ssl else "http://"
@@ -216,10 +217,10 @@ class InferenceServerClient(InferenceServerClientBase):
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
-        request = Request(headers, query_params, None, request_uri)
+        request = Request(headers)
 
         # Call the triton client plugin
-        request = self._pre_call(request)
+        self._pre_call(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers
@@ -264,10 +265,10 @@ class InferenceServerClient(InferenceServerClientBase):
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
-        request = Request(headers, query_params, request_body, request_uri)
+        request = Request(headers)
 
         # Call the triton client plugin
-        request = self._pre_call(request)
+        self._pre_call(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers

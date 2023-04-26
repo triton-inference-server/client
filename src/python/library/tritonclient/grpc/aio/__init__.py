@@ -28,6 +28,8 @@ from tritonclient.grpc import *
 from .._utils import _get_inference_request, _grpc_compression_type
 import base64
 from ..._client import InferenceServerClientBase
+from ._interceptor import ClientInterceptor, ClientStreamInterceptor
+from ..._plugin import InferenceServerClientPlugin
 
 
 class InferenceServerClient(InferenceServerClientBase):
@@ -50,7 +52,7 @@ class InferenceServerClient(InferenceServerClientBase):
                  creds=None,
                  keepalive_options=None,
                  channel_args=None):
-
+        super().__init__()
         # Explicitly check "is not None" here to support passing an empty
         # list to specify setting no channel arguments.
         if channel_args is not None:
@@ -96,8 +98,11 @@ class InferenceServerClient(InferenceServerClientBase):
                                                     options=channel_opt)
         else:
             self._channel = grpc.aio.insecure_channel(url, options=channel_opt)
+        self._intercept_channel = grpc.intercept_channel(
+            self._channel, ClientInterceptor(self._plugin),
+            ClientStreamInterceptor(self._plugin))
         self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
-            self._channel)
+            self._intercept_channel)
         self._verbose = verbose
 
     async def __aenter__(self):
@@ -112,6 +117,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         """
         await self._channel.close()
+        await self._intercept_channel.close()
 
     async def is_server_live(self, headers=None):
         """Refer to tritonclient.grpc.InferenceServerClient
