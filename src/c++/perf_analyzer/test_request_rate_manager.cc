@@ -99,8 +99,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     // seq stat index offset
     for (auto i = 0; i < expected_configs.size(); i++) {
       CHECK(
-          threads_config_[i]->num_of_sequences_ ==
-          expected_configs[i].num_of_sequences_);
+          threads_config_[i]->num_sequences_ ==
+          expected_configs[i].num_sequences_);
       CHECK(
           threads_config_[i]->seq_stat_index_offset_ ==
           expected_configs[i].seq_stat_index_offset_);
@@ -1830,7 +1830,7 @@ TEST_CASE("request rate manager - reconfigure threads")
        i++) {
     // TODO TMA-1168 remove stride
     RequestRateWorker::ThreadConfig tc(i, stride);
-    tc.num_of_sequences_ = expected_number_of_sequences_owned_by_thread[i];
+    tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
     tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
     expected_config_values.push_back(tc);
   }

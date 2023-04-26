@@ -62,9 +62,9 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
     // The starting sequence stat index for this worker
     size_t seq_stat_index_offset_;
+    uint32_t num_sequences_;
 
     bool is_paused_;
-    uint32_t num_of_sequences_;
   };
 
   RequestRateWorker(
