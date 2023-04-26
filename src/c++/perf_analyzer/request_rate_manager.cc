@@ -196,7 +196,7 @@ RequestRateManager::PauseWorkers()
   // Pause all the threads
   execute_ = false;
 
-  ReconfigureThreads();
+  ReconfigThreads();
 
   // Wait to see all threads are paused.
   for (auto& thread_config : threads_config_) {
@@ -207,7 +207,7 @@ RequestRateManager::PauseWorkers()
 }
 
 void
-RequestRateManager::ReconfigureThreads()
+RequestRateManager::ReconfigThreads()
 {
   if (threads_.empty()) {
     size_t num_of_threads = max_threads_;

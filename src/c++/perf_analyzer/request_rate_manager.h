@@ -135,7 +135,7 @@ class RequestRateManager : public LoadManager {
 
   // Reconfigure the number of threads based on max threads and number of
   // sequences
-  void ReconfigureThreads();
+  void ReconfigThreads();
 
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
