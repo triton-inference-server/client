@@ -26,7 +26,17 @@
 
 try:
     import grpc
-    from google.protobuf.json_format import MessageToJson
+    from tritonclient.grpc import model_config_pb2
+    from tritonclient.grpc import service_pb2
+    from tritonclient.grpc import service_pb2_grpc
+    from ._client import InferenceServerClient
+    from ._client import KeepAliveOptions
+    from ._infer_input import InferInput
+    from ._infer_result import InferResult
+    from ._requested_output import InferRequestedOutput
+    from ._client import MAX_GRPC_MESSAGE_SIZE
+    from tritonclient.utils import *
+    from ._utils import raise_error, raise_error_grpc
 except ModuleNotFoundError as error:
     raise RuntimeError(
         'The installation does not include grpc support. '
@@ -35,17 +45,6 @@ except ModuleNotFoundError as error:
 
 from packaging import version
 import warnings
-from tritonclient.grpc import model_config_pb2
-from tritonclient.grpc import service_pb2
-from tritonclient.grpc import service_pb2_grpc
-from ._client import InferenceServerClient
-from ._client import KeepAliveOptions
-from ._infer_input import InferInput
-from ._infer_result import InferResult
-from ._requested_output import InferRequestedOutput
-from ._client import MAX_GRPC_MESSAGE_SIZE
-from tritonclient.utils import *
-from ._utils import raise_error, raise_error_grpc
 
 # Check grpc version and issue warnings if grpc version is known to have
 # memory leakage issue.
