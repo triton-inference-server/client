@@ -120,10 +120,10 @@ ValidateResponse(
   }
 }
 
-template <typename T>
+template <typename Client>
 void
 InferWithRetries(
-    const std::unique_ptr<T>& client, tc::InferResult** results,
+    const std::unique_ptr<Client>& client, tc::InferResult** results,
     tc::InferOptions& options, std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs)
 {
@@ -159,8 +159,9 @@ InferWithRetries(
   }
 }
 
-// T should be tc::InferenceServerHttpClient or tc::InferenceServerGrpcClient
-template <typename T>
+// Client should be tc::InferenceServerHttpClient or
+// tc::InferenceServerGrpcClient
+template <typename Client>
 void
 RunSyncInfer(
     std::vector<tc::InferInput*>& inputs,
@@ -170,10 +171,10 @@ RunSyncInfer(
 {
   // If re-use is enabled then use these client objects else use new objects for
   // each inference request.
-  std::unique_ptr<T> client_reuse;
+  std::unique_ptr<Client> client_reuse;
   if (reuse) {
     FAIL_IF_ERR(
-        T::Create(&client_reuse, url, verbose), "unable to create client");
+        Client::Create(&client_reuse, url, verbose), "unable to create client");
   }
 
   for (size_t i = 0; i < repetitions; ++i) {
@@ -183,9 +184,10 @@ RunSyncInfer(
           client_reuse->Infer(&results, options, inputs, outputs),
           "unable to run model");
     } else {
-      std::unique_ptr<T> client;
-      FAIL_IF_ERR(T::Create(&client, url, verbose), "unable to create client");
-      InferWithRetries<T>(client, &results, options, inputs, outputs);
+      std::unique_ptr<Client> client;
+      FAIL_IF_ERR(
+          Client::Create(&client, url, verbose), "unable to create client");
+      InferWithRetries<Client>(client, &results, options, inputs, outputs);
     }
 
     std::shared_ptr<tc::InferResult> results_ptr(results);
