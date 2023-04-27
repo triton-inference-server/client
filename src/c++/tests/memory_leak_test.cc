@@ -50,7 +50,7 @@ namespace {
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<tc::InferResult> result)
+    const std::string& name, const std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -107,7 +107,7 @@ ValidateResult(
 
 void
 ValidateResponse(
-    std::shared_ptr<tc::InferResult> results_ptr,
+    const std::shared_ptr<tc::InferResult> results_ptr,
     const std::vector<int32_t>& input0_data)
 {
   // Validate results
@@ -127,32 +127,24 @@ InferWithRetries(
     tc::InferOptions& options, std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs)
 {
-  // Exit early if we succeed first try
   auto err = client->Infer(results, options, inputs, outputs);
-  if (err.IsOk()) {
-    return;
-  }
 
   // If the host runs out of available sockets due to TIME_WAIT, sleep and
   // retry on failure to give time for sockets to become available.
   int max_retries = 5;
   int sleep_secs = 60;
-  bool success = false;
-  for (int i = 0; i < max_retries; i++) {
+  for (int i = 0; !err.IsOk() && i < max_retries; i++) {
     std::cerr << "Error: " << err << std::endl;
     std::cerr << "Sleeping for " << sleep_secs
               << " seconds and retrying. [Attempt: " << i + 1 << "/"
               << max_retries << "]" << std::endl;
     sleep(sleep_secs);
 
+    // Retry and break from loop on success
     err = client->Infer(results, options, inputs, outputs);
-    if (err.IsOk()) {
-      success = true;
-      break;
-    }
   }
 
-  if (!success) {
+  if (!err.IsOk()) {
     std::cerr << "error: Exceeded max tries [" << max_retries
               << "] on inference without success" << std::endl;
     exit(1);
@@ -171,25 +163,18 @@ RunSyncInfer(
 {
   // If re-use is enabled then use these client objects else use new objects for
   // each inference request.
-  std::unique_ptr<Client> client_reuse;
-  if (reuse) {
-    FAIL_IF_ERR(
-        Client::Create(&client_reuse, url, verbose), "unable to create client");
-  }
+  std::unique_ptr<Client> client;
+  FAIL_IF_ERR(Client::Create(&client, url, verbose), "unable to create client");
 
   for (size_t i = 0; i < repetitions; ++i) {
-    tc::InferResult* results;
-    if (reuse) {
-      FAIL_IF_ERR(
-          client_reuse->Infer(&results, options, inputs, outputs),
-          "unable to run model");
-    } else {
-      std::unique_ptr<Client> client;
+    if (!reuse) {
+      // Create new client connection on every request if reuse flag not set
       FAIL_IF_ERR(
           Client::Create(&client, url, verbose), "unable to create client");
-      InferWithRetries<Client>(client, &results, options, inputs, outputs);
     }
 
+    tc::InferResult* results;
+    InferWithRetries<Client>(client, &results, options, inputs, outputs);
     std::shared_ptr<tc::InferResult> results_ptr(results);
     ValidateResponse(results_ptr, input0_data);
   }

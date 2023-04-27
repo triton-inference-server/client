@@ -1466,15 +1466,15 @@ InferenceServerHttpClient::Infer(
   // RECV_END will be set.
   auto curl_status = curl_easy_perform(easy_handle_);
   if (curl_status == CURLE_OPERATION_TIMEDOUT) {
-    sync_request->http_code_ = 499;
-  } else if (curl_status != CURLE_OK) {
-    if (verbose_) {
-      std::cout << "Curl failed with return code: " << curl_status << std::endl;
-    }
+    std::cerr << "Curl failed with return code: " << curl_status << std::endl;
     return Error(
-        "HTTP client failed [400]: " +
+        "HTTP client failed (Deadline Exceeded): " +
         std::string(curl_easy_strerror(curl_status)));
-  } else {
+  } else if (curl_status != CURLE_OK) {
+    std::cerr << "Curl failed with return code: " << curl_status << std::endl;
+    return Error(
+        "HTTP client failed: " + std::string(curl_easy_strerror(curl_status)));
+  } else {  // Success
     curl_easy_getinfo(
         easy_handle_, CURLINFO_RESPONSE_CODE, &sync_request->http_code_);
   }
