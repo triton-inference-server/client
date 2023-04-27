@@ -87,7 +87,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   void TestReconfigThreads(
       std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
   {
-    RequestRateManager::ReconfigThreads();
+    RequestRateManager::ConfigureThreads();
 
     auto expected_size = expected_configs.size();
 
@@ -112,6 +112,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   void TestSchedule(double rate, PerfAnalyzerParameters params)
   {
     PauseWorkers();
+    ConfigureThreads();
     GenerateSchedule(rate);
 
     nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *

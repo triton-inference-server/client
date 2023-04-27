@@ -88,6 +88,7 @@ cb::Error
 RequestRateManager::ChangeRequestRate(const double request_rate)
 {
   PauseWorkers();
+  ConfigureThreads();
   // Can safely update the schedule
   GenerateSchedule(request_rate);
   ResumeWorkers();
@@ -99,6 +100,7 @@ cb::Error
 RequestRateManager::ResetWorkers()
 {
   PauseWorkers();
+  ConfigureThreads();
   ResumeWorkers();
 
   return cb::Error::Success;
@@ -196,8 +198,6 @@ RequestRateManager::PauseWorkers()
   // Pause all the threads
   execute_ = false;
 
-  ReconfigThreads();
-
   // Wait to see all threads are paused.
   for (auto& thread_config : threads_config_) {
     while (!thread_config->is_paused_) {
@@ -207,7 +207,7 @@ RequestRateManager::PauseWorkers()
 }
 
 void
-RequestRateManager::ReconfigThreads()
+RequestRateManager::ConfigureThreads()
 {
   if (threads_.empty()) {
     size_t num_of_threads = max_threads_;
