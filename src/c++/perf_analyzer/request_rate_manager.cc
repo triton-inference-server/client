@@ -210,10 +210,11 @@ void
 RequestRateManager::ConfigureThreads()
 {
   if (threads_.empty()) {
-    size_t num_of_threads = max_threads_;
-    if (on_sequence_model_) {
-      num_of_threads = std::min(max_threads_, num_of_sequences_);
-    }
+    size_t num_of_threads = DetermineNumThreads();
+    // max_threads_;
+    // if (on_sequence_model_) {
+    //   num_of_threads = std::min(max_threads_, num_of_sequences_);
+    // }
     while (threads_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
@@ -257,11 +258,26 @@ RequestRateManager::MakeWorker(
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
 {
   size_t id = workers_.size();
+  size_t num_of_threads = DetermineNumThreads();
+  // max_threads_;
+  // if (on_sequence_model_) {
+  //   num_of_threads = std::min(max_threads_, num_of_sequences_);
+  // }
   return std::make_shared<RequestRateWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
-      on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+      on_sequence_model_, async_, num_of_threads, using_json_data_, streaming_,
       batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
       infer_data_manager_, sequence_manager_);
+}
+
+size_t
+RequestRateManager::DetermineNumThreads()
+{
+  size_t num_of_threads = max_threads_;
+  if (on_sequence_model_) {
+    num_of_threads = std::min(max_threads_, num_of_sequences_);
+  }
+  return num_of_threads;
 }
 
 

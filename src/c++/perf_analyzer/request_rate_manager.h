@@ -145,6 +145,9 @@ class RequestRateManager : public LoadManager {
       std::shared_ptr<ThreadStat>,
       std::shared_ptr<RequestRateWorker::ThreadConfig>);
 
+  // Determine number of threads based on sequence model and max threads
+  size_t DetermineNumThreads();
+
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
