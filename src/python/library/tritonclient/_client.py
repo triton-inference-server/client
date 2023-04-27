@@ -35,6 +35,10 @@ class InferenceServerClientBase:
         if self._plugin != None:
             self._plugin.execute(request)
 
+    async def _async_pre_call(self, request):
+        if self._plugin != None:
+            await self._plugin.execute(request)
+
     def register_plugin(self, plugin):
         if self._plugin is None:
             self._plugin = plugin

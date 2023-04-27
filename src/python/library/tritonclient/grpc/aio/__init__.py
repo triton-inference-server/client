@@ -29,7 +29,7 @@ from .._utils import _get_inference_request, _grpc_compression_type
 import base64
 from ..._client import InferenceServerClientBase
 from ._interceptor import ClientInterceptor, ClientStreamInterceptor
-from ..._plugin import InferenceServerClientPlugin
+from ..._async_plugin import InferenceServerClientPlugin
 
 
 class InferenceServerClient(InferenceServerClientBase):

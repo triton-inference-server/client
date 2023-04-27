@@ -38,7 +38,7 @@ from .._infer_result import InferResult
 import rapidjson as json
 from ..._client import InferenceServerClientBase
 from .._request import Request
-from ..._plugin import InferenceServerClientPlugin
+from ..._async_plugin import InferenceServerClientPlugin
 
 # In case user try to import dependency from here
 from tritonclient.http import InferInput, InferRequestedOutput
@@ -131,7 +131,7 @@ class InferenceServerClient(InferenceServerClientBase):
         request = Request(headers)
 
         # Call the triton client plugin
-        self._pre_call(request)
+        await self._async_pre_call(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers
@@ -174,7 +174,7 @@ class InferenceServerClient(InferenceServerClientBase):
         request = Request(headers)
 
         # Call the triton client plugin
-        self._pre_call(request)
+        await self._async_pre_call(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers

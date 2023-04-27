@@ -113,6 +113,8 @@ if __name__ == '__main__':
                                                    'tritonclient'))
     cpfile('tritonclient/_plugin.py', os.path.join(FLAGS.whl_dir,
                                                    'tritonclient'))
+    cpfile('tritonclient/_async_plugin.py',
+           os.path.join(FLAGS.whl_dir, 'tritonclient'))
 
     # Needed for backwards-compatibility; remove when moving
     # completely to the new structure.
