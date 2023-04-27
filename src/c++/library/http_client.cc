@@ -1468,7 +1468,12 @@ InferenceServerHttpClient::Infer(
   if (curl_status == CURLE_OPERATION_TIMEDOUT) {
     sync_request->http_code_ = 499;
   } else if (curl_status != CURLE_OK) {
-    sync_request->http_code_ = 400;
+    if (verbose_) {
+      std::cout << "Curl failed with return code: " << curl_status << std::endl;
+    }
+    return Error(
+        "HTTP client failed [400]: " +
+        std::string(curl_easy_strerror(curl_status)));
   } else {
     curl_easy_getinfo(
         easy_handle_, CURLINFO_RESPONSE_CODE, &sync_request->http_code_);
@@ -1487,7 +1492,6 @@ InferenceServerHttpClient::Infer(
 
   return err;
 }
-
 
 Error
 InferenceServerHttpClient::AsyncInfer(
