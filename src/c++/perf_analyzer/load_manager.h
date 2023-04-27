@@ -99,15 +99,6 @@ class LoadManager {
   /// \return the batch size used for the inference requests
   size_t BatchSize() const { return batch_size_; }
 
-  /// Resets all worker thread states to beginning of schedule.
-  /// \return cb::Error object indicating success or failure.
-  virtual cb::Error ResetWorkers()
-  {
-    return cb::Error(
-        "resetting worker threads not supported for this load manager.",
-        pa::GENERIC_ERROR);
-  }
-
   /// Count the number of requests collected until now.
   uint64_t CountCollectedRequests();
 
