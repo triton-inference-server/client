@@ -77,6 +77,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     size_t intervals_index = 0;
 
     PauseWorkers();
+    ConfigureThreads();
     GenerateSchedule();
 
     // Keep calling GetNextTimestamp for the entire test_duration to make sure

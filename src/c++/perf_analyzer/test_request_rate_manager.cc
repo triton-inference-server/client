@@ -84,11 +84,35 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return worker;
   }
 
+  void TestConfigureThreads(
+      std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
+  {
+    RequestRateManager::ConfigureThreads();
+
+    auto expected_size = expected_configs.size();
+
+    // Check that the correct number of threads are created
+    //
+    CHECK(threads_.size() == expected_size);
+
+    // Check that threads_config has correct number of sequences and
+    // seq stat index offset
+    for (auto i = 0; i < expected_configs.size(); i++) {
+      CHECK(
+          threads_config_[i]->num_sequences_ ==
+          expected_configs[i].num_sequences_);
+      CHECK(
+          threads_config_[i]->seq_stat_index_offset_ ==
+          expected_configs[i].seq_stat_index_offset_);
+    }
+  }
+
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
 
   void TestSchedule(double rate, PerfAnalyzerParameters params)
   {
     PauseWorkers();
+    ConfigureThreads();
     GenerateSchedule(rate);
 
     nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *
@@ -1691,6 +1715,66 @@ TEST_CASE(
   const size_t num_sent_requests{trrm.GetAndResetNumSentRequests()};
 
   CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
+}
+
+TEST_CASE("request rate manager - Configure threads")
+{
+  PerfAnalyzerParameters params{};
+  std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
+  std::vector<size_t> expected_number_of_sequences_owned_by_thread;
+  std::vector<size_t> expected_seq_stat_index_offsets;
+  bool is_sequence_model = true;
+  bool is_decoupled_model = false;
+  bool use_mock_infer = true;
+
+  SUBCASE("normal")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+
+    expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3};
+  }
+
+  SUBCASE("max_threads > num_seqs")
+  {
+    params.max_threads = 10;
+    params.num_of_sequences = 4;
+
+    expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3};
+  }
+
+  SUBCASE("num_seqs > max_threads")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 10;
+
+    expected_number_of_sequences_owned_by_thread = {3, 3, 2, 2};
+    expected_seq_stat_index_offsets = {0, 3, 6, 8};
+  }
+
+  SUBCASE("not divisible")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+
+    expected_number_of_sequences_owned_by_thread = {2, 2, 2, 1};
+    expected_seq_stat_index_offsets = {0, 2, 4, 6};
+  }
+
+  uint32_t stride = params.max_threads;
+  for (auto i = 0; i < expected_number_of_sequences_owned_by_thread.size();
+       i++) {
+    // TODO TMA-1168 remove stride
+    RequestRateWorker::ThreadConfig tc(i, stride);
+    tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
+    tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    expected_config_values.push_back(tc);
+  }
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled_model, use_mock_infer);
+  trrm.TestConfigureThreads(expected_config_values);
 }
 
 }}  // namespace triton::perfanalyzer

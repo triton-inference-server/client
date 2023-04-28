@@ -129,6 +129,8 @@ class RequestRateManager : public LoadManager {
   // Pauses the worker threads
   void PauseWorkers();
 
+  void ConfigureThreads();
+
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
 
@@ -136,6 +138,8 @@ class RequestRateManager : public LoadManager {
   virtual std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat>,
       std::shared_ptr<RequestRateWorker::ThreadConfig>);
+
+  size_t DetermineNumThreads();
 
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
