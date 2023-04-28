@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -1466,12 +1466,10 @@ InferenceServerHttpClient::Infer(
   // RECV_END will be set.
   auto curl_status = curl_easy_perform(easy_handle_);
   if (curl_status == CURLE_OPERATION_TIMEDOUT) {
-    std::cerr << "Curl failed with return code: " << curl_status << std::endl;
     return Error(
         "HTTP client failed (Deadline Exceeded): " +
         std::string(curl_easy_strerror(curl_status)));
   } else if (curl_status != CURLE_OK) {
-    std::cerr << "Curl failed with return code: " << curl_status << std::endl;
     return Error(
         "HTTP client failed: " + std::string(curl_easy_strerror(curl_status)));
   } else {  // Success
