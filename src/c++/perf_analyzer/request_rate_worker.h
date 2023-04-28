@@ -62,6 +62,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
     // The starting sequence stat index for this worker
     size_t seq_stat_index_offset_;
+    uint32_t num_sequences_;
 
     bool is_paused_;
   };
@@ -72,7 +73,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async, const size_t max_threads,
+      const bool on_sequence_model, const bool async, const size_t num_threads,
       const bool using_json_data, const bool streaming,
       const int32_t batch_size, std::condition_variable& wake_signal,
       std::mutex& wake_mutex, bool& execute,
@@ -83,7 +84,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
             id, thread_stat, parser, data_loader, factory, on_sequence_model,
             async, streaming, batch_size, using_json_data, wake_signal,
             wake_mutex, execute, infer_data_manager, sequence_manager),
-        thread_config_(thread_config), max_threads_(max_threads),
+        thread_config_(thread_config), num_threads_(num_threads),
         start_time_(start_time)
   {
   }
@@ -97,7 +98,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
  private:
   RateSchedulePtr_t schedule_;
 
-  const size_t max_threads_;
+  const size_t num_threads_;
   std::chrono::steady_clock::time_point& start_time_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
@@ -122,7 +123,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
-    ctx->SetNumActiveThreads(max_threads_);
+    ctx->SetNumActiveThreads(num_threads_);
   }
 
 #ifndef DOCTEST_CONFIG_DISABLE

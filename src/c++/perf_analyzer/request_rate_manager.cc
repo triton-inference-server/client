@@ -88,6 +88,7 @@ cb::Error
 RequestRateManager::ChangeRequestRate(const double request_rate)
 {
   PauseWorkers();
+  ConfigureThreads();
   // Can safely update the schedule
   GenerateSchedule(request_rate);
   ResumeWorkers();
@@ -187,24 +188,40 @@ RequestRateManager::PauseWorkers()
   // Pause all the threads
   execute_ = false;
 
+  // Wait to see all threads are paused.
+  for (auto& thread_config : threads_config_) {
+    while (!thread_config->is_paused_) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
+
+void
+RequestRateManager::ConfigureThreads()
+{
   if (threads_.empty()) {
-    while (threads_.size() < max_threads_) {
+    size_t num_of_threads = DetermineNumThreads();
+    while (threads_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
       threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
+          new RequestRateWorker::ThreadConfig(threads_.size(), num_of_threads));
 
       workers_.push_back(
           MakeWorker(threads_stat_.back(), threads_config_.back()));
 
       threads_.emplace_back(&IWorker::Infer, workers_.back());
     }
-  }
-
-  // Wait to see all threads are paused.
-  for (auto& thread_config : threads_config_) {
-    while (!thread_config->is_paused_) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    // Compute the number of sequences for each thread (take floor)
+    // and spread the remaining value
+    size_t avg_num_seqs = num_of_sequences_ / threads_.size();
+    size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
+    size_t seq_offset = 0;
+    for (size_t i = 0; i < threads_.size(); i++) {
+      size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
+      threads_config_[i]->num_sequences_ = num_of_seq;
+      threads_config_[i]->seq_stat_index_offset_ = seq_offset;
+      seq_offset += num_of_seq;
     }
   }
 }
@@ -226,11 +243,22 @@ RequestRateManager::MakeWorker(
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
 {
   size_t id = workers_.size();
+  size_t num_of_threads = DetermineNumThreads();
   return std::make_shared<RequestRateWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
-      on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+      on_sequence_model_, async_, num_of_threads, using_json_data_, streaming_,
       batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
       infer_data_manager_, sequence_manager_);
+}
+
+size_t
+RequestRateManager::DetermineNumThreads()
+{
+  size_t num_of_threads = max_threads_;
+  if (on_sequence_model_) {
+    num_of_threads = std::min(max_threads_, num_of_sequences_);
+  }
+  return num_of_threads;
 }
 
 
