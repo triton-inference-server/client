@@ -23,31 +23,11 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import grpc
-from ._request import Request
+from abc import ABC, abstractmethod
 
 
-class ClientInterceptor(grpc.UnaryUnaryClientInterceptor):
+class InferenceServerClientPlugin(ABC):
 
-    def __init__(self, plugin):
-        self._plugin = plugin
-
-    def intercept_unary_unary(self, continuation, client_call_details, request):
-        if self._plugin != None:
-            triton_request = Request(client_call_details.metadata)
-            self._plugin.execute(triton_request)
-        return continuation(client_call_details, request)
-
-
-class ClientStreamInterceptor(grpc.StreamStreamClientInterceptor):
-
-    def __init__(self, plugin):
-        self._plugin = plugin
-
-    def intercept_stream_stream(self, continuation, client_call_details,
-                                request_iterator):
-        request = Request(client_call_details.metadata)
-        if self._plugin != None:
-            self._plugin.execute(request)
-        response_iterator = continuation(client_call_details, request_iterator)
-        return response_iterator
+    @abstractmethod
+    async def execute(self, request):
+        pass

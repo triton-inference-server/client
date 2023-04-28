@@ -26,4 +26,4 @@
 class Request:
 
     def __init__(self, headers):
-        self.headers = headers
+        self.headers = headers if headers is not None else {}
