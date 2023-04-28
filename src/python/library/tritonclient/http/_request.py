@@ -26,6 +26,13 @@
 
 
 class Request:
+    """HTTP request object.
+
+    Attributes
+    ----------
+    headers : dict
+        A dictionary containing the request headers.
+    """
 
     def __init__(self, headers):
         # headers is part of the public API

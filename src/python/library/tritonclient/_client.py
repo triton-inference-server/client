@@ -32,14 +32,33 @@ class InferenceServerClientBase:
         self._plugin = None
 
     def _pre_call(self, request):
+        """Function used by the subclasses before sending a request to the
+        network.
+        """
         if self._plugin != None:
             self._plugin.execute(request)
 
     async def _async_pre_call(self, request):
+        """Async function used by the subclasses before sending a request to the
+        network.
+        """
         if self._plugin != None:
             await self._plugin.execute(request)
 
     def register_plugin(self, plugin):
+        """Register a Client Plugin.
+
+        Parameters
+        ----------
+        plugin : InferenceServerClientPlugin
+            A client plugin
+        
+        Raises
+        ------
+        InferenceServerException
+            If a plugin is already registered.
+        """
+
         if self._plugin is None:
             self._plugin = plugin
         else:
@@ -48,6 +67,13 @@ class InferenceServerClientBase:
                         " registering a new plugin.")
 
     def unregister_plugin(self):
+        """Unregister a plugin.
+
+        Raises
+        ------
+        InferenceServerException
+            If no plugin has been registered.
+        """
         if self._plugin is None:
             raise_error("No plugin has been registered.")
 

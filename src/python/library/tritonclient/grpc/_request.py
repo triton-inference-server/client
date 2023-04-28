@@ -24,6 +24,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class Request:
+    """GRPC request object.
+
+    Attributes
+    ----------
+    headers : dict
+        A dictionary containing the request headers.
+    """
 
     def __init__(self, headers):
         self.headers = headers if headers is not None else {}
