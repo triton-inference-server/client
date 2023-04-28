@@ -113,58 +113,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     early_exit = true;
   }
 
-  /// Test the public function ResetWorkers()
-  ///
-  /// ResetWorkers pauses and restarts the workers, but the most important and
-  /// observable effects are the following:
-  ///   - if threads_ is empty, it will populate threads_, threads_stat_, and
-  ///   threads_config_ based on max_threads_
-  ///   - start_time_ is updated with a new timestamp
-  ///
-  void TestResetWorkers()
-  {
-    // Capture the existing start time so we can confirm it changes
-    //
-    start_time_ = std::chrono::steady_clock::now();
-    auto old_time = start_time_;
-
-    SUBCASE("max threads 0")
-    {
-      // If max threads is 0, nothing happens other than updating
-      // the start time
-      //
-      max_threads_ = 0;
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 0);
-      CHECK(threads_stat_.size() == 0);
-      CHECK(threads_.size() == 0);
-    }
-    SUBCASE("max threads 3, multiple calls")
-    {
-      max_threads_ = 3;
-
-      // First call will populate threads/config/stat
-      //
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
-
-      // Second call will only update start_time
-      //
-      old_time = start_time_;
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
-    }
-  }
-
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType()
@@ -642,17 +590,6 @@ TEST_CASE("request_rate_schedule")
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
   trrm.TestSchedule(rate, params);
-}
-
-TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
-  TestRequestRateManager trrm(
-      params, is_sequence, is_decoupled, use_mock_infer);
-  trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls

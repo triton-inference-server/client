@@ -95,15 +95,6 @@ RequestRateManager::ChangeRequestRate(const double request_rate)
   return cb::Error::Success;
 }
 
-cb::Error
-RequestRateManager::ResetWorkers()
-{
-  PauseWorkers();
-  ResumeWorkers();
-
-  return cb::Error::Success;
-}
-
 void
 RequestRateManager::GenerateSchedule(const double request_rate)
 {

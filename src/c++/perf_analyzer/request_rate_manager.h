@@ -99,10 +99,6 @@ class RequestRateManager : public LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeRequestRate(const double target_request_rate);
 
-  /// Resets all worker thread states to beginning of schedule.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error ResetWorkers() override;
-
  protected:
   RequestRateManager(
       const bool async, const bool streaming, Distribution request_distribution,
