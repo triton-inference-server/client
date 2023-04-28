@@ -100,7 +100,6 @@ cb::Error
 RequestRateManager::ResetWorkers()
 {
   PauseWorkers();
-  ConfigureThreads();
   ResumeWorkers();
 
   return cb::Error::Success;
@@ -211,10 +210,6 @@ RequestRateManager::ConfigureThreads()
 {
   if (threads_.empty()) {
     size_t num_of_threads = DetermineNumThreads();
-    // max_threads_;
-    // if (on_sequence_model_) {
-    //   num_of_threads = std::min(max_threads_, num_of_sequences_);
-    // }
     while (threads_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
@@ -225,18 +220,17 @@ RequestRateManager::ConfigureThreads()
           MakeWorker(threads_stat_.back(), threads_config_.back()));
 
       threads_.emplace_back(&IWorker::Infer, workers_.back());
-
-      // Compute the number of sequences for each thread (take floor)
-      // and spread the remaining value
-      size_t avg_num_seqs = num_of_sequences_ / threads_.size();
-      size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
-      size_t seq_offset = 0;
-      for (size_t i = 0; i < threads_.size(); i++) {
-        size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
-        threads_config_[i]->num_sequences_ = num_of_seq;
-        threads_config_[i]->seq_stat_index_offset_ = seq_offset;
-        seq_offset += num_of_seq;
-      }
+    }
+    // Compute the number of sequences for each thread (take floor)
+    // and spread the remaining value
+    size_t avg_num_seqs = num_of_sequences_ / threads_.size();
+    size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
+    size_t seq_offset = 0;
+    for (size_t i = 0; i < threads_.size(); i++) {
+      size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
+      threads_config_[i]->num_sequences_ = num_of_seq;
+      threads_config_[i]->seq_stat_index_offset_ = seq_offset;
+      seq_offset += num_of_seq;
     }
   }
 }
@@ -259,10 +253,6 @@ RequestRateManager::MakeWorker(
 {
   size_t id = workers_.size();
   size_t num_of_threads = DetermineNumThreads();
-  // max_threads_;
-  // if (on_sequence_model_) {
-  //   num_of_threads = std::min(max_threads_, num_of_sequences_);
-  // }
   return std::make_shared<RequestRateWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
       on_sequence_model_, async_, num_of_threads, using_json_data_, streaming_,

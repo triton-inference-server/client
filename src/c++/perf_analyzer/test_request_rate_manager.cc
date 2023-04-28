@@ -84,7 +84,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return worker;
   }
 
-  void TestReconfigThreads(
+  void TestConfigureThreads(
       std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
   {
     RequestRateManager::ConfigureThreads();
@@ -1780,7 +1780,7 @@ TEST_CASE(
   CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
 }
 
-TEST_CASE("request rate manager - reconfigure threads")
+TEST_CASE("request rate manager - Configure threads")
 {
   PerfAnalyzerParameters params{};
   std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
@@ -1837,7 +1837,7 @@ TEST_CASE("request rate manager - reconfigure threads")
   }
   TestRequestRateManager trrm(
       params, is_sequence_model, is_decoupled_model, use_mock_infer);
-  trrm.TestReconfigThreads(expected_config_values);
+  trrm.TestConfigureThreads(expected_config_values);
 }
 
 }}  // namespace triton::perfanalyzer

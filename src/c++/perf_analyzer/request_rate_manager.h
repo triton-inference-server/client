@@ -133,8 +133,6 @@ class RequestRateManager : public LoadManager {
   // Pauses the worker threads
   void PauseWorkers();
 
-  // Reconfigure the number of threads based on max threads and number of
-  // sequences
   void ConfigureThreads();
 
   // Resets the counters and resumes the worker threads
@@ -145,7 +143,6 @@ class RequestRateManager : public LoadManager {
       std::shared_ptr<ThreadStat>,
       std::shared_ptr<RequestRateWorker::ThreadConfig>);
 
-  // Determine number of threads based on sequence model and max threads
   size_t DetermineNumThreads();
 
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
