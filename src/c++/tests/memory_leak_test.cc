@@ -1,4 +1,4 @@
-// Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -50,7 +50,7 @@ namespace {
 
 void
 ValidateShapeAndDatatype(
-    const std::string& name, std::shared_ptr<tc::InferResult> result)
+    const std::string& name, const std::shared_ptr<tc::InferResult> result)
 {
   std::vector<int64_t> shape;
   FAIL_IF_ERR(
@@ -76,7 +76,7 @@ ValidateShapeAndDatatype(
 void
 ValidateResult(
     const std::shared_ptr<tc::InferResult> result,
-    std::vector<int32_t>& input0_data)
+    const std::vector<int32_t>& input0_data)
 {
   // Validate the results...
   ValidateShapeAndDatatype("OUTPUT0", result);
@@ -105,70 +105,78 @@ ValidateResult(
   std::cout << result->DebugString() << std::endl;
 }
 
-
 void
-RunSynchronousInference(
+ValidateResponse(
+    const std::shared_ptr<tc::InferResult> results_ptr,
+    const std::vector<int32_t>& input0_data)
+{
+  // Validate results
+  if (results_ptr->RequestStatus().IsOk()) {
+    ValidateResult(results_ptr, input0_data);
+  } else {
+    std::cerr << "error: Inference failed: " << results_ptr->RequestStatus()
+              << std::endl;
+    exit(1);
+  }
+}
+
+template <typename Client>
+void
+InferWithRetries(
+    const std::unique_ptr<Client>& client, tc::InferResult** results,
+    tc::InferOptions& options, std::vector<tc::InferInput*>& inputs,
+    std::vector<const tc::InferRequestedOutput*>& outputs)
+{
+  auto err = client->Infer(results, options, inputs, outputs);
+
+  // If the host runs out of available sockets due to TIME_WAIT, sleep and
+  // retry on failure to give time for sockets to become available.
+  int max_retries = 5;
+  int sleep_secs = 60;
+  for (int i = 0; !err.IsOk() && i < max_retries; i++) {
+    std::cerr << "Error: " << err << std::endl;
+    std::cerr << "Sleeping for " << sleep_secs
+              << " seconds and retrying. [Attempt: " << i + 1 << "/"
+              << max_retries << "]" << std::endl;
+    sleep(sleep_secs);
+
+    // Retry and break from loop on success
+    err = client->Infer(results, options, inputs, outputs);
+  }
+
+  if (!err.IsOk()) {
+    std::cerr << "error: Exceeded max tries [" << max_retries
+              << "] on inference without success" << std::endl;
+    exit(1);
+  }
+}
+
+// Client should be tc::InferenceServerHttpClient or
+// tc::InferenceServerGrpcClient
+template <typename Client>
+void
+RunSyncInfer(
     std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs,
     tc::InferOptions& options, std::vector<int32_t>& input0_data, bool reuse,
-    std::string url, bool verbose, std::string protocol, uint32_t repetitions)
+    std::string url, bool verbose, uint32_t repetitions)
 {
   // If re-use is enabled then use these client objects else use new objects for
   // each inference request.
-  std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client_reuse;
-  std::unique_ptr<tc::InferenceServerHttpClient> http_client_reuse;
+  std::unique_ptr<Client> client;
+  FAIL_IF_ERR(Client::Create(&client, url, verbose), "unable to create client");
 
   for (size_t i = 0; i < repetitions; ++i) {
-    tc::InferResult* results;
     if (!reuse) {
-      if (protocol == "grpc") {
-        std::unique_ptr<tc::InferenceServerGrpcClient> grpc_client;
-        FAIL_IF_ERR(
-            tc::InferenceServerGrpcClient::Create(&grpc_client, url, verbose),
-            "unable to create grpc client");
-        FAIL_IF_ERR(
-            grpc_client->Infer(&results, options, inputs, outputs),
-            "unable to run model");
-      } else {
-        std::unique_ptr<tc::InferenceServerHttpClient> http_client;
-        FAIL_IF_ERR(
-            tc::InferenceServerHttpClient::Create(&http_client, url, verbose),
-            "unable to create http client");
-        FAIL_IF_ERR(
-            http_client->Infer(&results, options, inputs, outputs),
-            "unable to run model");
-      }
-    } else {
-      if (protocol == "grpc") {
-        FAIL_IF_ERR(
-            tc::InferenceServerGrpcClient::Create(
-                &grpc_client_reuse, url, verbose),
-            "unable to create grpc client");
-        FAIL_IF_ERR(
-            grpc_client_reuse->Infer(&results, options, inputs, outputs),
-            "unable to run model");
-      } else {
-        FAIL_IF_ERR(
-            tc::InferenceServerHttpClient::Create(
-                &http_client_reuse, url, verbose),
-            "unable to create http client");
-        FAIL_IF_ERR(
-            http_client_reuse->Infer(&results, options, inputs, outputs),
-            "unable to run model");
-      }
+      // Create new client connection on every request if reuse flag not set
+      FAIL_IF_ERR(
+          Client::Create(&client, url, verbose), "unable to create client");
     }
 
-    std::shared_ptr<tc::InferResult> results_ptr;
-    results_ptr.reset(results);
-
-    // Validate results
-    if (results_ptr->RequestStatus().IsOk()) {
-      ValidateResult(results_ptr, input0_data);
-    } else {
-      std::cerr << "error: Inference failed: " << results_ptr->RequestStatus()
-                << std::endl;
-      exit(1);
-    }
+    tc::InferResult* results;
+    InferWithRetries<Client>(client, &results, options, inputs, outputs);
+    std::shared_ptr<tc::InferResult> results_ptr(results);
+    ValidateResponse(results_ptr, input0_data);
   }
 }
 
@@ -186,6 +194,10 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-t <client timeout in microseconds>" << std::endl;
   std::cerr << "\t-r <number of repetitions for inference> default is 100."
             << std::endl;
+  std::cerr
+      << "\t-R Re-use the same client for each repetition. Without "
+         "this flag, the default is to create a new client on each repetition."
+      << std::endl;
   std::cerr << std::endl;
 
   exit(1);
@@ -293,9 +305,18 @@ main(int argc, char** argv)
   std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get()};
 
   // Send 'repetitions' number of inference requests to the inference server.
-  RunSynchronousInference(
-      inputs, outputs, options, input0_data, reuse, url, verbose, protocol,
-      repetitions);
+  if (protocol == "http") {
+    RunSyncInfer<tc::InferenceServerHttpClient>(
+        inputs, outputs, options, input0_data, reuse, url, verbose,
+        repetitions);
+  } else if (protocol == "grpc") {
+    RunSyncInfer<tc::InferenceServerGrpcClient>(
+        inputs, outputs, options, input0_data, reuse, url, verbose,
+        repetitions);
+  } else {
+    std::cerr << "Invalid protocol: " << protocol << std::endl;
+    return 1;
+  }
 
   return 0;
 }

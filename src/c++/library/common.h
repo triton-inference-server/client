@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -209,13 +209,15 @@ struct InferOptions {
   /// https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
   uint64_t server_timeout_;
   // The maximum end-to-end time, in microseconds, the request is allowed
-  // to take. Note the HTTP library only offer the precision upto
-  // milliseconds. The client will abort request when the specified time
-  // elapses. The request will return error with message "Deadline Exceeded".
+  // to take. The client will abort request when the specified time elapses.
+  // The request will return error with message "Deadline Exceeded".
   // The default value is 0 which means client will wait for the
   // response from the server. This option is not supported for streaming
   // requests. Instead see 'stream_timeout' argument in
   // InferenceServerGrpcClient::StartStream().
+  // NOTE: the HTTP client library only offers millisecond precision, so a
+  // timeout < 1000 microseconds will be rounded down to 0 milliseconds and have
+  // no effect.
   uint64_t client_timeout_;
 };
 
