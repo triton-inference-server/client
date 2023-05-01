@@ -57,8 +57,6 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CreateContexts()
 {
-  // If the model is non-sequence model, use one InferContext to
-  // maintain concurrency for this thread.
   size_t active_ctx_cnt =
       on_sequence_model_ ? thread_config_->num_sequences_ : 1;
   while (ctxs_.size() < active_ctx_cnt) {
