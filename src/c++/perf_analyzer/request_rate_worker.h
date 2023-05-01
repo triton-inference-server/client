@@ -113,6 +113,8 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
     return (thread_config_->seq_stat_index_offset_ + ctx_id);
   }
 
+  void CreateContexts();
+
   void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();

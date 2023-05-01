@@ -201,27 +201,26 @@ RequestRateManager::ConfigureThreads()
 {
   if (threads_.empty()) {
     size_t num_of_threads = DetermineNumThreads();
-    while (threads_.size() < num_of_threads) {
+    while (workers_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
       threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(threads_.size(), num_of_threads));
+          new RequestRateWorker::ThreadConfig(workers_.size(), num_of_threads));
 
       workers_.push_back(
           MakeWorker(threads_stat_.back(), threads_config_.back()));
-
-      threads_.emplace_back(&IWorker::Infer, workers_.back());
     }
     // Compute the number of sequences for each thread (take floor)
     // and spread the remaining value
-    size_t avg_num_seqs = num_of_sequences_ / threads_.size();
-    size_t num_seqs_add_one = num_of_sequences_ % threads_.size();
+    size_t avg_num_seqs = num_of_sequences_ / workers_.size();
+    size_t num_seqs_add_one = num_of_sequences_ % workers_.size();
     size_t seq_offset = 0;
-    for (size_t i = 0; i < threads_.size(); i++) {
+    for (size_t i = 0; i < workers_.size(); i++) {
       size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
       threads_config_[i]->num_sequences_ = num_of_seq;
       threads_config_[i]->seq_stat_index_offset_ = seq_offset;
       seq_offset += num_of_seq;
+      threads_.emplace_back(&IWorker::Infer, workers_[i]);
     }
   }
 }
