@@ -31,19 +31,12 @@ class InferenceServerClientBase:
     def __init__(self):
         self._plugin = None
 
-    def _pre_call(self, request):
-        """Function used by the subclasses before sending a request to the
+    def _call_plugin(self, request):
+        """Called by the subclasses before sending a request to the
         network.
         """
         if self._plugin != None:
-            self._plugin.execute(request)
-
-    async def _async_pre_call(self, request):
-        """Async function used by the subclasses before sending a request to the
-        network.
-        """
-        if self._plugin != None:
-            await self._plugin.execute(request)
+            self._plugin(request)
 
     def register_plugin(self, plugin):
         """Register a Client Plugin.

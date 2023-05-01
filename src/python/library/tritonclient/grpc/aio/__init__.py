@@ -28,8 +28,8 @@ from tritonclient.grpc import *
 from .._utils import _get_inference_request, _grpc_compression_type
 import base64
 from ..._client import InferenceServerClientBase
-from .._request import Request
-from ..._async_plugin import InferenceServerClientPlugin
+from ..._request import Request
+from ..._plugin import InferenceServerClientPlugin
 
 
 class InferenceServerClient(InferenceServerClientBase):
@@ -116,15 +116,13 @@ class InferenceServerClient(InferenceServerClientBase):
         """
         await self._channel.close()
 
-    async def _pre_api_call(self, headers):
+    def _get_metadata(self, headers):
         request = Request(headers)
-        await self._async_pre_call(request)
+        self._call_plugin(request)
 
-        if request.headers is not None:
-            metadata = request.headers.items()
-        else:
-            metadata = ()
-        return metadata
+        request_metadata = request.headers.items(
+        ) if request.headers is not None else ()
+        return request_metadata
 
     async def is_server_live(self, headers=None):
         """Refer to tritonclient.grpc.InferenceServerClient
@@ -151,7 +149,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerReadyRequest()
             if self._verbose:
@@ -169,7 +167,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -190,7 +188,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerMetadataRequest()
             if self._verbose:
@@ -216,7 +214,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -245,7 +243,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -270,7 +268,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryIndexRequest()
             if self._verbose:
@@ -296,7 +294,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelLoadRequest(
                 model_name=model_name)
@@ -323,7 +321,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelUnloadRequest(
                 model_name=model_name)
@@ -346,7 +344,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -375,7 +373,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
             if (model_name is not None) and (model_name != ""):
@@ -409,7 +407,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
             if (model_name is not None) and (model_name != ""):
@@ -432,7 +430,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def update_log_settings(self, settings, headers=None, as_json=False):
         """Refer to tritonclient.grpc.InferenceServerClient
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
             for key, value in settings.items():
@@ -464,7 +462,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_log_settings(self, headers=None, as_json=False):
         """Refer to tritonclient.grpc.InferenceServerClient
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
             if self._verbose:
@@ -489,7 +487,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryStatusRequest(
                 name=region_name)
@@ -517,7 +515,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryRegisterRequest(
                 name=name, key=key, offset=offset, byte_size=byte_size)
@@ -536,7 +534,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
@@ -561,7 +559,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         """
 
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryStatusRequest(
                 name=region_name)
@@ -589,7 +587,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryRegisterRequest(
                 name=name,
@@ -611,7 +609,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
@@ -648,7 +646,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         """
 
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
 
         if type(model_version) != str:
             raise_error("model version must be a string")
@@ -716,7 +714,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If inputs_iterator does not yield the correct input.
 
         """
-        metadata = await self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
 
         async def _request_iterator(inputs_iterator):
             # Internal iterator for converting into grpc request

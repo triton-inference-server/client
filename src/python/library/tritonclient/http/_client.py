@@ -36,7 +36,7 @@ import base64
 import zlib
 import gzip
 from .._client import InferenceServerClientBase
-from ._request import Request
+from .._request import Request
 
 
 class InferAsyncRequest:
@@ -218,9 +218,7 @@ class InferenceServerClient(InferenceServerClientBase):
             The response from server.
         """
         request = Request(headers)
-
-        # Call the triton client plugin
-        self._pre_call(request)
+        self._call_plugin(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers
@@ -266,9 +264,7 @@ class InferenceServerClient(InferenceServerClientBase):
             The response from server.
         """
         request = Request(headers)
-
-        # Call the triton client plugin
-        self._pre_call(request)
+        self._call_plugin(request)
 
         # Update the headers based on plugin invocation
         headers = request.headers

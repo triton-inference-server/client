@@ -36,7 +36,7 @@ endif() # TRITON_ENABLE_PYTHON_GRPC
 
 file(COPY _client.py DESTINATION .)
 file(COPY _plugin.py DESTINATION .)
-file(COPY _async_plugin.py DESTINATION .)
 file(COPY __init__.py DESTINATION .)
+file(COPY _request.py DESTINATION .)
 
 add_subdirectory(utils)

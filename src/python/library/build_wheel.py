@@ -55,10 +55,6 @@ def cpdir(src, dest):
     copy_tree(src, dest, preserve_symlinks=1)
 
 
-def cpfile(src, dest):
-    shutil.copy(src, dest)
-
-
 def sed(pattern, replace, source, dest=None):
     fin = open(source, 'r')
     if dest:
@@ -107,14 +103,14 @@ if __name__ == '__main__':
     print("Adding package files")
 
     mkdir(os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    cpfile('tritonclient/__init__.py',
-           os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    cpfile('tritonclient/_client.py', os.path.join(FLAGS.whl_dir,
-                                                   'tritonclient'))
-    cpfile('tritonclient/_plugin.py', os.path.join(FLAGS.whl_dir,
-                                                   'tritonclient'))
-    cpfile('tritonclient/_async_plugin.py',
-           os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/__init__.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_client.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_plugin.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_request.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
 
     # Needed for backwards-compatibility; remove when moving
     # completely to the new structure.

@@ -28,12 +28,12 @@ from abc import ABC, abstractmethod
 
 class InferenceServerClientPlugin(ABC):
     """Every Triton Client Plugin should extend this class.
-    Each plugin needs to implement the `execute` method.
+    Each plugin needs to implement the `__call__` method.
     """
 
     @abstractmethod
-    def execute(self, request):
-        """This function will be called when any of the client functions are
+    def __call__(self, request):
+        """This method will be called when any of the client functions are
         invoked. Note that the request object must be modfied in-place.
 
         Parameters

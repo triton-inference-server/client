@@ -35,7 +35,7 @@ from google.protobuf.json_format import MessageToJson
 import rapidjson as json
 import base64
 from .._client import InferenceServerClientBase
-from ._request import Request
+from .._request import Request
 
 # Should be kept consistent with the value specified in
 # src/core/constants.h, which specifies MAX_GRPC_MESSAGE_SIZE
@@ -202,15 +202,13 @@ class InferenceServerClient(InferenceServerClientBase):
         self._verbose = verbose
         self._stream = None
 
-    def _pre_api_call(self, headers):
+    def _get_metadata(self, headers):
         request = Request(headers)
-        self._pre_call(request)
+        self._call_plugin(request)
 
-        if request.headers is not None:
-            metadata = request.headers.items()
-        else:
-            metadata = ()
-        return metadata
+        request_metadata = request.headers.items(
+        ) if request.headers is not None else ()
+        return request_metadata
 
     def __enter__(self):
         return self
@@ -249,7 +247,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get liveness.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerLiveRequest()
             if self._verbose:
@@ -283,7 +281,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get readiness.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerReadyRequest()
             if self._verbose:
@@ -323,7 +321,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get model readiness.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -369,7 +367,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get server metadata.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerMetadataRequest()
             if self._verbose:
@@ -426,7 +424,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get model metadata.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -486,7 +484,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get model configuration.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -532,7 +530,7 @@ class InferenceServerClient(InferenceServerClientBase):
             the model repository index.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryIndexRequest()
             if self._verbose:
@@ -577,7 +575,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to load the model.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelLoadRequest(
                 model_name=model_name)
@@ -616,7 +614,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to unload the model.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelUnloadRequest(
                 model_name=model_name)
@@ -668,7 +666,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get the model inference statistics.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -733,7 +731,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to update the trace settings.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
             if (model_name is not None) and (model_name != ""):
@@ -795,7 +793,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get the trace settings.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
             if (model_name is not None) and (model_name != ""):
@@ -845,7 +843,7 @@ class InferenceServerClient(InferenceServerClientBase):
         InferenceServerException
             If unable to update the log settings.
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
             for key, value in settings.items():
@@ -900,7 +898,7 @@ class InferenceServerClient(InferenceServerClientBase):
         InferenceServerException
             If unable to get the log settings.
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
             if self._verbose:
@@ -954,7 +952,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to get the status of specified shared memory.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryStatusRequest(
                 name=region_name)
@@ -1005,7 +1003,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to register the specified system shared memory.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryRegisterRequest(
                 name=name, key=key, offset=offset, byte_size=byte_size)
@@ -1040,7 +1038,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to unregister the specified system shared memory region.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
@@ -1094,7 +1092,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         """
 
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryStatusRequest(
                 name=region_name)
@@ -1142,7 +1140,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to register the specified cuda shared memory.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryRegisterRequest(
                 name=name,
@@ -1180,7 +1178,7 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to unregister the specified cuda shared memory region.
 
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
@@ -1290,7 +1288,7 @@ class InferenceServerClient(InferenceServerClientBase):
         InferenceServerException
             If server fails to perform inference.
         """
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
 
         if type(model_version) != str:
             raise_error("model version must be a string")
@@ -1428,7 +1426,7 @@ class InferenceServerClient(InferenceServerClientBase):
                 error = get_error_grpc(rpc_error)
             callback(result=result, error=error)
 
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
 
         if type(model_version) != str:
             raise_error("model version must be a string")
@@ -1504,7 +1502,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error("cannot start another stream with one already running. "
                         "'InferenceServerClient' supports only a single active "
                         "stream at a given time.")
-        metadata = self._pre_api_call(headers)
+        metadata = self._get_metadata(headers)
 
         self._stream = _InferStream(callback, self._verbose)
 
