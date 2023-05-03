@@ -53,7 +53,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : id_(index), stride_(stride), seq_stat_index_offset_(0),
-          is_paused_(false)
+          is_paused_(false), num_sequences_(1)
     {
     }
 
