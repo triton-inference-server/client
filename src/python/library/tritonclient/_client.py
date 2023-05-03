@@ -59,6 +59,15 @@ class InferenceServerClientBase:
                         "unregister the previous plugin first before"
                         " registering a new plugin.")
 
+    def plugin(self):
+        """Retrieve the registered plugin if any.
+
+        Returns
+        ------
+        InferenceServerClientPlugin or None
+        """
+        return self._plugin
+
     def unregister_plugin(self):
         """Unregister a plugin.
 
