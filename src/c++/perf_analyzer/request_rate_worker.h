@@ -118,9 +118,6 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
-  // FIXME no longer needed?
-  void AsyncCallbackFinalize(uint32_t ctx_id);
-
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
     ctx->RegisterAsyncCallbackFinalize(std::bind(

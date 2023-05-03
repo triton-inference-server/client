@@ -105,14 +105,14 @@ class LoadWorker : public IWorker {
   // Detect and handle the case where this thread needs to exit
   // Returns true if an exit condition was met
   bool HandleExitConditions();
+  virtual void CompleteOngoingSequences() = 0;
+  void WaitForOngoingRequests();
 
   virtual uint32_t GetSeqStatIndex(uint32_t ctx_id) = 0;
   uint32_t GetCtxId();
   void RestoreFreeCtxId(uint32_t ctx_id);
 
-  virtual void CompleteOngoingSequences() = 0;
-
-  void WaitForOngoingRequests();
+  void AsyncCallbackFinalize(uint32_t ctx_id);
 
   uint32_t id_;
 

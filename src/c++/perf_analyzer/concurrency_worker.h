@@ -102,8 +102,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  void AsyncCallbackFinalize(uint32_t ctx_id);
-
   void CompleteOngoingSequences() override;
 
   // Reserve vector size for contexts

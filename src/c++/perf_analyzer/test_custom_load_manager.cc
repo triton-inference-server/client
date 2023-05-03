@@ -106,6 +106,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
   }
 };
 
+// FIXME -- sometimes hanging??
 TEST_CASE("custom_load_schedule")
 {
   PerfAnalyzerParameters params;

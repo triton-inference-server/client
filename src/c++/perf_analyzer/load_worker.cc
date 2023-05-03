@@ -106,4 +106,17 @@ LoadWorker::RestoreFreeCtxId(uint32_t ctx_id)
   }
 }
 
+void
+LoadWorker::AsyncCallbackFinalize(uint32_t ctx_id)
+{
+  // avoid competition over 'cb_mtx_'
+  {
+    std::lock_guard<std::mutex> lk(cb_mtx_);
+    free_ctx_ids_.push(ctx_id);
+    notified_ = true;
+  }
+
+  cb_cv_.notify_all();
+}
+
 }}  // namespace triton::perfanalyzer

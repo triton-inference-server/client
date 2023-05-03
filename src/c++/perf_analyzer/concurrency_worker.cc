@@ -181,19 +181,6 @@ ConcurrencyWorker::WaitForResponses()
 }
 
 void
-ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
-{
-  // avoid competition over 'cb_mtx_'
-  {
-    std::lock_guard<std::mutex> lk(cb_mtx_);
-    free_ctx_ids_.push(ctx_id);
-    notified_ = true;
-  }
-
-  cb_cv_.notify_all();
-}
-
-void
 ConcurrencyWorker::CompleteOngoingSequences()
 {
   if (on_sequence_model_) {
