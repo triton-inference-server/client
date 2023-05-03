@@ -121,6 +121,8 @@ class RequestRateManager : public LoadManager {
 
   std::vector<RateSchedulePtr_t> CreateEmptyWorkerSchedules();
 
+  std::vector<size_t> CalculateThreadIds();
+
   void SetScheduleDurations(std::vector<RateSchedulePtr_t>& schedules);
 
   void GiveSchedulesToWorkers(

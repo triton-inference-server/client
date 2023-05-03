@@ -107,6 +107,21 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
+  void TestCalculateThreadIds(std::vector<size_t>& expected_thread_ids)
+  {
+    std::vector<size_t> actual_thread_ids =
+        RequestRateManager::CalculateThreadIds();
+    if (on_sequence_model_) {
+      CHECK(actual_thread_ids.size() == num_of_sequences_);
+    } else {
+      CHECK(actual_thread_ids.size() == max_threads_);
+    }
+
+    for (auto i = 0; i < actual_thread_ids.size(); i++) {
+      CHECK(actual_thread_ids[i] == expected_thread_ids[i]);
+    }
+  }
+
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
 
   void TestSchedule(double rate, PerfAnalyzerParameters params)
@@ -1806,4 +1821,66 @@ TEST_CASE("request rate manager - Configure threads")
   trrm.TestConfigureThreads(expected_config_values);
 }
 
+TEST_CASE("request rate manager - Calculate thread ids")
+{
+  PerfAnalyzerParameters params{};
+  bool is_sequence_model;
+  bool is_decoupled_model = false;
+  bool use_mock_infer = true;
+  std::vector<size_t> expected_thread_ids;
+
+  SUBCASE("normal, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("normal, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("num_seq > max_threads, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_thread_ids = {0, 1, 2, 3, 0};
+  }
+  SUBCASE("num_seq > max_threads, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("max_threads > num_seq, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 5;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("max_threads > num_seq, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 5;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3, 4};
+  }
+  SUBCASE("large example")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+    expected_thread_ids = {0, 1, 2, 3, 0, 1, 2};
+  }
+
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled_model, use_mock_infer);
+  trrm.TestCalculateThreadIds(expected_thread_ids);
+}
 }}  // namespace triton::perfanalyzer

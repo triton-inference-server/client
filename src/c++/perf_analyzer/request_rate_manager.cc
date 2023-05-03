@@ -130,18 +130,21 @@ RequestRateManager::CreateWorkerSchedules(
 
   std::vector<RateSchedulePtr_t> worker_schedules =
       CreateEmptyWorkerSchedules();
+  std::vector<size_t> thread_ids{CalculateThreadIds()};
 
   std::chrono::nanoseconds next_timestamp(0);
+  size_t thread_id_index = 0;
   size_t worker_index = 0;
 
+
   // Generate schedule until we hit max_duration, but also make sure that all
-  // worker schedules are the same length by continuing until worker_index is
-  // back to 0
+  // worker schedules follow the thread id distribution
   //
-  while (next_timestamp < max_duration || worker_index != 0) {
+  while (next_timestamp < max_duration ||
+         thread_id_index % thread_ids.size() != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
+    worker_index = (thread_id_index++) % thread_ids.size();
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
-    worker_index = (worker_index + 1) % workers_.size();
   }
 
   SetScheduleDurations(worker_schedules);
@@ -157,6 +160,25 @@ RequestRateManager::CreateEmptyWorkerSchedules()
     worker_schedules.push_back(std::make_shared<RateSchedule>());
   }
   return worker_schedules;
+}
+
+std::vector<size_t>
+RequestRateManager::CalculateThreadIds()
+{
+  std::vector<size_t> thread_ids{};
+  // Determine number of ids to loop over for time stamps
+  size_t num_ids = 0;
+  if (on_sequence_model_) {
+    num_ids = num_of_sequences_;
+  } else {
+    num_ids = max_threads_;
+  }
+
+  for (size_t i = 0; i < num_ids; i++) {
+    size_t t = i % DetermineNumThreads();
+    thread_ids.push_back(t);
+  }
+  return thread_ids;
 }
 
 void
