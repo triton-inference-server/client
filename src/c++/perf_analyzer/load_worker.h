@@ -25,10 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <queue>
 
 #include "data_loader.h"
 #include "infer_context.h"
@@ -107,6 +107,9 @@ class LoadWorker : public IWorker {
   bool HandleExitConditions();
 
   virtual uint32_t GetSeqStatIndex(uint32_t ctx_id) = 0;
+  uint32_t GetCtxId();
+  void RestoreFreeCtxId(uint32_t ctx_id);
+
   virtual void CompleteOngoingSequences() = 0;
 
   void WaitForOngoingRequests();
@@ -114,6 +117,12 @@ class LoadWorker : public IWorker {
   uint32_t id_;
 
   std::vector<std::shared_ptr<InferContext>> ctxs_;
+
+  // Variables used to signal async request completion
+  bool notified_ = false;
+  std::mutex cb_mtx_;
+  std::condition_variable cb_cv_;
+  std::queue<int> free_ctx_ids_;
 
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
   // the same cv/mutex into every thread by reference? Used to wake up this

@@ -25,9 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <atomic>
 #include <memory>
-#include <queue>
 #include <random>
 
 #include "load_worker.h"
@@ -102,14 +100,7 @@ class ConcurrencyWorker : public LoadWorker {
   // threads?
   size_t& active_threads_;
 
-  std::queue<int> free_ctx_ids_;
-
   std::shared_ptr<ThreadConfig> thread_config_;
-
-  // Variables used to signal async request completion
-  bool notified_ = false;
-  std::mutex cb_mtx_;
-  std::condition_variable cb_cv_;
 
   void AsyncCallbackFinalize(uint32_t ctx_id);
 
@@ -133,12 +124,9 @@ class ConcurrencyWorker : public LoadWorker {
 
   void WaitForResponses();
 
-  void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
-
-  uint32_t GetCtxId();
 
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {

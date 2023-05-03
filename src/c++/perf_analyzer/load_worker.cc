@@ -78,4 +78,32 @@ LoadWorker::CreateContext()
   ctxs_.push_back(ctx);
 }
 
+uint32_t
+LoadWorker::GetCtxId()
+{
+  uint32_t ctx_id;
+  // Find the next available context id to use for this request
+  std::lock_guard<std::mutex> lk(cb_mtx_);
+  {
+    if (free_ctx_ids_.size() < 1) {
+      throw std::runtime_error("free ctx id list is empty");
+    }
+    ctx_id = free_ctx_ids_.front();
+    free_ctx_ids_.pop();
+  }
+  return ctx_id;
+}
+
+
+void
+LoadWorker::RestoreFreeCtxId(uint32_t ctx_id)
+{
+  if (!async_) {
+    {
+      std::lock_guard<std::mutex> lock(cb_mtx_);
+      free_ctx_ids_.push(ctx_id);
+    }
+  }
+}
+
 }}  // namespace triton::perfanalyzer

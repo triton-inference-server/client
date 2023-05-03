@@ -159,16 +159,6 @@ ConcurrencyWorker::SendInferRequests()
   }
 }
 
-void
-ConcurrencyWorker::RestoreFreeCtxId(uint32_t ctx_id)
-{
-  if (!async_) {
-    {
-      std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctx_id);
-    }
-  }
-}
 
 void
 ConcurrencyWorker::WaitForResponses()
@@ -233,22 +223,6 @@ uint32_t
 ConcurrencyWorker::GetSeqStatIndex(uint32_t ctx_id)
 {
   return (thread_config_->seq_stat_index_offset_ + ctx_id);
-}
-
-uint32_t
-ConcurrencyWorker::GetCtxId()
-{
-  uint32_t ctx_id;
-  // Find the next available context id to use for this request
-  std::lock_guard<std::mutex> lk(cb_mtx_);
-  {
-    if (free_ctx_ids_.size() < 1) {
-      throw std::runtime_error("free ctx id list is empty");
-    }
-    ctx_id = free_ctx_ids_.front();
-    free_ctx_ids_.pop();
-  }
-  return ctx_id;
 }
 
 }}  // namespace triton::perfanalyzer

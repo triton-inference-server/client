@@ -38,6 +38,8 @@ void
 RequestRateWorker::Infer()
 {
   CreateContexts();
+  // FIXME -- join into new function once other story done
+  ResetFreeCtxIds();
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
@@ -46,6 +48,7 @@ RequestRateWorker::Infer()
     bool is_delayed = SleepIfNecessary();
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id, is_delayed);
+    RestoreFreeCtxId(ctx_id);
 
     if (HandleExitConditions()) {
       return;
@@ -65,6 +68,35 @@ RequestRateWorker::CreateContexts()
 }
 
 void
+RequestRateWorker::ResetFreeCtxIds()
+{
+  std::lock_guard<std::mutex> lock(cb_mtx_);
+  free_ctx_ids_ = std::queue<int>();
+
+  for (size_t i = 0; i < ctxs_.size(); ++i) {
+    if (on_sequence_model_) {
+      free_ctx_ids_.push(i);
+    } else {
+      free_ctx_ids_.push(0);
+    }
+  }
+}
+
+
+void
+RequestRateWorker::AsyncCallbackFinalize(uint32_t ctx_id)
+{
+  // avoid competition over 'cb_mtx_'
+  {
+    std::lock_guard<std::mutex> lk(cb_mtx_);
+    free_ctx_ids_.push(ctx_id);
+    notified_ = true;
+  }
+
+  cb_cv_.notify_all();
+}
+
+void
 RequestRateWorker::SetSchedule(RateSchedulePtr_t schedule)
 {
   schedule_ = schedule;
@@ -74,6 +106,13 @@ std::chrono::nanoseconds
 RequestRateWorker::GetNextTimestamp()
 {
   return schedule_->Next();
+}
+
+
+uint32_t
+RequestRateWorker::GetSeqStatIndex(uint32_t ctx_id)
+{
+  return (thread_config_->seq_stat_index_offset_ + ctx_id);
 }
 
 void
@@ -99,6 +138,10 @@ RequestRateWorker::HandleExecuteOff()
     CompleteOngoingSequences();
     WaitForOngoingRequests();
 
+    // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
+    // has destructive side affects
+    ResetFreeCtxIds();
+
     // Wait if no request should be sent and it is not exiting
     thread_config_->is_paused_ = true;
     std::unique_lock<std::mutex> lock(wake_mutex_);
@@ -108,10 +151,24 @@ RequestRateWorker::HandleExecuteOff()
   thread_config_->is_paused_ = false;
 }
 
-
 bool
 RequestRateWorker::SleepIfNecessary()
 {
+  if (!free_ctx_ids_.size()) {
+    notified_ = false;
+    // wait for signal from callback.
+    std::unique_lock<std::mutex> lk(cb_mtx_);
+    thread_stat_->idle_timer.Start();
+    cb_cv_.wait(lk, [this] {
+      if (notified_) {
+        notified_ = false;
+        return true;
+      }
+      return false;
+    });
+    thread_stat_->idle_timer.Stop();
+  }
+
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::nanoseconds next_timestamp = GetNextTimestamp();
   std::chrono::nanoseconds current_timestamp = now - start_time_;

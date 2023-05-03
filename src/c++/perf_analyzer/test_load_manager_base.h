@@ -241,6 +241,7 @@ class TestLoadManagerBase {
       params.sequence_id_range = 8;
     }
     SUBCASE("num_of_sequences 1") { params.num_of_sequences = 1; }
+    SUBCASE("less threads than seq") { params.num_of_sequences = 12; }
     SUBCASE("num_of_sequences 8")
     {
       params.num_of_sequences = 8;
