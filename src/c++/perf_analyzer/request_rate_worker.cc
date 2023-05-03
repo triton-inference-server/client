@@ -38,8 +38,6 @@ void
 RequestRateWorker::Infer()
 {
   CreateContexts();
-  // FIXME -- join into new function once other story done
-  ResetFreeCtxIds();
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
@@ -65,6 +63,8 @@ RequestRateWorker::CreateContexts()
   while (ctxs_.size() < active_ctx_cnt) {
     CreateContext();
   }
+
+  ResetFreeCtxIds();
 }
 
 void
