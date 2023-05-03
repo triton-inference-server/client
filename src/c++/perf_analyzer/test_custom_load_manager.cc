@@ -32,6 +32,7 @@
 #include "constants.h"
 #include "custom_load_manager.h"
 #include "doctest.h"
+#include "mock_request_rate_worker.h"
 #include "request_rate_manager.h"
 #include "test_load_manager_base.h"
 
@@ -48,8 +49,9 @@ class TestCustomLoadManager : public TestLoadManagerBase,
 
   TestCustomLoadManager(
       PerfAnalyzerParameters params, bool is_sequence_model = false,
-      bool is_decoupled_model = false)
-      : TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
+      bool is_decoupled_model = false, bool use_mock_infer = false)
+      : use_mock_infer_(use_mock_infer),
+        TestLoadManagerBase(params, is_sequence_model, is_decoupled_model),
         CustomLoadManager(
             params.async, params.streaming, "INTERVALS_FILE", params.batch_size,
             params.measurement_window_ms, params.max_trials, params.max_threads,
@@ -61,6 +63,25 @@ class TestCustomLoadManager : public TestLoadManagerBase,
         params.user_data, params.start_sequence_id, params.sequence_id_range,
         params.sequence_length, params.sequence_length_specified,
         params.sequence_length_variation);
+  }
+
+  std::shared_ptr<IWorker> MakeWorker(
+      std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
+  {
+    size_t id = workers_.size();
+    auto worker = std::make_shared<MockRequestRateWorker>(
+        id, thread_stat, thread_config, parser_, data_loader_, factory_,
+        on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+        batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
+        infer_data_manager_, sequence_manager_);
+
+    if (use_mock_infer_) {
+      EXPECT_CALL(*worker, Infer())
+          .WillRepeatedly(testing::Invoke(
+              worker.get(), &MockRequestRateWorker::EmptyInfer));
+    }
+    return worker;
   }
 
   void TestSchedule(
@@ -95,6 +116,10 @@ class TestCustomLoadManager : public TestLoadManagerBase,
   }
 
 
+  std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
+  std::shared_ptr<cb::ClientBackendFactory> factory_{
+      TestLoadManagerBase::factory_};
+
   std::string& request_intervals_file_{
       CustomLoadManager::request_intervals_file_};
   NanoIntervals& custom_intervals_{CustomLoadManager::custom_intervals_};
@@ -104,9 +129,11 @@ class TestCustomLoadManager : public TestLoadManagerBase,
   {
     return cb::Error::Success;
   }
+
+ private:
+  bool use_mock_infer_;
 };
 
-// FIXME -- sometimes hanging??
 TEST_CASE("custom_load_schedule")
 {
   PerfAnalyzerParameters params;
@@ -114,7 +141,7 @@ TEST_CASE("custom_load_schedule")
   params.max_trials = 10;
   bool is_sequence = false;
   bool is_decoupled = false;
-  bool use_mock_infer = false;
+  bool use_mock_infer = true;
   std::vector<uint64_t> intervals;
 
   const auto& ParameterizeIntervals{[&]() {
@@ -186,7 +213,7 @@ TEST_CASE("custom_load_schedule")
   }};
 
   ParameterizeMeasurementWindow();
-  TestCustomLoadManager tclm(params, is_sequence, is_decoupled);
+  TestCustomLoadManager tclm(params, is_sequence, is_decoupled, use_mock_infer);
   tclm.TestSchedule(intervals, params);
 }
 

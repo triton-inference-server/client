@@ -534,7 +534,7 @@ TEST_CASE("request_rate_schedule")
   params.max_trials = 10;
   bool is_sequence = false;
   bool is_decoupled = false;
-  bool use_mock_infer = false;
+  bool use_mock_infer = true;
   double rate;
 
 
