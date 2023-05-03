@@ -73,12 +73,23 @@ RequestRateWorker::ResetFreeCtxIds()
   std::lock_guard<std::mutex> lock(cb_mtx_);
   free_ctx_ids_ = std::queue<int>();
 
+  // FIXME -- old code for async had 1 context, but would reuse it (it didn't
+  // check if "free"). Need to still have that behavior if async requests are
+  // sent out faster than they come back
+  //
+  // Option 1 - Add a bunch of 0's to the list here. Unfortunately even with a
+  // huge list we will slowly slip behind and empty this list. Is that
+  // acceptable?
+  //
+  // Option 2 - Special case various functions for request rate + no sequences
+  // so that contexts are always "free": getCtx, restoreCtx, etc
+  //
+  // Option 3 - Never wait for free ctx if sequences off, and in the case of
+  // empty list pick ctx 0 instead of asserting. Is there any weirdness around
+  // callbacks, condition variables, and mutexes?
+  //
   for (size_t i = 0; i < ctxs_.size(); ++i) {
-    if (on_sequence_model_) {
-      free_ctx_ids_.push(i);
-    } else {
-      free_ctx_ids_.push(0);
-    }
+    free_ctx_ids_.push(i);
   }
 }
 
