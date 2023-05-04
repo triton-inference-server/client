@@ -111,6 +111,8 @@ if __name__ == '__main__':
                 os.path.join(FLAGS.whl_dir, 'tritonclient'))
     shutil.copy('tritonclient/_request.py',
                 os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_auth.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
 
     # Needed for backwards-compatibility; remove when moving
     # completely to the new structure.

@@ -30,6 +30,7 @@ import base64
 from ..._client import InferenceServerClientBase
 from ..._request import Request
 from ..._plugin import InferenceServerClientPlugin
+from ... import _auth as auth
 
 
 class InferenceServerClient(InferenceServerClientBase):
