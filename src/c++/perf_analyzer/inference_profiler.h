@@ -696,8 +696,8 @@ class InferenceProfiler {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestInferenceProfiler;
 
- protected:
-  InferenceProfiler() = default;
+ public:
+  InferenceProfiler(){};
 #endif
 };
 
