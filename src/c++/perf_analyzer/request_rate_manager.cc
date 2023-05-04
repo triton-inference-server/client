@@ -143,7 +143,7 @@ RequestRateManager::CreateWorkerSchedules(
   while (next_timestamp < max_duration ||
          thread_id_index % thread_ids.size() != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
-    worker_index = (thread_id_index++) % workers_.size();
+    worker_index = thread_ids[(thread_id_index++)];
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
   }
 

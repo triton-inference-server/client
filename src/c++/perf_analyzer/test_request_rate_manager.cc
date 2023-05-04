@@ -152,6 +152,32 @@ class TestRequestRateManager : public TestLoadManagerBase,
     early_exit = true;
   }
 
+  void TestCreateSchedule(
+      double rate, PerfAnalyzerParameters params,
+      std::vector<uint32_t>& expected_worker_ratio)
+  {
+    PauseWorkers();
+    ConfigureThreads();
+    GenerateSchedule(rate);
+
+    std::vector<uint32_t> worker_schedule_sizes;
+    uint32_t total_num_seqs{0};
+
+    for (auto worker : workers_) {
+      auto w = std::dynamic_pointer_cast<RequestRateWorker>(worker);
+      total_num_seqs += w->thread_config_->num_sequences_;
+      worker_schedule_sizes.push_back(w->schedule_->intervals.size());
+    }
+    early_exit = true;
+
+    CHECK(num_of_sequences_ == total_num_seqs);
+    for (int i = 0; i < worker_schedule_sizes.size() - 1; i++) {
+      CHECK(
+          worker_schedule_sizes[i] / expected_worker_ratio[i] ==
+          worker_schedule_sizes[i + 1] / expected_worker_ratio[i + 1]);
+    }
+  }
+
   /// Test that the correct Infer function is called in the backend
   ///
   void TestInferType()
@@ -1882,5 +1908,60 @@ TEST_CASE("request rate manager - Calculate thread ids")
   TestRequestRateManager trrm(
       params, is_sequence_model, is_decoupled_model, use_mock_infer);
   trrm.TestCalculateThreadIds(expected_thread_ids);
+}
+
+TEST_CASE("request rate create schedule")
+{
+  PerfAnalyzerParameters params;
+  params.measurement_window_ms = 1000;
+  params.max_trials = 10;
+  bool is_sequence_model = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = false;
+  double rate = 10;
+  std::vector<uint32_t> expected_worker_ratio;
+
+  SUBCASE("num_seq > max_threads, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_worker_ratio = {2, 1, 1, 1};
+  }
+
+  SUBCASE("num_seq = 7, max_threads = 4, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+    expected_worker_ratio = {2, 2, 2, 1};
+  }
+
+  SUBCASE("num_seq = 4, max_threads = 2, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 2;
+    params.num_of_sequences = 4;
+    expected_worker_ratio = {1, 1};
+  }
+
+  SUBCASE("num_seq > max_threads, on sequence model, POISSON")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_worker_ratio = {2, 1, 1, 1};
+    params.request_distribution == POISSON;
+  }
+
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled, use_mock_infer);
+
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+  trrm.TestCreateSchedule(rate, params, expected_worker_ratio);
 }
 }}  // namespace triton::perfanalyzer
