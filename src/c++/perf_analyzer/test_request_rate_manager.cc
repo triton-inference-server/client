@@ -1697,10 +1697,42 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
 
-  SUBCASE("sync") { params.async = false; }
-  SUBCASE("async") { params.async = true; }
+  std::vector<uint64_t> delays;
+  bool is_sequence_model = false;
+  size_t rate = 1000;
+  size_t time_ms = 50;
+  size_t expected_count = time_ms;
 
-  TestRequestRateManager trrm(params);
+  SUBCASE("sync")
+  {
+    params.async = false;
+    delays = {0};
+  }
+  SUBCASE("async - fast response")
+  {
+    params.async = true;
+    delays = {0};
+  }
+  SUBCASE(
+      "async - slow response with sequences off should not slow down our send "
+      "rate")
+  {
+    params.async = true;
+    delays = {100};
+  }
+  SUBCASE(
+      "async - slow response with sequences on should slow down our send rate")
+  {
+    is_sequence_model = true;
+    params.async = true;
+    params.num_of_sequences = 5;
+    delays = {100};
+    expected_count = params.num_of_sequences;
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  trrm.stats_->SetDelays(delays);
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
@@ -1708,13 +1740,12 @@ TEST_CASE(
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
 
-  trrm.ChangeRequestRate(1000);
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  trrm.StopWorkerThreads();
-
+  trrm.ChangeRequestRate(rate);
+  std::this_thread::sleep_for(std::chrono::milliseconds(time_ms));
   const size_t num_sent_requests{trrm.GetAndResetNumSentRequests()};
+  CHECK(num_sent_requests == doctest::Approx(expected_count).epsilon(0.1));
 
-  CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
+  trrm.StopWorkerThreads();
 }
 
 TEST_CASE("request rate manager - Configure threads")

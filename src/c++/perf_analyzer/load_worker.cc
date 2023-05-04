@@ -86,7 +86,7 @@ LoadWorker::GetCtxId()
   std::lock_guard<std::mutex> lk(cb_mtx_);
   {
     if (free_ctx_ids_.size() < 1) {
-      throw std::runtime_error("free ctx id list is empty");
+      return 0;
     }
     ctx_id = free_ctx_ids_.front();
     free_ctx_ids_.pop();
