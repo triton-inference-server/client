@@ -171,7 +171,7 @@ class DataLoader {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockDataLoader;
 
- protected:
+ public:
   DataLoader() = default;
 #endif
 };

@@ -129,7 +129,7 @@ class ConcurrencyManager : public LoadManager {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestConcurrencyManager;
 
- protected:
+ public:
   ConcurrencyManager() = default;
 #endif
 };

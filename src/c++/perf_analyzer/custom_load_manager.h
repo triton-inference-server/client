@@ -121,7 +121,7 @@ class CustomLoadManager : public RequestRateManager {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestCustomLoadManager;
 
- protected:
+ public:
   CustomLoadManager() = default;
 #endif
 };
