@@ -174,7 +174,7 @@ class LoadManager {
       std::shared_ptr<DataLoader> data_loader);
 
 #ifndef DOCTEST_CONFIG_DISABLE
- protected:
+ public:
   LoadManager() = default;
 #endif
 };
