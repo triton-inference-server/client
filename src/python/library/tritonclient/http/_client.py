@@ -35,6 +35,8 @@ import rapidjson as json
 import base64
 import zlib
 import gzip
+from .._client import InferenceServerClientBase
+from .._request import Request
 
 
 class InferAsyncRequest:
@@ -91,7 +93,7 @@ class InferAsyncRequest:
         return InferResult(response, self._verbose)
 
 
-class InferenceServerClient:
+class InferenceServerClient(InferenceServerClientBase):
     """An InferenceServerClient object is used to perform any kind of
     communication with the InferenceServer using http protocol. None
     of the methods are thread safe. The object is intended to be used
@@ -163,6 +165,7 @@ class InferenceServerClient:
                  ssl_options=None,
                  ssl_context_factory=None,
                  insecure=False):
+        super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
         scheme = "https://" if ssl else "http://"
@@ -214,6 +217,11 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        request = Request(headers)
+        self._call_plugin(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
 
         if self._base_uri is not None:
@@ -255,6 +263,11 @@ class InferenceServerClient:
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
         """
+        request = Request(headers)
+        self._call_plugin(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
 
         if self._base_uri is not None:

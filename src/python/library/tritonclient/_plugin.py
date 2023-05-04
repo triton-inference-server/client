@@ -1,4 +1,4 @@
-# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,16 +23,22 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from abc import ABC, abstractmethod
 
-try:
-    from tritonclient.utils import *
-    from ._client import InferAsyncRequest, InferenceServerClient
-    from ._infer_input import InferInput
-    from ._requested_output import InferRequestedOutput
-    from ._utils import InferenceServerException
-    from ._infer_result import InferResult
-    from .._plugin import InferenceServerClientPlugin
-except ModuleNotFoundError as error:
-    raise RuntimeError(
-        'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'
-    ) from error
+
+class InferenceServerClientPlugin(ABC):
+    """Every Triton Client Plugin should extend this class.
+    Each plugin needs to implement the `__call__` method.
+    """
+
+    @abstractmethod
+    def __call__(self, request):
+        """This method will be called when any of the client functions are
+        invoked. Note that the request object must be modfied in-place.
+
+        Parameters
+        ----------
+        request : Request
+            The request object.
+        """
+        pass

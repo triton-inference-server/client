@@ -103,7 +103,14 @@ if __name__ == '__main__':
     print("Adding package files")
 
     mkdir(os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    touch(os.path.join(FLAGS.whl_dir, 'tritonclient/__init__.py'))
+    shutil.copy('tritonclient/__init__.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_client.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_plugin.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    shutil.copy('tritonclient/_request.py',
+                os.path.join(FLAGS.whl_dir, 'tritonclient'))
 
     # Needed for backwards-compatibility; remove when moving
     # completely to the new structure.
@@ -199,7 +206,7 @@ if __name__ == '__main__':
         if os.uname().machine == "aarch64":
             platform_name = "manylinux2014_aarch64"
         elif os.uname().machine == "ppc64le":
-            platform_name = "manylinux2014_ppc64le" 
+            platform_name = "manylinux2014_ppc64le"
         else:
             platform_name = "manylinux1_x86_64"
         args = [

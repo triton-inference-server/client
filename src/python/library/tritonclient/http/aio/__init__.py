@@ -36,6 +36,9 @@ from urllib.parse import quote
 from .._utils import _get_query_string, _get_inference_request
 from .._infer_result import InferResult
 import rapidjson as json
+from ..._client import InferenceServerClientBase
+from ..._request import Request
+from ..._plugin import InferenceServerClientPlugin
 
 # In case user try to import dependency from here
 from tritonclient.http import InferInput, InferRequestedOutput
@@ -64,7 +67,7 @@ async def _raise_if_error(response):
         raise error
 
 
-class InferenceServerClient:
+class InferenceServerClient(InferenceServerClientBase):
     """This feature is currently in beta and may be subject to change.
     
     An analogy of the tritonclient.http.InferenceServerClient to enable 
@@ -81,6 +84,7 @@ class InferenceServerClient:
                  conn_timeout=60.0,
                  ssl=False,
                  ssl_context=None):
+        super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
         scheme = "https://" if ssl else "http://"
@@ -124,6 +128,11 @@ class InferenceServerClient:
         aiohttp.ClientResponse
             The response from server.
         """
+        request = Request(headers)
+        self._call_plugin(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
         req_url = self._url + "/" + request_uri
         if query_params is not None:
@@ -160,6 +169,12 @@ class InferenceServerClient:
         aiohttp.ClientResponse
             The response from server.
         """
+        request = Request(headers)
+
+        self._call_plugin(request)
+
+        # Update the headers based on plugin invocation
+        headers = request.headers
         self._validate_headers(headers)
         req_url = self._url + "/" + request_uri
         if query_params is not None:
