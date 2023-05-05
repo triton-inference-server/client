@@ -189,6 +189,11 @@ RequestRateManager::SetScheduleDurations(
   RateSchedulePtr_t last_schedule = schedules.back();
 
   std::chrono::nanoseconds duration = last_schedule->intervals.back();
+
+  for (auto schedule : schedules) {
+    duration = std::max(schedule->intervals.back(), duration);
+  }
+
   for (auto schedule : schedules) {
     schedule->duration = duration;
   }
