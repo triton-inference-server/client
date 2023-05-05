@@ -98,21 +98,6 @@ RequestRateWorker::GetSeqStatIndex(uint32_t ctx_id)
 }
 
 void
-RequestRateWorker::CompleteOngoingSequences()
-{
-  if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-      // Finish off all the ongoing sequences for graceful exit
-      for (size_t seq_stat_index = thread_config_->id_;
-           seq_stat_index < sequence_manager_->GetNumSequenceStatuses();
-           seq_stat_index += thread_config_->stride_) {
-        ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
-      }
-    }
-  }
-}
-
-void
 RequestRateWorker::HandleExecuteOff()
 {
   // Should wait till main thread signals execution start
