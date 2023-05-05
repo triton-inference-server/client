@@ -222,7 +222,7 @@ CompressData(
     const size_t,
     std::vector<std::pair<std::unique_ptr<char[]>, size_t>>*) {
 
-    throw std::runtime_error("CompressData disabled!")
+    throw std::runtime_error("CompressData disabled!");
 }
 #endif
 
