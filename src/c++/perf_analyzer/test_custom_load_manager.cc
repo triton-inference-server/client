@@ -117,7 +117,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
 
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
-  std::shared_ptr<cb::ClientBackendFactory> factory_{
+  std::shared_ptr<cb::ClientBackendFactory>& factory_{
       TestLoadManagerBase::factory_};
 
   std::string& request_intervals_file_{

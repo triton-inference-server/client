@@ -403,7 +403,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
-  std::shared_ptr<cb::ClientBackendFactory> factory_{
+  std::shared_ptr<cb::ClientBackendFactory>& factory_{
       TestLoadManagerBase::factory_};
   std::shared_ptr<IInferDataManager>& infer_data_manager_{
       LoadManager::infer_data_manager_};
