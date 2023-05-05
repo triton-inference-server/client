@@ -23,19 +23,10 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from ._plugin import InferenceServerClientPlugin
-import base64
+from ..._auth import _BasicAuthBase
 
 
-class _BasicAuthBase(InferenceServerClientPlugin):
-    """Basic Authentincation Plugin."""
+class BasicAuth(_BasicAuthBase):
 
-    def __init__(self, header_name, username, password):
-        username = username.encode('ascii')
-        password = password.encode('ascii')
-        self._header_name = header_name
-        self._auth_string = "Basic " + base64.b64encode(b":".join(
-            (username, password))).decode('ascii').strip()
-
-    def __call__(self, request):
-        request.headers[self._header_name] = self._auth_string
+    def __init__(self, username, password):
+        super().__init__('Authorization', username, password)

@@ -129,10 +129,7 @@ class InferenceServerClient(InferenceServerClientBase):
         """Refer to tritonclient.grpc.InferenceServerClient
 
         """
-        if headers is not None:
-            metadata = headers.items()
-        else:
-            metadata = ()
+        metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerLiveRequest()
             if self._verbose:
