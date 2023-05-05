@@ -51,14 +51,13 @@ class TestCustomLoadManager;
 class RequestRateWorker : public LoadWorker, public IScheduler {
  public:
   struct ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : id_(index), stride_(stride), seq_stat_index_offset_(0),
-          is_paused_(false), num_sequences_(1)
+    ThreadConfig(uint32_t index)
+        : id_(index), seq_stat_index_offset_(0), is_paused_(false),
+          num_sequences_(1)
     {
     }
 
     uint32_t id_;
-    uint32_t stride_;
 
     // The starting sequence stat index for this worker
     size_t seq_stat_index_offset_;
@@ -108,8 +107,6 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   void CreateContexts();
-
-  void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();
   void ResetFreeCtxIds();

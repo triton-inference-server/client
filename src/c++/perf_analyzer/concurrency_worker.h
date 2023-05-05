@@ -102,8 +102,6 @@ class ConcurrencyWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  void CompleteOngoingSequences() override;
-
   // Reserve vector size for contexts
   void ReserveContexts();
 
