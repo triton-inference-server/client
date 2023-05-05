@@ -29,7 +29,9 @@
 #include "common.h"
 
 #include <curl/curl.h>
+#ifdef USE_ZLIB
 #include <zlib.h>
+#endif
 #include <atomic>
 #include <climits>
 #include <cstdint>
@@ -151,7 +153,8 @@ CompressData(
   stream.zfree = Z_NULL;
   stream.opaque = Z_NULL;
   switch (type) {
-    case InferenceServerHttpClient::CompressionType::GZIP:
+    #ifdef USE_ZLIB
+    case InferenceServerHttpClient::CompressionType::GZIP: 
       if (deflateInit2(
               &stream, Z_DEFAULT_COMPRESSION /* level */,
               Z_DEFLATED /* method */, 15 | 16 /* windowBits */,
@@ -165,6 +168,12 @@ CompressData(
       }
       break;
     }
+    #else
+    case InferenceServerHttpClient::CompressionType::GZIP:
+    case InferenceServerHttpClient::CompressionType::DEFLATE:
+      throw std::runtime_error("zlib not enabled in this build");
+      break;
+    #endif
     case InferenceServerHttpClient::CompressionType::NONE:
       return Error("can't compress data with NONE type");
       break;
