@@ -27,15 +27,14 @@ from ._plugin import InferenceServerClientPlugin
 import base64
 
 
-class _BasicAuthBase(InferenceServerClientPlugin):
+class BasicAuth(InferenceServerClientPlugin):
     """Basic Authentincation Plugin."""
 
-    def __init__(self, header_name, username, password):
+    def __init__(self, username, password):
         username = username.encode('ascii')
         password = password.encode('ascii')
-        self._header_name = header_name
         self._auth_string = "Basic " + base64.b64encode(b":".join(
             (username, password))).decode('ascii').strip()
 
     def __call__(self, request):
-        request.headers[self._header_name] = self._auth_string
+        request.headers['authorization'] = self._auth_string
