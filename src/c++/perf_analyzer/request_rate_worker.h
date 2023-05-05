@@ -53,7 +53,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   struct ThreadConfig {
     ThreadConfig(uint32_t index, uint32_t stride)
         : id_(index), stride_(stride), seq_stat_index_offset_(0),
-          is_paused_(false)
+          is_paused_(false), num_sequences_(1)
     {
     }
 
@@ -105,26 +105,27 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   std::chrono::nanoseconds GetNextTimestamp();
 
-  // Request Rate Worker only ever has a single context
-  uint32_t GetCtxId() { return 0; }
-
-  uint32_t GetSeqStatIndex(uint32_t ctx_id) override
-  {
-    return (thread_config_->seq_stat_index_offset_ + ctx_id);
-  }
+  uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
   void CreateContexts();
 
   void CompleteOngoingSequences() override;
 
   void HandleExecuteOff();
+  void ResetFreeCtxIds();
 
   // Sleep until it is time for the next part of the schedule
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
+  void WaitForFreeCtx();
+
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
+    ctx->RegisterAsyncCallbackFinalize(std::bind(
+        &RequestRateWorker::AsyncCallbackFinalize, this,
+        std::placeholders::_1));
+
     ctx->SetNumActiveThreads(num_threads_);
   }
 
