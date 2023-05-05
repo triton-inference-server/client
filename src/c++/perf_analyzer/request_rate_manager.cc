@@ -205,7 +205,7 @@ RequestRateManager::ConfigureThreads()
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
       threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(workers_.size(), num_of_threads));
+          new RequestRateWorker::ThreadConfig(workers_.size()));
 
       workers_.push_back(
           MakeWorker(threads_stat_.back(), threads_config_.back()));
