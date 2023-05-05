@@ -246,9 +246,9 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
 endif() # TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
-  if(TRITON_INCLUDE_ZLIB_IN_BUILD)
+  if(${TRITON_ENABLE_ZLIB})
     find_package(ZLIB REQUIRED)
-  endif() # TRITON_INCLUDE_ZLIB_IN_BUILD
+  endif() # TRITON_ENABLE_ZLIB
   #
   # libhttpclient.so and libhttpclient_static.a
   #
@@ -300,12 +300,12 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   )
 
   # libz.so
-  if(TRITON_INCLUDE_ZLIB_IN_BUILD)
+  if(${TRITON_ENABLE_ZLIB})
     target_link_libraries(
       httpclient_static
       PRIVATE ZLIB::ZLIB
     )
-  endif() # TRITON_INCLUDE_ZLIB_IN_BUILD
+  endif() # TRITON_ENABLE_ZLIB
 
   # libhttpclient.so
   add_library(
@@ -374,6 +374,13 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
         PUBLIC CUDA::cudart
       )
     endif() # TRITON_ENABLE_GPU
+
+    if(${TRITON_ENABLE_ZLIB})
+      target_compile_definitions(
+        ${_client_target}
+        PUBLIC TRITON_ENABLE_ZLIB=1
+      )
+    endif() # TRITON_ENABLE_ZLIB
   endforeach()
 
   install(

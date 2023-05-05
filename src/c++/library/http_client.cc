@@ -29,13 +29,16 @@
 #include "common.h"
 
 #include <curl/curl.h>
-#include <zlib.h>
 #include <atomic>
 #include <climits>
 #include <cstdint>
 #include <deque>
 #include <iostream>
 #include "http_client.h"
+
+#ifdef TRITON_ENABLE_ZLIB
+#include <zlib.h>
+#endif
 
 extern "C" {
 #include "cencode.h"
@@ -133,6 +136,7 @@ Base64Encode(
   *encoded_size += padding_size;
 }
 
+#ifdef TRITON_ENABLE_ZLIB
 // libcurl provides automatic decompression, so only implement compression
 Error
 CompressData(
@@ -211,6 +215,17 @@ CompressData(
   }
   return Error::Success;
 }
+#else
+Error
+CompressData(
+    const InferenceServerHttpClient::CompressionType type,
+    const std::deque<std::pair<uint8_t*, size_t>>& source,
+    const size_t source_byte_size,
+    std::vector<std::pair<std::unique_ptr<char[]>, size_t>>* compressed_data)
+{
+  return Error("Cannot compress data as ZLIB is not included in this build");
+}
+#endif
 
 Error
 ParseSslCertType(
@@ -1786,8 +1801,14 @@ InferenceServerHttpClient::PreRunProcessing(
       break;
     case CompressionType::DEFLATE:
     case CompressionType::GZIP:
+#ifdef TRITON_ENABLE_ZLIB
       http_request->CompressInput(request_compression_algorithm);
       break;
+#else
+      return Error(
+          "Compression type needs to be CompressionType::NONE since ZLIB is "
+          "not included in client build");
+#endif
   }
 
   // Prepare curl
