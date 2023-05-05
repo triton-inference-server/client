@@ -1951,7 +1951,7 @@ TEST_CASE("request rate create schedule")
     params.max_threads = 4;
     params.num_of_sequences = 5;
     expected_worker_ratio = {2, 1, 1, 1};
-    params.request_distribution == POISSON;
+    params.request_distribution = POISSON;
   }
 
   TestRequestRateManager trrm(
