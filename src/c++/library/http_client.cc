@@ -135,6 +135,7 @@ Base64Encode(
   *encoded_size += padding_size;
 }
 
+#ifdef USE_ZLIB
 // libcurl provides automatic decompression, so only implement compression
 Error
 CompressData(
@@ -153,7 +154,6 @@ CompressData(
   stream.zfree = Z_NULL;
   stream.opaque = Z_NULL;
   switch (type) {
-    #ifdef USE_ZLIB
     case InferenceServerHttpClient::CompressionType::GZIP: 
       if (deflateInit2(
               &stream, Z_DEFAULT_COMPRESSION /* level */,
@@ -168,12 +168,6 @@ CompressData(
       }
       break;
     }
-    #else
-    case InferenceServerHttpClient::CompressionType::GZIP:
-    case InferenceServerHttpClient::CompressionType::DEFLATE:
-      throw std::runtime_error("zlib not enabled in this build");
-      break;
-    #endif
     case InferenceServerHttpClient::CompressionType::NONE:
       return Error("can't compress data with NONE type");
       break;
@@ -220,6 +214,17 @@ CompressData(
   }
   return Error::Success;
 }
+#else
+Error
+CompressData(
+    const InferenceServerHttpClient::CompressionType,
+    const std::deque<std::pair<uint8_t*, size_t>>&,
+    const size_t,
+    std::vector<std::pair<std::unique_ptr<char[]>, size_t>>*) {
+
+    throw std::runtime_error("CompressData disabled!")
+}
+#endif
 
 Error
 ParseSslCertType(
