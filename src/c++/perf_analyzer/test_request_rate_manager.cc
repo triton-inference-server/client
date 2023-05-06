@@ -220,7 +220,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   /// Test sequence handling
   ///
-  void TestSequences()
+  void TestSequences(bool verify_seq_balance = false)
   {
     stats_->SetDelays({10});
     double request_rate1 = 100;
@@ -248,9 +248,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    CHECK(
-        stats.completed_request_count ==
-        doctest::Approx(expected_count1).epsilon(0.10));
+    if (request_distribution_ != POISSON) {
+      CHECK(
+          stats.completed_request_count ==
+          doctest::Approx(expected_count1).epsilon(0.10));
+    }
 
     PauseWorkers();
     CheckSequences(params_.num_of_sequences);
@@ -265,6 +267,10 @@ class TestRequestRateManager : public TestLoadManagerBase,
                                 stats_->num_infer_calls;
     CHECK(stats.completed_request_count == client_total_requests);
 
+    if (verify_seq_balance) {
+      TestSequenceBalance();
+    }
+
     ResetStats();
 
     // Run and check request rate 2
@@ -274,15 +280,46 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    CHECK(
-        stats.completed_request_count ==
-        doctest::Approx(expected_count2).epsilon(0.10));
+    if (request_distribution_ != POISSON) {
+      CHECK(
+          stats.completed_request_count ==
+          doctest::Approx(expected_count2).epsilon(0.10));
+    }
 
     // Stop all threads and make sure everything is as expected
     //
     StopWorkerThreads();
 
     CheckSequences(params_.num_of_sequences);
+  }
+
+  void TestSequenceBalance()
+  {
+    auto first_value = -1;
+    auto second_value = -1;
+    auto balanced = [](auto count, auto fv, auto sv) {
+      return count == fv || count == sv;
+    };
+
+    for (auto seq : stats_->sequence_status.seq_ids_to_count) {
+      auto count = seq.second;
+      // set first possible value for seqs
+      if (first_value == -1) {
+        first_value = count;
+        continue;
+      }
+      // set second possible value for seqs count
+      if (second_value == -1) {
+        if (count == first_value + 1 || count == first_value - 1) {
+          second_value = count;
+          continue;
+        } else if (first_value == count) {
+          continue;
+        }
+      }
+
+      CHECK(balanced(count, first_value, second_value) == true);
+    }
   }
 
   /// Test that the shared memory methods are called correctly
@@ -769,16 +806,45 @@ TEST_CASE("request_rate_multiple")
 ///
 TEST_CASE("request_rate_sequence")
 {
-  PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
+  PerfAnalyzerParameters params;
+  bool verify_seq_balance = false;
   bool is_sequence_model = true;
-  TestRequestRateManager trrm(params, is_sequence_model);
 
+  const auto& ParameterizeDistribution{[&]() {
+    SUBCASE("Constant") { params.request_distribution = CONSTANT; }
+    SUBCASE("Poisson") { params.request_distribution = POISSON; }
+  }};
+
+  SUBCASE("short running sequences")
+  {
+    params = TestLoadManagerBase::GetSequenceTestParams();
+    verify_seq_balance = false;
+  }
+
+  SUBCASE("num seqs 7, threads 4")
+  {
+    verify_seq_balance = true;
+    params.sequence_length = 100;
+    params.num_of_sequences = 7;
+    params.max_threads = 4;
+    ParameterizeDistribution();
+  }
+  SUBCASE("num seqs 13, threads 5")
+  {
+    verify_seq_balance = true;
+    params.sequence_length = 100;
+    params.num_of_sequences = 13;
+    params.max_threads = 5;
+    ParameterizeDistribution();
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
-  trrm.TestSequences();
+  trrm.TestSequences(verify_seq_balance);
 }
 
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
