@@ -299,7 +299,6 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC Threads::Threads
   )
 
-  # libz.so
   if(${TRITON_ENABLE_ZLIB})
     target_link_libraries(
       httpclient_static
