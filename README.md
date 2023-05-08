@@ -391,13 +391,13 @@ If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in
 
 *This feature is currently in beta and may be subject to change.*
 
-Triton client plugin API allows you to register custom plugins
-with the Python clients. The API currently only allows you to
-add additional headers to the request before the request is sent
-to the network. This is useful if you have a gateway in front of
-Triton that requires extra headers for authentication or authorization.
-The Triton Server itself does NOT implement any authentication of authorization
-mechanisms.
+
+The Triton Client Plugin API lets you register custom plugins to add or modify
+request headers. This is useful if you have gateway in front of Triton Server
+that requires extra headers for each request, such as HTTP Authorization. By
+registering the plugin, your gateway will work with Python clients without
+additional configuration. Note that Triton Server does not implement
+authentication or authorization mechanisms.
 
 The plugin must implement the `__call__` method. The signature
 of the `__call__` method should look like below:
@@ -432,6 +432,27 @@ client.infer(...)
 To unregister the plugin, you can call the `client.unregister_plugin()`
 function.
 
+##### Basic Auth
+
+You can register the `BasicAuth` plugin that implements
+[Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
+
+```python
+from tritonclient.grpc.auth import BasicAuth
+from tritonclient.grpc import InferenceServerClient
+
+basic_auth = BasicAuth('username', 'password')
+client = InferenceServerClient('...')
+
+client.register_plugin(basic_auth)
+```
+
+The example above shows how to register the plugin for
+gRPC client. The `BasicAuth` plugin can be registered
+similarly for HTTP and
+[AsyncIO](#python-asyncio-support-beta)
+clients.
 ### GRPC Options
 
 #### SSL/TLS
