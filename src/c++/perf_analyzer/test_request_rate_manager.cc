@@ -111,11 +111,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
     std::vector<size_t> actual_thread_ids =
         RequestRateManager::CalculateThreadIds();
-    if (on_sequence_model_) {
-      CHECK(actual_thread_ids.size() == num_of_sequences_);
-    } else {
-      CHECK(actual_thread_ids.size() == max_threads_);
-    }
+    CHECK(actual_thread_ids.size() == expected_thread_ids.size());
 
     for (auto i = 0; i < actual_thread_ids.size(); i++) {
       CHECK(actual_thread_ids[i] == expected_thread_ids[i]);
@@ -220,8 +216,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   /// Test sequence handling
   ///
-  void TestSequences(
-      bool verify_seq_balance = false, bool check_expected_count = true)
+  void TestSequences(bool verify_seq_balance, bool check_expected_count)
   {
     stats_->SetDelays({10});
     double request_rate1 = 100;
