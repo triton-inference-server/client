@@ -387,6 +387,51 @@ demonstrates how to infer with AsyncIO.
 If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in 
 [http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
 
+#### Python Client Plugin API (Beta)
+
+*This feature is currently in beta and may be subject to change.*
+
+Triton client plugin API allows you to register custom plugins
+with the Python clients. The API currently only allows you to
+add additional headers to the request before the request is sent
+to the network. This is useful if you have a gateway in front of
+Triton that requires extra headers for authentication or authorization.
+The Triton Server itself does NOT implement any authentication of authorization
+mechanisms.
+
+The plugin must implement the `__call__` method. The signature
+of the `__call__` method should look like below:
+
+```python
+class MyPlugin:
+  def __call__(self, request):
+       """This method will be called for every HTTP request. Currently, the only
+       field that can be accessed by the request object is the `request.headers`
+       field. This field must be updated in-place.
+       """
+       request.headers['my-header-key'] = 'my-header-value'
+```
+
+After the plugin implementation is complete, you can register the
+plugin by calling `register` on the `InferenceServerClient` object.
+
+```python
+from tritonclient.http import InferenceServerClient
+
+client = InferenceServerClient(...)
+
+# Register the plugin
+my_plugin = MyPlugin()
+client.register_plugin(my_plugin)
+
+# All the method calls will update the headers according to the plugin
+# implementation.
+client.infer(...)
+```
+
+To unregister the plugin, you can call the `client.unregister_plugin()`
+function.
+
 ### GRPC Options
 
 #### SSL/TLS
