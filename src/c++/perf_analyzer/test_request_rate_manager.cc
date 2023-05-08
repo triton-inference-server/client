@@ -220,7 +220,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   /// Test sequence handling
   ///
-  void TestSequences(bool verify_seq_balance = false)
+  void TestSequences(
+      bool verify_seq_balance = false, bool check_expected_count = true)
   {
     stats_->SetDelays({10});
     double request_rate1 = 100;
@@ -248,7 +249,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    if (request_distribution_ != POISSON) {
+    if (check_expected_count) {
       CHECK(
           stats.completed_request_count ==
           doctest::Approx(expected_count1).epsilon(0.10));
@@ -268,7 +269,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CHECK(stats.completed_request_count == client_total_requests);
 
     if (verify_seq_balance) {
-      TestSequenceBalance();
+      CheckSequenceBalance();
     }
 
     ResetStats();
@@ -280,7 +281,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    if (request_distribution_ != POISSON) {
+    if (check_expected_count) {
       CHECK(
           stats.completed_request_count ==
           doctest::Approx(expected_count2).epsilon(0.10));
@@ -292,14 +293,12 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     CheckSequences(params_.num_of_sequences);
   }
-
-  void TestSequenceBalance()
+  // Verify the number of inferences for each sequence is n or n+1.
+  //
+  void CheckSequenceBalance()
   {
     auto first_value = -1;
     auto second_value = -1;
-    auto balanced = [](auto count, auto fv, auto sv) {
-      return count == fv || count == sv;
-    };
 
     for (auto seq : stats_->sequence_status.seq_ids_to_count) {
       auto count = seq.second;
@@ -318,7 +317,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
         }
       }
 
-      CHECK(balanced(count, first_value, second_value) == true);
+      CHECK((count == first_value || count == second_value));
     }
   }
 
@@ -806,20 +805,37 @@ TEST_CASE("request_rate_multiple")
 ///
 TEST_CASE("request_rate_sequence")
 {
+  PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
+  bool verify_seq_balance = false;
+  bool check_expected_count = true;
+  bool is_sequence_model = true;
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+  trrm.TestSequences(verify_seq_balance, check_expected_count);
+}
+
+/// Check that the inference requests are balanced across sequences
+///
+TEST_CASE("request rate sequence: verify inferences across sequences")
+{
   PerfAnalyzerParameters params;
   bool verify_seq_balance = false;
+  bool check_expected_count = true;
   bool is_sequence_model = true;
 
   const auto& ParameterizeDistribution{[&]() {
     SUBCASE("Constant") { params.request_distribution = CONSTANT; }
-    SUBCASE("Poisson") { params.request_distribution = POISSON; }
+    SUBCASE("Poisson")
+    {
+      params.request_distribution = POISSON;
+      check_expected_count = false;
+    }
   }};
-
-  SUBCASE("short running sequences")
-  {
-    params = TestLoadManagerBase::GetSequenceTestParams();
-    verify_seq_balance = false;
-  }
 
   SUBCASE("num seqs 7, threads 4")
   {
@@ -844,7 +860,7 @@ TEST_CASE("request_rate_sequence")
       params.user_data, params.start_sequence_id, params.sequence_id_range,
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
-  trrm.TestSequences(verify_seq_balance);
+  trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
 
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
