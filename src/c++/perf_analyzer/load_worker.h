@@ -118,12 +118,12 @@ class LoadWorker : public IWorker {
   uint32_t id_;
 
   std::vector<std::shared_ptr<InferContext>> ctxs_;
+  std::shared_ptr<ICtxIdTracker> ctx_id_tracker_;
 
   // Variables used to signal async request completion
   bool notified_ = false;
   std::mutex cb_mtx_;
   std::condition_variable cb_cv_;
-  std::queue<int> free_ctx_ids_;
 
   // TODO REFACTOR TMA-1017 is there a better way to do threading than to pass
   // the same cv/mutex into every thread by reference? Used to wake up this

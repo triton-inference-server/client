@@ -31,22 +31,36 @@
 ///
 class ICtxIdTracker {
  public:
-  // FIXME TKG document interface
+  // Reset the tracker using the provided input count
+  //
   virtual void Reset(size_t count) = 0;
+
+  // Restore the given ID into the tracker
+  //
   virtual void Restore(size_t id) = 0;
+
+  // Pick and return a Ctx ID
+  //
   virtual size_t Get() = 0;
+
+  // Returns true if there are Ctx IDs available to Get.
   virtual bool IsAvailable() = 0;
 };
 
-class BaseCtxIdTracker : public ICtxIdTracker {
+// Base class for CtxIdTrackers that track available IDs via a queue
+//
+class BaseQueueCtxIdTracker : public ICtxIdTracker {
  public:
-  BaseCtxIdTracker() = default;
+  BaseQueueCtxIdTracker() = default;
 
   void Restore(size_t id) override { free_ctx_ids_.push(id); }
 
   size_t Get() override
   {
-    // FIXME add check
+    if (!IsAvailable()) {
+      throw std::runtime_error("free ctx id list is empty");
+    }
+
     size_t ctx_id = free_ctx_ids_.front();
     free_ctx_ids_.pop();
     return ctx_id;
@@ -56,30 +70,50 @@ class BaseCtxIdTracker : public ICtxIdTracker {
 
  protected:
   std::queue<size_t> free_ctx_ids_;
+
+  // Erase all entries in the tracking queue
+  //
+  void Clear()
+  {
+    std::queue<size_t> empty;
+    std::swap(free_ctx_ids_, empty);
+  }
 };
 
-class StdCtxIdTracker : public BaseCtxIdTracker {
+// Context ID Tracker that reuses IDs in a roughly round-robin manner using a
+// FIFO
+//
+class FifoCtxIdTracker : public BaseQueueCtxIdTracker {
  public:
-  StdCtxIdTracker() = default;
+  FifoCtxIdTracker() = default;
   void Reset(size_t count) override
   {
+    Clear();
+
     for (size_t i = 0; i < count; ++i) {
       free_ctx_ids_.push(i);
     }
   }
 };
 
-class ConcCtxIdTracker : public BaseCtxIdTracker {
+// Context ID Tracker that always returns context 0, but ensures that only X
+// requests are outstanding at a time
+//
+class ConcurrencyCtxIdTracker : public BaseQueueCtxIdTracker {
  public:
-  ConcCtxIdTracker() = default;
+  ConcurrencyCtxIdTracker() = default;
   void Reset(size_t count) override
   {
+    Clear();
+
     for (size_t i = 0; i < count; ++i) {
       free_ctx_ids_.push(0);
     }
   }
 };
 
+// Context ID tracker that is always available and returns random Context IDs
+//
 class RandCtxIdTracker : public ICtxIdTracker {
  public:
   RandCtxIdTracker() = default;

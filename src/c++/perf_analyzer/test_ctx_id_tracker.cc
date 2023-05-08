@@ -31,50 +31,82 @@
 
 namespace triton { namespace perfanalyzer {
 
-
-TEST_CASE("TKG STD")
+TEST_CASE("CtxIdTrackers: FIFO")
 {
-  std::shared_ptr<ICtxIdTracker> tracker = std::make_shared<StdCtxIdTracker>();
+  std::shared_ptr<ICtxIdTracker> tracker = std::make_shared<FifoCtxIdTracker>();
+
+  // Reset will load up context IDs 0-9 into the queue and return them in order
+  // on consecutive Get calls
   size_t count = 10;
+  CHECK_FALSE(tracker->IsAvailable());
   tracker->Reset(count);
+  CHECK(tracker->IsAvailable());
   for (size_t i = 0; i < count; i++) {
     CHECK(tracker->Get() == i);
   }
 
+  // Manually restoring values should be returned in-order
   CHECK_FALSE(tracker->IsAvailable());
   tracker->Restore(7);
-  tracker->Restore(13);
   CHECK(tracker->IsAvailable());
+  tracker->Restore(13);
   CHECK(tracker->Get() == 7);
   CHECK(tracker->Get() == 13);
+
+  // A reset should throw away any values on the old list
+  tracker->Reset(10);
+  tracker->Reset(1);
+  tracker->Get();
+  CHECK(!tracker->IsAvailable());
+
+  // Calling Get when not available should Throw
+  CHECK_THROWS_AS(tracker->Get(), const std::exception&);
 }
 
-TEST_CASE("TKG CONC")
+TEST_CASE("CtxIdTrackers: Conc")
 {
-  std::shared_ptr<ICtxIdTracker> tracker = std::make_shared<ConcCtxIdTracker>();
+  std::shared_ptr<ICtxIdTracker> tracker =
+      std::make_shared<ConcurrencyCtxIdTracker>();
+
+  // Reset will load up 10 instances of context IDs 0 into the queue and return
+  // them in order on consecutive Get calls
   size_t count = 10;
   tracker->Reset(count);
   for (size_t i = 0; i < count; i++) {
     CHECK(tracker->Get() == 0);
   }
+
+  // Manually restoring values should be returned in-order
   CHECK_FALSE(tracker->IsAvailable());
   tracker->Restore(7);
   tracker->Restore(13);
   CHECK(tracker->IsAvailable());
   CHECK(tracker->Get() == 7);
   CHECK(tracker->Get() == 13);
+
+  // A reset should throw away any values on the old list
+  tracker->Reset(10);
+  tracker->Reset(1);
+  tracker->Get();
+  CHECK(!tracker->IsAvailable());
+
+  // Calling Get when not available should Throw
+  CHECK_THROWS_AS(tracker->Get(), const std::exception&);
 }
 
-TEST_CASE("TKG RAND")
+TEST_CASE("CtxIdTrackers: Rand")
 {
   std::shared_ptr<ICtxIdTracker> tracker = std::make_shared<RandCtxIdTracker>();
+
+  // IsAvailable is always true for this class
   CHECK(tracker->IsAvailable());
 
+  // Reset should define the bounds of random CTX id picking
   size_t count = 10;
   tracker->Reset(count);
-  CHECK(tracker->IsAvailable());
-  tracker->Restore(100);
-  CHECK(tracker->IsAvailable());
+
+  // Restore should have no impact on this class.
+  tracker->Restore(9999);
 
   std::vector<size_t> result_count(10, 0);
 

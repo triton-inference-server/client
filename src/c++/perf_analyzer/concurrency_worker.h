@@ -102,6 +102,8 @@ class ConcurrencyWorker : public LoadWorker {
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
+  void CreateCtxIdTracker();
+
   // Reserve vector size for contexts
   void ReserveContexts();
 
