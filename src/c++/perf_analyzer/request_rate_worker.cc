@@ -142,7 +142,10 @@ RequestRateWorker::SleepIfNecessary()
 void
 RequestRateWorker::WaitForFreeCtx()
 {
-  if (on_sequence_model_ && !free_ctx_ids_.size()) {
+  if (!thread_config_->tkg_) {
+    return;
+  }
+  if (!free_ctx_ids_.size()) {
     notified_ = false;
     // wait for signal from callback.
     std::unique_lock<std::mutex> lk(cb_mtx_);

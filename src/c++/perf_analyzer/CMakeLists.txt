@@ -89,6 +89,7 @@ set(
   infer_data.h
   sequence_manager.h
   sequence_status.h
+  ctx_id_tracker.h
 )
 
 add_executable(
@@ -187,6 +188,7 @@ add_executable(
   test_custom_load_manager.cc
   test_sequence_manager.cc
   test_infer_context.cc
+  test_ctx_id_tracker.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

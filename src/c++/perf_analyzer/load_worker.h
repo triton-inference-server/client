@@ -30,6 +30,7 @@
 #include <mutex>
 #include <queue>
 
+#include "ctx_id_tracker.h"
 #include "data_loader.h"
 #include "infer_context.h"
 #include "iworker.h"

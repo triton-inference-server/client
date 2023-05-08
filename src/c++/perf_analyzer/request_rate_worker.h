@@ -53,7 +53,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   struct ThreadConfig {
     ThreadConfig(uint32_t index)
         : id_(index), seq_stat_index_offset_(0), is_paused_(false),
-          num_sequences_(1)
+          num_sequences_(1), tkg_(true)
     {
     }
 
@@ -62,7 +62,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
     // The starting sequence stat index for this worker
     size_t seq_stat_index_offset_;
     uint32_t num_sequences_;
-
+    bool tkg_;
     bool is_paused_;
   };
 
@@ -119,9 +119,11 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
 
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
-    ctx->RegisterAsyncCallbackFinalize(std::bind(
-        &RequestRateWorker::AsyncCallbackFinalize, this,
-        std::placeholders::_1));
+    if (thread_config_->tkg_) {
+      ctx->RegisterAsyncCallbackFinalize(std::bind(
+          &RequestRateWorker::AsyncCallbackFinalize, this,
+          std::placeholders::_1));
+    }
 
     ctx->SetNumActiveThreads(num_threads_);
   }
