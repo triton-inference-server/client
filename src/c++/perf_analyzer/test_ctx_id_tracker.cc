@@ -24,7 +24,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <cmath>
+#include <iostream>
 #include <memory>
+#include <numeric>
 
 #include "ctx_id_tracker.h"
 #include "doctest.h"
@@ -116,7 +119,16 @@ TEST_CASE("CtxIdTrackers: Rand")
     result_count[x]++;
   }
 
-  // FIXME confirm distribution not perfect
+  double mean = std::accumulate(result_count.begin(), result_count.end(), 0.0) /
+                result_count.size();
+  double variance = 0;
+  for (size_t i = 0; i < result_count.size(); i++) {
+    variance += std::pow(result_count[i] - mean, 2);
+  }
+  variance /= result_count.size();
+
+  // Confirm that the distrubution of the picked CTX IDs is random
+  CHECK((variance > 10 && variance < 100));
 }
 
 
