@@ -385,6 +385,73 @@ demonstrates how to infer with AsyncIO.
 If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in 
 [http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
 
+#### Python Client Plugin API (Beta)
+
+*This feature is currently in beta and may be subject to change.*
+
+
+The Triton Client Plugin API lets you register custom plugins to add or modify
+request headers. This is useful if you have gateway in front of Triton Server
+that requires extra headers for each request, such as HTTP Authorization. By
+registering the plugin, your gateway will work with Python clients without
+additional configuration. Note that Triton Server does not implement
+authentication or authorization mechanisms  and similarly,
+Triton Server is not the direct consumer of the additional headers.
+
+The plugin must implement the `__call__` method. The signature
+of the `__call__` method should look like below:
+
+```python
+class MyPlugin:
+  def __call__(self, request):
+       """This method will be called for every HTTP request. Currently, the only
+       field that can be accessed by the request object is the `request.headers`
+       field. This field must be updated in-place.
+       """
+       request.headers['my-header-key'] = 'my-header-value'
+```
+
+After the plugin implementation is complete, you can register the
+plugin by calling `register` on the `InferenceServerClient` object.
+
+```python
+from tritonclient.http import InferenceServerClient
+
+client = InferenceServerClient(...)
+
+# Register the plugin
+my_plugin = MyPlugin()
+client.register_plugin(my_plugin)
+
+# All the method calls will update the headers according to the plugin
+# implementation.
+client.infer(...)
+```
+
+To unregister the plugin, you can call the `client.unregister_plugin()`
+function.
+
+##### Basic Auth
+
+You can register the `BasicAuth` plugin that implements
+[Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
+
+```python
+from tritonclient.grpc.auth import BasicAuth
+from tritonclient.grpc import InferenceServerClient
+
+basic_auth = BasicAuth('username', 'password')
+client = InferenceServerClient('...')
+
+client.register_plugin(basic_auth)
+```
+
+The example above shows how to register the plugin for
+gRPC client. The `BasicAuth` plugin can be registered
+similarly for HTTP and
+[AsyncIO](#python-asyncio-support-beta)
+clients.
 ### GRPC Options
 
 #### SSL/TLS
