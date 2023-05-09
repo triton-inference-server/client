@@ -92,17 +92,8 @@ LoadWorker::CreateContext()
 uint32_t
 LoadWorker::GetCtxId()
 {
-  uint32_t ctx_id;
-  // Find the next available context id to use for this request
   std::lock_guard<std::mutex> lk(cb_mtx_);
-  {
-    if (free_ctx_ids_.size() < 1) {
-      return 0;
-    }
-    ctx_id = free_ctx_ids_.front();
-    free_ctx_ids_.pop();
-  }
-  return ctx_id;
+  return ctx_id_tracker_->Get();
 }
 
 
@@ -112,7 +103,7 @@ LoadWorker::RestoreFreeCtxId(uint32_t ctx_id)
   if (!async_) {
     {
       std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctx_id);
+      ctx_id_tracker_->Restore(ctx_id);
     }
   }
 }
@@ -123,7 +114,7 @@ LoadWorker::AsyncCallbackFinalize(uint32_t ctx_id)
   // avoid competition over 'cb_mtx_'
   {
     std::lock_guard<std::mutex> lk(cb_mtx_);
-    free_ctx_ids_.push(ctx_id);
+    ctx_id_tracker_->Restore(ctx_id);
     notified_ = true;
   }
 

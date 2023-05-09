@@ -26,7 +26,6 @@
 #pragma once
 
 #include <memory>
-#include <random>
 
 #include "load_worker.h"
 #include "sequence_manager.h"
@@ -101,6 +100,8 @@ class ConcurrencyWorker : public LoadWorker {
   size_t& active_threads_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
+
+  void CreateCtxIdTracker();
 
   // Reserve vector size for contexts
   void ReserveContexts();

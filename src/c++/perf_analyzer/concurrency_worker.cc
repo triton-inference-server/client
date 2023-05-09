@@ -40,6 +40,7 @@ namespace triton { namespace perfanalyzer {
 void
 ConcurrencyWorker::Infer()
 {
+  CreateCtxIdTracker();
   ReserveContexts();
 
   // run inferencing until receiving exit signal to maintain server load.
@@ -72,6 +73,14 @@ ConcurrencyWorker::Infer()
 }
 
 void
+ConcurrencyWorker::CreateCtxIdTracker()
+{
+  bool is_concurrency = true;
+  ctx_id_tracker_ =
+      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
+}
+
+void
 ConcurrencyWorker::ReserveContexts()
 {
   // Reserve the vectors in case of sequence models. In non-sequence or
@@ -92,7 +101,7 @@ ConcurrencyWorker::HandleExecuteOff()
       CompleteOngoingSequences();
       WaitForOngoingRequests();
 
-      // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
+      // Reset Ctx IDs because CompleteOngoingSequences()
       // has destructive side affects
       ResetFreeCtxIds();
 
@@ -152,7 +161,7 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::SendInferRequests()
 {
-  while (free_ctx_ids_.size() && execute_ && !ShouldExit()) {
+  while (ctx_id_tracker_->IsAvailable() && execute_ && !ShouldExit()) {
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
@@ -184,15 +193,7 @@ void
 ConcurrencyWorker::ResetFreeCtxIds()
 {
   std::lock_guard<std::mutex> lock(cb_mtx_);
-  free_ctx_ids_ = std::queue<int>();
-
-  for (size_t i = 0; i < thread_config_->concurrency_; ++i) {
-    if (on_sequence_model_) {
-      free_ctx_ids_.push(i);
-    } else {
-      free_ctx_ids_.push(0);
-    }
-  }
+  ctx_id_tracker_->Reset(thread_config_->concurrency_);
 }
 
 uint32_t
