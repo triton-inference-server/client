@@ -37,6 +37,7 @@ namespace triton { namespace perfanalyzer {
 void
 RequestRateWorker::Infer()
 {
+  CreateCtxIdTracker();
   CreateContexts();
 
   // run inferencing until receiving exit signal to maintain server load.
@@ -56,6 +57,15 @@ RequestRateWorker::Infer()
 }
 
 void
+RequestRateWorker::CreateCtxIdTracker()
+{
+  bool is_concurrency = false;
+
+  ctx_id_tracker_ =
+      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
+}
+
+void
 RequestRateWorker::CreateContexts()
 {
   size_t active_ctx_cnt =
@@ -71,11 +81,7 @@ void
 RequestRateWorker::ResetFreeCtxIds()
 {
   std::lock_guard<std::mutex> lock(cb_mtx_);
-  free_ctx_ids_ = std::queue<int>();
-
-  for (size_t i = 0; i < ctxs_.size(); ++i) {
-    free_ctx_ids_.push(i);
-  }
+  ctx_id_tracker_->Reset(ctxs_.size());
 }
 
 void
@@ -105,7 +111,7 @@ RequestRateWorker::HandleExecuteOff()
     CompleteOngoingSequences();
     WaitForOngoingRequests();
 
-    // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
+    // Reset Ctx IDs because CompleteOngoingSequences()
     // has destructive side affects
     ResetFreeCtxIds();
 
@@ -142,7 +148,7 @@ RequestRateWorker::SleepIfNecessary()
 void
 RequestRateWorker::WaitForFreeCtx()
 {
-  if (on_sequence_model_ && !free_ctx_ids_.size()) {
+  if (!ctx_id_tracker_->IsAvailable()) {
     notified_ = false;
     // wait for signal from callback.
     std::unique_lock<std::mutex> lk(cb_mtx_);

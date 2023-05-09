@@ -431,7 +431,7 @@ TEST_CASE("concurrency_sequence")
 /// Create the case where the sequences do NOT go round robin due to
 /// the first request taking longer than the rest.
 ///
-/// This exposed a bug where we were constantly resetting free_ctx_ids
+/// This exposed a bug where we were constantly resetting ctx IDs
 /// and issuing over and over again to the first sequence even though
 /// it was the only sequence that should NOT be issued because it was
 /// still outstanding
