@@ -397,7 +397,8 @@ request headers. This is useful if you have gateway in front of Triton Server
 that requires extra headers for each request, such as HTTP Authorization. By
 registering the plugin, your gateway will work with Python clients without
 additional configuration. Note that Triton Server does not implement
-authentication or authorization mechanisms.
+authentication or authorization mechanisms  and similarly,
+Triton Server is not the direct consumer of the additional headers.
 
 The plugin must implement the `__call__` method. The signature
 of the `__call__` method should look like below:
