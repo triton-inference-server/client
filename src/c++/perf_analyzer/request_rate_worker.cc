@@ -59,12 +59,10 @@ RequestRateWorker::Infer()
 void
 RequestRateWorker::CreateCtxIdTracker()
 {
-  if (on_sequence_model_) {
-    // FIXME new feature enabled here
-    ctx_id_tracker_ = std::make_shared<FifoCtxIdTracker>();
-  } else {
-    ctx_id_tracker_ = std::make_shared<RandCtxIdTracker>();
-  }
+  bool is_concurrency = false;
+
+  ctx_id_tracker_ =
+      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
 }
 
 void

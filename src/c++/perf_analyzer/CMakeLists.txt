@@ -89,7 +89,10 @@ set(
   infer_data.h
   sequence_manager.h
   sequence_status.h
-  ctx_id_tracker.h
+  ictx_id_tracker.h
+  concurrency_ctx_id_tracker.h
+  fifo_ctx_id_tracker.h
+  rand_ctx_id_tracker.h
 )
 
 add_executable(

@@ -29,8 +29,10 @@
 #include <memory>
 #include <numeric>
 
-#include "ctx_id_tracker.h"
+#include "concurrency_ctx_id_tracker.h"
 #include "doctest.h"
+#include "fifo_ctx_id_tracker.h"
+#include "rand_ctx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {
 

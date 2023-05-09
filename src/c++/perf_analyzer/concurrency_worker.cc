@@ -75,11 +75,9 @@ ConcurrencyWorker::Infer()
 void
 ConcurrencyWorker::CreateCtxIdTracker()
 {
-  if (on_sequence_model_) {
-    ctx_id_tracker_ = std::make_shared<FifoCtxIdTracker>();
-  } else {
-    ctx_id_tracker_ = std::make_shared<ConcurrencyCtxIdTracker>();
-  }
+  bool is_concurrency = true;
+  ctx_id_tracker_ =
+      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
 }
 
 void
