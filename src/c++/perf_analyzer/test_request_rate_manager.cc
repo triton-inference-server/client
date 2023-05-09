@@ -288,6 +288,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     CheckSequences(params_.num_of_sequences);
   }
+
   // Verify the number of inferences for each sequence is n or n+1.
   //
   void CheckSequenceBalance()
