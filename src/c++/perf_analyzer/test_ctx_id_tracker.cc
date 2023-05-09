@@ -100,35 +100,44 @@ TEST_CASE("CtxIdTrackers: Conc")
 TEST_CASE("CtxIdTrackers: Rand")
 {
   std::shared_ptr<ICtxIdTracker> tracker = std::make_shared<RandCtxIdTracker>();
+  size_t max;
+
+  auto check_range_and_variance = [&]() {
+    size_t num_trials = 1000;
+
+    std::vector<size_t> results(max, 0);
+    for (size_t i = 0; i < num_trials; i++) {
+      auto x = tracker->Get();
+      REQUIRE((x < max && x >= 0));
+      results[x]++;
+    }
+
+    // Confirm that the distrubution of the picked CTX IDs is random
+    double mean =
+        std::accumulate(results.begin(), results.end(), 0.0) / results.size();
+    double variance = 0;
+    for (size_t i = 0; i < results.size(); i++) {
+      variance += std::pow(results[i] - mean, 2);
+    }
+    variance /= results.size();
+    CHECK((variance > 10 && variance < 100));
+  };
 
   // IsAvailable is always true for this class
   CHECK(tracker->IsAvailable());
 
   // Reset should define the bounds of random CTX id picking
-  size_t count = 10;
-  tracker->Reset(count);
-
+  max = 10;
+  tracker->Reset(max);
   // Restore should have no impact on this class.
   tracker->Restore(9999);
+  check_range_and_variance();
 
-  std::vector<size_t> result_count(10, 0);
 
-  for (size_t i = 0; i < 1000; i++) {
-    auto x = tracker->Get();
-    REQUIRE((x < 10 && x >= 0));
-    result_count[x]++;
-  }
-
-  double mean = std::accumulate(result_count.begin(), result_count.end(), 0.0) /
-                result_count.size();
-  double variance = 0;
-  for (size_t i = 0; i < result_count.size(); i++) {
-    variance += std::pow(result_count[i] - mean, 2);
-  }
-  variance /= result_count.size();
-
-  // Confirm that the distrubution of the picked CTX IDs is random
-  CHECK((variance > 10 && variance < 100));
+  // Reset should RE-define the bounds of random CTX id picking
+  max = 5;
+  tracker->Reset(max);
+  check_range_and_variance();
 }
 
 

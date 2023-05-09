@@ -26,6 +26,7 @@
 #pragma once
 
 #include <queue>
+#include <random>
 
 /// Interface for object that tracks context IDs
 ///
@@ -118,14 +119,20 @@ class RandCtxIdTracker : public ICtxIdTracker {
  public:
   RandCtxIdTracker() = default;
 
-  void Reset(size_t count) override { max = count; }
+  void Reset(size_t count) override
+  {
+    distribution_ = std::uniform_int_distribution<uint64_t>(0, count - 1);
+  }
 
   void Restore(size_t id) override{};
 
-  size_t Get() override { return rand() % max; };
+  size_t Get() override { return distribution_(rng_generator_); };
 
   bool IsAvailable() override { return true; };
 
  private:
+  std::uniform_int_distribution<uint64_t> distribution_;
+  std::default_random_engine rng_generator_{};
+
   size_t max = 0;
 };
