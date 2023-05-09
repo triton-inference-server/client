@@ -33,6 +33,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import rapidjson
 from tritonclient.http import *
+from tritonclient.http._client import _raise_if_error
 from tritonclient.utils import *
 
 json_error_response = """{
@@ -72,7 +73,7 @@ class TestInferenceServerClient(unittest.TestCase):
         """
 
         with self.assertRaises(InferenceServerException):
-            raise_if_error(self.response)
+            _raise_if_error(self.response)
 
     @patch('tritonclient.http.InferenceServerClient._post',
            MagicMock(return_value={"status_code": 200}))
@@ -97,4 +98,4 @@ class TestInferenceServerClient(unittest.TestCase):
         """
 
         with self.assertRaises(InferenceServerException):
-            raise_if_error(self.response)
+            _raise_if_error(self.response)
