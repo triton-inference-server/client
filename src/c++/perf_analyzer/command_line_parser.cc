@@ -92,6 +92,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--request-intervals <path to file containing time intervals "
                "in microseconds>"
             << std::endl;
+  std::cerr << "\t--DEB-new-option" << std::endl;
   std::cerr << "\t--binary-search" << std::endl;
   std::cerr << "\t--num-of-sequences <number of concurrent sequences>"
             << std::endl;
@@ -373,6 +374,12 @@ CLParser::Usage(const std::string& msg)
              "that the average latency is used to determine stability",
              18)
       << std::endl;
+  std::cerr << FormatMessage(
+                   " --DEB-new-option: Enables sequence request rate mode "
+                   "where only 1 request is live for a sequence and ensures "
+                   "that sequences are issued in a round robin fashion",
+                   18)
+            << std::endl;
   std::cerr << std::endl;
   std::cerr << "II. INPUT DATA OPTIONS: " << std::endl;
   std::cerr << std::setw(9) << std::left
@@ -757,6 +764,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"metrics-interval", required_argument, 0, 51},
       {"sequence-length-variation", required_argument, 0, 52},
       {"bls-composing-models", required_argument, 0, 53},
+      {"DEB-new-option", no_argument, 0, 54},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1232,6 +1240,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         break;
       }
+      case 54: {
+        params_->DEB_new_option = true;
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1518,6 +1530,11 @@ CLParser::VerifyOptions()
 
   if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
+  }
+
+  if (!params_->targeting_concurrency() && !params_->using_request_rate_range &&
+      params_->DEB_new_option) {
+    Usage("Custom schedules do not support the sequence request rate mode");
   }
 }
 

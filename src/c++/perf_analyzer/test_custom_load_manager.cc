@@ -56,7 +56,8 @@ class TestCustomLoadManager : public TestLoadManagerBase,
             params.async, params.streaming, "INTERVALS_FILE", params.batch_size,
             params.measurement_window_ms, params.max_trials, params.max_threads,
             params.num_of_sequences, params.shared_memory_type,
-            params.output_shm_size, GetParser(), GetFactory())
+            params.output_shm_size, params.DEB_new_option, GetParser(),
+            GetFactory())
   {
     InitManager(
         params.string_length, params.string_data, params.zero_input,
@@ -74,7 +75,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
         batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-        infer_data_manager_, sequence_manager_);
+        DEB_new_option_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
       EXPECT_CALL(*worker, Infer())

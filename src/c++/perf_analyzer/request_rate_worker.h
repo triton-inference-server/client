@@ -76,6 +76,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const int32_t batch_size, std::condition_variable& wake_signal,
       std::mutex& wake_mutex, bool& execute,
       std::chrono::steady_clock::time_point& start_time,
+      const bool DEB_new_option,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
@@ -83,7 +84,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
             async, streaming, batch_size, using_json_data, wake_signal,
             wake_mutex, execute, infer_data_manager, sequence_manager),
         thread_config_(thread_config), num_threads_(num_threads),
-        start_time_(start_time)
+        start_time_(start_time), DEB_new_option_(DEB_new_option)
   {
   }
 
@@ -97,6 +98,7 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   RateSchedulePtr_t schedule_;
 
   const size_t num_threads_;
+  const bool DEB_new_option_;
   std::chrono::steady_clock::time_point& start_time_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
