@@ -1840,15 +1840,23 @@ TEST_CASE(
     params.async = true;
     delays = {100};
   }
-  SUBCASE(
-      "async - slow response with sequences on should slow down our send rate")
+  SUBCASE("async - slow response with sequences on")
   {
     is_sequence_model = true;
     params.async = true;
     params.num_of_sequences = 5;
-    params.DEB_new_option = true;
     delays = {100};
-    expected_count = params.num_of_sequences;
+
+    SUBCASE("single live request per sequence should slow down our send rate")
+    {
+      params.DEB_new_option = true;
+      expected_count = params.num_of_sequences;
+    }
+    SUBCASE(
+        "many live requests per sequence should not slow down our send rate")
+    {
+      params.DEB_new_option = false;
+    }
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
