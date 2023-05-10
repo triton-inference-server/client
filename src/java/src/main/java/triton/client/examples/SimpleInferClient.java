@@ -65,6 +65,7 @@ public class SimpleInferClient {
 
     InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
     InferResult result = client.infer("simple", inputs, outputs);
+    client.close();
 
     // Get the output arrays from the results
     int[] op0 = result.getOutputAsInt("OUTPUT0");
