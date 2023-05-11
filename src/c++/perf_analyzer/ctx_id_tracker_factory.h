@@ -43,10 +43,11 @@ class CtxIdTrackerFactory {
   ///
   /// \param is_concurrency True if targetting Concurrency
   /// \param is_sequence_model True if the model is a sequence model
-  /// \param DEB_new_option True if model is using sequence request rate mode
+  /// \param serial_sequences True if model is using serial sequence mode
   ///
   static std::shared_ptr<ICtxIdTracker> CreateTracker(
-      bool is_concurrency, bool is_sequence_model, bool DEB_new_option = false)
+      bool is_concurrency, bool is_sequence_model,
+      bool serial_sequences = false)
   {
     if (is_concurrency) {
       if (is_sequence_model) {
@@ -55,7 +56,7 @@ class CtxIdTrackerFactory {
         return std::make_shared<ConcurrencyCtxIdTracker>();
       }
     } else {
-      if (is_sequence_model && DEB_new_option) {
+      if (is_sequence_model && serial_sequences) {
         return std::make_shared<FifoCtxIdTracker>();
       } else {
         return std::make_shared<RandCtxIdTracker>();

@@ -44,14 +44,14 @@ class NaggyMockRequestRateWorker : public RequestRateWorker {
       const int32_t batch_size, std::condition_variable& wake_signal,
       std::mutex& wake_mutex, bool& execute,
       std::chrono::steady_clock::time_point& start_time,
-      const bool DEB_new_option,
+      const bool serial_sequences,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : RequestRateWorker(
             id, thread_stat, thread_config, parser, data_loader, factory,
             on_sequence_model, async, max_threads, using_json_data, streaming,
             batch_size, wake_signal, wake_mutex, execute, start_time,
-            DEB_new_option, infer_data_manager, sequence_manager)
+            serial_sequences, infer_data_manager, sequence_manager)
   {
     ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
       RequestRateWorker::Infer();

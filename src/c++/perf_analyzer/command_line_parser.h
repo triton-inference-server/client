@@ -68,7 +68,7 @@ struct PerfAnalyzerParameters {
   bool using_request_rate_range = false;
   double request_rate_range[3] = {1.0, 1.0, 1.0};
   uint32_t num_of_sequences = 4;
-  bool DEB_new_option = false;
+  bool serial_sequences = false;
   SearchMode search_mode = SearchMode::LINEAR;
   Distribution request_distribution = Distribution::CONSTANT;
   bool using_custom_intervals = false;

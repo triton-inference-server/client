@@ -61,7 +61,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.batch_size, params.measurement_window_ms, params.max_trials,
             params.max_threads, params.num_of_sequences,
             params.shared_memory_type, params.output_shm_size,
-            params.DEB_new_option, GetParser(), GetFactory())
+            params.serial_sequences, GetParser(), GetFactory())
   {
   }
 
@@ -74,7 +74,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
         batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-        DEB_new_option_, infer_data_manager_, sequence_manager_);
+        serial_sequences_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
       EXPECT_CALL(*worker, Infer())
@@ -820,7 +820,7 @@ TEST_CASE("request_rate_sequence")
 TEST_CASE("request rate sequence: verify inferences across sequences")
 {
   PerfAnalyzerParameters params;
-  params.DEB_new_option = true;
+  params.serial_sequences = true;
   bool verify_seq_balance = false;
   bool check_expected_count = true;
   bool is_sequence_model = true;
@@ -1849,13 +1849,13 @@ TEST_CASE(
 
     SUBCASE("single live request per sequence should slow down our send rate")
     {
-      params.DEB_new_option = true;
+      params.serial_sequences = true;
       expected_count = params.num_of_sequences;
     }
     SUBCASE(
         "many live requests per sequence should not slow down our send rate")
     {
-      params.DEB_new_option = false;
+      params.serial_sequences = false;
     }
   }
 

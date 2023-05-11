@@ -42,14 +42,14 @@ RequestRateManager::Create(
     Distribution request_distribution, const int32_t batch_size,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const bool DEB_new_option, const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<RequestRateManager> local_manager(new RequestRateManager(
       async, streaming, request_distribution, batch_size, measurement_window_ms,
       max_trials, max_threads, num_of_sequences, shared_memory_type,
-      output_shm_size, DEB_new_option, parser, factory));
+      output_shm_size, serial_sequences, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -61,14 +61,14 @@ RequestRateManager::RequestRateManager(
     int32_t batch_size, const uint64_t measurement_window_ms,
     const size_t max_trials, const size_t max_threads,
     const uint32_t num_of_sequences, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const bool DEB_new_option,
+    const size_t output_shm_size, const bool serial_sequences,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, shared_memory_type,
           output_shm_size, parser, factory),
       request_distribution_(request_distribution), execute_(false),
-      num_of_sequences_(num_of_sequences), DEB_new_option_(DEB_new_option)
+      num_of_sequences_(num_of_sequences), serial_sequences_(serial_sequences)
 {
   gen_duration_.reset(new std::chrono::nanoseconds(
       max_trials * measurement_window_ms * NANOS_PER_MILLIS));
@@ -275,7 +275,7 @@ RequestRateManager::MakeWorker(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
       on_sequence_model_, async_, num_of_threads, using_json_data_, streaming_,
       batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-      DEB_new_option_, infer_data_manager_, sequence_manager_);
+      serial_sequences_, infer_data_manager_, sequence_manager_);
 }
 
 size_t

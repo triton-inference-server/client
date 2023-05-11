@@ -222,8 +222,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->max_trials, params_->request_distribution,
             params_->batch_size, params_->max_threads,
             params_->num_of_sequences, params_->shared_memory_type,
-            params_->output_shm_size, params_->DEB_new_option, parser_, factory,
-            &manager),
+            params_->output_shm_size, params_->serial_sequences, parser_,
+            factory, &manager),
         "failed to create request rate manager");
 
   } else {
@@ -241,8 +241,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->max_trials, params_->request_intervals_file,
             params_->batch_size, params_->max_threads,
             params_->num_of_sequences, params_->shared_memory_type,
-            params_->output_shm_size, params_->DEB_new_option, parser_, factory,
-            &manager),
+            params_->output_shm_size, params_->serial_sequences, parser_,
+            factory, &manager),
         "failed to create custom load manager");
   }
 
