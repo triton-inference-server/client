@@ -32,8 +32,6 @@ import sys
 
 from PIL import Image
 import numpy as np
-from attrdict import AttrDict
-
 import tritonclient.grpc as grpcclient
 import tritonclient.grpc.model_config_pb2 as mc
 import tritonclient.http as httpclient
@@ -223,10 +221,19 @@ def requestGenerator(batched_image_data, input_name, output_name, dtype, FLAGS):
 
 
 def convert_http_metadata_config(_metadata, _config):
-    _model_metadata = AttrDict(_metadata)
-    _model_config = AttrDict(_config)
+    # NOTE: attrdict broken in python 3.10 and not maintained.
+    # https://github.com/wallento/wavedrompy/issues/32#issuecomment-1306701776
+    try:
+        from attrdict import AttrDict
+    except ImportError:
+        # Monkey patch collections
+        import collections
+        import collections.abc
+        for type_name in collections.abc.__all__:
+            setattr(collections, type_name, getattr(collections.abc, type_name))
+        from attrdict import AttrDict
 
-    return _model_metadata, _model_config
+    return AttrDict(_metadata), AttrDict(_config)
 
 
 if __name__ == '__main__':
