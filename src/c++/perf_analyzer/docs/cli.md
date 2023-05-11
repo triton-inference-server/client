@@ -44,7 +44,9 @@ This document details the Perf Analyzer command line interface:
 ## General Options
 
 #### `-?`
+
 #### `-h`
+
 #### `--help`
 
 Prints a description of the Perf Analyzer command line interface.
@@ -88,7 +90,7 @@ Default is `triton`.
 
 #### `--bls-composing-models=<string>`
 
-Specifies the list of all BLS composing models as a comma separated list of 
+Specifies the list of all BLS composing models as a comma separated list of
 model names (with optional model version number after a colon for each) that may
 be called by the input BLS model. For example,
 `--bls-composing-models=modelA:3,modelB` would specify that modelA and modelB
@@ -121,6 +123,7 @@ necessary).
 Default is `time_windows`.
 
 #### `-p <n>`
+
 #### `--measurement-interval=<n>`
 
 Specifies the time interval used for each measurement in milliseconds when
@@ -138,6 +141,7 @@ window when `--measurement-mode=count_windows` is used.
 Default is `50`.
 
 #### `-s <n>`
+
 #### `--stability-percentage=<n>`
 
 Specifies the allowed variation in latency measurements when determining if a
@@ -158,6 +162,7 @@ Default is `-1` indicating that the average latency is used to determine
 stability.
 
 #### `-r <n>`
+
 #### `--max-trials=<n>`
 
 Specifies the maximum number of measurements when attempting to reach stability
@@ -203,6 +208,7 @@ a server. This option is ignored if not using `--request-rate-range`.
 Default is `constant`.
 
 #### `-l <n>`
+
 #### `--latency-threshold=<n>`
 
 Specifies the limit on the observed latency, in milliseconds. Perf Analyzer
@@ -284,6 +290,15 @@ collisions.
 
 The default for 'start is `1`, and 'end' is not specified (no bounds).
 
+#### `--serial-sequences`
+
+Enables the serial sequence mode where only 1 request is live per sequence.
+Sequences will be issued in a nearly round robin fashion. Note: It is
+possible that this mode can cause the request_rate_mode to not achieve the
+desired rate, especially if num-of-sequences is too small.
+
+The default is false.
+
 ## Input Data Options
 
 #### `--input-data=[zero|random|<path>]`
@@ -304,7 +319,7 @@ and Perf Analyzer will append data streams from each file. When using
 If the option is path to a directory then the directory must contain a binary
 text file for each non-string/string input respectively, named the same as the
 input. Each file must contain the data required for that input for a batch-1
-request. Each binary file should contain the raw binary representation of the 
+request. Each binary file should contain the raw binary representation of the
 input in row-major order for non-string inputs. The text file should contain
 all strings needed by batch-1, each in a new line, listed in row-major order.
 
@@ -342,7 +357,7 @@ Default is `128`.
 #### `--shared-memory=[none|system|cuda]`
 
 Specifies the type of the shared memory to use for input and output data.
-         
+
 Default is `none`.
 
 #### `--output-shared-memory-size=<n>`
@@ -352,8 +367,8 @@ output tensor. Only needed when one or more of the outputs are of string type
 and/or variable shape. The value should be larger than the size of the largest
 output tensor that the model is expected to return. Perf Analyzer will use the
 following formula to calculate the total shared memory to allocate:
-output_shared_memory_size * number_of_outputs * batch_size.
-         
+output_shared_memory_size _ number_of_outputs _ batch_size.
+
 Default is `102400` (100 KB).
 
 ## Request Options
@@ -366,6 +381,7 @@ and HTTP.
 Default is `http`.
 
 #### `-a`
+
 #### `--async`
 
 Enables asynchronous mode in Perf Analyzer.

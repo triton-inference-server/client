@@ -377,7 +377,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --serial-sequences: Enables serial sequence mode "
                    "where only 1 request is live for a sequence and ensures "
-                   "that sequences are issued in a round robin fashion",
+                   "that sequences are issued in a nearly round robin fashion. "
+                   "The default is false.",
                    18)
             << std::endl;
   std::cerr << std::endl;
