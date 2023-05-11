@@ -817,7 +817,7 @@ TEST_CASE("request_rate_sequence")
 
 /// Check that the inference requests are balanced across sequences
 ///
-TEST_CASE("request rate sequence: verify inferences across sequences")
+TEST_CASE("request rate sequence: verify behavior of serial_sequences option")
 {
   PerfAnalyzerParameters params;
   params.serial_sequences = true;
