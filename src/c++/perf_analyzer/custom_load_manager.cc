@@ -72,6 +72,7 @@ CustomLoadManager::InitCustomIntervals()
 {
   PauseWorkers();
   auto status = GenerateSchedule();
+  ConfigureThreads();
   ResumeWorkers();
   return status;
 }
