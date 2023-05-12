@@ -1906,13 +1906,12 @@ TEST_CASE(
     params.num_of_sequences = 5;
     delays = {100};
 
-    SUBCASE("single live request per sequence should slow down our send rate")
+    SUBCASE("send rate can be limited if serial sequences is on")
     {
       params.serial_sequences = true;
       expected_count = params.num_of_sequences;
     }
-    SUBCASE(
-        "many live requests per sequence should not slow down our send rate")
+    SUBCASE("send rate will not be affected by response time if serial sequences off"
     {
       params.serial_sequences = false;
     }
