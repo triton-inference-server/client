@@ -72,8 +72,8 @@ cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
   PauseWorkers();
-  auto status = GenerateSchedule();
   ConfigureThreads();
+  auto status = GenerateSchedule();
   ResumeWorkers();
   return status;
 }

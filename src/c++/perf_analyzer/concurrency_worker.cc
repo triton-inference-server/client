@@ -76,8 +76,9 @@ void
 ConcurrencyWorker::CreateCtxIdTracker()
 {
   bool is_concurrency = true;
-  ctx_id_tracker_ =
-      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
+  bool serial_sequences = false;
+  ctx_id_tracker_ = CtxIdTrackerFactory::CreateTracker(
+      is_concurrency, on_sequence_model_, serial_sequences);
 }
 
 void
