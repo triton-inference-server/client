@@ -60,8 +60,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.async, params.streaming, params.request_distribution,
             params.batch_size, params.measurement_window_ms, params.max_trials,
             params.max_threads, params.num_of_sequences,
-            params.shared_memory_type, params.output_shm_size, GetParser(),
-            GetFactory())
+            params.shared_memory_type, params.output_shm_size,
+            params.serial_sequences, GetParser(), GetFactory())
   {
   }
 
@@ -74,7 +74,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
         batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-        infer_data_manager_, sequence_manager_);
+        serial_sequences_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
       EXPECT_CALL(*worker, Infer())
@@ -815,11 +815,10 @@ TEST_CASE("request_rate_sequence")
   trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
 
-/// Check that the inference requests are balanced across sequences
-///
-TEST_CASE("request rate sequence: verify inferences across sequences")
+TEST_CASE("serial sequences")
 {
   PerfAnalyzerParameters params;
+  params.serial_sequences = true;
   bool verify_seq_balance = false;
   bool check_expected_count = true;
   bool is_sequence_model = true;
@@ -1839,14 +1838,23 @@ TEST_CASE(
     params.async = true;
     delays = {100};
   }
-  SUBCASE(
-      "async - slow response with sequences on should slow down our send rate")
+  SUBCASE("async - slow response with sequences on")
   {
     is_sequence_model = true;
     params.async = true;
     params.num_of_sequences = 5;
     delays = {100};
-    expected_count = params.num_of_sequences;
+
+    SUBCASE("single live request per sequence should slow down our send rate")
+    {
+      params.serial_sequences = true;
+      expected_count = params.num_of_sequences;
+    }
+    SUBCASE(
+        "many live requests per sequence should not slow down our send rate")
+    {
+      params.serial_sequences = false;
+    }
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);

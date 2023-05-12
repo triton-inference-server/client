@@ -61,8 +61,8 @@ RequestRateWorker::CreateCtxIdTracker()
 {
   bool is_concurrency = false;
 
-  ctx_id_tracker_ =
-      CtxIdTrackerFactory::CreateTracker(is_concurrency, on_sequence_model_);
+  ctx_id_tracker_ = CtxIdTrackerFactory::CreateTracker(
+      is_concurrency, on_sequence_model_, serial_sequences_);
 }
 
 void

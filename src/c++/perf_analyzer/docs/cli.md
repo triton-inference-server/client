@@ -284,6 +284,14 @@ collisions.
 
 The default for 'start is `1`, and 'end' is not specified (no bounds).
 
+#### `--serial-sequences`
+
+Enables the serial sequence mode where a maximum of one request is live per sequence.
+Note: It is possible that this mode can cause the request rate mode to not achieve the
+desired rate, especially if num-of-sequences is too small.
+
+The default is false.
+
 ## Input Data Options
 
 #### `--input-data=[zero|random|<path>]`
