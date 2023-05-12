@@ -1911,7 +1911,9 @@ TEST_CASE(
       params.serial_sequences = true;
       expected_count = params.num_of_sequences;
     }
-    SUBCASE("send rate will not be affected by response time if serial sequences off"
+    SUBCASE(
+        "send rate will not be affected by response time if serial sequences "
+        "is off")
     {
       params.serial_sequences = false;
     }

@@ -128,9 +128,24 @@ class MockClientStats {
   enum class ReqType { SYNC, ASYNC, ASYNC_STREAM };
 
   struct SeqStatus {
+    // Set of all unique sequence IDs observed in requests
+    //
     std::set<uint64_t> used_seq_ids;
+
+    // Map of all "live" sequence IDs (sequences that have started and not
+    // ended) to their current length (how many requests have been sent to that
+    // sequence ID since it started)
+    //
     std::map<uint64_t, uint32_t> live_seq_ids_to_length;
+
+    // Map of sequence ID to how many requests have been received for it.
+    //
     std::map<uint64_t, uint32_t> seq_ids_to_count;
+
+    // Map of sequence IDs to how many are "inflight" for that sequence ID
+    // (inflight means the request has been received, response has not been
+    // returned)
+    //
     std::map<uint64_t, uint32_t> seq_ids_to_inflight_count;
 
     // Maximum observed number of live sequences (sequences that have started
