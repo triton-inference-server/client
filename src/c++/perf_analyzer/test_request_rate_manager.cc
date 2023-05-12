@@ -815,9 +815,7 @@ TEST_CASE("request_rate_sequence")
   trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
 
-/// Check that the inference requests are balanced across sequences
-///
-TEST_CASE("request rate sequence: verify behavior of serial_sequences option")
+TEST_CASE("serial sequences")
 {
   PerfAnalyzerParameters params;
   params.serial_sequences = true;

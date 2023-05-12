@@ -376,8 +376,8 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr << FormatMessage(
                    " --serial-sequences: Enables serial sequence mode "
-                   "where only 1 request is live for a sequence and ensures "
-                   "that sequences are issued in a nearly round robin fashion. "
+                   "where a maximum of one request is outstanding at a time "
+                   "for any given sequence."
                    "The default is false.",
                    18)
             << std::endl;
@@ -1531,11 +1531,6 @@ CLParser::VerifyOptions()
 
   if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
-  }
-
-  if (!params_->targeting_concurrency() && !params_->using_request_rate_range &&
-      params_->serial_sequences) {
-    Usage("Custom schedules do not support the serial sequence mode");
   }
 }
 

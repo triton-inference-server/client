@@ -43,11 +43,10 @@ class CtxIdTrackerFactory {
   ///
   /// \param is_concurrency True if targetting Concurrency
   /// \param is_sequence_model True if the model is a sequence model
-  /// \param serial_sequences True if model is using serial sequence mode
+  /// \param serial_sequences True if in serial sequence mode
   ///
   static std::shared_ptr<ICtxIdTracker> CreateTracker(
-      bool is_concurrency, bool is_sequence_model,
-      bool serial_sequences = false)
+      bool is_concurrency, bool is_sequence_model, bool serial_sequences)
   {
     if (is_concurrency) {
       if (is_sequence_model) {
