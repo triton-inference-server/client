@@ -272,7 +272,7 @@ TEST_CASE("custom_load_schedule")
     {
       ParameterizeMeasurementWindow();
       is_sequence = true;
-      params.num_of_sequences = 5;
+      params.num_of_sequences = 6;
     }
     SUBCASE("9 sequences")
     {
