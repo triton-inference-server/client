@@ -107,6 +107,13 @@ CustomLoadManager::CreateWorkerSchedules()
   std::chrono::nanoseconds next_timestamp(0);
 
   bool started = false;
+
+  // Keep filling the schedule until both the thread_ids (which can differ if
+  // sequences are enabled) and the intervals are both at the end of their
+  // lists. This effectively finds the least common multiple of the two sizes
+  // and makes sure that the schedule is complete and can be repeated
+  // indefinitely
+  //
   while (!started || thread_id_index != 0 || intervals_index != 0) {
     started = true;
     next_timestamp += custom_intervals_[intervals_index];
