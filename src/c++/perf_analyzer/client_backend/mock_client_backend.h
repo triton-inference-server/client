@@ -128,10 +128,35 @@ class MockClientStats {
   enum class ReqType { SYNC, ASYNC, ASYNC_STREAM };
 
   struct SeqStatus {
+    // Set of all unique sequence IDs observed in requests
+    //
     std::set<uint64_t> used_seq_ids;
+
+    // Map of all "live" sequence IDs (sequences that have started and not
+    // ended) to their current length (how many requests have been sent to that
+    // sequence ID since it started)
+    //
     std::map<uint64_t, uint32_t> live_seq_ids_to_length;
+
+    // Map of sequence ID to how many requests have been received for it.
+    //
     std::map<uint64_t, uint32_t> seq_ids_to_count;
+
+    // Map of sequence IDs to how many are "inflight" for that sequence ID
+    // (inflight means the request has been received, response has not been
+    // returned)
+    //
+    std::map<uint64_t, uint32_t> seq_ids_to_inflight_count;
+
+    // Maximum observed number of live sequences (sequences that have started
+    // and not ended)
+    //
     uint32_t max_live_seq_count = 0;
+
+    // Maximum observed number of inflight requests for a sequence
+    //
+    uint32_t max_inflight_seq_count = 0;
+
     std::vector<uint64_t> seq_lengths;
 
     bool IsSeqLive(uint64_t seq_id)
@@ -163,6 +188,16 @@ class MockClientStats {
         seq_ids_to_count[seq_id] = 1;
       } else {
         seq_ids_to_count[seq_id]++;
+      }
+
+      if (seq_ids_to_inflight_count.find(seq_id) ==
+          seq_ids_to_inflight_count.end()) {
+        seq_ids_to_inflight_count[seq_id] = 1;
+      } else {
+        seq_ids_to_inflight_count[seq_id]++;
+      }
+      if (seq_ids_to_inflight_count[seq_id] > max_inflight_seq_count) {
+        max_inflight_seq_count = seq_ids_to_inflight_count[seq_id];
       }
     }
 
@@ -305,6 +340,8 @@ class MockClientStats {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs)
   {
+    num_active_infer_calls++;
+
     std::lock_guard<std::mutex> lock(mtx_);
     auto time = std::chrono::system_clock::now();
     request_timestamps.push_back(time);
@@ -323,6 +360,15 @@ class MockClientStats {
     UpdateCallCount(type);
     UpdateSeqStatus(options);
     AccumulateInferInputCalls(inputs);
+  }
+
+  void CaptureRequestEnd(const InferOptions& options)
+  {
+    num_active_infer_calls--;
+
+    if (options.sequence_id_ != 0) {
+      sequence_status.seq_ids_to_inflight_count[options.sequence_id_]--;
+    }
   }
 
   void CaptureStreamStart()
@@ -417,15 +463,13 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
-    stats_->num_active_infer_calls++;
-
     stats_->CaptureRequest(
         MockClientStats::ReqType::SYNC, options, inputs, outputs);
 
     std::this_thread::sleep_for(stats_->GetNextDelay());
 
     local_completed_req_count_++;
-    stats_->num_active_infer_calls--;
+    stats_->CaptureRequestEnd(options);
 
     return stats_->GetNextReturnStatus();
   }
@@ -435,8 +479,6 @@ class MockClientBackend : public ClientBackend {
       const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs) override
   {
-    stats_->num_active_infer_calls++;
-
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
 
@@ -449,8 +491,6 @@ class MockClientBackend : public ClientBackend {
       const InferOptions& options, const std::vector<InferInput*>& inputs,
       const std::vector<const InferRequestedOutput*>& outputs)
   {
-    stats_->num_active_infer_calls++;
-
     stats_->CaptureRequest(
         MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
 
@@ -552,7 +592,7 @@ class MockClientBackend : public ClientBackend {
       InferResult* result = new MockInferResult(options);
       callback(result);
 
-      stats_->num_active_infer_calls--;
+      stats_->CaptureRequestEnd(options);
     })
         .detach();
   }
