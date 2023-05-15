@@ -289,34 +289,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     CheckSequences(params_.num_of_sequences);
   }
 
-  // Verify the number of inferences for each sequence is n or n+1.
-  //
-  void CheckSequenceBalance()
-  {
-    auto first_value = -1;
-    auto second_value = -1;
-
-    for (auto seq : stats_->sequence_status.seq_ids_to_count) {
-      auto count = seq.second;
-      // set first possible value for seqs
-      if (first_value == -1) {
-        first_value = count;
-        continue;
-      }
-      // set second possible value for seqs count
-      if (second_value == -1) {
-        if (count == first_value + 1 || count == first_value - 1) {
-          second_value = count;
-          continue;
-        } else if (first_value == count) {
-          continue;
-        }
-      }
-
-      CHECK((count == first_value || count == second_value));
-    }
-  }
-
   /// Test that the shared memory methods are called correctly
   ///
   void TestSharedMemory(uint request_rate, uint duration_ms)
@@ -815,7 +787,7 @@ TEST_CASE("request_rate_sequence")
   trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
 
-TEST_CASE("serial sequences")
+TEST_CASE("request_rate_serial_sequences")
 {
   PerfAnalyzerParameters params;
   params.serial_sequences = true;

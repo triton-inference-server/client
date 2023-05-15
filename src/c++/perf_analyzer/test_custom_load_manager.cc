@@ -37,6 +37,7 @@
 #include "test_load_manager_base.h"
 
 using nanoseconds = std::chrono::nanoseconds;
+using milliseconds = std::chrono::milliseconds;
 
 namespace triton { namespace perfanalyzer {
 
@@ -102,20 +103,62 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     ConfigureThreads();
     GenerateSchedule();
 
-    // Keep calling GetNextTimestamp for the entire test_duration to make sure
-    // the schedule is exactly as expected
+    std::vector<nanoseconds> expected_timestamps;
+    std::vector<nanoseconds> observed_timestamps;
+
+    // Determine what the observed schedule was by getting each worker's
+    // schedule and then sorting them together
     //
-    while (expected_current_timestamp < max_test_duration) {
-      for (auto worker : workers_) {
-        expected_current_timestamp += custom_intervals_[intervals_index];
-        auto timestamp = std::dynamic_pointer_cast<RequestRateWorker>(worker)
-                             ->GetNextTimestamp();
-        REQUIRE(timestamp.count() == expected_current_timestamp.count());
-        intervals_index = (intervals_index + 1) % custom_intervals_.size();
+    for (auto worker : workers_) {
+      nanoseconds observed_timestamp =
+          std::dynamic_pointer_cast<RequestRateWorker>(worker)
+              ->GetNextTimestamp();
+      while (observed_timestamp <= max_test_duration) {
+        observed_timestamps.push_back(observed_timestamp);
+        observed_timestamp =
+            std::dynamic_pointer_cast<RequestRateWorker>(worker)
+                ->GetNextTimestamp();
       }
+    }
+    sort(observed_timestamps.begin(), observed_timestamps.end());
+
+    // Determine what the schedule "should" be
+    //
+    while (expected_current_timestamp < observed_timestamps.back()) {
+      expected_current_timestamp += custom_intervals_[intervals_index];
+      expected_timestamps.push_back(expected_current_timestamp);
+      intervals_index = (intervals_index + 1) % custom_intervals_.size();
+    }
+
+    // Confirm that the expected and observed schedules were the same
+    //
+    REQUIRE_MESSAGE(
+        observed_timestamps.size() == expected_timestamps.size(),
+        "Mismatch in size of schedules");
+
+    for (size_t i = 0; i < observed_timestamps.size(); i++) {
+      CHECK(observed_timestamps[i] == expected_timestamps[i]);
     }
   }
 
+  void TestSequences(
+      std::vector<uint64_t> intervals, bool check_sequences_balanced)
+  {
+    auto sleep_time = milliseconds(20);
+    for (auto i : intervals) {
+      custom_intervals_.push_back(nanoseconds{i});
+    }
+
+    PauseWorkers();
+    ConfigureThreads();
+    GenerateSchedule();
+    ResumeWorkers();
+    std::this_thread::sleep_for(sleep_time);
+    if (check_sequences_balanced) {
+      CheckSequenceBalance();
+    }
+    StopWorkerThreads();
+  }
 
   std::shared_ptr<ModelParser>& parser_{LoadManager::parser_};
   std::shared_ptr<cb::ClientBackendFactory>& factory_{
@@ -213,10 +256,138 @@ TEST_CASE("custom_load_schedule")
     }
   }};
 
-  ParameterizeMeasurementWindow();
+  const auto& ParameterizeSequences{[&]() {
+    SUBCASE("sequences off")
+    {
+      ParameterizeMeasurementWindow();
+      is_sequence = false;
+    }
+    SUBCASE("3 sequences")
+    {
+      ParameterizeMeasurementWindow();
+      is_sequence = true;
+      params.num_of_sequences = 3;
+    }
+    SUBCASE("6 sequences")
+    {
+      ParameterizeMeasurementWindow();
+      is_sequence = true;
+      params.num_of_sequences = 5;
+    }
+    SUBCASE("9 sequences")
+    {
+      ParameterizeMeasurementWindow();
+      is_sequence = true;
+      params.num_of_sequences = 9;
+    }
+  }};
+
+  ParameterizeSequences();
   TestCustomLoadManager tclm(params, is_sequence, is_decoupled, use_mock_infer);
   tclm.TestSchedule(intervals, params);
 }
+
+TEST_CASE("custom_load_sequences")
+{
+  PerfAnalyzerParameters params;
+
+  // This is needed so we can confirm that all sequences are being requested
+  // equally when serial_sequences is on. Otherwise we would keep creating new
+  // sequences and wouldn't be able to track it properly.
+  //
+  params.sequence_length = 1000;
+  bool is_sequence_model = true;
+  bool check_sequences_balanced = false;
+  std::vector<uint64_t> intervals;
+
+  const auto& ParameterizeIntervals{[&]() {
+    SUBCASE("intervals A") { intervals = {100000, 110000, 130000}; }
+    SUBCASE("intervals B") { intervals = {150000}; }
+    SUBCASE("intervals C")
+    {
+      intervals = {100000, 110000, 120000, 130000, 140000};
+    }
+  }};
+
+  const auto& ParameterizeSerialSequences{[&]() {
+    SUBCASE("serial_sequences")
+    {
+      ParameterizeIntervals();
+      params.serial_sequences = true;
+      check_sequences_balanced = true;
+    }
+    SUBCASE("not serial_sequences")
+    {
+      ParameterizeIntervals();
+      params.serial_sequences = false;
+      check_sequences_balanced = false;
+    }
+  }};
+
+  const auto& ParameterizeNumSequences{[&]() {
+    SUBCASE("2 sequences")
+    {
+      ParameterizeSerialSequences();
+      params.num_of_sequences = 2;
+    }
+    SUBCASE("3 sequences")
+    {
+      ParameterizeSerialSequences();
+      params.num_of_sequences = 3;
+    }
+    SUBCASE("5 sequences")
+    {
+      ParameterizeSerialSequences();
+      params.num_of_sequences = 3;
+    }
+    SUBCASE("6 sequences")
+    {
+      ParameterizeSerialSequences();
+      params.num_of_sequences = 5;
+    }
+    SUBCASE("9 sequences")
+    {
+      ParameterizeSerialSequences();
+      params.num_of_sequences = 9;
+    }
+  }};
+
+
+  const auto& ParameterizeThreads{[&]() {
+    SUBCASE("threads 1")
+    {
+      ParameterizeNumSequences();
+      params.max_threads = 1;
+    }
+    SUBCASE("threads 2")
+    {
+      ParameterizeNumSequences();
+      params.max_threads = 2;
+    }
+    SUBCASE("threads 4")
+    {
+      ParameterizeNumSequences();
+      params.max_threads = 4;
+    }
+    SUBCASE("threads 7")
+    {
+      ParameterizeNumSequences();
+      params.max_threads = 7;
+    }
+  }};
+
+  ParameterizeThreads();
+
+  TestCustomLoadManager tclm(params, is_sequence_model);
+  tclm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+
+  tclm.TestSequences(intervals, check_sequences_balanced);
+}
+
 
 TEST_CASE("testing the GetCustomRequestRate function")
 {
@@ -243,4 +414,5 @@ TEST_CASE("testing the GetCustomRequestRate function")
     CHECK(request_rate == doctest::Approx(8.0));
   }
 }
+
 }}  // namespace triton::perfanalyzer
