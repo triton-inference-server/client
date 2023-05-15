@@ -338,12 +338,12 @@ TEST_CASE("custom_load_sequences")
     SUBCASE("5 sequences")
     {
       ParameterizeSerialSequences();
-      params.num_of_sequences = 3;
+      params.num_of_sequences = 5;
     }
     SUBCASE("6 sequences")
     {
       ParameterizeSerialSequences();
-      params.num_of_sequences = 5;
+      params.num_of_sequences = 6;
     }
     SUBCASE("9 sequences")
     {
