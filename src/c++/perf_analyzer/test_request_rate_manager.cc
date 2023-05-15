@@ -858,6 +858,67 @@ TEST_CASE("serial sequences")
   trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
 
+TEST_CASE("request_rate max inflight per seq")
+{
+  // Confirm that we can have multiple inferences in-flight for a given sequence
+  // unless in serial-sequence mode
+  PerfAnalyzerParameters params;
+  bool is_sequence_model = true;
+  params.num_of_sequences = 2;
+  size_t rate = 1000;
+  size_t time_ms = 10;
+
+  bool expect_multiple_in_flight_sequences = false;
+
+  SUBCASE("sync will never have multiple in flight")
+  {
+    params.async = false;
+    expect_multiple_in_flight_sequences = false;
+
+    SUBCASE("serial_sequences on") { params.serial_sequences = true; }
+    SUBCASE("serial_sequences off") { params.serial_sequences = false; }
+  }
+  SUBCASE("async may have multiple in flight depending on serial sequences")
+  {
+    params.async = true;
+
+    SUBCASE("serial_sequences on")
+    {
+      params.serial_sequences = true;
+      expect_multiple_in_flight_sequences = false;
+    }
+    SUBCASE("serial_sequences off")
+    {
+      params.serial_sequences = false;
+      expect_multiple_in_flight_sequences = true;
+    }
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+
+  trrm.stats_->SetDelays({100});
+
+  trrm.ChangeRequestRate(rate);
+  std::this_thread::sleep_for(std::chrono::milliseconds(time_ms));
+
+  auto max_observed_inflight =
+      trrm.stats_->sequence_status.max_inflight_seq_count;
+
+  if (expect_multiple_in_flight_sequences) {
+    CHECK(max_observed_inflight > 1);
+  } else {
+    CHECK(max_observed_inflight == 1);
+  }
+
+  trrm.StopWorkerThreads();
+}
+
+
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 {
   bool is_sequence = false;
@@ -1845,13 +1906,14 @@ TEST_CASE(
     params.num_of_sequences = 5;
     delays = {100};
 
-    SUBCASE("single live request per sequence should slow down our send rate")
+    SUBCASE("send rate can be limited if serial sequences is on")
     {
       params.serial_sequences = true;
       expected_count = params.num_of_sequences;
     }
     SUBCASE(
-        "many live requests per sequence should not slow down our send rate")
+        "send rate will not be affected by response time if serial sequences "
+        "is off")
     {
       params.serial_sequences = false;
     }
