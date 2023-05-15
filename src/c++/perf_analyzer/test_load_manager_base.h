@@ -216,6 +216,43 @@ class TestLoadManagerBase {
   std::shared_ptr<cb::MockClientStats> GetStats() { return stats_; }
   void ResetStats() { stats_->Reset(); }
 
+  // Verifies that the number of inferences for each sequence is n or n+1.
+  //
+  void CheckSequenceBalance()
+  {
+    auto first_value = -1;
+    auto second_value = -1;
+
+    for (auto seq : stats_->sequence_status.seq_ids_to_count) {
+      auto count = seq.second;
+      // set first possible value for seqs
+      if (first_value == -1) {
+        first_value = count;
+        continue;
+      }
+      // set second possible value for seqs count
+      if (second_value == -1) {
+        if (count == first_value + 1 || count == first_value - 1) {
+          second_value = count;
+          continue;
+        } else if (first_value == count) {
+          continue;
+        }
+      }
+
+      if (count != first_value || count != second_value) {
+        std::stringstream os;
+        os << "Sequence request counts were not balanced: ";
+        for (auto x : stats_->sequence_status.seq_ids_to_count) {
+          os << x.second << ",";
+        }
+        CHECK_MESSAGE(
+            (count == first_value || count == second_value), os.str());
+        break;
+      }
+    }
+  }
+
   static PerfAnalyzerParameters GetSequenceTestParamsHelper(bool is_async)
   {
     PerfAnalyzerParameters params;

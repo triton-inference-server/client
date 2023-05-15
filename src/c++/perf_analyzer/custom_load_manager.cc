@@ -98,27 +98,30 @@ CustomLoadManager::CreateWorkerSchedules()
 {
   std::vector<RateSchedulePtr_t> worker_schedules =
       CreateEmptyWorkerSchedules();
+  std::vector<size_t> thread_ids{CalculateThreadIds()};
 
-  size_t num_workers = workers_.size();
-  size_t num_loops_through_intervals = 0;
+  size_t thread_id_index = 0;
   size_t worker_index = 0;
   size_t intervals_index = 0;
 
   std::chrono::nanoseconds next_timestamp(0);
 
-  // Distribute the custom intervals across the workers X times, where X is the
-  // number of workers. That way it is guaranteed to evenly distribute across
-  // the worker schedules, and every worker schedule will be the same length
+  bool started = false;
+
+  // Keep filling the schedule until both the thread_ids (which can differ if
+  // sequences are enabled) and the intervals are both at the end of their
+  // lists. This effectively finds the least common multiple of the two sizes
+  // and makes sure that the schedule is complete and can be repeated
+  // indefinitely
   //
-  while (num_loops_through_intervals < num_workers) {
+  while (!started || thread_id_index != 0 || intervals_index != 0) {
+    started = true;
     next_timestamp += custom_intervals_[intervals_index];
+    worker_index = thread_ids[thread_id_index];
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
 
-    worker_index = (worker_index + 1) % workers_.size();
+    thread_id_index = (thread_id_index + 1) % thread_ids.size();
     intervals_index = (intervals_index + 1) % custom_intervals_.size();
-    if (intervals_index == 0) {
-      num_loops_through_intervals++;
-    }
   }
 
   SetScheduleDurations(worker_schedules);
