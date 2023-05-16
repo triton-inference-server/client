@@ -26,9 +26,10 @@
 
 import os
 from ctypes import *
-import numpy as np
 import pkg_resources
 import struct
+
+import numpy as np
 
 
 class _utf8(object):
@@ -154,18 +155,18 @@ def get_raw_handle(cuda_shm_handle):
     return craw_handle.value
 
 
-def set_shared_memory_region(cuda_shm_handle, input_values, device='cpu'):
-    """Copy the contents of the numpy array or cuda dptr into the cuda shared memory region.
+def set_shared_memory_region(cuda_shm_handle, input_values):
+    """Copy the contents of data stored in numpy arrays or in a GPU into the cuda shared memory region.
+
+    Data stored in GPU is represented by a tuple of two integers: (ptr, mem_size), where ptr
+    is the pointer to the GPU memory region, and mem_size is its size in bytes.
 
     Parameters
     ----------
     cuda_shm_handle : c_void_p
         The handle for the cuda shared memory region.
     input_values : list
-        The list of numpy arrays to be copied into the shared memory region.
-    device: str
-        Use 'cpu' to copy numpy array into cuda shared memory region.
-        Use 'gpu' to copy from cuda dptr into cuda shared memory region.
+        The list of numpy arrays or (ptr, mem_size) to be copied into the shared memory region.
 
     Raises
     ------
@@ -176,32 +177,42 @@ def set_shared_memory_region(cuda_shm_handle, input_values, device='cpu'):
     if not isinstance(input_values, (list, tuple)):
         _raise_error("input_values must be specified as a numpy array")
     for input_value in input_values:
-        if not isinstance(input_value, (np.ndarray,)):
+        if not isinstance(input_value, (np.ndarray, tuple)):
             _raise_error(
-                "input_values must be specified as a list/tuple of numpy arrays"
+                "input_values must be specified as a list/tuple of numpy arrays or (ptr, mem_size)"
             )
-
-    if 'cpu' == device:
-        fptr = _ccudashm_shared_memory_region_set
-    elif 'gpu' == device:
-        fptr = _ccudashm_shared_memory_region_set_dptr
-    else:
-        _raise_error(
-            "unsupported device type: cpu and gpu are supported only"
-        )
 
     offset_current = 0
     for input_value in input_values:
-        input_value = np.ascontiguousarray(input_value).flatten()
-        if input_value.dtype == np.object_:
-            input_value = input_value.item()
-            byte_size = np.dtype(np.byte).itemsize * len(input_value)
-            _raise_if_error(c_int(fptr(cuda_shm_handle, c_uint64(
-                offset_current),  c_uint64(byte_size), cast(input_value, c_void_p))))
+        # data from CPU
+        if isinstance(input_value, np.ndarray):
+            fptr = _ccudashm_shared_memory_region_set
+            input_value = np.ascontiguousarray(input_value).flatten()
+
+            if input_value.dtype == np.object_:
+                input_value = input_value.item()
+                byte_size = np.dtype(np.byte).itemsize * len(input_value)
+                data = cast(input_value, c_void_p)
+            else:
+                byte_size = input_value.size * input_value.itemsize
+                data = input_value.ctypes.data_as(c_void_p)
+        # data from GPU
         else:
-            byte_size = input_value.size * input_value.itemsize
-            _raise_if_error(c_int(fptr(cuda_shm_handle, c_uint64(offset_current),
-                c_uint64(byte_size), input_value.ctypes.data_as(c_void_p))))
+            fptr = _ccudashm_shared_memory_region_set_dptr
+            data = cast(input_value[0], c_void_p)
+            byte_size = input_value[1]
+
+        _raise_if_error(
+            c_int(
+                fptr(
+                    cuda_shm_handle,
+                    c_uint64(offset_current),
+                    c_uint64(byte_size),
+                    data
+                )
+            )
+        )
+
         offset_current += byte_size
     return
 
