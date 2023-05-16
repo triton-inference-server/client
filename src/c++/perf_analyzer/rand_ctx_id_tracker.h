@@ -23,47 +23,36 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "concurrency_worker.h"
-#include "gmock/gmock.h"
+#include <random>
+
+#include "ictx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
+// Context ID tracker that is always available and returns random Context IDs
+//
+class RandCtxIdTracker : public ICtxIdTracker {
  public:
-  NaggyMockConcurrencyWorker(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async,
-      const size_t max_concurrency, const bool using_json_data,
-      const bool streaming, const int32_t batch_size,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute,
-      const std::shared_ptr<IInferDataManager>& infer_data_manager,
-      std::shared_ptr<SequenceManager> sequence_manager)
-      : ConcurrencyWorker(
-            id, thread_stat, thread_config, parser, data_loader, factory,
-            on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, batch_size, wake_signal, wake_mutex, active_threads,
-            execute, infer_data_manager, sequence_manager)
+  RandCtxIdTracker() = default;
+
+  void Reset(size_t count) override
   {
-    ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      ConcurrencyWorker::Infer();
-    });
+    distribution_ = std::uniform_int_distribution<uint64_t>(0, count - 1);
   }
 
-  MOCK_METHOD(void, Infer, (), (override));
+  void Restore(size_t id) override{};
 
-  void EmptyInfer() { thread_config_->is_paused_ = true; }
+  size_t Get() override { return distribution_(rng_generator_); };
+
+  bool IsAvailable() override { return true; };
+
+ private:
+  std::uniform_int_distribution<uint64_t> distribution_;
+  std::default_random_engine rng_generator_{};
+
+  size_t max = 0;
 };
 
-// Non-naggy version of Mock (won't warn when using default gmock
-// mocked function)
-using MockConcurrencyWorker = testing::NiceMock<NaggyMockConcurrencyWorker>;
-
-}}  // namespace triton::perfanalyzer
+}};  // namespace triton::perfanalyzer

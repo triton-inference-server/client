@@ -23,47 +23,45 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "concurrency_worker.h"
-#include "gmock/gmock.h"
+#include <memory>
+
+#include "concurrency_ctx_id_tracker.h"
+#include "fifo_ctx_id_tracker.h"
+#include "rand_ctx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
+// Context ID tracker that is always available and returns random Context IDs
+//
+class CtxIdTrackerFactory {
  public:
-  NaggyMockConcurrencyWorker(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async,
-      const size_t max_concurrency, const bool using_json_data,
-      const bool streaming, const int32_t batch_size,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute,
-      const std::shared_ptr<IInferDataManager>& infer_data_manager,
-      std::shared_ptr<SequenceManager> sequence_manager)
-      : ConcurrencyWorker(
-            id, thread_stat, thread_config, parser, data_loader, factory,
-            on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, batch_size, wake_signal, wake_mutex, active_threads,
-            execute, infer_data_manager, sequence_manager)
+  CtxIdTrackerFactory() = delete;
+
+  /// Creates and returns a Context Id Tracker
+  ///
+  /// \param is_concurrency True if targetting Concurrency
+  /// \param is_sequence_model True if the model is a sequence model
+  /// \param serial_sequences True if in serial sequence mode
+  ///
+  static std::shared_ptr<ICtxIdTracker> CreateTracker(
+      bool is_concurrency, bool is_sequence_model, bool serial_sequences)
   {
-    ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      ConcurrencyWorker::Infer();
-    });
+    if (is_concurrency) {
+      if (is_sequence_model) {
+        return std::make_shared<FifoCtxIdTracker>();
+      } else {
+        return std::make_shared<ConcurrencyCtxIdTracker>();
+      }
+    } else {
+      if (is_sequence_model && serial_sequences) {
+        return std::make_shared<FifoCtxIdTracker>();
+      } else {
+        return std::make_shared<RandCtxIdTracker>();
+      }
+    }
   }
-
-  MOCK_METHOD(void, Infer, (), (override));
-
-  void EmptyInfer() { thread_config_->is_paused_ = true; }
 };
-
-// Non-naggy version of Mock (won't warn when using default gmock
-// mocked function)
-using MockConcurrencyWorker = testing::NiceMock<NaggyMockConcurrencyWorker>;
 
 }}  // namespace triton::perfanalyzer

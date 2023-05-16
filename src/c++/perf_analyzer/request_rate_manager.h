@@ -78,6 +78,7 @@ class RequestRateManager : public LoadManager {
   /// \param shared_memory_type The type of shared memory to use for inputs.
   /// \param output_shm_size The size of the shared memory to allocate for the
   /// output.
+  /// \param serial_sequences Enable serial sequence mode.
   /// \param parser The ModelParser object to get the model details.
   /// \param factory The ClientBackendFactory object used to create
   /// client to the server.
@@ -89,7 +90,7 @@ class RequestRateManager : public LoadManager {
       Distribution request_distribution, const int32_t batch_size,
       const size_t max_threads, const uint32_t num_of_sequences,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const std::shared_ptr<ModelParser>& parser,
+      const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       std::unique_ptr<LoadManager>* manager);
 
@@ -99,10 +100,6 @@ class RequestRateManager : public LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeRequestRate(const double target_request_rate);
 
-  /// Resets all worker thread states to beginning of schedule.
-  /// \return cb::Error object indicating success or failure.
-  cb::Error ResetWorkers() override;
-
  protected:
   RequestRateManager(
       const bool async, const bool streaming, Distribution request_distribution,
@@ -110,7 +107,7 @@ class RequestRateManager : public LoadManager {
       const size_t max_trials, const size_t max_threads,
       const uint32_t num_of_sequences,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const std::shared_ptr<ModelParser>& parser,
+      const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
   void InitManagerFinalize() override;
@@ -125,6 +122,8 @@ class RequestRateManager : public LoadManager {
 
   std::vector<RateSchedulePtr_t> CreateEmptyWorkerSchedules();
 
+  std::vector<size_t> CalculateThreadIds();
+
   void SetScheduleDurations(std::vector<RateSchedulePtr_t>& schedules);
 
   void GiveSchedulesToWorkers(
@@ -132,6 +131,8 @@ class RequestRateManager : public LoadManager {
 
   // Pauses the worker threads
   void PauseWorkers();
+
+  void ConfigureThreads();
 
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
@@ -141,6 +142,8 @@ class RequestRateManager : public LoadManager {
       std::shared_ptr<ThreadStat>,
       std::shared_ptr<RequestRateWorker::ThreadConfig>);
 
+  size_t DetermineNumThreads();
+
   std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
@@ -148,6 +151,7 @@ class RequestRateManager : public LoadManager {
   std::chrono::steady_clock::time_point start_time_;
   bool execute_;
   const size_t num_of_sequences_{0};
+  const bool serial_sequences_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestRequestRateManager;

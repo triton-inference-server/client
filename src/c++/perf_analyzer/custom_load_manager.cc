@@ -37,14 +37,14 @@ CustomLoadManager::Create(
     const std::string& request_intervals_file, const int32_t batch_size,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<CustomLoadManager> local_manager(new CustomLoadManager(
       async, streaming, request_intervals_file, batch_size,
       measurement_window_ms, max_trials, max_threads, num_of_sequences,
-      shared_memory_type, output_shm_size, parser, factory));
+      shared_memory_type, output_shm_size, serial_sequences, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -57,12 +57,13 @@ CustomLoadManager::CustomLoadManager(
     const uint64_t measurement_window_ms, const size_t max_trials,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : RequestRateManager(
           async, streaming, Distribution::CUSTOM, batch_size,
           measurement_window_ms, max_trials, max_threads, num_of_sequences,
-          shared_memory_type, output_shm_size, parser, factory),
+          shared_memory_type, output_shm_size, serial_sequences, parser,
+          factory),
       request_intervals_file_(request_intervals_file)
 {
 }
@@ -71,6 +72,7 @@ cb::Error
 CustomLoadManager::InitCustomIntervals()
 {
   PauseWorkers();
+  ConfigureThreads();
   auto status = GenerateSchedule();
   ResumeWorkers();
   return status;
@@ -96,27 +98,30 @@ CustomLoadManager::CreateWorkerSchedules()
 {
   std::vector<RateSchedulePtr_t> worker_schedules =
       CreateEmptyWorkerSchedules();
+  std::vector<size_t> thread_ids{CalculateThreadIds()};
 
-  size_t num_workers = workers_.size();
-  size_t num_loops_through_intervals = 0;
+  size_t thread_id_index = 0;
   size_t worker_index = 0;
   size_t intervals_index = 0;
 
   std::chrono::nanoseconds next_timestamp(0);
 
-  // Distribute the custom intervals across the workers X times, where X is the
-  // number of workers. That way it is guaranteed to evenly distribute across
-  // the worker schedules, and every worker schedule will be the same length
+  bool started = false;
+
+  // Keep filling the schedule until both the thread_ids (which can differ if
+  // sequences are enabled) and the intervals are both at the end of their
+  // lists. This effectively finds the least common multiple of the two sizes
+  // and makes sure that the schedule is complete and can be repeated
+  // indefinitely
   //
-  while (num_loops_through_intervals < num_workers) {
+  while (!started || thread_id_index != 0 || intervals_index != 0) {
+    started = true;
     next_timestamp += custom_intervals_[intervals_index];
+    worker_index = thread_ids[thread_id_index];
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
 
-    worker_index = (worker_index + 1) % workers_.size();
+    thread_id_index = (thread_id_index + 1) % thread_ids.size();
     intervals_index = (intervals_index + 1) % custom_intervals_.size();
-    if (intervals_index == 0) {
-      num_loops_through_intervals++;
-    }
   }
 
   SetScheduleDurations(worker_schedules);

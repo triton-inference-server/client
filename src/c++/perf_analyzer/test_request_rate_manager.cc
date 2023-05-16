@@ -60,8 +60,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.async, params.streaming, params.request_distribution,
             params.batch_size, params.measurement_window_ms, params.max_trials,
             params.max_threads, params.num_of_sequences,
-            params.shared_memory_type, params.output_shm_size, GetParser(),
-            GetFactory())
+            params.shared_memory_type, params.output_shm_size,
+            params.serial_sequences, GetParser(), GetFactory())
   {
   }
 
@@ -74,7 +74,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
         batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-        infer_data_manager_, sequence_manager_);
+        serial_sequences_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
       EXPECT_CALL(*worker, Infer())
@@ -84,11 +84,46 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return worker;
   }
 
+  void TestConfigureThreads(
+      std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
+  {
+    RequestRateManager::ConfigureThreads();
+
+    auto expected_size = expected_configs.size();
+
+    // Check that the correct number of threads are created
+    //
+    CHECK(threads_.size() == expected_size);
+
+    // Check that threads_config has correct number of sequences and
+    // seq stat index offset
+    for (auto i = 0; i < expected_configs.size(); i++) {
+      CHECK(
+          threads_config_[i]->num_sequences_ ==
+          expected_configs[i].num_sequences_);
+      CHECK(
+          threads_config_[i]->seq_stat_index_offset_ ==
+          expected_configs[i].seq_stat_index_offset_);
+    }
+  }
+
+  void TestCalculateThreadIds(std::vector<size_t>& expected_thread_ids)
+  {
+    std::vector<size_t> actual_thread_ids =
+        RequestRateManager::CalculateThreadIds();
+    CHECK(actual_thread_ids.size() == expected_thread_ids.size());
+
+    for (auto i = 0; i < actual_thread_ids.size(); i++) {
+      CHECK(actual_thread_ids[i] == expected_thread_ids[i]);
+    }
+  }
+
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
 
   void TestSchedule(double rate, PerfAnalyzerParameters params)
   {
     PauseWorkers();
+    ConfigureThreads();
     GenerateSchedule(rate);
 
     nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *
@@ -113,55 +148,29 @@ class TestRequestRateManager : public TestLoadManagerBase,
     early_exit = true;
   }
 
-  /// Test the public function ResetWorkers()
-  ///
-  /// ResetWorkers pauses and restarts the workers, but the most important and
-  /// observable effects are the following:
-  ///   - if threads_ is empty, it will populate threads_, threads_stat_, and
-  ///   threads_config_ based on max_threads_
-  ///   - start_time_ is updated with a new timestamp
-  ///
-  void TestResetWorkers()
+  void TestCreateSchedule(
+      double rate, PerfAnalyzerParameters params,
+      std::vector<uint32_t>& expected_worker_ratio)
   {
-    // Capture the existing start time so we can confirm it changes
-    //
-    start_time_ = std::chrono::steady_clock::now();
-    auto old_time = start_time_;
+    PauseWorkers();
+    ConfigureThreads();
+    GenerateSchedule(rate);
 
-    SUBCASE("max threads 0")
-    {
-      // If max threads is 0, nothing happens other than updating
-      // the start time
-      //
-      max_threads_ = 0;
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 0);
-      CHECK(threads_stat_.size() == 0);
-      CHECK(threads_.size() == 0);
+    std::vector<uint32_t> worker_schedule_sizes;
+    uint32_t total_num_seqs{0};
+
+    for (auto worker : workers_) {
+      auto w = std::dynamic_pointer_cast<RequestRateWorker>(worker);
+      total_num_seqs += w->thread_config_->num_sequences_;
+      worker_schedule_sizes.push_back(w->schedule_->intervals.size());
     }
-    SUBCASE("max threads 3, multiple calls")
-    {
-      max_threads_ = 3;
+    early_exit = true;
 
-      // First call will populate threads/config/stat
-      //
-      CHECK(start_time_ == old_time);
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
-
-      // Second call will only update start_time
-      //
-      old_time = start_time_;
-      ResetWorkers();
-      CHECK(start_time_ != old_time);
-      CHECK(threads_config_.size() == 3);
-      CHECK(threads_stat_.size() == 3);
-      CHECK(threads_.size() == 3);
+    CHECK(num_of_sequences_ == total_num_seqs);
+    for (int i = 0; i < worker_schedule_sizes.size() - 1; i++) {
+      CHECK(
+          worker_schedule_sizes[i] / expected_worker_ratio[i] ==
+          worker_schedule_sizes[i + 1] / expected_worker_ratio[i + 1]);
     }
   }
 
@@ -207,7 +216,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   /// Test sequence handling
   ///
-  void TestSequences()
+  void TestSequences(bool verify_seq_balance, bool check_expected_count)
   {
     stats_->SetDelays({10});
     double request_rate1 = 100;
@@ -235,9 +244,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    CHECK(
-        stats.completed_request_count ==
-        doctest::Approx(expected_count1).epsilon(0.10));
+    if (check_expected_count) {
+      CHECK(
+          stats.completed_request_count ==
+          doctest::Approx(expected_count1).epsilon(0.10));
+    }
 
     PauseWorkers();
     CheckSequences(params_.num_of_sequences);
@@ -252,6 +263,10 @@ class TestRequestRateManager : public TestLoadManagerBase,
                                 stats_->num_infer_calls;
     CHECK(stats.completed_request_count == client_total_requests);
 
+    if (verify_seq_balance) {
+      CheckSequenceBalance();
+    }
+
     ResetStats();
 
     // Run and check request rate 2
@@ -261,9 +276,11 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
     stats = cb::InferStat();
     GetAccumulatedClientStat(&stats);
-    CHECK(
-        stats.completed_request_count ==
-        doctest::Approx(expected_count2).epsilon(0.10));
+    if (check_expected_count) {
+      CHECK(
+          stats.completed_request_count ==
+          doctest::Approx(expected_count2).epsilon(0.10));
+    }
 
     // Stop all threads and make sure everything is as expected
     //
@@ -383,7 +400,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   {
     std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+        std::make_shared<RequestRateWorker::ThreadConfig>(0)};
     std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
 
     auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
@@ -431,7 +448,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   size_t& max_threads_{LoadManager::max_threads_};
   bool& async_{LoadManager::async_};
   bool& streaming_{LoadManager::streaming_};
-  std::shared_ptr<cb::ClientBackendFactory> factory_{
+  std::shared_ptr<cb::ClientBackendFactory>& factory_{
       TestLoadManagerBase::factory_};
   std::shared_ptr<IInferDataManager>& infer_data_manager_{
       LoadManager::infer_data_manager_};
@@ -562,7 +579,7 @@ TEST_CASE("request_rate_schedule")
   params.max_trials = 10;
   bool is_sequence = false;
   bool is_decoupled = false;
-  bool use_mock_infer = false;
+  bool use_mock_infer = true;
   double rate;
 
 
@@ -642,17 +659,6 @@ TEST_CASE("request_rate_schedule")
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
   trrm.TestSchedule(rate, params);
-}
-
-TEST_CASE("request_rate_reset_workers: Test the public function ResetWorkers()")
-{
-  PerfAnalyzerParameters params;
-  bool is_sequence = false;
-  bool is_decoupled = false;
-  bool use_mock_infer = true;
-  TestRequestRateManager trrm(
-      params, is_sequence, is_decoupled, use_mock_infer);
-  trrm.TestResetWorkers();
 }
 
 /// Check that the correct inference function calls
@@ -768,16 +774,122 @@ TEST_CASE("request_rate_multiple")
 TEST_CASE("request_rate_sequence")
 {
   PerfAnalyzerParameters params = TestLoadManagerBase::GetSequenceTestParams();
+  bool verify_seq_balance = false;
+  bool check_expected_count = true;
   bool is_sequence_model = true;
-  TestRequestRateManager trrm(params, is_sequence_model);
 
+  TestRequestRateManager trrm(params, is_sequence_model);
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
       params.user_data, params.start_sequence_id, params.sequence_id_range,
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
-  trrm.TestSequences();
+  trrm.TestSequences(verify_seq_balance, check_expected_count);
 }
+
+TEST_CASE("request_rate_serial_sequences")
+{
+  PerfAnalyzerParameters params;
+  params.serial_sequences = true;
+  bool verify_seq_balance = false;
+  bool check_expected_count = true;
+  bool is_sequence_model = true;
+
+  const auto& ParameterizeDistribution{[&]() {
+    SUBCASE("Constant") { params.request_distribution = CONSTANT; }
+    SUBCASE("Poisson")
+    {
+      params.request_distribution = POISSON;
+      check_expected_count = false;
+    }
+  }};
+
+  SUBCASE("num seqs 7, threads 4")
+  {
+    verify_seq_balance = true;
+    params.sequence_length = 100;
+    params.num_of_sequences = 7;
+    params.max_threads = 4;
+    ParameterizeDistribution();
+  }
+  SUBCASE("num seqs 13, threads 5")
+  {
+    verify_seq_balance = true;
+    params.sequence_length = 100;
+    params.num_of_sequences = 13;
+    params.max_threads = 5;
+    ParameterizeDistribution();
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+  trrm.TestSequences(verify_seq_balance, check_expected_count);
+}
+
+TEST_CASE("request_rate max inflight per seq")
+{
+  // Confirm that we can have multiple inferences in-flight for a given sequence
+  // unless in serial-sequence mode
+  PerfAnalyzerParameters params;
+  bool is_sequence_model = true;
+  params.num_of_sequences = 2;
+  size_t rate = 1000;
+  size_t time_ms = 10;
+
+  bool expect_multiple_in_flight_sequences = false;
+
+  SUBCASE("sync will never have multiple in flight")
+  {
+    params.async = false;
+    expect_multiple_in_flight_sequences = false;
+
+    SUBCASE("serial_sequences on") { params.serial_sequences = true; }
+    SUBCASE("serial_sequences off") { params.serial_sequences = false; }
+  }
+  SUBCASE("async may have multiple in flight depending on serial sequences")
+  {
+    params.async = true;
+
+    SUBCASE("serial_sequences on")
+    {
+      params.serial_sequences = true;
+      expect_multiple_in_flight_sequences = false;
+    }
+    SUBCASE("serial_sequences off")
+    {
+      params.serial_sequences = false;
+      expect_multiple_in_flight_sequences = true;
+    }
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+
+  trrm.stats_->SetDelays({100});
+
+  trrm.ChangeRequestRate(rate);
+  std::this_thread::sleep_for(std::chrono::milliseconds(time_ms));
+
+  auto max_observed_inflight =
+      trrm.stats_->sequence_status.max_inflight_seq_count;
+
+  if (expect_multiple_in_flight_sequences) {
+    CHECK(max_observed_inflight > 1);
+  } else {
+    CHECK(max_observed_inflight == 1);
+  }
+
+  trrm.StopWorkerThreads();
+}
+
 
 TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 {
@@ -805,7 +917,7 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 0)};
+      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
 
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
   trrm.InitManager(
@@ -1552,7 +1664,7 @@ TEST_CASE("Request rate - Shared memory infer input calls")
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0, 1)};
+      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
 
   trrm.parser_ = mip.mock_model_parser_;
   trrm.data_loader_ = mip.mock_data_loader_;
@@ -1736,10 +1848,52 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
 
-  SUBCASE("sync") { params.async = false; }
-  SUBCASE("async") { params.async = true; }
+  std::vector<uint64_t> delays;
+  bool is_sequence_model = false;
+  size_t rate = 1000;
+  size_t time_ms = 50;
+  size_t expected_count = time_ms;
 
-  TestRequestRateManager trrm(params);
+  SUBCASE("sync")
+  {
+    params.async = false;
+    delays = {0};
+  }
+  SUBCASE("async - fast response")
+  {
+    params.async = true;
+    delays = {0};
+  }
+  SUBCASE(
+      "async - slow response with sequences off should not slow down our send "
+      "rate")
+  {
+    params.async = true;
+    delays = {100};
+  }
+  SUBCASE("async - slow response with sequences on")
+  {
+    is_sequence_model = true;
+    params.async = true;
+    params.num_of_sequences = 5;
+    delays = {100};
+
+    SUBCASE("send rate can be limited if serial sequences is on")
+    {
+      params.serial_sequences = true;
+      expected_count = params.num_of_sequences;
+    }
+    SUBCASE(
+        "send rate will not be affected by response time if serial sequences "
+        "is off")
+    {
+      params.serial_sequences = false;
+    }
+  }
+
+  TestRequestRateManager trrm(params, is_sequence_model);
+
+  trrm.stats_->SetDelays(delays);
 
   trrm.InitManager(
       params.string_length, params.string_data, params.zero_input,
@@ -1747,13 +1901,187 @@ TEST_CASE(
       params.sequence_length, params.sequence_length_specified,
       params.sequence_length_variation);
 
-  trrm.ChangeRequestRate(1000);
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  trrm.StopWorkerThreads();
-
+  trrm.ChangeRequestRate(rate);
+  std::this_thread::sleep_for(std::chrono::milliseconds(time_ms));
   const size_t num_sent_requests{trrm.GetAndResetNumSentRequests()};
+  CHECK(num_sent_requests == doctest::Approx(expected_count).epsilon(0.1));
 
-  CHECK(num_sent_requests == doctest::Approx(50).epsilon(0.1));
+  trrm.StopWorkerThreads();
 }
 
+TEST_CASE("request rate manager - Configure threads")
+{
+  PerfAnalyzerParameters params{};
+  std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
+  std::vector<size_t> expected_number_of_sequences_owned_by_thread;
+  std::vector<size_t> expected_seq_stat_index_offsets;
+  bool is_sequence_model = true;
+  bool is_decoupled_model = false;
+  bool use_mock_infer = true;
+
+  SUBCASE("normal")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+
+    expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3};
+  }
+
+  SUBCASE("max_threads > num_seqs")
+  {
+    params.max_threads = 10;
+    params.num_of_sequences = 4;
+
+    expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3};
+  }
+
+  SUBCASE("num_seqs > max_threads")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 10;
+
+    expected_number_of_sequences_owned_by_thread = {3, 3, 2, 2};
+    expected_seq_stat_index_offsets = {0, 3, 6, 8};
+  }
+
+  SUBCASE("not divisible")
+  {
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+
+    expected_number_of_sequences_owned_by_thread = {2, 2, 2, 1};
+    expected_seq_stat_index_offsets = {0, 2, 4, 6};
+  }
+
+  for (auto i = 0; i < expected_number_of_sequences_owned_by_thread.size();
+       i++) {
+    RequestRateWorker::ThreadConfig tc(i);
+    tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
+    tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    expected_config_values.push_back(tc);
+  }
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled_model, use_mock_infer);
+  trrm.TestConfigureThreads(expected_config_values);
+}
+
+TEST_CASE("request rate manager - Calculate thread ids")
+{
+  PerfAnalyzerParameters params{};
+  bool is_sequence_model;
+  bool is_decoupled_model = false;
+  bool use_mock_infer = true;
+  std::vector<size_t> expected_thread_ids;
+
+  SUBCASE("normal, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("normal, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 4;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("num_seq > max_threads, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_thread_ids = {0, 1, 2, 3, 0};
+  }
+  SUBCASE("num_seq > max_threads, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("max_threads > num_seq, on sequence model")
+  {
+    is_sequence_model = true;
+    params.max_threads = 5;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3};
+  }
+  SUBCASE("max_threads > num_seq, not sequence model")
+  {
+    is_sequence_model = false;
+    params.max_threads = 5;
+    params.num_of_sequences = 4;
+    expected_thread_ids = {0, 1, 2, 3, 4};
+  }
+  SUBCASE("large example")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+    expected_thread_ids = {0, 1, 2, 3, 0, 1, 2};
+  }
+
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled_model, use_mock_infer);
+  trrm.TestCalculateThreadIds(expected_thread_ids);
+}
+
+TEST_CASE("request rate create schedule")
+{
+  PerfAnalyzerParameters params;
+  params.measurement_window_ms = 1000;
+  params.max_trials = 10;
+  bool is_sequence_model = false;
+  bool is_decoupled = false;
+  bool use_mock_infer = false;
+  double rate = 10;
+  std::vector<uint32_t> expected_worker_ratio;
+
+  SUBCASE("num_seq > max_threads, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_worker_ratio = {2, 1, 1, 1};
+  }
+
+  SUBCASE("num_seq = 7, max_threads = 4, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 7;
+    expected_worker_ratio = {2, 2, 2, 1};
+  }
+
+  SUBCASE("num_seq = 4, max_threads = 2, on sequence model, CONSTANT")
+  {
+    is_sequence_model = true;
+    params.max_threads = 2;
+    params.num_of_sequences = 4;
+    expected_worker_ratio = {1, 1};
+  }
+
+  SUBCASE("num_seq > max_threads, on sequence model, POISSON")
+  {
+    is_sequence_model = true;
+    params.max_threads = 4;
+    params.num_of_sequences = 5;
+    expected_worker_ratio = {2, 1, 1, 1};
+    params.request_distribution = POISSON;
+  }
+
+  TestRequestRateManager trrm(
+      params, is_sequence_model, is_decoupled, use_mock_infer);
+
+  trrm.InitManager(
+      params.string_length, params.string_data, params.zero_input,
+      params.user_data, params.start_sequence_id, params.sequence_id_range,
+      params.sequence_length, params.sequence_length_specified,
+      params.sequence_length_variation);
+  trrm.TestCreateSchedule(rate, params, expected_worker_ratio);
+}
 }}  // namespace triton::perfanalyzer

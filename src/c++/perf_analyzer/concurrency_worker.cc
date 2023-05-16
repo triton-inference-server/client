@@ -40,6 +40,7 @@ namespace triton { namespace perfanalyzer {
 void
 ConcurrencyWorker::Infer()
 {
+  CreateCtxIdTracker();
   ReserveContexts();
 
   // run inferencing until receiving exit signal to maintain server load.
@@ -72,6 +73,15 @@ ConcurrencyWorker::Infer()
 }
 
 void
+ConcurrencyWorker::CreateCtxIdTracker()
+{
+  bool is_concurrency = true;
+  bool serial_sequences = false;
+  ctx_id_tracker_ = CtxIdTrackerFactory::CreateTracker(
+      is_concurrency, on_sequence_model_, serial_sequences);
+}
+
+void
 ConcurrencyWorker::ReserveContexts()
 {
   // Reserve the vectors in case of sequence models. In non-sequence or
@@ -92,7 +102,7 @@ ConcurrencyWorker::HandleExecuteOff()
       CompleteOngoingSequences();
       WaitForOngoingRequests();
 
-      // Reconstruct 'free_ctx_ids_' because CompleteOngoingSequences()
+      // Reset Ctx IDs because CompleteOngoingSequences()
       // has destructive side affects
       ResetFreeCtxIds();
 
@@ -152,23 +162,13 @@ ConcurrencyWorker::CreateContextsAsNecessary()
 void
 ConcurrencyWorker::SendInferRequests()
 {
-  while (free_ctx_ids_.size() && execute_ && !ShouldExit()) {
+  while (ctx_id_tracker_->IsAvailable() && execute_ && !ShouldExit()) {
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id);
     RestoreFreeCtxId(ctx_id);
   }
 }
 
-void
-ConcurrencyWorker::RestoreFreeCtxId(uint32_t ctx_id)
-{
-  if (!async_) {
-    {
-      std::lock_guard<std::mutex> lock(cb_mtx_);
-      free_ctx_ids_.push(ctx_id);
-    }
-  }
-}
 
 void
 ConcurrencyWorker::WaitForResponses()
@@ -191,69 +191,16 @@ ConcurrencyWorker::WaitForResponses()
 }
 
 void
-ConcurrencyWorker::AsyncCallbackFinalize(uint32_t ctx_id)
-{
-  // avoid competition over 'cb_mtx_'
-  {
-    std::lock_guard<std::mutex> lk(cb_mtx_);
-    free_ctx_ids_.push(ctx_id);
-    notified_ = true;
-  }
-
-  cb_cv_.notify_all();
-}
-
-void
-ConcurrencyWorker::CompleteOngoingSequences()
-{
-  if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-      size_t seq_stat_index = GetSeqStatIndex(ctx_id);
-      ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
-    }
-  }
-}
-
-void
 ConcurrencyWorker::ResetFreeCtxIds()
 {
   std::lock_guard<std::mutex> lock(cb_mtx_);
-  free_ctx_ids_ = std::queue<int>();
-
-  for (size_t i = 0; i < thread_config_->concurrency_; ++i) {
-    if (on_sequence_model_) {
-      free_ctx_ids_.push(i);
-    } else {
-      free_ctx_ids_.push(0);
-    }
-  }
+  ctx_id_tracker_->Reset(thread_config_->concurrency_);
 }
 
 uint32_t
 ConcurrencyWorker::GetSeqStatIndex(uint32_t ctx_id)
 {
-  size_t offset = 0;
-  for (size_t i = 0; i < thread_config_->thread_id_; i++) {
-    offset += threads_config_[i]->concurrency_;
-  }
-
-  return (offset + ctx_id);
-}
-
-uint32_t
-ConcurrencyWorker::GetCtxId()
-{
-  uint32_t ctx_id;
-  // Find the next available context id to use for this request
-  std::lock_guard<std::mutex> lk(cb_mtx_);
-  {
-    if (free_ctx_ids_.size() < 1) {
-      throw std::runtime_error("free ctx id list is empty");
-    }
-    ctx_id = free_ctx_ids_.front();
-    free_ctx_ids_.pop();
-  }
-  return ctx_id;
+  return (thread_config_->seq_stat_index_offset_ + ctx_id);
 }
 
 }}  // namespace triton::perfanalyzer

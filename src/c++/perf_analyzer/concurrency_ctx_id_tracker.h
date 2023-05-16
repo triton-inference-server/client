@@ -23,47 +23,26 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "concurrency_worker.h"
-#include "gmock/gmock.h"
+#include "base_queue_ctx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
+// Context ID Tracker that always returns context 0, but ensures that only X
+// requests are outstanding at a time
+//
+class ConcurrencyCtxIdTracker : public BaseQueueCtxIdTracker {
  public:
-  NaggyMockConcurrencyWorker(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async,
-      const size_t max_concurrency, const bool using_json_data,
-      const bool streaming, const int32_t batch_size,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute,
-      const std::shared_ptr<IInferDataManager>& infer_data_manager,
-      std::shared_ptr<SequenceManager> sequence_manager)
-      : ConcurrencyWorker(
-            id, thread_stat, thread_config, parser, data_loader, factory,
-            on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, batch_size, wake_signal, wake_mutex, active_threads,
-            execute, infer_data_manager, sequence_manager)
+  ConcurrencyCtxIdTracker() = default;
+  void Reset(size_t count) override
   {
-    ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      ConcurrencyWorker::Infer();
-    });
+    Clear();
+
+    for (size_t i = 0; i < count; ++i) {
+      free_ctx_ids_.push(0);
+    }
   }
-
-  MOCK_METHOD(void, Infer, (), (override));
-
-  void EmptyInfer() { thread_config_->is_paused_ = true; }
 };
 
-// Non-naggy version of Mock (won't warn when using default gmock
-// mocked function)
-using MockConcurrencyWorker = testing::NiceMock<NaggyMockConcurrencyWorker>;
-
-}}  // namespace triton::perfanalyzer
+}};  // namespace triton::perfanalyzer

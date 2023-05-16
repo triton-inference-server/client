@@ -25,10 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <atomic>
 #include <memory>
-#include <queue>
-#include <random>
 
 #include "load_worker.h"
 #include "sequence_manager.h"
@@ -54,14 +51,20 @@ class ConcurrencyWorker : public LoadWorker {
  public:
   struct ThreadConfig {
     ThreadConfig(size_t thread_id)
-        : thread_id_(thread_id), concurrency_(0), is_paused_(false)
+        : thread_id_(thread_id), concurrency_(0), seq_stat_index_offset_(0),
+          is_paused_(false)
     {
     }
 
     // ID of corresponding worker thread
     size_t thread_id_;
+
     // The concurrency level that the worker should produce
     size_t concurrency_;
+
+    // The starting sequence stat index for this worker
+    size_t seq_stat_index_offset_;
+
     // Whether or not the thread is issuing new inference requests
     bool is_paused_;
   };
@@ -75,7 +78,6 @@ class ConcurrencyWorker : public LoadWorker {
       const bool on_sequence_model, const bool async,
       const size_t max_concurrency, const bool using_json_data,
       const bool streaming, const int32_t batch_size,
-      std::vector<std::shared_ptr<ThreadConfig>>& threads_config,
       std::condition_variable& wake_signal, std::mutex& wake_mutex,
       size_t& active_threads, bool& execute,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
@@ -85,7 +87,7 @@ class ConcurrencyWorker : public LoadWorker {
             async, streaming, batch_size, using_json_data, wake_signal,
             wake_mutex, execute, infer_data_manager, sequence_manager),
         thread_config_(thread_config), max_concurrency_(max_concurrency),
-        threads_config_(threads_config), active_threads_(active_threads)
+        active_threads_(active_threads)
   {
   }
 
@@ -96,21 +98,10 @@ class ConcurrencyWorker : public LoadWorker {
   // TODO REFACTOR TMA-1020 can we decouple this thread from the total count of
   // threads?
   size_t& active_threads_;
-  // TODO REFACTOR TMA-1020 can we decouple this thread from every other thread?
-  std::vector<std::shared_ptr<ThreadConfig>>& threads_config_;
-
-  std::queue<int> free_ctx_ids_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
-  // Variables used to signal async request completion
-  bool notified_ = false;
-  std::mutex cb_mtx_;
-  std::condition_variable cb_cv_;
-
-  void AsyncCallbackFinalize(uint32_t ctx_id);
-
-  void CompleteOngoingSequences() override;
+  void CreateCtxIdTracker();
 
   // Reserve vector size for contexts
   void ReserveContexts();
@@ -130,12 +121,9 @@ class ConcurrencyWorker : public LoadWorker {
 
   void WaitForResponses();
 
-  void RestoreFreeCtxId(uint32_t ctx_id);
   void ResetFreeCtxIds();
 
   uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
-
-  uint32_t GetCtxId();
 
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {

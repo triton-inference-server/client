@@ -23,47 +23,44 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #pragma once
 
-#include "concurrency_worker.h"
-#include "gmock/gmock.h"
+#include <queue>
+#include "ictx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockConcurrencyWorker : public ConcurrencyWorker {
+// Base class for CtxIdTrackers that track available IDs via a queue
+//
+class BaseQueueCtxIdTracker : public ICtxIdTracker {
  public:
-  NaggyMockConcurrencyWorker(
-      uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ThreadConfig> thread_config,
-      const std::shared_ptr<ModelParser> parser,
-      std::shared_ptr<DataLoader> data_loader,
-      const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async,
-      const size_t max_concurrency, const bool using_json_data,
-      const bool streaming, const int32_t batch_size,
-      std::condition_variable& wake_signal, std::mutex& wake_mutex,
-      size_t& active_threads, bool& execute,
-      const std::shared_ptr<IInferDataManager>& infer_data_manager,
-      std::shared_ptr<SequenceManager> sequence_manager)
-      : ConcurrencyWorker(
-            id, thread_stat, thread_config, parser, data_loader, factory,
-            on_sequence_model, async, max_concurrency, using_json_data,
-            streaming, batch_size, wake_signal, wake_mutex, active_threads,
-            execute, infer_data_manager, sequence_manager)
+  BaseQueueCtxIdTracker() = default;
+
+  void Restore(size_t id) override { free_ctx_ids_.push(id); }
+
+  size_t Get() override
   {
-    ON_CALL(*this, Infer()).WillByDefault([this]() -> void {
-      ConcurrencyWorker::Infer();
-    });
+    if (!IsAvailable()) {
+      throw std::runtime_error("free ctx id list is empty");
+    }
+
+    size_t ctx_id = free_ctx_ids_.front();
+    free_ctx_ids_.pop();
+    return ctx_id;
   }
 
-  MOCK_METHOD(void, Infer, (), (override));
+  bool IsAvailable() override { return free_ctx_ids_.size() > 0; }
 
-  void EmptyInfer() { thread_config_->is_paused_ = true; }
+ protected:
+  std::queue<size_t> free_ctx_ids_;
+
+  // Erase all entries in the tracking queue
+  //
+  void Clear()
+  {
+    std::queue<size_t> empty;
+    std::swap(free_ctx_ids_, empty);
+  }
 };
 
-// Non-naggy version of Mock (won't warn when using default gmock
-// mocked function)
-using MockConcurrencyWorker = testing::NiceMock<NaggyMockConcurrencyWorker>;
-
-}}  // namespace triton::perfanalyzer
+}};  // namespace triton::perfanalyzer

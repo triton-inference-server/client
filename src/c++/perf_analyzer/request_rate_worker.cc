@@ -37,7 +37,8 @@ namespace triton { namespace perfanalyzer {
 void
 RequestRateWorker::Infer()
 {
-  CreateContext();
+  CreateCtxIdTracker();
+  CreateContexts();
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
@@ -46,12 +47,41 @@ RequestRateWorker::Infer()
     bool is_delayed = SleepIfNecessary();
     uint32_t ctx_id = GetCtxId();
     SendInferRequest(ctx_id, is_delayed);
+    RestoreFreeCtxId(ctx_id);
 
     if (HandleExitConditions()) {
       return;
     }
 
   } while (true);
+}
+
+void
+RequestRateWorker::CreateCtxIdTracker()
+{
+  bool is_concurrency = false;
+
+  ctx_id_tracker_ = CtxIdTrackerFactory::CreateTracker(
+      is_concurrency, on_sequence_model_, serial_sequences_);
+}
+
+void
+RequestRateWorker::CreateContexts()
+{
+  size_t active_ctx_cnt =
+      on_sequence_model_ ? thread_config_->num_sequences_ : 1;
+  while (ctxs_.size() < active_ctx_cnt) {
+    CreateContext();
+  }
+
+  ResetFreeCtxIds();
+}
+
+void
+RequestRateWorker::ResetFreeCtxIds()
+{
+  std::lock_guard<std::mutex> lock(cb_mtx_);
+  ctx_id_tracker_->Reset(ctxs_.size());
 }
 
 void
@@ -66,19 +96,11 @@ RequestRateWorker::GetNextTimestamp()
   return schedule_->Next();
 }
 
-void
-RequestRateWorker::CompleteOngoingSequences()
+
+uint32_t
+RequestRateWorker::GetSeqStatIndex(uint32_t ctx_id)
 {
-  if (on_sequence_model_) {
-    for (size_t ctx_id = 0; ctx_id < ctxs_.size(); ++ctx_id) {
-      // Finish off all the ongoing sequences for graceful exit
-      for (size_t seq_stat_index = thread_config_->id_;
-           seq_stat_index < sequence_manager_->GetNumSequenceStatuses();
-           seq_stat_index += thread_config_->stride_) {
-        ctxs_[ctx_id]->CompleteOngoingSequence(seq_stat_index);
-      }
-    }
-  }
+  return (thread_config_->seq_stat_index_offset_ + ctx_id);
 }
 
 void
@@ -89,6 +111,10 @@ RequestRateWorker::HandleExecuteOff()
     CompleteOngoingSequences();
     WaitForOngoingRequests();
 
+    // Reset Ctx IDs because CompleteOngoingSequences()
+    // has destructive side affects
+    ResetFreeCtxIds();
+
     // Wait if no request should be sent and it is not exiting
     thread_config_->is_paused_ = true;
     std::unique_lock<std::mutex> lock(wake_mutex_);
@@ -98,10 +124,11 @@ RequestRateWorker::HandleExecuteOff()
   thread_config_->is_paused_ = false;
 }
 
-
 bool
 RequestRateWorker::SleepIfNecessary()
 {
+  WaitForFreeCtx();
+
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::nanoseconds next_timestamp = GetNextTimestamp();
   std::chrono::nanoseconds current_timestamp = now - start_time_;
@@ -116,6 +143,25 @@ RequestRateWorker::SleepIfNecessary()
     thread_stat_->idle_timer.Stop();
   }
   return delayed;
+}
+
+void
+RequestRateWorker::WaitForFreeCtx()
+{
+  if (!ctx_id_tracker_->IsAvailable()) {
+    notified_ = false;
+    // wait for signal from callback.
+    std::unique_lock<std::mutex> lk(cb_mtx_);
+    thread_stat_->idle_timer.Start();
+    cb_cv_.wait(lk, [this] {
+      if (notified_) {
+        notified_ = false;
+        return true;
+      }
+      return false;
+    });
+    thread_stat_->idle_timer.Stop();
+  }
 }
 
 }}  // namespace triton::perfanalyzer

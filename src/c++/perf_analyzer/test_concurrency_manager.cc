@@ -67,8 +67,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
     auto worker = std::make_shared<MockConcurrencyWorker>(
         id, thread_stat, thread_config, parser_, data_loader_, factory_,
         on_sequence_model_, async_, max_concurrency_, using_json_data_,
-        streaming_, batch_size_, threads_config_, wake_signal_, wake_mutex_,
-        active_threads_, execute_, infer_data_manager_, sequence_manager_);
+        streaming_, batch_size_, wake_signal_, wake_mutex_, active_threads_,
+        execute_, infer_data_manager_, sequence_manager_);
 
     if (use_mock_infer_) {
       EXPECT_CALL(*worker, Infer())
@@ -76,6 +76,30 @@ class TestConcurrencyManager : public TestLoadManagerBase,
               worker.get(), &MockConcurrencyWorker::EmptyInfer));
     }
     return worker;
+  }
+
+
+  void TestReconfigThreads(
+      const size_t concurrent_request_count,
+      std::vector<ConcurrencyWorker::ThreadConfig>& expected_configs)
+  {
+    ConcurrencyManager::ReconfigThreads(concurrent_request_count);
+
+    auto expected_size = expected_configs.size();
+
+    // Check that the correct number of threads are created
+    //
+    CHECK(threads_.size() == expected_size);
+
+    // Check that threads_config has correct concurrency and seq stat index
+    // offset
+    for (auto i = 0; i < expected_configs.size(); i++) {
+      CHECK(
+          threads_config_[i]->concurrency_ == expected_configs[i].concurrency_);
+      CHECK(
+          threads_config_[i]->seq_stat_index_offset_ ==
+          expected_configs[i].seq_stat_index_offset_);
+    }
   }
 
   void StopWorkerThreads() { LoadManager::StopWorkerThreads(); }
@@ -407,7 +431,7 @@ TEST_CASE("concurrency_sequence")
 /// Create the case where the sequences do NOT go round robin due to
 /// the first request taking longer than the rest.
 ///
-/// This exposed a bug where we were constantly resetting free_ctx_ids
+/// This exposed a bug where we were constantly resetting ctx IDs
 /// and issuing over and over again to the first sequence even though
 /// it was the only sequence that should NOT be issued because it was
 /// still outstanding
@@ -833,5 +857,55 @@ TEST_CASE(
 
   CHECK(num_sent_requests == doctest::Approx(40).epsilon(0.1));
 }
+
+TEST_CASE(
+    "reconfigure_threads" *
+    doctest::description(
+        "This test confirms the side-effects of ReconfigureThreads(). Namely, "
+        "that the correct number of threads are created and that they are "
+        "configured properly"))
+{
+  PerfAnalyzerParameters params{};
+  std::vector<ConcurrencyWorker::ThreadConfig> expected_config_values;
+  std::vector<size_t> expected_concurrencies;
+  std::vector<size_t> expected_seq_stat_index_offsets;
+  size_t target_concurrency = 0;
+
+  SUBCASE("normal")
+  {
+    params.max_threads = 10;
+    target_concurrency = 5;
+
+    expected_concurrencies = {1, 1, 1, 1, 1};
+    expected_seq_stat_index_offsets = {0, 1, 2, 3, 4};
+  }
+  SUBCASE("thread_limited")
+  {
+    params.max_threads = 5;
+    target_concurrency = 10;
+
+    expected_concurrencies = {2, 2, 2, 2, 2};
+    expected_seq_stat_index_offsets = {0, 2, 4, 6, 8};
+  }
+  SUBCASE("unbalanced")
+  {
+    params.max_threads = 6;
+    target_concurrency = 14;
+
+    expected_concurrencies = {3, 3, 2, 2, 2, 2};
+    expected_seq_stat_index_offsets = {0, 3, 6, 8, 10, 12};
+  }
+
+  for (auto i = 0; i < expected_concurrencies.size(); i++) {
+    ConcurrencyWorker::ThreadConfig tc(i);
+    tc.concurrency_ = expected_concurrencies[i];
+    tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    expected_config_values.push_back(tc);
+  }
+
+  TestConcurrencyManager tcm(params);
+  tcm.TestReconfigThreads(target_concurrency, expected_config_values);
+}
+
 
 }}  // namespace triton::perfanalyzer

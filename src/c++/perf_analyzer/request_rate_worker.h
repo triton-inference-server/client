@@ -51,13 +51,17 @@ class TestCustomLoadManager;
 class RequestRateWorker : public LoadWorker, public IScheduler {
  public:
   struct ThreadConfig {
-    ThreadConfig(uint32_t index, uint32_t stride)
-        : id_(index), stride_(stride), is_paused_(false)
+    ThreadConfig(uint32_t index)
+        : id_(index), seq_stat_index_offset_(0), is_paused_(false),
+          num_sequences_(1)
     {
     }
 
     uint32_t id_;
-    uint32_t stride_;
+
+    // The starting sequence stat index for this worker
+    size_t seq_stat_index_offset_;
+    uint32_t num_sequences_;
     bool is_paused_;
   };
 
@@ -67,19 +71,20 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
-      const bool on_sequence_model, const bool async, const size_t max_threads,
+      const bool on_sequence_model, const bool async, const size_t num_threads,
       const bool using_json_data, const bool streaming,
       const int32_t batch_size, std::condition_variable& wake_signal,
       std::mutex& wake_mutex, bool& execute,
       std::chrono::steady_clock::time_point& start_time,
+      const bool serial_sequences,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
             id, thread_stat, parser, data_loader, factory, on_sequence_model,
             async, streaming, batch_size, using_json_data, wake_signal,
             wake_mutex, execute, infer_data_manager, sequence_manager),
-        thread_config_(thread_config), max_threads_(max_threads),
-        start_time_(start_time)
+        thread_config_(thread_config), num_threads_(num_threads),
+        start_time_(start_time), serial_sequences_(serial_sequences)
   {
   }
 
@@ -92,32 +97,36 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
  private:
   RateSchedulePtr_t schedule_;
 
-  const size_t max_threads_;
+  const size_t num_threads_;
+  const bool serial_sequences_;
   std::chrono::steady_clock::time_point& start_time_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
 
+  void CreateCtxIdTracker();
+
   std::chrono::nanoseconds GetNextTimestamp();
 
-  // Request Rate Worker only ever has a single context
-  uint32_t GetCtxId() { return 0; }
+  uint32_t GetSeqStatIndex(uint32_t ctx_id) override;
 
-  uint32_t GetSeqStatIndex(uint32_t ctx_id) override
-  {
-    return (rand() % sequence_manager_->GetNumSequenceStatuses());
-  }
-
-  void CompleteOngoingSequences() override;
+  void CreateContexts();
 
   void HandleExecuteOff();
+  void ResetFreeCtxIds();
 
   // Sleep until it is time for the next part of the schedule
   // Returns true if the request was delayed
   bool SleepIfNecessary();
 
+  void WaitForFreeCtx();
+
   void CreateContextFinalize(std::shared_ptr<InferContext> ctx) override
   {
-    ctx->SetNumActiveThreads(max_threads_);
+    ctx->RegisterAsyncCallbackFinalize(std::bind(
+        &RequestRateWorker::AsyncCallbackFinalize, this,
+        std::placeholders::_1));
+
+    ctx->SetNumActiveThreads(num_threads_);
   }
 
 #ifndef DOCTEST_CONFIG_DISABLE

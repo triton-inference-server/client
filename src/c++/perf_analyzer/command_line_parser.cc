@@ -92,6 +92,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--request-intervals <path to file containing time intervals "
                "in microseconds>"
             << std::endl;
+  std::cerr << "\t--serial-sequences" << std::endl;
   std::cerr << "\t--binary-search" << std::endl;
   std::cerr << "\t--num-of-sequences <number of concurrent sequences>"
             << std::endl;
@@ -373,6 +374,12 @@ CLParser::Usage(const std::string& msg)
              "that the average latency is used to determine stability",
              18)
       << std::endl;
+  std::cerr << FormatMessage(
+                   " --serial-sequences: Enables serial sequence mode "
+                   "where a maximum of one request is outstanding at a time "
+                   "for any given sequence. The default is false.",
+                   18)
+            << std::endl;
   std::cerr << std::endl;
   std::cerr << "II. INPUT DATA OPTIONS: " << std::endl;
   std::cerr << std::setw(9) << std::left
@@ -757,6 +764,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"metrics-interval", required_argument, 0, 51},
       {"sequence-length-variation", required_argument, 0, 52},
       {"bls-composing-models", required_argument, 0, 53},
+      {"serial-sequences", no_argument, 0, 54},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1230,6 +1238,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
 
           params_->bls_composing_models.push_back({model_name, model_version});
         }
+        break;
+      }
+      case 54: {
+        params_->serial_sequences = true;
         break;
       }
       case 'v':

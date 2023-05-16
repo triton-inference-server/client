@@ -42,15 +42,14 @@ RequestRateManager::Create(
     Distribution request_distribution, const int32_t batch_size,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-
-    const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<RequestRateManager> local_manager(new RequestRateManager(
       async, streaming, request_distribution, batch_size, measurement_window_ms,
       max_trials, max_threads, num_of_sequences, shared_memory_type,
-      output_shm_size, parser, factory));
+      output_shm_size, serial_sequences, parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -62,13 +61,14 @@ RequestRateManager::RequestRateManager(
     int32_t batch_size, const uint64_t measurement_window_ms,
     const size_t max_trials, const size_t max_threads,
     const uint32_t num_of_sequences, const SharedMemoryType shared_memory_type,
-    const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+    const size_t output_shm_size, const bool serial_sequences,
+    const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : LoadManager(
           async, streaming, batch_size, max_threads, shared_memory_type,
           output_shm_size, parser, factory),
       request_distribution_(request_distribution), execute_(false),
-      num_of_sequences_(num_of_sequences)
+      num_of_sequences_(num_of_sequences), serial_sequences_(serial_sequences)
 {
   gen_duration_.reset(new std::chrono::nanoseconds(
       max_trials * measurement_window_ms * NANOS_PER_MILLIS));
@@ -88,17 +88,9 @@ cb::Error
 RequestRateManager::ChangeRequestRate(const double request_rate)
 {
   PauseWorkers();
+  ConfigureThreads();
   // Can safely update the schedule
   GenerateSchedule(request_rate);
-  ResumeWorkers();
-
-  return cb::Error::Success;
-}
-
-cb::Error
-RequestRateManager::ResetWorkers()
-{
-  PauseWorkers();
   ResumeWorkers();
 
   return cb::Error::Success;
@@ -138,18 +130,22 @@ RequestRateManager::CreateWorkerSchedules(
 
   std::vector<RateSchedulePtr_t> worker_schedules =
       CreateEmptyWorkerSchedules();
+  std::vector<size_t> thread_ids{CalculateThreadIds()};
 
   std::chrono::nanoseconds next_timestamp(0);
+  size_t thread_id_index = 0;
   size_t worker_index = 0;
 
+
   // Generate schedule until we hit max_duration, but also make sure that all
-  // worker schedules are the same length by continuing until worker_index is
-  // back to 0
+  // worker schedules follow the thread id distribution
   //
-  while (next_timestamp < max_duration || worker_index != 0) {
+  while (next_timestamp < max_duration ||
+         thread_id_index % thread_ids.size() != 0) {
     next_timestamp = next_timestamp + distribution(schedule_rng);
+    worker_index = thread_ids[thread_id_index];
+    thread_id_index = ++thread_id_index % thread_ids.size();
     worker_schedules[worker_index]->intervals.emplace_back(next_timestamp);
-    worker_index = (worker_index + 1) % workers_.size();
   }
 
   SetScheduleDurations(worker_schedules);
@@ -167,6 +163,25 @@ RequestRateManager::CreateEmptyWorkerSchedules()
   return worker_schedules;
 }
 
+std::vector<size_t>
+RequestRateManager::CalculateThreadIds()
+{
+  std::vector<size_t> thread_ids{};
+  // Determine number of ids to loop over for time stamps
+  size_t num_ids = 0;
+  if (on_sequence_model_) {
+    num_ids = num_of_sequences_;
+  } else {
+    num_ids = max_threads_;
+  }
+
+  for (size_t i = 0; i < num_ids; i++) {
+    size_t t = i % DetermineNumThreads();
+    thread_ids.push_back(t);
+  }
+  return thread_ids;
+}
+
 void
 RequestRateManager::SetScheduleDurations(
     std::vector<RateSchedulePtr_t>& schedules)
@@ -174,6 +189,11 @@ RequestRateManager::SetScheduleDurations(
   RateSchedulePtr_t last_schedule = schedules.back();
 
   std::chrono::nanoseconds duration = last_schedule->intervals.back();
+
+  for (auto schedule : schedules) {
+    duration = std::max(schedule->intervals.back(), duration);
+  }
+
   for (auto schedule : schedules) {
     schedule->duration = duration;
   }
@@ -196,24 +216,39 @@ RequestRateManager::PauseWorkers()
   // Pause all the threads
   execute_ = false;
 
-  if (threads_.empty()) {
-    while (threads_.size() < max_threads_) {
-      // Launch new thread for inferencing
-      threads_stat_.emplace_back(new ThreadStat());
-      threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(threads_.size(), max_threads_));
-
-      workers_.push_back(
-          MakeWorker(threads_stat_.back(), threads_config_.back()));
-
-      threads_.emplace_back(&IWorker::Infer, workers_.back());
-    }
-  }
-
   // Wait to see all threads are paused.
   for (auto& thread_config : threads_config_) {
     while (!thread_config->is_paused_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
+}
+
+void
+RequestRateManager::ConfigureThreads()
+{
+  if (threads_.empty()) {
+    size_t num_of_threads = DetermineNumThreads();
+    while (workers_.size() < num_of_threads) {
+      // Launch new thread for inferencing
+      threads_stat_.emplace_back(new ThreadStat());
+      threads_config_.emplace_back(
+          new RequestRateWorker::ThreadConfig(workers_.size()));
+
+      workers_.push_back(
+          MakeWorker(threads_stat_.back(), threads_config_.back()));
+    }
+    // Compute the number of sequences for each thread (take floor)
+    // and spread the remaining value
+    size_t avg_num_seqs = num_of_sequences_ / workers_.size();
+    size_t num_seqs_add_one = num_of_sequences_ % workers_.size();
+    size_t seq_offset = 0;
+    for (size_t i = 0; i < workers_.size(); i++) {
+      size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
+      threads_config_[i]->num_sequences_ = num_of_seq;
+      threads_config_[i]->seq_stat_index_offset_ = seq_offset;
+      seq_offset += num_of_seq;
+      threads_.emplace_back(&IWorker::Infer, workers_[i]);
     }
   }
 }
@@ -235,11 +270,22 @@ RequestRateManager::MakeWorker(
     std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
 {
   size_t id = workers_.size();
+  size_t num_of_threads = DetermineNumThreads();
   return std::make_shared<RequestRateWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
-      on_sequence_model_, async_, max_threads_, using_json_data_, streaming_,
+      on_sequence_model_, async_, num_of_threads, using_json_data_, streaming_,
       batch_size_, wake_signal_, wake_mutex_, execute_, start_time_,
-      infer_data_manager_, sequence_manager_);
+      serial_sequences_, infer_data_manager_, sequence_manager_);
+}
+
+size_t
+RequestRateManager::DetermineNumThreads()
+{
+  size_t num_of_threads = max_threads_;
+  if (on_sequence_model_) {
+    num_of_threads = std::min(max_threads_, num_of_sequences_);
+  }
+  return num_of_threads;
 }
 
 
