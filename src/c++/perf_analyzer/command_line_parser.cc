@@ -377,8 +377,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << FormatMessage(
                    " --serial-sequences: Enables serial sequence mode "
                    "where a maximum of one request is outstanding at a time "
-                   "for any given sequence."
-                   "The default is false.",
+                   "for any given sequence. The default is false.",
                    18)
             << std::endl;
   std::cerr << std::endl;
