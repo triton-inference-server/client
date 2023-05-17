@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -154,5 +154,8 @@ std::string TensorToRegionName(std::string name);
 template <Distribution distribution>
 std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
     const double request_rate);
+
+// Parse the HTTP content type
+cb::ContentType ParseContentType(const std::string& content_type_str);
 
 }}  // namespace triton::perfanalyzer

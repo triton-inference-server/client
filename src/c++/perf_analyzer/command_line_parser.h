@@ -138,6 +138,12 @@ struct PerfAnalyzerParameters {
   // percentage exceeds the threshold, a warning is displayed.
   //
   double overhead_pct_threshold{50.0};
+
+  // Triton inference request input content type.
+  cb::ContentType input_content_type{cb::ContentType::BINARY};
+
+  // Triton inference response output content type.
+  cb::ContentType output_content_type{cb::ContentType::BINARY};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

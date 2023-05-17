@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -79,6 +79,9 @@ class TritonClientBackend : public ClientBackend {
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
   /// \param metrics_url The inference server metrics url and port.
+  /// \param input_content_type The Triton inference request input content type.
+  /// \param output_content_type The Triton inference response output content
+  /// type.
   /// \param client_backend Returns a new TritonClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
@@ -87,7 +90,8 @@ class TritonClientBackend : public ClientBackend {
       const std::map<std::string, std::vector<std::string>> trace_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
-      const std::string& metrics_url,
+      const std::string& metrics_url, const cb::ContentType input_content_type,
+      const cb::ContentType output_content_type,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -169,10 +173,14 @@ class TritonClientBackend : public ClientBackend {
   TritonClientBackend(
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
-      std::shared_ptr<tc::Headers> http_headers, const std::string& metrics_url)
+      std::shared_ptr<tc::Headers> http_headers, const std::string& metrics_url,
+      const cb::ContentType input_content_type,
+      const cb::ContentType output_content_type)
       : ClientBackend(BackendKind::TRITON), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
-        http_headers_(http_headers), metrics_url_(metrics_url)
+        http_headers_(http_headers), metrics_url_(metrics_url),
+        input_content_type_(input_content_type),
+        output_content_type_(output_content_type)
   {
   }
 
@@ -239,6 +247,8 @@ class TritonClientBackend : public ClientBackend {
   const grpc_compression_algorithm compression_algorithm_{GRPC_COMPRESS_NONE};
   std::shared_ptr<tc::Headers> http_headers_;
   const std::string metrics_url_{""};
+  const cb::ContentType input_content_type_{cb::ContentType::UNKNOWN};
+  const cb::ContentType output_content_type_{cb::ContentType::UNKNOWN};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestTritonClientBackend;

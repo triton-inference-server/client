@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <string>
 #include "client_backend/client_backend.h"
@@ -432,6 +433,23 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::duration<double>(1.0 / request_rate));
   return [period](std::mt19937& /*gen*/) { return period; };
+}
+
+cb::ContentType
+ParseContentType(const std::string& content_type_str)
+{
+  std::string content_type_str_lowercase{content_type_str};
+  std::transform(
+      content_type_str.cbegin(), content_type_str.cend(),
+      content_type_str_lowercase.begin(),
+      [](unsigned char c) { return std::tolower(c); });
+  if (content_type_str_lowercase == "binary") {
+    return cb::ContentType::BINARY;
+  } else if (content_type_str_lowercase == "json") {
+    return cb::ContentType::JSON;
+  } else {
+    return cb::ContentType::UNKNOWN;
+  }
 }
 
 TEST_CASE("testing the ParseProtocol function")
