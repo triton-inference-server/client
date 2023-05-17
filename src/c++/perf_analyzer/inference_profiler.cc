@@ -961,11 +961,11 @@ InferenceProfiler::MergePerfStatusReports(
     if (perf_status_reports[i].on_sequence_model !=
         perf_status.on_sequence_model) {
       return cb::Error(
-          "Incosistent sequence setting detected.", pa::GENERIC_ERROR);
+          "Inconsistent sequence setting detected.", pa::GENERIC_ERROR);
     }
 
     if (perf_status_reports[i].batch_size != perf_status.batch_size) {
-      return cb::Error("Incosistent batch size detected.", pa::GENERIC_ERROR);
+      return cb::Error("Inconsistent batch size detected.", pa::GENERIC_ERROR);
     }
 
     if (perf_status_reports[i].server_stats.composing_models_stat.size() !=
@@ -995,6 +995,8 @@ InferenceProfiler::MergePerfStatusReports(
   experiment_perf_status.client_stats.sequence_per_sec = 0;
   experiment_perf_status.client_stats.completed_count = 0;
   experiment_perf_status.stabilizing_latency_ns = 0;
+  experiment_perf_status.overhead_pct = 0;
+  experiment_perf_status.send_request_rate = 0.0;
 
   std::vector<ServerSideStats> server_side_stats;
   for (auto& perf_status : perf_status_reports) {
