@@ -93,14 +93,14 @@ TritonClientBackend::Create(
     const std::map<std::string, std::vector<std::string>> trace_options,
     const grpc_compression_algorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
-    const std::string& metrics_url, const ContentType input_content_type,
-    const ContentType output_content_type,
+    const std::string& metrics_url, const TensorFormat input_tensor_format,
+    const TensorFormat output_tensor_format,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<TritonClientBackend> triton_client_backend(
       new TritonClientBackend(
           protocol, compression_algorithm, http_headers, metrics_url,
-          input_content_type, output_content_type));
+          input_tensor_format, output_tensor_format));
   if (protocol == ProtocolType::HTTP) {
     triton::client::HttpSslOptions http_ssl_options =
         ParseHttpSslOptions(ssl_options);
@@ -553,7 +553,7 @@ TritonClientBackend::ParseInferInputToTriton(
 {
   for (const auto input : inputs) {
     tc::InferInput* triton_input{dynamic_cast<TritonInferInput*>(input)->Get()};
-    triton_input->SetBinaryData(input_content_type_ == ContentType::BINARY);
+    triton_input->SetBinaryData(input_tensor_format_ == TensorFormat::BINARY);
     triton_inputs->push_back(triton_input);
   }
 }
@@ -566,7 +566,7 @@ TritonClientBackend::ParseInferRequestedOutputToTriton(
   for (const auto output : outputs) {
     tc::InferRequestedOutput* triton_output{
         dynamic_cast<const TritonInferRequestedOutput*>(output)->Get()};
-    triton_output->SetBinaryData(input_content_type_ == ContentType::BINARY);
+    triton_output->SetBinaryData(input_tensor_format_ == TensorFormat::BINARY);
     triton_outputs->push_back(triton_output);
   }
 }

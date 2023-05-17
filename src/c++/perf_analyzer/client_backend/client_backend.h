@@ -143,7 +143,7 @@ enum GrpcCompressionAlgorithm {
   COMPRESS_DEFLATE = 1,
   COMPRESS_GZIP = 2
 };
-enum class ContentType { BINARY, JSON, UNKNOWN };
+enum class TensorFormat { BINARY, JSON, UNKNOWN };
 typedef std::map<std::string, std::string> Headers;
 
 using OnCompleteFn = std::function<void(InferResult*)>;
@@ -267,9 +267,10 @@ class ClientBackendFactory {
   /// repository which contains the desired model.
   /// \param verbose Enables the verbose mode.
   /// \param metrics_url The inference server metrics url and port.
-  /// \param input_content_type The Triton inference request input content type.
-  /// \param output_content_type The Triton inference response output content
-  /// type.
+  /// \param input_tensor_format The Triton inference request input tensor
+  /// format.
+  /// \param output_tensor_format The Triton inference response output tensor
+  /// format.
   /// \param factory Returns a new ClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
@@ -280,8 +281,8 @@ class ClientBackendFactory {
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const bool verbose,
-      const std::string& metrics_url, const ContentType input_content_type,
-      const ContentType output_content_type,
+      const std::string& metrics_url, const TensorFormat input_tensor_format,
+      const TensorFormat output_tensor_format,
       std::shared_ptr<ClientBackendFactory>* factory);
 
   const BackendKind& Kind();
@@ -299,15 +300,15 @@ class ClientBackendFactory {
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
       const std::string& model_repository_path, const bool verbose,
-      const std::string& metrics_url, const ContentType input_content_type,
-      const ContentType output_content_type)
+      const std::string& metrics_url, const TensorFormat input_tensor_format,
+      const TensorFormat output_tensor_format)
       : kind_(kind), url_(url), protocol_(protocol), ssl_options_(ssl_options),
         trace_options_(trace_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path), verbose_(verbose),
-        metrics_url_(metrics_url), input_content_type_(input_content_type),
-        output_content_type_(output_content_type)
+        metrics_url_(metrics_url), input_tensor_format_(input_tensor_format),
+        output_tensor_format_(output_tensor_format)
   {
   }
 
@@ -322,8 +323,8 @@ class ClientBackendFactory {
   std::string model_repository_path_;
   const bool verbose_;
   const std::string metrics_url_{""};
-  const ContentType input_content_type_{ContentType::UNKNOWN};
-  const ContentType output_content_type_{ContentType::UNKNOWN};
+  const TensorFormat input_tensor_format_{TensorFormat::UNKNOWN};
+  const TensorFormat output_tensor_format_{TensorFormat::UNKNOWN};
 
 
 #ifndef DOCTEST_CONFIG_DISABLE
@@ -350,8 +351,8 @@ class ClientBackend {
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,
-      const std::string& metrics_url, const ContentType input_content_type,
-      const ContentType output_content_type,
+      const std::string& metrics_url, const TensorFormat input_tensor_format,
+      const TensorFormat output_tensor_format,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// Destructor for the client backend object

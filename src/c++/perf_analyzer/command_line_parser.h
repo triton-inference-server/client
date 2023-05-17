@@ -139,11 +139,11 @@ struct PerfAnalyzerParameters {
   //
   double overhead_pct_threshold{50.0};
 
-  // Triton inference request input content type.
-  cb::ContentType input_content_type{cb::ContentType::BINARY};
+  // Triton inference request input tensor format.
+  cb::TensorFormat input_tensor_format{cb::TensorFormat::BINARY};
 
-  // Triton inference response output content type.
-  cb::ContentType output_content_type{cb::ContentType::BINARY};
+  // Triton inference response output tensor format.
+  cb::TensorFormat output_tensor_format{cb::TensorFormat::BINARY};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

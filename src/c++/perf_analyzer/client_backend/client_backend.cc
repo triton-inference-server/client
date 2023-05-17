@@ -119,14 +119,14 @@ ClientBackendFactory::Create(
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
     const std::string& model_repository_path, const bool verbose,
-    const std::string& metrics_url, const cb::ContentType input_content_type,
-    const cb::ContentType output_content_type,
+    const std::string& metrics_url, const cb::TensorFormat input_tensor_format,
+    const cb::TensorFormat output_tensor_format,
     std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
       kind, url, protocol, ssl_options, trace_options, compression_algorithm,
       http_headers, triton_server_path, model_repository_path, verbose,
-      metrics_url, input_content_type, output_content_type));
+      metrics_url, input_tensor_format, output_tensor_format));
   return Error::Success;
 }
 
@@ -137,8 +137,8 @@ ClientBackendFactory::CreateClientBackend(
   RETURN_IF_CB_ERROR(ClientBackend::Create(
       kind_, url_, protocol_, ssl_options_, trace_options_,
       compression_algorithm_, http_headers_, verbose_, triton_server_path,
-      model_repository_path_, metrics_url_, input_content_type_,
-      output_content_type_, client_backend));
+      model_repository_path_, metrics_url_, input_tensor_format_,
+      output_tensor_format_, client_backend));
   return Error::Success;
 }
 
@@ -160,7 +160,8 @@ ClientBackend::Create(
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,
     const std::string& model_repository_path, const std::string& metrics_url,
-    const ContentType input_content_type, const ContentType output_content_type,
+    const TensorFormat input_tensor_format,
+    const TensorFormat output_tensor_format,
     std::unique_ptr<ClientBackend>* client_backend)
 {
   std::unique_ptr<ClientBackend> local_backend;
@@ -168,7 +169,8 @@ ClientBackend::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
         url, protocol, ssl_options, trace_options,
         BackendToGrpcType(compression_algorithm), http_headers, verbose,
-        metrics_url, input_content_type, output_content_type, &local_backend));
+        metrics_url, input_tensor_format, output_tensor_format,
+        &local_backend));
   }
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {

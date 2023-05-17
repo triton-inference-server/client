@@ -435,8 +435,8 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
   return [period](std::mt19937& /*gen*/) { return period; };
 }
 
-cb::ContentType
-ParseContentType(const std::string& content_type_str)
+cb::TensorFormat
+ParseTensorFormat(const std::string& content_type_str)
 {
   std::string content_type_str_lowercase{content_type_str};
   std::transform(
@@ -444,11 +444,11 @@ ParseContentType(const std::string& content_type_str)
       content_type_str_lowercase.begin(),
       [](unsigned char c) { return std::tolower(c); });
   if (content_type_str_lowercase == "binary") {
-    return cb::ContentType::BINARY;
+    return cb::TensorFormat::BINARY;
   } else if (content_type_str_lowercase == "json") {
-    return cb::ContentType::JSON;
+    return cb::TensorFormat::JSON;
   } else {
-    return cb::ContentType::UNKNOWN;
+    return cb::TensorFormat::UNKNOWN;
   }
 }
 

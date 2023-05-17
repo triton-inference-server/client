@@ -155,7 +155,7 @@ template <Distribution distribution>
 std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
     const double request_rate);
 
-// Parse the HTTP content type
-cb::ContentType ParseContentType(const std::string& content_type_str);
+// Parse the HTTP tensor format
+cb::TensorFormat ParseTensorFormat(const std::string& tensor_format_str);
 
 }}  // namespace triton::perfanalyzer

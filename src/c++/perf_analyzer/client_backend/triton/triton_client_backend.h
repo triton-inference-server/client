@@ -79,9 +79,10 @@ class TritonClientBackend : public ClientBackend {
   /// the header name/value.
   /// \param verbose Enables the verbose mode.
   /// \param metrics_url The inference server metrics url and port.
-  /// \param input_content_type The Triton inference request input content type.
-  /// \param output_content_type The Triton inference response output content
-  /// type.
+  /// \param input_tensor_format The Triton inference request input tensor
+  /// format.
+  /// \param output_tensor_format The Triton inference response output tensor
+  /// format.
   /// \param client_backend Returns a new TritonClientBackend object.
   /// \return Error object indicating success or failure.
   static Error Create(
@@ -90,8 +91,9 @@ class TritonClientBackend : public ClientBackend {
       const std::map<std::string, std::vector<std::string>> trace_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
-      const std::string& metrics_url, const cb::ContentType input_content_type,
-      const cb::ContentType output_content_type,
+      const std::string& metrics_url,
+      const cb::TensorFormat input_tensor_format,
+      const cb::TensorFormat output_tensor_format,
       std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::ServerExtensions()
@@ -174,13 +176,13 @@ class TritonClientBackend : public ClientBackend {
       const ProtocolType protocol,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const std::string& metrics_url,
-      const cb::ContentType input_content_type,
-      const cb::ContentType output_content_type)
+      const cb::TensorFormat input_tensor_format,
+      const cb::TensorFormat output_tensor_format)
       : ClientBackend(BackendKind::TRITON), protocol_(protocol),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), metrics_url_(metrics_url),
-        input_content_type_(input_content_type),
-        output_content_type_(output_content_type)
+        input_tensor_format_(input_tensor_format),
+        output_tensor_format_(output_tensor_format)
   {
   }
 
@@ -247,8 +249,8 @@ class TritonClientBackend : public ClientBackend {
   const grpc_compression_algorithm compression_algorithm_{GRPC_COMPRESS_NONE};
   std::shared_ptr<tc::Headers> http_headers_;
   const std::string metrics_url_{""};
-  const cb::ContentType input_content_type_{cb::ContentType::UNKNOWN};
-  const cb::ContentType output_content_type_{cb::ContentType::UNKNOWN};
+  const cb::TensorFormat input_tensor_format_{cb::TensorFormat::UNKNOWN};
+  const cb::TensorFormat output_tensor_format_{cb::TensorFormat::UNKNOWN};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestTritonClientBackend;
