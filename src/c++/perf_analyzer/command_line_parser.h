@@ -138,6 +138,12 @@ struct PerfAnalyzerParameters {
   // percentage exceeds the threshold, a warning is displayed.
   //
   double overhead_pct_threshold{50.0};
+
+  // Triton inference request input tensor format.
+  cb::TensorFormat input_tensor_format{cb::TensorFormat::BINARY};
+
+  // Triton inference response output tensor format.
+  cb::TensorFormat output_tensor_format{cb::TensorFormat::BINARY};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

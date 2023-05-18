@@ -77,6 +77,7 @@ CLParser::Usage(const std::string& msg)
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
+  std::cerr << "\t--bls-composing-models=<string>" << std::endl;
   std::cerr << "\t--model-signature-name <model signature name>" << std::endl;
   std::cerr << "\t-v" << std::endl;
   std::cerr << std::endl;
@@ -122,6 +123,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--sequence-id-range <start:end>" << std::endl;
   std::cerr << "\t--string-length <length>" << std::endl;
   std::cerr << "\t--string-data <string>" << std::endl;
+  std::cerr << "\t--input-tensor-format=[binary|json]" << std::endl;
+  std::cerr << "\t--output-tensor-format=[binary|json]" << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-z" << std::endl;
   std::cerr << "\t--data-directory <path>" << std::endl;
@@ -489,6 +492,18 @@ CLParser::Usage(const std::string& msg)
                    "option is ignored if --input-data points to a directory.",
                    18)
             << std::endl;
+  std::cerr << FormatMessage(
+                   " --input-tensor-format=[binary|json]: Specifies Triton "
+                   "inference request input tensor format. Only valid when "
+                   "HTTP protocol is used. Default is 'binary'.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --output-tensor-format=[binary|json]: Specifies Triton "
+                   "inference response output tensor format. Only valid when "
+                   "HTTP protocol is used. Default is 'binary'.",
+                   18)
+            << std::endl;
   std::cerr << std::endl;
   std::cerr << "III. SERVER DETAILS: " << std::endl;
   std::cerr << std::setw(38) << std::left << " -u: "
@@ -765,6 +780,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"sequence-length-variation", required_argument, 0, 52},
       {"bls-composing-models", required_argument, 0, 53},
       {"serial-sequences", no_argument, 0, 54},
+      {"input-tensor-format", required_argument, 0, 55},
+      {"output-tensor-format", required_argument, 0, 56},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1242,6 +1259,21 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 54: {
         params_->serial_sequences = true;
+      }
+      case 55: {
+        cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};
+        if (input_tensor_format == cb::TensorFormat::UNKNOWN) {
+          Usage("--input-tensor-format must be 'binary' or 'json'");
+        }
+        params_->input_tensor_format = input_tensor_format;
+        break;
+      }
+      case 56: {
+        cb::TensorFormat output_tensor_format{ParseTensorFormat(optarg)};
+        if (output_tensor_format == cb::TensorFormat::UNKNOWN) {
+          Usage("--output-tensor-format must be 'binary' or 'json'");
+        }
+        params_->output_tensor_format = output_tensor_format;
         break;
       }
       case 'v':

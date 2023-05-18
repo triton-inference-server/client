@@ -364,6 +364,20 @@ output_shared_memory_size * number_of_outputs * batch_size.
          
 Default is `102400` (100 KB).
 
+#### `--input-tensor-format=[binary|json]`
+
+Specifies the Triton inference request input tensor format. Only valid when HTTP
+protocol is used.
+
+Default is `binary`.
+
+#### `--output-tensor-format=[binary|json]`
+
+Specifies the Triton inference response output tensor format. Only valid when
+HTTP protocol is used.
+
+Default is `binary`.
+
 ## Request Options
 
 #### `-i [http|grpc]`
