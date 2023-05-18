@@ -211,10 +211,11 @@ InferInput::SharedMemoryInfo(
   return Error::Success;
 }
 
-void
+Error
 InferInput::SetBinaryData(const bool binary_data)
 {
   binary_data_ = binary_data;
+  return Error::Success;
 }
 
 Error
@@ -328,10 +329,11 @@ InferRequestedOutput::SharedMemoryInfo(
   return Error::Success;
 }
 
-void
+Error
 InferRequestedOutput::SetBinaryData(const bool binary_data)
 {
   binary_data_ = binary_data;
+  return Error::Success;
 }
 
 //==============================================================================

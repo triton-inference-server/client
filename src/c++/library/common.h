@@ -333,7 +333,8 @@ class InferInput {
   /// \return true if this input should be sent in binary format.
   bool BinaryData() const { return binary_data_; }
 
-  void SetBinaryData(const bool binary_data);
+  /// \return Error object indicating success or failure.
+  Error SetBinaryData(const bool binary_data);
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
@@ -436,7 +437,8 @@ class InferRequestedOutput {
   /// \return true if this output should be received in binary format.
   bool BinaryData() const { return binary_data_; }
 
-  void SetBinaryData(const bool binary_data);
+  /// \return Error object indicating success or failure.
+  Error SetBinaryData(const bool binary_data);
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
