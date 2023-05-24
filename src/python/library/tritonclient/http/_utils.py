@@ -41,7 +41,7 @@ def _get_error(response):
             return InferenceServerException(msg=error_response["error"],
                                             status=str(response.status_code))
         except json.JSONDecodeError:
-            return InferenceServerException(msg=body,
+            return InferenceServerException(msg=body.decode(),
                                             status=str(response.status_code))
     else:
         return None
