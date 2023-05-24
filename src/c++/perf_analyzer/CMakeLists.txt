@@ -176,6 +176,7 @@ add_executable(
   mock_infer_data_manager.h
   mock_request_rate_worker.h
   mock_sequence_manager.h
+  test_dataloader.cc
   test_inference_profiler.cc
   test_command_line_parser.cc
   test_idle_timer.cc
