@@ -32,23 +32,17 @@ namespace triton { namespace perfanalyzer {
 
 
 // FIXME TKG things to test:
+// TMA-1214 ReadFromDir
+// TMA-1215 String data
+// TMA-1216 Bytes data
 
-// ReadFromDir
-// ReadFromJson
-// GetInputData
-// GetInputShape
-// GetOutputData
-// GenerateData?
-
-// ParseData?
-// ReadTensorData?
-
-// unspecified shape -- get it out of the data
 
 /// Helper class for testing the DataLoader
 ///
 class TestDataLoader {
  public:
+  // Static function to create a generic ModelTensor
+  //
   static ModelTensor GetTensor(std::string name)
   {
     ModelTensor t;
@@ -314,8 +308,7 @@ TEST_CASE("dataloader: ReadDataFromJSON: Multiple Streams Invalid Cases")
     CHECK_EQ(
         status.Message(),
         "The 'validation_data' field doesn't align with 'data' field in the "
-        "json "
-        "file");
+        "json file");
   };
 
   test_lambda(mismatch_case1a);
@@ -516,5 +509,68 @@ TEST_CASE(
 //  CHECK_EQ(dataloader.GetTotalSteps(3), 3);
 //}
 
+TEST_CASE(
+    "dataloader: GenerateData: Is Shape Tensor" *
+    doctest::description("It is illegal to generate data for any Tensor with "
+                         "is_shape_tensor=True"))
+{
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::GetTensor("INPUT1");
+  input1.is_shape_tensor_ = true;
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  bool zero_input = true;
+  size_t string_length = 5;
+  std::string string_data = "FOOBAR";
+  cb::Error status =
+      dataloader.GenerateData(inputs, zero_input, string_length, string_data);
+  CHECK_FALSE(status.IsOk());
+  CHECK_EQ(
+      status.Message(),
+      "can not generate data for shape tensor 'INPUT1', user-provided data is "
+      "needed.");
+}
+
+
+TEST_CASE(
+    "dataloader: GenerateData: Zero Input" *
+    doctest::description(
+        "Calling GenerateData with the zero_input flag set to true should "
+        "result in a single stream with one step with all data having the "
+        "value of 0"))
+{
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::GetTensor("INPUT1");
+  input1.shape_ = {3};
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  bool zero_input = true;
+  size_t string_length = 5;
+  std::string string_data = "FOOBAR";
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 0);
+  cb::Error status =
+      dataloader.GenerateData(inputs, zero_input, string_length, string_data);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+
+  const uint8_t* data_ptr{nullptr};
+  size_t batch_size;
+
+  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch_size);
+  REQUIRE(status.IsOk());
+
+  const int32_t* data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(data[0], 0);
+  CHECK_EQ(data[1], 0);
+  CHECK_EQ(data[2], 0);
+  // 3 elements of int32 data is 12 bytes
+  CHECK_EQ(batch_size, 12);
+}
 
 }}  // namespace triton::perfanalyzer
