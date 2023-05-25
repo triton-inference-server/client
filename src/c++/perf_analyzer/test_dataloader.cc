@@ -227,7 +227,7 @@ TEST_CASE("dataloader: ReadDataFromJSON: Valid Data")
   outputs->insert(std::make_pair(output1.name_, output1));
 
   cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_str);
-  CHECK(status.IsOk());
+  REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 3);
 
@@ -251,6 +251,128 @@ TEST_CASE("dataloader: ReadDataFromJSON: Valid Data")
   CHECK_EQ(data2, 6);
   CHECK_EQ(batch_size, 4);
 }
+
+TEST_CASE("dataloader: ReadDataFromJSON: Multiple Streams Invalid Cases")
+{
+  // Mismatch because one stream with wrong number of steps
+  std::string mismatch_case1a{R"({
+   "data": [ { "INPUT1": [1,2] } ],
+   "validation_data": [ { "OUTPUT1": [4] }, { "OUTPUT1": [5] } ]
+   })"};
+  std::string mismatch_case1b{R"({
+   "data": [ { "INPUT1": [1,2] }, { "INPUT1": [2,3] } ],
+   "validation_data": [ { "OUTPUT1": [4] } ]
+   })"};
+
+  // Mismatch because wrong number of streams (3 output streams for 2 input
+  // streams)
+  std::string mismatch_case2{R"({
+   "data": [
+     [ { "INPUT1": [1,2] }, { "INPUT1": [2,3] } ],
+     [ { "INPUT1": [10,11] } ]
+   ],
+   "validation_data": [
+    [ { "OUTPUT1": [4] }, { "OUTPUT1": [5] } ],
+    [ { "OUTPUT1": [40] } ],
+    [ { "OUTPUT1": [60] } ]
+   ]})"};
+
+  // Mismatch because same number of streams but wrong number of steps
+  std::string mismatch_case3a{R"({
+   "data": [
+     [ { "INPUT1": [1,2] } ],
+     [ { "INPUT1": [10,11] } ]
+   ],
+   "validation_data": [
+    [ { "OUTPUT1": [4] }, { "OUTPUT1": [5] } ],
+    [ { "OUTPUT1": [40] } ]
+   ]})"};
+  std::string mismatch_case3b{R"({
+   "data": [
+     [ { "INPUT1": [1,2] } ],
+     [ { "INPUT1": [10,11] } ]
+   ],
+   "validation_data": [
+    [ { "OUTPUT1": [4] } ],
+    [ { "OUTPUT1": [40] }, { "OUTPUT1": [50] } ]
+   ]})"};
+
+  auto test_lambda = [&](std::string json_data) {
+    std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+    std::shared_ptr<ModelTensorMap> outputs =
+        std::make_shared<ModelTensorMap>();
+
+    ModelTensor input1 = TestDataLoader::GetTensor("INPUT1");
+    ModelTensor output1 = TestDataLoader::GetTensor("OUTPUT1");
+    input1.shape_ = {2};
+    inputs->insert(std::make_pair(input1.name_, input1));
+    outputs->insert(std::make_pair(output1.name_, output1));
+
+    MockDataLoader dataloader;
+    cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_data);
+    CHECK_FALSE(status.IsOk());
+    CHECK_EQ(
+        status.Message(),
+        "The 'validation_data' field doesn't align with 'data' field in the "
+        "json "
+        "file");
+  };
+
+  test_lambda(mismatch_case1a);
+  test_lambda(mismatch_case1b);
+  test_lambda(mismatch_case2);
+  test_lambda(mismatch_case3a);
+  test_lambda(mismatch_case3b);
+}
+
+TEST_CASE("dataloader: ReadDataFromJSON: Multiple Streams Valid")
+{
+  std::string json_str{R"({
+   "data": [
+     [ { "INPUT1": [1,2] }, { "INPUT1": [2,3] }],
+     [ { "INPUT1": [10,11] } ]
+   ],
+   "validation_data": [
+    [ { "OUTPUT1": [4] }, { "OUTPUT1": [5] } ],
+    [ { "OUTPUT1": [40] } ]
+   ]
+   })"};
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::GetTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::GetTensor("OUTPUT1");
+  input1.shape_ = {2};
+  inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
+
+  cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_str);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 2);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
+  CHECK_EQ(dataloader.GetTotalSteps(1), 1);
+
+  // Confirm the correct data is in the dataloader
+  //
+  const uint8_t* data_ptr{nullptr};
+  size_t batch_size;
+
+  dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch_size);
+
+  const int32_t* data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(data[0], 2);
+  CHECK_EQ(data[1], 3);
+  // 2 elements of int32 data is 8 bytes
+  CHECK_EQ(batch_size, 8);
+
+  dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch_size);
+  const int32_t* data2 = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(data2[0], 40);
+  CHECK_EQ(batch_size, 4);
+}
+
 
 TEST_CASE(
     "dataloader: ReadDataFromJSON: Missing Shape" *
@@ -322,7 +444,7 @@ TEST_CASE(
   inputs->insert(std::make_pair(input1.name_, input1));
 
   cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_str);
-  CHECK_EQ(status.IsOk(), true);
+  REQUIRE(status.IsOk());
 
   std::vector<int64_t> shape;
   dataloader.GetInputShape(input1, 0, 0, &shape);
