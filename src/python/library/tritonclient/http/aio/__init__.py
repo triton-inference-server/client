@@ -50,13 +50,16 @@ async def _get_error(response):
     indicates the error. If no error then return None
     """
     if response.status != 200:
-        result = await response.read()
+        body = await response.read()
         try:
-            error_response = json.loads(result)
-            return InferenceServerException(msg=error_response["error"])
-        except json.JSONDecodeError:
-            return InferenceServerException(msg=result.decode(),
-                                            status=str(response.status_code))
+            error_response = json.loads(body) if len(body) else {"error": ""}
+            return InferenceServerException(msg=error_response["error"],
+                                            status=str(response.status_code),
+                                            debug_details=body.decode())
+        except json.JSONDecodeError as e:
+            return InferenceServerException(msg=str(e),
+                                            status=str(response.status_code),
+                                            debug_details=body.decode())
     else:
         return None
 

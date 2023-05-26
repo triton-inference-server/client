@@ -37,12 +37,14 @@ def _get_error(response):
     if response.status_code != 200:
         body = response.read()
         try:
-            error_response = json.loads(body)
+            error_response = json.loads(body) if len(body) else {"error": ""}
             return InferenceServerException(msg=error_response["error"],
-                                            status=str(response.status_code))
-        except json.JSONDecodeError:
-            return InferenceServerException(msg=body.decode(),
-                                            status=str(response.status_code))
+                                            status=str(response.status_code),
+                                            debug_details=body.decode())
+        except json.JSONDecodeError as e:
+            return InferenceServerException(msg=str(e),
+                                            status=str(response.status_code),
+                                            debug_details=body.decode())
     else:
         return None
 
