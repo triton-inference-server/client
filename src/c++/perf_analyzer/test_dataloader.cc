@@ -600,7 +600,7 @@ TEST_CASE(
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
-  ModelTensor input1 = TestDataLoader::GetTensor("INPUT1");
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
   input1.datatype_ = "BYTES";
   input1.shape_ = {3};
   inputs->insert(std::make_pair(input1.name_, input1));
@@ -612,9 +612,9 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
   const uint8_t* data_ptr{nullptr};
-  size_t batch_size;
+  size_t batch1_size;
 
-  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch_size);
+  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
   REQUIRE(status.IsOk());
 
 
@@ -633,7 +633,7 @@ TEST_CASE(
 
   if (string_data.empty()) {
     // 3 elements of 9 bytes is 27
-    CHECK_EQ(batch_size, 27);
+    CHECK_EQ(batch1_size, 27);
 
     const char* char_data = reinterpret_cast<const char*>(data_ptr);
 
@@ -654,7 +654,7 @@ TEST_CASE(
 
   } else {
     // 3 elements of 10 bytes is 30
-    CHECK_EQ(batch_size, 30);
+    CHECK_EQ(batch1_size, 30);
 
     const int32_t* int32_data = reinterpret_cast<const int32_t*>(data_ptr);
     const char* char_data = reinterpret_cast<const char*>(data_ptr);
