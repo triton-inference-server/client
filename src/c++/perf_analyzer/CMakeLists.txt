@@ -196,7 +196,7 @@ add_executable(
   $<TARGET_OBJECTS:json-utils-library>
 )
 
-# FIXME TKG remove profile-arcs, ftest-coverage, and gcov below
+# FIXME TMA-1217 remove profile-arcs, ftest-coverage, and gcov below
 
 # -Wno-write-strings is needed for the unit tests in order to statically create
 # input argv cases in the CommandLineParser unit test
