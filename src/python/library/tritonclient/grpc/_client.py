@@ -1532,6 +1532,7 @@ class InferenceServerClient(InferenceServerClientBase):
                            sequence_id=0,
                            sequence_start=False,
                            sequence_end=False,
+                           enable_flags_only_response=False,
                            priority=0,
                            timeout=None,
                            parameters=None):
@@ -1571,6 +1572,17 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
             'sequence_id' is 0 or "".
+        enable_flags_only_response: bool
+            Indicates whether "flags_only" responses should be sent back to
+            the client from the server during streaming inference. 
+            This strictly relates to the case of models/backends that use 
+            TRITONBACKEND_ResponseFactorySendFlags(nullptr, TRITONSERVER_RESPONSE_COMPLETE_FINAL).
+            Currently, this only occurs for decoupled models, and can be
+            used to communicate to the client when a request has received
+            its final response from the model. See the L0_decoupled test
+            for an example of the usefulness of this flag. Default value is
+            False, meaning that the server will not send flags_only responses
+            back to the client.
         priority : int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
@@ -1616,6 +1628,10 @@ class InferenceServerClient(InferenceServerClientBase):
                                          priority=priority,
                                          timeout=timeout,
                                          parameters=parameters)
+
+        # Unique to streaming inference as it only pertains to decoupled models
+        request.parameters['triton_enable_flags_only_response'].bool_param = enable_flags_only_response
+
         if self._verbose:
             print("async_stream_infer\n{}".format(request))
         # Enqueues the request to the stream
