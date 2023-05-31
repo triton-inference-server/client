@@ -1532,7 +1532,7 @@ class InferenceServerClient(InferenceServerClientBase):
                            sequence_id=0,
                            sequence_start=False,
                            sequence_end=False,
-                           enable_flags_only_response=False,
+                           enable_empty_response=False,
                            priority=0,
                            timeout=None,
                            parameters=None):
@@ -1572,8 +1572,8 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
             'sequence_id' is 0 or "".
-        enable_flags_only_response: bool
-            Indicates whether "flags_only" responses should be sent back to
+        enable_empty_response: bool
+            Indicates whether "empty" responses should be sent back to
             the client from the server during streaming inference. 
             This strictly relates to the case of models/backends that use 
             TRITONBACKEND_ResponseFactorySendFlags(nullptr, TRITONSERVER_RESPONSE_COMPLETE_FINAL).
@@ -1581,7 +1581,7 @@ class InferenceServerClient(InferenceServerClientBase):
             used to communicate to the client when a request has received
             its final response from the model. See the L0_decoupled test
             for an example of the usefulness of this flag. Default value is
-            False, meaning that the server will not send flags_only responses
+            False, meaning that the server will not send empty responses
             back to the client.
         priority : int
             Indicates the priority of the request. Priority value zero
@@ -1630,7 +1630,7 @@ class InferenceServerClient(InferenceServerClientBase):
                                          parameters=parameters)
 
         # Unique to streaming inference as it only pertains to decoupled models
-        request.parameters['triton_enable_flags_only_response'].bool_param = enable_flags_only_response
+        request.parameters['triton_enable_empty_response'].bool_param = enable_empty_response
 
         if self._verbose:
             print("async_stream_infer\n{}".format(request))
