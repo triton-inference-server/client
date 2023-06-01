@@ -176,6 +176,7 @@ add_executable(
   mock_infer_data_manager.h
   mock_request_rate_worker.h
   mock_sequence_manager.h
+  test_dataloader.cc
   test_inference_profiler.cc
   test_command_line_parser.cc
   test_idle_timer.cc
@@ -195,16 +196,19 @@ add_executable(
   $<TARGET_OBJECTS:json-utils-library>
 )
 
+# FIXME TMA-1217 remove profile-arcs, ftest-coverage, and gcov below
+
 # -Wno-write-strings is needed for the unit tests in order to statically create
 # input argv cases in the CommandLineParser unit test
 #
 set_target_properties(perf_analyzer_unit_tests 
-  PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
+  PROPERTIES COMPILE_FLAGS "-Wno-write-strings -fprofile-arcs -ftest-coverage")
 
 target_link_libraries(
   perf_analyzer_unit_tests
   PRIVATE
     gmock
+    gcov
     client-backend-library
     -lb64
 )
