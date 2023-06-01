@@ -90,8 +90,8 @@ DataLoader::ReadDataFromDir(
       if (input_string_data.size() != batch1_num_strings) {
         return cb::Error(
             "provided data for input " + input.second.name_ + " has " +
-                std::to_string(it->second.size()) + " byte elements, expect " +
-                std::to_string(batch1_num_strings),
+                std::to_string(input_string_data.size()) +
+                " elements, expect " + std::to_string(batch1_num_strings),
             pa::GENERIC_ERROR);
       }
     }
