@@ -160,8 +160,8 @@ struct InferOptions {
   explicit InferOptions(const std::string& model_name)
       : model_name_(model_name), model_version_(""), request_id_(""),
         sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
-        sequence_end_(false), priority_(0), server_timeout_(0),
-        client_timeout_(0)
+        sequence_end_(false), enable_empty_response_(false), priority_(0),
+        server_timeout_(0), client_timeout_(0)
   {
   }
   /// The name of the model to run inference.
@@ -192,6 +192,19 @@ struct InferOptions {
   /// sequence. Default value is False. This argument is ignored if
   /// 'sequence_id' is 0.
   bool sequence_end_;
+  /// Indicates whether "empty" responses should be sent back to
+  /// the client from the server during streaming inference when they
+  /// contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag.
+  /// This strictly relates to the case of models/backends that use
+  /// TRITONBACKEND_ResponseFactorySendFlags(nullptr,
+  /// TRITONSERVER_RESPONSE_COMPLETE_FINAL). Currently, this only occurs for
+  /// decoupled models, and can be used to communicate to the client when a
+  /// request has received its final response from the model. See the
+  /// L0_decoupled test for an example of how this flag can be used. Default
+  /// value is False, meaning that the server will not send empty responses back
+  /// to the client. NOTE: This option only has effect when using
+  /// AsyncStreamInfer currently.
+  bool enable_empty_response_;
   /// Indicates the priority of the request. Priority value zero
   /// indicates that the default priority level should be used
   /// (i.e. same behavior as not specifying the priority parameter).

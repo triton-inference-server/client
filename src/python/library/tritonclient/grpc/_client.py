@@ -1574,13 +1574,14 @@ class InferenceServerClient(InferenceServerClientBase):
             'sequence_id' is 0 or "".
         enable_empty_response: bool
             Indicates whether "empty" responses should be sent back to
-            the client from the server during streaming inference. 
+            the client from the server during streaming inference when they
+            contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag. 
             This strictly relates to the case of models/backends that use 
             TRITONBACKEND_ResponseFactorySendFlags(nullptr, TRITONSERVER_RESPONSE_COMPLETE_FINAL).
             Currently, this only occurs for decoupled models, and can be
             used to communicate to the client when a request has received
             its final response from the model. See the L0_decoupled test
-            for an example of the usefulness of this flag. Default value is
+            for an example of how this flag can be used. Default value is
             False, meaning that the server will not send empty responses
             back to the client.
         priority : int
@@ -1630,7 +1631,9 @@ class InferenceServerClient(InferenceServerClientBase):
                                          parameters=parameters)
 
         # Unique to streaming inference as it only pertains to decoupled models
-        request.parameters['triton_enable_empty_response'].bool_param = enable_empty_response
+        # Only attach the parameter if True, no need to send/parse when False.
+        if enable_empty_response:
+          request.parameters['triton_enable_empty_response'].bool_param = True
 
         if self._verbose:
             print("async_stream_infer\n{}".format(request))
