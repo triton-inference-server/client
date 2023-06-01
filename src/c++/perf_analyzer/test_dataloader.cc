@@ -536,12 +536,18 @@ TEST_CASE(
 
 
 TEST_CASE(
-    "dataloader: GenerateData: Zero Input" *
+    "dataloader: GenerateData: Non-BYTES" *
     doctest::description(
-        "Calling GenerateData with the zero_input flag set to true should "
-        "result in a single stream with one step with all data having the "
-        "value of 0"))
+        "Calling GenerateData for non-BYTES datatype should result in a single "
+        "stream with one step. If the zero input flag is set, all of that data "
+        "will be 0. Else it will be random"))
 {
+  bool zero_input;
+  size_t string_length = 5;
+  std::string string_data = "FOOBAR";
+
+  SUBCASE("zero_input true") { zero_input = true; }
+  SUBCASE("zero_input false") { zero_input = false; }
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
@@ -550,15 +556,11 @@ TEST_CASE(
   input1.shape_ = {3};
   inputs->insert(std::make_pair(input1.name_, input1));
 
-  bool zero_input = true;
-  size_t string_length = 5;
-  std::string string_data = "FOOBAR";
-  CHECK_EQ(dataloader.GetDataStreamsCount(), 0);
   cb::Error status =
       dataloader.GenerateData(inputs, zero_input, string_length, string_data);
   REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
-
+  CHECK_EQ(dataloader.GetTotalSteps(0), 1);
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
 
@@ -566,11 +568,109 @@ TEST_CASE(
   REQUIRE(status.IsOk());
 
   const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
-  CHECK_EQ(input_data[0], 0);
-  CHECK_EQ(input_data[1], 0);
-  CHECK_EQ(input_data[2], 0);
+  if (zero_input) {
+    CHECK_EQ(input_data[0], 0);
+    CHECK_EQ(input_data[1], 0);
+    CHECK_EQ(input_data[2], 0);
+  } else {
+    CHECK_NE(input_data[0], 0);
+    CHECK_NE(input_data[1], 0);
+    CHECK_NE(input_data[2], 0);
+  }
   // 3 elements of int32 data is 12 bytes
   CHECK_EQ(batch1_size, 12);
+}
+
+TEST_CASE(
+    "dataloader: GenerateData: BYTES" *
+    doctest::description(
+        "Calling GenerateData for BYTES datatype should result in a single "
+        "stream with one step. The zero-input flag is ignored. If string_data "
+        "is not null, it will be used. Else it will be a random string of "
+        "length string_length"))
+{
+  bool zero_input = false;
+  size_t string_length = 5;
+  std::string string_data;
+
+  SUBCASE("valid string_data") { string_data = "FOOBAR"; }
+  SUBCASE("empty string_data") { string_data = ""; }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  input1.datatype_ = "BYTES";
+  input1.shape_ = {3};
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status =
+      dataloader.GenerateData(inputs, zero_input, string_length, string_data);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 1);
+
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+
+
+  // For string data, the result should be a 32-bit number indicating the data
+  // length, and then 1 byte per letter
+  //
+  // For "FOOBAR", the length would be 10 bytes:
+  //    4 bytes to indicate the string length (the number 6)
+  //    1 byte for each letter
+  //
+  // For empty string, the string length would instead be the value in
+  // string_length (5 in this case), and the characters would be random for
+  // each entry in the batch. Thus, the data length would be 9 bytes
+  //
+  // For a shape of [3], this data would be repeated 3 times
+
+  if (string_data.empty()) {
+    // 3 elements of 9 bytes is 27
+    CHECK_EQ(batch1_size, 27);
+
+    const char* char_data = reinterpret_cast<const char*>(data_ptr);
+
+    // Check all 3 entries in the "batch" of shape [3]
+    for (size_t i = 0; i < 3; i++) {
+      size_t start_index = 9 * i;
+
+      // The first 4 bytes are an int32 indicating the number of characters
+      const int32_t* int32_data =
+          reinterpret_cast<const int32_t*>(&char_data[start_index]);
+      CHECK_EQ(int32_data[0], 5);
+
+      // All of the characters should be in the specified character_set
+      for (size_t j = start_index + 4; j < start_index + 9; j++) {
+        CHECK_NE(character_set.find(char_data[j]), std::string::npos);
+      }
+    }
+
+  } else {
+    // 3 elements of 10 bytes is 30
+    CHECK_EQ(batch1_size, 30);
+
+    const int32_t* int32_data = reinterpret_cast<const int32_t*>(data_ptr);
+    const char* char_data = reinterpret_cast<const char*>(data_ptr);
+    CHECK_EQ(int32_data[0], 6);
+    CHECK_EQ(char_data[4], 'F');
+    CHECK_EQ(char_data[5], 'O');
+    CHECK_EQ(char_data[6], 'O');
+    CHECK_EQ(char_data[7], 'B');
+    CHECK_EQ(char_data[8], 'A');
+    CHECK_EQ(char_data[9], 'R');
+
+    // The data would repeat two more times for shape of [3]
+    for (size_t i = 10; i < 30; i++) {
+      CHECK_EQ(char_data[i - 10], char_data[i]);
+    }
+  }
 }
 
 }}  // namespace triton::perfanalyzer
