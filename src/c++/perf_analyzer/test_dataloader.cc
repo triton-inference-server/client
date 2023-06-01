@@ -30,11 +30,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-
-// FIXME TKG things to test:
-// TMA-1216 B64 data
-
-
 /// Helper class for testing the DataLoader
 ///
 class TestDataLoader {
@@ -196,7 +191,11 @@ TEST_CASE(
 
 TEST_CASE("dataloader: ParseData: Valid Data")
 {
-  std::string json_str{R"({
+  std::string json_str;
+
+  SUBCASE("Normal json")
+  {
+    json_str = R"({
    "data": [
      { "INPUT1": [1] },
      { "INPUT1": [2] },
@@ -206,7 +205,24 @@ TEST_CASE("dataloader: ParseData: Valid Data")
     { "OUTPUT1": [4] },
     { "OUTPUT1": [5] },
     { "OUTPUT1": [6] }
-   ]})"};
+   ]})";
+  }
+  SUBCASE("b64 json")
+  {
+    // Note that these encoded values decode to the numbers 1,2,3,4,5,6, which
+    // is the same data as the normal json case above
+    json_str = R"({
+   "data": [
+     { "INPUT1": {"b64": "AAAAAQ=="} },
+     { "INPUT1": {"b64": "AgAAAA=="} },
+     { "INPUT1": {"b64": "AwAAAA=="} }
+   ],
+   "validation_data": [
+    { "OUTPUT1": {"b64": "BAAAAA=="} },
+    { "OUTPUT1": {"b64": "BQAAAA=="} },
+    { "OUTPUT1": {"b64": "BgAAAA=="} }
+   ]})";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -670,7 +686,6 @@ TEST_CASE(
     }
   }
 }
-
 
 TEST_CASE(
     "dataloader: ReadDataFromDir: Error reading input file" *
