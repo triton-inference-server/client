@@ -36,11 +36,11 @@ Installs Maven, Java JDK and builds Tritonserver Java bindings
 -j|--jar-install-path             Path to install the bindings .jar
 --javacpp-branch                  Javacpp-presets git path, default is https://github.com/bytedeco/javacpp-presets.git
 --javacpp-tag                     Javacpp-presets branch tag, default "master"
---include-developer-tools-server  Include C++ bindings from developer_tools repository
+--enable-developer-tools-server  Include C++ bindings from developer_tools repository
 "
 
 # Get all options:
-OPTS=$(getopt -l ht:b:v:c:j:,help,triton-home,build-home:,maven-version:,core-tag:,jar-install-path:,javacpp-branch:,javacpp-tag:,include-developer-tools-server -- "$@")
+OPTS=$(getopt -l ht:b:v:c:j:,help,triton-home,build-home:,maven-version:,core-tag:,jar-install-path:,javacpp-branch:,javacpp-tag:,enable-developer-tools-server -- "$@")
 
 TRITON_HOME="/opt/tritonserver"
 BUILD_HOME="/tmp/build"
@@ -95,7 +95,7 @@ for OPTS; do
         echo "Javacpp-presets branch tag set to: ${JAVACPP_BRANCH_TAG}"
         shift 2
         ;;
-        --include-developer-tools-server) 
+        --enable-developer-tools-server) 
         INCLUDE_DEVELOPER_TOOLS_SERVER=1
         echo "Including developer tools server C++ bindings"
         ;;
@@ -141,12 +141,15 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
     # Copy dynamic library to triton home
     cp ${BUILD_HOME}/developer_tools/server/build/install/lib/libtritondevelopertoolsserver.so ${TRITON_HOME}/lib/.
 
-    rm -r ${TRITON_HOME}/include/triton/developer_tools
-    mkdir -p ${TRITON_HOME}/include/triton/developer_tools/src
-    cp ${BUILD_HOME}/developer_tools/server/include/triton/developer_tools/common.h ${TRITON_HOME}/include/triton/developer_tools/.
-    cp ${BUILD_HOME}/developer_tools/server/include/triton/developer_tools/generic_server_wrapper.h ${TRITON_HOME}/include/triton/developer_tools/.
-    cp ${BUILD_HOME}/developer_tools/server/src/infer_requested_output.h ${TRITON_HOME}/include/triton/developer_tools/src/.
-    cp ${BUILD_HOME}/developer_tools/server/src/tracer.h ${TRITON_HOME}/include/triton/developer_tools/src/.
+    BUILD_INCLUDE_REPO=${BUILD_HOME}/developer_tools/server/include/triton/developer_tools
+    BUILD_SRC_REPO=${BUILD_HOME}/developer_tools/server/src
+    TRITON_INCLUDE_REPO=${TRITON_HOME}/include/triton/developer_tools
+    rm -r ${TRITON_INCLUDE_REPO}
+    mkdir -p ${TRITON_INCLUDE_REPO}/src
+    cp ${BUILD_INCLUDE_REPO}/common.h ${TRITON_INCLUDE_REPO}/.
+    cp ${BUILD_INCLUDE_REPO}/generic_server_wrapper.h ${TRITON_INCLUDE_REPO}/.
+    cp ${BUILD_SRC_REPO}/infer_requested_output.h ${TRITON_INCLUDE_REPO}/src/.
+    cp ${BUILD_SRC_REPO}/tracer.h ${TRITON_INCLUDE_REPO}/src/.
 fi
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 cd ${BUILD_HOME}
