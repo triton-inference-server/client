@@ -1311,13 +1311,6 @@ InferenceServerGrpcClient::AsyncStreamInfer(
     return err;
   }
 
-  // NOTE: Only has effect on streaming GRPC inference currently.
-  // Only attach when true, no need to parse/send when false.
-  if (options.enable_empty_response_) {
-    (*infer_request_.mutable_parameters())["triton_enable_empty_response"]
-        .set_bool_param(true);
-  }
-
   if (enable_stream_stats_) {
     timer->CaptureTimestamp(RequestTimers::Kind::SEND_END);
   }
