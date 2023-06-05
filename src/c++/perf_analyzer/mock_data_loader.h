@@ -47,10 +47,26 @@ class NaggyMockDataLoader : public DataLoader {
         .WillByDefault([this](size_t stream_id) -> size_t {
           return this->DataLoader::GetTotalSteps(stream_id);
         });
+    ON_CALL(*this, ReadFile(testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                const std::string& path,
+                std::vector<char>* contents) -> cb::Error {
+              return this->DataLoader::ReadFile(path, contents);
+            });
+    ON_CALL(*this, ReadTextFile(testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                const std::string& path,
+                std::vector<std::string>* contents) -> cb::Error {
+              return this->DataLoader::ReadTextFile(path, contents);
+            });
   }
 
   MOCK_METHOD(size_t, GetTotalSteps, (size_t), (override));
-
+  MOCK_METHOD(cb::Error, ReadFile, (const std::string&, std::vector<char>*));
+  MOCK_METHOD(
+      cb::Error, ReadTextFile, (const std::string&, std::vector<std::string>*));
 
   cb::Error ReadDataFromJSON(
       const std::shared_ptr<ModelTensorMap>& inputs,
