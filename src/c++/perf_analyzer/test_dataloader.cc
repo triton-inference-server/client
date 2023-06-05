@@ -126,7 +126,7 @@ TEST_CASE("dataloader: ParseData: Bad Json")
 
 TEST_CASE(
     "dataloader: ParseData: No Data" *
-    doctest::description("If there is no field called data in the json, an "
+    doctest::description("When there is no field called data in the json, an "
                          "error should be thrown"))
 {
   std::string json_str{R"({ "notdata" : 5})"};
@@ -144,8 +144,8 @@ TEST_CASE(
 // TEST_CASE(
 //    "dataloader: ParseData: Mismatch Shape" *
 //    doctest::description(
-//        "If the size of the provided Input is not in line with the Tensor's "
-//        "shape, then an error should be thrown"))
+//        "When the size of the provided Input is not in line with the Tensor's
+//        " "shape, then an error should be thrown"))
 //{
 //  std::string json_str{R"({"data": [{ "INPUT1": [1,2] }]})"};
 //
@@ -168,7 +168,7 @@ TEST_CASE(
 TEST_CASE(
     "dataloader: ParseData: Mismatch Input and Output" *
     doctest::description(
-        "If the size of the provided Input and validation Output data are "
+        "When the size of the provided Input and validation Output data are "
         "different, then an error should be thrown"))
 {
   std::string json_str{R"({
@@ -368,9 +368,9 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
 TEST_CASE(
     "dataloader: ParseData: Missing Shape" *
     doctest::description(
-        "If a tensor's shape is dynamic (-1), then it needs to be provided via "
-        "--shape option (which is not visable to this testing), or via a shape "
-        "option in the json. If not, an error is thrown"))
+        "When a tensor's shape is dynamic (-1), then it needs to be provided "
+        "via --shape option (which is not visable to this testing), or via a "
+        "shape option in the json. If not, an error is thrown"))
 {
   std::string json_str{R"({"data": [{ "INPUT1": [1,2,3] } ]})"};
 
@@ -675,7 +675,7 @@ TEST_CASE(
 TEST_CASE(
     "dataloader: ReadDataFromDir: Error reading input file" *
     doctest::description(
-        "If error reading input data file, an error reading the file should "
+        "When there is an error reading an input data file, the error should "
         "bubble up to the return value of ReadDataFromDir"))
 {
   MockDataLoader dataloader;
@@ -698,8 +698,9 @@ TEST_CASE(
 TEST_CASE(
     "dataloader: ReadDataFromDir: Error reading output file" *
     doctest::description(
-        "If error reading output data file, an error is NOT raised, and "
-        "instead GetOutputData will return nullptr with a batch1_size of 0"))
+        "When there is an error reading an output data file, an error is NOT "
+        "raised from ReadDataFromDir, and instead GetOutputData will return "
+        "nullptr with a batch1_size of 0"))
 {
   MockDataLoader dataloader;
 

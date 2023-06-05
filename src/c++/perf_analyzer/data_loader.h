@@ -136,19 +136,19 @@ class DataLoader {
       const std::shared_ptr<ModelTensorMap>& outputs);
 
  private:
-  // Reads the data from file specified by path into vector of characters
-  // \param path The complete path to the file to be read
-  // \param contents The character vector that will contain the data read
-  // \return error status. Returns Non-Ok if an error is encountered during
-  //  read operation.
+  /// Reads the data from file specified by path into vector of characters
+  /// \param path The complete path to the file to be read
+  /// \param contents The character vector that will contain the data read
+  /// \return error status. Returns Non-Ok if an error is encountered during
+  ///  read operation.
   virtual cb::Error ReadFile(
       const std::string& path, std::vector<char>* contents);
 
-  // Reads the string from file specified by path into vector of strings
-  // \param path The complete path to the file to be read
-  // \param contents The string vector that will contain the data read
-  // \return error status. Returns Non-Ok if an error is encountered during
-  //  read operation.
+  /// Reads the string from file specified by path into vector of strings
+  /// \param path The complete path to the file to be read
+  /// \param contents The string vector that will contain the data read
+  /// \return error status. Returns Non-Ok if an error is encountered during
+  ///  read operation.
   virtual cb::Error ReadTextFile(
       const std::string& path, std::vector<std::string>* contents);
 
