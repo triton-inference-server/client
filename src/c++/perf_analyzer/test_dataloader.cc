@@ -744,17 +744,36 @@ TEST_CASE(
 
   std::string dir{"mocked_out"};
 
-  std::vector<char> char_data{'0', '0', '0', '7', '5'};
-
-  std::vector<std::string> string_data{"InStr", "ExtraStr"};
-
   SUBCASE("BYTES (string) data")
   {
     datatype = "BYTES";
+    std::vector<std::string> string_data;
+
+    SUBCASE("Dynamic shape")
+    {
+      input1.shape_ = {-1};
+      expected_error_message =
+          "input INPUT1 contains dynamic shape, provide shapes to send along "
+          "with the request";
+    }
+    SUBCASE("Supplied shape")
+    {
+      input1.shape_ = {1};
+      string_data = {"InStr", "ExtraStr"};
+
+      expected_error_message =
+          "provided data for input INPUT1 has 2 elements, expect 1";
+    }
+
     EXPECT_CALL(dataloader, ReadTextFile(testing::_, testing::_))
         .WillOnce(testing::DoAll(
             testing::SetArgPointee<1>(string_data),
             testing::Return(cb::Error::Success)));
+  }
+  SUBCASE("Raw Binary data")
+  {
+    datatype = "INT32";
+    std::vector<char> char_data;
 
     SUBCASE("Dynamic shape")
     {
@@ -765,29 +784,18 @@ TEST_CASE(
     }
     SUBCASE("Supplied shape")
     {
+      // An INT32 of shape {1} will be 4 bytes. However, we are supplying 5
+      // bytes via char_data.
+      input1.shape_ = {1};
+      char_data = {'0', '0', '0', '7', '5'};
       expected_error_message =
-          "provided data for input INPUT1 has 2 elements, expect 1";
+          "provided data for input INPUT1 has byte size 5, expect 4";
     }
-  }
-  SUBCASE("Raw Binary data")
-  {
-    datatype = "INT32";
+
     EXPECT_CALL(dataloader, ReadFile(testing::_, testing::_))
         .WillOnce(testing::DoAll(
             testing::SetArgPointee<1>(char_data),
             testing::Return(cb::Error::Success)));
-    SUBCASE("Dynamic shape")
-    {
-      input1.shape_ = {-1};
-      expected_error_message =
-          "input INPUT1 contains dynamic shape, provide shapes to send along "
-          "with the request";
-    }
-    SUBCASE("Supplied shape")
-    {
-      expected_error_message =
-          "provided data for input INPUT1 has byte size 5, expect 4";
-    }
   }
 
   input1.datatype_ = datatype;
