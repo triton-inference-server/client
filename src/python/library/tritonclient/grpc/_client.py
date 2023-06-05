@@ -1576,14 +1576,14 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether "empty" responses should be generated and sent
             back to the client from the server during streaming inference when
             they contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag. 
-            This strictly relates to the case of models/backends that use 
-            TRITONBACKEND_ResponseFactorySendFlags(nullptr, TRITONSERVER_RESPONSE_COMPLETE_FINAL).
+            This strictly relates to the case of models/backends that send
+            flags-only responses (use TRITONBACKEND_ResponseFactorySendFlags(TRITONSERVER_RESPONSE_COMPLETE_FINAL)
+            or InferenceResponseSender.send(flags=TRITONSERVER_RESPONSE_COMPLETE_FINAL))
             Currently, this only occurs for decoupled models, and can be
             used to communicate to the client when a request has received
-            its final response from the model. See the L0_decoupled test
-            for an example of how this flag can be used. Default value is
-            False, meaning that the server will not generate empty responses
-            to send back to the client upon receving the FINAL flag.
+            its final response from the model. If the backend sends the final
+            flag along with a non-empty response, this arg is not needed.
+            Default value is False.
         priority : int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
