@@ -91,8 +91,8 @@ DataLoader::ReadDataFromDir(
       if (input_string_data.size() != batch1_num_strings) {
         return cb::Error(
             "provided data for input " + input.second.name_ + " has " +
-                std::to_string(it->second.size()) + " byte elements, expect " +
-                std::to_string(batch1_num_strings),
+                std::to_string(input_string_data.size()) +
+                " elements, expect " + std::to_string(batch1_num_strings),
             pa::GENERIC_ERROR);
       }
     }
@@ -566,6 +566,58 @@ DataLoader::ReadTensorData(
     }
   }
 
+  return cb::Error::Success;
+}
+
+
+cb::Error
+DataLoader::ReadFile(const std::string& path, std::vector<char>* contents)
+{
+  std::ifstream in(path, std::ios::in | std::ios::binary);
+  if (!in) {
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
+  }
+
+  in.seekg(0, std::ios::end);
+
+  int file_size = in.tellg();
+  if (file_size > 0) {
+    contents->resize(file_size);
+    in.seekg(0, std::ios::beg);
+    in.read(&(*contents)[0], contents->size());
+  }
+
+  in.close();
+
+  // If size is invalid, report after ifstream is closed
+  if (file_size < 0) {
+    return cb::Error(
+        "failed to get size for file '" + path + "'", pa::GENERIC_ERROR);
+  } else if (file_size == 0) {
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ReadTextFile(
+    const std::string& path, std::vector<std::string>* contents)
+{
+  std::ifstream in(path);
+  if (!in) {
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
+  }
+
+  std::string current_string;
+  while (std::getline(in, current_string)) {
+    contents->push_back(current_string);
+  }
+  in.close();
+
+  if (contents->size() == 0) {
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
+  }
   return cb::Error::Success;
 }
 

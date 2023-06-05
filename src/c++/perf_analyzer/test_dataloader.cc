@@ -32,9 +32,7 @@ namespace triton { namespace perfanalyzer {
 
 
 // FIXME TKG things to test:
-// TMA-1214 ReadFromDir
-// TMA-1215 String data
-// TMA-1216 Bytes data
+// TMA-1216 B64 data
 
 
 /// Helper class for testing the DataLoader
@@ -128,7 +126,7 @@ TEST_CASE("dataloader: ParseData: Bad Json")
 
 TEST_CASE(
     "dataloader: ParseData: No Data" *
-    doctest::description("If there is no field called data in the json, an "
+    doctest::description("When there is no field called data in the json, an "
                          "error should be thrown"))
 {
   std::string json_str{R"({ "notdata" : 5})"};
@@ -146,8 +144,8 @@ TEST_CASE(
 // TEST_CASE(
 //    "dataloader: ParseData: Mismatch Shape" *
 //    doctest::description(
-//        "If the size of the provided Input is not in line with the Tensor's "
-//        "shape, then an error should be thrown"))
+//        "When the size of the provided Input is not in line with the Tensor's
+//        " "shape, then an error should be thrown"))
 //{
 //  std::string json_str{R"({"data": [{ "INPUT1": [1,2] }]})"};
 //
@@ -170,7 +168,7 @@ TEST_CASE(
 TEST_CASE(
     "dataloader: ParseData: Mismatch Input and Output" *
     doctest::description(
-        "If the size of the provided Input and validation Output data are "
+        "When the size of the provided Input and validation Output data are "
         "different, then an error should be thrown"))
 {
   std::string json_str{R"({
@@ -370,9 +368,9 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
 TEST_CASE(
     "dataloader: ParseData: Missing Shape" *
     doctest::description(
-        "If a tensor's shape is dynamic (-1), then it needs to be provided via "
-        "--shape option (which is not visable to this testing), or via a shape "
-        "option in the json. If not, an error is thrown"))
+        "When a tensor's shape is dynamic (-1), then it needs to be provided "
+        "via --shape option (which is not visable to this testing), or via a "
+        "shape option in the json. If not, an error is thrown"))
 {
   std::string json_str{R"({"data": [{ "INPUT1": [1,2,3] } ]})"};
 
@@ -670,6 +668,290 @@ TEST_CASE(
     for (size_t i = 10; i < 30; i++) {
       CHECK_EQ(char_data[i - 10], char_data[i]);
     }
+  }
+}
+
+
+TEST_CASE(
+    "dataloader: ReadDataFromDir: Error reading input file" *
+    doctest::description(
+        "When there is an error reading an input data file, the error should "
+        "bubble up to the return value of ReadDataFromDir"))
+{
+  MockDataLoader dataloader;
+
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+
+  std::string dir{"fake/path"};
+
+  SUBCASE("BYTES (string) data") { input1.datatype_ = "BYTES"; }
+  SUBCASE("Raw Binary data") { input1.datatype_ = "INT32"; }
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+  cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
+  CHECK(status.IsOk() == false);
+}
+
+TEST_CASE(
+    "dataloader: ReadDataFromDir: Error reading output file" *
+    doctest::description(
+        "When there is an error reading an output data file, an error is NOT "
+        "raised from ReadDataFromDir, and instead GetOutputData will return "
+        "nullptr with a batch1_size of 0"))
+{
+  MockDataLoader dataloader;
+
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+
+  std::string dir{"fake/path"};
+
+  SUBCASE("BYTES (string) data") { output1.datatype_ = "BYTES"; }
+  SUBCASE("Raw Binary data") { output1.datatype_ = "INT32"; }
+
+  outputs->insert(std::make_pair(output1.name_, output1));
+  cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
+  CHECK(status.IsOk() == true);
+
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  CHECK(data_ptr == nullptr);
+  CHECK(batch1_size == 0);
+}
+
+TEST_CASE(
+    "dataloader: ReadDataFromDir: Mismatching Input Data" *
+    doctest::description("Successfully reading input files but having a "
+                         "mismatch will result in an error being thrown"))
+{
+  MockDataLoader dataloader;
+
+  std::string datatype;
+  std::string expected_error_message;
+
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+
+  std::string dir{"mocked_out"};
+
+  SUBCASE("BYTES (string) data")
+  {
+    datatype = "BYTES";
+    std::vector<std::string> string_data;
+
+    SUBCASE("Dynamic shape")
+    {
+      input1.shape_ = {-1};
+      expected_error_message =
+          "input INPUT1 contains dynamic shape, provide shapes to send along "
+          "with the request";
+    }
+    SUBCASE("Supplied shape")
+    {
+      input1.shape_ = {1};
+      string_data = {"InStr", "ExtraStr"};
+
+      expected_error_message =
+          "provided data for input INPUT1 has 2 elements, expect 1";
+    }
+
+    EXPECT_CALL(dataloader, ReadTextFile(testing::_, testing::_))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(string_data),
+            testing::Return(cb::Error::Success)));
+  }
+  SUBCASE("Raw Binary data")
+  {
+    datatype = "INT32";
+    std::vector<char> char_data;
+
+    SUBCASE("Dynamic shape")
+    {
+      input1.shape_ = {-1};
+      expected_error_message =
+          "input INPUT1 contains dynamic shape, provide shapes to send along "
+          "with the request";
+    }
+    SUBCASE("Supplied shape")
+    {
+      // An INT32 of shape {1} will be 4 bytes. However, we are supplying 5
+      // bytes via char_data.
+      input1.shape_ = {1};
+      char_data = {'0', '0', '0', '7', '5'};
+      expected_error_message =
+          "provided data for input INPUT1 has byte size 5, expect 4";
+    }
+
+    EXPECT_CALL(dataloader, ReadFile(testing::_, testing::_))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(char_data),
+            testing::Return(cb::Error::Success)));
+  }
+
+  input1.datatype_ = datatype;
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
+  REQUIRE(status.IsOk() == false);
+  CHECK(status.Message() == expected_error_message);
+}
+
+// FIXME TMA-1210 -- the output data is not being ignored here and no error is
+// thrown, despite the mismatch
+// TEST_CASE(
+//    "dataloader: ReadDataFromDir: Mismatching Output Data" *
+//    doctest::description("Successfully reading output files but having a "
+//                         "mismatch will result in the data being ignored"))
+//{
+//  MockDataLoader dataloader;
+//
+//  std::string datatype;
+//
+//  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+//  std::shared_ptr<ModelTensorMap> outputs =
+//  std::make_shared<ModelTensorMap>();
+//
+//  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+//  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+//
+//  std::string dir{"mocked_out"};
+//
+//  std::vector<char> char_data{'0', '0', '0', '7', '5'};
+//
+//  std::vector<std::string> string_data{"InStr", "ExtraStr"};
+//
+//  SUBCASE("BYTES (string) data")
+//  {
+//    datatype = "BYTES";
+//    EXPECT_CALL(dataloader, ReadTextFile(testing::_, testing::_))
+//        .WillOnce(testing::DoAll(
+//            testing::SetArgPointee<1>(string_data),
+//            testing::Return(cb::Error::Success)));
+//
+//    SUBCASE("Dynamic shape") { output1.shape_ = {-1}; }
+//    SUBCASE("Supplied shape") { output1.shape_ = {1}; }
+//  }
+//  SUBCASE("Raw Binary data")
+//  {
+//    datatype = "INT32";
+//    EXPECT_CALL(dataloader, ReadFile(testing::_, testing::_))
+//        .WillOnce(testing::DoAll(
+//            testing::SetArgPointee<1>(char_data),
+//            testing::Return(cb::Error::Success)));
+//
+//    SUBCASE("Dynamic shape") { input1.shape_ = {-1}; }
+//    SUBCASE("Supplied shape") { input1.shape_ = {1}; }
+//  }
+//
+//  output1.datatype_ = datatype;
+//  outputs->insert(std::make_pair(output1.name_, output1));
+//
+//  cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
+//  REQUIRE(status.IsOk() == true);
+//
+//  // Confirm that the data is not in the dataloader
+//  const uint8_t* data_ptr{nullptr};
+//  size_t batch1_size;
+//
+//  dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+//  CHECK(data_ptr == nullptr);
+//  CHECK(batch1_size == 0);
+//}
+
+TEST_CASE(
+    "dataloader: ReadDataFromDir: Valid Data" *
+    doctest::description("Successfully reading files will always result in a "
+                         "single stream with a single step"))
+{
+  MockDataLoader dataloader;
+
+  std::string datatype;
+
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+
+  std::string dir{"mocked_out"};
+
+  std::vector<char> input_char_data{'0', '0', '0', '7'};
+  std::vector<char> output_char_data{'0', '0', '0', '3'};
+
+  std::vector<std::string> input_string_data{"InStr"};
+  std::vector<std::string> output_string_data{"OutStr"};
+
+  std::vector<char> expected_input;
+  std::vector<char> expected_output;
+
+  SUBCASE("BYTES (string) data")
+  {
+    datatype = "BYTES";
+
+    expected_input = {'\5', '\0', '\0', '\0', 'I', 'n', 'S', 't', 'r'};
+    expected_output = {'\6', '\0', '\0', '\0', 'O', 'u', 't', 'S', 't', 'r'};
+
+    EXPECT_CALL(dataloader, ReadTextFile(testing::_, testing::_))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(input_string_data),
+            testing::Return(cb::Error::Success)))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(output_string_data),
+            testing::Return(cb::Error::Success)));
+  }
+  SUBCASE("Raw Binary data")
+  {
+    datatype = "INT32";
+
+    expected_input = input_char_data;
+    expected_output = output_char_data;
+
+    EXPECT_CALL(dataloader, ReadFile(testing::_, testing::_))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(input_char_data),
+            testing::Return(cb::Error::Success)))
+        .WillOnce(testing::DoAll(
+            testing::SetArgPointee<1>(output_char_data),
+            testing::Return(cb::Error::Success)));
+  }
+
+  input1.datatype_ = datatype;
+  output1.datatype_ = datatype;
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
+
+  cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
+  REQUIRE(status.IsOk() == true);
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 1);
+
+  // Validate input and output data
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  const char* input_data = reinterpret_cast<const char*>(data_ptr);
+  REQUIRE(batch1_size == expected_input.size());
+  for (size_t i = 0; i < batch1_size; i++) {
+    CHECK(input_data[i] == expected_input[i]);
+  }
+
+  dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  const char* output_data = reinterpret_cast<const char*>(data_ptr);
+  REQUIRE(batch1_size == expected_output.size());
+  for (size_t i = 0; i < batch1_size; i++) {
+    CHECK(output_data[i] == expected_output[i]);
   }
 }
 
