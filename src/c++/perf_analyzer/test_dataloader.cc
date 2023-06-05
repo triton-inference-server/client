@@ -119,20 +119,44 @@ TEST_CASE("dataloader: ParseData: Bad Json")
       "failed to parse the specified json file for reading provided data");
 }
 
-TEST_CASE(
-    "dataloader: ParseData: No Data" *
-    doctest::description("When there is no field called data in the json, an "
-                         "error should be thrown"))
+TEST_CASE("dataloader: ParseData: Misc error cases")
 {
-  std::string json_str{R"({ "notdata" : 5})"};
+  std::string expected_message;
+  std::string json_str;
+
+  SUBCASE("No data")
+  {
+    json_str = R"({ "notdata" : 5})";
+    expected_message = "The json file doesn't contain data field";
+  }
+  SUBCASE("Not string b64")
+  {
+    json_str = R"({"data": [{ "INPUT1": {"b64": 5} }]})";
+    expected_message =
+        "the value of b64 field should be of type string ( Location stream id: "
+        "0, step id: 0)";
+  }
+  SUBCASE("Not b64 or array")
+  {
+    json_str = R"({"data": [{ "INPUT1": {"not_b64": "AAAAAQ=="} }]})";
+    expected_message =
+        "missing content field. ( Location stream id: 0, step id: 0)";
+  }
+  SUBCASE("Malformed input (boolean type)")
+  {
+    json_str = R"({"data": [{ "INPUT1": null }]})";
+    expected_message = "Input data file is malformed.";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  inputs->insert(std::make_pair(input1.name_, input1));
 
   cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
   CHECK(status.IsOk() == false);
-  CHECK_EQ(status.Message(), "The json file doesn't contain data field");
+  CHECK_EQ(status.Message(), expected_message);
 }
 
 // FIXME TMA-1210
@@ -685,6 +709,33 @@ TEST_CASE(
       CHECK_EQ(char_data[i - 10], char_data[i]);
     }
   }
+}
+
+TEST_CASE("dataloader: GenerateData: Dynamic shape")
+{
+  bool zero_input = false;
+  size_t string_length = 5;
+  std::string string_data;
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  input1.shape_ = {-1};
+
+  std::string expected_message =
+      "input INPUT1 contains dynamic shape, provide shapes to send along with "
+      "the request";
+
+  SUBCASE("BYTES") { input1.datatype_ = "BYTES"; }
+  SUBCASE("non-BYTES") { input1.datatype_ = "INT32"; }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status =
+      dataloader.GenerateData(inputs, zero_input, string_length, string_data);
+  REQUIRE(status.IsOk() == false);
+  CHECK_EQ(status.Message(), expected_message);
 }
 
 TEST_CASE(
