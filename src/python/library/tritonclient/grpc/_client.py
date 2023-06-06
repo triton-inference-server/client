@@ -1245,7 +1245,7 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
             'sequence_id' is 0.
-        priority : int
+        priority : unsigned int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
             (i.e. same behavior as not specifying the priority parameter).
@@ -1377,7 +1377,7 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
             'sequence_id' is 0.
-        priority : int
+        priority : unsigned int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
             (i.e. same behavior as not specifying the priority parameter).

@@ -342,9 +342,9 @@ class TritonLoader : public tc::InferenceServerClient {
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetFlagsFn_t)(
       TRITONSERVER_InferenceRequest* inference_request, uint32_t flags);
 
-  // TRITONSERVER_InferenceRequestSetPriority
+  // TRITONSERVER_InferenceRequestSetPriorityU64
   typedef TRITONSERVER_Error* (*TritonServerInferenceRequestSetPriorityFn_t)(
-      TRITONSERVER_InferenceRequest* inference_request, uint32_t priority);
+      TRITONSERVER_InferenceRequest* inference_request, uint64_t priority);
 
   // TRITONSERVER_InferenceRequestSetTimeoutMicroseconds
   typedef TRITONSERVER_Error* (
