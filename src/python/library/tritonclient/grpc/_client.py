@@ -1532,6 +1532,7 @@ class InferenceServerClient(InferenceServerClientBase):
                            sequence_id=0,
                            sequence_start=False,
                            sequence_end=False,
+                           enable_empty_final_response=False,
                            priority=0,
                            timeout=None,
                            parameters=None):
@@ -1571,6 +1572,18 @@ class InferenceServerClient(InferenceServerClientBase):
             Indicates whether the request being added marks the end of the
             sequence. Default value is False. This argument is ignored if
             'sequence_id' is 0 or "".
+        enable_empty_final_response: bool
+            Indicates whether "empty" responses should be generated and sent
+            back to the client from the server during streaming inference when
+            they contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag. 
+            This strictly relates to the case of models/backends that send
+            flags-only responses (use TRITONBACKEND_ResponseFactorySendFlags(TRITONSERVER_RESPONSE_COMPLETE_FINAL)
+            or InferenceResponseSender.send(flags=TRITONSERVER_RESPONSE_COMPLETE_FINAL))
+            Currently, this only occurs for decoupled models, and can be
+            used to communicate to the client when a request has received
+            its final response from the model. If the backend sends the final
+            flag along with a non-empty response, this arg is not needed.
+            Default value is False.
         priority : int
             Indicates the priority of the request. Priority value zero
             indicates that the default priority level should be used
@@ -1616,6 +1629,12 @@ class InferenceServerClient(InferenceServerClientBase):
                                          priority=priority,
                                          timeout=timeout,
                                          parameters=parameters)
+
+        # Unique to streaming inference as it only pertains to decoupled models
+        # Only attach the parameter if True, no need to send/parse when False.
+        if enable_empty_final_response:
+          request.parameters['triton_enable_empty_final_response'].bool_param = True
+
         if self._verbose:
             print("async_stream_infer\n{}".format(request))
         # Enqueues the request to the stream
