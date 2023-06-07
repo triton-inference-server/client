@@ -1,4 +1,4 @@
-// Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -23,12 +23,14 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#include "gtest/gtest.h"
-
-#include "grpc_client.h"
-#include "http_client.h"
 
 #include <fstream>
+
+#define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
+#include "grpc_client.h"
+#include "gtest/gtest.h"
+#include "http_client.cc"
+#include "http_client.h"
 
 namespace tc = triton::client;
 
@@ -292,6 +294,8 @@ class GRPCTraceTest : public ::testing::Test {
   std::string model_name_;
   std::unique_ptr<tc::InferenceServerGrpcClient> client_;
 };
+
+class HTTPJSONDataTest : public ::testing::Test {};
 
 
 TYPED_TEST_SUITE_P(ClientTest);
@@ -1218,8 +1222,8 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
   std::string config("{\"backend\":\"onnxruntime\"}");
   std::string model_name("onnx_int32_int32_int32");
   std::string override_name("override_model");
-  std::vector<std::pair<std::string, bool>> expected_version_ready{{"1", false},
-                                                                   {"3", true}};
+  std::vector<std::pair<std::string, bool>> expected_version_ready{
+      {"1", false}, {"3", true}};
   std::vector<std::pair<std::string, bool>> expected_override_version_ready{
       {"1", true}, {"3", false}};
 
@@ -1306,8 +1310,8 @@ TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
 {
   // Request to load the model with override config
   std::string model_name("onnx_int32_int32_int32");
-  std::vector<std::pair<std::string, bool>> original_version_ready{{"2", true},
-                                                                   {"3", true}};
+  std::vector<std::pair<std::string, bool>> original_version_ready{
+      {"2", true}, {"3", true}};
   std::vector<std::pair<std::string, bool>> expected_version_ready{
       {"2", true}, {"3", false}};
   tc::Error err = tc::Error::Success;
@@ -1611,6 +1615,491 @@ TEST_F(GRPCTraceTest, GRPCClearTraceSettings)
   ASSERT_EQ(trace_settings, expected_global_settings)
       << "error: Unexpected global trace settings after model clear"
       << std::endl;
+}
+
+class TestHttpInferRequest : public tc::HttpInferRequest {
+ public:
+  tc::Error ConvertBinaryInputsToJSON(
+      tc::InferInput& input,
+      triton::common::TritonJson::Value& data_json) const override
+  {
+    return tc::HttpInferRequest::ConvertBinaryInputsToJSON(input, data_json);
+  }
+
+  tc::Error ConvertBinaryInputToJSON(
+      const uint8_t* buf, const size_t element_count,
+      const std::string& datatype,
+      triton::common::TritonJson::Value& data_json) const override
+  {
+    return tc::HttpInferRequest::ConvertBinaryInputToJSON(
+        buf, element_count, datatype, data_json);
+  }
+};
+
+TEST_F(HTTPJSONDataTest, ConvertBinaryInputsToJSON)
+{
+  TestHttpInferRequest test_http_infer_request{};
+
+  tc::InferInput* input{};
+  tc::InferInput::Create(&input, "INPUT", {1, 2, 2}, "INT32");
+  int32_t input_raw_1[4] = {1, 3, 5, 7};
+  size_t input_raw_byte_size_1 = sizeof(input_raw_1);
+  int32_t input_raw_2[4] = {2, 4, 6, 8};
+  size_t input_raw_byte_size_2 = sizeof(input_raw_2);
+  input->AppendRaw(
+      reinterpret_cast<uint8_t*>(input_raw_1), input_raw_byte_size_1);
+  input->AppendRaw(
+      reinterpret_cast<uint8_t*>(input_raw_2), input_raw_byte_size_2);
+  triton::common::TritonJson::Value data_json(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  tc::Error err{
+      test_http_infer_request.ConvertBinaryInputsToJSON(*input, data_json)};
+
+  EXPECT_TRUE(err.IsOk());
+  EXPECT_TRUE(data_json.ArraySize() == 8);
+  int64_t value{0};
+  data_json.IndexAsInt(0, &value);
+  EXPECT_TRUE(value == 1);
+  data_json.IndexAsInt(1, &value);
+  EXPECT_TRUE(value == 3);
+  data_json.IndexAsInt(2, &value);
+  EXPECT_TRUE(value == 5);
+  data_json.IndexAsInt(3, &value);
+  EXPECT_TRUE(value == 7);
+  data_json.IndexAsInt(4, &value);
+  EXPECT_TRUE(value == 2);
+  data_json.IndexAsInt(5, &value);
+  EXPECT_TRUE(value == 4);
+  data_json.IndexAsInt(6, &value);
+  EXPECT_TRUE(value == 6);
+  data_json.IndexAsInt(7, &value);
+  EXPECT_TRUE(value == 8);
+}
+
+TEST_F(HTTPJSONDataTest, ConvertBinaryInputToJSON)
+{
+  TestHttpInferRequest test_http_infer_request{};
+  tc::Error err{};
+
+  const uint8_t* buf{nullptr};
+  size_t element_count{2};
+  std::string datatype{""};
+  triton::common::TritonJson::Value data_json{};
+
+  std::array<bool, 2> bool_array({false, true});
+  buf = reinterpret_cast<const uint8_t*>(bool_array.data());
+  datatype = "BOOL";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == bool_array.size());
+  bool bool_value{false};
+  data_json.IndexAsBool(0, &bool_value);
+  EXPECT_TRUE(bool_value == bool_array[0]);
+  data_json.IndexAsBool(1, &bool_value);
+  EXPECT_TRUE(bool_value == bool_array[1]);
+
+  std::array<uint8_t, 2> uint8_array({1, UINT8_MAX});
+  buf = reinterpret_cast<const uint8_t*>(uint8_array.data());
+  datatype = "UINT8";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == uint8_array.size());
+  uint64_t uint8_value{0};
+  data_json.IndexAsUInt(0, &uint8_value);
+  EXPECT_TRUE(uint8_value == uint8_array[0]);
+  data_json.IndexAsUInt(1, &uint8_value);
+  EXPECT_TRUE(uint8_value == uint8_array[1]);
+
+  std::array<uint16_t, 2> uint16_array({1, UINT16_MAX});
+  buf = reinterpret_cast<const uint8_t*>(uint16_array.data());
+  datatype = "UINT16";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == uint16_array.size());
+  uint64_t uint16_value{0};
+  data_json.IndexAsUInt(0, &uint16_value);
+  EXPECT_TRUE(uint16_value == uint16_array[0]);
+  data_json.IndexAsUInt(1, &uint16_value);
+  EXPECT_TRUE(uint16_value == uint16_array[1]);
+
+  std::array<uint32_t, 2> uint32_array({1, UINT32_MAX});
+  buf = reinterpret_cast<const uint8_t*>(uint32_array.data());
+  datatype = "UINT32";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == uint32_array.size());
+  uint64_t uint32_value{0};
+  data_json.IndexAsUInt(0, &uint32_value);
+  EXPECT_TRUE(uint32_value == uint32_array[0]);
+  data_json.IndexAsUInt(1, &uint32_value);
+  EXPECT_TRUE(uint32_value == uint32_array[1]);
+
+  std::array<uint64_t, 2> uint64_array({1, UINT64_MAX});
+  buf = reinterpret_cast<const uint8_t*>(uint64_array.data());
+  datatype = "UINT64";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == uint64_array.size());
+  uint64_t uint64_value{0};
+  data_json.IndexAsUInt(0, &uint64_value);
+  EXPECT_TRUE(uint64_value == uint64_array[0]);
+  data_json.IndexAsUInt(1, &uint64_value);
+  EXPECT_TRUE(uint64_value == uint64_array[1]);
+
+  std::array<int8_t, 2> int8_array({1, INT8_MAX});
+  buf = reinterpret_cast<const uint8_t*>(int8_array.data());
+  datatype = "INT8";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == int8_array.size());
+  int64_t int8_value{0};
+  data_json.IndexAsInt(0, &int8_value);
+  EXPECT_TRUE(int8_value == int8_array[0]);
+  data_json.IndexAsInt(1, &int8_value);
+  EXPECT_TRUE(int8_value == int8_array[1]);
+
+  std::array<int16_t, 2> int16_array({1, INT16_MAX});
+  buf = reinterpret_cast<const uint8_t*>(int16_array.data());
+  datatype = "INT16";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == int16_array.size());
+  int64_t int16_value{0};
+  data_json.IndexAsInt(0, &int16_value);
+  EXPECT_TRUE(int16_value == int16_array[0]);
+  data_json.IndexAsInt(1, &int16_value);
+  EXPECT_TRUE(int16_value == int16_array[1]);
+
+  std::array<int32_t, 2> int32_array({1, INT32_MAX});
+  buf = reinterpret_cast<const uint8_t*>(int32_array.data());
+  datatype = "INT32";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == int32_array.size());
+  int64_t int32_value{0};
+  data_json.IndexAsInt(0, &int32_value);
+  EXPECT_TRUE(int32_value == int32_array[0]);
+  data_json.IndexAsInt(1, &int32_value);
+  EXPECT_TRUE(int32_value == int32_array[1]);
+
+  std::array<int64_t, 2> int64_array({1, INT64_MAX});
+  buf = reinterpret_cast<const uint8_t*>(int64_array.data());
+  datatype = "INT64";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == int64_array.size());
+  int64_t int64_value{0};
+  data_json.IndexAsInt(0, &int64_value);
+  EXPECT_TRUE(int64_value == int64_array[0]);
+  data_json.IndexAsInt(1, &int64_value);
+  EXPECT_TRUE(int64_value == int64_array[1]);
+
+  datatype = "FP16";
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == false);
+
+  std::array<float, 2> fp32_array({1.0, 1000.0});
+  buf = reinterpret_cast<const uint8_t*>(fp32_array.data());
+  datatype = "FP32";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == fp32_array.size());
+  double fp32_value{0.0};
+  data_json.IndexAsDouble(0, &fp32_value);
+  EXPECT_NEAR(fp32_value, fp32_array[0], 1.0);
+  data_json.IndexAsDouble(1, &fp32_value);
+  EXPECT_NEAR(fp32_value, fp32_array[1], 1.0);
+
+  std::array<double, 2> fp64_array({1.0, 1000.0});
+  buf = reinterpret_cast<const uint8_t*>(fp64_array.data());
+  datatype = "FP64";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == fp64_array.size());
+  double fp64_value{0.0};
+  data_json.IndexAsDouble(0, &fp64_value);
+  EXPECT_NEAR(fp64_value, fp64_array[0], 1.0);
+  data_json.IndexAsDouble(1, &fp64_value);
+  EXPECT_NEAR(fp64_value, fp64_array[1], 1.0);
+
+  std::array<uint8_t, 12> bytes_array(
+      {2, 0, 0, 0, 1, INT8_MAX, 2, 0, 0, 0, 2, INT8_MAX});
+  buf = reinterpret_cast<const uint8_t*>(bytes_array.data());
+  datatype = "BYTES";
+  data_json = triton::common::TritonJson::Value(
+      triton::common::TritonJson::ValueType::ARRAY);
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(data_json.ArraySize() == 2);
+  const char* bytes_value{nullptr};
+  size_t bytes_len{0};
+  data_json.IndexAsString(0, &bytes_value, &bytes_len);
+  EXPECT_TRUE(bytes_len == 2);
+  EXPECT_TRUE(bytes_value[0] == bytes_array[4]);
+  EXPECT_TRUE(bytes_value[1] == bytes_array[5]);
+  data_json.IndexAsString(1, &bytes_value, &bytes_len);
+  EXPECT_TRUE(bytes_len == 2);
+  EXPECT_TRUE(bytes_value[0] == bytes_array[10]);
+  EXPECT_TRUE(bytes_value[1] == bytes_array[11]);
+
+  datatype = "BF16";
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == false);
+
+  datatype = "invaliddatatype";
+
+  err = test_http_infer_request.ConvertBinaryInputToJSON(
+      buf, element_count, datatype, data_json);
+
+  EXPECT_TRUE(err.IsOk() == false);
+}
+
+class TestInferResultHttp : public tc::InferResultHttp {
+ public:
+  TestInferResultHttp() {}
+
+  tc::Error ConvertJSONOutputToBinary(
+      triton::common::TritonJson::Value& data_json, const std::string& datatype,
+      const uint8_t** buf, size_t* buf_size) const override
+  {
+    return tc::InferResultHttp::ConvertJSONOutputToBinary(
+        data_json, datatype, buf, buf_size);
+  }
+};
+
+TEST_F(HTTPJSONDataTest, ConvertJSONOutputToBinary)
+{
+  TestInferResultHttp test_infer_result_http{};
+  tc::Error err{};
+
+  triton::common::TritonJson::Value data_json{};
+  std::string datatype{""};
+  const uint8_t* buf{nullptr};
+  size_t buf_size{0};
+
+  data_json.Parse(R"([false, true])");
+  datatype = "BOOL";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(bool) * 2);
+  EXPECT_TRUE(reinterpret_cast<const bool*>(buf)[0] == false);
+  EXPECT_TRUE(reinterpret_cast<const bool*>(buf)[1] == true);
+
+  data_json.Parse(R"([1, 255])");
+  datatype = "UINT8";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(uint8_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[1] == 255);
+
+  data_json.Parse(R"([1, 65535])");
+  datatype = "UINT16";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(uint16_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const uint16_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const uint16_t*>(buf)[1] == 65535);
+
+  data_json.Parse(R"([1, 4294967295])");
+  datatype = "UINT32";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(uint32_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const uint32_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const uint32_t*>(buf)[1] == 4294967295);
+
+  data_json.Parse(R"([1, 18446744073709551615])");
+  datatype = "UINT64";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(uint64_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const uint64_t*>(buf)[0] == 1);
+  EXPECT_TRUE(
+      reinterpret_cast<const uint64_t*>(buf)[1] == 18446744073709551615ULL);
+
+  data_json.Parse(R"([1, 127])");
+  datatype = "INT8";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(int8_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const int8_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const int8_t*>(buf)[1] == 127);
+
+  data_json.Parse(R"([1, 32767])");
+  datatype = "INT16";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(int16_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const int16_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const int16_t*>(buf)[1] == 32767);
+
+  data_json.Parse(R"([1, 2147483647])");
+  datatype = "INT32";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(int32_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const int32_t*>(buf)[0] == 1);
+  EXPECT_TRUE(reinterpret_cast<const int32_t*>(buf)[1] == 2147483647);
+
+  data_json.Parse(R"([1, 9223372036854775807])");
+  datatype = "INT64";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(int64_t) * 2);
+  EXPECT_TRUE(reinterpret_cast<const int64_t*>(buf)[0] == 1);
+  EXPECT_TRUE(
+      reinterpret_cast<const int64_t*>(buf)[1] == 9223372036854775807LL);
+
+  datatype = "FP16";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == false);
+
+  data_json.Parse(R"([1.0, 1000.0])");
+  datatype = "FP32";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(float) * 2);
+  EXPECT_NEAR(reinterpret_cast<const float*>(buf)[0], 1.0, 1.0);
+  EXPECT_NEAR(reinterpret_cast<const float*>(buf)[1], 1000.0, 1.0);
+
+  data_json.Parse(R"([1.0, 1000.0])");
+  datatype = "FP64";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == sizeof(double) * 2);
+  EXPECT_NEAR(reinterpret_cast<const double*>(buf)[0], 1.0, 1.0);
+  EXPECT_NEAR(reinterpret_cast<const double*>(buf)[1], 1000.0, 1.0);
+
+  data_json.Parse(R"(["\u0001\u007F", "\u0002\u007F"])");
+  datatype = "BYTES";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == true);
+  EXPECT_TRUE(buf_size == 12);
+  EXPECT_TRUE(*reinterpret_cast<const uint32_t*>(buf) == 2);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[4] == 1);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[5] == 127);
+  EXPECT_TRUE(*reinterpret_cast<const uint32_t*>(buf + 6) == 2);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[10] == 2);
+  EXPECT_TRUE(reinterpret_cast<const uint8_t*>(buf)[11] == 127);
+
+  datatype = "BF16";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == false);
+
+  datatype = "invaliddatatype";
+
+  err = test_infer_result_http.ConvertJSONOutputToBinary(
+      data_json, datatype, &buf, &buf_size);
+
+  EXPECT_TRUE(err.IsOk() == false);
 }
 
 REGISTER_TYPED_TEST_SUITE_P(

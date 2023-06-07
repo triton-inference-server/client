@@ -26,9 +26,10 @@
 
 // Include this first to make sure we are a friend of common classes.
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
-#include "common.h"
+#include "http_client.h"
 
 #include <curl/curl.h>
+
 #include <atomic>
 #include <climits>
 #include <cstdint>
@@ -36,7 +37,8 @@
 #include <iostream>
 #include <string>
 #include <utility>
-#include "http_client.h"
+
+#include "common.h"
 
 #ifdef TRITON_ENABLE_ZLIB
 #include <zlib.h>
@@ -330,13 +332,15 @@ class HttpInferRequest : public InferRequest {
       const std::vector<const InferRequestedOutput*>& outputs,
       triton::common::TritonJson::Value* request_json);
 
-  Error ConvertBinaryInputsToJSON(
+ protected:
+  virtual Error ConvertBinaryInputsToJSON(
       InferInput& input, triton::common::TritonJson::Value& data_json) const;
 
-  Error ConvertBinaryInputToJSON(
+  virtual Error ConvertBinaryInputToJSON(
       const uint8_t* buf, const size_t buf_size, const std::string& datatype,
       triton::common::TritonJson::Value& data_json) const;
 
+ private:
   // Pointer to the list of the HTTP request header, keep it such that it will
   // be valid during the transfer and can be freed once transfer is completed.
   struct curl_slist* header_list_;
@@ -744,12 +748,15 @@ class InferResultHttp : public InferResult {
   InferResultHttp(std::shared_ptr<HttpInferRequest> infer_request);
   InferResultHttp(const Error err) : status_(err) {}
 
+ protected:
+  InferResultHttp() {}
   ~InferResultHttp();
 
-  Error ConvertJSONOutputToBinary(
+  virtual Error ConvertJSONOutputToBinary(
       triton::common::TritonJson::Value& data_json, const std::string& datatype,
       const uint8_t** buf, size_t* buf_size) const;
 
+ private:
   std::map<std::string, triton::common::TritonJson::Value>
       output_name_to_result_map_;
   std::map<std::string, std::pair<const uint8_t*, const size_t>>
@@ -1145,7 +1152,7 @@ InferResultHttp::ConvertJSONOutputToBinary(
     }
   } else if (datatype == "UINT64") {
     *buf = reinterpret_cast<const uint8_t*>(new uint64_t[element_count]);
-    *buf_size = sizeof(uint32_t) * element_count;
+    *buf_size = sizeof(uint64_t) * element_count;
     for (size_t i = 0; i < element_count; i++) {
       uint64_t value{0};
       data_json.IndexAsUInt(i, &value);
@@ -2148,9 +2155,9 @@ InferenceServerHttpClient::PreRunProcessing(
 
   struct curl_slist* list = nullptr;
 
-  std::string infer_hdr{std::string(kInferHeaderContentLengthHTTPHeader) +
-                        ": " +
-                        std::to_string(http_request->request_json_.Size())};
+  std::string infer_hdr{
+      std::string(kInferHeaderContentLengthHTTPHeader) + ": " +
+      std::to_string(http_request->request_json_.Size())};
   list = curl_slist_append(list, infer_hdr.c_str());
   list = curl_slist_append(list, "Expect:");
   if (all_inputs_are_json) {

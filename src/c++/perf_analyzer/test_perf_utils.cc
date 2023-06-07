@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -102,6 +102,16 @@ TEST_CASE("test_distribution")
       TestPerfUtils::TestDistribution(dist, rate);
     }
   }
+}
+
+TEST_CASE("testing the ParseTensorFormat function")
+{
+  CHECK(ParseTensorFormat("binary") == cb::TensorFormat::BINARY);
+  CHECK(ParseTensorFormat("BINARY") == cb::TensorFormat::BINARY);
+  CHECK(ParseTensorFormat("json") == cb::TensorFormat::JSON);
+  CHECK(ParseTensorFormat("JSON") == cb::TensorFormat::JSON);
+  CHECK(ParseTensorFormat("abc") == cb::TensorFormat::UNKNOWN);
+  CHECK(ParseTensorFormat("") == cb::TensorFormat::UNKNOWN);
 }
 
 }}  // namespace triton::perfanalyzer
