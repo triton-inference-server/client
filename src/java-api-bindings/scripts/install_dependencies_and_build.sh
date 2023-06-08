@@ -104,7 +104,6 @@ done
 set -x
 
 # Install jdk and maven
-rm -r ${BUILD_HOME}
 mkdir -p ${BUILD_HOME}
 cd ${BUILD_HOME}
 apt update && apt install -y openjdk-11-jdk
@@ -134,7 +133,6 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
 
     git clone --single-branch --depth=1 -b ${TOOLS_BRANCH_TAG} ${TOOLS_BRANCH} 
     cd developer_tools/server
-    rm -r build 
     mkdir build && cd build
     cmake -DCMAKE_INSTALL_PREFIX:PATH=`pwd`/install -DTRITON_BUILD_TEST=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_BUILD_STATIC_LIBRARY=OFF .. 
     make -j"$(grep -c ^processor /proc/cpuinfo)" install
@@ -144,7 +142,6 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
     BUILD_INCLUDE_REPO=${BUILD_HOME}/developer_tools/server/include/triton/developer_tools
     BUILD_SRC_REPO=${BUILD_HOME}/developer_tools/server/src
     TRITON_INCLUDE_REPO=${TRITON_HOME}/include/triton/developer_tools
-    rm -r ${TRITON_INCLUDE_REPO}
     mkdir -p ${TRITON_INCLUDE_REPO}/src
     cp ${BUILD_INCLUDE_REPO}/common.h ${TRITON_INCLUDE_REPO}/.
     cp ${BUILD_INCLUDE_REPO}/generic_server_wrapper.h ${TRITON_INCLUDE_REPO}/.
@@ -165,7 +162,6 @@ ${MAVEN_PATH} clean install --projects .,tritonserver
 ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
 # Copy over the jar to a specific location
-rm -r ${JAR_INSTALL_PATH}
 mkdir -p ${JAR_INSTALL_PATH}
 cp ${BUILD_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar ${JAR_INSTALL_PATH}/tritonserver-java-bindings.jar
 
