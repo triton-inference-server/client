@@ -1531,6 +1531,17 @@ CLParser::VerifyOptions()
   if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
   }
+
+  if (params_->should_collect_metrics && !params_->metrics_url_specified) {
+    // Update the default metrics URL to be associated with the input URL
+    // instead of localhost
+    //
+    size_t colon_pos = params_->url.find(':');
+    if (colon_pos != std::string::npos) {
+      params_->metrics_url =
+          params_->url.substr(0, colon_pos) + ":8002/metrics";
+    }
+  }
 }
 
 }}  // namespace triton::perfanalyzer
