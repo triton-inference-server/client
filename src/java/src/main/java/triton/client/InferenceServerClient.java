@@ -347,7 +347,7 @@ public class InferenceServerClient implements AutoCloseable {
         int sequenceId = 0;
         boolean sequenceStart = false;
         boolean sequenceEnd = false;
-        int priority = 0;
+        long priority = 0;
         int timeout = -1;
         Map<String, String> headers = new HashMap<>();
         Map<String, String> queryParams = new HashMap<>();
@@ -395,7 +395,7 @@ public class InferenceServerClient implements AutoCloseable {
             return this;
         }
 
-        public InferArguments setPriority(int priority) {
+        public InferArguments setPriority(long priority) {
             this.priority = priority;
             return this;
         }
