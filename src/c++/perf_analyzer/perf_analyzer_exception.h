@@ -47,7 +47,7 @@ class PerfAnalyzerException : public std::exception {
   inline int GetError() const { return error_; }
 
  private:
-  std::string message_;
+  const std::string message_{""};
   uint32_t error_;
 };
 
