@@ -76,6 +76,23 @@ public class Parameters {
     }
 
     /**
+     * Add or over-write long parameter as unsigned.
+     * As Java doesn't have a native unsigned long type
+     * we convert to BigInteger if the value < 0
+     *
+     * @param key   name of new parameter.
+     * @param value value of new parameter.
+     * @return The original value if key exists.
+     */
+    public Object putUnsignedLong(String key, long value) {
+	Object unsigned_value = value
+	if (value < 0) {
+	    unsigned_value = new BigInteger(Long.toUnsignedString(value));
+	}
+	return this.params.put(key, unsigned_value);
+    }
+
+    /**
      * Remove key from parameters.
      *
      * @param key name of new parameter.

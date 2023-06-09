@@ -244,7 +244,7 @@ public class InferenceServerClient implements AutoCloseable {
             param.put("sequence_end", arg.sequenceEnd);
         }
         if (arg.priority != 0) {
-            param.put("priority", arg.priority);
+            param.putUnsignedLong("priority", arg.priority);
         }
         if (arg.timeout > 0) {
             param.put("timeout", arg.timeout);
