@@ -26,10 +26,9 @@
 
 // Include this first to make sure we are a friend of common classes.
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
-#include "http_client.h"
+#include "common.h"
 
 #include <curl/curl.h>
-
 #include <atomic>
 #include <climits>
 #include <cstdint>
@@ -37,8 +36,7 @@
 #include <iostream>
 #include <string>
 #include <utility>
-
-#include "common.h"
+#include "http_client.h"
 
 #ifdef TRITON_ENABLE_ZLIB
 #include <zlib.h>
@@ -2155,9 +2153,9 @@ InferenceServerHttpClient::PreRunProcessing(
 
   struct curl_slist* list = nullptr;
 
-  std::string infer_hdr{
-      std::string(kInferHeaderContentLengthHTTPHeader) + ": " +
-      std::to_string(http_request->request_json_.Size())};
+  std::string infer_hdr{std::string(kInferHeaderContentLengthHTTPHeader) +
+                        ": " +
+                        std::to_string(http_request->request_json_.Size())};
   list = curl_slist_append(list, infer_hdr.c_str());
   list = curl_slist_append(list, "Expect:");
   if (all_inputs_are_json) {

@@ -1641,7 +1641,7 @@ TEST_F(HTTPJSONDataTest, ConvertBinaryInputsToJSON)
   // This tests the HttpInferRequest::ConvertBinaryInputsToJSON() function,
   // which basically cycles through all the inputs that added to an InferInput
   // via InferInput::AppendRaw(). This test confirms that an InferInput with two
-  // calls to InferInput::AppendRaw() correclty has all contents from the
+  // calls to InferInput::AppendRaw() correctly has all contents from the
   // AppendRaw() calls correctly converted into a flattened JSON array.
 
   TestHttpInferRequest test_http_infer_request{};
@@ -2078,7 +2078,7 @@ TEST_F(HTTPJSONDataTest, ConvertJSONOutputToBinary)
   EXPECT_TRUE(err.IsOk() == true);
   EXPECT_TRUE(buf_size == sizeof(int64_t) * 2);
   EXPECT_TRUE(
-      reinterpret_cast<const int64_t*>(buf)[0] == -9223372036854775808LL);
+      reinterpret_cast<const int64_t*>(buf)[0] == -9223372036854775807L - 1);
   EXPECT_TRUE(
       reinterpret_cast<const int64_t*>(buf)[1] == 9223372036854775807LL);
 
