@@ -42,12 +42,7 @@ class PerfAnalyzerException : public std::exception {
   {
   }
 
-  virtual const char* what() const throw()
-  {
-    std::string msg =
-        "Perf Error " + std::to_string(error_) + " thrown:\n" + message_;
-    return msg.c_str();
-  }
+  virtual const char* what() const throw() { return message_.c_str(); }
 
   inline int GetError() const { return error_; }
 

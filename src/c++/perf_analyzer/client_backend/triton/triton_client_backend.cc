@@ -409,7 +409,7 @@ TritonClientBackend::AccessMetricsEndpoint(std::string& metrics_endpoint_text)
 
   if (res != CURLE_OK) {
     throw triton::perfanalyzer::PerfAnalyzerException(
-        "curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)),
+        "Unable to connect to Metrics endpoint " + metrics_url_,
         triton::perfanalyzer::GENERIC_ERROR);
   }
 
