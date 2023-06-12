@@ -29,6 +29,7 @@ package triton.client.pojo;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.math.BigInteger;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
