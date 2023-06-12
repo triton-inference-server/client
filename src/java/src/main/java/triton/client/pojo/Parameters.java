@@ -85,7 +85,7 @@ public class Parameters {
      * @return The original value if key exists.
      */
     public Object putUnsignedLong(String key, long value) {
-	Object unsigned_value = value
+	Object unsigned_value = value;
 	if (value < 0) {
 	    unsigned_value = new BigInteger(Long.toUnsignedString(value));
 	}
