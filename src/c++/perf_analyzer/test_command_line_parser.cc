@@ -700,6 +700,44 @@ TEST_CASE("Testing Command Line Parser")
   }
 
 
+  SUBCASE("Option : --input-tensor-format")
+  {
+    SUBCASE("binary")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--input-tensor-format", "binary"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->input_tensor_format = cb::TensorFormat::BINARY;
+    }
+    SUBCASE("json")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--input-tensor-format", "json"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->input_tensor_format = cb::TensorFormat::JSON;
+    }
+    SUBCASE("invalid")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--input-tensor-format", "invalid"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      exp->input_tensor_format = cb::TensorFormat::UNKNOWN;
+    }
+  }
+
+
   SUBCASE("Option : --shape")
   {
     SUBCASE("expected input, single shape")
