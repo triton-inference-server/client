@@ -85,7 +85,7 @@ def _get_inference_request(model_name, inputs, model_version, request_id,
         request.parameters['sequence_start'].bool_param = sequence_start
         request.parameters['sequence_end'].bool_param = sequence_end
     if priority != 0:
-        request.parameters['priority'].int64_param = priority
+        request.parameters['priority'].uint64_param = priority
     if timeout is not None:
         request.parameters['timeout'].int64_param = timeout
 

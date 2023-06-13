@@ -728,7 +728,7 @@ TritonLoader::LoadServerLibrary()
       dlhandle_, "TRITONSERVER_InferenceRequestSetFlags", false /* optional */,
       reinterpret_cast<void**>(&sffn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestSetPriority",
+      dlhandle_, "TRITONSERVER_InferenceRequestSetPriorityUInt64",
       false /* optional */, reinterpret_cast<void**>(&spfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetTimeoutMicroseconds",

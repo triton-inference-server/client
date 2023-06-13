@@ -1360,7 +1360,7 @@ InferenceServerGrpcClient::PreRunProcessing(
         options.sequence_end_);
   }
   if (options.priority_ != 0) {
-    (*infer_request_.mutable_parameters())["priority"].set_int64_param(
+    (*infer_request_.mutable_parameters())["priority"].set_uint64_param(
         options.priority_);
   }
 
