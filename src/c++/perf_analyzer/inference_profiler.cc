@@ -377,8 +377,21 @@ ReportClientSideStats(
 
   std::cout << "    Request count: " << stats.request_count << std::endl;
   if (stats.delayed_request_count != 0) {
-    std::cout << "    Delayed Request Count: " << stats.delayed_request_count
-              << std::endl;
+    std::stringstream delay_data{""};
+    delay_data << "    Delayed Request Count: " << stats.delayed_request_count
+               << std::endl;
+    delay_data << "    "
+               << "Avg send request rate: " << std::fixed
+               << std::setprecision(2) << send_request_rate << " infer/sec"
+               << std::endl;
+    delay_data << "    "
+               << "[WARNING] Perf Analyzer is not able to keep up with the "
+                  "desired load. ";
+    float delay_pct =
+        ((float)stats.delayed_request_count / stats.request_count) * 100;
+    delay_data << delay_pct << "% of the requests were delayed. ";
+    delay_data << std::endl;
+    std::cout << delay_data.str();
   }
   if (on_sequence_model) {
     std::cout << "    Sequence count: " << stats.sequence_count << " ("
@@ -389,15 +402,10 @@ ReportClientSideStats(
 
   if (verbose) {
     std::stringstream client_overhead{""};
-    std::stringstream send_rate{""};
     client_overhead << "    "
                     << "Avg client overhead: " << std::fixed
                     << std::setprecision(2) << overhead_pct << "%";
-    send_rate << "    "
-              << "Avg send request rate: " << std::fixed << std::setprecision(2)
-              << send_request_rate << " infer/sec";
     std::cout << client_overhead.str() << std::endl;
-    std::cout << send_rate.str() << std::endl;
   }
 
   if (percentile == -1) {
