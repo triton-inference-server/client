@@ -1259,6 +1259,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 54: {
         params_->serial_sequences = true;
+        break;
       }
       case 55: {
         cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};

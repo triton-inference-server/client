@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -295,7 +295,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   target_link_libraries(
       httpclient_static
       PRIVATE triton-common-json
-      PRIVATE CURL::libcurl
+      PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
   )
 
@@ -327,7 +327,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   target_link_libraries(
       httpclient
       PRIVATE triton-common-json
-      PRIVATE CURL::libcurl
+      PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
   )
 
@@ -351,9 +351,9 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
     )
 
     target_compile_definitions(
