@@ -290,8 +290,6 @@ Enables the serial sequence mode where a maximum of one request is live per sequ
 Note: It is possible that this mode can cause the request rate mode to not achieve the
 desired rate, especially if num-of-sequences is too small.
 
-The default is false.
-
 ## Input Data Options
 
 #### `--input-data=[zero|random|<path>]`
@@ -382,8 +380,8 @@ Default is `binary`.
 
 #### `-i [http|grpc]`
 
-Specifies the communication protocol to use. The available protocols are gRPC
-and HTTP.
+Specifies the communication protocol to use. The available protocols are HTTP
+and gRPC.
 
 Default is `http`.
 
@@ -407,8 +405,6 @@ Analyzer with sequential model in synchronous mode.
 #### `--streaming`
 
 Enables the use of streaming API. This option is only valid with gRPC protocol.
-
-Default is `false`.
 
 #### `-H <string>`
 
