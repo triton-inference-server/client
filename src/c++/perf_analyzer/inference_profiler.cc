@@ -35,6 +35,7 @@
 #include <sstream>
 #include <stdexcept>
 #include "client_backend/client_backend.h"
+#include "constants.h"
 #include "doctest.h"
 
 namespace triton { namespace perfanalyzer {
@@ -378,8 +379,7 @@ ReportClientSideStats(
   std::cout << "    Request count: " << stats.request_count << std::endl;
   float delay_pct =
       ((float)stats.delayed_request_count / stats.request_count) * 100;
-  float delay_pct_threshold = 1.0;
-  if (delay_pct > delay_pct_threshold) {
+  if (delay_pct > DELAY_PCT_THRESHOLD) {
     std::stringstream delay_data{""};
     delay_data << "    "
                << "Avg send request rate: " << std::fixed

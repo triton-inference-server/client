@@ -38,6 +38,8 @@ constexpr static const uint32_t OPTION_ERROR = 3;
 
 constexpr static const uint32_t GENERIC_ERROR = 99;
 
+const float DELAY_PCT_THRESHOLD{1.0};
+
 /// Different measurement modes possible.
 enum MeasurementMode { TIME_WINDOWS = 0, COUNT_WINDOWS = 1 };
 
