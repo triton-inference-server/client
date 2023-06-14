@@ -385,8 +385,8 @@ ReportClientSideStats(
                << std::setprecision(2) << send_request_rate << " infer/sec"
                << std::endl;
     delay_data << "    "
-               << "[WARNING] Perf Analyzer is not able to keep up with the "
-                  "desired load. ";
+               << "[WARNING] Perf Analyzer was not able to keep up with the "
+                  "desired request rate. ";
     float delay_pct =
         ((float)stats.delayed_request_count / stats.request_count) * 100;
     delay_data << delay_pct << "% of the requests were delayed. ";
