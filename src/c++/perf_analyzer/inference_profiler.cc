@@ -377,20 +377,16 @@ ReportClientSideStats(
   }
 
   std::cout << "    Request count: " << stats.request_count << std::endl;
-  float delay_pct =
-      ((float)stats.delayed_request_count / stats.request_count) * 100;
+  double delay_pct =
+      ((double)stats.delayed_request_count / stats.request_count) * 100;
   if (delay_pct > DELAY_PCT_THRESHOLD) {
-    std::stringstream delay_data{""};
-    delay_data << "    "
-               << "Avg send request rate: " << std::fixed
-               << std::setprecision(2) << send_request_rate << " infer/sec"
-               << std::endl;
-    delay_data << "    "
-               << "[WARNING] Perf Analyzer was not able to keep up with the "
-                  "desired request rate. ";
-    delay_data << delay_pct << "% of the requests were delayed. ";
-    delay_data << std::endl;
-    std::cout << delay_data.str();
+    std::cout << "    "
+              << "Avg send request rate: " << std::fixed << std::setprecision(2)
+              << send_request_rate << " infer/sec" << std::endl;
+    std::cout << "    "
+              << "[WARNING] Perf Analyzer was not able to keep up with the "
+                 "desired request rate. ";
+    std::cout << delay_pct << "% of the requests were delayed. " << std::endl;
   }
   if (on_sequence_model) {
     std::cout << "    Sequence count: " << stats.sequence_count << " ("
