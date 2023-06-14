@@ -46,7 +46,8 @@ TRITON_HOME="/opt/tritonserver"
 BUILD_HOME="/tmp/build"
 MAVEN_VERSION="3.8.4"
 export MAVEN_PATH=${BUILD_HOME}/apache-maven-${MAVEN_VERSION}/bin/mvn
-CORE_BRANCH_TAG="main"
+TRITON_CORE_BRANCH=${TRITON_CORE_BRANCH:="https://github.com/triton-inference-server/core.git"}
+TRITON_CORE_REPO_TAG=${TRITON_CORE_REPO_TAG:="main"}
 TOOLS_BRANCH=${TOOLS_BRANCH:="https://github.com/triton-inference-server/developer_tools.git"}
 TOOLS_BRANCH_TAG=${TOOLS_BRANCH_TAG:="main"}
 JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
@@ -76,8 +77,8 @@ for OPTS; do
         shift 2
         ;;
         -c|--core-tag) 
-        CORE_BRANCH_TAG=$2
-        echo "Tritonserver core branch is set to: ${CORE_BRANCH_TAG}"
+        TRITON_CORE_REPO_TAG=$2
+        echo "Tritonserver core branch is set to: ${TRITON_CORE_REPO_TAG}"
         shift 2
         ;;
         -j|--jar-install-path) 
@@ -96,7 +97,7 @@ for OPTS; do
         shift 2
         ;;
         --enable-developer-tools-server) 
-        INCLUDE_DEVELOPER_TOOLS_SERVER=1
+        export INCLUDE_DEVELOPER_TOOLS_SERVER=1
         echo "Including developer tools server C++ bindings"
         ;;
     esac
@@ -114,22 +115,22 @@ export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/
 # Build static libraries and copy wrapper includes to triton home
 # Copy necessary tritonserver .h files so the bindings can be generated
 mkdir -p ${TRITON_HOME}/lib/
+mkdir -p ${TRITON_HOME}/include/triton/
 cd ${BUILD_HOME}
-CORE_BRANCH=${CORE_BRANCH:="https://github.com/triton-inference-server/core.git"}
-git clone --single-branch --depth=1 -b ${CORE_BRANCH_TAG} ${CORE_BRANCH}
-cp -r core/include ${TRITON_HOME}/include
+git clone --single-branch --depth=1 -b ${TRITON_CORE_REPO_TAG} ${TRITON_CORE_BRANCH}
+cp core/include/triton/core/* ${TRITON_HOME}/include/triton/core/.
 
 if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
     # install cmake and rapidjson
-    wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
-        gpg --dearmor - |  \
-        tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
-        apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main' && \
+    apt-get update && apt-get install -y gpg wget && \
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
+            gpg --dearmor - |  \
+            tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null && \
+        . /etc/os-release && \
+        echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | \
+        tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
         apt-get update && \
-        apt-get install -y --no-install-recommends \
-            cmake-data=${CMAKE_VERSION}-0kitware1ubuntu20.04.1 \
-            cmake=${CMAKE_VERSION}-0kitware1ubuntu20.04.1 \
-            rapidjson-dev
+        apt-get install -y --no-install-recommends cmake cmake-data rapidjson-dev
 
     git clone --single-branch --depth=1 -b ${TOOLS_BRANCH_TAG} ${TOOLS_BRANCH} 
     cd developer_tools/server
@@ -152,12 +153,7 @@ fi
 cd ${BUILD_HOME}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
-# remove usage of C++ bindings
-if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 1 ]; then
-    sed -i 's/, "tritondevelopertoolsserver"//' tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritonserver.java
-    sed -i 's/, "common.h", "generic_server_wrapper.h"//' tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritonserver.java
-    sed -i 's/, "/opt/tritonserver/include/triton/developer_tools", "/opt/tritonserver/include/triton/developer_tools/src"' tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritonserver.java
-fi
+
 ${MAVEN_PATH} clean install --projects .,tritonserver
 ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
