@@ -455,10 +455,6 @@ TEST_CASE(
 //  CHECK_EQ(status.IsOk(), false);
 //  CHECK_EQ(status.Message(), "FIXME");
 //}
-//
-// FIXME TMA-1210 - what about the case of mismatch in the number of dimensions?
-// Supplying [1,2,3] is ok for [-1,2,-1], but not for [-1,-1] or [2,-1,-1]
-//
 
 
 TEST_CASE(
@@ -474,7 +470,7 @@ TEST_CASE(
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-  input1.shape_ = {-1, -1};
+  input1.shape_ = {-1};
 
   inputs->insert(std::make_pair(input1.name_, input1));
 
