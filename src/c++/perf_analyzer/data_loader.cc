@@ -352,10 +352,12 @@ DataLoader::GetInputData(
         string_data = &it->second;
         *batch1_size = string_data->size();
       }
-      // FIXME -- is this the fix???
+      // FIXME TKG -- is this the fix??? Setting not null
       if (it->second.size()) {
+        std::cout << "TKG -- not special case\n";
         *data_ptr = (const uint8_t*)&((it->second)[0]);
       } else {
+        std::cout << "TKG -- yes special case\n";
         *data_ptr = (const uint8_t*)&(it->second);
       }
 
