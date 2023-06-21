@@ -492,7 +492,10 @@ TEST_CASE(
 TEST_CASE(
     "dataloader: ParseData: Supplied Shape is zero" *
     doctest::description(
-        "Zero is a legal shape value and should be handled correctly"))
+        "Zero is a legal shape value and should be handled correctly. "
+        "GetInputData differentiates between an empty valid result (valid "
+        "dataptr with byte_size==0) and an unspecified optional result (null "
+        "dataptr with byte_size==0)"))
 {
   std::string json_str{R"({"data": [{
      "INPUT1": { "shape": [0,2], "content": [] }
@@ -505,7 +508,11 @@ TEST_CASE(
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
   input1.shape_ = {-1, 2};
 
+  ModelTensor input2 = TestDataLoader::CreateTensor("INPUT2");
+  input2.is_optional_ = true;
+
   inputs->insert(std::make_pair(input1.name_, input1));
+  inputs->insert(std::make_pair(input2.name_, input2));
 
   cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
   REQUIRE(status.IsOk());
@@ -516,13 +523,18 @@ TEST_CASE(
   CHECK_EQ(shape[0], 0);
   CHECK_EQ(shape[1], 2);
 
+  // Confirm that the empty input has a valid data pointer with 0 bytes
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
   status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
   REQUIRE(status.IsOk());
+  CHECK(data_ptr != nullptr);
+  CHECK_EQ(batch1_size, 0);
 
-  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
-  CHECK_EQ(data_ptr, nullptr);
+  // Confirm that the unspecified input has nullptr for data pointer
+  status = dataloader.GetInputData(input2, 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
   CHECK_EQ(batch1_size, 0);
 }
 
