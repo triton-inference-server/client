@@ -72,6 +72,7 @@ CLParser::Usage(const std::string& msg)
 
   std::cerr << "Usage: " << argv_[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
+  std::cerr << "\t--version " << std::endl;
   std::cerr << "\t--service-kind "
                "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
             << std::endl;
@@ -161,6 +162,11 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
+
+  std::cerr << FormatMessage(
+                   " --version: print the current version of Perf Analyzer.",
+                   18)
+            << std::endl;
 
   std::cerr
       << FormatMessage(
@@ -718,6 +724,13 @@ CLParser::Usage(const std::string& msg)
 }
 
 void
+CLParser::PrintVersion()
+{
+  std::cerr << "Perf Analyzer Version: " << VERSION << std::endl;
+  exit(SUCCESS);
+}
+
+void
 CLParser::ParseCommandLine(int argc, char** argv)
 {
   argc_ = argc;
@@ -782,6 +795,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"serial-sequences", no_argument, 0, 54},
       {"input-tensor-format", required_argument, 0, 55},
       {"output-tensor-format", required_argument, 0, 56},
+      {"version", no_argument, 0, 57},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1275,6 +1289,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
           Usage("--output-tensor-format must be 'binary' or 'json'");
         }
         params_->output_tensor_format = output_tensor_format;
+        break;
+      }
+      case 57: {
+        PrintVersion();
         break;
       }
       case 'v':

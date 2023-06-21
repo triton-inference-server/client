@@ -31,6 +31,8 @@
 
 namespace triton { namespace perfanalyzer {
 
+const std::string VERSION{"2.36.0dev / 23.07dev"};
+
 constexpr static const uint32_t SUCCESS = 0;
 
 constexpr static const uint32_t STABILITY_ERROR = 2;
