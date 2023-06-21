@@ -345,7 +345,6 @@ DataLoader::GetInputData(
         *batch1_size = string_data->size();
       }
 
-      // FIXME this is the fix. It is ugly
       if (it->second.size()) {
         *data_ptr = (const uint8_t*)&((it->second)[0]);
       } else {

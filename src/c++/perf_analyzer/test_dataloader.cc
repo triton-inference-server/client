@@ -456,7 +456,7 @@ TEST_CASE(
 //  CHECK_EQ(status.Message(), "FIXME");
 //}
 //
-// FIXME TMA-1210 - what about the case of mismatch in the number of dimentions?
+// FIXME TMA-1210 - what about the case of mismatch in the number of dimensions?
 // Supplying [1,2,3] is ok for [-1,2,-1], but not for [-1,-1] or [2,-1,-1]
 //
 
