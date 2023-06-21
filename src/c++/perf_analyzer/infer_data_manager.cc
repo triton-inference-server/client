@@ -69,6 +69,9 @@ InferDataManager::CreateAndPopulateInput(
   std::vector<size_t> byte_size;
   size_t count = 0;
 
+  std::cout << "TKg -- creating and populating input for input " << name
+            << " tid " << thread_id << std::endl;
+
   RETURN_IF_ERROR(
       GetInputData(name, tensor, stream_id, step_id, data_ptrs, byte_size));
 
@@ -97,8 +100,10 @@ InferDataManager::CreateAndPopulateInput(
 
   for (size_t i = 0; i < total_cnt; i++) {
     if (data_ptrs[i] == nullptr) {
+      std::cout << "TKG -- here it is nullptr! And we don't want it to be\n";
       missing_data_cnt++;
     } else {
+      std::cout << "TKG -- here we are doing an actual append raw\n";
       RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
     }
   }
@@ -116,6 +121,9 @@ InferDataManager::CreateAndPopulateInput(
         "optional inputs for each individual batch.");
   }
 
+  std::cout << "TKg -- DONE creating and populating input for input " << name
+            << " tid " << thread_id << std::endl;
+
   return cb::Error::Success;
 }
 
@@ -123,6 +131,7 @@ cb::InferInput*
 InferDataManager::GetInput(
     const size_t thread_id, const std::string& name, int stream_id, int step_id)
 {
+  std::cout << "TKG -- calling InferDataManager::GetInput\n";
   auto input = inputs_.find({thread_id, name, stream_id, step_id});
   if (input == inputs_.end()) {
     return nullptr;

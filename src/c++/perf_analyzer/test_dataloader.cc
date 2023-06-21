@@ -455,6 +455,10 @@ TEST_CASE(
 //  CHECK_EQ(status.IsOk(), false);
 //  CHECK_EQ(status.Message(), "FIXME");
 //}
+//
+// FIXME TMA-1210 - what about the case of mismatch in the number of dimentions?
+// Supplying [1,2,3] is ok for [-1,2,-1], but not for [-1,-1] or [2,-1,-1]
+//
 
 
 TEST_CASE(
@@ -470,7 +474,7 @@ TEST_CASE(
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-  input1.shape_ = {-1};
+  input1.shape_ = {-1, -1};
 
   inputs->insert(std::make_pair(input1.name_, input1));
 
@@ -482,6 +486,44 @@ TEST_CASE(
   CHECK_EQ(shape.size(), 2);
   CHECK_EQ(shape[0], 3);
   CHECK_EQ(shape[1], 2);
+}
+
+
+TEST_CASE(
+    "dataloader: ParseData: Supplied Shape is zero" *
+    doctest::description(
+        "Zero is a legal shape value and should be handled correctly"))
+{
+  std::string json_str{R"({"data": [{
+     "INPUT1": { "shape": [0,2], "content": [] }
+    }]})"};
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  input1.shape_ = {-1, 2};
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
+  REQUIRE(status.IsOk());
+
+  std::vector<int64_t> shape;
+  dataloader.GetInputShape(input1, 0, 0, &shape);
+  CHECK_EQ(shape.size(), 2);
+  CHECK_EQ(shape[0], 0);
+  CHECK_EQ(shape[1], 2);
+
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(data_ptr, nullptr);
+  CHECK_EQ(batch1_size, 0);
 }
 
 // FIXME TMA 1211
