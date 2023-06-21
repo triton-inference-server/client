@@ -63,13 +63,9 @@ InferDataManagerBase::GetInputData(
       }
     }
 
-    std::cout << "TKG -- getting dataloader input data from InferDataManager\n";
     RETURN_IF_ERROR(data_loader_->GetInputData(
         tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
 
-    std::cout << "TKG -- pushing back:";
-    std::cout << batch1_bytesize << " , ";
-    std::cout << static_cast<const void*>(data_ptr) << std::endl;
     data_ptrs.push_back(data_ptr);
     byte_size.push_back(batch1_bytesize);
   }
@@ -91,9 +87,6 @@ InferDataManagerBase::ValidateShapeTensor(
 
     const uint8_t* data_ptr{nullptr};
     size_t batch1_bytesize;
-
-    std::cout << "TKG -- getting dataloader input data from InferDataManager "
-                 "case 2\n";
     RETURN_IF_ERROR(data_loader_->GetInputData(
         tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
 

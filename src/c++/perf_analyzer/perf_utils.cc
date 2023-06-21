@@ -197,9 +197,7 @@ SerializeExplicitTensor(
         serialized.begin(), serialized.end(),
         std::back_inserter(*decoded_data));
   } else {
-    std::cout << "TKg -- yes in else\n";
     for (const auto& value : tensor.GetArray()) {
-      std::cout << "TKG -- in value\n";
       if (dt.compare("BOOL") == 0) {
         if (!value.IsBool()) {
           return cb::Error(

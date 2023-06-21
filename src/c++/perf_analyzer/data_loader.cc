@@ -326,11 +326,8 @@ DataLoader::GetInputData(
   bool data_found = false;
   *batch1_size = 0;
 
-  std::cout << "TKG -- getting dataloader input data\n";
-
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {
-    std::cout << "TKg -- input data is NOT empty\n";
     RETURN_IF_ERROR(ValidateIndexes(stream_id, step_id));
 
     std::string key_name(
@@ -338,13 +335,7 @@ DataLoader::GetInputData(
         std::to_string(step_id));
     // Get the data and the corresponding byte-size
     auto it = input_data_.find(key_name);
-    std::cout << "TKG  -- looking for " << key_name << std::endl;
     if (it != input_data_.end()) {
-      std::cout << "TKG  -- found it in input_data. it->second is "
-                << static_cast<const void*>(&it->second) << std::endl;
-      std::cout << "TKG  -- found it in input_data. it->second[0] is "
-                << static_cast<const void*>(&it->second[0]) << std::endl;
-
       if (input.datatype_.compare("BYTES") != 0) {
         *batch1_size = it->second.size();
       } else {
@@ -352,25 +343,19 @@ DataLoader::GetInputData(
         string_data = &it->second;
         *batch1_size = string_data->size();
       }
-      // FIXME TKG -- is this the fix??? Setting not null
+
+      // FIXME this is the fix. It is ugly
       if (it->second.size()) {
-        std::cout << "TKG -- not special case\n";
         *data_ptr = (const uint8_t*)&((it->second)[0]);
       } else {
-        std::cout << "TKG -- yes special case\n";
         *data_ptr = (const uint8_t*)&(it->second);
       }
-
-      std::cout << "TKG  -- found it in input_data. data_ptr is "
-                << static_cast<const void*>(*data_ptr) << std::endl;
 
       data_found = true;
     }
   }
 
   if (!data_found) {
-    std::cout << "TKg -- still not found\n";
-
     if ((input.datatype_.compare("BYTES") != 0) && (input_buf_.size() != 0)) {
       int64_t byte_size = ByteSize(input.shape_, input.datatype_);
       if (byte_size < 0) {
@@ -383,8 +368,6 @@ DataLoader::GetInputData(
       data_found = true;
     }
   }
-
-  std::cout << "TKg -- now, data_found is " << data_found << std::endl;
 
   if (input.is_optional_ == false && !data_found) {
     return cb::Error(
@@ -476,8 +459,6 @@ DataLoader::ReadTensorData(
           io.first + "_" + std::to_string(stream_index) + "_" +
           std::to_string(step_index));
 
-      std::cout << "TKG -- inserting into input_data_? key is " << key_name
-                << "\n";
       auto it = tensor_data.emplace(key_name, std::vector<char>()).first;
 
       const rapidjson::Value& tensor = step[(io.first).c_str()];
@@ -519,13 +500,8 @@ DataLoader::ReadTensorData(
       }
 
       if (content->IsArray()) {
-        std::cout << "TKG -- serializing explicit tensor\n";
-        std::cout << "TKG -- BEFORE, it->second is "
-                  << static_cast<const void*>(&it->second) << std::endl;
         RETURN_IF_ERROR(SerializeExplicitTensor(
             *content, io.second.datatype_, &it->second));
-        std::cout << "TKG -- AFTER, it->second is "
-                  << static_cast<const void*>(&it->second) << std::endl;
       } else {
         if (content->HasMember("b64")) {
           if ((*content)["b64"].IsString()) {
@@ -580,9 +556,6 @@ DataLoader::ReadTensorData(
       } else {
         element_count = ElementCount(io.second.shape_);
       }
-
-      std::cout << "TKG -- element count is " << element_count << std::endl;
-
       // FIXME TKG improve this error, as the shape could be provided inline
       if (element_count < 0) {
         return cb::Error(

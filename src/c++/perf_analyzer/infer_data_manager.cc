@@ -69,9 +69,6 @@ InferDataManager::CreateAndPopulateInput(
   std::vector<size_t> byte_size;
   size_t count = 0;
 
-  std::cout << "TKg -- creating and populating input for input " << name
-            << " tid " << thread_id << std::endl;
-
   RETURN_IF_ERROR(
       GetInputData(name, tensor, stream_id, step_id, data_ptrs, byte_size));
 
@@ -99,14 +96,12 @@ InferDataManager::CreateAndPopulateInput(
   int total_cnt = data_ptrs.size();
 
   for (size_t i = 0; i < total_cnt; i++) {
-    // FIXME TKG -- Another possible fix here would have been to update
-    // AppendRaw to handle empty byte size case
     if (data_ptrs[i] == nullptr) {
-      std::cout << "TKG -- here it is nullptr! And we don't want it to be\n";
       missing_data_cnt++;
     } else {
+      // FIXME TKG -- Another possible fix here would have been to update
+      // AppendRaw to handle empty byte size case
       if (byte_size[i]) {
-        std::cout << "TKG -- here we are doing an actual append raw\n";
         RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
       }
     }
@@ -124,9 +119,6 @@ InferDataManager::CreateAndPopulateInput(
         "specified for each batch. You cannot use different set of "
         "optional inputs for each individual batch.");
   }
-
-  std::cout << "TKg -- DONE creating and populating input for input " << name
-            << " tid " << thread_id << std::endl;
 
   return cb::Error::Success;
 }
@@ -204,15 +196,12 @@ InferDataManager::UpdateInputs(
   // Reset inputs for this inference request
   infer_data.valid_inputs_.clear();
 
-  std::cout << "TKG -- updating inputs!\n";
   for (const auto& input : infer_data.inputs_) {
     const auto& name = input->Name();
-    std::cout << "TKG -- name is " << name << std::endl;
+
     cb::InferInput* tmp_input =
         GetInput(thread_id, name, stream_index, step_index);
     if (tmp_input != nullptr) {
-      std::cout << "TKG -- yes it is valid" << std::endl;
-
       infer_data.valid_inputs_.push_back(tmp_input);
     }
   }
