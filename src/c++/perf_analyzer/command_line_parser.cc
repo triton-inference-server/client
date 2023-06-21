@@ -726,7 +726,7 @@ CLParser::Usage(const std::string& msg)
 void
 CLParser::PrintVersion()
 {
-  std::cerr << "Perf Analyzer Version: " << VERSION << std::endl;
+  std::cerr << "Perf Analyzer Version " << VERSION << std::endl;
   exit(SUCCESS);
 }
 
