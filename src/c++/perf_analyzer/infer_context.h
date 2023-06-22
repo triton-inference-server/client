@@ -30,6 +30,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+
 #include "data_loader.h"
 #include "idle_timer.h"
 #include "iinfer_data_manager.h"

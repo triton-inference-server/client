@@ -24,13 +24,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "infer_data_manager_factory.h"
-
 #include "load_manager.h"
 
 #include <algorithm>
 
 #include "client_backend/client_backend.h"
+#include "infer_data_manager_factory.h"
 
 namespace triton { namespace perfanalyzer {
 

@@ -26,6 +26,7 @@
 #pragma once
 
 #include <ostream>
+
 #include "client_backend/client_backend.h"
 #include "inference_profiler.h"
 #include "metrics.h"

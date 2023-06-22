@@ -25,9 +25,11 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "metrics_manager.h"
+
 #include <iostream>
 #include <stdexcept>
 #include <utility>
+
 #include "constants.h"
 #include "perf_analyzer_exception.h"
 
@@ -76,8 +78,8 @@ MetricsManager::QueryMetricsEveryNMilliseconds()
 
     const auto& end{std::chrono::system_clock::now()};
     const auto& duration{end - start};
-    const auto& remainder{std::chrono::milliseconds(metrics_interval_ms_) -
-                          duration};
+    const auto& remainder{
+        std::chrono::milliseconds(metrics_interval_ms_) - duration};
 
     CheckForMetricIntervalTooShort(remainder, duration);
 

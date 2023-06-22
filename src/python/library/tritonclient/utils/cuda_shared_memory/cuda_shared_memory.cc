@@ -27,8 +27,10 @@
 #include "cuda_shared_memory.h"
 
 #include <cuda_runtime_api.h>
+
 #include <cstring>
 #include <iostream>
+
 #include "../shared_memory/shared_memory_handle.h"
 
 extern "C" {

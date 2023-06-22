@@ -26,6 +26,7 @@
 #pragma once
 
 #include <grpc++/grpc++.h>
+
 #include "../client_backend.h"
 #include "common.h"
 #include "tensorflow_serving/apis/prediction_service.grpc.pb.h"

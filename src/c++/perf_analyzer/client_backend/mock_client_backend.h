@@ -30,6 +30,7 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+
 #include "../doctest.h"
 #include "client_backend.h"
 #include "gmock/gmock.h"
@@ -593,8 +594,7 @@ class MockClientBackend : public ClientBackend {
       callback(result);
 
       stats_->CaptureRequestEnd(options);
-    })
-        .detach();
+    }).detach();
   }
 
   // Total count of how many requests this client has handled and finished

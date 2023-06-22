@@ -25,7 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rapidjson/document.h>
+
 #include <cstdint>
+
 #include "client_backend/client_backend.h"
 #include "constants.h"
 #include "doctest.h"

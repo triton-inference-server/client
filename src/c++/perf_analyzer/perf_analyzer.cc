@@ -406,8 +406,8 @@ PerfAnalyzer::WriteReport()
               << (status.stabilizing_latency_ns / 1000) << " usec" << std::endl;
   }
 
-  bool should_output_metrics{params_->should_collect_metrics &&
-                             params_->verbose_csv};
+  bool should_output_metrics{
+      params_->should_collect_metrics && params_->verbose_csv};
 
   std::unique_ptr<pa::ReportWriter> writer;
 

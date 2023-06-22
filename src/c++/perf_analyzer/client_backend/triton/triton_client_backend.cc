@@ -27,8 +27,10 @@
 #include "triton_client_backend.h"
 
 #include <curl/curl.h>
+
 #include <regex>
 #include <stdexcept>
+
 #include "../../constants.h"
 #include "../../perf_analyzer_exception.h"
 #include "json_utils.h"

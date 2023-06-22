@@ -25,13 +25,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "perf_utils.h"
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <cctype>
 #include <iostream>
 #include <string>
+
 #include "client_backend/client_backend.h"
 #include "doctest.h"
 

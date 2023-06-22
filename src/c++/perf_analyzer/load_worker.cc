@@ -24,11 +24,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "load_worker.h"
+
 #include <algorithm>
 #include <thread>
 
 #include "client_backend/client_backend.h"
-#include "load_worker.h"
 #include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {

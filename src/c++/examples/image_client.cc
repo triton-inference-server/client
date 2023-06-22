@@ -29,19 +29,20 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <condition_variable>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <mutex>
+#include <opencv2/core/version.hpp>
 #include <queue>
 #include <string>
+
 #include "grpc_client.h"
 #include "http_client.h"
 #include "json_utils.h"
-
-#include <opencv2/core/version.hpp>
 #if CV_MAJOR_VERSION == 2
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>

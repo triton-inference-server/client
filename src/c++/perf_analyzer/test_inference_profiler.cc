@@ -500,8 +500,8 @@ TEST_CASE("testing the GetMetricAveragePerGPU function")
 
   SUBCASE("all GPUs present")
   {
-    const std::map<std::string, double> metric_1{{"gpu0", 0.45},
-                                                 {"gpu1", 0.23}},
+    const std::map<std::string, double> metric_1{
+        {"gpu0", 0.45}, {"gpu1", 0.23}},
         metric_2{{"gpu0", 0.52}, {"gpu1", 0.27}},
         metric_3{{"gpu0", 0.56}, {"gpu1", 0.30}};
 
@@ -518,8 +518,8 @@ TEST_CASE("testing the GetMetricAveragePerGPU function")
 
   SUBCASE("missing one GPU from one metric")
   {
-    const std::map<std::string, double> metric_1{{"gpu0", 0.45},
-                                                 {"gpu1", 0.23}},
+    const std::map<std::string, double> metric_1{
+        {"gpu0", 0.45}, {"gpu1", 0.23}},
         metric_2{{"gpu0", 0.52}}, metric_3{{"gpu0", 0.56}, {"gpu1", 0.30}};
 
     const std::vector<

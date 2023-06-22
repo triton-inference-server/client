@@ -26,8 +26,10 @@
 
 #include <getopt.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "http_client.h"
 
 namespace tc = triton::client;

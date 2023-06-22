@@ -28,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "client_backend/client_backend.h"
 #include "constants.h"
 #include "custom_load_manager.h"
@@ -92,10 +93,10 @@ class TestCustomLoadManager : public TestLoadManagerBase,
     for (auto i : intervals) {
       custom_intervals_.push_back(nanoseconds{i});
     }
-    nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *
-                                               NANOS_PER_MILLIS};
-    nanoseconds max_test_duration{measurement_window_nanoseconds *
-                                  params.max_trials};
+    nanoseconds measurement_window_nanoseconds{
+        params.measurement_window_ms * NANOS_PER_MILLIS};
+    nanoseconds max_test_duration{
+        measurement_window_nanoseconds * params.max_trials};
     nanoseconds expected_current_timestamp{0};
     size_t intervals_index = 0;
 
@@ -189,8 +190,14 @@ TEST_CASE("custom_load_schedule")
   std::vector<uint64_t> intervals;
 
   const auto& ParameterizeIntervals{[&]() {
-    SUBCASE("intervals A") { intervals = {100000000, 110000000, 130000000}; }
-    SUBCASE("intervals B") { intervals = {150000000}; }
+    SUBCASE("intervals A")
+    {
+      intervals = {100000000, 110000000, 130000000};
+    }
+    SUBCASE("intervals B")
+    {
+      intervals = {150000000};
+    }
     SUBCASE("intervals C")
     {
       intervals = {100000000, 110000000, 120000000, 130000000, 140000000};
@@ -301,8 +308,14 @@ TEST_CASE("custom_load_sequences")
   std::vector<uint64_t> intervals;
 
   const auto& ParameterizeIntervals{[&]() {
-    SUBCASE("intervals A") { intervals = {100000, 110000, 130000}; }
-    SUBCASE("intervals B") { intervals = {150000}; }
+    SUBCASE("intervals A")
+    {
+      intervals = {100000, 110000, 130000};
+    }
+    SUBCASE("intervals B")
+    {
+      intervals = {150000};
+    }
     SUBCASE("intervals C")
     {
       intervals = {100000, 110000, 120000, 130000, 140000};

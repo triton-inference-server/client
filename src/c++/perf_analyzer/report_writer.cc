@@ -25,8 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "report_writer.h"
+
 #include <algorithm>
 #include <fstream>
+
 #include "constants.h"
 #include "perf_analyzer_exception.h"
 
