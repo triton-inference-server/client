@@ -46,14 +46,12 @@ TRITON_HOME="/opt/tritonserver"
 BUILD_HOME="/tmp/build"
 MAVEN_VERSION="3.8.4"
 export MAVEN_PATH=${BUILD_HOME}/apache-maven-${MAVEN_VERSION}/bin/mvn
-TRITON_CORE_BRANCH=${TRITON_CORE_BRANCH:="https://github.com/triton-inference-server/core.git"}
 TRITON_CORE_REPO_TAG=${TRITON_CORE_REPO_TAG:="main"}
-TOOLS_BRANCH=${TOOLS_BRANCH:="https://github.com/triton-inference-server/developer_tools.git"}
-TOOLS_BRANCH_TAG=${TOOLS_BRANCH_TAG:="main"}
 JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.git"}
 JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 CMAKE_VERSION=${CMAKE_VERSION:="3.21.1"}
 export JAR_INSTALL_PATH="/workspace/install/java-api-bindings"
+export INCLUDE_DEVELOPER_TOOLS_SERVER=1
 
 for OPTS; do
     case "$OPTS" in
@@ -97,30 +95,14 @@ for OPTS; do
         shift 2
         ;;
         --enable-developer-tools-server) 
-        export INCLUDE_DEVELOPER_TOOLS_SERVER=1
+        export INCLUDE_DEVELOPER_TOOLS_SERVER=0
         echo "Including developer tools server C++ bindings"
         ;;
     esac
 done
 set -x
 
-# Install jdk and maven
-mkdir -p ${BUILD_HOME}
-cd ${BUILD_HOME}
-apt update && apt install -y openjdk-11-jdk
-wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
-tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
-export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/
-
-# Build static libraries and copy wrapper includes to triton home
-# Copy necessary tritonserver .h files so the bindings can be generated
-mkdir -p ${TRITON_HOME}/lib/
-mkdir -p ${TRITON_HOME}/include/triton/
-cd ${BUILD_HOME}
-git clone --single-branch --depth=1 -b ${TRITON_CORE_REPO_TAG} ${TRITON_CORE_BRANCH}
-cp core/include/triton/core/* ${TRITON_HOME}/include/triton/core/.
-
-if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
+if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 0 ]; then
     # install cmake and rapidjson
     apt-get update && apt-get install -y gpg wget && \
         wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
@@ -131,24 +113,16 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
         tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
         apt-get update && \
         apt-get install -y --no-install-recommends cmake cmake-data rapidjson-dev
-
-    git clone --single-branch --depth=1 -b ${TOOLS_BRANCH_TAG} ${TOOLS_BRANCH} 
-    cd developer_tools/server
-    mkdir build && cd build
-    cmake -DCMAKE_INSTALL_PREFIX:PATH=`pwd`/install -DTRITON_BUILD_TEST=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_BUILD_STATIC_LIBRARY=OFF .. 
-    make -j"$(grep -c ^processor /proc/cpuinfo)" install
-    # Copy dynamic library to triton home
-    cp ${BUILD_HOME}/developer_tools/server/build/install/lib/libtritondevelopertoolsserver.so ${TRITON_HOME}/lib/.
-
-    BUILD_INCLUDE_REPO=${BUILD_HOME}/developer_tools/server/include/triton/developer_tools
-    BUILD_SRC_REPO=${BUILD_HOME}/developer_tools/server/src
-    TRITON_INCLUDE_REPO=${TRITON_HOME}/include/triton/developer_tools
-    mkdir -p ${TRITON_INCLUDE_REPO}/src
-    cp ${BUILD_INCLUDE_REPO}/common.h ${TRITON_INCLUDE_REPO}/.
-    cp ${BUILD_INCLUDE_REPO}/generic_server_wrapper.h ${TRITON_INCLUDE_REPO}/.
-    cp ${BUILD_SRC_REPO}/infer_requested_output.h ${TRITON_INCLUDE_REPO}/src/.
-    cp ${BUILD_SRC_REPO}/tracer.h ${TRITON_INCLUDE_REPO}/src/.
 fi
+
+# Install jdk and maven
+mkdir -p ${BUILD_HOME}
+cd ${BUILD_HOME}
+apt update && apt install -y openjdk-11-jdk
+wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
+tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
+export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/
+
 # Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
 cd ${BUILD_HOME}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
@@ -161,7 +135,7 @@ ${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Dja
 mkdir -p ${JAR_INSTALL_PATH}
 cp ${BUILD_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar ${JAR_INSTALL_PATH}/tritonserver-java-bindings.jar
 
-rm -r ${BUILD_HOME}/javacpp-presets/ ${BUILD_HOME}/core ${BUILD_HOME}/developer_tools 
+rm -r ${BUILD_HOME}/javacpp-presets/
 rm -r /root/.m2/repository
 
 set +x
