@@ -163,6 +163,7 @@ class CLParser {
 
   std::string FormatMessage(std::string str, int offset) const;
   virtual void Usage(const std::string& msg = std::string());
+  void PrintVersion();
   void ParseCommandLine(int argc, char** argv);
   void VerifyOptions();
 };
