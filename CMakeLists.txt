@@ -32,7 +32,7 @@ project(tritonclient LANGUAGES C CXX)
 # Options
 #
 set(TRITON_VERSION "0.0.0" CACHE STRING "Version for the clients")
-set(PERF_ANALYZER_VERSION "0.0.0" CACHE STRING "BUILD VERSION for Perf Analyzer")
+set(PERF_ANALYZER_VERSION ${TRITON_VERSION} CACHE STRING "Build Version for Perf Analyzer")
 option(TRITON_ENABLE_CC_HTTP "Build C++ HTTP client libraries" OFF)
 option(TRITON_ENABLE_CC_GRPC "Build C++ GRPC client libraries" OFF)
 option(TRITON_ENABLE_PYTHON_HTTP "Enable Python HTTP client libraries" OFF)
