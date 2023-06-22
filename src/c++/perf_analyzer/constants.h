@@ -33,8 +33,7 @@
 namespace triton { namespace perfanalyzer {
 
 const std::string SHA{STRINGIFY(GIT_SHA)};
-const std::string RELEASE{STRINGIFY(PERF_ANALYZER_VERSION)};
-const std::string VERSION{RELEASE + " (commit " + SHA + ")"};
+const std::string VERSION{STRINGIFY(PERF_ANALYZER_VERSION)};
 
 constexpr static const uint32_t SUCCESS = 0;
 
