@@ -26,12 +26,15 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
-// namespace pa = triton::perfanalyzer;
-
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
 namespace triton { namespace perfanalyzer {
 
-const std::string VERSION{"2.36.0dev / 23.07dev"};
+const std::string SHA{STRINGIFY(GIT_SHA)};
+const std::string RELEASE{STRINGIFY(PERF_ANALYZER_VERSION)};
+const std::string VERSION{RELEASE + " (build " + SHA + ")"};
 
 constexpr static const uint32_t SUCCESS = 0;
 

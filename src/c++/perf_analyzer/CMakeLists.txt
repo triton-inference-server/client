@@ -33,6 +33,17 @@ else()
 
 add_subdirectory(client_backend)
 
+find_package(Git REQUIRED)
+
+execute_process(COMMAND
+  "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
+  RESULT_VARIABLE RETURN_CODE
+  OUTPUT_VARIABLE GIT_SHA)
+
+if(NOT RETURN_CODE EQUAL "0")
+  set(GIT_SHA "unknown")
+endif()
+
 set(
   PERF_ANALYZER_SRCS
   command_line_parser.cc
@@ -108,6 +119,13 @@ target_link_libraries(
     client-backend-library
     -lb64
     ${CMAKE_DL_LIBS}
+)
+
+target_compile_definitions(
+  perf_analyzer 
+  PRIVATE 
+    PERF_ANALYZER_VERSION=${PERF_ANALYZER_VERSION}
+    GIT_SHA=${GIT_SHA}
 )
 
 # If gpu is enabled then compile with CUDA dependencies
