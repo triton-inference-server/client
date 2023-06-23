@@ -511,6 +511,10 @@ class InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
 
+  /// Get final response bool of the request which generated this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error IsFinalResponse(bool* is_final_response) const = 0;
+
   /// Get the result data as a vector of strings. The vector will
   /// receive a copy of result data. An error will be generated if
   /// the datatype of output is not 'BYTES'.

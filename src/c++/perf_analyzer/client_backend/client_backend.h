@@ -614,6 +614,13 @@ class InferResult {
   virtual Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
+
+  /// Get final response bool of the request which generated this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error IsFinalResponse(bool* is_final_response) const
+  {
+    return Error("InferResult::IsFinalResponse() not implemented");
+  };
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

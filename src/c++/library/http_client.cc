@@ -739,6 +739,7 @@ class InferResultHttp : public InferResult {
   Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override;
+  Error IsFinalResponse(bool* is_final_response) const override;
   Error StringData(
       const std::string& output_name,
       std::vector<std::string>* string_result) const override;
@@ -767,6 +768,7 @@ class InferResultHttp : public InferResult {
   std::shared_ptr<HttpInferRequest> infer_request_;
 
   bool binary_data_{true};
+  bool is_final_response_{true};
 };
 
 void
@@ -936,6 +938,16 @@ InferResultHttp::RawData(
         "The response does not contain results for output name " + output_name);
   }
 
+  return Error::Success;
+}
+
+Error
+InferResultHttp::IsFinalResponse(bool* is_final_response) const
+{
+  if (is_final_response == nullptr) {
+    return Error("is_final_response cannot be nullptr");
+  }
+  *is_final_response = is_final_response_;
   return Error::Success;
 }
 

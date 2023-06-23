@@ -189,6 +189,7 @@ class InferResultGrpc : public InferResult {
   Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override;
+  Error IsFinalResponse(bool* is_final_response) const override;
   Error StringData(
       const std::string& output_name,
       std::vector<std::string>* string_result) const override;
@@ -209,6 +210,7 @@ class InferResultGrpc : public InferResult {
   std::shared_ptr<inference::ModelInferResponse> response_;
   std::shared_ptr<inference::ModelStreamInferResponse> stream_response_;
   Error request_status_;
+  bool is_final_response_{true};
 };
 
 Error
@@ -311,6 +313,16 @@ InferResultGrpc::RawData(
 }
 
 Error
+InferResultGrpc::IsFinalResponse(bool* is_final_response) const
+{
+  if (is_final_response == nullptr) {
+    return Error("is_final_response cannot be nullptr");
+  }
+  *is_final_response = is_final_response_;
+  return Error::Success;
+}
+
+Error
 InferResultGrpc::StringData(
     const std::string& output_name,
     std::vector<std::string>* string_result) const
@@ -367,6 +379,11 @@ InferResultGrpc::InferResultGrpc(
         std::make_pair(output.name(), std::make_pair(buf, byte_size)));
     index++;
   }
+  const auto& is_final_response_itr{
+      response_->parameters().find("triton_final_response")};
+  if (is_final_response_itr != response_->parameters().end()) {
+    is_final_response_ = is_final_response_itr->second.bool_param();
+  }
 }
 
 InferResultGrpc::InferResultGrpc(
@@ -386,6 +403,11 @@ InferResultGrpc::InferResultGrpc(
     output_name_to_buffer_map_.insert(
         std::make_pair(output.name(), std::make_pair(buf, byte_size)));
     index++;
+  }
+  const auto& is_final_response_itr{
+      response_->parameters().find("triton_final_response")};
+  if (is_final_response_itr != response_->parameters().end()) {
+    is_final_response_ = is_final_response_itr->second.bool_param();
   }
 }
 
@@ -1347,6 +1369,8 @@ InferenceServerGrpcClient::PreRunProcessing(
   infer_request_.set_id(options.request_id_);
 
   infer_request_.mutable_parameters()->clear();
+  (*infer_request_.mutable_parameters())["triton_enable_empty_final_response"]
+      .set_bool_param(true);
   if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
     if (options.sequence_id_ != 0) {
       (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(

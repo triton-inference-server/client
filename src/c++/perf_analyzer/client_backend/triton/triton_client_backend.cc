@@ -818,6 +818,13 @@ TritonInferResult::RawData(
   return Error::Success;
 }
 
+Error
+TritonInferResult::IsFinalResponse(bool* is_final_response) const
+{
+  RETURN_IF_TRITON_ERROR(result_->IsFinalResponse(is_final_response));
+  return Error::Success;
+}
+
 //==============================================================================
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritonremote
