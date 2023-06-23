@@ -517,25 +517,6 @@ DataLoader::ReadTensorData(
             int size =
                 D.decode(encoded.c_str(), encoded.length(), &it->second[0]);
             it->second.resize(size);
-
-            int64_t batch1_byte;
-            auto shape_it = tensor_shape.find(key_name);
-            if (shape_it == tensor_shape.end()) {
-              batch1_byte = ByteSize(io.second.shape_, io.second.datatype_);
-            } else {
-              batch1_byte = ByteSize(shape_it->second, io.second.datatype_);
-            }
-            if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
-              return cb::Error(
-                  "mismatch in the data provided. "
-                  "Expected: " +
-                      std::to_string(batch1_byte) +
-                      " bytes, Got: " + std::to_string(it->second.size()) +
-                      " bytes ( Location stream id: " +
-                      std::to_string(stream_index) +
-                      ", step id: " + std::to_string(step_index) + ")",
-                  pa::GENERIC_ERROR);
-            }
           } else {
             return cb::Error(
                 "the value of b64 field should be of type string ( "
@@ -554,19 +535,35 @@ DataLoader::ReadTensorData(
         }
       }
 
-      // Validate if a fixed shape is available for the tensor.
+      // Validate that a fixed shape is available and that the data size matches
+      // the shape
       int element_count;
+      int64_t batch1_byte;
+
       auto shape_it = tensor_shape.find(key_name);
       if (shape_it != tensor_shape.end()) {
         element_count = ElementCount(shape_it->second);
+        batch1_byte = ByteSize(shape_it->second, io.second.datatype_);
       } else {
         element_count = ElementCount(io.second.shape_);
+        batch1_byte = ByteSize(io.second.shape_, io.second.datatype_);
       }
+
       // FIXME TKG improve this error, as the shape could be provided inline
       if (element_count < 0) {
         return cb::Error(
             "The variable-sized tensor \"" + io.second.name_ +
                 "\" is missing shape, see --shape option.",
+            pa::GENERIC_ERROR);
+      }
+
+      if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
+        return cb::Error(
+            "mismatch in the data provided for " + io.first +
+                ". Expected: " + std::to_string(batch1_byte) +
+                " bytes, Got: " + std::to_string(it->second.size()) +
+                " bytes ( Location stream id: " + std::to_string(stream_index) +
+                ", step id: " + std::to_string(step_index) + ")",
             pa::GENERIC_ERROR);
       }
     } else if (io.second.is_optional_ == false) {
