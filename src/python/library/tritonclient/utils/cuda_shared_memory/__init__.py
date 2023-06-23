@@ -66,11 +66,19 @@ _cshm_get_shared_memory_handle_info.restype = c_int
 _cshm_get_shared_memory_handle_info.argtypes = [
     c_void_p, POINTER(c_char_p),
     POINTER(c_uint64),
-    POINTER(c_uint64)
+    POINTER(c_uint64),
+    POINTER(c_int)
 ]
-_cshm_cuda_shared_memory_release_buffer = _ccudashm.CudaSharedMemoryReleaseBuffer
-_cshm_cuda_shared_memory_release_buffer.restype = c_int
-_cshm_cuda_shared_memory_release_buffer.argtypes = [c_char_p]
+
+_cshm_cuda_shared_memory_allocate_and_read_to_host_buffer = _ccudashm.CudaSharedMemoryAllocateAndReadToHostBuffer
+_cshm_cuda_shared_memory_allocate_and_read_to_host_buffer.restype = c_int
+_cshm_cuda_shared_memory_allocate_and_read_to_host_buffer.argtypes = [
+    c_void_p, POINTER(c_char_p)
+]
+_cshm_cuda_shared_memory_release_host_buffer = _ccudashm.CudaSharedMemoryReleaseHostBuffer
+_cshm_cuda_shared_memory_release_host_buffer.restype = c_int
+_cshm_cuda_shared_memory_release_host_buffer.argtypes = [c_char_p]
+
 _ccudashm_shared_memory_region_destroy = _ccudashm.CudaSharedMemoryRegionDestroy
 _ccudashm_shared_memory_region_destroy.restype = c_int
 _ccudashm_shared_memory_region_destroy.argtypes = [c_void_p]
@@ -212,14 +220,23 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
     """
     offset = c_uint64()
     byte_size = c_uint64()
-    shm_addr = c_char_p()
+    host_addr = c_char_p()
+    device_id = c_int()
     try:
+        shm_addr = c_char_p()
         _raise_if_error(
             c_int(
                 _cshm_get_shared_memory_handle_info(cuda_shm_handle,
                                                     byref(shm_addr),
                                                     byref(offset),
-                                                    byref(byte_size))))
+                                                    byref(byte_size),
+                                                    byref(device_id))))
+        # Numpy can only read from host buffer.
+        # [FIXME] explore Python way for CUDA memory copy
+        _raise_if_error(
+            c_int(
+                _cshm_cuda_shared_memory_allocate_and_read_to_host_buffer(cuda_shm_handle,
+                                                    byref(host_addr))))
         start_pos = offset.value
         if (datatype != np.object_) and (datatype != np.bytes_):
             requested_byte_size = np.prod(shape) * np.dtype(datatype).itemsize
@@ -231,16 +248,16 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
             if cval_len == 0:
                 result = np.empty(shape, dtype=datatype)
             else:
-                val_buf = cast(shm_addr, POINTER(c_byte * cval_len))[0]
+                val_buf = cast(host_addr, POINTER(c_byte * cval_len))[0]
                 val = np.frombuffer(val_buf, dtype=datatype, offset=start_pos)
 
                 # Reshape the result to the appropriate shape. This copy is only
                 # needed as the temporary CPU buffer is cleared later by
-                # _cshm_cuda_shared_memory_release_buffer
+                # _cshm_cuda_shared_memory_release_host_buffer
                 result = np.reshape(np.copy(val), shape)
         else:
             str_offset = start_pos
-            val_buf = cast(shm_addr, POINTER(c_byte * byte_size.value))[0]
+            val_buf = cast(host_addr, POINTER(c_byte * byte_size.value))[0]
             ii = 0
             strs = list()
             while (ii % np.prod(shape) != 0) or (ii == 0):
@@ -258,7 +275,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
             result = np.reshape(val, shape)
 
     finally:
-        c_int(_cshm_cuda_shared_memory_release_buffer(shm_addr))
+        c_int(_cshm_cuda_shared_memory_release_host_buffer(host_addr))
         return result
 
 

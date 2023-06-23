@@ -42,7 +42,8 @@ int CudaSharedMemoryRegionSet(
     void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data);
 int GetCudaSharedMemoryHandleInfo(
     void* shm_handle, char** shm_addr, size_t* offset, size_t* byte_size);
-int CudaSharedMemoryReleaseBuffer(char* ptr);
+int CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr);
+int CudaSharedMemoryReleaseHostBuffer(char* ptr);
 int CudaSharedMemoryRegionDestroy(void* cuda_shm_handle);
 
 //==============================================================================
