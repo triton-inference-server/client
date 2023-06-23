@@ -92,7 +92,8 @@ class DataLoader {
   /// \param input The target model input tensor
   /// \param stream_id The data stream_id to use for retrieving input data.
   /// \param step_id The data step_id to use for retrieving input data.
-  /// \param data Returns the pointer to the data for the requested input.
+  /// \param data Returns the pointer to the data for the requested input. Will
+  /// be nullptr if the data is not found.
   /// \param batch1_size Returns the size of the input data in bytes.
   /// Returns error object indicating status
   cb::Error GetInputData(
