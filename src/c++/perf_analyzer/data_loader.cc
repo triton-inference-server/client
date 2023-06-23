@@ -324,6 +324,7 @@ DataLoader::GetInputData(
     const uint8_t** data_ptr, size_t* batch1_size)
 {
   bool data_found = false;
+  *data_ptr = nullptr;
   *batch1_size = 0;
 
   // If json data is available then try to retrieve the data from there
@@ -343,7 +344,17 @@ DataLoader::GetInputData(
         string_data = &it->second;
         *batch1_size = string_data->size();
       }
-      *data_ptr = (const uint8_t*)&((it->second)[0]);
+
+
+      if (it->second.size()) {
+        *data_ptr = (const uint8_t*)&((it->second)[0]);
+      } else {
+        // If data is found but empty, we still want to return a non-null
+        // pointer. In that case, just point to the vector itself (instead of
+        // the raw data)
+        *data_ptr = (const uint8_t*)&(it->second);
+      }
+
       data_found = true;
     }
   }

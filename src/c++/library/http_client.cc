@@ -561,9 +561,9 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
 
       data_buffers_.front().first += csz;
       data_buffers_.front().second -= csz;
-      if (data_buffers_.front().second == 0) {
-        data_buffers_.pop_front();
-      }
+    }
+    if (data_buffers_.front().second == 0) {
+      data_buffers_.pop_front();
     }
   }
 
