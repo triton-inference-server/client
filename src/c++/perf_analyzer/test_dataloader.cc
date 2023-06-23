@@ -643,8 +643,8 @@ TEST_CASE(
   CHECK_EQ(status.IsOk(), false);
   CHECK_EQ(
       status.Message(),
-      "The variable-sized tensor \"INPUT1\" is missing shape, see --shape "
-      "option.");
+      "The variable-sized tensor \"INPUT1\" with model shape [-1] needs to "
+      "have its shape fully defined. See the --shape option.");
 }
 
 
