@@ -104,6 +104,19 @@ TEST_CASE("dataloader: GetTotalSteps")
   CHECK_EQ(dataloader.GetTotalSteps(2), 0);
 }
 
+TEST_CASE("dataloader: GetInputData missing data")
+{
+  MockDataLoader dataloader;
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  cb::Error status =
+      dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk() == false);
+  CHECK_EQ(status.Message(), "unable to find data for input 'INPUT1'.");
+}
+
 TEST_CASE("dataloader: ParseData: Bad Json")
 {
   std::string json_str{"bad json text"};
@@ -147,6 +160,30 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
     json_str = R"({"data": [{ "INPUT1": null }]})";
     expected_message = "Input data file is malformed.";
   }
+  SUBCASE("Not integer shape")
+  {
+    json_str = R"({"data": [{
+     "INPUT1": { "shape": ["a"], "content": [1,2,3,4,5,6] }
+    }]})";
+    expected_message = "shape values must be integers.";
+  }
+  SUBCASE("Content not array")
+  {
+    json_str = R"({"data": [{
+     "INPUT1": { "content": 6 }
+    }]})";
+    expected_message =
+        "The tensor values are not supported. Expected an array or b64 string "
+        "( Location stream id: 0, step id: 0)";
+  }
+  SUBCASE("Missing non-optional input")
+  {
+    json_str = R"({"data": [{
+     "NOT_INPUT1": { "content": 6 }
+    }]})";
+    expected_message =
+        "missing tensor INPUT1 ( Location stream id: 0, step id: 0)";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -159,30 +196,47 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
   CHECK_EQ(status.Message(), expected_message);
 }
 
-// FIXME TMA-1210
-// TEST_CASE(
-//    "dataloader: ParseData: Mismatch Shape" *
-//    doctest::description(
-//        "When the size of the provided Input is not in line with the Tensor's
-//        " "shape, then an error should be thrown"))
-//{
-//  std::string json_str{R"({"data": [{ "INPUT1": [1,2] }]})"};
-//
-//
-//  MockDataLoader dataloader;
-//  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
-//  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-//  input1.shape_ = {3};
-//  inputs->insert(std::make_pair(input1.name_, input1));
-//
-//  std::shared_ptr<ModelTensorMap> outputs =
-//  std::make_shared<ModelTensorMap>();
-//
-//  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
-//  CHECK(status.IsOk() == false);
-//  CHECK_EQ(status.Message(), "TKG");
-//}
+TEST_CASE(
+    "dataloader: ParseData: Mismatch Input Shape" *
+    doctest::description(
+        "When the size of the provided Input is not in line with the Tensor's "
+        "shape, then an error should be thrown"))
+{
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  input1.shape_ = {3};
 
+  std::string expected_message;
+  std::string json_str;
+
+  // FIXME TMA-1210
+  // SUBCASE("Normal json")
+  // {
+  //   json_str = R"({"data": [{ "INPUT1": [1,2] }]})";
+  //   expected_message = "FIXME";
+  // }
+  // SUBCASE("content json")
+  // {
+  //   json_str = R"({"data": [{ "INPUT1": { "content": [1,2] } }]})";
+  //   expected_message = "FIXME";
+  // }
+  SUBCASE("b64 json")
+  {
+    json_str = R"({"data": [{ "INPUT1": {"b64": "AAAAAQ=="} }]})";
+    expected_message =
+        "mismatch in the data provided. Expected: 12 bytes, Got: 4 bytes ( "
+        "Location stream id: 0, step id: 0)";
+  }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
+  REQUIRE(status.IsOk() == false);
+  CHECK_EQ(status.Message(), expected_message);
+}
 
 TEST_CASE(
     "dataloader: ParseData: Mismatch Input and Output" *
@@ -190,7 +244,11 @@ TEST_CASE(
         "When the size of the provided Input and validation Output data are "
         "different, then an error should be thrown"))
 {
-  std::string json_str{R"({
+  std::string json_str;
+
+  SUBCASE("Normal json")
+  {
+    json_str = R"({
    "data": [
      { "INPUT1": [1] },
      { "INPUT1": [2] },
@@ -198,8 +256,32 @@ TEST_CASE(
    ],
    "validation_data": [
      { "OUTPUT1": [7] }
-   ]})"};
-
+   ]})";
+  }
+  SUBCASE("content json")
+  {
+    json_str = R"({
+   "data": [
+     { "INPUT1": { "content": [1] } },
+     { "INPUT1": { "content": [2] } },
+     { "INPUT1": { "content": [3] } }
+   ],
+   "validation_data": [
+     { "OUTPUT1": { "content": [7] } }
+   ]})";
+  }
+  SUBCASE("b64 json")
+  {
+    json_str = R"({
+   "data": [
+     { "INPUT1": {"b64": "AAAAAQ=="} },
+     { "INPUT1": {"b64": "AgAAAA=="} },
+     { "INPUT1": {"b64": "AwAAAA=="} }
+   ],
+   "validation_data": [
+     { "OUTPUT1": {"b64": "BAAAAA=="} }
+   ]})";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -229,6 +311,20 @@ TEST_CASE("dataloader: ParseData: Valid Data")
     { "OUTPUT1": [4] },
     { "OUTPUT1": [5] },
     { "OUTPUT1": [6] }
+   ]})";
+  }
+  SUBCASE("Content json")
+  {
+    json_str = R"({
+   "data": [
+     { "INPUT1": { "content": [1] } },
+     { "INPUT1": { "content": [2] } },
+     { "INPUT1": { "content": [3] } }
+   ],
+   "validation_data": [
+     { "OUTPUT1": { "content": [4] } },
+     { "OUTPUT1": { "content": [5] } },
+     { "OUTPUT1": { "content": [6] } }
    ]})";
   }
   SUBCASE("b64 json")
@@ -455,22 +551,35 @@ TEST_CASE(
 //  CHECK_EQ(status.IsOk(), false);
 //  CHECK_EQ(status.Message(), "FIXME");
 //}
-
+// FIXME TMA-1210 -- what about the case of the actual shape not being the same
+// (or mismatching dynamic shape?)
 
 TEST_CASE(
     "dataloader: ParseData: Supplied Shape is valid" *
     doctest::description("Supply the dynamic shape for an input"))
 {
-  std::string json_str{R"({"data": [{
+  std::string json_str;
+
+  SUBCASE("Normal json")
+  {
+    json_str = R"({"data": [{
      "INPUT1": { "shape": [3,2], "content": [1,2,3,4,5,6] }
-    }]})"};
+    }]})";
+  }
+  SUBCASE("b64 json")
+  {
+    // This b64 encoding is the same as the unencoded case of [1,2,3,4,5,6]
+    json_str = R"({"data": [{
+     "INPUT1": { "shape": [3,2], "b64": "AAAAAQAAAAIAAAADAAAABAAAAAUAAAAG" }
+    }]})";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-  input1.shape_ = {-1};
+  input1.shape_ = {-1, -1};
 
   inputs->insert(std::make_pair(input1.name_, input1));
 
@@ -596,6 +705,51 @@ TEST_CASE(
 //  CHECK_EQ(dataloader.GetTotalSteps(2), 1);
 //  CHECK_EQ(dataloader.GetTotalSteps(3), 3);
 //}
+
+TEST_CASE(
+    "dataloader: ParseData: Multiple Calls simple" *
+    doctest::description(
+        "ParseData can be called multiple times. The data should "
+        "accumulate in stream 0 when no nested arrays"))
+{
+  std::string json_str1{R"({"data": [{ "INPUT1": [1] }]})"};
+  std::string json_str2{R"({"data": [{ "INPUT1": [2] }]})"};
+  std::string json_str3{R"({"data": [{ "INPUT1": [3] }]})"};
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 1);
+
+  status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
+
+  status = dataloader.ReadDataFromStr(json_str3, inputs, outputs);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 3);
+
+  // Confirm the correct data is in the dataloader
+  //
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  dataloader.GetInputData(input1, 0, 2, &data_ptr, &batch1_size);
+
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(input_data[0], 3);
+  CHECK_EQ(batch1_size, 4);
+}
 
 TEST_CASE(
     "dataloader: GenerateData: Is Shape Tensor" *
