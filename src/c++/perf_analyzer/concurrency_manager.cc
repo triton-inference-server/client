@@ -25,6 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "concurrency_manager.h"
+
 #include <queue>
 
 namespace triton { namespace perfanalyzer {

@@ -26,8 +26,10 @@
 
 #include <getopt.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "grpc_client.h"
 
 namespace tc = triton::client;
@@ -115,10 +117,11 @@ main(int argc, char** argv)
   bool use_cached_channel = true;
 
   // {name, has_arg, *flag, val}
-  static struct option long_options[] = {{"ssl", 0, 0, 0},
-                                         {"root-certificates", 1, 0, 1},
-                                         {"private-key", 1, 0, 2},
-                                         {"certificate-chain", 1, 0, 3}};
+  static struct option long_options[] = {
+      {"ssl", 0, 0, 0},
+      {"root-certificates", 1, 0, 1},
+      {"private-key", 1, 0, 2},
+      {"certificate-chain", 1, 0, 3}};
 
   // Parse commandline...
   int opt;
@@ -285,8 +288,8 @@ main(int argc, char** argv)
     options.client_timeout_ = client_timeout;
 
     std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-    std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                            output1_ptr.get()};
+    std::vector<const tc::InferRequestedOutput*> outputs = {
+        output0_ptr.get(), output1_ptr.get()};
 
     tc::InferResult* results;
     FAIL_IF_ERR(

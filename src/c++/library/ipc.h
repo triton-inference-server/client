@@ -28,6 +28,5 @@
 #ifdef TRITON_ENABLE_GPU
 #include <cuda_runtime_api.h>
 #else
-struct cudaIpcMemHandle_t {
-};
+struct cudaIpcMemHandle_t {};
 #endif  // TRITON_ENABLE_GPU

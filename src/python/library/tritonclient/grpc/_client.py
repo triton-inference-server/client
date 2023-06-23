@@ -1633,7 +1633,8 @@ class InferenceServerClient(InferenceServerClientBase):
         # Unique to streaming inference as it only pertains to decoupled models
         # Only attach the parameter if True, no need to send/parse when False.
         if enable_empty_final_response:
-          request.parameters['triton_enable_empty_final_response'].bool_param = True
+            request.parameters[
+                'triton_enable_empty_final_response'].bool_param = True
 
         if self._verbose:
             print("async_stream_infer\n{}".format(request))

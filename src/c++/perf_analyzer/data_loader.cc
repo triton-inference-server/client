@@ -28,6 +28,7 @@
 
 #include <b64/decode.h>
 #include <rapidjson/filereadstream.h>
+
 #include <fstream>
 
 namespace triton { namespace perfanalyzer {

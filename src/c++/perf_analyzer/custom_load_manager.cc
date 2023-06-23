@@ -25,7 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "custom_load_manager.h"
+
 #include <fstream>
+
 #include "constants.h"
 
 namespace triton { namespace perfanalyzer {

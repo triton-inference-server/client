@@ -25,7 +25,9 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 #include <getopt.h>
+
 #include <array>
+
 #include "command_line_parser.h"
 #include "doctest.h"
 
@@ -503,8 +505,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("set to 2000")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-length",
-                          "2000"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-length", "2000"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -529,8 +531,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("non-negative")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name,
-                          "--sequence-length-variation", "33.3"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-length-variation", "33.3"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -541,8 +543,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("negative")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name,
-                          "--sequence-length-variation", "-10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-length-variation", "-10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
@@ -598,8 +600,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("set to `/usr/data`")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--data-directory",
-                          "/usr/data"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--data-directory", "/usr/data"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -631,8 +633,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("One arg")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
-                          "53"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "53"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -643,8 +645,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("Two args")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
-                          "53:67"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "53:67"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -655,8 +657,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("Three args")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
-                          "53:67:92"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "53:67:92"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -672,8 +674,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("Not a number")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
-                          "BAD"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "BAD"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -684,8 +686,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("Not a number 2")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--sequence-id-range",
-                          "53:BAD"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "53:BAD"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -743,8 +745,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("expected input, single shape")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name:1,2,3"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name:1,2,3"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -756,15 +758,16 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("expected input, multiple shapes")
     {
       int argc = 9;
-      char* argv[argc] = {app_name,
-                          "-m",
-                          model_name,
-                          "--shape",
-                          "input_name:1,2,3",
-                          "--shape",
-                          "alpha:10,24",
-                          "--shape",
-                          "beta:10,200,34,15,9000"};
+      char* argv[argc] = {
+          app_name,
+          "-m",
+          model_name,
+          "--shape",
+          "input_name:1,2,3",
+          "--shape",
+          "alpha:10,24",
+          "--shape",
+          "beta:10,200,34,15,9000"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -780,8 +783,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("using negative dims")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name:-1,2,3"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name:-1,2,3"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -795,8 +798,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("equals sign, not colon")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name=-1,2,3"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name=-1,2,3"};
 
       // BUG this should call usages with the message
       // "failed to parse input shape. There must be a colon after input name
@@ -828,8 +831,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("missing colon")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name1,2,3"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name1,2,3"};
 
       // BUG this should call usages with the message
       // "failed to parse input shape. There must be a colon after input name
@@ -845,8 +848,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("bad shapes - a,b,c")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name:a,b,c"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name:a,b,c"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -861,8 +864,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("bad shapes - [1,2,3]")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--shape",
-                          "input_name:[1,2,3]"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--shape", "input_name:[1,2,3]"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -882,9 +885,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "", "500"};
 
-      SUBCASE("Long form") { argv[3] = "--measurement-interval"; }
+      SUBCASE("Long form")
+      {
+        argv[3] = "--measurement-interval";
+      }
 
-      SUBCASE("Short form") { argv[3] = "-p"; }
+      SUBCASE("Short form")
+      {
+        argv[3] = "-p";
+      }
 
       CAPTURE(argv[3]);
 
@@ -899,9 +908,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "", "-200"};
 
-      SUBCASE("Long form") { argv[3] = "--measurement-interval"; }
+      SUBCASE("Long form")
+      {
+        argv[3] = "--measurement-interval";
+      }
 
-      SUBCASE("Short form") { argv[3] = "-p"; }
+      SUBCASE("Short form")
+      {
+        argv[3] = "-p";
+      }
 
       CAPTURE(argv[3]);
 
@@ -920,9 +935,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "", "foobar"};
 
-      SUBCASE("Long form") { argv[3] = "--measurement-interval"; }
+      SUBCASE("Long form")
+      {
+        argv[3] = "--measurement-interval";
+      }
 
-      SUBCASE("Short form") { argv[3] = "-p"; }
+      SUBCASE("Short form")
+      {
+        argv[3] = "-p";
+      }
 
       CAPTURE(argv[3]);
 
@@ -941,8 +962,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("expected use")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100:400:10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100:400:10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -956,8 +977,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("only two options")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100:400"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100:400"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -970,8 +991,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("only one options")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100"};
 
       // QUESTION: What does this mean? Why pass only one?
       //
@@ -1002,8 +1023,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("too many options")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "200:100:25:10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "200:100:25:10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1020,8 +1041,9 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("way too many options")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "200:100:25:10:20:30"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range",
+          "200:100:25:10:20:30"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1038,8 +1060,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("wrong separator")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100,400,10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100,400,10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -1055,8 +1077,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("bad start value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "bad:400:10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "bad:400:10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1070,8 +1092,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("bad end value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100:bad:10"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100:bad:10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1086,8 +1108,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("bad step value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--concurrency-range",
-                          "100:400:bad"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--concurrency-range", "100:400:bad"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1133,8 +1155,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("valid value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
-                          "80"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--stability-percentage", "80"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -1145,8 +1167,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("set to 0")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
-                          "0"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--stability-percentage", "0"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -1155,8 +1177,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("negative value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
-                          "-20"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--stability-percentage", "-20"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -1170,8 +1192,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("floating point value")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage",
-                          "29.5"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--stability-percentage", "29.5"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
@@ -1222,8 +1244,8 @@ TEST_CASE("Testing Command Line Parser")
   {
     // missing --collect-metrics
     int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, "--metrics-url",
-                        "localhost:8002/metrics"};
+    char* argv[argc] = {
+        app_name, "-m", model_name, "--metrics-url", "localhost:8002/metrics"};
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(parser.UsageCalled());
@@ -1237,8 +1259,8 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("missing --collect-metrics")
     {
       int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--metrics-interval",
-                          "1000"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--metrics-interval", "1000"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1271,8 +1293,8 @@ TEST_CASE("Testing Command Line Parser")
 
     SUBCASE("one model")
     {
-      char* argv[argc] = {app_name, "-m", model_name, "--bls-composing-models",
-                          "a"};
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--bls-composing-models", "a"};
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(act->bls_composing_models.size() == 1);
       CHECK_STRING(act->bls_composing_models[0].first, "a");
@@ -1282,32 +1304,32 @@ TEST_CASE("Testing Command Line Parser")
     {
       SUBCASE("a,b,c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a,b,c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a,b,c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a, b, c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a, b, c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a, b, c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a,b, c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a,b, c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a,b, c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a, b,c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a, b,c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a, b,c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a, b,  c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a, b,  c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a, b,  c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
 
@@ -1324,26 +1346,30 @@ TEST_CASE("Testing Command Line Parser")
     {
       SUBCASE("a:1,b:2,c:1")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a:1,b:2,c:1"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models",
+            "a:1,b:2,c:1"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a:1, b:2, c:1")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a:1, b:2, c:1"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models",
+            "a:1, b:2, c:1"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a:1,  b:2, c:1")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a:1,  b:2, c:1"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models",
+            "a:1,  b:2, c:1"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       SUBCASE("a:1 ,  b:2, c:1")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a:1 ,  b:2, c:1"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models",
+            "a:1 ,  b:2, c:1"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       CHECK(!parser.UsageCalled());
@@ -1359,8 +1385,8 @@ TEST_CASE("Testing Command Line Parser")
     {
       SUBCASE("a,b:3,c")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a,b:3,c"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a,b:3,c"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       CHECK(!parser.UsageCalled());
@@ -1376,8 +1402,8 @@ TEST_CASE("Testing Command Line Parser")
     {
       SUBCASE("a:1,b:2,a:2")
       {
-        char* argv[argc] = {app_name, "-m", model_name,
-                            "--bls-composing-models", "a:1,b,a:2"};
+        char* argv[argc] = {
+            app_name, "-m", model_name, "--bls-composing-models", "a:1,b,a:2"};
         REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       }
       CHECK(!parser.UsageCalled());

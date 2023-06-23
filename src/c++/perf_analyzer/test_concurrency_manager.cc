@@ -836,8 +836,14 @@ TEST_CASE(
 {
   PerfAnalyzerParameters params{};
 
-  SUBCASE("sync") { params.async = false; }
-  SUBCASE("async") { params.async = true; }
+  SUBCASE("sync")
+  {
+    params.async = false;
+  }
+  SUBCASE("async")
+  {
+    params.async = true;
+  }
 
   TestConcurrencyManager tcm(params);
 

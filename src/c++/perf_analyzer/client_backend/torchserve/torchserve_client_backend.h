@@ -26,6 +26,7 @@
 #pragma once
 
 #include <string>
+
 #include "../../perf_utils.h"
 #include "../client_backend.h"
 #include "torchserve_http_client.h"

@@ -27,6 +27,7 @@
 #include <iostream>
 #include <sstream>
 #include <streambuf>
+
 #include "doctest.h"
 #include "metrics_manager.h"
 

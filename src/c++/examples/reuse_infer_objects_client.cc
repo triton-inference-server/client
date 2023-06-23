@@ -25,8 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "grpc_client.h"
 #include "http_client.h"
 #include "shm_utils.h"
@@ -152,8 +154,8 @@ InferAndValidate(
         "unable to unset shared memory for 'OUTPUT1'");
   }
 
-  std::vector<const tc::InferRequestedOutput*> routputs = {outputs[0],
-                                                           outputs[1]};
+  std::vector<const tc::InferRequestedOutput*> routputs = {
+      outputs[0], outputs[1]};
 
   tc::InferResult* results;
   if (protocol == "http") {
@@ -427,11 +429,11 @@ main(int argc, char** argv)
   }
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                    output1_ptr.get()};
+  std::vector<tc::InferRequestedOutput*> outputs = {
+      output0_ptr.get(), output1_ptr.get()};
 
-  std::vector<int*> shm_ptrs = {input0_shm, input1_shm, output0_shm,
-                                output1_shm};
+  std::vector<int*> shm_ptrs = {
+      input0_shm, input1_shm, output0_shm, output1_shm};
 
   // The inference settings. Will be using default for now.
   tc::InferOptions options(model_name);

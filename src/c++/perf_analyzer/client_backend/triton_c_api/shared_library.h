@@ -26,6 +26,7 @@
 #pragma once
 
 #include <string>
+
 #include "../client_backend.h"
 /// FIXME: Duplication of server/src/core/shared_library.h
 /// Separate shared_library to common library and delete this

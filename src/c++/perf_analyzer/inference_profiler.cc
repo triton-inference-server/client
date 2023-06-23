@@ -27,6 +27,7 @@
 #include "inference_profiler.h"
 
 #include <math.h>
+
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -34,6 +35,7 @@
 #include <queue>
 #include <sstream>
 #include <stdexcept>
+
 #include "client_backend/client_backend.h"
 #include "constants.h"
 #include "doctest.h"
@@ -1225,8 +1227,8 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
-  double window_duration_s{window_duration_ns /
-                           static_cast<double>(NANOS_PER_SECOND)};
+  double window_duration_s{
+      window_duration_ns / static_cast<double>(NANOS_PER_SECOND)};
 
   SummarizeSendRequestRate(
       window_duration_s, manager_->GetAndResetNumSentRequests(), summary);

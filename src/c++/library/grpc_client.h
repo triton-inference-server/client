@@ -28,7 +28,9 @@
 /// \file
 
 #include <grpcpp/grpcpp.h>
+
 #include <queue>
+
 #include "common.h"
 #include "grpc_service.grpc.pb.h"
 #include "ipc.h"

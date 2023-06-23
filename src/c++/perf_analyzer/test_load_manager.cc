@@ -72,7 +72,10 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     threads_stat_.clear();
     bool expect_ok = true;
 
-    SUBCASE("Empty") { expect_ok = true; }
+    SUBCASE("Empty")
+    {
+      expect_ok = true;
+    }
     SUBCASE("Good")
     {
       // Good entries: expect OK
@@ -279,7 +282,10 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     auto timestamp3 =
         std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
 
-    SUBCASE("No threads") { CHECK(CountCollectedRequests() == 0); }
+    SUBCASE("No threads")
+    {
+      CHECK(CountCollectedRequests() == 0);
+    }
     SUBCASE("One thread")
     {
       auto stat1 = std::make_shared<ThreadStat>();
@@ -375,9 +381,18 @@ TEST_CASE("load_manager_batch_size: Test the public function BatchSize()")
 {
   PerfAnalyzerParameters params;
 
-  SUBCASE("batch size 0") { params.batch_size = 0; }
-  SUBCASE("batch size 1") { params.batch_size = 1; }
-  SUBCASE("batch size 4") { params.batch_size = 4; }
+  SUBCASE("batch size 0")
+  {
+    params.batch_size = 0;
+  }
+  SUBCASE("batch size 1")
+  {
+    params.batch_size = 1;
+  }
+  SUBCASE("batch size 4")
+  {
+    params.batch_size = 4;
+  }
 
   TestLoadManager tlm(params);
   CHECK(tlm.BatchSize() == params.batch_size);

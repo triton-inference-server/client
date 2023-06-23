@@ -25,8 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "http_client.h"
 #include "json_utils.h"
 

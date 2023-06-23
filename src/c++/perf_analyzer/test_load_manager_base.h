@@ -277,16 +277,28 @@ class TestLoadManagerBase {
       params.start_sequence_id = 17;
       params.sequence_id_range = 8;
     }
-    SUBCASE("num_of_sequences 1") { params.num_of_sequences = 1; }
-    SUBCASE("less threads than seq") { params.num_of_sequences = 12; }
+    SUBCASE("num_of_sequences 1")
+    {
+      params.num_of_sequences = 1;
+    }
+    SUBCASE("less threads than seq")
+    {
+      params.num_of_sequences = 12;
+    }
     SUBCASE("num_of_sequences 8")
     {
       params.num_of_sequences = 8;
       // Make sequences long so we actually get 8 in flight at a time
       params.sequence_length = 20;
     }
-    SUBCASE("sequence_length 1") { params.sequence_length = 1; }
-    SUBCASE("sequence_length 10") { params.sequence_length = 10; }
+    SUBCASE("sequence_length 1")
+    {
+      params.sequence_length = 1;
+    }
+    SUBCASE("sequence_length 10")
+    {
+      params.sequence_length = 10;
+    }
     return params;
   }
 };

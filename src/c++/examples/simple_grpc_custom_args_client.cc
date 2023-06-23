@@ -26,8 +26,10 @@
 
 #include <getopt.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "grpc_client.h"
 
 namespace tc = triton::client;
@@ -212,8 +214,8 @@ main(int argc, char** argv)
   options.client_timeout_ = client_timeout;
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                          output1_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {
+      output0_ptr.get(), output1_ptr.get()};
 
   tc::InferResult* results;
   FAIL_IF_ERR(

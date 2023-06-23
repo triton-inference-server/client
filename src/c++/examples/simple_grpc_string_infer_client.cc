@@ -25,8 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "grpc_client.h"
 
 namespace tc = triton::client;
@@ -188,8 +190,8 @@ main(int argc, char** argv)
   options.model_version_ = model_version;
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                          output1_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {
+      output0_ptr.get(), output1_ptr.get()};
 
   tc::InferResult* results;
   FAIL_IF_ERR(

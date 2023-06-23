@@ -32,11 +32,13 @@
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <sys/stat.h>
+
 #include <future>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
+
 #include "c_api_infer_results.h"
 #include "scoped_defer.h"
 

@@ -25,12 +25,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <atomic>
 #include <condition_variable>
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
+
 #include "grpc_client.h"
 
 namespace tc = triton::client;
@@ -215,8 +217,8 @@ main(int argc, char** argv)
           reinterpret_cast<uint8_t*>(&wait_data[0]), sizeof(uint32_t)),
       "unable to set data for 'WAIT'");
 
-  std::vector<tc::InferInput*> inputs = {in_ptr.get(), delay_ptr.get(),
-                                         wait_ptr.get()};
+  std::vector<tc::InferInput*> inputs = {
+      in_ptr.get(), delay_ptr.get(), wait_ptr.get()};
 
   tc::InferOptions options(model_name);
 
