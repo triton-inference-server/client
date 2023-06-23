@@ -535,8 +535,8 @@ DataLoader::ReadTensorData(
         }
       }
 
-      // Validate that a fixed shape is available and that the data size matches
-      // the shape
+      // Validate that a fixed shape is available and matches the model shape
+      // and that the data size matches the shape
       int element_count;
       int64_t batch1_byte;
 
@@ -556,6 +556,30 @@ DataLoader::ReadTensorData(
                 "\" is missing shape, see --shape option.",
             pa::GENERIC_ERROR);
       }
+
+      if (shape_it != tensor_shape.end()) {
+        bool is_error = false;
+
+        if (shape_it->second.size() != io.second.shape_.size()) {
+          is_error = true;
+        }
+
+        for (size_t i = 0; i < shape_it->second.size(); i++) {
+          if (shape_it->second[i] != io.second.shape_[i] &&
+              io.second.shape_[i] != -1) {
+            is_error = true;
+            break;
+          }
+        }
+        if (is_error) {
+          return cb::Error(
+              "The supplied shape of " + ShapeVecToString(shape_it->second) +
+              " for input \"" + io.second.name_ +
+              "\" is incompatible with the model's input shape of " +
+              ShapeVecToString(io.second.shape_));
+        }
+      }
+
 
       if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
         return cb::Error(
