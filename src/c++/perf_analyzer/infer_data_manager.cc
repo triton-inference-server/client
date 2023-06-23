@@ -99,11 +99,7 @@ InferDataManager::CreateAndPopulateInput(
     if (data_ptrs[i] == nullptr) {
       missing_data_cnt++;
     } else {
-      // FIXME TKG -- Another possible fix here would have been to update
-      // AppendRaw to handle empty byte size case
-      if (byte_size[i]) {
-        RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
-      }
+      RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
     }
   }
 
