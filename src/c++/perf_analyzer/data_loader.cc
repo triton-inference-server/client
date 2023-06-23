@@ -345,9 +345,13 @@ DataLoader::GetInputData(
         *batch1_size = string_data->size();
       }
 
+
       if (it->second.size()) {
         *data_ptr = (const uint8_t*)&((it->second)[0]);
       } else {
+        // If data is found but empty, we still want to return a non-null
+        // pointer. In that case, just point to the vector itself (instead of
+        // the raw data)
         *data_ptr = (const uint8_t*)&(it->second);
       }
 
