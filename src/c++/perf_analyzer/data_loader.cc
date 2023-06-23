@@ -477,8 +477,6 @@ DataLoader::ReadTensorData(
 
       if (tensor.IsArray()) {
         content = &tensor;
-      } else if (tensor.HasMember("b64")) {
-        content = &tensor;
       } else {
         // Populate the shape values first if available
         if (tensor.HasMember("shape")) {
@@ -493,22 +491,26 @@ DataLoader::ReadTensorData(
           }
         }
 
-        if (!tensor.HasMember("content")) {
-          return cb::Error(
-              "missing content field. ( Location stream id: " +
-                  std::to_string(stream_index) +
-                  ", step id: " + std::to_string(step_index) + ")",
-              pa::GENERIC_ERROR);
-        }
+        if (tensor.HasMember("b64")) {
+          content = &tensor;
+        } else {
+          if (!tensor.HasMember("content")) {
+            return cb::Error(
+                "missing content field. ( Location stream id: " +
+                    std::to_string(stream_index) +
+                    ", step id: " + std::to_string(step_index) + ")",
+                pa::GENERIC_ERROR);
+          }
 
-        content = &tensor["content"];
+          content = &tensor["content"];
+        }
       }
 
       if (content->IsArray()) {
         RETURN_IF_ERROR(SerializeExplicitTensor(
             *content, io.second.datatype_, &it->second));
       } else {
-        if (content->HasMember("b64")) {
+        if (content->IsObject() && content->HasMember("b64")) {
           if ((*content)["b64"].IsString()) {
             const std::string& encoded = (*content)["b64"].GetString();
             it->second.resize(encoded.length());
