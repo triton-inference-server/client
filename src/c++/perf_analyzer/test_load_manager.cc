@@ -117,12 +117,15 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+    auto timestamp1 = std::make_tuple(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
+        false);
+    auto timestamp2 = std::make_tuple(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0,
+        false);
+    auto timestamp3 = std::make_tuple(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0,
+        false);
 
     TimestampVector source_timestamps;
 
@@ -275,17 +278,17 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+    auto timestamp1 = std::make_tuple(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
+        false);
+    auto timestamp2 = std::make_tuple(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0,
+        false);
+    auto timestamp3 = std::make_tuple(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0,
+        false);
 
-    SUBCASE("No threads")
-    {
-      CHECK(CountCollectedRequests() == 0);
-    }
+    SUBCASE("No threads") { CHECK(CountCollectedRequests() == 0); }
     SUBCASE("One thread")
     {
       auto stat1 = std::make_shared<ThreadStat>();

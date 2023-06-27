@@ -154,14 +154,16 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       return;
     }
     end_time_sync = std::chrono::system_clock::now();
+    std::vector<std::chrono::time_point<std::chrono::system_clock>>
+        end_time_syncs{end_time_sync};
     {
       // Add the request timestamp to thread Timestamp vector with proper
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
-          delayed));
+          start_time_sync, std::move(end_time_syncs),
+          infer_data_.options_->sequence_end_, delayed));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -231,8 +233,6 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
-    // TODO(DEB) - Update with ticket number for bubbling up the final response
-    // flag
     bool final_response = true;
     // Add the request timestamp to thread Timestamp vector with
     // proper locking

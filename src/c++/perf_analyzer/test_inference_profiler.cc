@@ -170,33 +170,42 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
       // request ends before window starts, this should not be possible to exist
       // in the vector of requests, but if it is, we exclude it: not included in
       // current window
-      std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false),
+      std::make_tuple(
+          time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
+          false),
 
       // request starts before window starts and ends inside window: included in
       // current window
-      std::make_tuple(time_point(ns(3)), time_point(ns(5)), 0, false),
+      std::make_tuple(
+          time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
+          false),
 
       // requests start and end inside window: included in current window
-      std::make_tuple(time_point(ns(6)), time_point(ns(9)), 0, false),
-      std::make_tuple(time_point(ns(10)), time_point(ns(14)), 0, false),
+      std::make_tuple(
+          time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
+          false),
+      std::make_tuple(
+          time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
+          false),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
-      std::make_tuple(time_point(ns(15)), time_point(ns(20)), 0, false),
+      std::make_tuple(
+          time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
+          false),
 
       // request starts after window ends: not included in current window
-      std::make_tuple(time_point(ns(21)), time_point(ns(27)), 0, false)};
+      std::make_tuple(
+          time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
+          false)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
       all_timestamps);
 
   const auto& convert_timestamp_to_latency{
-      [](std::tuple<
-          std::chrono::time_point<std::chrono::system_clock>,
-          std::chrono::time_point<std::chrono::system_clock>, uint32_t, bool>
-             t) {
-        return CHRONO_TO_NANOS(std::get<1>(t)) -
+      [](std::tuple<time_point, std::vector<time_point>&, uint32_t, bool> t) {
+        return CHRONO_TO_NANOS(std::get<1>(t).back()) -
                CHRONO_TO_NANOS(std::get<0>(t));
       }};
 
