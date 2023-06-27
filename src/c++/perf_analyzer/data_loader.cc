@@ -610,9 +610,6 @@ DataLoader::ValidateTensor(
       model_tensor.name_ + "_" + std::to_string(stream_index) + "_" +
       std::to_string(step_index));
 
-  int element_count;
-  int64_t batch1_byte;
-
   auto data_it = input_data_.find(key_name);
   if (data_it == input_data_.end()) {
     data_it = output_data_.find(key_name);
@@ -622,15 +619,25 @@ DataLoader::ValidateTensor(
   }
 
   auto shape_it = input_shapes_.find(key_name);
-  if (shape_it != input_shapes_.end()) {
-    element_count = ElementCount(shape_it->second);
-    batch1_byte = ByteSize(shape_it->second, model_tensor.datatype_);
-  } else {
-    element_count = ElementCount(model_tensor.shape_);
-    batch1_byte = ByteSize(model_tensor.shape_, model_tensor.datatype_);
-  }
 
-  // Validate that the shape is specified if variable-sized
+  const std::vector<char>& data = data_it->second;
+  const std::vector<int64_t>& shape = (shape_it == input_shapes_.end())
+                                          ? model_tensor.shape_
+                                          : shape_it->second;
+
+  int64_t batch1_byte = ByteSize(shape, model_tensor.datatype_);
+
+  RETURN_IF_ERROR(ValidateTensorShape(shape, model_tensor));
+  RETURN_IF_ERROR(ValidateTensorDataSize(data, batch1_byte, model_tensor));
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateTensorShape(
+    const std::vector<int64_t>& shape, const ModelTensor& model_tensor)
+{
+  int element_count = ElementCount(shape);
   if (element_count < 0) {
     return cb::Error(
         "The variable-sized tensor \"" + model_tensor.name_ +
@@ -639,39 +646,41 @@ DataLoader::ValidateTensor(
         pa::GENERIC_ERROR);
   }
 
-  // Validate that the specified shape is compatible with the model shape
-  if (shape_it != input_shapes_.end()) {
-    bool is_error = false;
+  bool is_error = false;
 
-    if (shape_it->second.size() != model_tensor.shape_.size()) {
+  if (shape.size() != model_tensor.shape_.size()) {
+    is_error = true;
+  }
+
+  for (size_t i = 0; i < shape.size() && !is_error; i++) {
+    if (shape[i] != model_tensor.shape_[i] && model_tensor.shape_[i] != -1) {
       is_error = true;
-    }
-
-    for (size_t i = 0; i < shape_it->second.size(); i++) {
-      if (shape_it->second[i] != model_tensor.shape_[i] &&
-          model_tensor.shape_[i] != -1) {
-        is_error = true;
-        break;
-      }
-    }
-    if (is_error) {
-      return cb::Error(
-          "The supplied shape of " + ShapeVecToString(shape_it->second) +
-          " for input \"" + model_tensor.name_ +
-          "\" is incompatible with the model's input shape of " +
-          ShapeVecToString(model_tensor.shape_));
     }
   }
 
+  if (is_error) {
+    return cb::Error(
+        "The supplied shape of " + ShapeVecToString(shape) + " for input \"" +
+        model_tensor.name_ +
+        "\" is incompatible with the model's input shape of " +
+        ShapeVecToString(model_tensor.shape_));
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateTensorDataSize(
+    const std::vector<char>& data, int64_t batch1_byte,
+    const ModelTensor& model_tensor)
+{
   // Validate that the supplied data matches the amount of data expected based
   // on the shape
-  if (batch1_byte > 0 && (size_t)batch1_byte != data_it->second.size()) {
+  if (batch1_byte > 0 && (size_t)batch1_byte != data.size()) {
     return cb::Error(
         "mismatch in the data provided for " + model_tensor.name_ +
             ". Expected: " + std::to_string(batch1_byte) +
-            " bytes, Got: " + std::to_string(data_it->second.size()) +
-            " bytes ( Location stream id: " + std::to_string(stream_index) +
-            ", step id: " + std::to_string(step_index) + ")",
+            " bytes, Got: " + std::to_string(data.size()) + " bytes",
         pa::GENERIC_ERROR);
   }
 

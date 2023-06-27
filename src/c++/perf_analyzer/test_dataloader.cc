@@ -292,21 +292,21 @@ TEST_CASE(
     json_str = R"({"data": [{ "INPUT1": [1,2] }]})";
     expected_message =
         "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
-        "bytes ( Location stream id: 0, step id: 0)";
+        "bytes";
   }
   SUBCASE("content json")
   {
     json_str = R"({"data": [{ "INPUT1": { "content": [1,2] } }]})";
     expected_message =
         "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
-        "bytes ( Location stream id: 0, step id: 0)";
+        "bytes";
   }
   SUBCASE("b64 json")
   {
     json_str = R"({"data": [{ "INPUT1": {"b64": "AAAAAQ=="} }]})";
     expected_message =
         "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 4 "
-        "bytes ( Location stream id: 0, step id: 0)";
+        "bytes";
   }
 
   MockDataLoader dataloader;
@@ -338,14 +338,14 @@ TEST_CASE(
         R"({"data": [{ "INPUT1": { "shape": [3], "content": [1,2] } }]})";
     expected_message =
         "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
-        "bytes ( Location stream id: 0, step id: 0)";
+        "bytes";
   }
   SUBCASE("b64 json")
   {
     json_str = R"({"data": [{ "INPUT1": {"shape": [3], "b64": "AAAAAQ=="} }]})";
     expected_message =
         "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 4 "
-        "bytes ( Location stream id: 0, step id: 0)";
+        "bytes";
   }
 
   MockDataLoader dataloader;

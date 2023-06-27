@@ -174,6 +174,15 @@ class DataLoader {
       const ModelTensor& model_tensor, const int stream_index,
       const int step_index);
 
+  /// Helper function to validate the provided shape for a tensor
+  cb::Error ValidateTensorShape(
+      const std::vector<int64_t>& shape, const ModelTensor& model_tensor);
+
+  cb::Error ValidateTensorDataSize(
+      const std::vector<char>& data, int64_t batch1_byte,
+      const ModelTensor& model_tensor);
+
+
   // The batch_size_ for the data
   size_t batch_size_{1};
   // The total number of data streams available.
