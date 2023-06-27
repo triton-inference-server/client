@@ -204,7 +204,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
       all_timestamps);
 
   const auto& convert_timestamp_to_latency{
-      [](std::tuple<time_point, std::vector<time_point>&, uint32_t, bool> t) {
+      [](std::tuple<time_point, std::vector<time_point>, uint32_t, bool> t) {
         return CHRONO_TO_NANOS(std::get<1>(t).back()) -
                CHRONO_TO_NANOS(std::get<0>(t));
       }};

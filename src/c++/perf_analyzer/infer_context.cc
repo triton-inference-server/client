@@ -233,6 +233,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
+    //TODO TMA-1257 use final response parameter from grpc client 
     bool final_response = true;
     // Add the request timestamp to thread Timestamp vector with
     // proper locking
