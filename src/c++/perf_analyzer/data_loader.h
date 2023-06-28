@@ -166,6 +166,24 @@ class DataLoader {
       const std::shared_ptr<ModelTensorMap>& tensors, const int stream_index,
       const int step_index, const bool is_input);
 
+  /// Helper function to validate the provided data and shape for the tensor
+  /// \param input The target model input or output tensor
+  /// \param stream_index the stream index the data should be exported to.
+  /// \param step_index the step index the data should be exported to.
+  /// Returns error object indicating status
+  cb::Error ValidateTensor(
+      const ModelTensor& model_tensor, const int stream_index,
+      const int step_index);
+
+  /// Helper function to validate the provided shape for a tensor
+  cb::Error ValidateTensorShape(
+      const std::vector<int64_t>& shape, const ModelTensor& model_tensor);
+
+  cb::Error ValidateTensorDataSize(
+      const std::vector<char>& data, int64_t batch1_byte,
+      const ModelTensor& model_tensor);
+
+
   // The batch_size_ for the data
   size_t batch_size_{1};
   // The total number of data streams available.

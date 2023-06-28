@@ -197,7 +197,86 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
 }
 
 TEST_CASE(
-    "dataloader: ParseData: Mismatch Input Shape" *
+    "dataloader: ParseData: Mismatching Shapes" *
+    doctest::description(
+        "When the shape is provided and it is incompatible with the actual "
+        "model shape, then an error should be thrown"))
+{
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+
+  std::string expected_message;
+  std::string json_str;
+
+  SUBCASE("Mismatching fixed shape")
+  {
+    input1.shape_ = {3};
+    expected_message =
+        "The supplied shape of [1] for input \"INPUT1\" is incompatible with "
+        "the "
+        "model's input shape of [3]";
+
+    SUBCASE("content json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1], "content": [1] } }]})";
+    }
+    SUBCASE("b64 json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1], "b64": "AAAAAQ=="} }]})";
+    }
+  }
+  SUBCASE("Mismatching dynamic dimensions")
+  {
+    input1.shape_ = {-1};
+    expected_message =
+        "The supplied shape of [1,1] for input \"INPUT1\" is incompatible with "
+        "the model's input shape of [-1]";
+
+    SUBCASE("content json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1,1], "content": [1] } }]})";
+    }
+    SUBCASE("b64 json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1,1], "b64": "AAAAAQ=="} }]})";
+    }
+  }
+  SUBCASE("Mismatching multiple dimensions")
+  {
+    input1.shape_ = {-1, 2};
+    expected_message =
+        "The supplied shape of [1,1] for input \"INPUT1\" is incompatible with "
+        "the model's input shape of [-1,2]";
+
+    SUBCASE("content json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1,1], "content": [1] } }]})";
+    }
+    SUBCASE("b64 json")
+    {
+      json_str =
+          R"({"data": [{ "INPUT1": { "shape": [1,1], "b64": "AAAAAQ=="} }]})";
+    }
+  }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
+  REQUIRE(status.IsOk() == false);
+  CHECK_EQ(status.Message(), expected_message);
+}
+
+
+TEST_CASE(
+    "dataloader: ParseData: Mismatch Input Data and Fixed Shape" *
     doctest::description(
         "When the size of the provided Input is not in line with the Tensor's "
         "shape, then an error should be thrown"))
@@ -208,23 +287,65 @@ TEST_CASE(
   std::string expected_message;
   std::string json_str;
 
-  // FIXME TMA-1210
-  // SUBCASE("Normal json")
-  // {
-  //   json_str = R"({"data": [{ "INPUT1": [1,2] }]})";
-  //   expected_message = "FIXME";
-  // }
-  // SUBCASE("content json")
-  // {
-  //   json_str = R"({"data": [{ "INPUT1": { "content": [1,2] } }]})";
-  //   expected_message = "FIXME";
-  // }
+  SUBCASE("Normal json")
+  {
+    json_str = R"({"data": [{ "INPUT1": [1,2] }]})";
+    expected_message =
+        "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
+        "bytes";
+  }
+  SUBCASE("content json")
+  {
+    json_str = R"({"data": [{ "INPUT1": { "content": [1,2] } }]})";
+    expected_message =
+        "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
+        "bytes";
+  }
   SUBCASE("b64 json")
   {
     json_str = R"({"data": [{ "INPUT1": {"b64": "AAAAAQ=="} }]})";
     expected_message =
-        "mismatch in the data provided. Expected: 12 bytes, Got: 4 bytes ( "
-        "Location stream id: 0, step id: 0)";
+        "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 4 "
+        "bytes";
+  }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
+  REQUIRE(status.IsOk() == false);
+  CHECK_EQ(status.Message(), expected_message);
+}
+
+TEST_CASE(
+    "dataloader: ParseData: Mismatch Input Data and Dynamic Shape" *
+    doctest::description(
+        "When the size of the provided Input is not in line with the Tensor's "
+        "shape, then an error should be thrown"))
+{
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  input1.shape_ = {-1};
+
+  std::string expected_message;
+  std::string json_str;
+
+  SUBCASE("content json")
+  {
+    json_str =
+        R"({"data": [{ "INPUT1": { "shape": [3], "content": [1,2] } }]})";
+    expected_message =
+        "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 8 "
+        "bytes";
+  }
+  SUBCASE("b64 json")
+  {
+    json_str = R"({"data": [{ "INPUT1": {"shape": [3], "b64": "AAAAAQ=="} }]})";
+    expected_message =
+        "mismatch in the data provided for INPUT1. Expected: 12 bytes, Got: 4 "
+        "bytes";
   }
 
   MockDataLoader dataloader;
@@ -500,7 +621,6 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
   CHECK_EQ(batch1_size, 4);
 }
 
-
 TEST_CASE(
     "dataloader: ParseData: Missing Shape" *
     doctest::description(
@@ -523,36 +643,10 @@ TEST_CASE(
   CHECK_EQ(status.IsOk(), false);
   CHECK_EQ(
       status.Message(),
-      "The variable-sized tensor \"INPUT1\" is missing shape, see --shape "
-      "option.");
+      "The variable-sized tensor \"INPUT1\" with model shape [-1] needs to "
+      "have its shape fully defined. See the --shape option.");
 }
 
-// FIXME TMA-1210
-// TEST_CASE(
-//    "dataloader: ParseData: Supplied Shape is wrong" *
-//    doctest::description("Supply the dynamic shape for an input, but have it "
-//                         "mismatch the size/shape of the supplied data"))
-//{
-//  std::string json_str{R"({"data": [{
-//     "INPUT1": { "shape": [4], "content": [1,2,3] }
-//    }]})"};
-//
-//  MockDataLoader dataloader;
-//  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
-//  std::shared_ptr<ModelTensorMap> outputs =
-//  std::make_shared<ModelTensorMap>();
-//
-//  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-//  input1.shape_ = {-1};
-//
-//  inputs->insert(std::make_pair(input1.name_, input1));
-//
-//  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
-//  CHECK_EQ(status.IsOk(), false);
-//  CHECK_EQ(status.Message(), "FIXME");
-//}
-// FIXME TMA-1210 -- what about the case of the actual shape not being the same
-// (or mismatching dynamic shape?)
 
 TEST_CASE(
     "dataloader: ParseData: Supplied Shape is valid" *
