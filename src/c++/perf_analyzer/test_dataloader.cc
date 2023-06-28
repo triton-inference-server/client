@@ -741,74 +741,13 @@ TEST_CASE(
   CHECK_EQ(batch1_size, 0);
 }
 
-// FIXME TMA 1211
-// TEST_CASE(
-//    "dataloader: ParseData: Multiple Calls" *
-//    doctest::description(
-//        "ParseData can be called multiple times. The data should "
-//        "accumulate (as opposed to only the last call being valid)"))
-//{
-//  std::string json_str1{R"({
-//  "data": [
-//    { "INPUT1": [1, 2] },
-//    { "INPUT1": [2, 3] }
-//  ],
-//  "validation_data": [
-//   { "OUTPUT1": [4, 5, 6] },
-//   { "OUTPUT1": [5, 6, 7] }
-//  ]})"};
-//
-//  std::string json_str2{R"({
-//  "data": [
-//    [{ "INPUT1": [10, 20] }],
-//    [{ "INPUT1": [100, 200] }]
-//  ]})"};
-//
-//  std::string json_str3{R"({
-//  "data": [
-//    { "INPUT1": [1000, 2000] },
-//    { "INPUT1": [2000, 3000] },
-//    { "INPUT1": [3000, 4000] }
-//  ]})"};
-//
-//
-//  MockDataLoader dataloader;
-//  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
-//  std::shared_ptr<ModelTensorMap> outputs =
-//  std::make_shared<ModelTensorMap>();
-//
-//  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-//  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
-//
-//  inputs->insert(std::make_pair(input1.name_, input1));
-//  outputs->insert(std::make_pair(output1.name_, output1));
-//
-//  cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
-//  CHECK(status.IsOk());
-//  CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
-//  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
-//
-//  status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
-//  CHECK(status.IsOk());
-//  CHECK_EQ(dataloader.GetDataStreamsCount(), 3);
-//  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
-//  CHECK_EQ(dataloader.GetTotalSteps(1), 1);
-//  CHECK_EQ(dataloader.GetTotalSteps(2), 1);
-//
-//  status = dataloader.ReadDataFromStr(json_str3, inputs, outputs);
-//  CHECK(status.IsOk());
-//  CHECK_EQ(dataloader.GetDataStreamsCount(), 4);
-//  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
-//  CHECK_EQ(dataloader.GetTotalSteps(1), 1);
-//  CHECK_EQ(dataloader.GetTotalSteps(2), 1);
-//  CHECK_EQ(dataloader.GetTotalSteps(3), 3);
-//}
 
 TEST_CASE(
     "dataloader: ParseData: Multiple Calls simple" *
-    doctest::description("ParseData can be called multiple times (due to "
-                         "multiple input-data files). The data should "
-                         "accumulate in stream 0 when no nested arrays"))
+    doctest::description(
+        "ParseData can be called multiple times (due to "
+        "multiple input-data files). The data should "
+        "accumulate in stream 0 when input data has no nested arrays"))
 {
   std::string json_str1{R"({"data": [{ "INPUT1": [1] }]})"};
   std::string json_str2{R"({"data": [{ "INPUT1": [2] }]})"};
@@ -820,8 +759,10 @@ TEST_CASE(
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
 
   inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
 
   cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
   REQUIRE(status.IsOk());
@@ -850,14 +791,20 @@ TEST_CASE(
   CHECK_EQ(input_data[0], 3);
   CHECK_EQ(batch1_size, 4);
 
-  // FIXME output validation should throw error if not on all?
+  // Confirm that the mismatching output is silently ignored
+  // TMA-1220 this behavior changes to an error
+  //
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
 }
 
 TEST_CASE(
     "dataloader: ParseData: Multiple Calls array" *
-    doctest::description("ParseData can be called multiple times (due to "
-                         "multiple input-data files). The data should "
-                         "accumulate as multiple streams when nested arrays"))
+    doctest::description(
+        "ParseData can be called multiple times (due to "
+        "multiple input-data files). The data should "
+        "accumulate as multiple streams when input data has nested arrays"))
 {
   std::string json_str1{R"({"data": [[{ "INPUT1": [1] }]]})"};
   std::string json_str2{
@@ -870,8 +817,10 @@ TEST_CASE(
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
 
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
 
   inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
 
   cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
   REQUIRE(status.IsOk());
@@ -896,10 +845,18 @@ TEST_CASE(
   CHECK_EQ(input_data[0], 20);
   CHECK_EQ(batch1_size, 4);
 
-  status = dataloader.GetOutputData("OUTPUT1", 2, 0, &data_ptr, &batch1_size);
+  // Confirm that only one of the 3 streams has output data
+  //
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
   REQUIRE(status.IsOk());
   CHECK(data_ptr == nullptr);
-  CHECK(batch1_size == 0);
+  status = dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
+  status = dataloader.GetOutputData("OUTPUT1", 2, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr != nullptr);
+  CHECK(batch1_size == 4);
 }
 
 TEST_CASE(
