@@ -221,8 +221,6 @@ DataLoader::ParseData(
         offset = step_num_[0];
         step_num_[0] += (count);
       }
-      // FIXME TMA-1211 At least part of the bug is here. datastream is reset
-      // ignoring previous calls!
       data_stream_cnt_ = 1;
       for (size_t k = offset; k < step_num_[0]; k++) {
         RETURN_IF_ERROR(
