@@ -490,12 +490,14 @@ TEST_CASE("dataloader: ParseData: Valid Data")
   CHECK_EQ(shape.size(), 1);
   CHECK_EQ(shape[0], 1);
 
-  dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
   auto input_data = *reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(input_data, 2);
   CHECK_EQ(batch1_size, 4);
 
-  dataloader.GetOutputData("OUTPUT1", 0, 2, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 2, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
   auto output_data = *reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(output_data, 6);
   CHECK_EQ(batch1_size, 4);
@@ -607,7 +609,8 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
 
-  dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
 
   const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(input_data[0], 2);
@@ -615,7 +618,8 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
   // 2 elements of int32 data is 8 bytes
   CHECK_EQ(batch1_size, 8);
 
-  dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
   const int32_t* output_data = reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(output_data[0], 40);
   CHECK_EQ(batch1_size, 4);
@@ -802,13 +806,14 @@ TEST_CASE(
 
 TEST_CASE(
     "dataloader: ParseData: Multiple Calls simple" *
-    doctest::description(
-        "ParseData can be called multiple times. The data should "
-        "accumulate in stream 0 when no nested arrays"))
+    doctest::description("ParseData can be called multiple times (due to "
+                         "multiple input-data files). The data should "
+                         "accumulate in stream 0 when no nested arrays"))
 {
   std::string json_str1{R"({"data": [{ "INPUT1": [1] }]})"};
   std::string json_str2{R"({"data": [{ "INPUT1": [2] }]})"};
-  std::string json_str3{R"({"data": [{ "INPUT1": [3] }]})"};
+  std::string json_str3{
+      R"({"data": [{ "INPUT1": [3] }], "validation_data": [{ "OUTPUT1": [30] }]})"};
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -838,11 +843,63 @@ TEST_CASE(
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
 
-  dataloader.GetInputData(input1, 0, 2, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 2, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
 
   const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(input_data[0], 3);
   CHECK_EQ(batch1_size, 4);
+
+  // FIXME output validation should throw error if not on all?
+}
+
+TEST_CASE(
+    "dataloader: ParseData: Multiple Calls array" *
+    doctest::description("ParseData can be called multiple times (due to "
+                         "multiple input-data files). The data should "
+                         "accumulate as multiple streams when nested arrays"))
+{
+  std::string json_str1{R"({"data": [[{ "INPUT1": [1] }]]})"};
+  std::string json_str2{
+      R"({"data": [[{ "INPUT1": [2] },{ "INPUT1": [20] }]]})"};
+  std::string json_str3{
+      R"({"data": [[{ "INPUT1": [3] }]], "validation_data": [[{ "OUTPUT1": [30] }]]})"};
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
+  REQUIRE(status.IsOk());
+  status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
+  REQUIRE(status.IsOk());
+  status = dataloader.ReadDataFromStr(json_str3, inputs, outputs);
+  REQUIRE(status.IsOk());
+  CHECK_EQ(dataloader.GetDataStreamsCount(), 3);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 1);
+  CHECK_EQ(dataloader.GetTotalSteps(1), 2);
+  CHECK_EQ(dataloader.GetTotalSteps(2), 1);
+
+  // Confirm the correct data is in the dataloader
+  //
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size;
+
+  status = dataloader.GetInputData(input1, 1, 1, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK_EQ(input_data[0], 20);
+  CHECK_EQ(batch1_size, 4);
+
+  status = dataloader.GetOutputData("OUTPUT1", 2, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
+  CHECK(batch1_size == 0);
 }
 
 TEST_CASE(
@@ -1296,7 +1353,7 @@ TEST_CASE(
   outputs->insert(std::make_pair(output1.name_, output1));
 
   cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
-  REQUIRE(status.IsOk() == true);
+  REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
@@ -1304,14 +1361,18 @@ TEST_CASE(
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
 
-  dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+
   const char* input_data = reinterpret_cast<const char*>(data_ptr);
   REQUIRE(batch1_size == expected_input.size());
   for (size_t i = 0; i < batch1_size; i++) {
     CHECK(input_data[i] == expected_input[i]);
   }
 
-  dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+
   const char* output_data = reinterpret_cast<const char*>(data_ptr);
   REQUIRE(batch1_size == expected_output.size());
   for (size_t i = 0; i < batch1_size; i++) {
