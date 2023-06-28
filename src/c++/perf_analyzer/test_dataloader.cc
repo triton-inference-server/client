@@ -912,7 +912,10 @@ TEST_CASE(
   REQUIRE(status.IsOk());
   status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
   REQUIRE(!status.IsOk());
-  // FIXME msg
+  CHECK(
+      status.Message() ==
+      "Inconsistency in input-data provided. Can not have a combination of "
+      "objects and arrays inside of the Data array");
 }
 
 TEST_CASE(

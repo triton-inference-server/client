@@ -185,7 +185,9 @@ class DataLoader {
       const ModelTensor& model_tensor);
 
   /// Helper function to validate consistency of parsing mode for provided input
-  /// data
+  /// data.  The code explicitly does not support a mixture of objects (multiple
+  /// entries of a single stream) and arrays (multiple streams)
+  ///
   cb::Error ValidateParsingMode(const rapidjson::Value& steps);
 
   // The batch_size_ for the data

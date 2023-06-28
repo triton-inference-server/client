@@ -694,7 +694,7 @@ DataLoader::ValidateTensorDataSize(
 cb::Error
 DataLoader::ValidateParsingMode(const rapidjson::Value& steps)
 {
-  // If our first time parsing data, set the mode
+  // If our first time parsing data, capture the mode
   if (step_num_.size() == 0) {
     multiple_stream_mode_ = steps.IsArray();
   } else {
