@@ -160,6 +160,16 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
     json_str = R"({"data": [{ "INPUT1": null }]})";
     expected_message = "Input data file is malformed.";
   }
+  SUBCASE("Inconsistent elements in data array")
+  {
+    json_str = R"({"data": [
+      [{ "INPUT1": [2] },{ "INPUT1": [3] }],
+      { "INPUT1": [1] }
+    ]})";
+    expected_message =
+        "Inconsistency in input-data provided. Can not have a combination of "
+        "objects and arrays inside of the Data array";
+  }
   SUBCASE("Not integer shape")
   {
     json_str = R"({"data": [{
@@ -750,7 +760,7 @@ TEST_CASE(
         "accumulate in stream 0 when input data has no nested arrays"))
 {
   std::string json_str1{R"({"data": [{ "INPUT1": [1] }]})"};
-  std::string json_str2{R"({"data": [{ "INPUT1": [2] }]})"};
+  std::string json_str2{R"({"data": [{ "INPUT1": [2] },{ "INPUT1": [22]}]})"};
   std::string json_str3{
       R"({"data": [{ "INPUT1": [3] }], "validation_data": [{ "OUTPUT1": [30] }]})"};
 
@@ -772,31 +782,40 @@ TEST_CASE(
   status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
   REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
-  CHECK_EQ(dataloader.GetTotalSteps(0), 2);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 3);
 
   status = dataloader.ReadDataFromStr(json_str3, inputs, outputs);
   REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
-  CHECK_EQ(dataloader.GetTotalSteps(0), 3);
+  CHECK_EQ(dataloader.GetTotalSteps(0), 4);
 
   // Confirm the correct data is in the dataloader
   //
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size;
 
-  status = dataloader.GetInputData(input1, 0, 2, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 3, &data_ptr, &batch1_size);
   REQUIRE(status.IsOk());
 
   const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
   CHECK_EQ(input_data[0], 3);
   CHECK_EQ(batch1_size, 4);
 
-  // Confirm that the mismatching output is silently ignored
-  // TMA-1220 this behavior changes to an error
+  // Confirm that only one of the 4 steps has output data
   //
   status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
   REQUIRE(status.IsOk());
   CHECK(data_ptr == nullptr);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 1, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 2, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr == nullptr);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 3, &data_ptr, &batch1_size);
+  REQUIRE(status.IsOk());
+  CHECK(data_ptr != nullptr);
+  CHECK(batch1_size == 4);
 }
 
 TEST_CASE(
@@ -857,6 +876,43 @@ TEST_CASE(
   REQUIRE(status.IsOk());
   CHECK(data_ptr != nullptr);
   CHECK(batch1_size == 4);
+}
+
+TEST_CASE(
+    "dataloader: ParseData: Multiple Calls mixed" *
+    doctest::description(
+        "ParseData can be called multiple times (due to "
+        "multiple input-data files). An error should be thrown if there is a "
+        "mixture of nested vs no-nested arrays in the input data"))
+{
+  std::string json_str_not_nested{R"({"data": [{ "INPUT1": [2] }]})"};
+  std::string json_str_nested{R"({"data": [[{ "INPUT1": [1] }]]})"};
+  std::string json_str1, json_str2;
+
+  SUBCASE("Nested then not-nested")
+  {
+    json_str1 = json_str_nested;
+    json_str2 = json_str_not_nested;
+  }
+  SUBCASE("Not-nested then nested")
+  {
+    json_str1 = json_str_not_nested;
+    json_str2 = json_str_nested;
+  }
+
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+
+  cb::Error status = dataloader.ReadDataFromStr(json_str1, inputs, outputs);
+  REQUIRE(status.IsOk());
+  status = dataloader.ReadDataFromStr(json_str2, inputs, outputs);
+  REQUIRE(!status.IsOk());
+  // FIXME msg
 }
 
 TEST_CASE(

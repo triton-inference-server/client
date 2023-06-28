@@ -189,6 +189,9 @@ DataLoader::ParseData(
     const rapidjson::Value& steps = streams[i - offset];
     const rapidjson::Value* output_steps =
         (out_streams == nullptr) ? nullptr : &(*out_streams)[i - offset];
+
+    RETURN_IF_ERROR(ValidateParsingMode(steps));
+
     if (steps.IsArray()) {
       step_num_.push_back(steps.Size());
       for (size_t k = 0; k < step_num_[i]; k++) {
@@ -685,6 +688,23 @@ DataLoader::ValidateTensorDataSize(
         pa::GENERIC_ERROR);
   }
 
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateParsingMode(const rapidjson::Value& steps)
+{
+  // If our first time parsing data, set the mode
+  if (step_num_.size() == 0) {
+    multiple_stream_mode_ = steps.IsArray();
+  } else {
+    if (steps.IsArray() != multiple_stream_mode_) {
+      return cb::Error(
+          "Inconsistency in input-data provided. Can not have a combination of "
+          "objects and arrays inside of the Data array",
+          pa::GENERIC_ERROR);
+    }
+  }
   return cb::Error::Success;
 }
 

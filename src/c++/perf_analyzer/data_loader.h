@@ -179,10 +179,14 @@ class DataLoader {
   cb::Error ValidateTensorShape(
       const std::vector<int64_t>& shape, const ModelTensor& model_tensor);
 
+  /// Helper function to validate the provided data's size
   cb::Error ValidateTensorDataSize(
       const std::vector<char>& data, int64_t batch1_byte,
       const ModelTensor& model_tensor);
 
+  /// Helper function to validate consistency of parsing mode for provided input
+  /// data
+  cb::Error ValidateParsingMode(const rapidjson::Value& steps);
 
   // The batch_size_ for the data
   size_t batch_size_{1};
@@ -203,6 +207,9 @@ class DataLoader {
   // Placeholder for generated input data, which will be used for all inputs
   // except string
   std::vector<uint8_t> input_buf_;
+
+  // Tracks what type of input data has been provided
+  bool multiple_stream_mode_ = false;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockDataLoader;
