@@ -31,7 +31,8 @@ import pkg_resources
 import struct
 
 import ctypes
-from ._dlpack import *
+from .. import _dlpack as dlpack
+from .._shared_memory_tensor import SharedMemoryTensor
 
 class _utf8(object):
 
@@ -61,12 +62,12 @@ _ccudashm_get_raw_handle.argtypes = [c_void_p, POINTER(c_char_p)]
 _ccudashm_shared_memory_region_set = _ccudashm.CudaSharedMemoryRegionSet
 _ccudashm_shared_memory_region_set.restype = c_int
 _ccudashm_shared_memory_region_set.argtypes = [
-    c_void_p, c_uint64, c_uint64, c_void_p
+    c_void_p, c_uint64, c_uint64, c_void_p, c_int
 ]
 _cshm_get_shared_memory_handle_info = _ccudashm.GetCudaSharedMemoryHandleInfo
 _cshm_get_shared_memory_handle_info.restype = c_int
 _cshm_get_shared_memory_handle_info.argtypes = [
-    c_void_p, POINTER(c_char_p),
+    c_void_p, POINTER(c_void_p),
     POINTER(c_uint64),
     POINTER(c_uint64),
     POINTER(c_int)
@@ -191,12 +192,12 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
             byte_size = np.dtype(np.byte).itemsize * len(input_value)
             _raise_if_error(
                 c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
-                    c_uint64(byte_size), cast(input_value, c_void_p))))
+                    c_uint64(byte_size), cast(input_value, c_void_p), -1)))
         else:
             byte_size = input_value.size * input_value.itemsize
             _raise_if_error(
                 c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
-                    c_uint64(byte_size), input_value.ctypes.data_as(c_void_p))))
+                    c_uint64(byte_size), input_value.ctypes.data_as(c_void_p), -1)))
         offset_current += byte_size
     return
 
@@ -225,7 +226,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
     host_addr = c_char_p()
     device_id = c_int()
     try:
-        shm_addr = c_char_p()
+        shm_addr = c_void_p()
         _raise_if_error(
             c_int(
                 _cshm_get_shared_memory_handle_info(cuda_shm_handle,
@@ -280,52 +281,41 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
         c_int(_cshm_cuda_shared_memory_release_host_buffer(host_addr))
         return result
 
-# def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
-#     # this function basically is an implementation of 'from_dlpack'
-#     """Copy the contents of the numpy array into the cuda shared memory region.
+def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
+    # this function basically is an implementation of 'from_dlpack'
+    offset_current = 0
+    for input_value in input_values:
+        # Knowing the implementation detail of how shared memory region is
+        # set (cudaMemcpy). There is no need to transfer ownership of
+        # 'dl_managed_tensor': the data has been copied out when dlpack
+        # capsule is out of scope.
+        dlcapsule = dlpack.get_dlpack_capsule(input_value)
 
-#     Parameters
-#     ----------
-#     cuda_shm_handle : c_void_p
-#         The handle for the cuda shared memory region.
-#     input_values : list
-#         The list of numpy arrays to be copied into the shared memory region.
+        ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule, dlpack.c_str_dltensor)
+        dmt = dlpack.DLManagedTensor.from_address(ptr)
+        if not dlpack.is_contiguous_data(dmt.dl_tensor.ndim, dmt.dl_tensor.shape, dmt.dl_tensor.strides):
+            _raise_error("DLPack tensor is not contiguous. Only contiguous DLPack tensors that are stored in C-Order are supported.")
 
-#     Raises
-#     ------
-#     CudaSharedMemoryException
-#         If unable to set values in the cuda shared memory region.
-#     """
+        # Write to shared memory region
+        byte_size = dlpack.get_byte_size(dmt.dl_tensor.dtype, dmt.dl_tensor.ndim, dmt.dl_tensor.shape)
+        # apply offset to the data pointer ('data' pointer is implicitly converted to int)
+        data_ptr = dmt.dl_tensor.data + dmt.dl_tensor.byte_offset
+        if dmt.dl_tensor.device == dlpack.DLDeviceType.kDLCUDA:
+            device_id = dmt.dl_tensor.device.device_id 
+        else:
+            device_id = -1
 
-#     if not isinstance(input_values, (list, tuple)):
-#         _raise_error("input_values must be specified as a numpy array")
-#     for input_value in input_values:
-#         if not isinstance(input_value, (np.ndarray,)):
-#             _raise_error(
-#                 "input_values must be specified as a list/tuple of numpy arrays"
-#             )
+        _raise_if_error(
+            c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
+                c_uint64(byte_size), cast(data_ptr, c_void_p), device_id)))
+        
+        offset_current += byte_size
+    return
 
-#     offset_current = 0
-#     for input_value in input_values:
-#         input_value = np.ascontiguousarray(input_value).flatten()
-#         if input_value.dtype == np.object_:
-#             input_value = input_value.item()
-#             byte_size = np.dtype(np.byte).itemsize * len(input_value)
-#             _raise_if_error(
-#                 c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
-#                     c_uint64(byte_size), cast(input_value, c_void_p))))
-#         else:
-#             byte_size = input_value.size * input_value.itemsize
-#             _raise_if_error(
-#                 c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
-#                     c_uint64(byte_size), input_value.ctypes.data_as(c_void_p))))
-#         offset_current += byte_size
-#     return
-
-def get_contents_as_dlpack(cuda_shm_handle, datatype, shape):
+def as_shared_memory_tensor(cuda_shm_handle, datatype, shape):
     offset = c_uint64()
     byte_size = c_uint64()
-    shm_addr = c_char_p()
+    shm_addr = c_void_p()
     device_id = c_int()
     _raise_if_error(
         c_int(
@@ -335,26 +325,7 @@ def get_contents_as_dlpack(cuda_shm_handle, datatype, shape):
                                                 byref(byte_size),
                                                 byref(device_id))))
     
-    context = Context(shape)
-    size = ctypes.c_size_t(ctypes.sizeof(DLManagedTensor))
-    dl_managed_tensor = DLManagedTensor.from_address(
-        ctypes.pythonapi.PyMem_RawMalloc(size)
-    )
-    dl_managed_tensor.dl_tensor.data = shm_addr
-    dl_managed_tensor.dl_tensor.device = DLDevice(DLDeviceType.kDLCUDA, device_id)
-    dl_managed_tensor.dl_tensor.dtype = triton_to_dlpack_dtype(datatype)
-    dl_managed_tensor.dl_tensor.ndim = len(shape)
-    dl_managed_tensor.dl_tensor.shape = context.shape
-    dl_managed_tensor.dl_tensor.strides = context.strides
-    dl_managed_tensor.dl_tensor.byte_offset = 0
-    dl_managed_tensor.manager_ctx = context._as_manager_ctx()
-    dl_managed_tensor.deleter = _managed_tensor_deleter
-    pycapsule = ctypes.pythonapi.PyCapsule_New(
-        ctypes.byref(dl_managed_tensor),
-        _c_str_dltensor,
-        _pycapsule_deleter,
-    )
-    return pycapsule
+    return SharedMemoryTensor(datatype, shape, shm_addr, offset, byte_size, device_id)
 
 def allocated_shared_memory_regions():
     """Return all cuda shared memory regions that were allocated but not freed.
@@ -405,7 +376,9 @@ class CudaSharedMemoryException(Exception):
             -2: "unable to create cuda shared memory handle",
             -3: "unable to set values in cuda shared memory",
             -4: "unable to free GPU device memory",
-            -5: "failed to read cuda shared memory results"
+            -5: "failed to read cuda shared memory results",
+            -6: "unable to read device attributes",
+            -7: "device or platform does not support unified virtual addressing",
         }
         self._msg = None
         if type(err) == str:

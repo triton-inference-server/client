@@ -166,6 +166,12 @@ if __name__ == '__main__':
     shutil.copyfile(
         "tritonclient/utils/__init__.py",
         os.path.join(FLAGS.whl_dir, 'tritonclient/utils/__init__.py'))
+    shutil.copyfile(
+        "tritonclient/utils/_dlpack.py",
+        os.path.join(FLAGS.whl_dir, 'tritonclient/utils/_dlpack.py'))
+    shutil.copyfile(
+        "tritonclient/utils/_shared_memory_tensor.py",
+        os.path.join(FLAGS.whl_dir, 'tritonclient/utils/_shared_memory_tensor.py'))
 
     if FLAGS.linux:
         cpdir('tritonclient/utils/shared_memory',

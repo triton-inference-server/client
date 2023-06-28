@@ -38,13 +38,17 @@ int CudaSharedMemoryRegionCreate(
     void** cuda_shm_handle);
 int CudaSharedMemoryGetRawHandle(
     void* cuda_shm_handle, char** serialized_raw_handle);
+// 'device_id' should be -1 if 'data' is in system memory
 int CudaSharedMemoryRegionSet(
-    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data);
+    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data,
+    int device_id);
 int GetCudaSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, size_t* offset, size_t* byte_size);
+    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size, int* device_id);
 int CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr);
 int CudaSharedMemoryReleaseHostBuffer(char* ptr);
 int CudaSharedMemoryRegionDestroy(void* cuda_shm_handle);
+
+
 
 //==============================================================================
 
