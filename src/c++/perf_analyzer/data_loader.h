@@ -176,10 +176,17 @@ class DataLoader {
       const int step_index);
 
   /// Helper function to validate the provided shape for a tensor
+  /// \param shape Shape for the tensor
+  /// \param model_tensor The tensor to validate
+  /// Returns error object indicating status
   cb::Error ValidateTensorShape(
       const std::vector<int64_t>& shape, const ModelTensor& model_tensor);
 
   /// Helper function to validate the provided data's size
+  /// \param data The provided data for the tensor
+  /// \param batch1_byte The expected number of bytes of data
+  /// \param model_tensor The tensor to validate
+  /// Returns error object indicating status
   cb::Error ValidateTensorDataSize(
       const std::vector<char>& data, int64_t batch1_byte,
       const ModelTensor& model_tensor);
@@ -188,6 +195,7 @@ class DataLoader {
   /// data.  The code explicitly does not support a mixture of objects (multiple
   /// entries of a single stream) and arrays (multiple streams)
   ///
+  /// \param steps The json data provided for one or multiple streams
   cb::Error ValidateParsingMode(const rapidjson::Value& steps);
 
   // The batch_size_ for the data
