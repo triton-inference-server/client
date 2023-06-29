@@ -176,13 +176,27 @@ class DataLoader {
       const int step_index);
 
   /// Helper function to validate the provided shape for a tensor
+  /// \param shape Shape for the tensor
+  /// \param model_tensor The tensor to validate
+  /// Returns error object indicating status
   cb::Error ValidateTensorShape(
       const std::vector<int64_t>& shape, const ModelTensor& model_tensor);
 
+  /// Helper function to validate the provided data's size
+  /// \param data The provided data for the tensor
+  /// \param batch1_byte The expected number of bytes of data
+  /// \param model_tensor The tensor to validate
+  /// Returns error object indicating status
   cb::Error ValidateTensorDataSize(
       const std::vector<char>& data, int64_t batch1_byte,
       const ModelTensor& model_tensor);
 
+  /// Helper function to validate consistency of parsing mode for provided input
+  /// data.  The code explicitly does not support a mixture of objects (multiple
+  /// entries of a single stream) and arrays (multiple streams)
+  ///
+  /// \param steps The json data provided for one or multiple streams
+  cb::Error ValidateParsingMode(const rapidjson::Value& steps);
 
   // The batch_size_ for the data
   size_t batch_size_{1};
@@ -203,6 +217,9 @@ class DataLoader {
   // Placeholder for generated input data, which will be used for all inputs
   // except string
   std::vector<uint8_t> input_buf_;
+
+  // Tracks what type of input data has been provided
+  bool multiple_stream_mode_ = false;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockDataLoader;
