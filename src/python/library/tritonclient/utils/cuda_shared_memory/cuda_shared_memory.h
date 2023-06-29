@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -43,11 +43,11 @@ int CudaSharedMemoryRegionSet(
     void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data,
     int device_id);
 int GetCudaSharedMemoryHandleInfo(
-    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size, int* device_id);
+    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size,
+    int* device_id);
 int CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr);
 int CudaSharedMemoryReleaseHostBuffer(char* ptr);
 int CudaSharedMemoryRegionDestroy(void* cuda_shm_handle);
-
 
 
 //==============================================================================

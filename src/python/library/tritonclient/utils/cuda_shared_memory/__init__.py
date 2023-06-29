@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,8 +31,9 @@ import pkg_resources
 import struct
 
 import ctypes
-from .. import _dlpack as dlpack
+from .. import _dlpack
 from .._shared_memory_tensor import SharedMemoryTensor
+
 
 class _utf8(object):
 
@@ -67,7 +68,8 @@ _ccudashm_shared_memory_region_set.argtypes = [
 _cshm_get_shared_memory_handle_info = _ccudashm.GetCudaSharedMemoryHandleInfo
 _cshm_get_shared_memory_handle_info.restype = c_int
 _cshm_get_shared_memory_handle_info.argtypes = [
-    c_void_p, POINTER(c_void_p),
+    c_void_p,
+    POINTER(c_void_p),
     POINTER(c_uint64),
     POINTER(c_uint64),
     POINTER(c_int)
@@ -238,8 +240,8 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
         # [FIXME] explore Python way for CUDA memory copy
         _raise_if_error(
             c_int(
-                _cshm_cuda_shared_memory_allocate_and_read_to_host_buffer(cuda_shm_handle,
-                                                    byref(host_addr))))
+                _cshm_cuda_shared_memory_allocate_and_read_to_host_buffer(
+                    cuda_shm_handle, byref(host_addr))))
         start_pos = offset.value
         if (datatype != np.object_) and (datatype != np.bytes_):
             requested_byte_size = np.prod(shape) * np.dtype(datatype).itemsize
@@ -281,6 +283,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
         c_int(_cshm_cuda_shared_memory_release_host_buffer(host_addr))
         return result
 
+
 def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
     # this function basically is an implementation of 'from_dlpack'
     offset_current = 0
@@ -289,28 +292,35 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         # set (cudaMemcpy). There is no need to transfer ownership of
         # 'dl_managed_tensor': the data has been copied out when dlpack
         # capsule is out of scope.
-        dlcapsule = dlpack.get_dlpack_capsule(input_value)
+        dlcapsule = _dlpack.get_dlpack_capsule(input_value)
 
-        ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule, dlpack.c_str_dltensor)
-        dmt = dlpack.DLManagedTensor.from_address(ptr)
-        if not dlpack.is_contiguous_data(dmt.dl_tensor.ndim, dmt.dl_tensor.shape, dmt.dl_tensor.strides):
-            _raise_error("DLPack tensor is not contiguous. Only contiguous DLPack tensors that are stored in C-Order are supported.")
+        ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule,
+                                                    _dlpack.c_str_dltensor)
+        dmt = _dlpack.DLManagedTensor.from_address(ptr)
+        if not _dlpack.is_contiguous_data(
+                dmt.dl_tensor.ndim, dmt.dl_tensor.shape, dmt.dl_tensor.strides):
+            _raise_error(
+                "DLPack tensor is not contiguous. Only contiguous DLPack tensors that are stored in C-Order are supported."
+            )
 
         # Write to shared memory region
-        byte_size = dlpack.get_byte_size(dmt.dl_tensor.dtype, dmt.dl_tensor.ndim, dmt.dl_tensor.shape)
+        byte_size = _dlpack.get_byte_size(dmt.dl_tensor.dtype,
+                                          dmt.dl_tensor.ndim,
+                                          dmt.dl_tensor.shape)
         # apply offset to the data pointer ('data' pointer is implicitly converted to int)
         data_ptr = dmt.dl_tensor.data + dmt.dl_tensor.byte_offset
-        if dmt.dl_tensor.device == dlpack.DLDeviceType.kDLCUDA:
-            device_id = dmt.dl_tensor.device.device_id 
+        if dmt.dl_tensor.device == _dlpack.DLDeviceType.kDLCUDA:
+            device_id = dmt.dl_tensor.device.device_id
         else:
             device_id = -1
 
         _raise_if_error(
             c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
                 c_uint64(byte_size), cast(data_ptr, c_void_p), device_id)))
-        
+
         offset_current += byte_size
     return
+
 
 def as_shared_memory_tensor(cuda_shm_handle, datatype, shape):
     offset = c_uint64()
@@ -320,12 +330,13 @@ def as_shared_memory_tensor(cuda_shm_handle, datatype, shape):
     _raise_if_error(
         c_int(
             _cshm_get_shared_memory_handle_info(cuda_shm_handle,
-                                                byref(shm_addr),
-                                                byref(offset),
+                                                byref(shm_addr), byref(offset),
                                                 byref(byte_size),
                                                 byref(device_id))))
-    
-    return SharedMemoryTensor(datatype, shape, shm_addr, offset, byte_size, device_id)
+
+    return SharedMemoryTensor(datatype, shape, shm_addr, offset, byte_size,
+                              device_id)
+
 
 def allocated_shared_memory_regions():
     """Return all cuda shared memory regions that were allocated but not freed.
@@ -372,13 +383,20 @@ class CudaSharedMemoryException(Exception):
 
     def __init__(self, err):
         self.err_code_map = {
-            -1: "unable to set device successfully",
-            -2: "unable to create cuda shared memory handle",
-            -3: "unable to set values in cuda shared memory",
-            -4: "unable to free GPU device memory",
-            -5: "failed to read cuda shared memory results",
-            -6: "unable to read device attributes",
-            -7: "device or platform does not support unified virtual addressing",
+            -1:
+                "unable to set device successfully",
+            -2:
+                "unable to create cuda shared memory handle",
+            -3:
+                "unable to set values in cuda shared memory",
+            -4:
+                "unable to free GPU device memory",
+            -5:
+                "failed to read cuda shared memory results",
+            -6:
+                "unable to read device attributes",
+            -7:
+                "device or platform does not support unified virtual addressing",
         }
         self._msg = None
         if type(err) == str:

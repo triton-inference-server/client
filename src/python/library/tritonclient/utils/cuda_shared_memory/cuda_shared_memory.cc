@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -57,15 +57,18 @@ CudaSharedMemoryHandleCreate(
   return reinterpret_cast<void*>(handle);
 }
 
-int SupportUVA(int shm_device_id, int ext_device_id)
+int
+SupportUVA(int shm_device_id, int ext_device_id)
 {
   int support_uva = 1;
-  cudaError_t err = cudaDeviceGetAttribute(&support_uva, cudaDevAttrUnifiedAddressing, shm_device_id);
+  cudaError_t err = cudaDeviceGetAttribute(
+      &support_uva, cudaDevAttrUnifiedAddressing, shm_device_id);
   if (err != cudaSuccess) {
     return -6;
   }
   if ((support_uva != 0) && (ext_device_id != -1)) {
-    err = cudaDeviceGetAttribute(&support_uva, cudaDevAttrUnifiedAddressing, ext_device_id);
+    err = cudaDeviceGetAttribute(
+        &support_uva, cudaDevAttrUnifiedAddressing, ext_device_id);
     if (err != cudaSuccess) {
       return -6;
     }
@@ -175,7 +178,8 @@ CudaSharedMemoryRegionSet(
 
 int
 GetCudaSharedMemoryHandleInfo(
-    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size, int* device_id)
+    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size,
+    int* device_id)
 {
   auto handle = reinterpret_cast<SharedMemoryHandle*>(shm_handle);
   *shm_addr = handle->base_addr_;
@@ -204,8 +208,7 @@ CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr)
 
   *ptr = new char[lhandle->byte_size_];
   cudaError_t err = cudaMemcpy(
-      *ptr, lhandle->base_addr_, lhandle->byte_size_,
-      cudaMemcpyDeviceToHost);
+      *ptr, lhandle->base_addr_, lhandle->byte_size_, cudaMemcpyDefault);
   if (err != cudaSuccess) {
     return -5;
   }

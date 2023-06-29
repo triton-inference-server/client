@@ -25,8 +25,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import ctypes
-from . import _dlpack as dlpack
+from . import _dlpack
 import collections
+
 
 class SharedMemoryTensor:
     """An object of SharedMemoryTensor class is a view of the shared memory
@@ -37,41 +38,42 @@ class SharedMemoryTensor:
     https://dmlc.github.io/dlpack/latest/python_spec.html
 
     """
+
     def __init__(self, dtype: str, shape: collections.abc.Iterable,
                  shm_addr: ctypes.c_void_p, offset: ctypes.c_uint64,
                  byte_size: ctypes.c_uint64, device_id: ctypes.c_int) -> None:
-        self.dtype_ = dtype
-        self.shape_ = shape
-        self.shm_addr_ = shm_addr
-        self.offset_ = offset
-        self.byte_size_ = byte_size
-        self.device_id_ = device_id
+        self._dtype = dtype
+        self._shape = shape
+        self._shm_addr = shm_addr
+        self._offset = offset
+        self._byte_size = byte_size
+        self._device_id = device_id
         if device_id.value != -1:
-            self.dl_device_ = (dlpack.DLDeviceType.kDLCUDA, device_id.value)
+            self._dl_device = (_dlpack.DLDeviceType.kDLCUDA, device_id.value)
         else:
-            self.dl_device_ = (dlpack.DLDeviceType.kDLCPU, 0)
+            self._dl_device = (_dlpack.DLDeviceType.kDLCPU, 0)
 
     def __dlpack__(self, stream=None):
-        context = dlpack.DataViewContext(self.shape_)
-        size = ctypes.c_size_t(ctypes.sizeof(dlpack.DLManagedTensor))
-        dl_managed_tensor = dlpack.DLManagedTensor.from_address(
-            ctypes.pythonapi.PyMem_RawMalloc(size)
-        )
-        dl_managed_tensor.dl_tensor.data = self.shm_addr_
-        dl_managed_tensor.dl_tensor.device = self.dl_device_
-        dl_managed_tensor.dl_tensor.dtype = dlpack.triton_to_dlpack_dtype(self.dtype_)
-        dl_managed_tensor.dl_tensor.ndim = len(self.shape_)
-        dl_managed_tensor.dl_tensor.shape = context.shape
-        dl_managed_tensor.dl_tensor.strides = context.strides
-        dl_managed_tensor.dl_tensor.byte_offset = self.offset_
-        dl_managed_tensor.manager_ctx = context._as_manager_ctx()
-        dl_managed_tensor.deleter = dlpack.managed_tensor_deleter
+        context = _dlpack.DataViewContext(self._shape)
+        size = ctypes.c_size_t(ctypes.sizeof(_dlpack.DLManagedTensor))
+        dl_managed_tensor = _dlpack.DLManagedTensor.from_address(
+            ctypes.pythonapi.PyMem_RawMalloc(size))
+        dl_managed_tensor.dl_tensor.data = self._shm_addr
+        dl_managed_tensor.dl_tensor.device = self._dl_device
+        dl_managed_tensor.dl_tensor.dtype = _dlpack.triton_to_dlpack_dtype(
+            self._dtype)
+        dl_managed_tensor.dl_tensor.ndim = len(self._shape)
+        dl_managed_tensor.dl_tensor.shape = context._shape
+        dl_managed_tensor.dl_tensor.strides = context._strides
+        dl_managed_tensor.dl_tensor.byte_offset = self._offset
+        dl_managed_tensor.manager_ctx = context.as_manager_ctx()
+        dl_managed_tensor.deleter = _dlpack.managed_tensor_deleter
         pycapsule = ctypes.pythonapi.PyCapsule_New(
             ctypes.byref(dl_managed_tensor),
-            dlpack.c_str_dltensor,
-            dlpack.pycapsule_deleter,
+            _dlpack.c_str_dltensor,
+            _dlpack.pycapsule_deleter,
         )
         return pycapsule
-    
+
     def __dlpack_device__(self):
-        return self.dl_device_
+        return self._dl_device
