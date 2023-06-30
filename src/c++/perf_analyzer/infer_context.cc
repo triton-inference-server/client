@@ -232,15 +232,6 @@ void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
-  bool is_final_response{false};
-  cb::Error err{result_ptr->IsFinalResponse(&is_final_response)};
-  if (err.IsOk() == false) {
-    throw std::runtime_error(err.Message());
-  }
-  if (is_final_response == false) {
-    return;
-  }
-
   if (thread_stat_->cb_status_.IsOk()) {
     // TODO TMA-1257 use final response parameter from grpc client
     bool final_response = true;
@@ -256,6 +247,12 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
         it->second.end_times.push_back(end_time_async);
+        bool is_final_response{false};
+        thread_stat_->cb_status_ =
+            result_ptr->IsFinalResponse(&is_final_response);
+        if (thread_stat_->cb_status_.IsOk() == false) {
+          return;
+        }
         if (final_response) {
           thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
               it->second.start_time_, it->second.end_times,
