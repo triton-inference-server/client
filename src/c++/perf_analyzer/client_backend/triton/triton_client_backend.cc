@@ -588,6 +588,8 @@ TritonClientBackend::ParseInferOptionsToTriton(
     triton_options->sequence_start_ = options.sequence_start_;
     triton_options->sequence_end_ = options.sequence_end_;
   }
+  triton_options->triton_enable_empty_final_response_ =
+      options.triton_enable_empty_final_response_;
 }
 
 

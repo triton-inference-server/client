@@ -1370,7 +1370,7 @@ InferenceServerGrpcClient::PreRunProcessing(
 
   infer_request_.mutable_parameters()->clear();
   (*infer_request_.mutable_parameters())["triton_enable_empty_final_response"]
-      .set_bool_param(true);
+      .set_bool_param(options.triton_enable_empty_final_response_);
   if ((options.sequence_id_ != 0) || (options.sequence_id_str_ != "")) {
     if (options.sequence_id_ != 0) {
       (*infer_request_.mutable_parameters())["sequence_id"].set_int64_param(

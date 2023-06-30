@@ -233,7 +233,10 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   bool is_final_response{false};
-  result_ptr->IsFinalResponse(&is_final_response);
+  cb::Error err{result_ptr->IsFinalResponse(&is_final_response)};
+  if (err.IsOk() == false) {
+    throw std::runtime_error(err.Message());
+  }
   if (is_final_response == false) {
     return;
   }

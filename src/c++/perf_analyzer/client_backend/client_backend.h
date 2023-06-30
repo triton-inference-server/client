@@ -199,7 +199,7 @@ struct InferOptions {
   explicit InferOptions(const std::string& model_name)
       : model_name_(model_name), model_version_(""), request_id_(""),
         sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
-        sequence_end_(false)
+        sequence_end_(false), triton_enable_empty_final_response_(true)
   {
   }
   /// The name of the model to run inference.
@@ -228,6 +228,8 @@ struct InferOptions {
   /// sequence. Default value is False. This argument is ignored if
   /// 'sequence_id' is 0.
   bool sequence_end_;
+  /// Whether to tell Triton to enable an empty final response.
+  bool triton_enable_empty_final_response_;
 };
 
 struct SslOptionsBase {

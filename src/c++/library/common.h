@@ -161,7 +161,7 @@ struct InferOptions {
       : model_name_(model_name), model_version_(""), request_id_(""),
         sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
         sequence_end_(false), priority_(0), server_timeout_(0),
-        client_timeout_(0)
+        client_timeout_(0), triton_enable_empty_final_response_(false)
   {
   }
   /// The name of the model to run inference.
@@ -219,6 +219,8 @@ struct InferOptions {
   // timeout < 1000 microseconds will be rounded down to 0 milliseconds and have
   // no effect.
   uint64_t client_timeout_;
+  /// Whether to tell Triton to enable an empty final response.
+  bool triton_enable_empty_final_response_;
 };
 
 //==============================================================================
