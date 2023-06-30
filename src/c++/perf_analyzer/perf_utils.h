@@ -97,21 +97,6 @@ cb::Error ConvertDTypeFromTFS(
 // Parse the communication protocol type
 cb::ProtocolType ParseProtocol(const std::string& str);
 
-// Reads the data from file specified by path into vector of characters
-// \param path The complete path to the file to be read
-// \param contents The character vector that will contain the data read
-// \return error status. Returns Non-Ok if an error is encountered during
-//  read operation.
-cb::Error ReadFile(const std::string& path, std::vector<char>* contents);
-
-// Reads the string from file specified by path into vector of strings
-// \param path The complete path to the file to be read
-// \param contents The string vector that will contain the data read
-// \return error status. Returns Non-Ok if an error is encountered during
-//  read operation.
-cb::Error ReadTextFile(
-    const std::string& path, std::vector<std::string>* contents);
-
 // To check whether the path points to a valid system directory
 bool IsDirectory(const std::string& path);
 
