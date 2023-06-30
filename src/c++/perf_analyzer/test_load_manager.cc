@@ -288,7 +288,10 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
         time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0,
         false);
 
-    SUBCASE("No threads") { CHECK(CountCollectedRequests() == 0); }
+    SUBCASE("No threads")
+    {
+      CHECK(CountCollectedRequests() == 0);
+    }
     SUBCASE("One thread")
     {
       auto stat1 = std::make_shared<ThreadStat>();

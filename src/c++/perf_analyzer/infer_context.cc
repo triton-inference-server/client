@@ -233,7 +233,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
-    //TODO TMA-1257 use final response parameter from grpc client 
+    // TODO TMA-1257 use final response parameter from grpc client
     bool final_response = true;
     // Add the request timestamp to thread Timestamp vector with
     // proper locking
@@ -247,14 +247,14 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
         it->second.end_times.push_back(end_time_async);
-      }
-      if (final_response) {
-        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-            it->second.start_time_, it->second.end_times,
-            it->second.sequence_end_, it->second.delayed_));
-        infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
-        thread_stat_->cb_status_ = ValidateOutputs(result);
-        async_req_map_.erase(request_id);
+        if (final_response) {
+          thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
+              it->second.start_time_, it->second.end_times,
+              it->second.sequence_end_, it->second.delayed_));
+          infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
+          thread_stat_->cb_status_ = ValidateOutputs(result);
+          async_req_map_.erase(request_id);
+        }
       }
     }
   }
