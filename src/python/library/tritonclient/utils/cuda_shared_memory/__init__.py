@@ -88,7 +88,24 @@ _ccudashm_shared_memory_region_destroy = _ccudashm.CudaSharedMemoryRegionDestroy
 _ccudashm_shared_memory_region_destroy.restype = c_int
 _ccudashm_shared_memory_region_destroy.argtypes = [c_void_p]
 
+_ccudashm_stream_create = _ccudashm.CudaStreamCreate
+_ccudashm_stream_create.restype = c_int
+_ccudashm_stream_create.argtypes = [POINTER(c_void_p)]
+
+_ccudashm_stream_destroy = _ccudashm.CudaStreamDestroy
+_ccudashm_stream_destroy.restype = c_int
+_ccudashm_stream_destroy.argtypes = [c_void_p]
+
+_ccudashm_stream_synchronize = _ccudashm.CudaStreamSynchronize
+_ccudashm_stream_synchronize.restype = c_int
+_ccudashm_stream_synchronize.argtypes = [c_void_p]
+
 allocated_shm_regions = []
+# Internally managed stream for properly synchronizing on DLPack data,
+# the stream will be created / destroyed according to 'allocated_shm_regions'
+# and be reused throughout the process. May revisit for stream pool if
+# asynchronous write on CUDA shared memory region is requested
+_dlpack_stream = c_void_p()
 
 
 def _raise_if_error(errno):
@@ -136,7 +153,9 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
                                                   device_id,
                                                   byref(cuda_shm_handle))))
     allocated_shm_regions.append(cuda_shm_handle)
-
+    global _dlpack_stream
+    if not bool(_dlpack_stream):
+        _raise_if_error(c_int(_ccudashm_stream_create(byref(_dlpack_stream))))
     return cuda_shm_handle
 
 
@@ -292,7 +311,8 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         # set (cudaMemcpy). There is no need to transfer ownership of
         # 'dl_managed_tensor': the data has been copied out when dlpack
         # capsule is out of scope.
-        dlcapsule = _dlpack.get_dlpack_capsule(input_value)
+        stream = _dlpack_stream.value if bool(_dlpack_stream) else None
+        dlcapsule = _dlpack.get_dlpack_capsule(input_value, stream)
 
         ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule,
                                                     _dlpack.c_str_dltensor)
@@ -314,6 +334,7 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         else:
             device_id = -1
 
+        _raise_if_error(c_int(_ccudashm_stream_synchronize(_dlpack_stream)))
         _raise_if_error(
             c_int(_ccudashm_shared_memory_region_set(cuda_shm_handle, c_uint64(offset_current), \
                 c_uint64(byte_size), cast(data_ptr, c_void_p), device_id)))
@@ -368,6 +389,10 @@ def destroy_shared_memory_region(cuda_shm_handle):
         c_int(_ccudashm_shared_memory_region_destroy(cuda_shm_handle)))
     allocated_shm_regions.remove(cuda_shm_handle)
 
+    global _dlpack_stream
+    if not allocated_shm_regions and bool(_dlpack_stream):
+        _raise_if_error(c_int(_ccudashm_stream_destroy(_dlpack_stream)))
+        _dlpack_stream = c_void_p()
     return
 
 
@@ -397,6 +422,8 @@ class CudaSharedMemoryException(Exception):
                 "unable to read device attributes",
             -7:
                 "device or platform does not support unified virtual addressing",
+            -8:
+                "unable to manage CUDA stream"
         }
         self._msg = None
         if type(err) == str:

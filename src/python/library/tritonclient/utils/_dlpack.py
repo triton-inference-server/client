@@ -244,15 +244,23 @@ def get_byte_size(dtype: DLDataType, ndim: ctypes.c_int,
     return element_byte_size
 
 
-def get_dlpack_capsule(dlpack_obj):
+def get_dlpack_capsule(dlpack_obj, stream=None):
     # Extract PyCapsule of the DLPack object
     if hasattr(dlpack_obj, '__dlpack__'):
+        if not hasattr(dlpack_obj, '__dlpack_device__'):
+            _raise_error(
+                "DLPack expects '__dlpack_device__' if '__dlpack__' has been defined"
+            )
         device = dlpack_obj.__dlpack_device__()
         if not is_device_supported(device):
             _raise_error("DLPack device type {} is not supported".format(
                 device[0]))
-        # [FIXME] stream?
-        return dlpack_obj.__dlpack__()
+        # Have to condition on the device type as, using numpy as example,
+        # some DLPack implementation doesn't accept 'stream' as arguments
+        if device != DLDeviceType.kDLCUDA:
+            return dlpack_obj.__dlpack__()
+        else:
+            return dlpack_obj.__dlpack__(stream)
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj

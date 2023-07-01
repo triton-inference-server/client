@@ -253,4 +253,38 @@ CudaSharedMemoryRegionDestroy(void* cuda_shm_handle)
   return 0;
 }
 
+int
+CudaStreamCreate(void** cuda_stream)
+{
+  if (cudaStreamCreate(reinterpret_cast<cudaStream_t*>(cuda_stream)) !=
+      cudaSuccess) {
+    return -8;
+  }
+  return 0;
+}
+
+int
+CudaStreamDestroy(void* cuda_stream)
+{
+  if (cuda_stream != nullptr) {
+    if (cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream)) !=
+        cudaSuccess) {
+      return -8;
+    }
+  }
+  return 0;
+}
+
+int
+CudaStreamSynchronize(void* cuda_stream)
+{
+  if (cuda_stream != nullptr) {
+    if (cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(cuda_stream)) !=
+        cudaSuccess) {
+      return -8;
+    }
+  }
+  return 0;
+}
+
 //==============================================================================

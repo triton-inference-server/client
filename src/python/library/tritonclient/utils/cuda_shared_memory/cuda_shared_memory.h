@@ -49,6 +49,9 @@ int CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr);
 int CudaSharedMemoryReleaseHostBuffer(char* ptr);
 int CudaSharedMemoryRegionDestroy(void* cuda_shm_handle);
 
+int CudaStreamCreate(void** cuda_stream);
+int CudaStreamDestroy(void* cuda_stream);
+int CudaStreamSynchronize(void* cuda_stream);
 
 //==============================================================================
 
