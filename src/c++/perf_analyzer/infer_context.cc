@@ -244,6 +244,9 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
       end_time_async = std::chrono::system_clock::now();
       std::string request_id;
       thread_stat_->cb_status_ = result_ptr->Id(&request_id);
+      if (thread_stat_->cb_status_.IsOk() == false) {
+        return;
+      }
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
         it->second.end_times.push_back(end_time_async);
@@ -259,6 +262,9 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
               it->second.sequence_end_, it->second.delayed_));
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
           thread_stat_->cb_status_ = ValidateOutputs(result);
+          if (thread_stat_->cb_status_.IsOk() == false) {
+            return;
+          }
           async_req_map_.erase(request_id);
         }
       }
