@@ -154,14 +154,16 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       return;
     }
     end_time_sync = std::chrono::system_clock::now();
+    std::vector<std::chrono::time_point<std::chrono::system_clock>>
+        end_time_syncs{end_time_sync};
     {
       // Add the request timestamp to thread Timestamp vector with proper
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
-          delayed));
+          start_time_sync, std::move(end_time_syncs),
+          infer_data_.options_->sequence_end_, delayed));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -231,6 +233,8 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
   if (thread_stat_->cb_status_.IsOk()) {
+    // TODO TMA-1257 use final response parameter from grpc client
+    bool final_response = true;
     // Add the request timestamp to thread Timestamp vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
@@ -242,12 +246,15 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
       thread_stat_->cb_status_ = result_ptr->Id(&request_id);
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
-        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-            it->second.start_time_, end_time_async, it->second.sequence_end_,
-            it->second.delayed_));
-        infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
-        thread_stat_->cb_status_ = ValidateOutputs(result);
-        async_req_map_.erase(request_id);
+        it->second.end_times.push_back(end_time_async);
+        if (final_response) {
+          thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
+              it->second.start_time_, it->second.end_times,
+              it->second.sequence_end_, it->second.delayed_));
+          infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
+          thread_stat_->cb_status_ = ValidateOutputs(result);
+          async_req_map_.erase(request_id);
+        }
       }
     }
   }
