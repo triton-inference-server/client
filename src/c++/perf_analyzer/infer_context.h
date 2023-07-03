@@ -74,6 +74,8 @@ struct AsyncRequestProperties {
   bool sequence_end_;
   // Whether or not the request is delayed as per schedule.
   bool delayed_;
+  // Collection of response times
+  std::vector<std::chrono::time_point<std::chrono::system_clock>> end_times;
 };
 
 #ifndef DOCTEST_CONFIG_DISABLE
