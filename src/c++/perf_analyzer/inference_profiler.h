@@ -132,6 +132,8 @@ struct ClientSideStats {
   std::map<size_t, uint64_t> percentile_latency_ns;
   // List of all the valid latencies.
   std::vector<uint64_t> latencies;
+  // List of all the valid response latencies.
+  std::vector<uint64_t> response_latencies;
   // Using usec to avoid square of large number (large in nsec)
   uint64_t std_us;
   uint64_t avg_request_time_ns;

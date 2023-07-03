@@ -992,6 +992,7 @@ InferenceProfiler::MergePerfStatusReports(
   experiment_perf_status.client_stats.avg_latency_ns = 0;
   experiment_perf_status.client_stats.percentile_latency_ns.clear();
   experiment_perf_status.client_stats.latencies.clear();
+  experiment_perf_status.client_stats.response_latencies.clear();
   experiment_perf_status.client_stats.std_us = 0;
   experiment_perf_status.client_stats.avg_request_time_ns = 0;
   experiment_perf_status.client_stats.avg_send_time_ns = 0;
@@ -1021,6 +1022,10 @@ InferenceProfiler::MergePerfStatusReports(
         experiment_perf_status.client_stats.latencies.end(),
         perf_status.client_stats.latencies.begin(),
         perf_status.client_stats.latencies.end());
+    experiment_perf_status.client_stats.response_latencies.insert(
+        experiment_perf_status.client_stats.response_latencies.end(),
+        perf_status.client_stats.response_latencies.begin(),
+        perf_status.client_stats.response_latencies.end());
     // Accumulate the overhead percentage and send rate here to remove extra
     // traversals over the perf_status_reports
     experiment_perf_status.overhead_pct += perf_status.overhead_pct;
@@ -1070,6 +1075,9 @@ InferenceProfiler::MergePerfStatusReports(
   std::sort(
       experiment_perf_status.client_stats.latencies.begin(),
       experiment_perf_status.client_stats.latencies.end());
+  std::sort(
+      experiment_perf_status.client_stats.response_latencies.begin(),
+      experiment_perf_status.client_stats.response_latencies.end());
 
   float client_duration_sec =
       (float)experiment_perf_status.client_stats.duration_ns / NANOS_PER_SECOND;
@@ -1079,6 +1087,7 @@ InferenceProfiler::MergePerfStatusReports(
       (experiment_perf_status.client_stats.request_count *
        experiment_perf_status.batch_size) /
       client_duration_sec;
+  // TODO(DEB) FIXME
   RETURN_IF_ERROR(SummarizeLatency(
       experiment_perf_status.client_stats.latencies, experiment_perf_status));
 
