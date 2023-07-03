@@ -1253,7 +1253,7 @@ InferenceProfiler::ValidLatencyMeasurement(
   for (size_t i = 0; i < all_timestamps_.size(); i++) {
     const auto& timestamp = all_timestamps_[i];
     uint64_t request_start_ns = CHRONO_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp));
+    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp).back());
 
     if (request_start_ns <= request_end_ns) {
       // Only counting requests that end within the time interval
