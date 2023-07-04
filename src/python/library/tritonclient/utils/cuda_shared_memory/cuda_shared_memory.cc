@@ -160,6 +160,37 @@ CudaSharedMemoryRegionSet(
 }
 
 int
+CudaSharedMemoryRegionSetDptr(
+    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* dptr)
+{
+  // remember previous device and set to new device
+  int previous_device;
+  cudaGetDevice(&previous_device);
+  cudaError_t err = cudaSetDevice(
+      reinterpret_cast<SharedMemoryHandle*>(cuda_shm_handle)->device_id_);
+  if (err != cudaSuccess) {
+    cudaSetDevice(previous_device);
+    return -1;
+  }
+
+  // Copy data into cuda shared memory
+  void* base_addr =
+      reinterpret_cast<SharedMemoryHandle*>(cuda_shm_handle)->base_addr_;
+  err = cudaMemcpy(
+      reinterpret_cast<uint8_t*>(base_addr) + offset, dptr, byte_size,
+      cudaMemcpyDeviceToDevice);
+  if (err != cudaSuccess) {
+    cudaSetDevice(previous_device);
+    return -3;
+  }
+
+  // Set device to previous GPU
+  cudaSetDevice(previous_device);
+
+  return 0;
+}
+
+int
 GetCudaSharedMemoryHandleInfo(
     void* shm_handle, char** shm_addr, size_t* offset, size_t* byte_size)
 {
