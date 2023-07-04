@@ -148,7 +148,7 @@ Preprocess(
   input_data->resize(img_byte_size);
 
   // For NHWC format Mat is already in the correct order but need to
-  // handle both cases of data being contigious or not.
+  // handle both cases of data being contiguous or not.
   if (format.compare("FORMAT_NHWC") == 0) {
     if (sample_final.isContinuous()) {
       memcpy(&((*input_data)[0]), sample_final.datastart, img_byte_size);
@@ -293,7 +293,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-b <batch size>" << std::endl;
   std::cerr << "\t-c <topk>" << std::endl;
   std::cerr << "\t-s <NONE|INCEPTION|VGG>" << std::endl;
-  std::cerr << "\t-p <proprocessed output filename>" << std::endl;
+  std::cerr << "\t-p <preprocessed output filename>" << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
   std::cerr << "\t-u <URL for inference service>" << std::endl;

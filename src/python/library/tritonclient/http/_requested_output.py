@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,9 +52,9 @@ class InferRequestedOutput:
         self._name = name
         self._parameters = {}
         if class_count != 0:
-            self._parameters['classification'] = class_count
+            self._parameters["classification"] = class_count
         self._binary = binary_data
-        self._parameters['binary_data'] = binary_data
+        self._parameters["binary_data"] = binary_data
 
     def name(self):
         """Get the name of output associated with this object.
@@ -79,15 +81,15 @@ class InferRequestedOutput:
             the tensor starts. The default value is 0.
 
         """
-        if 'classification' in self._parameters:
+        if "classification" in self._parameters:
             raise_error("shared memory can't be set on classification output")
         if self._binary:
-            self._parameters['binary_data'] = False
+            self._parameters["binary_data"] = False
 
-        self._parameters['shared_memory_region'] = region_name
-        self._parameters['shared_memory_byte_size'] = byte_size
+        self._parameters["shared_memory_region"] = region_name
+        self._parameters["shared_memory_byte_size"] = byte_size
         if offset != 0:
-            self._parameters['shared_memory_offset'] = offset
+            self._parameters["shared_memory_offset"] = offset
 
     def unset_shared_memory(self):
         """Clears the shared memory option set by the last call to
@@ -96,10 +98,10 @@ class InferRequestedOutput:
         shared memory region.
         """
 
-        self._parameters['binary_data'] = self._binary
-        self._parameters.pop('shared_memory_region', None)
-        self._parameters.pop('shared_memory_byte_size', None)
-        self._parameters.pop('shared_memory_offset', None)
+        self._parameters["binary_data"] = self._binary
+        self._parameters.pop("shared_memory_region", None)
+        self._parameters.pop("shared_memory_byte_size", None)
+        self._parameters.pop("shared_memory_offset", None)
 
     def _get_tensor(self):
         """Retrieve the underlying input as json dict.
@@ -109,7 +111,7 @@ class InferRequestedOutput:
         dict
             The underlying tensor as a dict
         """
-        tensor = {'name': self._name}
+        tensor = {"name": self._name}
         if self._parameters:
-            tensor['parameters'] = self._parameters
+            tensor["parameters"] = self._parameters
         return tensor

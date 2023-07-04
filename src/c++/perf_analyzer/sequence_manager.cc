@@ -98,7 +98,7 @@ SequenceManager::SetInferSequenceOptions(
   options->sequence_start_ =
       (sequence_statuses_[seq_stat_index]->remaining_queries_ == 0);
 
-  // New sequence must be intialized before setting the id.
+  // New sequence must be initialized before setting the id.
   if (options->sequence_start_) {
     InitNewSequence(seq_stat_index);
   }

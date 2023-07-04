@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,8 +27,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import rapidjson as json
-from tritonclient.utils import *
 from google.protobuf.json_format import MessageToJson
+from tritonclient.utils import *
 
 
 class InferResult:
@@ -67,23 +69,25 @@ class InferResult:
 
                 datatype = output.datatype
                 if index < len(self._result.raw_output_contents):
-                    if datatype == 'BYTES':
+                    if datatype == "BYTES":
                         # String results contain a 4-byte string length
                         # followed by the actual string characters. Hence,
                         # need to decode the raw bytes to convert into
                         # array elements.
                         np_array = deserialize_bytes_tensor(
-                            self._result.raw_output_contents[index])
+                            self._result.raw_output_contents[index]
+                        )
                     elif datatype == "BF16":
                         np_array = deserialize_bf16_tensor(
-                            self._result.raw_output_contents[index])
+                            self._result.raw_output_contents[index]
+                        )
                     else:
                         np_array = np.frombuffer(
                             self._result.raw_output_contents[index],
-                            dtype=triton_to_np_dtype(datatype))
+                            dtype=triton_to_np_dtype(datatype),
+                        )
                 elif len(output.contents.bytes_contents) != 0:
-                    np_array = np.array(output.contents.bytes_contents,
-                                        copy=False)
+                    np_array = np.array(output.contents.bytes_contents, copy=False)
                 else:
                     np_array = np.empty(0)
                 np_array = np_array.reshape(shape)
@@ -94,7 +98,7 @@ class InferResult:
 
     def get_output(self, name, as_json=False):
         """Retrieves the InferOutputTensor corresponding to the
-        named ouput.
+        named output.
 
         Parameters
         ----------
@@ -114,7 +118,7 @@ class InferResult:
         -------
         protobuf message or dict
             If a InferOutputTensor with specified name is present in
-            ModelInferResponse then returns it as a protobuf messsage
+            ModelInferResponse then returns it as a protobuf message
             or dict, otherwise returns None.
         """
         for output in self._result.outputs:
@@ -148,6 +152,7 @@ class InferResult:
         """
         if as_json:
             return json.loads(
-                MessageToJson(self._result, preserving_proto_field_name=True))
+                MessageToJson(self._result, preserving_proto_field_name=True)
+            )
         else:
             return self._result

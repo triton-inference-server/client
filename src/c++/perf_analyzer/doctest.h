@@ -166,7 +166,7 @@
 // =================================================================================================
 
 // both the header and the implementation suppress all of these,
-// so it only makes sense to aggregrate them like so
+// so it only makes sense to aggregate them like so
 #define DOCTEST_SUPPRESS_COMMON_WARNINGS_PUSH                                  \
   DOCTEST_CLANG_SUPPRESS_WARNING_PUSH                                          \
   DOCTEST_CLANG_SUPPRESS_WARNING("-Wunknown-pragmas")                          \
@@ -909,9 +909,9 @@ struct enable_if<true, TYPE> {
     template<class T> struct remove_reference<T&>  { typedef T type; };
     template<class T> struct remove_reference<T&&> { typedef T type; };
 
-    template<typename T, typename U = T&&> U declval(int); 
+    template<typename T, typename U = T&&> U declval(int);
 
-    template<typename T> T declval(long); 
+    template<typename T> T declval(long);
 
     template<typename T> auto declval() DOCTEST_NOEXCEPT -> decltype(declval<T>(0)) ;
 
@@ -1908,9 +1908,7 @@ MakeContextScope(const L& lambda)
 #define DOCTEST_DEFINE_DECORATOR(name, type, def) \
   struct name {                                   \
     type data;                                    \
-    name(type in = def) : data(in)                \
-    {                                             \
-    }                                             \
+    name(type in = def) : data(in) {}             \
     void fill(detail::TestCase& state) const      \
     {                                             \
       state.DOCTEST_CAT(m_, name) = data;         \
@@ -2246,9 +2244,7 @@ registerReporter(const char* name, int priority, bool isReporter)
   };                                                               \
   template <>                                                      \
   struct iter<std::tuple<>> {                                      \
-    iter(const char*, unsigned, int)                               \
-    {                                                              \
-    }                                                              \
+    iter(const char*, unsigned, int) {}                            \
   };                                                               \
   }                                                                \
   template <typename T>                                            \

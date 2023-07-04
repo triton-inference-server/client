@@ -56,7 +56,7 @@ class TorchServeInferInput : public InferInput {
   /// \param byte_size The size of data added in bytes.
   /// \return Error object indicating success or failure.
   Error ByteSize(size_t* byte_size) const;
-  /// Resets the heads to start providing data from the begining.
+  /// Resets the heads to start providing data from the beginning.
   Error PrepareForRequest();
   /// Get the next chunk of data if available.
   Error GetNext(const uint8_t** buf, size_t* input_bytes, bool* end_of_input);

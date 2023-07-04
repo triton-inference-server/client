@@ -195,7 +195,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     }
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->max_concurrency)) {
-      std::cerr << "sequence id range specified is smallar than the "
+      std::cerr << "sequence id range specified is smaller than the "
                 << "maximum possible concurrency, sequence id collision may "
                 << "occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
@@ -212,7 +212,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
       std::cerr
-          << "sequence id range specified is smallar than the "
+          << "sequence id range specified is smaller than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
@@ -231,7 +231,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
       std::cerr
-          << "sequence id range specified is smallar than the "
+          << "sequence id range specified is smaller than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);

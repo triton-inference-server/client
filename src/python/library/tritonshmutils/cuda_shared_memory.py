@@ -1,4 +1,6 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+#!/usr/bin/env python3
+
+# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,11 +28,13 @@
 
 import warnings
 
-warnings.simplefilter('always', DeprecationWarning)
+warnings.simplefilter("always", DeprecationWarning)
 
 warnings.warn(
     "The package `tritonshmutils.cuda_shared_memory` is deprecated and will be "
     "removed in a future version. Please use instead "
-    "`tritonclient.utils.cuda_shared_memory`", DeprecationWarning)
+    "`tritonclient.utils.cuda_shared_memory`",
+    DeprecationWarning,
+)
 
 from tritonclient.utils.cuda_shared_memory import *

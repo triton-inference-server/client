@@ -28,25 +28,28 @@
 import argparse
 
 import grpc
-from tritonclient.grpc import service_pb2
-from tritonclient.grpc import service_pb2_grpc
+from tritonclient.grpc import service_pb2, service_pb2_grpc
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -70,8 +73,7 @@ if __name__ == '__main__':
     response = grpc_stub.ServerReady(request)
     print("server {}".format(response))
 
-    request = service_pb2.ModelReadyRequest(name=model_name,
-                                            version=model_version)
+    request = service_pb2.ModelReadyRequest(name=model_name, version=model_version)
     response = grpc_stub.ModelReady(request)
     print("model {}".format(response))
 
@@ -80,14 +82,12 @@ if __name__ == '__main__':
     response = grpc_stub.ServerMetadata(request)
     print("server metadata:\n{}".format(response))
 
-    request = service_pb2.ModelMetadataRequest(name=model_name,
-                                               version=model_version)
+    request = service_pb2.ModelMetadataRequest(name=model_name, version=model_version)
     response = grpc_stub.ModelMetadata(request)
     print("model metadata:\n{}".format(response))
 
     # Configuration
-    request = service_pb2.ModelConfigRequest(name=model_name,
-                                             version=model_version)
+    request = service_pb2.ModelConfigRequest(name=model_name, version=model_version)
     response = grpc_stub.ModelConfig(request)
     print("model config:\n{}".format(response))
 
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     output.name = "InceptionV3/Predictions/Softmax"
     request.outputs.extend([output])
 
-    request.raw_input_contents.extend([bytes(1072812 * 'a', 'utf-8')])
+    request.raw_input_contents.extend([bytes(1072812 * "a", "utf-8")])
 
     response = grpc_stub.ModelInfer(request)
     print("model infer:\n{}".format(response))

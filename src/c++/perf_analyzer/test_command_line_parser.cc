@@ -412,7 +412,7 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE(parser.UsageCalled());
 
       // NOTE: This is not an informative error message, how do I specify a gRPC
-      // protocol? Error ouput should list missing params.
+      // protocol? Error output should list missing params.
       //
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),

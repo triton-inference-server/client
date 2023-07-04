@@ -2226,7 +2226,7 @@ InferenceServerHttpClient::AsyncTransfer()
     CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
     int numfds;
     if (mc == CURLM_OK) {
-      // Wait for activity. If there are no descripters in the multi_handle_
+      // Wait for activity. If there are no descriptors in the multi_handle_
       // then curl_multi_wait will return immediately
       mc = curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
       if (mc == CURLM_OK) {

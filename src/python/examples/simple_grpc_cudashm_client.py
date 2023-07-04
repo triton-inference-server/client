@@ -26,38 +26,42 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
-
-import tritonclient.grpc as grpcclient
-from tritonclient import utils
-import tritonclient.utils.cuda_shared_memory as cudashm
-
 from ctypes import *
+
+import numpy as np
+import tritonclient.grpc as grpcclient
+import tritonclient.utils.cuda_shared_memory as cudashm
+from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
     try:
-        triton_client = grpcclient.InferenceServerClient(url=FLAGS.url,
-                                                         verbose=FLAGS.verbose)
+        triton_client = grpcclient.InferenceServerClient(
+            url=FLAGS.url, verbose=FLAGS.verbose
+        )
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit(1)
@@ -84,23 +88,27 @@ if __name__ == '__main__':
 
     # Create Output0 and Output1 in Shared Memory and store shared memory handles
     shm_op0_handle = cudashm.create_shared_memory_region(
-        "output0_data", output_byte_size, 0)
+        "output0_data", output_byte_size, 0
+    )
     shm_op1_handle = cudashm.create_shared_memory_region(
-        "output1_data", output_byte_size, 0)
+        "output1_data", output_byte_size, 0
+    )
 
     # Register Output0 and Output1 shared memory with Triton Server
     triton_client.register_cuda_shared_memory(
-        "output0_data", cudashm.get_raw_handle(shm_op0_handle), 0,
-        output_byte_size)
+        "output0_data", cudashm.get_raw_handle(shm_op0_handle), 0, output_byte_size
+    )
     triton_client.register_cuda_shared_memory(
-        "output1_data", cudashm.get_raw_handle(shm_op1_handle), 0,
-        output_byte_size)
+        "output1_data", cudashm.get_raw_handle(shm_op1_handle), 0, output_byte_size
+    )
 
     # Create Input0 and Input1 in Shared Memory and store shared memory handles
     shm_ip0_handle = cudashm.create_shared_memory_region(
-        "input0_data", input_byte_size, 0)
+        "input0_data", input_byte_size, 0
+    )
     shm_ip1_handle = cudashm.create_shared_memory_region(
-        "input1_data", input_byte_size, 0)
+        "input1_data", input_byte_size, 0
+    )
 
     # Put input data values into shared memory
     cudashm.set_shared_memory_region(shm_ip0_handle, [input0_data])
@@ -108,37 +116,35 @@ if __name__ == '__main__':
 
     # Register Input0 and Input1 shared memory with Triton Server
     triton_client.register_cuda_shared_memory(
-        "input0_data", cudashm.get_raw_handle(shm_ip0_handle), 0,
-        input_byte_size)
+        "input0_data", cudashm.get_raw_handle(shm_ip0_handle), 0, input_byte_size
+    )
     triton_client.register_cuda_shared_memory(
-        "input1_data", cudashm.get_raw_handle(shm_ip1_handle), 0,
-        input_byte_size)
+        "input1_data", cudashm.get_raw_handle(shm_ip1_handle), 0, input_byte_size
+    )
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT0", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input0_data", input_byte_size)
 
-    inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT1", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input1_data", input_byte_size)
 
     outputs = []
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT0"))
     outputs[-1].set_shared_memory("output0_data", output_byte_size)
 
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT1"))
     outputs[-1].set_shared_memory("output1_data", output_byte_size)
 
-    results = triton_client.infer(model_name=model_name,
-                                  inputs=inputs,
-                                  outputs=outputs)
+    results = triton_client.infer(model_name=model_name, inputs=inputs, outputs=outputs)
 
     # Read results from the shared memory.
     output0 = results.get_output("OUTPUT0")
     if output0 is not None:
         output0_data = cudashm.get_contents_as_numpy(
-            shm_op0_handle, utils.triton_to_np_dtype(output0.datatype),
-            output0.shape)
+            shm_op0_handle, utils.triton_to_np_dtype(output0.datatype), output0.shape
+        )
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
@@ -146,19 +152,27 @@ if __name__ == '__main__':
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
         output1_data = cudashm.get_contents_as_numpy(
-            shm_op1_handle, utils.triton_to_np_dtype(output1.datatype),
-            output1.shape)
+            shm_op1_handle, utils.triton_to_np_dtype(output1.datatype), output1.shape
+        )
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
 
     for i in range(16):
         print(
-            str(input0_data[i]) + " + " + str(input1_data[i]) + " = " +
-            str(output0_data[0][i]))
+            str(input0_data[i])
+            + " + "
+            + str(input1_data[i])
+            + " = "
+            + str(output0_data[0][i])
+        )
         print(
-            str(input0_data[i]) + " - " + str(input1_data[i]) + " = " +
-            str(output1_data[0][i]))
+            str(input0_data[i])
+            + " - "
+            + str(input1_data[i])
+            + " = "
+            + str(output1_data[0][i])
+        )
         if (input0_data[i] + input1_data[i]) != output0_data[0][i]:
             print("cudashm infer error: incorrect sum")
             sys.exit(1)
@@ -175,4 +189,4 @@ if __name__ == '__main__':
     cudashm.destroy_shared_memory_region(shm_op1_handle)
     assert len(cudashm.allocated_shared_memory_regions()) == 0
 
-    print('PASS: cudashm')
+    print("PASS: cudashm")

@@ -48,7 +48,7 @@ namespace torchserve {
 
 
 //==============================================================================
-/// TorchServeClientBackend is used to generate load on the Torchserve isntance
+/// TorchServeClientBackend is used to generate load on the Torchserve instance
 ///
 class TorchServeClientBackend : public ClientBackend {
  public:

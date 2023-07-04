@@ -415,7 +415,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// Run asynchronous inference on server.
   /// Once the request is completed, the InferResult pointer will be passed to
   /// the provided 'callback' function. Upon the invocation of callback
-  /// function, the ownership of InferResult object is transfered to the
+  /// function, the ownership of InferResult object is transferred to the
   /// function caller. It is then the caller's choice on either retrieving the
   /// results inside the callback function or deferring it to a different thread
   /// so that the client is unblocked. In order to prevent memory leak, user
@@ -468,7 +468,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// Once all the requests are completed, the vector of InferResult pointers
   /// will be passed to the provided 'callback' function. Upon the invocation
   /// of callback function, the ownership of the InferResult objects are
-  /// transfered to the function caller. It is then the caller's choice on
+  /// transferred to the function caller. It is then the caller's choice on
   /// either retrieving the results inside the callback function or deferring it
   /// to a different thread so that the client is unblocked. In order to
   /// prevent memory leak, user must ensure these objects get deleted.

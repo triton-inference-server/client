@@ -26,11 +26,12 @@
 
 package triton.client.examples;
 
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.AtomicDouble;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import triton.client.InferInput;
 import triton.client.InferRequestedOutput;
 import triton.client.InferResult;
@@ -38,8 +39,6 @@ import triton.client.InferenceServerClient;
 import triton.client.InferenceServerClient.InferArguments;
 import triton.client.endpoint.FixedEndpoint;
 import triton.client.pojo.DataType;
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.AtomicDouble;
 
 /**
  * Do inference via a stand-alone (which is not hosted inside EAS) triton server.

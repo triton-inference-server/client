@@ -760,7 +760,7 @@ InferenceProfiler::ProfileHelper(
     metrics_manager_->StopQueryingMetrics();
   }
 
-  // return the appropriate error which might have occured in the
+  // return the appropriate error which might have occurred in the
   // stability_window for its proper handling.
   while (!error.empty()) {
     if (!error.front().IsOk()) {

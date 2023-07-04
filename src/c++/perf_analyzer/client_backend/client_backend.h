@@ -98,7 +98,7 @@ class Error {
   explicit Error(const std::string& msg);
 
   /// Accessor for the message of this error.
-  /// \return The messsage for the error. Empty if no error.
+  /// \return The message for the error. Empty if no error.
   const std::string& Message() const { return msg_; }
 
   /// Accessor for the error code.
@@ -455,7 +455,7 @@ class ClientBackend {
   // \return error Returns an error if unable to close shared memory descriptor.
   virtual Error CloseSharedMemory(int shm_fd);
 
-  // Destory the shared memory region with the given name.
+  // Destroy the shared memory region with the given name.
   // \return error Returns an error if unable to unlink shared memory region.
   virtual Error UnlinkSharedMemoryRegion(std::string shm_key);
 

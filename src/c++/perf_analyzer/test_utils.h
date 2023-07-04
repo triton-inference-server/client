@@ -39,7 +39,7 @@ namespace triton { namespace perfanalyzer {
 /// amount of time, unless the stop function is called.
 ///
 /// It can be used to detect livelock/deadlock cases in tests so that the test
-/// will be guarenteed to finish instead of hang
+/// will be guaranteed to finish instead of hang
 ///
 class TestWatchDog {
  public:

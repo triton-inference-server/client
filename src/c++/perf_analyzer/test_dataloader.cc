@@ -639,7 +639,7 @@ TEST_CASE(
     "dataloader: ParseData: Missing Shape" *
     doctest::description(
         "When a tensor's shape is dynamic (-1), then it needs to be provided "
-        "via --shape option (which is not visable to this testing), or via a "
+        "via --shape option (which is not visible to this testing), or via a "
         "shape option in the json. If not, an error is thrown"))
 {
   std::string json_str{R"({"data": [{ "INPUT1": [1,2,3] } ]})"};
@@ -955,8 +955,14 @@ TEST_CASE(
   size_t string_length = 5;
   std::string string_data = "FOOBAR";
 
-  SUBCASE("zero_input true") { zero_input = true; }
-  SUBCASE("zero_input false") { zero_input = false; }
+  SUBCASE("zero_input true")
+  {
+    zero_input = true;
+  }
+  SUBCASE("zero_input false")
+  {
+    zero_input = false;
+  }
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
   std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
@@ -1002,8 +1008,14 @@ TEST_CASE(
   size_t string_length = 5;
   std::string string_data;
 
-  SUBCASE("valid string_data") { string_data = "FOOBAR"; }
-  SUBCASE("empty string_data") { string_data = ""; }
+  SUBCASE("valid string_data")
+  {
+    string_data = "FOOBAR";
+  }
+  SUBCASE("empty string_data")
+  {
+    string_data = "";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -1095,8 +1107,14 @@ TEST_CASE("dataloader: GenerateData: Dynamic shape")
       "input INPUT1 contains dynamic shape, provide shapes to send along with "
       "the request";
 
-  SUBCASE("BYTES") { input1.datatype_ = "BYTES"; }
-  SUBCASE("non-BYTES") { input1.datatype_ = "INT32"; }
+  SUBCASE("BYTES")
+  {
+    input1.datatype_ = "BYTES";
+  }
+  SUBCASE("non-BYTES")
+  {
+    input1.datatype_ = "INT32";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
@@ -1124,8 +1142,14 @@ TEST_CASE(
 
   std::string dir{"fake/path"};
 
-  SUBCASE("BYTES (string) data") { input1.datatype_ = "BYTES"; }
-  SUBCASE("Raw Binary data") { input1.datatype_ = "INT32"; }
+  SUBCASE("BYTES (string) data")
+  {
+    input1.datatype_ = "BYTES";
+  }
+  SUBCASE("Raw Binary data")
+  {
+    input1.datatype_ = "INT32";
+  }
 
   inputs->insert(std::make_pair(input1.name_, input1));
   cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
@@ -1148,8 +1172,14 @@ TEST_CASE(
 
   std::string dir{"fake/path"};
 
-  SUBCASE("BYTES (string) data") { output1.datatype_ = "BYTES"; }
-  SUBCASE("Raw Binary data") { output1.datatype_ = "INT32"; }
+  SUBCASE("BYTES (string) data")
+  {
+    output1.datatype_ = "BYTES";
+  }
+  SUBCASE("Raw Binary data")
+  {
+    output1.datatype_ = "INT32";
+  }
 
   outputs->insert(std::make_pair(output1.name_, output1));
   cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from tritonclient.grpc import service_pb2
+
 from ._utils import raise_error
 
 
@@ -42,11 +45,10 @@ class InferRequestedOutput:
     """
 
     def __init__(self, name, class_count=0):
-        self._output = service_pb2.ModelInferRequest(
-        ).InferRequestedOutputTensor()
+        self._output = service_pb2.ModelInferRequest().InferRequestedOutputTensor()
         self._output.name = name
         if class_count != 0:
-            self._output.parameters['classification'].int64_param = class_count
+            self._output.parameters["classification"].int64_param = class_count
 
     def name(self):
         """Get the name of output associated with this object.
@@ -77,15 +79,13 @@ class InferRequestedOutput:
         InferenceServerException
             If failed to set shared memory for the tensor.
         """
-        if 'classification' in self._output.parameters:
+        if "classification" in self._output.parameters:
             raise_error("shared memory can't be set on classification output")
 
-        self._output.parameters[
-            'shared_memory_region'].string_param = region_name
-        self._output.parameters[
-            'shared_memory_byte_size'].int64_param = byte_size
+        self._output.parameters["shared_memory_region"].string_param = region_name
+        self._output.parameters["shared_memory_byte_size"].int64_param = byte_size
         if offset != 0:
-            self._output.parameters['shared_memory_offset'].int64_param = offset
+            self._output.parameters["shared_memory_offset"].int64_param = offset
 
     def unset_shared_memory(self):
         """Clears the shared memory option set by the last call to
@@ -94,9 +94,9 @@ class InferRequestedOutput:
         shared memory region.
         """
 
-        self._output.parameters.pop('shared_memory_region', None)
-        self._output.parameters.pop('shared_memory_byte_size', None)
-        self._output.parameters.pop('shared_memory_offset', None)
+        self._output.parameters.pop("shared_memory_region", None)
+        self._output.parameters.pop("shared_memory_byte_size", None)
+        self._output.parameters.pop("shared_memory_offset", None)
 
     def _get_tensor(self):
         """Retrieve the underlying InferRequestedOutputTensor message.

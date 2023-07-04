@@ -26,12 +26,11 @@
 
 package triton.client.examples;
 
+import com.google.common.collect.Lists;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import com.google.common.collect.Lists;
 import triton.client.InferInput;
 import triton.client.InferRequestedOutput;
 import triton.client.InferResult;

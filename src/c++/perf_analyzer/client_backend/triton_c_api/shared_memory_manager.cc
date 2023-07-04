@@ -101,8 +101,8 @@ SharedMemoryManager::GetMemoryInfo(
         std::string("Unable to find shared memory region: '" + name + "'"));
   }
   if (it->second->kind_ == TRITONSERVER_MEMORY_CPU) {
-    *shm_mapped_addr =
-        (void*)((uint8_t*)it->second->mapped_addr_ + it->second->offset_ + offset);
+    *shm_mapped_addr = (void*)((uint8_t*)it->second->mapped_addr_ +
+                               it->second->offset_ + offset);
   } else {
     *shm_mapped_addr = (void*)((uint8_t*)it->second->mapped_addr_ + offset);
   }
