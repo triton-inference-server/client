@@ -299,9 +299,7 @@ if __name__ == "__main__":
 
     # Infer with incorrect model name
     try:
-        response = test_infer(
-            "wrong_model_name", input0_data, input1_data
-        ).get_response()
+        _ = test_infer("wrong_model_name", input0_data, input1_data).get_response()
         print("expected error message for wrong model name")
         sys.exit(1)
     except InferenceServerException as ex:

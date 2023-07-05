@@ -28,11 +28,12 @@
 # note: pre-commit passes explicit lists of files here, which this skip file list doesn't override -
 # this is only to allow you to run codespell interactively
 # this also overrides the grpc_generated folder, since it is generated
-skip = "./.git,./.github,./src/grpc_generated,./pyproject.toml"
+skip = "./.git,./.github,./src/grpc_generated"
 # ignore short words, and typename parameters like OffsetT
 ignore-regex = "\\b(.{1,4}|[A-Z]\\w*T)\\b"
 # ignore allowed words
-ignore-words-list = "AtLeast"
+# ignoring atleast to avoid testing::AtLeast from getting flagged
+ignore-words-list = "atleast"
 # use the 'clear' dictionary for unambiguous spelling mistakes
 builtin = "clear"
 # disable warnings about binary files and wrong encoding

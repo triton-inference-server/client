@@ -387,12 +387,12 @@ TEST_CASE("test_is_done_profiling")
 
 TEST_CASE("test mocking")
 {
-  using testing::at least;
+  using testing::AtLeast;
   using testing::Return;
   MockInferenceProfiler mip;
 
   EXPECT_CALL(mip, IncludeServerStats())
-      .Times(at least(1))
+      .Times(AtLeast(1))
       .WillOnce(Return(false));
 
   CHECK(mip.IncludeServerStats() == false);
