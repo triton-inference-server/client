@@ -26,6 +26,7 @@
 
 import numpy as np
 import struct
+from ._shared_memory_tensor import SharedMemoryTensor
 
 
 def raise_error(msg):

@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,6 +25,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 configure_file(__init__.py __init__.py COPYONLY)
+configure_file(_dlpack.py _dlpack.py COPYONLY)
+configure_file(_shared_memory_tensor.py _shared_memory_tensor.py COPYONLY)
 
 if(NOT WIN32)
   file(COPY shared_memory DESTINATION .)
