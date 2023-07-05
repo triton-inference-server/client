@@ -588,6 +588,8 @@ TritonClientBackend::ParseInferOptionsToTriton(
     triton_options->sequence_start_ = options.sequence_start_;
     triton_options->sequence_end_ = options.sequence_end_;
   }
+  triton_options->triton_enable_empty_final_response_ =
+      options.triton_enable_empty_final_response_;
 }
 
 
@@ -815,6 +817,13 @@ TritonInferResult::RawData(
     size_t* byte_size) const
 {
   RETURN_IF_TRITON_ERROR(result_->RawData(output_name, buf, byte_size));
+  return Error::Success;
+}
+
+Error
+TritonInferResult::IsFinalResponse(bool* is_final_response) const
+{
+  RETURN_IF_TRITON_ERROR(result_->IsFinalResponse(is_final_response));
   return Error::Success;
 }
 
