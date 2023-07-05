@@ -1087,9 +1087,10 @@ InferenceProfiler::MergePerfStatusReports(
       (experiment_perf_status.client_stats.request_count *
        experiment_perf_status.batch_size) /
       client_duration_sec;
-  // TODO(DEB) FIXME
   RETURN_IF_ERROR(SummarizeLatency(
-      experiment_perf_status.client_stats.latencies, experiment_perf_status));
+      experiment_perf_status.client_stats.latencies,
+      experiment_perf_status.client_stats.response_latencies,
+      experiment_perf_status));
 
   if (should_collect_metrics_) {
     // Put all Metric objects in a flat vector so they're easier to merge
@@ -1225,14 +1226,17 @@ InferenceProfiler::Summarize(
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
   uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
+  std::vector<uint64_t> response_latencies;
   ValidLatencyMeasurement(
-      valid_range, valid_sequence_count, delayed_request_count, &latencies);
+      valid_range, valid_sequence_count, delayed_request_count, &latencies,
+      &response_latencies);
 
-  RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
+  RETURN_IF_ERROR(SummarizeLatency(latencies, response_latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
       start_stat, end_stat, window_duration_ns, latencies.size(),
       valid_sequence_count, delayed_request_count, summary));
   summary.client_stats.latencies = std::move(latencies);
+  summary.client_stats.response_latencies = std::move(response_latencies);
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
@@ -1254,9 +1258,11 @@ void
 InferenceProfiler::ValidLatencyMeasurement(
     const std::pair<uint64_t, uint64_t>& valid_range,
     size_t& valid_sequence_count, size_t& delayed_request_count,
-    std::vector<uint64_t>* valid_latencies)
+    std::vector<uint64_t>* valid_latencies,
+    std::vector<uint64_t>* response_latencies)
 {
   valid_latencies->clear();
+  response_latencies->clear();
   valid_sequence_count = 0;
   std::vector<size_t> erase_indices{};
   for (size_t i = 0; i < all_timestamps_.size(); i++) {
@@ -1279,6 +1285,22 @@ InferenceProfiler::ValidLatencyMeasurement(
         }
       }
     }
+    const auto& response_times = std::get<1>(timestamp);
+    // Gathering durations between responses. Need more than 2 elements for
+    // metrics to be valid. The final response should be the null response with
+    // the final_response_flag set which is ignored
+    if (response_times.size() > 2) {
+      for (size_t i = 0; i < response_times.size() - 2; i++) {
+        uint64_t prev_response_ns = CHRONO_TO_NANOS(response_times[i]);
+        uint64_t next_response_ns = CHRONO_TO_NANOS(response_times[i + 1]);
+        if (prev_response_ns <= next_response_ns) {
+          if ((prev_response_ns >= valid_range.first) &&
+              (next_response_ns <= valid_range.second)) {
+            response_latencies->push_back(next_response_ns - prev_response_ns);
+          }
+        }
+      }
+    }
   }
 
   // Iterate through erase indices backwards so that erases from
@@ -1294,7 +1316,8 @@ InferenceProfiler::ValidLatencyMeasurement(
 
 cb::Error
 InferenceProfiler::SummarizeLatency(
-    const std::vector<uint64_t>& latencies, PerfStatus& summary)
+    const std::vector<uint64_t>& latencies,
+    const std::vector<uint64_t>& response_latencies, PerfStatus& summary)
 {
   if (latencies.size() == 0) {
     return cb::Error(
@@ -1308,15 +1331,20 @@ InferenceProfiler::SummarizeLatency(
 
   // retrieve other interesting percentile
   summary.client_stats.percentile_latency_ns.clear();
+  summary.client_stats.response_percentile_latency_ns.clear();
   std::set<size_t> percentiles{50, 90, 95, 99};
+  std::set<size_t> response_percentiles{50, 90, 95, 99};
   if (extra_percentile_) {
     percentiles.emplace(percentile_);
+    response_percentiles.emplace(percentile_);
   }
 
   for (const auto percentile : percentiles) {
     size_t index = (percentile / 100.0) * (latencies.size() - 1) + 0.5;
     summary.client_stats.percentile_latency_ns.emplace(
         percentile, latencies[index]);
+    summary.client_stats.response_percentile_latency_ns.emplace(
+        percentile, response_latencies[index]);
   }
 
   if (extra_percentile_) {

@@ -132,6 +132,9 @@ struct ClientSideStats {
   std::map<size_t, uint64_t> percentile_latency_ns;
   // List of all the valid latencies.
   std::vector<uint64_t> latencies;
+  // a ordered map of percentiles to be reported for responses(<percentile,
+  // value> pair)
+  std::map<size_t, uint64_t> response_percentile_latency_ns;
   // List of all the valid response latencies.
   std::vector<uint64_t> response_latencies;
   // Using usec to avoid square of large number (large in nsec)
@@ -442,17 +445,22 @@ class InferenceProfiler {
   /// sequence model.
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
+  /// \param response_latencies Returns the vector of response latencies when
+  /// dealing with decoupled models
   void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies);
+      std::vector<uint64_t>* latencies,
+      std::vector<uint64_t>* response_latencies);
 
   /// \param latencies The vector of request latencies collected.
+  /// \param response_latencies The vector of response latencies collected.
   /// \param summary Returns the summary that the latency related fields are
   /// set.
   /// \return cb::Error object indicating success or failure.
   cb::Error SummarizeLatency(
-      const std::vector<uint64_t>& latencies, PerfStatus& summary);
+      const std::vector<uint64_t>& latencies,
+      const std::vector<uint64_t>& response_latencies, PerfStatus& summary);
 
   /// \param latencies The vector of request latencies collected.
   /// \return std::tuple object containing:

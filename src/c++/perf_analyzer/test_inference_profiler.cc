@@ -35,12 +35,15 @@ class TestInferenceProfiler : public InferenceProfiler {
   static void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies, TimestampVector& all_timestamps)
+      std::vector<uint64_t>* latencies,
+      std::vector<uint64_t>* response_latencies,
+      TimestampVector& all_timestamps)
   {
     InferenceProfiler inference_profiler{};
     inference_profiler.all_timestamps_ = all_timestamps;
     inference_profiler.ValidLatencyMeasurement(
-        valid_range, valid_sequence_count, delayed_request_count, latencies);
+        valid_range, valid_sequence_count, delayed_request_count, latencies,
+        response_latencies);
   }
 
   static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
@@ -162,6 +165,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   size_t valid_sequence_count{};
   size_t delayed_request_count{};
   std::vector<uint64_t> latencies{};
+  std::vector<uint64_t> response_latencies{};
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
@@ -201,7 +205,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
-      all_timestamps);
+      &response_latencies, all_timestamps);
 
   const auto& convert_timestamp_to_latency{
       [](std::tuple<time_point, std::vector<time_point>, uint32_t, bool> t) {
