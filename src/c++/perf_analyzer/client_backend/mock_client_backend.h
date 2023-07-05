@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -115,6 +115,15 @@ class MockInferResult : public InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override
   {
+    return Error::Success;
+  }
+
+  Error IsFinalResponse(bool* is_final_response) const override
+  {
+    if (is_final_response == nullptr) {
+      return Error("is_final_response cannot be nullptr");
+    }
+    *is_final_response = true;
     return Error::Success;
   }
 
