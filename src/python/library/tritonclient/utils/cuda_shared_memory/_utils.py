@@ -28,27 +28,14 @@ from cuda import cudart
 from typing import Any
 
 
-# [WIP] replace in _raise_if_error
 def _raise_errno_if_cuda_err(err, errno):
     if isinstance(err, cudart.cudaError_t):
-        if err != cudart.cudaError_t.cudaSuccess:
-            _raise_if_error(errno)
-
-
-def _raise_if_error(errno):
-    """
-    Raise CudaSharedMemoryException if 'err' is non-success.
-    Otherwise return nothing.
-    """
-    if errno.value != 0:
-        ex = CudaSharedMemoryException(errno)
-        raise ex
-    return
+        if (err != cudart.cudaError_t.cudaSuccess) and (errno != 0):
+            raise CudaSharedMemoryException(errno)
 
 
 def _raise_error(msg):
-    ex = CudaSharedMemoryException(msg)
-    raise ex
+    raise CudaSharedMemoryException(msg)
 
 
 class CudaSharedMemoryException(Exception):
@@ -83,8 +70,8 @@ class CudaSharedMemoryException(Exception):
         self._msg = None
         if type(err) == str:
             self._msg = err
-        elif err.value != 0 and err.value in self.err_code_map:
-            self._msg = self.err_code_map[err.value]
+        elif (err != 0) and (err in self.err_code_map):
+            self._msg = self.err_code_map[err]
 
     def __str__(self):
         msg = super().__str__() if self._msg is None else self._msg
@@ -101,7 +88,9 @@ class CudaSharedMemoryHandle:
         self._base_addr = base_addr
         self._byte_size = byte_size
         self._device_id = device_id
-        # [FXIME] C implementation has below which is not relevant?
+        # [FXIME] C implementation has below which is not relevant, need to
+        # revisit when applying similar change to system shared memory utils
+        # and check on whether the "handles" can be unified.
         # handle->offset_ = 0;
         # handle->shm_key_ = "";
         # handle->shm_fd_ = 0;

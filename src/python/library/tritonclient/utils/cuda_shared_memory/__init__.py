@@ -43,7 +43,7 @@ import base64
 import ctypes
 from .. import _dlpack
 from .._shared_memory_tensor import SharedMemoryTensor
-from ._utils import CudaSharedMemoryHandle, CudaStream, _raise_errno_if_cuda_err, _raise_if_error, _raise_error
+from ._utils import CudaSharedMemoryHandle, CudaStream, _raise_errno_if_cuda_err, _raise_error
 
 
 class _utf8(object):
@@ -83,7 +83,8 @@ def _support_uva(shm_device_id, ext_device_id):
             cudart.cudaDeviceAttr.cudaDevAttrUnifiedAddressing, ext_device_id)
         _raise_errno_if_cuda_err(err, -6)
     if support_uva == 0:
-        _raise_if_error(-7)
+        _raise_error(
+            "device or platform does not support unified virtual addressing")
 
 
 def create_shared_memory_region(triton_shm_name, byte_size, device_id):
