@@ -51,7 +51,9 @@ struct InferData {
   // to be used with the inference request.
   std::vector<const cb::InferRequestedOutput*> outputs_;
   // If not empty, the expected output data in the same order as 'outputs_'
-  std::vector<std::vector<std::pair<const uint8_t*, size_t>>> expected_outputs_;
+  // The outer vector is per-output. The inner vector is for batching of each
+  // output
+  std::vector<std::vector<TensorData>> expected_outputs_;
   // The InferOptions object holding the details of the
   // inference.
   std::unique_ptr<cb::InferOptions> options_;

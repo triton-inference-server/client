@@ -206,15 +206,15 @@ InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
       size_t byte_size = 0;
       result_ptr->RawData(infer_data_.outputs_[i]->Name(), &buf, &byte_size);
       for (const auto& expected : infer_data_.expected_outputs_[i]) {
-        if (byte_size < expected.second) {
+        if (byte_size < expected.batch1_size) {
           return cb::Error(
               "Output size doesn't match expected size", pa::GENERIC_ERROR);
-        } else if (memcmp(buf, expected.first, expected.second) != 0) {
+        } else if (memcmp(buf, expected.data_ptr, expected.batch1_size) != 0) {
           return cb::Error(
               "Output doesn't match expected output", pa::GENERIC_ERROR);
         } else {
-          buf += expected.second;
-          byte_size -= expected.second;
+          buf += expected.batch1_size;
+          byte_size -= expected.batch1_size;
         }
       }
       if (byte_size != 0) {

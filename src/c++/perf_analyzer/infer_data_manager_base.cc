@@ -148,7 +148,7 @@ InferDataManagerBase::UpdateValidationOutputs(
     const int* set_shape_values = nullptr;
     int set_shape_value_cnt = 0;
 
-    std::vector<std::pair<const uint8_t*, size_t>> outputs;
+    std::vector<TensorData> outputs;
     for (size_t i = 0; i < batch_size_; ++i) {
       RETURN_IF_ERROR(data_loader_->GetOutputData(
           output->Name(), stream_index,
@@ -157,7 +157,7 @@ InferDataManagerBase::UpdateValidationOutputs(
         break;
       }
 
-      outputs.emplace_back(output_data.data_ptr, output_data.batch1_size);
+      outputs.emplace_back(output_data);
       // Shape tensor only need the first batch element
       if (model_output.is_shape_tensor_) {
         break;
