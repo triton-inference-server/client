@@ -69,7 +69,10 @@ public class InferRequestedOutput {
 
   public InferRequestedOutput(String name) { this(name, true, 0); }
 
-  public InferRequestedOutput(String name, boolean isBinary) { this(name, isBinary, 0); }
+  public InferRequestedOutput(String name, boolean isBinary)
+  {
+    this(name, isBinary, 0);
+  }
 
   public IOTensor getTensor()
   {

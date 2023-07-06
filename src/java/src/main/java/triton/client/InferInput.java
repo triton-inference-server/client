@@ -46,8 +46,8 @@ import triton.client.pojo.IOTensor;
 import triton.client.pojo.Parameters;
 
 /**
- * This class describes an input tensor feeding to inference server, including it's name, shape,
- * datatype and the actual tensor data.
+ * This class describes an input tensor feeding to inference server, including
+ * it's name, shape, datatype and the actual tensor data.
  */
 public class InferInput {
   /**
@@ -68,7 +68,8 @@ public class InferInput {
    */
   private final Parameters parameters;
   /**
-   * Binary representation of tensor data of this input tensor if it's in binary format.
+   * Binary representation of tensor data of this input tensor if it's in binary
+   * format.
    */
   private byte[] binaryData;
   /**
@@ -100,11 +101,13 @@ public class InferInput {
   private void checkShape(int len)
   {
     Preconditions.checkArgument(
-        len == this.numElement, "Data tensor's size [%s not consist with shape [%s].", len,
+        len == this.numElement,
+        "Data tensor's size [%s not consist with shape [%s].", len,
         this.numElement);
   }
 
-  private <T> void setBinaryDataImpl(List<T> data, BiConsumer<ByteBuffer, T> consumer)
+  private <T> void setBinaryDataImpl(
+      List<T> data, BiConsumer<ByteBuffer, T> consumer)
   {
     this.binaryData = new byte[data.size() * dataType.numByte];
     ByteBuffer buf = ByteBuffer.wrap(this.binaryData);
@@ -113,7 +116,8 @@ public class InferInput {
       consumer.accept(buf, datum);
     }
     Preconditions.checkState(buf.position() == this.binaryData.length);
-    this.parameters.put(Parameters.KEY_BINARY_DATA_SIZE, this.binaryData.length);
+    this.parameters.put(
+        Parameters.KEY_BINARY_DATA_SIZE, this.binaryData.length);
   }
 
   private <T> void setJSONDataImpl(List<T> data)
@@ -141,17 +145,18 @@ public class InferInput {
   /**
    * Set boolean tensor data.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(boolean[] data, boolean isBinaryData)
   {
     Preconditions.checkArgument(
-        this.dataType == DataType.BOOL, "Could not set boolean[] as data of type: %s",
-        this.dataType);
+        this.dataType == DataType.BOOL,
+        "Could not set boolean[] as data of type: %s", this.dataType);
     if (isBinaryData) {
-      // setBinaryDataImpl(Booleans.asList(data), (buf, b) -> buf.put(b ? (byte)1 : (byte)0));
+      // setBinaryDataImpl(Booleans.asList(data), (buf, b) -> buf.put(b ?
+      // (byte)1 : (byte)0));
       this.binaryData = BinaryProtocol.toBytes(this.dataType, data);
       this.updateBinaryDataSize();
     } else {
@@ -160,11 +165,11 @@ public class InferInput {
   }
 
   /**
-   * Set INT8/UINT8 tensor data. For unsigned type, top bit should be stored in the sign bit. Note:
-   * guava currently had nothing like UnsignedShort.
+   * Set INT8/UINT8 tensor data. For unsigned type, top bit should be stored in
+   * the sign bit. Note: guava currently had nothing like UnsignedShort.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(byte[] data, boolean isBinaryData)
@@ -179,13 +184,15 @@ public class InferInput {
     } else if (this.dataType.singed) {
       setJSONDataImpl(Bytes.asList(data));
     } else {
-      setJSONDataImpl(Bytes.asList(data), bits -> UnsignedInteger.fromIntBits(bits).longValue());
+      setJSONDataImpl(
+          Bytes.asList(data),
+          bits -> UnsignedInteger.fromIntBits(bits).longValue());
     }
   }
 
   /**
-   * Set INT16/UINT16 tensor data. For unsigned type, top bit should be stored in the sign bit. You
-   * may turn to
+   * Set INT16/UINT16 tensor data. For unsigned type, top bit should be stored
+   * in the sign bit. You may turn to
    * {@link com.google.common.primitives.Shorts} for help.
    * <p>
    *
@@ -204,18 +211,20 @@ public class InferInput {
     } else if (this.dataType.singed) {
       setJSONDataImpl(Shorts.asList(data));
     } else {
-      setJSONDataImpl(Shorts.asList(data), bits -> UnsignedInteger.fromIntBits(bits).longValue());
+      setJSONDataImpl(
+          Shorts.asList(data),
+          bits -> UnsignedInteger.fromIntBits(bits).longValue());
     }
   }
 
   /**
-   * Set INT32/UINT32 tensor data. For unsigned type, top bit should be stored in the sign bit. You
-   * may turn to
+   * Set INT32/UINT32 tensor data. For unsigned type, top bit should be stored
+   * in the sign bit. You may turn to
    * {@link com.google.common.primitives.UnsignedInteger} and {@link
    * com.google.common.primitives.UnsignedInts} for help.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(int[] data, boolean isBinaryData)
@@ -232,18 +241,20 @@ public class InferInput {
       if (this.dataType.singed) {
         setJSONDataImpl(Ints.asList(data));
       } else { // uint32
-        setJSONDataImpl(Ints.asList(data), bits -> UnsignedInteger.fromIntBits(bits).longValue());
+        setJSONDataImpl(
+            Ints.asList(data),
+            bits -> UnsignedInteger.fromIntBits(bits).longValue());
       }
     }
   }
 
   /**
-   * Set INT64/UINT64 tensor data. For UINT64, top bit should be stored in the sign bit. You may
-   * turn to {@link com.google.common.primitives.UnsignedLong} and {@link
-   * com.google.common.primitives.UnsignedLongs} for help.
+   * Set INT64/UINT64 tensor data. For UINT64, top bit should be stored in the
+   * sign bit. You may turn to {@link com.google.common.primitives.UnsignedLong}
+   * and {@link com.google.common.primitives.UnsignedLongs} for help.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(long[] data, boolean isBinaryData)
@@ -258,25 +269,28 @@ public class InferInput {
     } else if (this.dataType.singed) {
       setJSONDataImpl(Longs.asList(data));
     } else {
-      // TODO(xiafei.qiuxf): This is a little bit inefficient, maybe we can write a custom json
+      // TODO(xiafei.qiuxf): This is a little bit inefficient, maybe we can
+      // write a custom json
       //  serializer/deserializer for unsigned types.
       setJSONDataImpl(
-          Longs.asList(data), bits -> UnsignedLong.fromLongBits(bits).bigIntegerValue());
+          Longs.asList(data),
+          bits -> UnsignedLong.fromLongBits(bits).bigIntegerValue());
     }
   }
 
   /**
    * Set FP32 tensor data.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(float[] data, boolean isBinaryData)
   {
     this.checkShape(data.length);
     Preconditions.checkArgument(
-        this.dataType == DataType.FP32, "Could not set float[] as data of type: %s", this.dataType);
+        this.dataType == DataType.FP32,
+        "Could not set float[] as data of type: %s", this.dataType);
     if (isBinaryData) {
       this.binaryData = BinaryProtocol.toBytes(this.dataType, data);
       this.updateBinaryDataSize();
@@ -288,16 +302,16 @@ public class InferInput {
   /**
    * Set FP64 tensor data.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(double[] data, boolean isBinaryData)
   {
     this.checkShape(data.length);
     Preconditions.checkArgument(
-        this.dataType == DataType.FP64, "Could not set double[] as data of type: %s",
-        this.dataType);
+        this.dataType == DataType.FP64,
+        "Could not set double[] as data of type: %s", this.dataType);
     if (isBinaryData) {
       this.binaryData = BinaryProtocol.toBytes(this.dataType, data);
       this.updateBinaryDataSize();
@@ -309,16 +323,16 @@ public class InferInput {
   /**
    * Set boolean tensor data.
    *
-   * @param data         tensor data in java array. It's length must match input shape given in
-   *     constructor.
+   * @param data         tensor data in java array. It's length must match input
+   *     shape given in constructor.
    * @param isBinaryData whether it's in binary format.
    */
   public void setData(String[] data, boolean isBinaryData)
   {
     this.checkShape(data.length);
     Preconditions.checkArgument(
-        this.dataType == DataType.BYTES, "Could not set String[] as data of type: %s",
-        this.dataType);
+        this.dataType == DataType.BYTES,
+        "Could not set String[] as data of type: %s", this.dataType);
     if (isBinaryData) {
       this.binaryData = BinaryProtocol.toBytes(this.dataType, data);
       this.updateBinaryDataSize();
@@ -332,7 +346,8 @@ public class InferInput {
 
   private void updateBinaryDataSize()
   {
-    this.parameters.put(Parameters.KEY_BINARY_DATA_SIZE, this.binaryData.length);
+    this.parameters.put(
+        Parameters.KEY_BINARY_DATA_SIZE, this.binaryData.length);
   }
 
   public String getName() { return name; }
@@ -340,8 +355,8 @@ public class InferInput {
   IOTensor getTensor()
   {
     Preconditions.checkArgument(
-        this.binaryData != null || this.data != null, ".setData method not call on InferInput %s",
-        this.name);
+        this.binaryData != null || this.data != null,
+        ".setData method not call on InferInput %s", this.name);
     IOTensor tensor = new IOTensor();
     tensor.setName(this.name);
     tensor.setDatatype(this.dataType);

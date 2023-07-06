@@ -64,10 +64,11 @@ import triton.client.pojo.IOTensor;
 import triton.client.pojo.Parameters;
 
 /**
- * An InferenceServerClient object is used to perform any kind of communication with the
- * InferenceServer using http protocol. None of the methods are thread safe. The object is intended
- * to be used by a single thread and simultaneously calling different methods with different threads
- * is not supported and will cause undefined behavior.
+ * An InferenceServerClient object is used to perform any kind of communication
+ * with the InferenceServer using http protocol. None of the methods are thread
+ * safe. The object is intended to be used by a single thread and simultaneously
+ * calling different methods with different threads is not supported and will
+ * cause undefined behavior.
  */
 public class InferenceServerClient implements AutoCloseable {
   private static final Log LOG = LogFactory.getLog(InferenceServerClient.class);
@@ -93,8 +94,8 @@ public class InferenceServerClient implements AutoCloseable {
     }
 
     public HttpConfig(
-        int ioThreadNum, int readTimeout, int connectTimeout, int maxConnectionCount,
-        int maxConnectionPerRoute)
+        int ioThreadNum, int readTimeout, int connectTimeout,
+        int maxConnectionCount, int maxConnectionPerRoute)
     {
       super();
       this.ioThreadNum = ioThreadNum;
@@ -106,24 +107,35 @@ public class InferenceServerClient implements AutoCloseable {
     }
 
     public HttpConfig(
-        int ioThreadNum, int readTimeout, int connectTimeout, int maxConnectionCount,
-        int maxConnectionPerRoute, int requestTimeout)
+        int ioThreadNum, int readTimeout, int connectTimeout,
+        int maxConnectionCount, int maxConnectionPerRoute, int requestTimeout)
     {
-      this(ioThreadNum, readTimeout, connectTimeout, maxConnectionCount, maxConnectionPerRoute);
+      this(
+          ioThreadNum, readTimeout, connectTimeout, maxConnectionCount,
+          maxConnectionPerRoute);
       this.requestTimeout = requestTimeout;
     }
 
     public int getIoThreadNum() { return ioThreadNum; }
 
-    public void setIoThreadNum(int ioThreadNum) { this.ioThreadNum = ioThreadNum; }
+    public void setIoThreadNum(int ioThreadNum)
+    {
+      this.ioThreadNum = ioThreadNum;
+    }
 
     public int getReadTimeout() { return readTimeout; }
 
-    public void setReadTimeout(int readTimeout) { this.readTimeout = readTimeout; }
+    public void setReadTimeout(int readTimeout)
+    {
+      this.readTimeout = readTimeout;
+    }
 
     public int getConnectTimeout() { return connectTimeout; }
 
-    public void setConnectTimeout(int connectTimeout) { this.connectTimeout = connectTimeout; }
+    public void setConnectTimeout(int connectTimeout)
+    {
+      this.connectTimeout = connectTimeout;
+    }
 
     public int getMaxConnectionCount() { return maxConnectionCount; }
 
@@ -141,7 +153,10 @@ public class InferenceServerClient implements AutoCloseable {
 
     public int getRequestTimeout() { return requestTimeout; }
 
-    public void setRequestTimeout(int requestTimeout) { this.requestTimeout = requestTimeout; }
+    public void setRequestTimeout(int requestTimeout)
+    {
+      this.requestTimeout = requestTimeout;
+    }
 
     public boolean isKeepAlive() { return keepAlive; }
 
@@ -163,10 +178,13 @@ public class InferenceServerClient implements AutoCloseable {
    * Create an InferenceServerClient object.
    *
    * @param endpoint          The endpoint to connect with.
-   * @param connectionTimeout The timeout value for the connection. Default value is 5 sec.
-   * @param networkTimeout    The timeout value for the network. Default value is 5 sec.
+   * @param connectionTimeout The timeout value for the connection. Default
+   *     value is 5 sec.
+   * @param networkTimeout    The timeout value for the network. Default value
+   *     is 5 sec.
    */
-  public InferenceServerClient(AbstractEndpoint endpoint, int connectionTimeout, int networkTimeout)
+  public InferenceServerClient(
+      AbstractEndpoint endpoint, int connectionTimeout, int networkTimeout)
       throws IOException
   {
     this.endpoint = endpoint;
@@ -177,49 +195,57 @@ public class InferenceServerClient implements AutoCloseable {
     this.httpClient = createHttpClient(httpConfig);
   }
 
-  public InferenceServerClient(String ipPort, int connectionTimeout, int networkTimeout)
+  public InferenceServerClient(
+      String ipPort, int connectionTimeout, int networkTimeout)
       throws IOException
   {
     this(new FixedEndpoint(ipPort), connectionTimeout, networkTimeout);
   }
 
-  public InferenceServerClient(AbstractEndpoint endpoint, HttpConfig httpConfig) throws IOException
+  public InferenceServerClient(AbstractEndpoint endpoint, HttpConfig httpConfig)
+      throws IOException
   {
     this.endpoint = endpoint;
     this.requestTimeout = httpConfig.getRequestTimeout();
     this.httpClient = createHttpClient(httpConfig);
   }
 
-  private static CloseableHttpAsyncClient createHttpClient(HttpConfig httpConfig) throws IOException
+  private static CloseableHttpAsyncClient createHttpClient(
+      HttpConfig httpConfig) throws IOException
   {
     ConnectingIOReactor ioReactor = new DefaultConnectingIOReactor();
-    PoolingNHttpClientConnectionManager cm = new PoolingNHttpClientConnectionManager(ioReactor);
+    PoolingNHttpClientConnectionManager cm =
+        new PoolingNHttpClientConnectionManager(ioReactor);
     cm.setMaxTotal(httpConfig.getMaxConnectionCount());
     cm.setDefaultMaxPerRoute(httpConfig.getMaxConnectionPerRoute());
-    IOReactorConfig config = IOReactorConfig.custom()
-                                 .setTcpNoDelay(true)
-                                 .setSoTimeout(httpConfig.getReadTimeout())
-                                 .setSoReuseAddress(true)
-                                 .setConnectTimeout(httpConfig.getConnectTimeout())
-                                 .setIoThreadCount(httpConfig.getIoThreadNum())
-                                 .setSoKeepAlive(httpConfig.isKeepAlive())
-                                 .build();
-    final RequestConfig requestConfig = RequestConfig.custom()
-                                            .setConnectTimeout(httpConfig.getConnectTimeout())
-                                            .setSocketTimeout(httpConfig.getReadTimeout())
-                                            .build();
-    CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
-                                              .setConnectionManager(cm)
-                                              .setDefaultIOReactorConfig(config)
-                                              .setDefaultRequestConfig(requestConfig)
-                                              .build();
+    IOReactorConfig config =
+        IOReactorConfig.custom()
+            .setTcpNoDelay(true)
+            .setSoTimeout(httpConfig.getReadTimeout())
+            .setSoReuseAddress(true)
+            .setConnectTimeout(httpConfig.getConnectTimeout())
+            .setIoThreadCount(httpConfig.getIoThreadNum())
+            .setSoKeepAlive(httpConfig.isKeepAlive())
+            .build();
+    final RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setConnectTimeout(httpConfig.getConnectTimeout())
+            .setSocketTimeout(httpConfig.getReadTimeout())
+            .build();
+    CloseableHttpAsyncClient httpClient =
+        HttpAsyncClients.custom()
+            .setConnectionManager(cm)
+            .setDefaultIOReactorConfig(config)
+            .setDefaultRequestConfig(requestConfig)
+            .build();
     httpClient.start();
     return httpClient;
   }
 
   public void setRetryCnt(int retryCnt)
   {
-    Preconditions.checkArgument(retryCnt > 0, "Invalid retryCount: %s", retryCnt);
+    Preconditions.checkArgument(
+        retryCnt > 0, "Invalid retryCount: %s", retryCnt);
     this.retryCnt = retryCnt;
   }
 
@@ -245,7 +271,8 @@ public class InferenceServerClient implements AutoCloseable {
     List<IOTensor> inputs = Lists.transform(arg.inputs, InferInput::getTensor);
     inferReq.put("inputs", inputs);
     if (!Util.isEmpty(arg.outputs)) {
-      List<IOTensor> outputs = Lists.transform(arg.outputs, InferRequestedOutput::getTensor);
+      List<IOTensor> outputs =
+          Lists.transform(arg.outputs, InferRequestedOutput::getTensor);
       inferReq.put("outputs", outputs);
     } else {
       // Looks strange, just do as in Triton's python SDK.
@@ -274,12 +301,16 @@ public class InferenceServerClient implements AutoCloseable {
       catch (Exception e) {
         if (i == this.retryCnt) {
           LOG.error(
-              String.format("Inference failed on %dth retry, url: %s", i, post.getURI().toString()),
+              String.format(
+                  "Inference failed on %dth retry, url: %s", i,
+                  post.getURI().toString()),
               e);
           throw new InferenceException(e);
         } else if (LOG.isDebugEnabled()) {
           LOG.debug(
-              String.format("Inference failed on %dth retry, url: %s", i, post.getURI().toString()),
+              String.format(
+                  "Inference failed on %dth retry, url: %s", i,
+                  post.getURI().toString()),
               e);
         }
       }
@@ -288,7 +319,8 @@ public class InferenceServerClient implements AutoCloseable {
     return null;
   }
 
-  private HttpPost createHttpPost(InferArguments arg, Map<String, Object> inferReq) throws Exception
+  private HttpPost createHttpPost(
+      InferArguments arg, Map<String, Object> inferReq) throws Exception
   {
     // Create post body in binary format:
     //    <json body><optional_binary_tensor>...
@@ -304,16 +336,20 @@ public class InferenceServerClient implements AutoCloseable {
       }
     }
     if (hasBinaryInput) {
-      arg.headers.put("Inference-Header-Content-Length", String.valueOf(jsonBytes.length));
+      arg.headers.put(
+          "Inference-Header-Content-Length", String.valueOf(jsonBytes.length));
     }
 
     // Create target URI.
     URIBuilder ub = new URIBuilder(this.getUrl());
-    String safeModelName = URLEncoder.encode(arg.modelName, Charsets.UTF_8.toString());
+    String safeModelName =
+        URLEncoder.encode(arg.modelName, Charsets.UTF_8.toString());
     String requestUri = Util.isEmpty(arg.modelVersion)
         ? String.format("/v2/models/%s/infer", safeModelName)
-        : String.format("/v2/models/%s/versions/%s/infer", safeModelName, arg.modelVersion);
-    String addPath = ub.getPath() == null ? requestUri : ub.getPath() + requestUri;
+        : String.format(
+            "/v2/models/%s/versions/%s/infer", safeModelName, arg.modelVersion);
+    String addPath =
+        ub.getPath() == null ? requestUri : ub.getPath() + requestUri;
     ub.setPath(addPath);
     arg.queryParams.forEach(ub::addParameter);
 
@@ -324,11 +360,14 @@ public class InferenceServerClient implements AutoCloseable {
     return post;
   }
 
-  private String getUrl() throws Exception { return "http://" + this.endpoint.getEndpoint(); }
+  private String getUrl() throws Exception
+  {
+    return "http://" + this.endpoint.getEndpoint();
+  }
 
   public InferResult infer(
-      String modelName, List<InferInput> inputs, List<InferRequestedOutput> outputs)
-      throws InferenceException
+      String modelName, List<InferInput> inputs,
+      List<InferRequestedOutput> outputs) throws InferenceException
   {
     return this.infer(new InferArguments(modelName, inputs, outputs));
   }
@@ -350,7 +389,8 @@ public class InferenceServerClient implements AutoCloseable {
     Map<String, String> queryParams = new HashMap<>();
 
     public InferArguments(
-        String modelName, List<InferInput> inputs, List<InferRequestedOutput> outputs)
+        String modelName, List<InferInput> inputs,
+        List<InferRequestedOutput> outputs)
     {
       this.modelName = modelName;
       this.inputs = inputs;

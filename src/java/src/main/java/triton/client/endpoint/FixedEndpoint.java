@@ -42,9 +42,11 @@ public class FixedEndpoint extends AbstractEndpoint {
    */
   public FixedEndpoint(String endpoint)
   {
-    Preconditions.checkArgument(!Util.isEmpty(endpoint), "endpoint should not be null or empty.");
     Preconditions.checkArgument(
-        !endpoint.contains("://"), "endpoint should be in host:port[/path] format without scheme.");
+        !Util.isEmpty(endpoint), "endpoint should not be null or empty.");
+    Preconditions.checkArgument(
+        !endpoint.contains("://"),
+        "endpoint should be in host:port[/path] format without scheme.");
     this.addr = endpoint;
   }
 

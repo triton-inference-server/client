@@ -52,8 +52,8 @@ import triton.client.pojo.Parameters;
 import triton.client.pojo.ResponseError;
 
 /**
- * An object of InferResult class holds the response of an inference request and provide methods to
- * retrieve inference results.
+ * An object of InferResult class holds the response of an inference request and
+ * provide methods to retrieve inference results.
  */
 public class InferResult {
   static class Index {
@@ -74,7 +74,8 @@ public class InferResult {
   public InferResult(HttpResponse resp) throws IOException, InferenceException
   {
     HttpEntity entity = resp.getEntity();
-    Preconditions.checkState(entity != null, "Get null entity from HTTP response.");
+    Preconditions.checkState(
+        entity != null, "Get null entity from HTTP response.");
     InputStream stream = entity.getContent();
 
     int httpCode = resp.getStatusLine().getStatusCode();
@@ -95,14 +96,16 @@ public class InferResult {
     }
 
     this.nameToBinaryIdx = new HashMap<>();
-    Header contentLenHeader = resp.getFirstHeader("Inference-Header-Content-Length");
+    Header contentLenHeader =
+        resp.getFirstHeader("Inference-Header-Content-Length");
     if (contentLenHeader != null) {
       // Construct response object from json part.
       int jsonLen = Integer.parseInt(contentLenHeader.getValue());
       byte[] bodyBytes = new byte[jsonLen];
       int readLen = stream.read(bodyBytes);
       Preconditions.checkState(
-          readLen == jsonLen, "Expect content length: %d, but got %d.", jsonLen, readLen);
+          readLen == jsonLen, "Expect content length: %d, but got %d.", jsonLen,
+          readLen);
       String bodyJson = new String(bodyBytes, Charsets.UTF_8);
       this.response = Util.fromJson(bodyJson, InferenceResponse.class);
 
@@ -132,7 +135,9 @@ public class InferResult {
   }
 
   @VisibleForTesting
-  InferResult(InferenceResponse response, Map<String, Index> nameToBinaryIdx, byte[] binaryData)
+  InferResult(
+      InferenceResponse response, Map<String, Index> nameToBinaryIdx,
+      byte[] binaryData)
   {
     this.response = response;
     this.nameToBinaryIdx = nameToBinaryIdx;
@@ -141,7 +146,10 @@ public class InferResult {
 
   @VisibleForTesting public InferenceResponse getResponse() { return response; }
 
-  @VisibleForTesting public Map<String, Index> getNameToBinaryIdx() { return nameToBinaryIdx; }
+  @VisibleForTesting public Map<String, Index> getNameToBinaryIdx()
+  {
+    return nameToBinaryIdx;
+  }
 
   @VisibleForTesting public byte[] getBinaryData() { return binaryData; }
 
@@ -156,7 +164,8 @@ public class InferResult {
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.BOOL.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.BOOL.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in boolean array.
@@ -169,14 +178,14 @@ public class InferResult {
     }
     Preconditions.checkArgument(
         out.getDatatype() == DataType.BOOL,
-        "Could not get boolean[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        "Could not get boolean[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (boolean[]) getOutputImpl(out, boolean.class, buf -> buf.get() != 0);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.INT8 or
-   * DataType.UINT8.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.INT8 or DataType.UINT8.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in byte array.
@@ -188,15 +197,16 @@ public class InferResult {
       return null;
     }
     Preconditions.checkArgument(
-        out.getDatatype() == DataType.INT8 || out.getDatatype() == DataType.UINT8,
-        "Could not get byte[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        out.getDatatype() == DataType.INT8
+            || out.getDatatype() == DataType.UINT8,
+        "Could not get byte[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (byte[]) getOutputImpl(out, byte.class, ByteBuffer::get);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.INT16 or
-   * DataType.UINT16.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.INT16 or DataType.UINT16.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in short array.
@@ -208,15 +218,16 @@ public class InferResult {
       return null;
     }
     Preconditions.checkArgument(
-        out.getDatatype() == DataType.INT16 || out.getDatatype() == DataType.UINT16,
-        "Could not get short[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        out.getDatatype() == DataType.INT16
+            || out.getDatatype() == DataType.UINT16,
+        "Could not get short[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (short[]) getOutputImpl(out, short.class, ByteBuffer::getShort);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.INT32 or
-   * DataType.UINT32.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.INT32 or DataType.UINT32.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in int array.
@@ -228,14 +239,16 @@ public class InferResult {
       return null;
     }
     Preconditions.checkArgument(
-        out.getDatatype() == DataType.INT32 || out.getDatatype() == DataType.UINT32,
-        "Could not get int[] from data of type %s on output %s.", out.getDatatype(), out.getName());
+        out.getDatatype() == DataType.INT32
+            || out.getDatatype() == DataType.UINT32,
+        "Could not get int[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (int[]) getOutputImpl(out, int.class, ByteBuffer::getInt);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.INT64 or
-   * DataType.UINT64.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.INT64 or DataType.UINT64.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in long array.
@@ -247,14 +260,16 @@ public class InferResult {
       return null;
     }
     Preconditions.checkArgument(
-        out.getDatatype() == DataType.INT64 || out.getDatatype() == DataType.UINT64,
-        "Could not get long[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        out.getDatatype() == DataType.INT64
+            || out.getDatatype() == DataType.UINT64,
+        "Could not get long[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (long[]) getOutputImpl(out, long.class, ByteBuffer::getLong);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.FP32.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.FP32.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in float array.
@@ -267,13 +282,14 @@ public class InferResult {
     }
     Preconditions.checkArgument(
         out.getDatatype() == DataType.FP32,
-        "Could not get float[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        "Could not get float[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (float[]) getOutputImpl(out, float.class, ByteBuffer::getFloat);
   }
 
   /**
-   * Get boolean tensor named as by parameter output. The tensor must be of DataType.FP64.
+   * Get boolean tensor named as by parameter output. The tensor must be of
+   * DataType.FP64.
    *
    * @param output name of output tensor.
    * @return null if output not found or the tensor in double array.
@@ -286,12 +302,13 @@ public class InferResult {
     }
     Preconditions.checkArgument(
         out.getDatatype() == DataType.FP64,
-        "Could not get double[] from data of type %s on output %s.", out.getDatatype(),
-        out.getName());
+        "Could not get double[] from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     return (double[]) getOutputImpl(out, double.class, ByteBuffer::getDouble);
   }
 
-  private <T> Object getOutputImpl(IOTensor out, Class<T> clazz, Function<ByteBuffer, T> getter)
+  private <T> Object
+  getOutputImpl(IOTensor out, Class<T> clazz, Function<ByteBuffer, T> getter)
   {
     Index idx = this.nameToBinaryIdx.get(out.getName());
     if (idx != null) { // Output in binary format.

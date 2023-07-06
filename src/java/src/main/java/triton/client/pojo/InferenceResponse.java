@@ -49,11 +49,17 @@ public class InferenceResponse {
 
   public void setModelName(String modelName) { this.modelName = modelName; }
 
-  public void setModelVersion(String modelVersion) { this.modelVersion = modelVersion; }
+  public void setModelVersion(String modelVersion)
+  {
+    this.modelVersion = modelVersion;
+  }
 
   public void setId(String id) { this.id = id; }
 
-  public void setParameters(Parameters parameters) { this.parameters = parameters; }
+  public void setParameters(Parameters parameters)
+  {
+    this.parameters = parameters;
+  }
 
   public void setOutputs(List<IOTensor> outputs) { this.outputs = outputs; }
 

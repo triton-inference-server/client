@@ -63,7 +63,10 @@ public class IOTensor {
 
   public Parameters getParameters() { return parameters; }
 
-  public void setParameters(Parameters parameters) { this.parameters = parameters; }
+  public void setParameters(Parameters parameters)
+  {
+    this.parameters = parameters;
+  }
 
   public Object[] getData() { return data; }
 

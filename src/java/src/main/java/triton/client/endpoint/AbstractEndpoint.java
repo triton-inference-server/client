@@ -32,7 +32,8 @@ import triton.client.InferenceServerClient;
 import triton.client.Util;
 
 /**
- * Endpoint is an abstraction that allow different kinds of strategy to provide ip and port for
+ * Endpoint is an abstraction that allow different kinds of strategy to provide
+ * ip and port for
  * {@link InferenceServerClient} to send requests.
  */
 public abstract class AbstractEndpoint {
@@ -54,13 +55,14 @@ public abstract class AbstractEndpoint {
     for (int i = 0; i < RETRY_COUNT; i++) {
       String url = this.getEndpointImpl();
       Preconditions.checkState(
-          !Util.isEmpty(url), "getEndpointImpl should not return null or empty string!");
+          !Util.isEmpty(url),
+          "getEndpointImpl should not return null or empty string!");
       if (!Objects.equals(this.lastResult, url) || this.getEndpointNum() < 2) {
         this.lastResult = url;
         return url;
       }
     }
-    throw new RuntimeException(
-        String.format("Failed to get endpoint address after trying %d times.", RETRY_COUNT));
+    throw new RuntimeException(String.format(
+        "Failed to get endpoint address after trying %d times.", RETRY_COUNT));
   }
 }

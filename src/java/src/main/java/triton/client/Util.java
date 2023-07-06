@@ -45,7 +45,10 @@ public class Util {
    * @param c the collection object.
    * @return true if it's null or empty
    */
-  public static boolean isEmpty(Collection<?> c) { return c == null || c.isEmpty(); }
+  public static boolean isEmpty(Collection<?> c)
+  {
+    return c == null || c.isEmpty();
+  }
 
   /**
    * Calculate element number from tensor shape.
@@ -99,7 +102,8 @@ public class Util {
    * @param <T>
    * @return Parsed object.
    */
-  public static <T> T fromJson(String text, Class<T> clazz) throws JsonProcessingException
+  public static <T> T fromJson(String text, Class<T> clazz)
+      throws JsonProcessingException
   {
     return jsonMapper.readValue(text, clazz);
   }
@@ -109,7 +113,8 @@ public class Util {
     if (clazz == boolean.class || clazz == Boolean.class) {
       if (input.getClass() != Boolean.class) {
         throw new UnsupportedOperationException(String.format(
-            "Casting %s to %s.", input.getClass().getCanonicalName(), clazz.getCanonicalName()));
+            "Casting %s to %s.", input.getClass().getCanonicalName(),
+            clazz.getCanonicalName()));
       }
       return input;
     }
@@ -137,7 +142,7 @@ public class Util {
     if (clazz == double.class || clazz == Double.class) {
       return num.doubleValue();
     }
-    throw new UnsupportedOperationException(
-        String.format("Unsupported target type: %s.", clazz.getCanonicalName()));
+    throw new UnsupportedOperationException(String.format(
+        "Unsupported target type: %s.", clazz.getCanonicalName()));
   }
 }

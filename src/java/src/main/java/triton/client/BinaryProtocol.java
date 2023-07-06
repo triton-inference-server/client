@@ -63,7 +63,8 @@ public class BinaryProtocol {
   public static byte[] toBytes(DataType dataType, boolean[] data)
   {
     return setBinaryDataImpl(
-        dataType, Booleans.asList(data), (buf, b) -> buf.put(b ? (byte) 1 : (byte) 0));
+        dataType, Booleans.asList(data),
+        (buf, b) -> buf.put(b ? (byte) 1 : (byte) 0));
   }
 
   public static byte[] toBytes(DataType dataType, byte[] data)
@@ -73,7 +74,8 @@ public class BinaryProtocol {
 
   public static byte[] toBytes(DataType dataType, short[] data)
   {
-    return setBinaryDataImpl(dataType, Shorts.asList(data), ByteBuffer::putShort);
+    return setBinaryDataImpl(
+        dataType, Shorts.asList(data), ByteBuffer::putShort);
   }
 
   public static byte[] toBytes(DataType dataType, int[] data)
@@ -88,13 +90,15 @@ public class BinaryProtocol {
 
   public static byte[] toBytes(DataType dataType, float[] data)
   {
-    return setBinaryDataImpl(dataType, Floats.asList(data), ByteBuffer::putFloat);
+    return setBinaryDataImpl(
+        dataType, Floats.asList(data), ByteBuffer::putFloat);
   }
 
 
   public static byte[] toBytes(DataType dataType, double[] data)
   {
-    return setBinaryDataImpl(dataType, Doubles.asList(data), ByteBuffer::putDouble);
+    return setBinaryDataImpl(
+        dataType, Doubles.asList(data), ByteBuffer::putDouble);
   }
 
   public static byte[] toBytes(DataType dataType, String[] data)
