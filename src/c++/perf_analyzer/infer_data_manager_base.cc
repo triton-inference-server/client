@@ -33,7 +33,7 @@ namespace triton { namespace perfanalyzer {
 cb::Error
 InferDataManagerBase::GetInputData(
     const std::string& name, const ModelTensor& tensor, int stream_id,
-    int step_id, std::vector<DataLoaderData>& input_datas)
+    int step_id, std::vector<TensorData>& input_datas)
 {
   size_t max_count = tensor.is_shape_tensor_ ? 1 : batch_size_;
   std::vector<int64_t> shape;
@@ -43,7 +43,7 @@ InferDataManagerBase::GetInputData(
     int local_step_id =
         (step_id + count) % data_loader_->GetTotalSteps(stream_id);
 
-    DataLoaderData input_data;
+    TensorData input_data;
 
     RETURN_IF_ERROR(
         data_loader_->GetInputShape(tensor, stream_id, local_step_id, &shape));
@@ -74,7 +74,7 @@ InferDataManagerBase::GetInputData(
 cb::Error
 InferDataManagerBase::ValidateShapeTensor(
     const ModelTensor& tensor, int stream_id, int step_id,
-    const std::vector<DataLoaderData>& input_datas)
+    const std::vector<TensorData>& input_datas)
 {
   // Validate that steps 1 through N are exactly the same as step 0, since step
   // 0 is the only one we send for shape tensors
@@ -82,7 +82,7 @@ InferDataManagerBase::ValidateShapeTensor(
     int local_step_id =
         (step_id + count) % data_loader_->GetTotalSteps(stream_id);
 
-    DataLoaderData input_data;
+    TensorData input_data;
     RETURN_IF_ERROR(data_loader_->GetInputData(
         tensor, stream_id, local_step_id, input_data));
 
@@ -144,7 +144,7 @@ InferDataManagerBase::UpdateValidationOutputs(
   for (const auto& output : infer_data.outputs_) {
     const auto& model_output = (*(parser_->Outputs()))[output->Name()];
 
-    DataLoaderData output_data;
+    TensorData output_data;
     const int* set_shape_values = nullptr;
     int set_shape_value_cnt = 0;
 

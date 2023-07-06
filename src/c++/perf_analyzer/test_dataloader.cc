@@ -109,7 +109,7 @@ TEST_CASE("dataloader: GetInputData missing data")
   MockDataLoader dataloader;
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
 
-  DataLoaderData data;
+  TensorData data;
 
   cb::Error status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk() == false);
@@ -491,7 +491,7 @@ TEST_CASE("dataloader: ParseData: Valid Data")
 
   // Confirm the correct data is in the dataloader
   //
-  DataLoaderData data;
+  TensorData data;
   std::vector<int64_t> shape;
 
   dataloader.GetInputShape(input1, 0, 1, &shape);
@@ -616,7 +616,7 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
 
   // Confirm the correct data is in the dataloader
   //
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 0, 1, data);
   REQUIRE(status.IsOk());
@@ -738,7 +738,7 @@ TEST_CASE(
   CHECK_EQ(shape[1], 2);
 
   // Confirm that the zero-shape input IS valid, but with size=0 and ptr=null
-  DataLoaderData data;
+  TensorData data;
   status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
   CHECK(data.is_valid);
@@ -793,7 +793,7 @@ TEST_CASE(
 
   // Confirm the correct data is in the dataloader
   //
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 0, 3, data);
   REQUIRE(status.IsOk());
@@ -857,7 +857,7 @@ TEST_CASE(
 
   // Confirm the correct data is in the dataloader
   //
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 1, 1, data);
   REQUIRE(status.IsOk());
@@ -981,7 +981,7 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
@@ -1036,7 +1036,7 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
@@ -1188,7 +1188,7 @@ TEST_CASE(
   cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
   CHECK(status.IsOk() == true);
 
-  DataLoaderData data;
+  TensorData data;
 
   dataloader.GetOutputData("OUTPUT1", 0, 0, data);
   CHECK(!data.is_valid);
@@ -1407,7 +1407,7 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
   // Validate input and output data
-  DataLoaderData data;
+  TensorData data;
 
   status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());

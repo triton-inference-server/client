@@ -65,7 +65,7 @@ InferDataManager::CreateAndPopulateInput(
     const size_t thread_id, const std::string& name, const ModelTensor& tensor,
     int stream_id, int step_id)
 {
-  std::vector<DataLoaderData> input_datas;
+  std::vector<TensorData> input_datas;
   size_t count = 0;
 
   RETURN_IF_ERROR(GetInputData(name, tensor, stream_id, step_id, input_datas));
@@ -152,7 +152,7 @@ InferDataManager::InitInferDataInput(
   infer_data.inputs_.push_back(infer_input);
 
 
-  DataLoaderData input_data;
+  TensorData input_data;
   RETURN_IF_ERROR(data_loader_->GetInputData(model_tensor, 0, 0, input_data));
 
   // Add optional input to request if data was found

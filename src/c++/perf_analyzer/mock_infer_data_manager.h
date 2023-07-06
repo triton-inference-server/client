@@ -50,7 +50,7 @@ class MockInferDataManagerShm : public InferDataManagerShm {
   // Tracks the mapping of shared memory label to data
   //
   cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, const std::vector<DataLoaderData>& input_datas,
+      uint8_t* input_shm_ptr, const std::vector<TensorData>& input_datas,
       bool is_shape_tensor, std::string& region_name) override
   {
     std::vector<int32_t> vals;

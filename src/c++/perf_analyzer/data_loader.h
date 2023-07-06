@@ -38,7 +38,7 @@ class NaggyMockDataLoader;
 
 /// Data for one input or output tensor
 ///
-struct DataLoaderData {
+struct TensorData {
   const uint8_t* data_ptr{nullptr};
   size_t batch1_size{0};
   bool is_valid{false};
@@ -101,11 +101,11 @@ class DataLoader {
   /// \param input The target model input tensor
   /// \param stream_id The data stream_id to use for retrieving input data.
   /// \param step_id The data step_id to use for retrieving input data.
-  /// \param data Returns the input DataLoaderData
+  /// \param data Returns the input TensorData
   /// Returns error object indicating status
   cb::Error GetInputData(
       const ModelTensor& input, const int stream_id, const int step_id,
-      DataLoaderData& data);
+      TensorData& data);
 
   /// Helper function to get the shape values to the input
   /// \param input The target model input tensor
@@ -123,11 +123,11 @@ class DataLoader {
   /// \param output_name The name of the output tensor
   /// \param stream_id The data stream_id to use for retrieving output data.
   /// \param step_id The data step_id to use for retrieving output data.
-  /// \param data Returns the output DataLoaderData
+  /// \param data Returns the output TensorData
   /// Returns error object indicating status
   cb::Error GetOutputData(
       const std::string& output_name, const int stream_id, const int step_id,
-      DataLoaderData& data);
+      TensorData& data);
 
   /// Return an error if the stream index or step index are invalid
   cb::Error ValidateIndexes(int stream_index, int step_index);

@@ -128,7 +128,7 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
     const std::string& name, const ModelTensor& tensor, int stream_id,
     int step_id)
 {
-  std::vector<DataLoaderData> input_datas;
+  std::vector<TensorData> input_datas;
   size_t count = 0;
 
   RETURN_IF_ERROR(GetInputData(name, tensor, stream_id, step_id, input_datas));
@@ -262,7 +262,7 @@ InferDataManagerShm::CreateMemoryRegion(
 
 cb::Error
 InferDataManagerShm::CopySharedMemory(
-    uint8_t* input_shm_ptr, const std::vector<DataLoaderData>& datas,
+    uint8_t* input_shm_ptr, const std::vector<TensorData>& datas,
     bool is_shape_tensor, std::string& region_name)
 {
   if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {

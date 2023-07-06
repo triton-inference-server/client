@@ -323,7 +323,7 @@ DataLoader::GenerateData(
 cb::Error
 DataLoader::GetInputData(
     const ModelTensor& input, const int stream_id, const int step_id,
-    DataLoaderData& data)
+    TensorData& data)
 {
   data.data_ptr = nullptr;
   data.batch1_size = 0;
@@ -379,7 +379,7 @@ DataLoader::GetInputData(
 cb::Error
 DataLoader::GetOutputData(
     const std::string& output_name, const int stream_id, const int step_id,
-    DataLoaderData& data)
+    TensorData& data)
 {
   data.data_ptr = nullptr;
   data.batch1_size = 0;
