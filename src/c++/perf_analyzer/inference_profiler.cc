@@ -1286,11 +1286,11 @@ InferenceProfiler::ValidLatencyMeasurement(
       }
     }
     const auto& response_times = std::get<1>(timestamp);
-    // Gathering durations between responses. Need more than 2 elements for
-    // metrics to be valid. The final response should be the null response with
-    // the final_response_flag set which is ignored
-    if (response_times.size() > 2) {
-      for (size_t i = 0; i < response_times.size() - 2; i++) {
+    // Gathering durations between responses. Need more than 1 element for
+    // metrics to be valid. The invariant for timestamps is that if the final
+    // response is a null response, it will NOT be added to the timestamp vector
+    if (response_times.size() > 1) {
+      for (size_t i = 0; i < response_times.size() - 1; i++) {
         uint64_t prev_response_ns = CHRONO_TO_NANOS(response_times[i]);
         uint64_t next_response_ns = CHRONO_TO_NANOS(response_times[i + 1]);
         if (prev_response_ns <= next_response_ns) {

@@ -170,42 +170,6 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
   using ns = std::chrono::nanoseconds;
-  TimestampVector all_timestamps{
-      // request ends before window starts, this should not be possible to exist
-      // in the vector of requests, but if it is, we exclude it: not included in
-      // current window
-      std::make_tuple(
-          time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
-          false),
-
-      // request starts before window starts and ends inside window: included in
-      // current window
-      std::make_tuple(
-          time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
-          false),
-
-      // requests start and end inside window: included in current window
-      std::make_tuple(
-          time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
-          false),
-      std::make_tuple(
-          time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
-          false),
-
-      // request starts before window ends and ends after window ends: not
-      // included in current window
-      std::make_tuple(
-          time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
-          false),
-
-      // request starts after window ends: not included in current window
-      std::make_tuple(
-          time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
-          false)};
-
-  TestInferenceProfiler::ValidLatencyMeasurement(
-      window, valid_sequence_count, delayed_request_count, &latencies,
-      &response_latencies, all_timestamps);
 
   const auto& convert_timestamp_to_latency{
       [](std::tuple<time_point, std::vector<time_point>, uint32_t, bool> t) {
@@ -213,10 +177,116 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
                CHRONO_TO_NANOS(std::get<0>(t));
       }};
 
-  CHECK(latencies.size() == 3);
-  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
-  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
-  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+  auto check_response_latencies{[](std::vector<uint64_t>& response_latencies,
+                                   std::vector<uint64_t>& durations) {
+    std::sort(response_latencies.begin(), response_latencies.end());
+    std::sort(durations.begin(), durations.end());
+
+    CHECK(response_latencies.size() == durations.size());
+    for (size_t i = 0; i < response_latencies.size(); i++) {
+      CHECK(response_latencies[i] == durations[i]);
+    }
+  }};
+
+  SUBCASE("coupled model")
+  {
+    TimestampVector all_timestamps{
+        // request ends before window starts, this should not be possible to
+        // exist in the vector of requests, but if it is, we exclude it: not
+        // included in current window
+        std::make_tuple(
+            time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
+            false),
+
+        // request starts before window starts and ends inside window: included
+        // in current window
+        std::make_tuple(
+            time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
+            false),
+
+        // requests start and end inside window: included in current window
+        std::make_tuple(
+            time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
+            false),
+        std::make_tuple(
+            time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
+            false),
+
+        // request starts before window ends and ends after window ends: not
+        // included in current window
+        std::make_tuple(
+            time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
+            false),
+
+        // request starts after window ends: not included in current window
+        std::make_tuple(
+            time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
+            false)};
+
+    TestInferenceProfiler::ValidLatencyMeasurement(
+        window, valid_sequence_count, delayed_request_count, &latencies,
+        &response_latencies, all_timestamps);
+
+    CHECK(latencies.size() == 3);
+    CHECK(response_latencies.size() == 0);
+    CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
+    CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
+    CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+  }
+
+  SUBCASE("decoupled model")
+  {
+    TimestampVector all_timestamps{
+        // request ends before window starts, this should not be possible to
+        // exist in the vector of requests, but if it is, we exclude it: not
+        // included in current window
+        std::make_tuple(
+            time_point(ns(1)),
+            std::vector<time_point>{
+                time_point(ns(2)), time_point(ns(3)), time_point(ns(4))},
+            0, false),
+
+        // request starts before window starts and ends inside window:
+        // included in current window
+        std::make_tuple(
+            time_point(ns(3)),
+            std::vector<time_point>{
+                time_point(ns(5)), time_point(ns(6)), time_point(ns(9))},
+            0, false),
+
+        // requests start and end inside window: included in current window
+        std::make_tuple(
+            time_point(ns(6)),
+            std::vector<time_point>{
+                time_point(ns(9)), time_point(ns(10)), time_point(ns(12))},
+            0, false),
+        std::make_tuple(
+            time_point(ns(10)),
+            std::vector<time_point>{
+                time_point(ns(14)), time_point(ns(15)), time_point(ns(16))},
+            0, false),
+
+        // request starts before window ends and ends after window ends: not
+        // included in current window
+        std::make_tuple(
+            time_point(ns(15)),
+            std::vector<time_point>{
+                time_point(ns(20)), time_point(ns(21)), time_point(ns(22))},
+            0, false),
+
+        // request starts after window ends: not included in current window
+        std::make_tuple(
+            time_point(ns(21)),
+            std::vector<time_point>{
+                time_point(ns(27)), time_point(ns(28)), time_point(ns(29))},
+            0, false)};
+    std::vector<uint64_t> durations{1, 3, 1, 2, 1, 1};
+
+    TestInferenceProfiler::ValidLatencyMeasurement(
+        window, valid_sequence_count, delayed_request_count, &latencies,
+        &response_latencies, all_timestamps);
+    check_response_latencies(response_latencies, durations);
+  }
 }
 
 TEST_CASE("test_check_window_for_stability")
