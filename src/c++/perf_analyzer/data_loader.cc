@@ -323,11 +323,11 @@ DataLoader::GenerateData(
 cb::Error
 DataLoader::GetInputData(
     const ModelTensor& input, const int stream_id, const int step_id,
-    const uint8_t** data_ptr, size_t* batch1_size)
+    DataLoaderData& data)
 {
-  bool data_found = false;
-  *data_ptr = nullptr;
-  *batch1_size = 0;
+  data.data_ptr = nullptr;
+  data.batch1_size = 0;
+  data.is_valid = false;
 
   // If json data is available then try to retrieve the data from there
   if (!input_data_.empty()) {
@@ -339,29 +339,21 @@ DataLoader::GetInputData(
     // Get the data and the corresponding byte-size
     auto it = input_data_.find(key_name);
     if (it != input_data_.end()) {
+      data.is_valid = true;
+
       if (input.datatype_.compare("BYTES") != 0) {
-        *batch1_size = it->second.size();
+        data.batch1_size = it->second.size();
       } else {
         std::vector<char>* string_data;
         string_data = &it->second;
-        *batch1_size = string_data->size();
+        data.batch1_size = string_data->size();
       }
 
-
-      if (it->second.size()) {
-        *data_ptr = (const uint8_t*)&((it->second)[0]);
-      } else {
-        // If data is found but empty, we still want to return a non-null
-        // pointer. In that case, just point to the vector itself (instead of
-        // the raw data)
-        *data_ptr = (const uint8_t*)&(it->second);
-      }
-
-      data_found = true;
+      data.data_ptr = (const uint8_t*)&((it->second)[0]);
     }
   }
 
-  if (!data_found) {
+  if (!data.is_valid) {
     if ((input.datatype_.compare("BYTES") != 0) && (input_buf_.size() != 0)) {
       int64_t byte_size = ByteSize(input.shape_, input.datatype_);
       if (byte_size < 0) {
@@ -369,13 +361,13 @@ DataLoader::GetInputData(
             "failed to get correct byte size for '" + input.name_ + "'.",
             pa::GENERIC_ERROR);
       }
-      *batch1_size = (size_t)byte_size;
-      *data_ptr = &input_buf_[0];
-      data_found = true;
+      data.batch1_size = (size_t)byte_size;
+      data.data_ptr = &input_buf_[0];
+      data.is_valid = true;
     }
   }
 
-  if (input.is_optional_ == false && !data_found) {
+  if (input.is_optional_ == false && !data.is_valid) {
     return cb::Error(
         "unable to find data for input '" + input.name_ + "'.",
         pa::GENERIC_ERROR);
@@ -387,10 +379,12 @@ DataLoader::GetInputData(
 cb::Error
 DataLoader::GetOutputData(
     const std::string& output_name, const int stream_id, const int step_id,
-    const uint8_t** data_ptr, size_t* batch1_size)
+    DataLoaderData& data)
 {
-  *data_ptr = nullptr;
-  *batch1_size = 0;
+  data.data_ptr = nullptr;
+  data.batch1_size = 0;
+  data.is_valid = false;
+
   // If json data is available then try to retrieve the data from there
   if (!output_data_.empty()) {
     RETURN_IF_ERROR(ValidateIndexes(stream_id, step_id));
@@ -401,8 +395,9 @@ DataLoader::GetOutputData(
     // Get the data and the corresponding byte-size
     auto it = output_data_.find(key_name);
     if (it != output_data_.end()) {
-      *batch1_size = it->second.size();
-      *data_ptr = (const uint8_t*)&((it->second)[0]);
+      data.batch1_size = it->second.size();
+      data.data_ptr = (const uint8_t*)&((it->second)[0]);
+      data.is_valid = true;
     }
   }
   return cb::Error::Success;

@@ -36,6 +36,15 @@ namespace triton { namespace perfanalyzer {
 class NaggyMockDataLoader;
 #endif
 
+/// Data for one input or output tensor
+///
+struct DataLoaderData {
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size{0};
+  bool is_valid{false};
+};
+
+
 class DataLoader {
  public:
   DataLoader(size_t batch_size);
@@ -92,13 +101,11 @@ class DataLoader {
   /// \param input The target model input tensor
   /// \param stream_id The data stream_id to use for retrieving input data.
   /// \param step_id The data step_id to use for retrieving input data.
-  /// \param data Returns the pointer to the data for the requested input. Will
-  /// be nullptr if the data is not found.
-  /// \param batch1_size Returns the size of the input data in bytes.
+  /// \param data Returns the input DataLoaderData
   /// Returns error object indicating status
   cb::Error GetInputData(
       const ModelTensor& input, const int stream_id, const int step_id,
-      const uint8_t** data_ptr, size_t* batch1_size);
+      DataLoaderData& data);
 
   /// Helper function to get the shape values to the input
   /// \param input The target model input tensor
@@ -116,12 +123,11 @@ class DataLoader {
   /// \param output_name The name of the output tensor
   /// \param stream_id The data stream_id to use for retrieving output data.
   /// \param step_id The data step_id to use for retrieving output data.
-  /// \param data Returns the pointer to the data for the requested output.
-  /// \param batch1_size Returns the size of the output data in bytes.
+  /// \param data Returns the output DataLoaderData
   /// Returns error object indicating status
   cb::Error GetOutputData(
       const std::string& output_name, const int stream_id, const int step_id,
-      const uint8_t** data_ptr, size_t* batch1_size);
+      DataLoaderData& data);
 
   /// Return an error if the stream index or step index are invalid
   cb::Error ValidateIndexes(int stream_index, int step_index);

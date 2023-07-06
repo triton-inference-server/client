@@ -128,26 +128,24 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
     const std::string& name, const ModelTensor& tensor, int stream_id,
     int step_id)
 {
-  std::vector<const uint8_t*> data_ptrs;
-  std::vector<size_t> byte_size;
+  std::vector<DataLoaderData> input_datas;
   size_t count = 0;
 
-  RETURN_IF_ERROR(
-      GetInputData(name, tensor, stream_id, step_id, data_ptrs, byte_size));
+  RETURN_IF_ERROR(GetInputData(name, tensor, stream_id, step_id, input_datas));
 
   if (tensor.is_shape_tensor_) {
     RETURN_IF_ERROR(
-        ValidateShapeTensor(tensor, stream_id, step_id, data_ptrs, byte_size));
+        ValidateShapeTensor(tensor, stream_id, step_id, input_datas));
   }
 
   size_t alloc_size = 0;
-  for (size_t i = 0; i < data_ptrs.size(); i++) {
-    if (data_ptrs[i] == nullptr) {
+  for (size_t i = 0; i < input_datas.size(); i++) {
+    if (!input_datas[i].is_valid) {
       return cb::Error(
           "Shared memory support in Perf Analyzer does not support "
           "optional inputs at this time");
     }
-    alloc_size += byte_size[i];
+    alloc_size += input_datas[i].batch1_size;
   }
 
   // Generate the shared memory region name
@@ -159,8 +157,7 @@ InferDataManagerShm::CreateAndPopulateInputMemoryRegion(
       region_name, shared_memory_type_, alloc_size,
       reinterpret_cast<void**>(&input_shm_ptr)));
   RETURN_IF_ERROR(CopySharedMemory(
-      input_shm_ptr, data_ptrs, byte_size, tensor.is_shape_tensor_,
-      region_name));
+      input_shm_ptr, input_datas, tensor.is_shape_tensor_, region_name));
 
   return cb::Error::Success;
 }
@@ -265,9 +262,8 @@ InferDataManagerShm::CreateMemoryRegion(
 
 cb::Error
 InferDataManagerShm::CopySharedMemory(
-    uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-    std::vector<size_t>& byte_size, bool is_shape_tensor,
-    std::string& region_name)
+    uint8_t* input_shm_ptr, const std::vector<DataLoaderData>& datas,
+    bool is_shape_tensor, std::string& region_name)
 {
   if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
     // Populate the region with data
@@ -275,8 +271,10 @@ InferDataManagerShm::CopySharedMemory(
     size_t offset = 0;
     size_t max_count = is_shape_tensor ? 1 : batch_size_;
     while (count < max_count) {
-      memcpy(input_shm_ptr + offset, data_ptrs[count], byte_size[count]);
-      offset += byte_size[count];
+      memcpy(
+          input_shm_ptr + offset, datas[count].data_ptr,
+          datas[count].batch1_size);
+      offset += datas[count].batch1_size;
       count++;
     }
   } else {
@@ -287,15 +285,15 @@ InferDataManagerShm::CopySharedMemory(
     size_t max_count = is_shape_tensor ? 1 : batch_size_;
     while (count < max_count) {
       cudaError_t cuda_err = cudaMemcpy(
-          (void*)(input_shm_ptr + offset), (void*)data_ptrs[count],
-          byte_size[count], cudaMemcpyHostToDevice);
+          (void*)(input_shm_ptr + offset), (void*)datas[count].data_ptr,
+          datas[count].batch1_size, cudaMemcpyHostToDevice);
       if (cuda_err != cudaSuccess) {
         return cb::Error(
             "Failed to copy data to cuda shared memory for " + region_name +
                 " : " + std::string(cudaGetErrorString(cuda_err)),
             pa::GENERIC_ERROR);
       }
-      offset += byte_size[count];
+      offset += datas[count].batch1_size;
       count++;
     }
 #endif  // TRITON_ENABLE_GPU

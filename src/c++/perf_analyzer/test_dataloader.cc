@@ -108,11 +108,10 @@ TEST_CASE("dataloader: GetInputData missing data")
 {
   MockDataLoader dataloader;
   ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
 
-  cb::Error status =
-      dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  DataLoaderData data;
+
+  cb::Error status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk() == false);
   CHECK_EQ(status.Message(), "unable to find data for input 'INPUT1'.");
 }
@@ -492,25 +491,26 @@ TEST_CASE("dataloader: ParseData: Valid Data")
 
   // Confirm the correct data is in the dataloader
   //
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
   std::vector<int64_t> shape;
 
   dataloader.GetInputShape(input1, 0, 1, &shape);
   CHECK_EQ(shape.size(), 1);
   CHECK_EQ(shape[0], 1);
 
-  status = dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 1, data);
   REQUIRE(status.IsOk());
-  auto input_data = *reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK(data.is_valid);
+  auto input_data = *reinterpret_cast<const int32_t*>(data.data_ptr);
   CHECK_EQ(input_data, 2);
-  CHECK_EQ(batch1_size, 4);
+  CHECK_EQ(data.batch1_size, 4);
 
-  status = dataloader.GetOutputData("OUTPUT1", 0, 2, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 2, data);
   REQUIRE(status.IsOk());
-  auto output_data = *reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK(data.is_valid);
+  auto output_data = *reinterpret_cast<const int32_t*>(data.data_ptr);
   CHECK_EQ(output_data, 6);
-  CHECK_EQ(batch1_size, 4);
+  CHECK_EQ(data.batch1_size, 4);
 }
 
 TEST_CASE("dataloader: ParseData: Multiple Streams Invalid Cases")
@@ -616,23 +616,25 @@ TEST_CASE("dataloader: ParseData: Multiple Streams Valid")
 
   // Confirm the correct data is in the dataloader
   //
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  status = dataloader.GetInputData(input1, 0, 1, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 1, data);
   REQUIRE(status.IsOk());
+  CHECK(data.is_valid);
 
-  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data.data_ptr);
+  CHECK(data.is_valid);
   CHECK_EQ(input_data[0], 2);
   CHECK_EQ(input_data[1], 3);
   // 2 elements of int32 data is 8 bytes
-  CHECK_EQ(batch1_size, 8);
+  CHECK_EQ(data.batch1_size, 8);
 
-  status = dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 1, 0, data);
   REQUIRE(status.IsOk());
-  const int32_t* output_data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK(data.is_valid);
+  const int32_t* output_data = reinterpret_cast<const int32_t*>(data.data_ptr);
   CHECK_EQ(output_data[0], 40);
-  CHECK_EQ(batch1_size, 4);
+  CHECK_EQ(data.batch1_size, 4);
 }
 
 TEST_CASE(
@@ -706,9 +708,8 @@ TEST_CASE(
     "dataloader: ParseData: Supplied Shape is zero" *
     doctest::description(
         "Zero is a legal shape value and should be handled correctly. "
-        "GetInputData differentiates between an empty valid result (valid "
-        "dataptr with byte_size==0) and an unspecified optional result (null "
-        "dataptr with byte_size==0)"))
+        "GetInputData differentiates between an empty valid result and an "
+        "invalid result via the is_valid bit in the returned struct"))
 {
   std::string json_str{R"({"data": [{
      "INPUT1": { "shape": [0,2], "content": [] }
@@ -736,19 +737,20 @@ TEST_CASE(
   CHECK_EQ(shape[0], 0);
   CHECK_EQ(shape[1], 2);
 
-  // Confirm that the empty input has a valid data pointer with 0 bytes
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
-  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  // Confirm that the zero-shape input IS valid, but with size=0 and ptr=null
+  DataLoaderData data;
+  status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr != nullptr);
-  CHECK_EQ(batch1_size, 0);
+  CHECK(data.is_valid);
+  CHECK(data.data_ptr == nullptr);
+  CHECK(data.batch1_size == 0);
 
-  // Confirm that the unspecified input has nullptr for data pointer
-  status = dataloader.GetInputData(input2, 0, 0, &data_ptr, &batch1_size);
+  // Confirm that the unspecified input is NOT valid
+  status = dataloader.GetInputData(input2, 0, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  CHECK_EQ(batch1_size, 0);
+  CHECK(!data.is_valid);
+  CHECK(data.data_ptr == nullptr);
+  CHECK(data.batch1_size == 0);
 }
 
 
@@ -791,31 +793,32 @@ TEST_CASE(
 
   // Confirm the correct data is in the dataloader
   //
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  status = dataloader.GetInputData(input1, 0, 3, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 3, data);
   REQUIRE(status.IsOk());
+  CHECK(data.is_valid);
 
-  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data.data_ptr);
   CHECK_EQ(input_data[0], 3);
-  CHECK_EQ(batch1_size, 4);
+  CHECK_EQ(data.batch1_size, 4);
 
   // Confirm that only one of the 4 steps has output data
   //
-  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  status = dataloader.GetOutputData("OUTPUT1", 0, 1, &data_ptr, &batch1_size);
+  CHECK(!data.is_valid);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 1, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  status = dataloader.GetOutputData("OUTPUT1", 0, 2, &data_ptr, &batch1_size);
+  CHECK(!data.is_valid);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 2, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  status = dataloader.GetOutputData("OUTPUT1", 0, 3, &data_ptr, &batch1_size);
+  CHECK(!data.is_valid);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 3, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr != nullptr);
-  CHECK(batch1_size == 4);
+  CHECK(data.is_valid);
+  CHECK(data.data_ptr != nullptr);
+  CHECK(data.batch1_size == 4);
 }
 
 TEST_CASE(
@@ -854,28 +857,29 @@ TEST_CASE(
 
   // Confirm the correct data is in the dataloader
   //
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  status = dataloader.GetInputData(input1, 1, 1, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 1, 1, data);
   REQUIRE(status.IsOk());
+  CHECK(data.is_valid);
 
-  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data.data_ptr);
   CHECK_EQ(input_data[0], 20);
-  CHECK_EQ(batch1_size, 4);
+  CHECK_EQ(data.batch1_size, 4);
 
   // Confirm that only one of the 3 streams has output data
   //
-  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  status = dataloader.GetOutputData("OUTPUT1", 1, 0, &data_ptr, &batch1_size);
+  CHECK(!data.is_valid);
+  status = dataloader.GetOutputData("OUTPUT1", 1, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr == nullptr);
-  status = dataloader.GetOutputData("OUTPUT1", 2, 0, &data_ptr, &batch1_size);
+  CHECK(!data.is_valid);
+  status = dataloader.GetOutputData("OUTPUT1", 2, 0, data);
   REQUIRE(status.IsOk());
-  CHECK(data_ptr != nullptr);
-  CHECK(batch1_size == 4);
+  CHECK(data.is_valid);
+  CHECK(data.data_ptr != nullptr);
+  CHECK(data.batch1_size == 4);
 }
 
 TEST_CASE(
@@ -976,13 +980,13 @@ TEST_CASE(
   REQUIRE(status.IsOk());
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
 
-  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  DataLoaderData data;
+
+  status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
-
-  const int32_t* input_data = reinterpret_cast<const int32_t*>(data_ptr);
+  CHECK(data.is_valid);
+  const int32_t* input_data = reinterpret_cast<const int32_t*>(data.data_ptr);
   if (zero_input) {
     CHECK_EQ(input_data[0], 0);
     CHECK_EQ(input_data[1], 0);
@@ -993,7 +997,7 @@ TEST_CASE(
     CHECK_NE(input_data[2], 0);
   }
   // 3 elements of int32 data is 12 bytes
-  CHECK_EQ(batch1_size, 12);
+  CHECK_EQ(data.batch1_size, 12);
 }
 
 TEST_CASE(
@@ -1032,12 +1036,11 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetDataStreamsCount(), 1);
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
-
+  CHECK(data.is_valid);
 
   // For string data, the result should be a 32-bit number indicating the data
   // length, and then 1 byte per letter
@@ -1054,9 +1057,9 @@ TEST_CASE(
 
   if (string_data.empty()) {
     // 3 elements of 9 bytes is 27
-    CHECK_EQ(batch1_size, 27);
+    CHECK_EQ(data.batch1_size, 27);
 
-    const char* char_data = reinterpret_cast<const char*>(data_ptr);
+    const char* char_data = reinterpret_cast<const char*>(data.data_ptr);
 
     // Check all 3 entries in the "batch" of shape [3]
     for (size_t i = 0; i < 3; i++) {
@@ -1075,10 +1078,10 @@ TEST_CASE(
 
   } else {
     // 3 elements of 10 bytes is 30
-    CHECK_EQ(batch1_size, 30);
+    CHECK_EQ(data.batch1_size, 30);
 
-    const int32_t* int32_data = reinterpret_cast<const int32_t*>(data_ptr);
-    const char* char_data = reinterpret_cast<const char*>(data_ptr);
+    const int32_t* int32_data = reinterpret_cast<const int32_t*>(data.data_ptr);
+    const char* char_data = reinterpret_cast<const char*>(data.data_ptr);
     CHECK_EQ(int32_data[0], 6);
     CHECK_EQ(char_data[4], 'F');
     CHECK_EQ(char_data[5], 'O');
@@ -1185,12 +1188,12 @@ TEST_CASE(
   cb::Error status = dataloader.ReadDataFromDir(inputs, outputs, dir);
   CHECK(status.IsOk() == true);
 
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
-  CHECK(data_ptr == nullptr);
-  CHECK(batch1_size == 0);
+  dataloader.GetOutputData("OUTPUT1", 0, 0, data);
+  CHECK(!data.is_valid);
+  CHECK(data.data_ptr == nullptr);
+  CHECK(data.batch1_size == 0);
 }
 
 TEST_CASE(
@@ -1404,24 +1407,25 @@ TEST_CASE(
   CHECK_EQ(dataloader.GetTotalSteps(0), 1);
 
   // Validate input and output data
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size;
+  DataLoaderData data;
 
-  status = dataloader.GetInputData(input1, 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetInputData(input1, 0, 0, data);
   REQUIRE(status.IsOk());
+  CHECK(data.is_valid);
 
-  const char* input_data = reinterpret_cast<const char*>(data_ptr);
-  REQUIRE(batch1_size == expected_input.size());
-  for (size_t i = 0; i < batch1_size; i++) {
+  const char* input_data = reinterpret_cast<const char*>(data.data_ptr);
+  REQUIRE(data.batch1_size == expected_input.size());
+  for (size_t i = 0; i < data.batch1_size; i++) {
     CHECK(input_data[i] == expected_input[i]);
   }
 
-  status = dataloader.GetOutputData("OUTPUT1", 0, 0, &data_ptr, &batch1_size);
+  status = dataloader.GetOutputData("OUTPUT1", 0, 0, data);
   REQUIRE(status.IsOk());
+  CHECK(data.is_valid);
 
-  const char* output_data = reinterpret_cast<const char*>(data_ptr);
-  REQUIRE(batch1_size == expected_output.size());
-  for (size_t i = 0; i < batch1_size; i++) {
+  const char* output_data = reinterpret_cast<const char*>(data.data_ptr);
+  REQUIRE(data.batch1_size == expected_output.size());
+  for (size_t i = 0; i < data.batch1_size; i++) {
     CHECK(output_data[i] == expected_output[i]);
   }
 }
