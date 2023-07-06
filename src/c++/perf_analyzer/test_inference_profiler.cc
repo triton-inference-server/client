@@ -237,15 +237,6 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   SUBCASE("decoupled model")
   {
     TimestampVector all_timestamps{
-        // request ends before window starts, this should not be possible to
-        // exist in the vector of requests, but if it is, we exclude it: not
-        // included in current window
-        std::make_tuple(
-            time_point(ns(1)),
-            std::vector<time_point>{
-                time_point(ns(2)), time_point(ns(3)), time_point(ns(4))},
-            0, false),
-
         // request starts before window starts and ends inside window:
         // included in current window
         std::make_tuple(
@@ -264,23 +255,40 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
             time_point(ns(10)),
             std::vector<time_point>{
                 time_point(ns(14)), time_point(ns(15)), time_point(ns(16))},
-            0, false),
+            0, false)};
 
-        // request starts before window ends and ends after window ends: not
+    std::vector<uint64_t> durations{1, 3, 1, 2, 1, 1};
+
+    TestInferenceProfiler::ValidLatencyMeasurement(
+        window, valid_sequence_count, delayed_request_count, &latencies,
+        &response_latencies, all_timestamps);
+    check_response_latencies(response_latencies, durations);
+  }
+
+  SUBCASE("mixed response count")
+  {
+    TimestampVector all_timestamps{
+        // request starts before window starts and ends inside window:
         // included in current window
         std::make_tuple(
-            time_point(ns(15)),
+            time_point(ns(3)),
             std::vector<time_point>{
-                time_point(ns(20)), time_point(ns(21)), time_point(ns(22))},
+                time_point(ns(5)), time_point(ns(6)), time_point(ns(9))},
             0, false),
 
-        // request starts after window ends: not included in current window
         std::make_tuple(
-            time_point(ns(21)),
+            time_point(ns(9)), std::vector<time_point>{time_point(ns(10))}, 0,
+            false),
+
+        // requests start and end inside window: included in current window
+        std::make_tuple(
+            time_point(ns(6)),
             std::vector<time_point>{
-                time_point(ns(27)), time_point(ns(28)), time_point(ns(29))},
+                time_point(ns(10)), time_point(ns(11)), time_point(ns(13))},
             0, false)};
-    std::vector<uint64_t> durations{1, 3, 1, 2, 1, 1};
+
+
+    std::vector<uint64_t> durations{1, 3, 1, 2};
 
     TestInferenceProfiler::ValidLatencyMeasurement(
         window, valid_sequence_count, delayed_request_count, &latencies,
@@ -755,7 +763,8 @@ TEST_CASE("test the ReportPrometheusMetrics function")
     CHECK(result.Err() == SUCCESS);
     CHECK(
         captured_cout.str() ==
-        "Too many GPUs on system to print out individual Prometheus metrics, "
+        "Too many GPUs on system to print out individual Prometheus "
+        "metrics, "
         "use the CSV output feature to see metrics.\n");
   }
 }
@@ -927,5 +936,4 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
 
   std::cerr.rdbuf(old);
 }
-
 }}  // namespace triton::perfanalyzer
