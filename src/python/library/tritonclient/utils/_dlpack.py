@@ -269,3 +269,8 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj
+
+
+def get_managed_tensor(dlcapsule):
+    ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule, c_str_dltensor)
+    return DLManagedTensor.from_address(ptr)
