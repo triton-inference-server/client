@@ -57,6 +57,7 @@ public class MemoryGrowthTest {
 
       InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
       InferResult result = client.infer("custom_identity_int32", inputs, outputs);
+      client.close();
 
       // Get the output arrays from the results and verify
       int[] output0 = result.getOutputAsInt("OUTPUT0");
