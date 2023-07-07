@@ -43,7 +43,7 @@ import base64
 import ctypes
 from .. import _dlpack
 from .._shared_memory_tensor import SharedMemoryTensor
-from ._utils import CudaSharedMemoryHandle, CudaStream, _raise_errno_if_cuda_err, _raise_error
+from ._utils import CudaSharedMemoryHandle, CudaStream, CudaSharedMemoryException, _raise_errno_if_cuda_err, _raise_error
 
 
 class _utf8(object):
@@ -120,6 +120,10 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
                                                    cuda_shm_handle, device_ptr,
                                                    byte_size, device_id)
         allocated_shm_regions.append(triton_shm_handle)
+    except Exception as ex:
+        if not isinstance(ex, CudaSharedMemoryException):
+            raise CudaSharedMemoryException(
+                "unable to create cuda shared memory handle") from ex
     finally:
         # Don't raise error again which may overwrite the actual error
         cudart.cudaSetDevice(prev_device)
