@@ -1343,8 +1343,10 @@ InferenceProfiler::SummarizeLatency(
     size_t index = (percentile / 100.0) * (latencies.size() - 1) + 0.5;
     summary.client_stats.percentile_latency_ns.emplace(
         percentile, latencies[index]);
-    summary.client_stats.response_percentile_latency_ns.emplace(
-        percentile, response_latencies[index]);
+    if (response_latencies.size() > 0) {
+      summary.client_stats.response_percentile_latency_ns.emplace(
+          percentile, response_latencies[index]);
+    }
   }
 
   if (extra_percentile_) {
