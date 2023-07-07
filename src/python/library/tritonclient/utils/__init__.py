@@ -27,9 +27,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import struct
-from ._shared_memory_tensor import SharedMemoryTensor
 
 import numpy as np
+
+from ._shared_memory_tensor import SharedMemoryTensor
 
 
 def raise_error(msg):

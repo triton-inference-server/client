@@ -26,10 +26,11 @@
 
 import unittest
 
-import tritonclient.utils.cuda_shared_memory as cudashm
+import numpy
+
 # Torch support read / write DLPack object on GPU
 import torch
-import numpy
+import tritonclient.utils.cuda_shared_memory as cudashm
 
 
 class DLPackTest(unittest.TestCase):
@@ -42,8 +43,7 @@ class DLPackTest(unittest.TestCase):
         # enough space
         gpu_tensor = torch.ones(4, 4).cuda(0)
         byte_size = 64
-        shm_handle = cudashm.create_shared_memory_region(
-            "cudashm_data", byte_size, 0)
+        shm_handle = cudashm.create_shared_memory_region("cudashm_data", byte_size, 0)
 
         # Set data from DLPack specification of PyTorch tensor
         cudashm.set_shared_memory_region_from_dlpack(shm_handle, [gpu_tensor])
@@ -61,8 +61,7 @@ class DLPackTest(unittest.TestCase):
         # enough space
         cpu_tensor = numpy.ones([4, 4], dtype=numpy.float32)
         byte_size = 64
-        shm_handle = cudashm.create_shared_memory_region(
-            "cudashm_data", byte_size, 0)
+        shm_handle = cudashm.create_shared_memory_region("cudashm_data", byte_size, 0)
 
         # Set data from DLPack specification of PyTorch tensor
         cudashm.set_shared_memory_region_from_dlpack(shm_handle, [cpu_tensor])
@@ -74,11 +73,11 @@ class DLPackTest(unittest.TestCase):
         generated_torch_tensor = torch.from_dlpack(smt)
 
         self.assertTrue(
-            numpy.allclose(cpu_tensor,
-                           numpy.from_dlpack(generated_torch_tensor.cpu())))
+            numpy.allclose(cpu_tensor, numpy.from_dlpack(generated_torch_tensor.cpu()))
+        )
 
         cudashm.destroy_shared_memory_region(shm_handle)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

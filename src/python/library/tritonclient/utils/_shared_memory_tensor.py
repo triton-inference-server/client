@@ -24,9 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import ctypes
-from . import _dlpack
 import collections
+import ctypes
+
+from . import _dlpack
 
 
 class SharedMemoryTensor:
@@ -39,9 +40,15 @@ class SharedMemoryTensor:
 
     """
 
-    def __init__(self, dtype: str, shape: collections.abc.Iterable,
-                 shm_addr: ctypes.c_void_p, offset: ctypes.c_uint64,
-                 byte_size: ctypes.c_uint64, device_id: ctypes.c_int) -> None:
+    def __init__(
+        self,
+        dtype: str,
+        shape: collections.abc.Iterable,
+        shm_addr: ctypes.c_void_p,
+        offset: ctypes.c_uint64,
+        byte_size: ctypes.c_uint64,
+        device_id: ctypes.c_int,
+    ) -> None:
         self._dtype = dtype
         self._shape = shape
         self._shm_addr = shm_addr
@@ -57,11 +64,11 @@ class SharedMemoryTensor:
         context = _dlpack.DataViewContext(self._shape)
         size = ctypes.c_size_t(ctypes.sizeof(_dlpack.DLManagedTensor))
         dl_managed_tensor = _dlpack.DLManagedTensor.from_address(
-            ctypes.pythonapi.PyMem_RawMalloc(size))
+            ctypes.pythonapi.PyMem_RawMalloc(size)
+        )
         dl_managed_tensor.dl_tensor.data = self._shm_addr
         dl_managed_tensor.dl_tensor.device = self._dl_device
-        dl_managed_tensor.dl_tensor.dtype = _dlpack.triton_to_dlpack_dtype(
-            self._dtype)
+        dl_managed_tensor.dl_tensor.dtype = _dlpack.triton_to_dlpack_dtype(self._dtype)
         dl_managed_tensor.dl_tensor.ndim = len(self._shape)
         dl_managed_tensor.dl_tensor.shape = context._shape
         dl_managed_tensor.dl_tensor.strides = context._strides
