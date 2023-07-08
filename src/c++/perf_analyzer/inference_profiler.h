@@ -128,6 +128,7 @@ struct ClientSideStats {
   uint64_t delayed_request_count;
   uint64_t duration_ns;
   uint64_t avg_latency_ns;
+  uint64_t avg_response_latency_ns;
   // a ordered map of percentiles to be reported (<percentile, value> pair)
   std::map<size_t, uint64_t> percentile_latency_ns;
   // List of all the valid latencies.

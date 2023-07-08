@@ -990,6 +990,7 @@ InferenceProfiler::MergePerfStatusReports(
   experiment_perf_status.client_stats.delayed_request_count = 0;
   experiment_perf_status.client_stats.duration_ns = 0;
   experiment_perf_status.client_stats.avg_latency_ns = 0;
+  experiment_perf_status.client_stats.avg_response_latency_ns = 0;
   experiment_perf_status.client_stats.percentile_latency_ns.clear();
   experiment_perf_status.client_stats.latencies.clear();
   experiment_perf_status.client_stats.response_latencies.clear();
@@ -1328,6 +1329,9 @@ InferenceProfiler::SummarizeLatency(
 
   std::tie(summary.client_stats.avg_latency_ns, summary.client_stats.std_us) =
       GetMeanAndStdDev(latencies);
+  std::tie(
+      summary.client_stats.avg_response_latency_ns,
+      summary.client_stats.std_us) = GetMeanAndStdDev(response_latencies);
 
   // retrieve other interesting percentile
   summary.client_stats.percentile_latency_ns.clear();
