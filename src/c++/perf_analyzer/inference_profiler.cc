@@ -1292,12 +1292,12 @@ InferenceProfiler::ValidLatencyMeasurement(
     // response is a null response, it will NOT be added to the timestamp vector
     if (response_times.size() > 1) {
       for (size_t i = 0; i < response_times.size() - 1; i++) {
-        uint64_t prev_response_ns = CHRONO_TO_NANOS(response_times[i]);
+        uint64_t curr_response_ns = CHRONO_TO_NANOS(response_times[i]);
         uint64_t next_response_ns = CHRONO_TO_NANOS(response_times[i + 1]);
-        if (prev_response_ns <= next_response_ns) {
-          if ((prev_response_ns >= valid_range.first) &&
+        if (curr_response_ns <= next_response_ns) {
+          if ((curr_response_ns >= valid_range.first) &&
               (next_response_ns <= valid_range.second)) {
-            response_latencies->push_back(next_response_ns - prev_response_ns);
+            response_latencies->push_back(next_response_ns - curr_response_ns);
           }
         }
       }
