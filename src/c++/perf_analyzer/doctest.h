@@ -166,7 +166,7 @@
 // =================================================================================================
 
 // both the header and the implementation suppress all of these,
-// so it only makes sense to aggregrate them like so
+// so it only makes sense to aggregate them like so
 #define DOCTEST_SUPPRESS_COMMON_WARNINGS_PUSH                                  \
   DOCTEST_CLANG_SUPPRESS_WARNING_PUSH                                          \
   DOCTEST_CLANG_SUPPRESS_WARNING("-Wunknown-pragmas")                          \
@@ -897,8 +897,7 @@ struct ContextOptions  //! OCLINT too many fields
 
 namespace detail {
 template <bool CONDITION, typename TYPE = void>
-struct enable_if {
-};
+struct enable_if {};
 
 template <typename TYPE>
 struct enable_if<true, TYPE> {
@@ -910,9 +909,9 @@ struct enable_if<true, TYPE> {
     template<class T> struct remove_reference<T&>  { typedef T type; };
     template<class T> struct remove_reference<T&&> { typedef T type; };
 
-    template<typename T, typename U = T&&> U declval(int); 
+    template<typename T, typename U = T&&> U declval(int);
 
-    template<typename T> T declval(long); 
+    template<typename T> T declval(long);
 
     template<typename T> auto declval() DOCTEST_NOEXCEPT -> decltype(declval<T>(0)) ;
 
@@ -1241,8 +1240,7 @@ namespace detail {
 #endif // DOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING
 // clang-format on
 
-struct DOCTEST_INTERFACE TestFailureException {
-};
+struct DOCTEST_INTERFACE TestFailureException {};
 
 DOCTEST_INTERFACE bool checkIfShouldThrow(assertType::Enum at);
 
@@ -1280,10 +1278,8 @@ DOCTEST_CLANG_SUPPRESS_WARNING_WITH_PUSH("-Wunused-comparison")
 // global scope is defined after this template, the template won't be
 // instantiated due to SFINAE. Once the template is not instantiated it can look
 // for global operator using normal conversions.
-#define SFINAE_OP(ret, op)                                                    \
-  decltype(                                                                   \
-      (void)(doctest::detail::declval<L>() op doctest::detail::declval<R>()), \
-      ret{})
+#define SFINAE_OP(ret, op) \
+  decltype((void)(doctest::detail::declval<L>() op doctest::detail::declval<R>()), ret{})
 
 #define DOCTEST_DO_BINARY_EXPRESSION_COMPARISON(op, op_str, op_macro)  \
   template <typename R>                                                \
@@ -1798,8 +1794,7 @@ struct StringStreamBase<true> {
 
 template <typename T>
 struct StringStream
-    : public StringStreamBase<has_insertion_operator<T>::value> {
-};
+    : public StringStreamBase<has_insertion_operator<T>::value> {};
 
 template <typename T>
 void
@@ -1935,7 +1930,8 @@ DOCTEST_DEFINE_DECORATOR(should_fail, bool, true);
 DOCTEST_DEFINE_DECORATOR(expected_failures, int, 0);
 
 template <typename T>
-int registerExceptionTranslator(String (*translateFunction)(T))
+int
+registerExceptionTranslator(String (*translateFunction)(T))
 {
   DOCTEST_CLANG_SUPPRESS_WARNING_WITH_PUSH("-Wexit-time-destructors")
   static detail::ExceptionTranslator<T> exceptionTranslator(translateFunction);
@@ -1956,7 +1952,8 @@ DOCTEST_INTERFACE doctest::detail::TestSuite& getCurrentTestSuite();
 namespace doctest {
 #else   // DOCTEST_CONFIG_DISABLE
 template <typename T>
-int registerExceptionTranslator(String (*)(T))
+int
+registerExceptionTranslator(String (*)(T))
 {
   return 0;
 }
@@ -2181,7 +2178,10 @@ registerReporter(const char* name, int priority, bool isReporter)
   static void f()
 
 #define DOCTEST_CREATE_AND_REGISTER_FUNCTION_IN_CLASS(f, proxy, decorators) \
-  static doctest::detail::funcType proxy() { return f; }                    \
+  static doctest::detail::funcType proxy()                                  \
+  {                                                                         \
+    return f;                                                               \
+  }                                                                         \
   DOCTEST_REGISTER_FUNCTION(inline, proxy(), decorators)                    \
   static void f()
 
@@ -3271,41 +3271,41 @@ DOCTEST_MSVC_SUPPRESS_WARNING(
 DOCTEST_MAKE_STD_HEADERS_CLEAN_FROM_WARNINGS_ON_WALL_BEGIN
 
 // required includes - will go only in one translation unit!
-#include <ctime>
-#include <cmath>
 #include <climits>
+#include <cmath>
+#include <ctime>
 // borland (Embarcadero) compiler requires math.h and not cmath -
 // https://github.com/doctest/doctest/pull/37
 #ifdef __BORLANDC__
 #include <math.h>
 #endif  // __BORLANDC__
-#include <new>
+#include <algorithm>
+#include <atomic>
+#include <cctype>
+#include <cfloat>
+#include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <limits>
-#include <utility>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <algorithm>
-#include <iomanip>
-#include <vector>
-#include <atomic>
-#include <mutex>
-#include <set>
-#include <map>
 #include <exception>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <mutex>
+#include <new>
+#include <set>
+#include <sstream>
 #include <stdexcept>
-#include <csignal>
-#include <cfloat>
-#include <cctype>
-#include <cstdint>
+#include <utility>
+#include <vector>
 
 #ifdef DOCTEST_PLATFORM_MAC
+#include <sys/sysctl.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <sys/sysctl.h>
 #endif  // DOCTEST_PLATFORM_MAC
 
 #ifdef DOCTEST_PLATFORM_WINDOWS
@@ -3919,12 +3919,14 @@ String::operator=(String&& other)
   return *this;
 }
 
-char String::operator[](unsigned i) const
+char
+String::operator[](unsigned i) const
 {
   return const_cast<String*>(this)->operator[](i);  // NOLINT
 }
 
-char& String::operator[](unsigned i)
+char&
+String::operator[](unsigned i)
 {
   if (isOnStack())
     return reinterpret_cast<char*>(buf)[i];
@@ -4164,7 +4166,8 @@ DOCTEST_TO_STRING_OVERLOAD(int long unsigned, "%lu")
 DOCTEST_TO_STRING_OVERLOAD(int long long, "%lld")
 DOCTEST_TO_STRING_OVERLOAD(int long long unsigned, "%llu")
 
-String toString(std::nullptr_t)
+String
+toString(std::nullptr_t)
 {
   return "NULL";
 }
@@ -4324,7 +4327,10 @@ void
 Context::setAsDefaultForAssertsOutOfTestCases()
 {
 }
-void Context::setAssertHandler(detail::assert_handler) {}
+void
+Context::setAssertHandler(detail::assert_handler)
+{
+}
 void
 Context::setCout(std::ostream* out)
 {
@@ -4601,7 +4607,8 @@ Result::Result(bool passed, const String& decomposition)
 
 ExpressionDecomposer::ExpressionDecomposer(assertType::Enum at) : m_at(at) {}
 
-TestSuite& TestSuite::operator*(const char* in)
+TestSuite&
+TestSuite::operator*(const char* in)
 {
   m_test_suite = in;
   return *this;
@@ -4652,7 +4659,8 @@ TestCase::operator=(const TestCase& other)
 }
 DOCTEST_MSVC_SUPPRESS_WARNING_POP
 
-TestCase& TestCase::operator*(const char* in)
+TestCase&
+TestCase::operator*(const char* in)
 {
   m_name = in;
   // make a new name with an appended type for templated test case
@@ -6543,8 +6551,9 @@ struct ConsoleReporter : public IReporter {
 
   Color::Enum getSuccessOrFailColor(bool success, assertType::Enum at)
   {
-    return success ? Color::BrightGreen
-                   : (at & assertType::is_warn) ? Color::Yellow : Color::Red;
+    return success                      ? Color::BrightGreen
+           : (at & assertType::is_warn) ? Color::Yellow
+                                        : Color::Red;
   }
 
   void successOrFailColoredStringToStream(
@@ -7193,10 +7202,10 @@ parseIntOption(
 
   if (type == 0) {
     // boolean
-    const char positive[][5] = {"1", "true", "on",
-                                "yes"};  // 5 - strlen("true") + 1
-    const char negative[][6] = {"0", "false", "off",
-                                "no"};  // 6 - strlen("false") + 1
+    const char positive[][5] = {
+        "1", "true", "on", "yes"};  // 5 - strlen("true") + 1
+    const char negative[][6] = {
+        "0", "false", "off", "no"};  // 6 - strlen("false") + 1
 
     // if the value matches any of the positive/negative possibilities
     for (unsigned i = 0; i < 4; i++) {

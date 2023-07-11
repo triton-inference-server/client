@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,10 +26,14 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
-// namespace pa = triton::perfanalyzer;
-
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
 namespace triton { namespace perfanalyzer {
+
+const std::string SHA{STRINGIFY(GIT_SHA)};
+const std::string VERSION{STRINGIFY(PERF_ANALYZER_VERSION)};
 
 constexpr static const uint32_t SUCCESS = 0;
 
@@ -37,6 +41,8 @@ constexpr static const uint32_t STABILITY_ERROR = 2;
 constexpr static const uint32_t OPTION_ERROR = 3;
 
 constexpr static const uint32_t GENERIC_ERROR = 99;
+
+const double DELAY_PCT_THRESHOLD{1.0};
 
 /// Different measurement modes possible.
 enum MeasurementMode { TIME_WINDOWS = 0, COUNT_WINDOWS = 1 };

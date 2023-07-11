@@ -27,26 +27,30 @@
 
 import argparse
 import sys
-import numpy as np
 
 import grpc
-from tritonclient.grpc import service_pb2, service_pb2_grpc
+import numpy as np
 from tritonclient import utils
+from tritonclient.grpc import service_pb2, service_pb2_grpc
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -73,14 +77,14 @@ if __name__ == '__main__':
     input0.datatype = "BYTES"
     input0.shape.extend([1, 16])
     for i in range(16):
-        input0.contents.bytes_contents.append(('{}'.format(i)).encode('utf-8'))
+        input0.contents.bytes_contents.append(("{}".format(i)).encode("utf-8"))
 
     input1 = service_pb2.ModelInferRequest().InferInputTensor()
     input1.name = "INPUT1"
     input1.datatype = "BYTES"
     input1.shape.extend([1, 16])
     for i in range(16):
-        input1.contents.bytes_contents.append('1'.encode('utf-8'))
+        input1.contents.bytes_contents.append("1".encode("utf-8"))
 
     request.inputs.extend([input0, input1])
 
@@ -102,7 +106,8 @@ if __name__ == '__main__':
         for value in output.shape:
             shape.append(value)
         output_results.append(
-            utils.deserialize_bytes_tensor(response.raw_output_contents[index]))
+            utils.deserialize_bytes_tensor(response.raw_output_contents[index])
+        )
         output_results[-1] = np.resize(output_results[-1], shape)
         index += 1
 
@@ -120,4 +125,4 @@ if __name__ == '__main__':
         if (i - 1) != int(output_results[1][0][i]):
             print("explicit string infer error: incorrect difference")
             sys.exit(1)
-    print('PASS: explicit string')
+    print("PASS: explicit string")

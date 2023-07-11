@@ -107,7 +107,7 @@ tritonserver --model-repository $(pwd)/model_repository &> server.log &
 # confirm server is ready, look for 'HTTP/1.1 200 OK'
 curl -v localhost:8000/v2/health/ready
 
-# detatch (CTRL-p CTRL-q)
+# detach (CTRL-p CTRL-q)
 ```
 
 ### Step 4: Start Triton SDK Container
@@ -144,7 +144,7 @@ how to analyze output.
 # Contributing
 
 Contributions to Triton Perf Analyzer are more than welcome. To contribute
-please review the [contribution 
+please review the [contribution
 guidelines](https://github.com/triton-inference-server/server/blob/main/CONTRIBUTING.md),
 then fork and create a pull request.
 

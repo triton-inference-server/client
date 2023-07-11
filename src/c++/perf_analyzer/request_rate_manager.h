@@ -26,6 +26,7 @@
 #pragma once
 
 #include <condition_variable>
+
 #include "load_manager.h"
 #include "request_rate_worker.h"
 
@@ -156,7 +157,7 @@ class RequestRateManager : public LoadManager {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestRequestRateManager;
 
- protected:
+ public:
   RequestRateManager() = default;
 #endif
 };

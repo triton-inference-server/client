@@ -26,15 +26,19 @@
 
 // Include this first to make sure we are a friend of common classes.
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
-#include "common.h"
+#include "http_client.h"
 
 #include <curl/curl.h>
+
 #include <atomic>
 #include <climits>
 #include <cstdint>
 #include <deque>
 #include <iostream>
-#include "http_client.h"
+#include <string>
+#include <utility>
+
+#include "common.h"
 
 #ifdef TRITON_ENABLE_ZLIB
 #include <zlib.h>
@@ -328,6 +332,15 @@ class HttpInferRequest : public InferRequest {
       const std::vector<const InferRequestedOutput*>& outputs,
       triton::common::TritonJson::Value* request_json);
 
+ protected:
+  virtual Error ConvertBinaryInputsToJSON(
+      InferInput& input, triton::common::TritonJson::Value& data_json) const;
+
+  virtual Error ConvertBinaryInputToJSON(
+      const uint8_t* buf, const size_t buf_size, const std::string& datatype,
+      triton::common::TritonJson::Value& data_json) const;
+
+ private:
   // Pointer to the list of the HTTP request header, keep it such that it will
   // be valid during the transfer and can be freed once transfer is completed.
   struct curl_slist* header_list_;
@@ -475,7 +488,8 @@ HttpInferRequest::PrepareRequestJson(
         if (offset != 0) {
           ioparams_json.AddUInt("shared_memory_offset", offset);
         }
-      } else {
+        io_json.Add("parameters", std::move(ioparams_json));
+      } else if (io->BinaryData()) {
         size_t byte_size;
         Error err = io->ByteSize(&byte_size);
         if (!err.IsOk()) {
@@ -483,9 +497,19 @@ HttpInferRequest::PrepareRequestJson(
         }
 
         ioparams_json.AddUInt("binary_data_size", byte_size);
+        io_json.Add("parameters", std::move(ioparams_json));
+      } else {
+        triton::common::TritonJson::Value data_json(
+            *request_json, triton::common::TritonJson::ValueType::ARRAY);
+
+        Error err = ConvertBinaryInputsToJSON(*io, data_json);
+        if (!err.IsOk()) {
+          return err;
+        }
+
+        io_json.Add("data", std::move(data_json));
       }
 
-      io_json.Add("parameters", std::move(ioparams_json));
       inputs_json.Append(std::move(io_json));
     }
 
@@ -523,7 +547,7 @@ HttpInferRequest::PrepareRequestJson(
           ioparams_json.AddUInt("shared_memory_offset", offset);
         }
       } else {
-        ioparams_json.AddBool("binary_data", true);
+        ioparams_json.AddBool("binary_data", io->BinaryData());
       }
 
       io_json.Add("parameters", std::move(ioparams_json));
@@ -531,6 +555,106 @@ HttpInferRequest::PrepareRequestJson(
     }
 
     request_json->Add("outputs", std::move(outputs_json));
+  }
+
+  return Error::Success;
+}
+
+Error
+HttpInferRequest::ConvertBinaryInputsToJSON(
+    InferInput& input, triton::common::TritonJson::Value& data_json) const
+{
+  input.PrepareForRequest();
+  bool end_of_input{false};
+  while (!end_of_input) {
+    const uint8_t* buf{nullptr};
+    size_t buf_size{0};
+    input.GetNext(&buf, &buf_size, &end_of_input);
+    size_t element_count{1};
+    for (size_t i = 1; i < input.Shape().size(); i++) {
+      element_count *= input.Shape()[i];
+    }
+    if (buf != nullptr) {
+      Error err = ConvertBinaryInputToJSON(
+          buf, element_count, input.Datatype(), data_json);
+      if (!err.IsOk()) {
+        return err;
+      }
+    }
+  }
+
+  return Error::Success;
+}
+
+Error
+HttpInferRequest::ConvertBinaryInputToJSON(
+    const uint8_t* buf, const size_t element_count, const std::string& datatype,
+    triton::common::TritonJson::Value& data_json) const
+{
+  if (datatype == "BOOL") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendBool(reinterpret_cast<const bool*>(buf)[i]);
+    }
+  } else if (datatype == "UINT8") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendUInt(reinterpret_cast<const uint8_t*>(buf)[i]);
+    }
+  } else if (datatype == "UINT16") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendUInt(reinterpret_cast<const uint16_t*>(buf)[i]);
+    }
+  } else if (datatype == "UINT32") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendUInt(reinterpret_cast<const uint32_t*>(buf)[i]);
+    }
+  } else if (datatype == "UINT64") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendUInt(reinterpret_cast<const uint64_t*>(buf)[i]);
+    }
+  } else if (datatype == "INT8") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendInt(reinterpret_cast<const int8_t*>(buf)[i]);
+    }
+  } else if (datatype == "INT16") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendInt(reinterpret_cast<const int16_t*>(buf)[i]);
+    }
+  } else if (datatype == "INT32") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendInt(reinterpret_cast<const int32_t*>(buf)[i]);
+    }
+  } else if (datatype == "INT64") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendInt(reinterpret_cast<const int64_t*>(buf)[i]);
+    }
+  } else if (datatype == "FP16") {
+    return Error(
+        "datatype '" + datatype +
+        "' is not supported with JSON. Please use the binary data format");
+
+  } else if (datatype == "FP32") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendDouble(reinterpret_cast<const float*>(buf)[i]);
+    }
+  } else if (datatype == "FP64") {
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.AppendDouble(reinterpret_cast<const double*>(buf)[i]);
+    }
+  } else if (datatype == "BYTES") {
+    size_t offset{0};
+    for (size_t i = 0; i < element_count; i++) {
+      const size_t len{*reinterpret_cast<const uint32_t*>(buf + offset)};
+      data_json.AppendStringRef(
+          reinterpret_cast<const char*>(buf + offset + sizeof(const uint32_t)),
+          len);
+      offset += sizeof(const uint32_t) + len;
+    }
+  } else if (datatype == "BF16") {
+    return Error(
+        "datatype '" + datatype +
+        "' is not supported with JSON. Please use the binary data format");
+  } else {
+    return Error("datatype '" + datatype + "' is invalid");
   }
 
   return Error::Success;
@@ -561,9 +685,9 @@ HttpInferRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
 
       data_buffers_.front().first += csz;
       data_buffers_.front().second -= csz;
-      if (data_buffers_.front().second == 0) {
-        data_buffers_.pop_front();
-      }
+    }
+    if (data_buffers_.front().second == 0) {
+      data_buffers_.pop_front();
     }
   }
 
@@ -624,6 +748,15 @@ class InferResultHttp : public InferResult {
   InferResultHttp(std::shared_ptr<HttpInferRequest> infer_request);
   InferResultHttp(const Error err) : status_(err) {}
 
+ protected:
+  InferResultHttp() {}
+  ~InferResultHttp();
+
+  virtual Error ConvertJSONOutputToBinary(
+      triton::common::TritonJson::Value& data_json, const std::string& datatype,
+      const uint8_t** buf, size_t* buf_size) const;
+
+ private:
   std::map<std::string, triton::common::TritonJson::Value>
       output_name_to_result_map_;
   std::map<std::string, std::pair<const uint8_t*, const size_t>>
@@ -632,6 +765,8 @@ class InferResultHttp : public InferResult {
   Error status_;
   triton::common::TritonJson::Value response_json_;
   std::shared_ptr<HttpInferRequest> infer_request_;
+
+  bool binary_data_{true};
 };
 
 void
@@ -920,7 +1055,7 @@ InferResultHttp::InferResultHttp(
 
           std::string output_name(name_str, name_strlen);
 
-          triton::common::TritonJson::Value param_json;
+          triton::common::TritonJson::Value param_json, data_json;
           if (output_json.Find("parameters", &param_json)) {
             uint64_t data_size = 0;
             status_ = param_json.MemberAsUInt("binary_data_size", &data_size);
@@ -936,6 +1071,25 @@ InferResultHttp::InferResultHttp(
                         offset,
                     data_size));
             offset += data_size;
+          } else if (output_json.Find("data", &data_json)) {
+            binary_data_ = false;
+            std::string datatype;
+            status_ = output_json.MemberAsString("datatype", &datatype);
+            if (!status_.IsOk()) {
+              break;
+            }
+
+            const uint8_t* buf{nullptr};
+            size_t buf_size{0};
+            status_ =
+                ConvertJSONOutputToBinary(data_json, datatype, &buf, &buf_size);
+            if (!status_.IsOk()) {
+              break;
+            }
+
+            output_name_to_buffer_map_.emplace(
+                output_name,
+                std::pair<const uint8_t*, const size_t>(buf, buf_size));
           }
 
           output_name_to_result_map_[output_name] = std::move(output_json);
@@ -943,6 +1097,146 @@ InferResultHttp::InferResultHttp(
       }
     }
   }
+}
+
+InferResultHttp::~InferResultHttp()
+{
+  if (binary_data_) {
+    return;
+  }
+
+  for (auto& buf_pair : output_name_to_buffer_map_) {
+    const uint8_t* buf{buf_pair.second.first};
+    delete buf;
+  }
+}
+
+Error
+InferResultHttp::ConvertJSONOutputToBinary(
+    triton::common::TritonJson::Value& data_json, const std::string& datatype,
+    const uint8_t** buf, size_t* buf_size) const
+{
+  const size_t element_count{data_json.ArraySize()};
+
+  if (datatype == "BOOL") {
+    *buf = reinterpret_cast<const uint8_t*>(new bool[element_count]);
+    *buf_size = sizeof(bool) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      bool value{false};
+      data_json.IndexAsBool(i, &value);
+      const_cast<bool*>(reinterpret_cast<const bool*>(*buf))[i] = value;
+    }
+  } else if (datatype == "UINT8") {
+    *buf = reinterpret_cast<const uint8_t*>(new uint8_t[element_count]);
+    *buf_size = sizeof(uint8_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      uint64_t value{0};
+      data_json.IndexAsUInt(i, &value);
+      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "UINT16") {
+    *buf = reinterpret_cast<const uint8_t*>(new uint16_t[element_count]);
+    *buf_size = sizeof(uint16_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      uint64_t value{0};
+      data_json.IndexAsUInt(i, &value);
+      const_cast<uint16_t*>(reinterpret_cast<const uint16_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "UINT32") {
+    *buf = reinterpret_cast<const uint8_t*>(new uint32_t[element_count]);
+    *buf_size = sizeof(uint32_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      uint64_t value{0};
+      data_json.IndexAsUInt(i, &value);
+      const_cast<uint32_t*>(reinterpret_cast<const uint32_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "UINT64") {
+    *buf = reinterpret_cast<const uint8_t*>(new uint64_t[element_count]);
+    *buf_size = sizeof(uint64_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      uint64_t value{0};
+      data_json.IndexAsUInt(i, &value);
+      const_cast<uint64_t*>(reinterpret_cast<const uint64_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "INT8") {
+    *buf = reinterpret_cast<const uint8_t*>(new int8_t[element_count]);
+    *buf_size = sizeof(int8_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      int64_t value{0};
+      data_json.IndexAsInt(i, &value);
+      const_cast<int8_t*>(reinterpret_cast<const int8_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "INT16") {
+    *buf = reinterpret_cast<const uint8_t*>(new int16_t[element_count]);
+    *buf_size = sizeof(int16_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      int64_t value{0};
+      data_json.IndexAsInt(i, &value);
+      const_cast<int16_t*>(reinterpret_cast<const int16_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "INT32") {
+    *buf = reinterpret_cast<const uint8_t*>(new int32_t[element_count]);
+    *buf_size = sizeof(int32_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      int64_t value{0};
+      data_json.IndexAsInt(i, &value);
+      const_cast<int32_t*>(reinterpret_cast<const int32_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "INT64") {
+    *buf = reinterpret_cast<const uint8_t*>(new int64_t[element_count]);
+    *buf_size = sizeof(int64_t) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      int64_t value{0};
+      data_json.IndexAsInt(i, &value);
+      const_cast<int64_t*>(reinterpret_cast<const int64_t*>(*buf))[i] = value;
+    }
+  } else if (datatype == "FP16") {
+    return Error("datatype '" + datatype + "' is not supported with JSON.");
+  } else if (datatype == "FP32") {
+    *buf = reinterpret_cast<const uint8_t*>(new float[element_count]);
+    *buf_size = sizeof(float) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      double value{0.0};
+      data_json.IndexAsDouble(i, &value);
+      const_cast<float*>(reinterpret_cast<const float*>(*buf))[i] = value;
+    }
+  } else if (datatype == "FP64") {
+    *buf = reinterpret_cast<const uint8_t*>(new float[element_count]);
+    *buf_size = sizeof(double) * element_count;
+    for (size_t i = 0; i < element_count; i++) {
+      double value{0.0};
+      data_json.IndexAsDouble(i, &value);
+      const_cast<double*>(reinterpret_cast<const double*>(*buf))[i] = value;
+    }
+  } else if (datatype == "BYTES") {
+    size_t total_buf_size{0};
+    std::vector<std::pair<const char*, size_t>> bytes_pairs{};
+    bytes_pairs.resize(element_count);
+    for (size_t i = 0; i < element_count; i++) {
+      data_json.IndexAsString(i, &bytes_pairs[i].first, &bytes_pairs[i].second);
+      total_buf_size += sizeof(const uint32_t) + bytes_pairs[i].second;
+    }
+    *buf = reinterpret_cast<const uint8_t*>(new uint8_t[total_buf_size]);
+    *buf_size = total_buf_size;
+    size_t offset{0};
+    for (const auto& bytes_pair : bytes_pairs) {
+      const char* bytes{bytes_pair.first};
+      size_t bytes_size{bytes_pair.second};
+      std::memcpy(
+          const_cast<uint8_t*>(*buf + offset), &bytes_size,
+          sizeof(const uint32_t));
+      std::memcpy(
+          const_cast<uint8_t*>(*buf + offset + sizeof(const uint32_t)), bytes,
+          bytes_size);
+      offset += sizeof(const uint32_t) + bytes_size;
+    }
+  } else if (datatype == "BF16") {
+    return Error("datatype '" + datatype + "' is not supported with JSON.");
+  } else {
+    return Error("datatype '" + datatype + "' is invalid");
+  }
+
+  return Error::Success;
 }
 
 //==============================================================================
@@ -1780,8 +2074,13 @@ InferenceServerHttpClient::PreRunProcessing(
   }
 
   // Add the buffers holding input tensor data
+  bool all_inputs_are_json{true};
   for (const auto this_input : inputs) {
-    if (!this_input->IsSharedMemory()) {
+    if (this_input->BinaryData()) {
+      all_inputs_are_json = false;
+    }
+
+    if (!this_input->IsSharedMemory() && this_input->BinaryData()) {
       this_input->PrepareForRequest();
       bool end_of_input = false;
       while (!end_of_input) {
@@ -1856,12 +2155,17 @@ InferenceServerHttpClient::PreRunProcessing(
 
   struct curl_slist* list = nullptr;
 
-  std::string infer_hdr{std::string(kInferHeaderContentLengthHTTPHeader) +
-                        ": " +
-                        std::to_string(http_request->request_json_.Size())};
+  std::string infer_hdr{
+      std::string(kInferHeaderContentLengthHTTPHeader) + ": " +
+      std::to_string(http_request->request_json_.Size())};
   list = curl_slist_append(list, infer_hdr.c_str());
   list = curl_slist_append(list, "Expect:");
-  list = curl_slist_append(list, "Content-Type: application/octet-stream");
+  if (all_inputs_are_json) {
+    list = curl_slist_append(list, "Content-Type: application/json");
+  } else {
+    list = curl_slist_append(list, "Content-Type: application/octet-stream");
+  }
+
   for (const auto& pr : headers) {
     std::string hdr = pr.first + ": " + pr.second;
     list = curl_slist_append(list, hdr.c_str());
@@ -1922,7 +2226,7 @@ InferenceServerHttpClient::AsyncTransfer()
     CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
     int numfds;
     if (mc == CURLM_OK) {
-      // Wait for activity. If there are no descripters in the multi_handle_
+      // Wait for activity. If there are no descriptors in the multi_handle_
       // then curl_multi_wait will return immediately
       mc = curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
       if (mc == CURLM_OK) {

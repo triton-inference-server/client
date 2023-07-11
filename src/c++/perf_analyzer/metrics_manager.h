@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+
 #include "client_backend/client_backend.h"
 #include "metrics.h"
 
@@ -54,7 +55,7 @@ class MetricsManager {
   /// Starts background thread that queries metrics on an interval
   void StartQueryingMetrics();
 
-  /// Checks if background thread threw exception and propogates it if so
+  /// Checks if background thread threw exception and propagates it if so
   void CheckQueryingStatus();
 
   /// Puts the latest-collected metrics from background thread into vector
@@ -85,7 +86,7 @@ class MetricsManager {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestMetricsManager;
 
- protected:
+ public:
   MetricsManager() = default;
 #endif
 };

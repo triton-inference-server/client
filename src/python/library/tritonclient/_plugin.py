@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,7 +36,7 @@ class InferenceServerClientPlugin(ABC):
     @abstractmethod
     def __call__(self, request):
         """This method will be called when any of the client functions are
-        invoked. Note that the request object must be modfied in-place.
+        invoked. Note that the request object must be modified in-place.
 
         Parameters
         ----------

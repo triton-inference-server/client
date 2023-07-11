@@ -77,10 +77,10 @@ docker run --gpus all --rm -it --net host nvcr.io/nvidia/tritonserver:${RELEASE}
 
 # inside container
 # prep installing newer version of cmake
-wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null ; apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+apt update && apt install -y gpg wget && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null && . /etc/os-release && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
 # install build/runtime dependencies
-apt update ; apt install -y cmake-data=3.21.1-0kitware1ubuntu20.04.1 cmake=3.21.1-0kitware1ubuntu20.04.1 libcurl4-openssl-dev rapidjson-dev
+apt update && apt install -y cmake-data cmake libcurl4-openssl-dev rapidjson-dev
 
 rm -rf client ; git clone --depth 1 https://github.com/triton-inference-server/client
 

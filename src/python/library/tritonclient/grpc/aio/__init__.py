@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,35 +26,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from tritonclient.grpc import *
-from .._utils import _get_inference_request, _grpc_compression_type
 import base64
-from ..._client import InferenceServerClientBase
-from ..._request import Request
-from ..._plugin import InferenceServerClientPlugin
+
+from tritonclient.grpc import *
+
 from ... import _auth as auth
+from ..._client import InferenceServerClientBase
+from ..._plugin import InferenceServerClientPlugin
+from ..._request import Request
+from .._utils import _get_inference_request, _grpc_compression_type
 
 
 class InferenceServerClient(InferenceServerClientBase):
     """This feature is currently in beta and may be subject to change.
-    
-    An analogy of the tritonclient.grpc.InferenceServerClient to enable 
-    calling via asyncio syntax. The object is intended to be used by a single 
-    thread and simultaneously calling methods with different threads is not 
+
+    An analogy of the tritonclient.grpc.InferenceServerClient to enable
+    calling via asyncio syntax. The object is intended to be used by a single
+    thread and simultaneously calling methods with different threads is not
     supported and can cause undefined behavior.
 
     """
 
-    def __init__(self,
-                 url,
-                 verbose=False,
-                 ssl=False,
-                 root_certificates=None,
-                 private_key=None,
-                 certificate_chain=None,
-                 creds=None,
-                 keepalive_options=None,
-                 channel_args=None):
+    def __init__(
+        self,
+        url,
+        verbose=False,
+        ssl=False,
+        root_certificates=None,
+        private_key=None,
+        certificate_chain=None,
+        creds=None,
+        keepalive_options=None,
+        channel_args=None,
+    ):
         super().__init__()
         # Explicitly check "is not None" here to support passing an empty
         # list to specify setting no channel arguments.
@@ -65,43 +71,43 @@ class InferenceServerClient(InferenceServerClientBase):
 
             # To specify custom channel_opt, see the channel_args parameter.
             channel_opt = [
-                ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
-                ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
-                ('grpc.keepalive_time_ms', keepalive_options.keepalive_time_ms),
-                ('grpc.keepalive_timeout_ms',
-                 keepalive_options.keepalive_timeout_ms),
-                ('grpc.keepalive_permit_without_calls',
-                 keepalive_options.keepalive_permit_without_calls),
-                ('grpc.http2.max_pings_without_data',
-                 keepalive_options.http2_max_pings_without_data),
+                ("grpc.max_send_message_length", MAX_GRPC_MESSAGE_SIZE),
+                ("grpc.max_receive_message_length", MAX_GRPC_MESSAGE_SIZE),
+                ("grpc.keepalive_time_ms", keepalive_options.keepalive_time_ms),
+                ("grpc.keepalive_timeout_ms", keepalive_options.keepalive_timeout_ms),
+                (
+                    "grpc.keepalive_permit_without_calls",
+                    keepalive_options.keepalive_permit_without_calls,
+                ),
+                (
+                    "grpc.http2.max_pings_without_data",
+                    keepalive_options.http2_max_pings_without_data,
+                ),
             ]
 
         if creds:
-            self._channel = grpc.aio.secure_channel(url,
-                                                    creds,
-                                                    options=channel_opt)
+            self._channel = grpc.aio.secure_channel(url, creds, options=channel_opt)
         elif ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
-                with open(root_certificates, 'rb') as rc_fs:
+                with open(root_certificates, "rb") as rc_fs:
                     rc_bytes = rc_fs.read()
             if private_key is not None:
-                with open(private_key, 'rb') as pk_fs:
+                with open(private_key, "rb") as pk_fs:
                     pk_bytes = pk_fs.read()
             if certificate_chain is not None:
-                with open(certificate_chain, 'rb') as cc_fs:
+                with open(certificate_chain, "rb") as cc_fs:
                     cc_bytes = cc_fs.read()
-            creds = grpc.ssl_channel_credentials(root_certificates=rc_bytes,
-                                                 private_key=pk_bytes,
-                                                 certificate_chain=cc_bytes)
-            self._channel = grpc.aio.secure_channel(url,
-                                                    creds,
-                                                    options=channel_opt)
+            creds = grpc.ssl_channel_credentials(
+                root_certificates=rc_bytes,
+                private_key=pk_bytes,
+                certificate_chain=cc_bytes,
+            )
+            self._channel = grpc.aio.secure_channel(url, creds, options=channel_opt)
         else:
             self._channel = grpc.aio.insecure_channel(url, options=channel_opt)
 
-        self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(
-            self._channel)
+        self._client_stub = service_pb2_grpc.GRPCInferenceServiceStub(self._channel)
         self._verbose = verbose
 
     async def __aenter__(self):
@@ -121,22 +127,21 @@ class InferenceServerClient(InferenceServerClientBase):
         request = Request(headers)
         self._call_plugin(request)
 
-        request_metadata = request.headers.items(
-        ) if request.headers is not None else ()
+        request_metadata = (
+            request.headers.items() if request.headers is not None else ()
+        )
         return request_metadata
 
     async def is_server_live(self, headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerLiveRequest()
             if self._verbose:
-                print("is_server_live, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ServerLive(request=request,
-                                                          metadata=metadata)
+                print("is_server_live, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ServerLive(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             return response.live
@@ -144,17 +149,15 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def is_server_ready(self, headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerReadyRequest()
             if self._verbose:
-                print("is_server_ready, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ServerReady(request=request,
-                                                           metadata=metadata)
+                print("is_server_ready, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ServerReady(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             return response.ready
@@ -162,20 +165,19 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def is_model_ready(self, model_name, model_version="", headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
-            request = service_pb2.ModelReadyRequest(name=model_name,
-                                                    version=model_version)
+            request = service_pb2.ModelReadyRequest(
+                name=model_name, version=model_version
+            )
             if self._verbose:
-                print("is_model_ready, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ModelReady(request=request,
-                                                          metadata=metadata)
+                print("is_model_ready, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ModelReady(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             return response.ready
@@ -183,194 +185,181 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_server_metadata(self, headers=None, as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerMetadataRequest()
             if self._verbose:
-                print("get_server_metadata, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ServerMetadata(request=request,
-                                                              metadata=metadata)
+                print("get_server_metadata, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ServerMetadata(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_model_metadata(self,
-                                 model_name,
-                                 model_version="",
-                                 headers=None,
-                                 as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_model_metadata(
+        self, model_name, model_version="", headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
-            request = service_pb2.ModelMetadataRequest(name=model_name,
-                                                       version=model_version)
+            request = service_pb2.ModelMetadataRequest(
+                name=model_name, version=model_version
+            )
             if self._verbose:
-                print("get_model_metadata, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ModelMetadata(request=request,
-                                                             metadata=metadata)
+                print("get_model_metadata, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ModelMetadata(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_model_config(self,
-                               model_name,
-                               model_version="",
-                               headers=None,
-                               as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_model_config(
+        self, model_name, model_version="", headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
-            request = service_pb2.ModelConfigRequest(name=model_name,
-                                                     version=model_version)
+            request = service_pb2.ModelConfigRequest(
+                name=model_name, version=model_version
+            )
             if self._verbose:
-                print("get_model_config, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.ModelConfig(request=request,
-                                                           metadata=metadata)
+                print("get_model_config, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.ModelConfig(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     async def get_model_repository_index(self, headers=None, as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryIndexRequest()
             if self._verbose:
-                print("get_model_repository_index, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "get_model_repository_index, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             response = await self._client_stub.RepositoryIndex(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def load_model(self,
-                         model_name,
-                         headers=None,
-                         config=None,
-                         files=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def load_model(self, model_name, headers=None, config=None, files=None):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
-            request = service_pb2.RepositoryModelLoadRequest(
-                model_name=model_name)
+            request = service_pb2.RepositoryModelLoadRequest(model_name=model_name)
             if config is not None:
                 request.parameters["config"].string_param = config
             if self._verbose:
                 # Don't print file content which can be large
-                print("load_model, metadata {}\noverride files omitted:\n{}".
-                      format(metadata, request))
+                print(
+                    "load_model, metadata {}\noverride files omitted:\n{}".format(
+                        metadata, request
+                    )
+                )
             if files is not None:
                 for path, content in files.items():
                     request.parameters[path].bytes_param = content
-            await self._client_stub.RepositoryModelLoad(request=request,
-                                                        metadata=metadata)
+            await self._client_stub.RepositoryModelLoad(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print("Loaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def unload_model(self,
-                           model_name,
-                           headers=None,
-                           unload_dependents=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def unload_model(self, model_name, headers=None, unload_dependents=False):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
-            request = service_pb2.RepositoryModelUnloadRequest(
-                model_name=model_name)
-            request.parameters[
-                'unload_dependents'].bool_param = unload_dependents
+            request = service_pb2.RepositoryModelUnloadRequest(model_name=model_name)
+            request.parameters["unload_dependents"].bool_param = unload_dependents
             if self._verbose:
                 print("unload_model, metadata {}\n{}".format(metadata, request))
-            await self._client_stub.RepositoryModelUnload(request=request,
-                                                          metadata=metadata)
+            await self._client_stub.RepositoryModelUnload(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print("Unloaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_inference_statistics(self,
-                                       model_name="",
-                                       model_version="",
-                                       headers=None,
-                                       as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_inference_statistics(
+        self, model_name="", model_version="", headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
                 raise_error("model version must be a string")
-            request = service_pb2.ModelStatisticsRequest(name=model_name,
-                                                         version=model_version)
+            request = service_pb2.ModelStatisticsRequest(
+                name=model_name, version=model_version
+            )
             if self._verbose:
-                print("get_inference_statistics, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "get_inference_statistics, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             response = await self._client_stub.ModelStatistics(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def update_trace_settings(self,
-                                    model_name=None,
-                                    settings={},
-                                    headers=None,
-                                    as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def update_trace_settings(
+        self, model_name=None, settings={}, headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
@@ -381,53 +370,52 @@ class InferenceServerClient(InferenceServerClientBase):
                     request.settings[key]
                 else:
                     request.settings[key].value.extend(
-                        value if isinstance(value, list) else [value])
+                        value if isinstance(value, list) else [value]
+                    )
 
             if self._verbose:
-                print("update_trace_settings, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.TraceSetting(request=request,
-                                                            metadata=metadata)
+                print(
+                    "update_trace_settings, metadata {}\n{}".format(metadata, request)
+                )
+            response = await self._client_stub.TraceSetting(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_trace_settings(self,
-                                 model_name=None,
-                                 headers=None,
-                                 as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_trace_settings(self, model_name=None, headers=None, as_json=False):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
             if (model_name is not None) and (model_name != ""):
                 request.model_name = model_name
             if self._verbose:
-                print("get_trace_settings, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.TraceSetting(request=request,
-                                                            metadata=metadata)
+                print("get_trace_settings, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.TraceSetting(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     async def update_log_settings(self, settings, headers=None, as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
@@ -443,223 +431,229 @@ class InferenceServerClient(InferenceServerClientBase):
                         request.settings[key].bool_param = value
 
             if self._verbose:
-                print("update_log_settings, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.LogSettings(request=request,
-                                                           metadata=metadata)
+                print("update_log_settings, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.LogSettings(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     async def get_log_settings(self, headers=None, as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
             if self._verbose:
-                print("get_log_settings, metadata {}\n{}".format(
-                    metadata, request))
-            response = await self._client_stub.LogSettings(request=request,
-                                                           metadata=metadata)
+                print("get_log_settings, metadata {}\n{}".format(metadata, request))
+            response = await self._client_stub.LogSettings(
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_system_shared_memory_status(self,
-                                              region_name="",
-                                              headers=None,
-                                              as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_system_shared_memory_status(
+        self, region_name="", headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
-            request = service_pb2.SystemSharedMemoryStatusRequest(
-                name=region_name)
+            request = service_pb2.SystemSharedMemoryStatusRequest(name=region_name)
             if self._verbose:
-                print("get_system_shared_memory_status, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "get_system_shared_memory_status, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             response = await self._client_stub.SystemSharedMemoryStatus(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def register_system_shared_memory(self,
-                                            name,
-                                            key,
-                                            byte_size,
-                                            offset=0,
-                                            headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def register_system_shared_memory(
+        self, name, key, byte_size, offset=0, headers=None
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryRegisterRequest(
-                name=name, key=key, offset=offset, byte_size=byte_size)
+                name=name, key=key, offset=offset, byte_size=byte_size
+            )
             if self._verbose:
-                print("register_system_shared_memory, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "register_system_shared_memory, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             await self._client_stub.SystemSharedMemoryRegister(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
-                print("Registered system shared memory with name '{}'".format(
-                    name))
+                print("Registered system shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     async def unregister_system_shared_memory(self, name="", headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
-                print("unregister_system_shared_memory, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "unregister_system_shared_memory, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             await self._client_stub.SystemSharedMemoryUnregister(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 if name != "":
-                    print("Unregistered system shared memory with name '{}'".
-                          format(name))
+                    print(
+                        "Unregistered system shared memory with name '{}'".format(name)
+                    )
                 else:
                     print("Unregistered all system shared memory regions")
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_cuda_shared_memory_status(self,
-                                            region_name="",
-                                            headers=None,
-                                            as_json=False):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def get_cuda_shared_memory_status(
+        self, region_name="", headers=None, as_json=False
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
 
         metadata = self._get_metadata(headers)
         try:
-            request = service_pb2.CudaSharedMemoryStatusRequest(
-                name=region_name)
+            request = service_pb2.CudaSharedMemoryStatusRequest(name=region_name)
             if self._verbose:
-                print("get_cuda_shared_memory_status, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "get_cuda_shared_memory_status, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             response = await self._client_stub.CudaSharedMemoryStatus(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 print(response)
             if as_json:
                 return json.loads(
-                    MessageToJson(response, preserving_proto_field_name=True))
+                    MessageToJson(response, preserving_proto_field_name=True)
+                )
             else:
                 return response
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def register_cuda_shared_memory(self,
-                                          name,
-                                          raw_handle,
-                                          device_id,
-                                          byte_size,
-                                          headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def register_cuda_shared_memory(
+        self, name, raw_handle, device_id, byte_size, headers=None
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryRegisterRequest(
                 name=name,
                 raw_handle=base64.b64decode(raw_handle),
                 device_id=device_id,
-                byte_size=byte_size)
-            if self._verbose:
-                print("register_cuda_shared_memory, metadata {}\n{}".format(
-                    metadata, request))
-            await self._client_stub.CudaSharedMemoryRegister(request=request,
-                                                             metadata=metadata)
+                byte_size=byte_size,
+            )
             if self._verbose:
                 print(
-                    "Registered cuda shared memory with name '{}'".format(name))
+                    "register_cuda_shared_memory, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
+            await self._client_stub.CudaSharedMemoryRegister(
+                request=request, metadata=metadata
+            )
+            if self._verbose:
+                print("Registered cuda shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     async def unregister_cuda_shared_memory(self, name="", headers=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+        """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryUnregisterRequest(name=name)
             if self._verbose:
-                print("unregister_cuda_shared_memory, metadata {}\n{}".format(
-                    metadata, request))
+                print(
+                    "unregister_cuda_shared_memory, metadata {}\n{}".format(
+                        metadata, request
+                    )
+                )
             await self._client_stub.CudaSharedMemoryUnregister(
-                request=request, metadata=metadata)
+                request=request, metadata=metadata
+            )
             if self._verbose:
                 if name != "":
-                    print(
-                        "Unregistered cuda shared memory with name '{}'".format(
-                            name))
+                    print("Unregistered cuda shared memory with name '{}'".format(name))
                 else:
                     print("Unregistered all cuda shared memory regions")
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def infer(self,
-                    model_name,
-                    inputs,
-                    model_version="",
-                    outputs=None,
-                    request_id="",
-                    sequence_id=0,
-                    sequence_start=False,
-                    sequence_end=False,
-                    priority=0,
-                    timeout=None,
-                    client_timeout=None,
-                    headers=None,
-                    compression_algorithm=None,
-                    parameters=None):
-        """Refer to tritonclient.grpc.InferenceServerClient
-
-        """
+    async def infer(
+        self,
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        client_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+        parameters=None,
+    ):
+        """Refer to tritonclient.grpc.InferenceServerClient"""
 
         metadata = self._get_metadata(headers)
 
         if type(model_version) != str:
             raise_error("model version must be a string")
 
-        request = _get_inference_request(model_name=model_name,
-                                         inputs=inputs,
-                                         model_version=model_version,
-                                         request_id=request_id,
-                                         outputs=outputs,
-                                         sequence_id=sequence_id,
-                                         sequence_start=sequence_start,
-                                         sequence_end=sequence_end,
-                                         priority=priority,
-                                         timeout=timeout,
-                                         parameters=parameters)
+        request = _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
@@ -668,7 +662,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 request=request,
                 metadata=metadata,
                 timeout=client_timeout,
-                compression=_grpc_compression_type(compression_algorithm))
+                compression=_grpc_compression_type(compression_algorithm),
+            )
             if self._verbose:
                 print(response)
             result = InferResult(response)
@@ -676,25 +671,27 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def stream_infer(self,
-                           inputs_iterator,
-                           stream_timeout=None,
-                           headers=None,
-                           compression_algorithm=None):
+    async def stream_infer(
+        self,
+        inputs_iterator,
+        stream_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+    ):
         """Runs an asynchronous inference over gRPC bi-directional streaming
         API.
 
         Parameters
         ----------
         inputs_iterator : async_generator
-            Async iterator that yields a dict(s) consists of the input 
-            parameters to the async_stream_infer function defined in 
+            Async iterator that yields a dict(s) consists of the input
+            parameters to the async_stream_infer function defined in
             tritonclient.grpc.InferenceServerClient.
         stream_timeout : float
             Optional stream timeout. The stream will be closed once the
             specified timeout expires.
         headers: dict
-            Optional dictionary specifying additional HTTP headers to include 
+            Optional dictionary specifying additional HTTP headers to include
             in the request.
         compression_algorithm : str
             Optional grpc compression algorithm to be used on client side.
@@ -755,14 +752,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     sequence_end=inputs["sequence_end"],
                     priority=inputs["priority"],
                     timeout=inputs["timeout"],
-                    parameters=inputs["parameters"])
+                    parameters=inputs["parameters"],
+                )
 
         try:
             response_iterator = self._client_stub.ModelStreamInfer(
                 _request_iterator(inputs_iterator),
                 metadata=metadata,
                 timeout=stream_timeout,
-                compression=_grpc_compression_type(compression_algorithm))
+                compression=_grpc_compression_type(compression_algorithm),
+            )
             async for response in response_iterator:
                 if self._verbose:
                     print(response)

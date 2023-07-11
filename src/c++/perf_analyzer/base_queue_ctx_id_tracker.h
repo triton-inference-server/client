@@ -26,6 +26,7 @@
 #pragma once
 
 #include <queue>
+
 #include "ictx_id_tracker.h"
 
 namespace triton { namespace perfanalyzer {

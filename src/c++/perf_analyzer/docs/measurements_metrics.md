@@ -177,7 +177,7 @@ Concurrency,...,Avg GPU Utilization,Avg GPU Power Usage,Max GPU Memory Usage,Tot
 ## Communication Protocol
 
 By default, Perf Analyzer uses HTTP to communicate with Triton. The gRPC
-protocol can be specificed with the [`-i [http|grpc]`](cli.md#-i-httpgrpc)
+protocol can be specified with the [`-i [http|grpc]`](cli.md#-i-httpgrpc)
 option. If gRPC is selected the [`--streaming`](cli.md#--streaming) option can
 also be specified for gRPC streaming.
 

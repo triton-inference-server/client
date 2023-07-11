@@ -112,7 +112,7 @@ class LoadManager {
   /// Complete any subclass-specific manager initialization tasks.
   virtual void InitManagerFinalize() {}
 
-  /// Helper funtion to retrieve the input data for the inferences
+  /// Helper function to retrieve the input data for the inferences
   /// \param string_length The length of the random strings to be generated
   /// for string inputs.
   /// \param string_data The string to be used as string inputs for model.
@@ -165,7 +165,7 @@ class LoadManager {
       std::shared_ptr<DataLoader> data_loader);
 
 #ifndef DOCTEST_CONFIG_DISABLE
- protected:
+ public:
   LoadManager() = default;
 #endif
 };

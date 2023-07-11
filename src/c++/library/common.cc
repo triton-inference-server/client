@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -212,6 +212,13 @@ InferInput::SharedMemoryInfo(
 }
 
 Error
+InferInput::SetBinaryData(const bool binary_data)
+{
+  binary_data_ = binary_data;
+  return Error::Success;
+}
+
+Error
 InferInput::PrepareForRequest()
 {
   // Reset position so request sends entire input.
@@ -319,6 +326,13 @@ InferRequestedOutput::SharedMemoryInfo(
   *byte_size = shm_byte_size_;
   *offset = shm_offset_;
 
+  return Error::Success;
+}
+
+Error
+InferRequestedOutput::SetBinaryData(const bool binary_data)
+{
+  binary_data_ = binary_data;
   return Error::Success;
 }
 

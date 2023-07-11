@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -24,9 +24,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <getopt.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "http_client.h"
 
 namespace tc = triton::client;
@@ -75,6 +78,8 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr << "\t-v" << std::endl;
   std::cerr << "\t-u <URL for inference service>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
+  std::cerr << "\t--json-input-data" << std::endl;
+  std::cerr << "\t--json-output-data" << std::endl;
   std::cerr << std::endl;
   std::cerr
       << "For -H, header must be 'Header:Value'. May be given multiple times."
@@ -91,11 +96,25 @@ main(int argc, char** argv)
   bool verbose = false;
   std::string url("localhost:8000");
   tc::Headers http_headers;
+  bool json_input_data{false};
+  bool json_output_data{false};
+
+  // {name, has_arg, *flag, val}
+  static struct option long_options[] = {
+      {"json-input-data", 0, 0, 0},
+      {"json-output-data", 0, 0, 1},
+      {0, 0, 0, 0}};
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt(argc, argv, "vu:H:")) != -1) {
+  while ((opt = getopt_long(argc, argv, "vu:H:", long_options, NULL)) != -1) {
     switch (opt) {
+      case 0:
+        json_input_data = true;
+        break;
+      case 1:
+        json_output_data = true;
+        break;
       case 'v':
         verbose = true;
         break;
@@ -154,11 +173,13 @@ main(int argc, char** argv)
       "unable to get INPUT0");
   std::shared_ptr<tc::InferInput> input0_ptr;
   input0_ptr.reset(input0);
+  input0_ptr->SetBinaryData(!json_input_data);
   FAIL_IF_ERR(
       tc::InferInput::Create(&input1, "INPUT1", shape, "BYTES"),
       "unable to get INPUT1");
   std::shared_ptr<tc::InferInput> input1_ptr;
   input1_ptr.reset(input1);
+  input1_ptr->SetBinaryData(!json_input_data);
 
   FAIL_IF_ERR(
       input0_ptr->AppendFromString(input0_data),
@@ -176,11 +197,13 @@ main(int argc, char** argv)
       "unable to get OUTPUT0");
   std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);
+  output0_ptr->SetBinaryData(!json_output_data);
   FAIL_IF_ERR(
       tc::InferRequestedOutput::Create(&output1, "OUTPUT1"),
       "unable to get OUTPUT1");
   std::shared_ptr<tc::InferRequestedOutput> output1_ptr;
   output1_ptr.reset(output1);
+  output1_ptr->SetBinaryData(!json_output_data);
 
 
   // The inference settings. Will be using default for now.
@@ -188,8 +211,8 @@ main(int argc, char** argv)
   options.model_version_ = model_version;
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get(),
-                                                          output1_ptr.get()};
+  std::vector<const tc::InferRequestedOutput*> outputs = {
+      output0_ptr.get(), output1_ptr.get()};
 
   tc::InferResult* results;
   FAIL_IF_ERR(

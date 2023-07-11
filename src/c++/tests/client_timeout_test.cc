@@ -25,10 +25,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <string>
+
 #include "grpc_client.h"
 #include "http_client.h"
 

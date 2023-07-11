@@ -28,6 +28,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+
 #include "client_backend/client_backend.h"
 #include "request_rate_manager.h"
 
@@ -121,7 +122,7 @@ class CustomLoadManager : public RequestRateManager {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestCustomLoadManager;
 
- protected:
+ public:
   CustomLoadManager() = default;
 #endif
 };

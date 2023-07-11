@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,8 +27,10 @@
 #include "cuda_shared_memory.h"
 
 #include <cuda_runtime_api.h>
+
 #include <cstring>
 #include <iostream>
+
 #include "../shared_memory/shared_memory_handle.h"
 
 extern "C" {
@@ -55,6 +57,28 @@ CudaSharedMemoryHandleCreate(
   handle->shm_key_ = "";
   handle->shm_fd_ = 0;
   return reinterpret_cast<void*>(handle);
+}
+
+int
+SupportUVA(int shm_device_id, int ext_device_id)
+{
+  int support_uva = 1;
+  cudaError_t err = cudaDeviceGetAttribute(
+      &support_uva, cudaDevAttrUnifiedAddressing, shm_device_id);
+  if (err != cudaSuccess) {
+    return -6;
+  }
+  if ((support_uva != 0) && (ext_device_id != -1)) {
+    err = cudaDeviceGetAttribute(
+        &support_uva, cudaDevAttrUnifiedAddressing, ext_device_id);
+    if (err != cudaSuccess) {
+      return -6;
+    }
+  }
+  if (support_uva == 0) {
+    return -7;
+  }
+  return 0;
 }
 
 }  // namespace
@@ -128,58 +152,73 @@ CudaSharedMemoryGetRawHandle(
 
 int
 CudaSharedMemoryRegionSet(
-    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data)
+    void* cuda_shm_handle, size_t offset, size_t byte_size, const void* data,
+    int device_id)
 {
-  // remember previous device and set to new device
-  int previous_device;
-  cudaGetDevice(&previous_device);
-  cudaError_t err = cudaSetDevice(
-      reinterpret_cast<SharedMemoryHandle*>(cuda_shm_handle)->device_id_);
-  if (err != cudaSuccess) {
-    cudaSetDevice(previous_device);
-    return -1;
+  auto lhandle = reinterpret_cast<SharedMemoryHandle*>(cuda_shm_handle);
+
+  {
+    // Unified virtual addressing is the prerequisite for cudaMemcpyDefault,
+    // unsupported platform is rare so only for sanity check.
+    auto res = SupportUVA(lhandle->device_id_, device_id);
+    if (res != 0) {
+      return res;
+    }
   }
 
   // Copy data into cuda shared memory
-  void* base_addr =
-      reinterpret_cast<SharedMemoryHandle*>(cuda_shm_handle)->base_addr_;
-  err = cudaMemcpy(
+  void* base_addr = lhandle->base_addr_;
+  cudaError_t err = cudaMemcpy(
       reinterpret_cast<uint8_t*>(base_addr) + offset, data, byte_size,
-      cudaMemcpyHostToDevice);
+      cudaMemcpyDefault);
   if (err != cudaSuccess) {
-    cudaSetDevice(previous_device);
     return -3;
   }
-
-  // Set device to previous GPU
-  cudaSetDevice(previous_device);
 
   return 0;
 }
 
 int
 GetCudaSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, size_t* offset, size_t* byte_size)
+    void* shm_handle, void** shm_addr, size_t* offset, size_t* byte_size,
+    int* device_id)
 {
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
-  // Must call CudaSharedMemoryReleaseBuffer to destroy 'new' object
-  // after writing into results. Numpy cannot read buffer from GPU and hence
-  // this is needed to maintain a copy of the data on GPU shared memory.
-  *shm_addr = new char[handle->byte_size_];
+  auto handle = reinterpret_cast<SharedMemoryHandle*>(shm_handle);
+  *shm_addr = handle->base_addr_;
+  *offset = handle->offset_;
+  *byte_size = handle->byte_size_;
+  *device_id = handle->device_id_;
+  return 0;
+}
+
+// Must call CudaSharedMemoryReleaseBuffer to destroy 'new' object
+// after writing into results. Numpy cannot read buffer from GPU and hence
+// this is needed to maintain a copy of the data on GPU shared memory.
+int
+CudaSharedMemoryAllocateAndReadToHostBuffer(void* shm_handle, char** ptr)
+{
+  auto lhandle = reinterpret_cast<SharedMemoryHandle*>(shm_handle);
+
+  {
+    // Unified virtual addressing is the prerequisite for cudaMemcpyDefault,
+    // unsupported platform is rare so only for sanity check.
+    auto res = SupportUVA(lhandle->device_id_, -1 /* ext_device_id */);
+    if (res != 0) {
+      return res;
+    }
+  }
+
+  *ptr = new char[lhandle->byte_size_];
   cudaError_t err = cudaMemcpy(
-      *shm_addr, handle->base_addr_, handle->byte_size_,
-      cudaMemcpyDeviceToHost);
+      *ptr, lhandle->base_addr_, lhandle->byte_size_, cudaMemcpyDefault);
   if (err != cudaSuccess) {
     return -5;
   }
-  *offset = handle->offset_;
-  *byte_size = handle->byte_size_;
   return 0;
 }
 
 int
-CudaSharedMemoryReleaseBuffer(char* ptr)
+CudaSharedMemoryReleaseHostBuffer(char* ptr)
 {
   if (ptr) {
     delete ptr;
@@ -213,6 +252,40 @@ CudaSharedMemoryRegionDestroy(void* cuda_shm_handle)
   // Set device to previous GPU
   cudaSetDevice(previous_device);
 
+  return 0;
+}
+
+int
+CudaStreamCreate(void** cuda_stream)
+{
+  if (cudaStreamCreate(reinterpret_cast<cudaStream_t*>(cuda_stream)) !=
+      cudaSuccess) {
+    return -8;
+  }
+  return 0;
+}
+
+int
+CudaStreamDestroy(void* cuda_stream)
+{
+  if (cuda_stream != nullptr) {
+    if (cudaStreamDestroy(reinterpret_cast<cudaStream_t>(cuda_stream)) !=
+        cudaSuccess) {
+      return -8;
+    }
+  }
+  return 0;
+}
+
+int
+CudaStreamSynchronize(void* cuda_stream)
+{
+  if (cuda_stream != nullptr) {
+    if (cudaStreamSynchronize(reinterpret_cast<cudaStream_t>(cuda_stream)) !=
+        cudaSuccess) {
+      return -8;
+    }
+  }
   return 0;
 }
 

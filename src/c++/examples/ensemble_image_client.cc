@@ -27,11 +27,13 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <string>
+
 #include "grpc_client.h"
 #include "http_client.h"
 #include "json_utils.h"

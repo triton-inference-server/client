@@ -1,4 +1,4 @@
-# Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -74,7 +74,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       repo-core
       GIT_REPOSITORY https://github.com/triton-inference-server/core.git
       GIT_TAG ${TRITON_CORE_REPO_TAG}
-      GIT_SHALLOW ON 
+      GIT_SHALLOW ON
     )
     FetchContent_MakeAvailable(repo-core)
   endif() # TRITON_ENABLE_PERF_ANALYZER
@@ -88,6 +88,12 @@ if(TRITON_ENABLE_TESTS OR TRITON_ENABLE_PERF_ANALYZER)
   FetchContent_MakeAvailable(googletest)
 endif()
 FetchContent_MakeAvailable(repo-common)
+
+if(TRITON_ENABLE_TESTS)
+  include_directories(
+    ${repo-common_SOURCE_DIR}/include
+  )
+endif() # TRITON_ENABLE_TESTS
 
 #
 # CUDA

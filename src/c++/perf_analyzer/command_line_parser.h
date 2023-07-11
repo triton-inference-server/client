@@ -30,6 +30,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "constants.h"
 #include "mpi_utils.h"
 #include "perf_utils.h"
@@ -138,6 +139,12 @@ struct PerfAnalyzerParameters {
   // percentage exceeds the threshold, a warning is displayed.
   //
   double overhead_pct_threshold{50.0};
+
+  // Triton inference request input tensor format.
+  cb::TensorFormat input_tensor_format{cb::TensorFormat::BINARY};
+
+  // Triton inference response output tensor format.
+  cb::TensorFormat output_tensor_format{cb::TensorFormat::BINARY};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;
@@ -146,7 +153,7 @@ class CLParser {
  public:
   CLParser() : params_(new PerfAnalyzerParameters{}) {}
 
-  // Parse command line arguements into a parameters struct
+  // Parse command line arguments into a parameters struct
   //
   PAParamsPtr Parse(int argc, char** argv);
 
@@ -157,6 +164,7 @@ class CLParser {
 
   std::string FormatMessage(std::string str, int offset) const;
   virtual void Usage(const std::string& msg = std::string());
+  void PrintVersion();
   void ParseCommandLine(int argc, char** argv);
   void VerifyOptions();
 };

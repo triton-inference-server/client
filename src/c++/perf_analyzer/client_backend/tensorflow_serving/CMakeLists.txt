@@ -71,7 +71,7 @@ file(GLOB TF_EXAMPLE_PROTOS ${CMAKE_BINARY_DIR}/protos/tensorflow/core/example/*
 file(GLOB TF_FW_PROTOS ${CMAKE_BINARY_DIR}/protos/tensorflow/core/framework/*.proto)
 file(GLOB TF_PROTOBUF_PROTOS ${CMAKE_BINARY_DIR}/protos/tensorflow/core/protobuf/*.proto)
 
-# This is a dirty hack to prevent unneccesary leaking dependency
+# This is a dirty hack to prevent unnecessary leaking dependency
 list(FILTER TF_PROTOBUF_PROTOS EXCLUDE REGEX "autotuning.proto$|conv_autotuning.proto$")
 
 # Compiling CPP sources from proto files.

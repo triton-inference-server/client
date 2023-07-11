@@ -28,6 +28,7 @@
 
 #include <b64/decode.h>
 #include <rapidjson/filereadstream.h>
+
 #include <fstream>
 
 namespace triton { namespace perfanalyzer {
@@ -90,8 +91,8 @@ DataLoader::ReadDataFromDir(
       if (input_string_data.size() != batch1_num_strings) {
         return cb::Error(
             "provided data for input " + input.second.name_ + " has " +
-                std::to_string(it->second.size()) + " byte elements, expect " +
-                std::to_string(batch1_num_strings),
+                std::to_string(input_string_data.size()) +
+                " elements, expect " + std::to_string(batch1_num_strings),
             pa::GENERIC_ERROR);
       }
     }
@@ -188,6 +189,9 @@ DataLoader::ParseData(
     const rapidjson::Value& steps = streams[i - offset];
     const rapidjson::Value* output_steps =
         (out_streams == nullptr) ? nullptr : &(*out_streams)[i - offset];
+
+    RETURN_IF_ERROR(ValidateParsingMode(steps));
+
     if (steps.IsArray()) {
       step_num_.push_back(steps.Size());
       for (size_t k = 0; k < step_num_[i]; k++) {
@@ -322,6 +326,7 @@ DataLoader::GetInputData(
     const uint8_t** data_ptr, size_t* batch1_size)
 {
   bool data_found = false;
+  *data_ptr = nullptr;
   *batch1_size = 0;
 
   // If json data is available then try to retrieve the data from there
@@ -341,7 +346,17 @@ DataLoader::GetInputData(
         string_data = &it->second;
         *batch1_size = string_data->size();
       }
-      *data_ptr = (const uint8_t*)&((it->second)[0]);
+
+
+      if (it->second.size()) {
+        *data_ptr = (const uint8_t*)&((it->second)[0]);
+      } else {
+        // If data is found but empty, we still want to return a non-null
+        // pointer. In that case, just point to the vector itself (instead of
+        // the raw data)
+        *data_ptr = (const uint8_t*)&(it->second);
+      }
+
       data_found = true;
     }
   }
@@ -463,8 +478,6 @@ DataLoader::ReadTensorData(
 
       if (tensor.IsArray()) {
         content = &tensor;
-      } else if (tensor.HasMember("b64")) {
-        content = &tensor;
       } else {
         // Populate the shape values first if available
         if (tensor.HasMember("shape")) {
@@ -479,22 +492,26 @@ DataLoader::ReadTensorData(
           }
         }
 
-        if (!tensor.HasMember("content")) {
-          return cb::Error(
-              "missing content field. ( Location stream id: " +
-                  std::to_string(stream_index) +
-                  ", step id: " + std::to_string(step_index) + ")",
-              pa::GENERIC_ERROR);
-        }
+        if (tensor.HasMember("b64")) {
+          content = &tensor;
+        } else {
+          if (!tensor.HasMember("content")) {
+            return cb::Error(
+                "missing content field. ( Location stream id: " +
+                    std::to_string(stream_index) +
+                    ", step id: " + std::to_string(step_index) + ")",
+                pa::GENERIC_ERROR);
+          }
 
-        content = &tensor["content"];
+          content = &tensor["content"];
+        }
       }
 
       if (content->IsArray()) {
         RETURN_IF_ERROR(SerializeExplicitTensor(
             *content, io.second.datatype_, &it->second));
       } else {
-        if (content->HasMember("b64")) {
+        if (content->IsObject() && content->HasMember("b64")) {
           if ((*content)["b64"].IsString()) {
             const std::string& encoded = (*content)["b64"].GetString();
             it->second.resize(encoded.length());
@@ -502,25 +519,6 @@ DataLoader::ReadTensorData(
             int size =
                 D.decode(encoded.c_str(), encoded.length(), &it->second[0]);
             it->second.resize(size);
-
-            int64_t batch1_byte;
-            auto shape_it = tensor_shape.find(key_name);
-            if (shape_it == tensor_shape.end()) {
-              batch1_byte = ByteSize(io.second.shape_, io.second.datatype_);
-            } else {
-              batch1_byte = ByteSize(shape_it->second, io.second.datatype_);
-            }
-            if (batch1_byte > 0 && (size_t)batch1_byte != it->second.size()) {
-              return cb::Error(
-                  "mismatch in the data provided. "
-                  "Expected: " +
-                      std::to_string(batch1_byte) +
-                      " bytes, Got: " + std::to_string(it->second.size()) +
-                      " bytes ( Location stream id: " +
-                      std::to_string(stream_index) +
-                      ", step id: " + std::to_string(step_index) + ")",
-                  pa::GENERIC_ERROR);
-            }
           } else {
             return cb::Error(
                 "the value of b64 field should be of type string ( "
@@ -539,20 +537,8 @@ DataLoader::ReadTensorData(
         }
       }
 
-      // Validate if a fixed shape is available for the tensor.
-      int element_count;
-      auto shape_it = tensor_shape.find(key_name);
-      if (shape_it != tensor_shape.end()) {
-        element_count = ElementCount(shape_it->second);
-      } else {
-        element_count = ElementCount(io.second.shape_);
-      }
-      if (element_count < 0) {
-        return cb::Error(
-            "The variable-sized tensor \"" + io.second.name_ +
-                "\" is missing shape, see --shape option.",
-            pa::GENERIC_ERROR);
-      }
+      RETURN_IF_ERROR(ValidateTensor(io.second, stream_index, step_index));
+
     } else if (io.second.is_optional_ == false) {
       return cb::Error(
           "missing tensor " + io.first +
@@ -562,6 +548,161 @@ DataLoader::ReadTensorData(
     }
   }
 
+  return cb::Error::Success;
+}
+
+
+cb::Error
+DataLoader::ReadFile(const std::string& path, std::vector<char>* contents)
+{
+  std::ifstream in(path, std::ios::in | std::ios::binary);
+  if (!in) {
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
+  }
+
+  in.seekg(0, std::ios::end);
+
+  int file_size = in.tellg();
+  if (file_size > 0) {
+    contents->resize(file_size);
+    in.seekg(0, std::ios::beg);
+    in.read(&(*contents)[0], contents->size());
+  }
+
+  in.close();
+
+  // If size is invalid, report after ifstream is closed
+  if (file_size < 0) {
+    return cb::Error(
+        "failed to get size for file '" + path + "'", pa::GENERIC_ERROR);
+  } else if (file_size == 0) {
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ReadTextFile(
+    const std::string& path, std::vector<std::string>* contents)
+{
+  std::ifstream in(path);
+  if (!in) {
+    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
+  }
+
+  std::string current_string;
+  while (std::getline(in, current_string)) {
+    contents->push_back(current_string);
+  }
+  in.close();
+
+  if (contents->size() == 0) {
+    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateTensor(
+    const ModelTensor& model_tensor, const int stream_index,
+    const int step_index)
+{
+  std::string key_name(
+      model_tensor.name_ + "_" + std::to_string(stream_index) + "_" +
+      std::to_string(step_index));
+
+  auto data_it = input_data_.find(key_name);
+  if (data_it == input_data_.end()) {
+    data_it = output_data_.find(key_name);
+  }
+  if (data_it == output_data_.end()) {
+    return cb::Error("Can't validate a nonexistent tensor");
+  }
+
+  auto shape_it = input_shapes_.find(key_name);
+
+  const std::vector<char>& data = data_it->second;
+  const std::vector<int64_t>& shape = (shape_it == input_shapes_.end())
+                                          ? model_tensor.shape_
+                                          : shape_it->second;
+
+  int64_t batch1_byte = ByteSize(shape, model_tensor.datatype_);
+
+  RETURN_IF_ERROR(ValidateTensorShape(shape, model_tensor));
+  RETURN_IF_ERROR(ValidateTensorDataSize(data, batch1_byte, model_tensor));
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateTensorShape(
+    const std::vector<int64_t>& shape, const ModelTensor& model_tensor)
+{
+  int element_count = ElementCount(shape);
+  if (element_count < 0) {
+    return cb::Error(
+        "The variable-sized tensor \"" + model_tensor.name_ +
+            "\" with model shape " + ShapeVecToString(model_tensor.shape_) +
+            " needs to have its shape fully defined. See the --shape option.",
+        pa::GENERIC_ERROR);
+  }
+
+  bool is_error = false;
+
+  if (shape.size() != model_tensor.shape_.size()) {
+    is_error = true;
+  }
+
+  for (size_t i = 0; i < shape.size() && !is_error; i++) {
+    if (shape[i] != model_tensor.shape_[i] && model_tensor.shape_[i] != -1) {
+      is_error = true;
+    }
+  }
+
+  if (is_error) {
+    return cb::Error(
+        "The supplied shape of " + ShapeVecToString(shape) + " for input \"" +
+        model_tensor.name_ +
+        "\" is incompatible with the model's input shape of " +
+        ShapeVecToString(model_tensor.shape_));
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateTensorDataSize(
+    const std::vector<char>& data, int64_t batch1_byte,
+    const ModelTensor& model_tensor)
+{
+  // Validate that the supplied data matches the amount of data expected based
+  // on the shape
+  if (batch1_byte > 0 && (size_t)batch1_byte != data.size()) {
+    return cb::Error(
+        "mismatch in the data provided for " + model_tensor.name_ +
+            ". Expected: " + std::to_string(batch1_byte) +
+            " bytes, Got: " + std::to_string(data.size()) + " bytes",
+        pa::GENERIC_ERROR);
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ValidateParsingMode(const rapidjson::Value& steps)
+{
+  // If our first time parsing data, capture the mode
+  if (step_num_.size() == 0) {
+    multiple_stream_mode_ = steps.IsArray();
+  } else {
+    if (steps.IsArray() != multiple_stream_mode_) {
+      return cb::Error(
+          "Inconsistency in input-data provided. Can not have a combination of "
+          "objects and arrays inside of the Data array",
+          pa::GENERIC_ERROR);
+    }
+  }
   return cb::Error::Success;
 }
 

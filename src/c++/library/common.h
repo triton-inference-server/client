@@ -66,7 +66,7 @@ class Error {
   explicit Error(const std::string& msg = "");
 
   /// Accessor for the message of this error.
-  /// \return The messsage for the error. Empty if no error.
+  /// \return The message for the error. Empty if no error.
   const std::string& Message() const { return msg_; }
 
   /// Does this error indicate OK status?
@@ -330,10 +330,17 @@ class InferInput {
   /// \return Error object indicating success or failure.
   Error ByteSize(size_t* byte_size) const;
 
+  /// \return true if this input should be sent in binary format.
+  bool BinaryData() const { return binary_data_; }
+
+  /// \return Error object indicating success or failure.
+  Error SetBinaryData(const bool binary_data);
+
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
   friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
 #endif
+  friend class HttpInferRequest;
   InferInput(
       const std::string& name, const std::vector<int64_t>& dims,
       const std::string& datatype);
@@ -364,6 +371,8 @@ class InferInput {
   IOType io_type_;
   std::string shm_name_;
   size_t shm_offset_;
+
+  bool binary_data_{true};
 };
 
 //==============================================================================
@@ -425,6 +434,12 @@ class InferRequestedOutput {
   Error SharedMemoryInfo(
       std::string* name, size_t* byte_size, size_t* offset) const;
 
+  /// \return true if this output should be received in binary format.
+  bool BinaryData() const { return binary_data_; }
+
+  /// \return Error object indicating success or failure.
+  Error SetBinaryData(const bool binary_data);
+
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
   friend class TRITON_INFERENCE_SERVER_CLIENT_CLASS;
@@ -442,6 +457,8 @@ class InferRequestedOutput {
   std::string shm_name_;
   size_t shm_byte_size_;
   size_t shm_offset_;
+
+  bool binary_data_{true};
 };
 
 //==============================================================================
@@ -468,14 +485,14 @@ class InferResult {
   virtual Error Id(std::string* id) const = 0;
 
   /// Get the shape of output result returned in the response.
-  /// \param output_name The name of the ouput to get shape.
+  /// \param output_name The name of the output to get shape.
   /// \param shape Returns the shape of result for specified output name.
   /// \return Error object indicating success or failure.
   virtual Error Shape(
       const std::string& output_name, std::vector<int64_t>* shape) const = 0;
 
   /// Get the datatype of output result returned in the response.
-  /// \param output_name The name of the ouput to get datatype.
+  /// \param output_name The name of the output to get datatype.
   /// \param shape Returns the datatype of result for specified output name.
   /// \return Error object indicating success or failure.
   virtual Error Datatype(

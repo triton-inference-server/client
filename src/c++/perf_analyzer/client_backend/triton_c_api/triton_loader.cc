@@ -32,11 +32,13 @@
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <sys/stat.h>
+
 #include <future>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
+
 #include "c_api_infer_results.h"
 #include "scoped_defer.h"
 
@@ -728,7 +730,7 @@ TritonLoader::LoadServerLibrary()
       dlhandle_, "TRITONSERVER_InferenceRequestSetFlags", false /* optional */,
       reinterpret_cast<void**>(&sffn)));
   RETURN_IF_ERROR(GetEntrypoint(
-      dlhandle_, "TRITONSERVER_InferenceRequestSetPriority",
+      dlhandle_, "TRITONSERVER_InferenceRequestSetPriorityUInt64",
       false /* optional */, reinterpret_cast<void**>(&spfn)));
   RETURN_IF_ERROR(GetEntrypoint(
       dlhandle_, "TRITONSERVER_InferenceRequestSetTimeoutMicroseconds",
@@ -1020,16 +1022,25 @@ TritonLoader::InitializeRequest(
   // Create the allocator that will be used to allocate buffers for
   // the result tensors.
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()
-          ->response_allocator_new_fn_(
-              allocator,
-              reinterpret_cast<
-                  TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator * allocator, const char* tensor_name, size_t byte_size, TRITONSERVER_MemoryType memory_type, int64_t memory_type_id, void* userp, void** buffer, void** buffer_userp, TRITONSERVER_MemoryType* actual_memory_type, int64_t* actual_memory_type_id)>(
-                  ResponseAlloc),
-              reinterpret_cast<
-                  TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator * allocator, void* buffer, void* buffer_userp, size_t byte_size, TRITONSERVER_MemoryType memory_type, int64_t memory_type_id)>(
-                  ResponseRelease),
-              nullptr /* start_fn */),
+      GetSingleton()->response_allocator_new_fn_(
+          allocator,
+          reinterpret_cast<
+              TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator* allocator,
+                                      const char* tensor_name, size_t byte_size,
+                                      TRITONSERVER_MemoryType memory_type,
+                                      int64_t memory_type_id, void* userp,
+                                      void** buffer, void** buffer_userp,
+                                      TRITONSERVER_MemoryType*
+                                          actual_memory_type,
+                                      int64_t* actual_memory_type_id)>(
+              ResponseAlloc),
+          reinterpret_cast<
+              TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator* allocator,
+                                      void* buffer, void* buffer_userp,
+                                      size_t byte_size,
+                                      TRITONSERVER_MemoryType memory_type,
+                                      int64_t memory_type_id)>(ResponseRelease),
+          nullptr /* start_fn */),
       "creating response allocator");
 
   // set up inference request

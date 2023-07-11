@@ -33,6 +33,17 @@ else()
 
 add_subdirectory(client_backend)
 
+find_package(Git REQUIRED)
+
+execute_process(COMMAND
+  "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
+  RESULT_VARIABLE RETURN_CODE
+  OUTPUT_VARIABLE GIT_SHA)
+
+if(NOT RETURN_CODE EQUAL "0")
+  set(GIT_SHA "unknown")
+endif()
+
 set(
   PERF_ANALYZER_SRCS
   command_line_parser.cc
@@ -110,6 +121,13 @@ target_link_libraries(
     ${CMAKE_DL_LIBS}
 )
 
+target_compile_definitions(
+  perf_analyzer
+  PRIVATE
+    PERF_ANALYZER_VERSION=${PERF_ANALYZER_VERSION}
+    GIT_SHA=${GIT_SHA}
+)
+
 # If gpu is enabled then compile with CUDA dependencies
 if(TRITON_ENABLE_GPU)
   target_compile_definitions(
@@ -169,13 +187,14 @@ add_executable(
   mock_inference_profiler.h
   mock_model_parser.h
   test_utils.h
-  client_backend/mock_client_backend.h  
+  client_backend/mock_client_backend.h
   mock_concurrency_worker.h
   mock_data_loader.h
   mock_infer_context.h
   mock_infer_data_manager.h
   mock_request_rate_worker.h
   mock_sequence_manager.h
+  test_dataloader.cc
   test_inference_profiler.cc
   test_command_line_parser.cc
   test_idle_timer.cc
@@ -198,7 +217,7 @@ add_executable(
 # -Wno-write-strings is needed for the unit tests in order to statically create
 # input argv cases in the CommandLineParser unit test
 #
-set_target_properties(perf_analyzer_unit_tests 
+set_target_properties(perf_analyzer_unit_tests
   PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
 
 target_link_libraries(

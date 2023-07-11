@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,12 +25,16 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "perf_utils.h"
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <string>
+
 #include "client_backend/client_backend.h"
 #include "doctest.h"
 
@@ -85,56 +89,6 @@ ConvertDTypeFromTFS(const std::string& tf_dtype, std::string* datatype)
         "unsupported datatype encountered " + tf_dtype, pa::GENERIC_ERROR);
   }
 
-  return cb::Error::Success;
-}
-
-cb::Error
-ReadFile(const std::string& path, std::vector<char>* contents)
-{
-  std::ifstream in(path, std::ios::in | std::ios::binary);
-  if (!in) {
-    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
-  }
-
-  in.seekg(0, std::ios::end);
-
-  int file_size = in.tellg();
-  if (file_size > 0) {
-    contents->resize(file_size);
-    in.seekg(0, std::ios::beg);
-    in.read(&(*contents)[0], contents->size());
-  }
-
-  in.close();
-
-  // If size is invalid, report after ifstream is closed
-  if (file_size < 0) {
-    return cb::Error(
-        "failed to get size for file '" + path + "'", pa::GENERIC_ERROR);
-  } else if (file_size == 0) {
-    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
-  }
-
-  return cb::Error::Success;
-}
-
-cb::Error
-ReadTextFile(const std::string& path, std::vector<std::string>* contents)
-{
-  std::ifstream in(path);
-  if (!in) {
-    return cb::Error("failed to open file '" + path + "'", pa::GENERIC_ERROR);
-  }
-
-  std::string current_string;
-  while (std::getline(in, current_string)) {
-    contents->push_back(current_string);
-  }
-  in.close();
-
-  if (contents->size() == 0) {
-    return cb::Error("file '" + path + "' is empty", pa::GENERIC_ERROR);
-  }
   return cb::Error::Success;
 }
 
@@ -432,6 +386,23 @@ ScheduleDistribution<Distribution::CONSTANT>(const double request_rate)
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::duration<double>(1.0 / request_rate));
   return [period](std::mt19937& /*gen*/) { return period; };
+}
+
+cb::TensorFormat
+ParseTensorFormat(const std::string& content_type_str)
+{
+  std::string content_type_str_lowercase{content_type_str};
+  std::transform(
+      content_type_str.cbegin(), content_type_str.cend(),
+      content_type_str_lowercase.begin(),
+      [](unsigned char c) { return std::tolower(c); });
+  if (content_type_str_lowercase == "binary") {
+    return cb::TensorFormat::BINARY;
+  } else if (content_type_str_lowercase == "json") {
+    return cb::TensorFormat::JSON;
+  } else {
+    return cb::TensorFormat::UNKNOWN;
+  }
 }
 
 TEST_CASE("testing the ParseProtocol function")

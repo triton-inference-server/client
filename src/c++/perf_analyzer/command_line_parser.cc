@@ -72,11 +72,13 @@ CLParser::Usage(const std::string& msg)
 
   std::cerr << "Usage: " << argv_[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
+  std::cerr << "\t--version " << std::endl;
   std::cerr << "\t--service-kind "
                "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
             << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
+  std::cerr << "\t--bls-composing-models=<string>" << std::endl;
   std::cerr << "\t--model-signature-name <model signature name>" << std::endl;
   std::cerr << "\t-v" << std::endl;
   std::cerr << std::endl;
@@ -122,6 +124,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--sequence-id-range <start:end>" << std::endl;
   std::cerr << "\t--string-length <length>" << std::endl;
   std::cerr << "\t--string-data <string>" << std::endl;
+  std::cerr << "\t--input-tensor-format=[binary|json]" << std::endl;
+  std::cerr << "\t--output-tensor-format=[binary|json]" << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-z" << std::endl;
   std::cerr << "\t--data-directory <path>" << std::endl;
@@ -158,6 +162,11 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--metrics-interval" << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
+
+  std::cerr << FormatMessage(
+                   " --version: print the current version of Perf Analyzer.",
+                   18)
+            << std::endl;
 
   std::cerr
       << FormatMessage(
@@ -403,7 +412,7 @@ CLParser::Usage(const std::string& msg)
              "specifying json data users can control data used with every "
              "request. Multiple data streams can be specified for a sequence "
              "model and the analyzer will select a data stream in a "
-             "round-robin fashion for every new sequence. Muliple json files "
+             "round-robin fashion for every new sequence. Multiple json files "
              "can also be provided (--input-data json_file1 --input-data "
              "json-file2 and so on) and the analyzer will append data streams "
              "from each file. When using --service-kind=torchserve make sure "
@@ -487,6 +496,18 @@ CLParser::Usage(const std::string& msg)
                    "replicate the given string to build tensors of required "
                    "shape. --string-length will not have any effect. This "
                    "option is ignored if --input-data points to a directory.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --input-tensor-format=[binary|json]: Specifies Triton "
+                   "inference request input tensor format. Only valid when "
+                   "HTTP protocol is used. Default is 'binary'.",
+                   18)
+            << std::endl;
+  std::cerr << FormatMessage(
+                   " --output-tensor-format=[binary|json]: Specifies Triton "
+                   "inference response output tensor format. Only valid when "
+                   "HTTP protocol is used. Default is 'binary'.",
                    18)
             << std::endl;
   std::cerr << std::endl;
@@ -624,7 +645,7 @@ CLParser::Usage(const std::string& msg)
              " --trace-level: Specify a trace level. OFF to disable tracing, "
              "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
              "may be specified multiple times to trace multiple "
-             "informations. Default is OFF.",
+             "information. Default is OFF.",
              18)
       << std::endl;
   std::cerr
@@ -703,6 +724,14 @@ CLParser::Usage(const std::string& msg)
 }
 
 void
+CLParser::PrintVersion()
+{
+  std::cerr << "Perf Analyzer Version " << VERSION << " (commit " << SHA << ")"
+            << std::endl;
+  exit(SUCCESS);
+}
+
+void
 CLParser::ParseCommandLine(int argc, char** argv)
 {
   argc_ = argc;
@@ -765,6 +794,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"sequence-length-variation", required_argument, 0, 52},
       {"bls-composing-models", required_argument, 0, 53},
       {"serial-sequences", no_argument, 0, 54},
+      {"input-tensor-format", required_argument, 0, 55},
+      {"output-tensor-format", required_argument, 0, 56},
+      {"version", no_argument, 0, 57},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1244,6 +1276,26 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->serial_sequences = true;
         break;
       }
+      case 55: {
+        cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};
+        if (input_tensor_format == cb::TensorFormat::UNKNOWN) {
+          Usage("--input-tensor-format must be 'binary' or 'json'");
+        }
+        params_->input_tensor_format = input_tensor_format;
+        break;
+      }
+      case 56: {
+        cb::TensorFormat output_tensor_format{ParseTensorFormat(optarg)};
+        if (output_tensor_format == cb::TensorFormat::UNKNOWN) {
+          Usage("--output-tensor-format must be 'binary' or 'json'");
+        }
+        params_->output_tensor_format = output_tensor_format;
+        break;
+      }
+      case 57: {
+        PrintVersion();
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
@@ -1530,6 +1582,17 @@ CLParser::VerifyOptions()
 
   if (params_->metrics_interval_ms == 0) {
     Usage("Metrics interval must be larger than 0 milliseconds.");
+  }
+
+  if (params_->should_collect_metrics && !params_->metrics_url_specified) {
+    // Update the default metrics URL to be associated with the input URL
+    // instead of localhost
+    //
+    size_t colon_pos = params_->url.find(':');
+    if (colon_pos != std::string::npos) {
+      params_->metrics_url =
+          params_->url.substr(0, colon_pos) + ":8002/metrics";
+    }
   }
 }
 

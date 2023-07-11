@@ -54,7 +54,7 @@ Error MapSharedMemory(
 // \return error Returns an error if unable to close shared memory descriptor.
 Error CloseSharedMemory(int shm_fd);
 
-// Destory the shared memory region with the given name.
+// Destroy the shared memory region with the given name.
 // \return error Returns an error if unable to unlink shared memory region.
 Error UnlinkSharedMemoryRegion(std::string shm_key);
 

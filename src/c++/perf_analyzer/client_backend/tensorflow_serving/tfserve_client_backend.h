@@ -26,6 +26,7 @@
 #pragma once
 
 #include <string>
+
 #include "../../perf_utils.h"
 #include "../client_backend.h"
 #include "tfserve_grpc_client.h"
@@ -47,7 +48,7 @@ namespace tfserving {
 
 
 //==============================================================================
-/// TFServeClientBackend is used to generate load on the TF serving isntance
+/// TFServeClientBackend is used to generate load on the TF serving instance
 ///
 class TFServeClientBackend : public ClientBackend {
  public:

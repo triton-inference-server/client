@@ -25,8 +25,10 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
+
 #include <iostream>
 #include <string>
+
 #include "grpc_client.h"
 
 namespace tc = triton::client;

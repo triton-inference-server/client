@@ -126,10 +126,10 @@ class TestRequestRateManager : public TestLoadManagerBase,
     ConfigureThreads();
     GenerateSchedule(rate);
 
-    nanoseconds measurement_window_nanoseconds{params.measurement_window_ms *
-                                               NANOS_PER_MILLIS};
-    nanoseconds max_test_duration{measurement_window_nanoseconds *
-                                  params.max_trials};
+    nanoseconds measurement_window_nanoseconds{
+        params.measurement_window_ms * NANOS_PER_MILLIS};
+    nanoseconds max_test_duration{
+        measurement_window_nanoseconds * params.max_trials};
 
     nanoseconds expected_time_between_requests{int(NANOS_PER_SECOND / rate)};
     nanoseconds expected_current_timestamp{0};
@@ -584,9 +584,18 @@ TEST_CASE("request_rate_schedule")
 
 
   const auto& ParameterizeRate{[&]() {
-    SUBCASE("rate 10") { rate = 10; }
-    SUBCASE("rate 30") { rate = 30; }
-    SUBCASE("rate 100") { rate = 100; }
+    SUBCASE("rate 10")
+    {
+      rate = 10;
+    }
+    SUBCASE("rate 30")
+    {
+      rate = 30;
+    }
+    SUBCASE("rate 100")
+    {
+      rate = 100;
+    }
   }};
 
   const auto& ParameterizeThreads{[&]() {
@@ -713,8 +722,14 @@ TEST_CASE("request_rate_distribution")
   uint request_rate = 500;
   uint duration_ms = 1000;
 
-  SUBCASE("constant") { params.request_distribution = CONSTANT; }
-  SUBCASE("poisson") { params.request_distribution = POISSON; }
+  SUBCASE("constant")
+  {
+    params.request_distribution = CONSTANT;
+  }
+  SUBCASE("poisson")
+  {
+    params.request_distribution = POISSON;
+  }
 
   TestRequestRateManager trrm(params);
 
@@ -739,8 +754,14 @@ TEST_CASE("request_rate_tiny_window")
   uint duration_ms = 1000;
 
 
-  SUBCASE("one_thread") { params.max_threads = 1; }
-  SUBCASE("odd_threads") { params.max_threads = 9; }
+  SUBCASE("one_thread")
+  {
+    params.max_threads = 1;
+  }
+  SUBCASE("odd_threads")
+  {
+    params.max_threads = 9;
+  }
 
 
   TestRequestRateManager trrm(params);
@@ -796,7 +817,10 @@ TEST_CASE("request_rate_serial_sequences")
   bool is_sequence_model = true;
 
   const auto& ParameterizeDistribution{[&]() {
-    SUBCASE("Constant") { params.request_distribution = CONSTANT; }
+    SUBCASE("Constant")
+    {
+      params.request_distribution = CONSTANT;
+    }
     SUBCASE("Poisson")
     {
       params.request_distribution = POISSON;
@@ -847,8 +871,14 @@ TEST_CASE("request_rate max inflight per seq")
     params.async = false;
     expect_multiple_in_flight_sequences = false;
 
-    SUBCASE("serial_sequences on") { params.serial_sequences = true; }
-    SUBCASE("serial_sequences off") { params.serial_sequences = false; }
+    SUBCASE("serial_sequences on")
+    {
+      params.serial_sequences = true;
+    }
+    SUBCASE("serial_sequences off")
+    {
+      params.serial_sequences = false;
+    }
   }
   SUBCASE("async may have multiple in flight depending on serial sequences")
   {
@@ -965,7 +995,7 @@ TEST_CASE(
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
-     { "INPUT1": [3], "INPUT2": [23] }     
+     { "INPUT1": [3], "INPUT2": [23] }
    ]})"};
 
   size_t num_requests = 4;
@@ -1004,10 +1034,11 @@ TEST_CASE(
               {1, 2, 21, 22}, {3, 1, 23, 21}, {2, 3, 22, 23}, {1, 2, 21, 22}};
           break;
         case 4:
-          expected_results = {{1, 2, 3, 1, 21, 22, 23, 21},
-                              {2, 3, 1, 2, 22, 23, 21, 22},
-                              {3, 1, 2, 3, 23, 21, 22, 23},
-                              {1, 2, 3, 1, 21, 22, 23, 21}};
+          expected_results = {
+              {1, 2, 3, 1, 21, 22, 23, 21},
+              {2, 3, 1, 2, 22, 23, 21, 22},
+              {3, 1, 2, 3, 23, 21, 22, 23},
+              {1, 2, 3, 1, 21, 22, 23, 21}};
           break;
         default:
           REQUIRE(false);
@@ -1087,7 +1118,7 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [1], "INPUT2": [22] },
-     { "INPUT1": [1], "INPUT2": [23] }     
+     { "INPUT1": [1], "INPUT2": [23] }
    ]})"};
 
   model_tensor1.is_shape_tensor_ = true;
@@ -1110,10 +1141,11 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
     SUBCASE("batch 4")
     {
       params.batch_size = 4;
-      expected_results = {{1, 21, 22, 23, 21},
-                          {1, 22, 23, 21, 22},
-                          {1, 23, 21, 22, 23},
-                          {1, 21, 22, 23, 21}};
+      expected_results = {
+          {1, 21, 22, 23, 21},
+          {1, 22, 23, 21, 22},
+          {1, 23, 21, 22, 23},
+          {1, 21, 22, 23, 21}};
     }
   }};
 
@@ -1183,7 +1215,7 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
    "data": [
      { "INPUT2": [21] },
      { "INPUT2": [22] },
-     { "INPUT2": [23] }     
+     { "INPUT2": [23] }
    ]})"};
 
 
@@ -1203,10 +1235,11 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
     SUBCASE("batch 4")
     {
       params.batch_size = 4;
-      expected_results = {{21, 22, 23, 21},
-                          {22, 23, 21, 22},
-                          {23, 21, 22, 23},
-                          {21, 22, 23, 21}};
+      expected_results = {
+          {21, 22, 23, 21},
+          {22, 23, 21, 22},
+          {23, 21, 22, 23},
+          {21, 22, 23, 21}};
     }
   }};
 
@@ -1271,7 +1304,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
-     { "INPUT1": [3], "INPUT2": [23] }     
+     { "INPUT1": [3], "INPUT2": [23] }
    ]})";
       expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
     }
@@ -1674,8 +1707,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.max_threads_ = 1;
 
   RateSchedulePtr_t schedule = std::make_shared<RateSchedule>();
-  schedule->intervals = NanoIntervals{milliseconds(4), milliseconds(8),
-                                      milliseconds(12), milliseconds(16)};
+  schedule->intervals = NanoIntervals{
+      milliseconds(4), milliseconds(8), milliseconds(12), milliseconds(16)};
   schedule->duration = nanoseconds{16000000};
 
   trrm.InitManager(

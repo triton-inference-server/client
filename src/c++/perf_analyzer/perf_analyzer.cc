@@ -79,7 +79,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->trace_options, params_->compression_algorithm,
           params_->http_headers, params_->triton_server_path,
           params_->model_repository_path, params_->extra_verbose,
-          params_->metrics_url, &factory),
+          params_->metrics_url, params_->input_tensor_format,
+          params_->output_tensor_format, &factory),
       "failed to create client factory");
 
   FAIL_IF_ERR(
@@ -194,7 +195,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     }
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->max_concurrency)) {
-      std::cerr << "sequence id range specified is smallar than the "
+      std::cerr << "sequence id range specified is smaller than the "
                 << "maximum possible concurrency, sequence id collision may "
                 << "occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
@@ -211,7 +212,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
       std::cerr
-          << "sequence id range specified is smallar than the "
+          << "sequence id range specified is smaller than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
@@ -230,7 +231,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
       std::cerr
-          << "sequence id range specified is smallar than the "
+          << "sequence id range specified is smaller than the "
           << "maximum possible number of sequences, sequence id collision "
           << "may occur." << std::endl;
       throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
@@ -405,8 +406,8 @@ PerfAnalyzer::WriteReport()
               << (status.stabilizing_latency_ns / 1000) << " usec" << std::endl;
   }
 
-  bool should_output_metrics{params_->should_collect_metrics &&
-                             params_->verbose_csv};
+  bool should_output_metrics{
+      params_->should_collect_metrics && params_->verbose_csv};
 
   std::unique_ptr<pa::ReportWriter> writer;
 

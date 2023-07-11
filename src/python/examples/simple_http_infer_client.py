@@ -26,33 +26,34 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
-import gevent.ssl
 
+import gevent.ssl
+import numpy as np
 import tritonclient.http as httpclient
 from tritonclient.utils import InferenceServerException
 
 
-def test_infer(model_name,
-               input0_data,
-               input1_data,
-               headers=None,
-               request_compression_algorithm=None,
-               response_compression_algorithm=None):
+def test_infer(
+    model_name,
+    input0_data,
+    input1_data,
+    headers=None,
+    request_compression_algorithm=None,
+    response_compression_algorithm=None,
+):
     inputs = []
     outputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
 
     # Initialize the data
     inputs[0].set_data_from_numpy(input0_data, binary_data=False)
     inputs[1].set_data_from_numpy(input1_data, binary_data=True)
 
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT1',
-                                                   binary_data=False))
-    query_params = {'test_1': 1, 'test_2': 2}
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT0", binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT1", binary_data=False))
+    query_params = {"test_1": 1, "test_2": 2}
     results = triton_client.infer(
         model_name,
         inputs,
@@ -60,26 +61,29 @@ def test_infer(model_name,
         query_params=query_params,
         headers=headers,
         request_compression_algorithm=request_compression_algorithm,
-        response_compression_algorithm=response_compression_algorithm)
+        response_compression_algorithm=response_compression_algorithm,
+    )
 
     return results
 
 
-def test_infer_no_outputs(model_name,
-                          input0_data,
-                          input1_data,
-                          headers=None,
-                          request_compression_algorithm=None,
-                          response_compression_algorithm=None):
+def test_infer_no_outputs(
+    model_name,
+    input0_data,
+    input1_data,
+    headers=None,
+    request_compression_algorithm=None,
+    response_compression_algorithm=None,
+):
     inputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
 
     # Initialize the data
     inputs[0].set_data_from_numpy(input0_data, binary_data=False)
     inputs[1].set_data_from_numpy(input1_data, binary_data=True)
 
-    query_params = {'test_1': 1, 'test_2': 2}
+    query_params = {"test_1": 1, "test_2": 2}
     results = triton_client.infer(
         model_name,
         inputs,
@@ -87,79 +91,88 @@ def test_infer_no_outputs(model_name,
         query_params=query_params,
         headers=headers,
         request_compression_algorithm=request_compression_algorithm,
-        response_compression_algorithm=response_compression_algorithm)
+        response_compression_algorithm=response_compression_algorithm,
+    )
 
     return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
-    parser.add_argument('-s',
-                        '--ssl',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable encrypted link to the server using HTTPS')
     parser.add_argument(
-        '--key-file',
-        type=str,
-        required=False,
-        default=None,
-        help='File holding client private key. Default is None.')
-    parser.add_argument(
-        '--cert-file',
-        type=str,
-        required=False,
-        default=None,
-        help='File holding client certificate. Default is None.')
-    parser.add_argument('--ca-certs',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='File holding ca certificate. Default is None.')
-    parser.add_argument(
-        '--insecure',
+        "-v",
+        "--verbose",
         action="store_true",
         required=False,
         default=False,
-        help=
-        'Use no peer verification in SSL communications. Use with caution. Default is False.'
+        help="Enable verbose output",
     )
     parser.add_argument(
-        '-H',
-        dest='http_headers',
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
+    parser.add_argument(
+        "-s",
+        "--ssl",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable encrypted link to the server using HTTPS",
+    )
+    parser.add_argument(
+        "--key-file",
+        type=str,
+        required=False,
+        default=None,
+        help="File holding client private key. Default is None.",
+    )
+    parser.add_argument(
+        "--cert-file",
+        type=str,
+        required=False,
+        default=None,
+        help="File holding client certificate. Default is None.",
+    )
+    parser.add_argument(
+        "--ca-certs",
+        type=str,
+        required=False,
+        default=None,
+        help="File holding ca certificate. Default is None.",
+    )
+    parser.add_argument(
+        "--insecure",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Use no peer verification in SSL communications. Use with caution. Default is False.",
+    )
+    parser.add_argument(
+        "-H",
+        dest="http_headers",
         metavar="HTTP_HEADER",
         required=False,
-        action='append',
-        help='HTTP headers to add to inference server requests. ' +
-        'Format is -H"Header:Value".')
-    parser.add_argument(
-        '--request-compression-algorithm',
-        type=str,
-        required=False,
-        default=None,
-        help=
-        'The compression algorithm to be used when sending request body to server. Default is None.'
+        action="append",
+        help="HTTP headers to add to inference server requests. "
+        + 'Format is -H"Header:Value".',
     )
     parser.add_argument(
-        '--response-compression-algorithm',
+        "--request-compression-algorithm",
         type=str,
         required=False,
         default=None,
-        help=
-        'The compression algorithm to be used when receiving response body from server. Default is None.'
+        help="The compression algorithm to be used when sending request body to server. Default is None.",
+    )
+    parser.add_argument(
+        "--response-compression-algorithm",
+        type=str,
+        required=False,
+        default=None,
+        help="The compression algorithm to be used when receiving response body from server. Default is None.",
     )
 
     FLAGS = parser.parse_args()
@@ -167,11 +180,11 @@ if __name__ == '__main__':
         if FLAGS.ssl:
             ssl_options = {}
             if FLAGS.key_file is not None:
-                ssl_options['keyfile'] = FLAGS.key_file
+                ssl_options["keyfile"] = FLAGS.key_file
             if FLAGS.cert_file is not None:
-                ssl_options['certfile'] = FLAGS.cert_file
+                ssl_options["certfile"] = FLAGS.cert_file
             if FLAGS.ca_certs is not None:
-                ssl_options['ca_certs'] = FLAGS.ca_certs
+                ssl_options["ca_certs"] = FLAGS.ca_certs
             ssl_context_factory = None
             if FLAGS.insecure:
                 ssl_context_factory = gevent.ssl._create_unverified_context
@@ -181,10 +194,12 @@ if __name__ == '__main__':
                 ssl=True,
                 ssl_options=ssl_options,
                 insecure=FLAGS.insecure,
-                ssl_context_factory=ssl_context_factory)
+                ssl_context_factory=ssl_context_factory,
+            )
         else:
             triton_client = httpclient.InferenceServerClient(
-                url=FLAGS.url, verbose=FLAGS.verbose)
+                url=FLAGS.url, verbose=FLAGS.verbose
+            )
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit(1)
@@ -198,35 +213,47 @@ if __name__ == '__main__':
     input1_data = np.full(shape=(1, 16), fill_value=-1, dtype=np.int32)
 
     if FLAGS.http_headers is not None:
-        headers_dict = {
-            l.split(':')[0]: l.split(':')[1] for l in FLAGS.http_headers
-        }
+        headers_dict = {l.split(":")[0]: l.split(":")[1] for l in FLAGS.http_headers}
     else:
         headers_dict = None
 
     # Infer with requested Outputs
-    results = test_infer(model_name, input0_data, input1_data, headers_dict,
-                         FLAGS.request_compression_algorithm,
-                         FLAGS.response_compression_algorithm)
+    results = test_infer(
+        model_name,
+        input0_data,
+        input1_data,
+        headers_dict,
+        FLAGS.request_compression_algorithm,
+        FLAGS.response_compression_algorithm,
+    )
     print(results.get_response())
 
-    statistics = triton_client.get_inference_statistics(model_name=model_name,
-                                                        headers=headers_dict)
+    statistics = triton_client.get_inference_statistics(
+        model_name=model_name, headers=headers_dict
+    )
     print(statistics)
-    if len(statistics['model_stats']) != 1:
+    if len(statistics["model_stats"]) != 1:
         print("FAILED: Inference Statistics")
         sys.exit(1)
 
     # Validate the results by comparing with precomputed values.
-    output0_data = results.as_numpy('OUTPUT0')
-    output1_data = results.as_numpy('OUTPUT1')
+    output0_data = results.as_numpy("OUTPUT0")
+    output1_data = results.as_numpy("OUTPUT1")
     for i in range(16):
         print(
-            str(input0_data[0][i]) + " + " + str(input1_data[0][i]) + " = " +
-            str(output0_data[0][i]))
+            str(input0_data[0][i])
+            + " + "
+            + str(input1_data[0][i])
+            + " = "
+            + str(output0_data[0][i])
+        )
         print(
-            str(input0_data[0][i]) + " - " + str(input1_data[0][i]) + " = " +
-            str(output1_data[0][i]))
+            str(input0_data[0][i])
+            + " - "
+            + str(input1_data[0][i])
+            + " = "
+            + str(output1_data[0][i])
+        )
         if (input0_data[0][i] + input1_data[0][i]) != output0_data[0][i]:
             print("sync infer error: incorrect sum")
             sys.exit(1)
@@ -235,22 +262,34 @@ if __name__ == '__main__':
             sys.exit(1)
 
     # Infer without requested Outputs
-    results = test_infer_no_outputs(model_name, input0_data, input1_data,
-                                    headers_dict,
-                                    FLAGS.request_compression_algorithm,
-                                    FLAGS.response_compression_algorithm)
+    results = test_infer_no_outputs(
+        model_name,
+        input0_data,
+        input1_data,
+        headers_dict,
+        FLAGS.request_compression_algorithm,
+        FLAGS.response_compression_algorithm,
+    )
     print(results.get_response())
 
     # Validate the results by comparing with precomputed values.
-    output0_data = results.as_numpy('OUTPUT0')
-    output1_data = results.as_numpy('OUTPUT1')
+    output0_data = results.as_numpy("OUTPUT0")
+    output1_data = results.as_numpy("OUTPUT1")
     for i in range(16):
         print(
-            str(input0_data[0][i]) + " + " + str(input1_data[0][i]) + " = " +
-            str(output0_data[0][i]))
+            str(input0_data[0][i])
+            + " + "
+            + str(input1_data[0][i])
+            + " = "
+            + str(output0_data[0][i])
+        )
         print(
-            str(input0_data[0][i]) + " - " + str(input1_data[0][i]) + " = " +
-            str(output1_data[0][i]))
+            str(input0_data[0][i])
+            + " - "
+            + str(input1_data[0][i])
+            + " = "
+            + str(output1_data[0][i])
+        )
         if (input0_data[0][i] + input1_data[0][i]) != output0_data[0][i]:
             print("sync infer error: incorrect sum")
             sys.exit(1)
@@ -260,8 +299,7 @@ if __name__ == '__main__':
 
     # Infer with incorrect model name
     try:
-        response = test_infer("wrong_model_name", input0_data,
-                              input1_data).get_response()
+        _ = test_infer("wrong_model_name", input0_data, input1_data).get_response()
         print("expected error message for wrong model name")
         sys.exit(1)
     except InferenceServerException as ex:

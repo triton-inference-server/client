@@ -26,25 +26,29 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 
 import grpc
+import numpy as np
 from tritonclient.grpc import service_pb2, service_pb2_grpc
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -100,7 +104,8 @@ if __name__ == '__main__':
         for value in output.shape:
             shape.append(value)
         output_results.append(
-            np.frombuffer(response.raw_output_contents[index], dtype=np.int8))
+            np.frombuffer(response.raw_output_contents[index], dtype=np.int8)
+        )
         output_results[-1] = np.resize(output_results[-1], shape)
         index += 1
 
@@ -110,11 +115,19 @@ if __name__ == '__main__':
 
     for i in range(16):
         print(
-            str(input0_data[i]) + " + " + str(input1_data[i]) + " = " +
-            str(output_results[0][0][i]))
+            str(input0_data[i])
+            + " + "
+            + str(input1_data[i])
+            + " = "
+            + str(output_results[0][0][i])
+        )
         print(
-            str(input0_data[i]) + " - " + str(input1_data[i]) + " = " +
-            str(output_results[1][0][i]))
+            str(input0_data[i])
+            + " - "
+            + str(input1_data[i])
+            + " = "
+            + str(output_results[1][0][i])
+        )
         if (input0_data[i] + input1_data[i]) != output_results[0][0][i]:
             print("sync infer error: incorrect sum")
             sys.exit(1)
@@ -127,6 +140,8 @@ if __name__ == '__main__':
     try:
         response = grpc_stub.ModelInfer(request)
     except Exception as e:
-        if "failed to get model version from specified version string 'wrong_specification'" in e.__str__(
+        if (
+            "failed to get model version from specified version string 'wrong_specification'"
+            in e.__str__()
         ):
-            print('PASS: explicit int8')
+            print("PASS: explicit int8")

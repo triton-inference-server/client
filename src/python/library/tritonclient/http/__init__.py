@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,13 +28,14 @@
 
 try:
     from tritonclient.utils import *
+
+    from .._plugin import InferenceServerClientPlugin
     from ._client import InferAsyncRequest, InferenceServerClient
     from ._infer_input import InferInput
+    from ._infer_result import InferResult
     from ._requested_output import InferRequestedOutput
     from ._utils import InferenceServerException
-    from ._infer_result import InferResult
-    from .._plugin import InferenceServerClientPlugin
 except ModuleNotFoundError as error:
     raise RuntimeError(
-        'The installation does not include http support. Specify \'http\' or \'all\' while installing the tritonclient package to include the support'
+        "The installation does not include http support. Specify 'http' or 'all' while installing the tritonclient package to include the support"
     ) from error

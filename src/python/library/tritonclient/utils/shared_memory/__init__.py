@@ -1,4 +1,6 @@
-# Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+#!/usr/bin/env python3
+
+# Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,14 +27,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import struct
 from ctypes import *
+
 import numpy as np
 import pkg_resources
-import struct
 
 
 class _utf8(object):
-
     @classmethod
     def from_param(cls, value):
         if value is None:
@@ -40,24 +42,21 @@ class _utf8(object):
         elif isinstance(value, bytes):
             return value
         else:
-            return value.encode('utf8')
+            return value.encode("utf8")
 
 
-_cshm_lib = "cshm" if os.name == 'nt' else 'libcshm.so'
-_cshm_path = pkg_resources.resource_filename('tritonclient.utils.shared_memory',
-                                             _cshm_lib)
+_cshm_lib = "cshm" if os.name == "nt" else "libcshm.so"
+_cshm_path = pkg_resources.resource_filename(
+    "tritonclient.utils.shared_memory", _cshm_lib
+)
 _cshm = cdll.LoadLibrary(_cshm_path)
 
 _cshm_shared_memory_region_create = _cshm.SharedMemoryRegionCreate
 _cshm_shared_memory_region_create.restype = c_int
-_cshm_shared_memory_region_create.argtypes = [
-    _utf8, _utf8, c_uint64, POINTER(c_void_p)
-]
+_cshm_shared_memory_region_create.argtypes = [_utf8, _utf8, c_uint64, POINTER(c_void_p)]
 _cshm_shared_memory_region_set = _cshm.SharedMemoryRegionSet
 _cshm_shared_memory_region_set.restype = c_int
-_cshm_shared_memory_region_set.argtypes = [
-    c_void_p, c_uint64, c_uint64, c_void_p
-]
+_cshm_shared_memory_region_set.argtypes = [c_void_p, c_uint64, c_uint64, c_void_p]
 _cshm_get_shared_memory_handle_info = _cshm.GetSharedMemoryHandleInfo
 _cshm_get_shared_memory_handle_info.restype = c_int
 _cshm_get_shared_memory_handle_info.argtypes = [
@@ -66,7 +65,7 @@ _cshm_get_shared_memory_handle_info.argtypes = [
     POINTER(c_char_p),
     POINTER(c_int),
     POINTER(c_uint64),
-    POINTER(c_uint64)
+    POINTER(c_uint64),
 ]
 _cshm_shared_memory_region_destroy = _cshm.SharedMemoryRegionDestroy
 _cshm_shared_memory_region_destroy.restype = c_int
@@ -117,8 +116,11 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size):
     shm_handle = c_void_p()
     _raise_if_error(
         c_int(
-            _cshm_shared_memory_region_create(triton_shm_name, shm_key,
-                                              byte_size, byref(shm_handle))))
+            _cshm_shared_memory_region_create(
+                triton_shm_name, shm_key, byte_size, byref(shm_handle)
+            )
+        )
+    )
     mapped_shm_regions.append(shm_key)
 
     return shm_handle
@@ -134,7 +136,7 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
     input_values : list
         The list of numpy arrays to be copied into the shared memory region.
     offset : int
-        The offset, in bytes, into the region where you want the array copied. 
+        The offset, in bytes, into the region where you want the array copied.
         The default value is 0.
 
     Raises
@@ -144,8 +146,7 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
     """
 
     if not isinstance(input_values, (list, tuple)):
-        _raise_error(
-            "input_values must be specified as a list/tuple of numpy arrays")
+        _raise_error("input_values must be specified as a list/tuple of numpy arrays")
     for input_value in input_values:
         if not isinstance(input_value, np.ndarray):
             _raise_error("each element of input_values must be a numpy array")
@@ -157,13 +158,27 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
             input_value = input_value.item()
             byte_size = np.dtype(np.byte).itemsize * len(input_value)
             _raise_if_error(
-                c_int(_cshm_shared_memory_region_set(shm_handle, c_uint64(offset_current), \
-                    c_uint64(byte_size), cast(input_value, c_void_p))))
+                c_int(
+                    _cshm_shared_memory_region_set(
+                        shm_handle,
+                        c_uint64(offset_current),
+                        c_uint64(byte_size),
+                        cast(input_value, c_void_p),
+                    )
+                )
+            )
         else:
             byte_size = input_value.size * input_value.itemsize
             _raise_if_error(
-                c_int(_cshm_shared_memory_region_set(shm_handle, c_uint64(offset_current), \
-                    c_uint64(byte_size), input_value.ctypes.data_as(c_void_p))))
+                c_int(
+                    _cshm_shared_memory_region_set(
+                        shm_handle,
+                        c_uint64(offset_current),
+                        c_uint64(byte_size),
+                        input_value.ctypes.data_as(c_void_p),
+                    )
+                )
+            )
         offset_current += byte_size
     return
 
@@ -181,7 +196,7 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
     shape : list
         The list of int describing the shape of the array to be returned.
     offset : int
-        The offset, in bytes, into the region where you want the array extracted. 
+        The offset, in bytes, into the region where you want the array extracted.
         The default value is 0.
 
     Returns
@@ -196,15 +211,24 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
     shm_addr = c_char_p()
     shm_key = c_char_p()
     _raise_if_error(
-            c_int(_cshm_get_shared_memory_handle_info(shm_handle, byref(shm_addr), byref(shm_key), byref(shm_fd), \
-                                    byref(region_offset), byref(byte_size))))
+        c_int(
+            _cshm_get_shared_memory_handle_info(
+                shm_handle,
+                byref(shm_addr),
+                byref(shm_key),
+                byref(shm_fd),
+                byref(region_offset),
+                byref(byte_size),
+            )
+        )
+    )
     start_pos = region_offset.value + offset
     if (datatype != np.object_) and (datatype != np.bytes_):
         requested_byte_size = np.prod(shape) * np.dtype(datatype).itemsize
         cval_len = start_pos + requested_byte_size
         if byte_size.value < cval_len:
             _raise_error(
-                "The size of the shared memory region is unsufficient to provide numpy array with requested size"
+                "The size of the shared memory region is insufficient to provide numpy array with requested size"
             )
         if cval_len == 0:
             result = np.empty(shape, dtype=datatype)
@@ -236,7 +260,7 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
 
 
 def mapped_shared_memory_regions():
-    """Return all system shared memory regions that were mapped but not unmapped/destoryed.
+    """Return all system shared memory regions that were mapped but not unmapped/destroyed.
 
     Returns
     -------
@@ -269,8 +293,17 @@ def destroy_shared_memory_region(shm_handle):
     shm_addr = c_char_p()
     shm_key = c_char_p()
     _raise_if_error(
-            c_int(_cshm_get_shared_memory_handle_info(shm_handle, byref(shm_addr), byref(shm_key), byref(shm_fd), \
-                                    byref(offset), byref(byte_size))))
+        c_int(
+            _cshm_get_shared_memory_handle_info(
+                shm_handle,
+                byref(shm_addr),
+                byref(shm_key),
+                byref(shm_fd),
+                byref(offset),
+                byref(byte_size),
+            )
+        )
+    )
     mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
 
     return
@@ -292,7 +325,7 @@ class SharedMemoryException(Exception):
             -3: "unable to initialize the size",
             -4: "unable to read/mmap the shared memory region",
             -5: "unable to unlink the shared memory region",
-            -6: "unable to munmap the shared memory region"
+            -6: "unable to munmap the shared memory region",
         }
         self._msg = None
         if type(err) == str:

@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+
 #include "data_loader.h"
 #include "idle_timer.h"
 #include "iinfer_data_manager.h"
@@ -202,7 +203,7 @@ class InferContext {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend MockInferContext;
 
- protected:
+ public:
   InferContext() = default;
 #endif
 };
