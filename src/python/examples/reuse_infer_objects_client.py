@@ -26,10 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 
+import numpy as np
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
 import tritonclient.utils as utils
@@ -55,9 +55,7 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         outputs[0].unset_shared_memory()
         outputs[1].unset_shared_memory()
 
-    results = triton_client.infer(model_name=model_name,
-                                  inputs=inputs,
-                                  outputs=outputs)
+    results = triton_client.infer(model_name=model_name, inputs=inputs, outputs=outputs)
 
     # Read results from the shared memory.
     output0 = results.get_output("OUTPUT0")
@@ -65,15 +63,18 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         if use_shared_memory:
             if protocol == "grpc":
                 output0_data = shm.get_contents_as_numpy(
-                    shm_op0_handle, utils.triton_to_np_dtype(output0.datatype),
-                    output0.shape)
+                    shm_op0_handle,
+                    utils.triton_to_np_dtype(output0.datatype),
+                    output0.shape,
+                )
             else:
                 output0_data = shm.get_contents_as_numpy(
                     shm_op0_handle,
-                    utils.triton_to_np_dtype(output0['datatype']),
-                    output0['shape'])
+                    utils.triton_to_np_dtype(output0["datatype"]),
+                    output0["shape"],
+                )
         else:
-            output0_data = results.as_numpy('OUTPUT0')
+            output0_data = results.as_numpy("OUTPUT0")
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
@@ -83,15 +84,18 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         if use_shared_memory:
             if protocol == "grpc":
                 output1_data = shm.get_contents_as_numpy(
-                    shm_op1_handle, utils.triton_to_np_dtype(output1.datatype),
-                    output1.shape)
+                    shm_op1_handle,
+                    utils.triton_to_np_dtype(output1.datatype),
+                    output1.shape,
+                )
             else:
                 output1_data = shm.get_contents_as_numpy(
                     shm_op1_handle,
-                    utils.triton_to_np_dtype(output1['datatype']),
-                    output1['shape'])
+                    utils.triton_to_np_dtype(output1["datatype"]),
+                    output1["shape"],
+                )
         else:
-            output1_data = results.as_numpy('OUTPUT1')
+            output1_data = results.as_numpy("OUTPUT1")
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -102,11 +106,19 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         print("\n\n======== NO_SHARED_MEMORY ========\n")
     for i in range(16):
         print(
-            str(input0_data[i]) + " + " + str(input1_data[i]) + " = " +
-            str(output0_data[0][i]))
+            str(input0_data[i])
+            + " + "
+            + str(input1_data[i])
+            + " = "
+            + str(output0_data[0][i])
+        )
         print(
-            str(input0_data[i]) + " - " + str(input1_data[i]) + " = " +
-            str(output1_data[0][i]))
+            str(input0_data[i])
+            + " - "
+            + str(input1_data[i])
+            + " = "
+            + str(output1_data[0][i])
+        )
         if (input0_data[i] + input1_data[i]) != output0_data[0][i]:
             print("shm infer error: incorrect sum")
             sys.exit(1)
@@ -119,27 +131,33 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
 # Tests whether the same InferInput and InferRequestedOutput objects can be
 # successfully used repeatedly for different inferences using/not-using
 # shared memory.
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-i',
-                        '--protocol',
-                        type=str,
-                        required=False,
-                        default='HTTP',
-                        help='Protocol (HTTP/gRPC) used to communicate with ' +
-                        'the inference service. Default is HTTP.')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-i",
+        "--protocol",
+        type=str,
+        required=False,
+        default="HTTP",
+        help="Protocol (HTTP/gRPC) used to communicate with "
+        + "the inference service. Default is HTTP.",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -149,11 +167,13 @@ if __name__ == '__main__':
         if protocol == "grpc":
             # Create gRPC client for communicating with the server
             triton_client = grpcclient.InferenceServerClient(
-                url=FLAGS.url, verbose=FLAGS.verbose)
+                url=FLAGS.url, verbose=FLAGS.verbose
+            )
         else:
             # Create HTTP client for communicating with the server
             triton_client = httpclient.InferenceServerClient(
-                url=FLAGS.url, verbose=FLAGS.verbose)
+                url=FLAGS.url, verbose=FLAGS.verbose
+            )
     except Exception as e:
         print("client creation failed: " + str(e))
         sys.exit(1)
@@ -179,57 +199,59 @@ if __name__ == '__main__':
     output_byte_size = input_byte_size
 
     # Create Output0 and Output1 in Shared Memory and store shared memory handles
-    shm_op0_handle = shm.create_shared_memory_region("output0_data",
-                                                     "/output0_simple",
-                                                     output_byte_size)
-    shm_op1_handle = shm.create_shared_memory_region("output1_data",
-                                                     "/output1_simple",
-                                                     output_byte_size)
+    shm_op0_handle = shm.create_shared_memory_region(
+        "output0_data", "/output0_simple", output_byte_size
+    )
+    shm_op1_handle = shm.create_shared_memory_region(
+        "output1_data", "/output1_simple", output_byte_size
+    )
 
     # Register Output0 and Output1 shared memory with Triton Server
-    triton_client.register_system_shared_memory("output0_data",
-                                                "/output0_simple",
-                                                output_byte_size)
-    triton_client.register_system_shared_memory("output1_data",
-                                                "/output1_simple",
-                                                output_byte_size)
+    triton_client.register_system_shared_memory(
+        "output0_data", "/output0_simple", output_byte_size
+    )
+    triton_client.register_system_shared_memory(
+        "output1_data", "/output1_simple", output_byte_size
+    )
 
     # Create Input0 and Input1 in Shared Memory and store shared memory handles
-    shm_ip0_handle = shm.create_shared_memory_region("input0_data",
-                                                     "/input0_simple",
-                                                     input_byte_size)
-    shm_ip1_handle = shm.create_shared_memory_region("input1_data",
-                                                     "/input1_simple",
-                                                     input_byte_size)
+    shm_ip0_handle = shm.create_shared_memory_region(
+        "input0_data", "/input0_simple", input_byte_size
+    )
+    shm_ip1_handle = shm.create_shared_memory_region(
+        "input1_data", "/input1_simple", input_byte_size
+    )
 
     # Put input data values into shared memory
     shm.set_shared_memory_region(shm_ip0_handle, [input0_data])
     shm.set_shared_memory_region(shm_ip1_handle, [input1_data])
 
     # Register Input0 and Input1 shared memory with Triton Server
-    triton_client.register_system_shared_memory("input0_data", "/input0_simple",
-                                                input_byte_size)
-    triton_client.register_system_shared_memory("input1_data", "/input1_simple",
-                                                input_byte_size)
+    triton_client.register_system_shared_memory(
+        "input0_data", "/input0_simple", input_byte_size
+    )
+    triton_client.register_system_shared_memory(
+        "input1_data", "/input1_simple", input_byte_size
+    )
 
     # Set the parameters to use data from shared memory
     inputs = []
     if protocol == "grpc":
-        inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
+        inputs.append(grpcclient.InferInput("INPUT0", [1, 16], "INT32"))
 
-        inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
+        inputs.append(grpcclient.InferInput("INPUT1", [1, 16], "INT32"))
     else:
-        inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
+        inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
 
-        inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+        inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
 
     outputs = []
     if protocol == "grpc":
-        outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
-        outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
+        outputs.append(grpcclient.InferRequestedOutput("OUTPUT0"))
+        outputs.append(grpcclient.InferRequestedOutput("OUTPUT1"))
     else:
-        outputs.append(httpclient.InferRequestedOutput('OUTPUT0'))
-        outputs.append(httpclient.InferRequestedOutput('OUTPUT1'))
+        outputs.append(httpclient.InferRequestedOutput("OUTPUT0"))
+        outputs.append(httpclient.InferRequestedOutput("OUTPUT1"))
 
     # Use shared memory
     infer_and_validata(True, input0_data, input1_data)

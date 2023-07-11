@@ -158,7 +158,7 @@ class ModelParser {
   const std::shared_ptr<ModelTensorMap>& Outputs() { return outputs_; }
 
   /// Get the composing maps for the target model.
-  /// \return The pointer to the nested map descriping the
+  /// \return The pointer to the nested map describing the
   /// nested flow in the target model.
   const std::shared_ptr<ComposingModelMap>& GetComposingModelMap()
   {
@@ -199,7 +199,7 @@ class ModelParser {
   /// In the json produced by protobuf, int64 and uint64 values are
   /// represented as strings. Protobuf doesn't provide an option to
   /// disable this (sigh) so we need to correctly parse these fields
-  /// for ModelParser to receive appopriate requests.
+  /// for ModelParser to receive appropriate requests.
   /// \param value The rapidjson value object with the int value.
   /// \param integer_value The output integer pointer.
   /// \return cb::Error object indicating success or failure.

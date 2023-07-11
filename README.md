@@ -349,7 +349,7 @@ to the [Java client directory](src/java).
 
 #### SSL/TLS
 
-The client library allows communication across a secured channel using HTTPS protocol. Just setting these SSL options do not ensure the secure communication. Triton server should be running behind `https://` proxy such as nginx. The client can then establish a secure channel to the proxy. The [`qa/L0_https`](https://github.com/triton-inference-server/server/blob/main/qa/L0_https/test.sh) in the server repository demonstrates how this can be achieved. 
+The client library allows communication across a secured channel using HTTPS protocol. Just setting these SSL options do not ensure the secure communication. Triton server should be running behind `https://` proxy such as nginx. The client can then establish a secure channel to the proxy. The [`qa/L0_https`](https://github.com/triton-inference-server/server/blob/main/qa/L0_https/test.sh) in the server repository demonstrates how this can be achieved.
 
 For C++ client, see `HttpSslOptions` struct that encapsulates these options in [http_client.h](src/c%2B%2B/library/http_client.h).
 
@@ -379,10 +379,10 @@ The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/pyt
 *This feature is currently in beta and may be subject to change.*
 
 Advanced users may call the Python client via `async` and `await` syntax. The
-[infer](src/python/examples/simple_http_aio_infer_client.py) example 
+[infer](src/python/examples/simple_http_aio_infer_client.py) example
 demonstrates how to infer with AsyncIO.
 
-If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in 
+If using SSL/TLS with AsyncIO, look for the `ssl` and `ssl_context` options in
 [http/aio/\_\_init\_\_.py](src/python/library/tritonclient/http/aio/__init__.py)
 
 #### Python Client Plugin API (Beta)
@@ -468,12 +468,12 @@ For Python client, look for the following options in [grpc/\_\_init\_\_.py](src/
 * certificate_chain
 
 The [C++](src/c%2B%2B/examples/simple_grpc_infer_client.cc) and [Python](src/python/examples/simple_grpc_infer_client.py) examples
-demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the 
+demonstrates how to use SSL/TLS settings on client side. For information on the corresponding server-side parameters, refer to the
 [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#ssltls)
 
 #### Compression
 
-The client library also exposes options to use on-wire compression for gRPC transactions. 
+The client library also exposes options to use on-wire compression for gRPC transactions.
 
 For C++ client, see `compression_algorithm` parameter in the `Infer`, `AsyncInfer` and `StartStream` functions in [grpc_client.h](src/c%2B%2B/library/grpc_client.h). By default, the parameter is set as `GRPC_COMPRESS_NONE`.
 
@@ -493,7 +493,7 @@ parameters in both the [C++](src/c%2B%2B/library/grpc_client.h) and
 There is also a [C++](src/c%2B%2B/examples/simple_grpc_keepalive_client.cc) and
 [Python](src/python/examples/simple_grpc_keepalive_client.py) example
 demonstrating how to setup these parameters on the client-side. For information
-on the corresponding server-side parameters, refer to the 
+on the corresponding server-side parameters, refer to the
 [server documentation](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/inference_protocols.md#grpc-keepalive)
 
 #### Custom GRPC Channel Arguments
@@ -505,7 +505,7 @@ using this option, it is up to the user to pass a valid combination of arguments
 for their use case; Triton cannot feasibly test every possible combination of
 channel arguments.
 
-There is a [C++](src/c%2B%2B/examples/simple_grpc_custom_args_client.cc) and 
+There is a [C++](src/c%2B%2B/examples/simple_grpc_custom_args_client.cc) and
 [Python](src/python/examples/simple_grpc_custom_args_client.py) example
 demonstrating how to construct and pass these custom arguments upon creating
 a GRPC client.
@@ -517,9 +517,9 @@ You can find a comprehensive list of possible GRPC Channel Arguments
 
 *This feature is currently in beta and may be subject to change.*
 
-Advanced users may call the Python client via `async` and `await` syntax. The 
-[infer](src/python/examples/simple_grpc_aio_infer_client.py) and 
-[stream](src/python/examples/simple_grpc_aio_sequence_stream_infer_client.py) 
+Advanced users may call the Python client via `async` and `await` syntax. The
+[infer](src/python/examples/simple_grpc_aio_infer_client.py) and
+[stream](src/python/examples/simple_grpc_aio_sequence_stream_infer_client.py)
 examples demonstrate how to infer with AsyncIO.
 
 ## Simple Example Applications

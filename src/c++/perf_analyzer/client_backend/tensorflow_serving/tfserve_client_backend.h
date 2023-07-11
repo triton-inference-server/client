@@ -48,7 +48,7 @@ namespace tfserving {
 
 
 //==============================================================================
-/// TFServeClientBackend is used to generate load on the TF serving isntance
+/// TFServeClientBackend is used to generate load on the TF serving instance
 ///
 class TFServeClientBackend : public ClientBackend {
  public:

@@ -58,7 +58,7 @@ tritonserver --model-repository $(pwd)/model_repository &> server.log &
 # confirm server is ready, look for 'HTTP/1.1 200 OK'
 curl -v localhost:8000/v2/health/ready
 
-# detatch (CTRL-p CTRL-q)
+# detach (CTRL-p CTRL-q)
 ```
 
 ### Step 4: Start Triton SDK Container
@@ -89,7 +89,7 @@ $ perf_analyzer -m simple
   Stabilizing using average latency
 
 Request concurrency: 1
-  Client: 
+  Client:
     Request count: 25348
     Throughput: 1407.84 infer/sec
     Avg latency: 708 usec (standard deviation 663 usec)
@@ -98,7 +98,7 @@ Request concurrency: 1
     p95 latency: 926 usec
     p99 latency: 1031 usec
     Avg HTTP time: 700 usec (send/recv 102 usec + response wait 598 usec)
-  Server: 
+  Server:
     Inference count: 25348
     Execution count: 25348
     Successful request count: 25348

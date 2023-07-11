@@ -995,7 +995,7 @@ TEST_CASE(
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
-     { "INPUT1": [3], "INPUT2": [23] }     
+     { "INPUT1": [3], "INPUT2": [23] }
    ]})"};
 
   size_t num_requests = 4;
@@ -1118,7 +1118,7 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [1], "INPUT2": [22] },
-     { "INPUT1": [1], "INPUT2": [23] }     
+     { "INPUT1": [1], "INPUT2": [23] }
    ]})"};
 
   model_tensor1.is_shape_tensor_ = true;
@@ -1215,7 +1215,7 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
    "data": [
      { "INPUT2": [21] },
      { "INPUT2": [22] },
-     { "INPUT2": [23] }     
+     { "INPUT2": [23] }
    ]})"};
 
 
@@ -1304,7 +1304,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
    "data": [
      { "INPUT1": [1], "INPUT2": [21] },
      { "INPUT1": [2], "INPUT2": [22] },
-     { "INPUT1": [3], "INPUT2": [23] }     
+     { "INPUT1": [3], "INPUT2": [23] }
    ]})";
       expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}};
     }

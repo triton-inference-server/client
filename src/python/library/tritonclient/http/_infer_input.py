@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,8 +25,14 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from tritonclient.utils import raise_error, triton_to_np_dtype, np_to_triton_dtype, serialize_bf16_tensor, serialize_byte_tensor
 import numpy as np
+from tritonclient.utils import (
+    np_to_triton_dtype,
+    raise_error,
+    serialize_bf16_tensor,
+    serialize_byte_tensor,
+    triton_to_np_dtype,
+)
 
 
 class InferInput:
@@ -114,15 +122,18 @@ class InferInput:
         if self._datatype == "BF16":
             if input_tensor.dtype != triton_to_np_dtype(self._datatype):
                 raise_error(
-                    "got unexpected datatype {} from numpy array, expected {} for BF16 type"
-                    .format(input_tensor.dtype,
-                            triton_to_np_dtype(self._datatype)))
+                    "got unexpected datatype {} from numpy array, expected {} for BF16 type".format(
+                        input_tensor.dtype, triton_to_np_dtype(self._datatype)
+                    )
+                )
         else:
             dtype = np_to_triton_dtype(input_tensor.dtype)
             if self._datatype != dtype:
                 raise_error(
-                    "got unexpected datatype {} from numpy array, expected {}".
-                    format(dtype, self._datatype))
+                    "got unexpected datatype {} from numpy array, expected {}".format(
+                        dtype, self._datatype
+                    )
+                )
         valid_shape = True
         if len(self._shape) != len(input_tensor.shape):
             valid_shape = False
@@ -133,15 +144,16 @@ class InferInput:
         if not valid_shape:
             raise_error(
                 "got unexpected numpy array shape [{}], expected [{}]".format(
-                    str(input_tensor.shape)[1:-1],
-                    str(self._shape)[1:-1]))
+                    str(input_tensor.shape)[1:-1], str(self._shape)[1:-1]
+                )
+            )
 
-        self._parameters.pop('shared_memory_region', None)
-        self._parameters.pop('shared_memory_byte_size', None)
-        self._parameters.pop('shared_memory_offset', None)
+        self._parameters.pop("shared_memory_region", None)
+        self._parameters.pop("shared_memory_byte_size", None)
+        self._parameters.pop("shared_memory_offset", None)
 
         if not binary_data:
-            self._parameters.pop('binary_data_size', None)
+            self._parameters.pop("binary_data_size", None)
             self._raw_data = None
             if self._datatype == "BF16":
                 raise_error(
@@ -151,25 +163,24 @@ class InferInput:
                 self._data = []
                 try:
                     if input_tensor.size > 0:
-                        for obj in np.nditer(input_tensor,
-                                             flags=["refs_ok"],
-                                             order='C'):
+                        for obj in np.nditer(
+                            input_tensor, flags=["refs_ok"], order="C"
+                        ):
                             # We need to convert the object to string using utf-8,
                             # if we want to use the binary_data=False. JSON requires
                             # the input to be a UTF-8 string.
                             if input_tensor.dtype == np.object_:
                                 if type(obj.item()) == bytes:
-                                    self._data.append(
-                                        str(obj.item(), encoding='utf-8'))
+                                    self._data.append(str(obj.item(), encoding="utf-8"))
                                 else:
                                     self._data.append(str(obj.item()))
                             else:
-                                self._data.append(
-                                    str(obj.item(), encoding='utf-8'))
+                                self._data.append(str(obj.item(), encoding="utf-8"))
                 except UnicodeDecodeError:
                     raise_error(
                         f'Failed to encode "{obj.item()}" using UTF-8. Please use binary_data=True, if'
-                        ' you want to pass a byte array.')
+                        " you want to pass a byte array."
+                    )
             else:
                 self._data = [val.item() for val in input_tensor.flatten()]
         else:
@@ -179,16 +190,16 @@ class InferInput:
                 if serialized_output.size > 0:
                     self._raw_data = serialized_output.item()
                 else:
-                    self._raw_data = b''
+                    self._raw_data = b""
             elif self._datatype == "BF16":
                 serialized_output = serialize_bf16_tensor(input_tensor)
                 if serialized_output.size > 0:
                     self._raw_data = serialized_output.item()
                 else:
-                    self._raw_data = b''
+                    self._raw_data = b""
             else:
                 self._raw_data = input_tensor.tobytes()
-            self._parameters['binary_data_size'] = len(self._raw_data)
+            self._parameters["binary_data_size"] = len(self._raw_data)
 
     def set_shared_memory(self, region_name, byte_size, offset=0):
         """Set the tensor data from the specified shared memory region.
@@ -206,12 +217,12 @@ class InferInput:
         """
         self._data = None
         self._raw_data = None
-        self._parameters.pop('binary_data_size', None)
+        self._parameters.pop("binary_data_size", None)
 
-        self._parameters['shared_memory_region'] = region_name
-        self._parameters['shared_memory_byte_size'] = byte_size
+        self._parameters["shared_memory_region"] = region_name
+        self._parameters["shared_memory_byte_size"] = byte_size
         if offset != 0:
-            self._parameters['shared_memory_offset'] = offset
+            self._parameters["shared_memory_offset"] = offset
 
     def _get_binary_data(self):
         """Returns the raw binary data if available
@@ -231,16 +242,14 @@ class InferInput:
         dict
             The underlying tensor specification as dict
         """
-        tensor = {
-            'name': self._name,
-            'shape': self._shape,
-            'datatype': self._datatype
-        }
+        tensor = {"name": self._name, "shape": self._shape, "datatype": self._datatype}
         if self._parameters:
-            tensor['parameters'] = self._parameters
+            tensor["parameters"] = self._parameters
 
-        if self._parameters.get('shared_memory_region') is None and \
-                self._raw_data is None:
+        if (
+            self._parameters.get("shared_memory_region") is None
+            and self._raw_data is None
+        ):
             if self._data is not None:
-                tensor['data'] = self._data
+                tensor["data"] = self._data
         return tensor

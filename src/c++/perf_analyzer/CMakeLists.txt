@@ -122,8 +122,8 @@ target_link_libraries(
 )
 
 target_compile_definitions(
-  perf_analyzer 
-  PRIVATE 
+  perf_analyzer
+  PRIVATE
     PERF_ANALYZER_VERSION=${PERF_ANALYZER_VERSION}
     GIT_SHA=${GIT_SHA}
 )
@@ -187,7 +187,7 @@ add_executable(
   mock_inference_profiler.h
   mock_model_parser.h
   test_utils.h
-  client_backend/mock_client_backend.h  
+  client_backend/mock_client_backend.h
   mock_concurrency_worker.h
   mock_data_loader.h
   mock_infer_context.h
@@ -217,7 +217,7 @@ add_executable(
 # -Wno-write-strings is needed for the unit tests in order to statically create
 # input argv cases in the CommandLineParser unit test
 #
-set_target_properties(perf_analyzer_unit_tests 
+set_target_properties(perf_analyzer_unit_tests
   PROPERTIES COMPILE_FLAGS "-Wno-write-strings")
 
 target_link_libraries(

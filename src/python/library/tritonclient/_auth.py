@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,18 +25,21 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from ._plugin import InferenceServerClientPlugin
 import base64
+
+from ._plugin import InferenceServerClientPlugin
 
 
 class BasicAuth(InferenceServerClientPlugin):
     """Basic Authentincation Plugin."""
 
     def __init__(self, username, password):
-        username = username.encode('ascii')
-        password = password.encode('ascii')
-        self._auth_string = "Basic " + base64.b64encode(b":".join(
-            (username, password))).decode('ascii').strip()
+        username = username.encode("ascii")
+        password = password.encode("ascii")
+        self._auth_string = (
+            "Basic "
+            + base64.b64encode(b":".join((username, password))).decode("ascii").strip()
+        )
 
     def __call__(self, request):
-        request.headers['authorization'] = self._auth_string
+        request.headers["authorization"] = self._auth_string

@@ -1022,16 +1022,25 @@ TritonLoader::InitializeRequest(
   // Create the allocator that will be used to allocate buffers for
   // the result tensors.
   RETURN_IF_TRITONSERVER_ERROR(
-      GetSingleton()
-          ->response_allocator_new_fn_(
-              allocator,
-              reinterpret_cast<
-                  TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator * allocator, const char* tensor_name, size_t byte_size, TRITONSERVER_MemoryType memory_type, int64_t memory_type_id, void* userp, void** buffer, void** buffer_userp, TRITONSERVER_MemoryType* actual_memory_type, int64_t* actual_memory_type_id)>(
-                  ResponseAlloc),
-              reinterpret_cast<
-                  TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator * allocator, void* buffer, void* buffer_userp, size_t byte_size, TRITONSERVER_MemoryType memory_type, int64_t memory_type_id)>(
-                  ResponseRelease),
-              nullptr /* start_fn */),
+      GetSingleton()->response_allocator_new_fn_(
+          allocator,
+          reinterpret_cast<
+              TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator* allocator,
+                                      const char* tensor_name, size_t byte_size,
+                                      TRITONSERVER_MemoryType memory_type,
+                                      int64_t memory_type_id, void* userp,
+                                      void** buffer, void** buffer_userp,
+                                      TRITONSERVER_MemoryType*
+                                          actual_memory_type,
+                                      int64_t* actual_memory_type_id)>(
+              ResponseAlloc),
+          reinterpret_cast<
+              TRITONSERVER_Error* (*)(TRITONSERVER_ResponseAllocator* allocator,
+                                      void* buffer, void* buffer_userp,
+                                      size_t byte_size,
+                                      TRITONSERVER_MemoryType memory_type,
+                                      int64_t memory_type_id)>(ResponseRelease),
+          nullptr /* start_fn */),
       "creating response allocator");
 
   // set up inference request

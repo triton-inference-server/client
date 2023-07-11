@@ -41,7 +41,7 @@ class CtxIdTrackerFactory {
 
   /// Creates and returns a Context Id Tracker
   ///
-  /// \param is_concurrency True if targetting Concurrency
+  /// \param is_concurrency True if targeting Concurrency
   /// \param is_sequence_model True if the model is a sequence model
   /// \param serial_sequences True if in serial sequence mode
   ///

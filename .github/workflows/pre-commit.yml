@@ -1,5 +1,4 @@
-#!/bin/bash
-# Copyright (c) 2020-2021, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,19 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-PACKAGE="grpc-client"
+name: pre-commit
 
-# Clean up before
-rm -rf ./core
+on:
+  pull_request:
 
-# Get the proto files from the common repo
-mkdir core && cp common/protobuf/*.proto core/.
-
-for i in ./core/*.proto
-do 
-  # https://developers.google.com/protocol-buffers/docs/reference/go-generated#package
-  echo "option go_package = \"./${PACKAGE}\";" >> $i
-done
-
-# Requires protoc and protoc-gen-go plugin: https://grpc.io/docs/protoc-installation/
-protoc -I core --go-grpc_out="./" --go_out="./" core/*.proto
+jobs:
+  pre-commit:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
+    - uses: pre-commit/action@v3.0.0

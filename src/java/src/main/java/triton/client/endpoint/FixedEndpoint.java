@@ -26,35 +26,31 @@
 
 package triton.client.endpoint;
 
-import triton.client.Util;
 import com.google.common.base.Preconditions;
+import triton.client.Util;
 
 /**
  * Endpoint that connect to single address.
  */
 public class FixedEndpoint extends AbstractEndpoint {
+  private final String addr;
 
-    private final String addr;
+  /**
+   * Create a endpoint connecting to a fixed address.
+   *
+   * @param endpoint Endpoint in host:port[/path] format without schema part.
+   */
+  public FixedEndpoint(String endpoint)
+  {
+    Preconditions.checkArgument(
+        !Util.isEmpty(endpoint), "endpoint should not be null or empty.");
+    Preconditions.checkArgument(
+        !endpoint.contains("://"),
+        "endpoint should be in host:port[/path] format without scheme.");
+    this.addr = endpoint;
+  }
 
-    /**
-     * Create a endpoint connecting to a fixed address.
-     *
-     * @param endpoint Endpoint in host:port[/path] format without schema part.
-     */
-    public FixedEndpoint(String endpoint) {
-        Preconditions.checkArgument(!Util.isEmpty(endpoint), "endpoint should not be null or empty.");
-        Preconditions.checkArgument(!endpoint.contains("://"),
-            "endpoint should be in host:port[/path] format without scheme.");
-        this.addr = endpoint;
-    }
+  @Override String getEndpointImpl() { return this.addr; }
 
-    @Override
-    String getEndpointImpl() {
-        return this.addr;
-    }
-
-    @Override
-    int getEndpointNum() {
-        return 1;
-    }
+  @Override int getEndpointNum() { return 1; }
 }

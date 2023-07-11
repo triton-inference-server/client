@@ -412,7 +412,7 @@ CLParser::Usage(const std::string& msg)
              "specifying json data users can control data used with every "
              "request. Multiple data streams can be specified for a sequence "
              "model and the analyzer will select a data stream in a "
-             "round-robin fashion for every new sequence. Muliple json files "
+             "round-robin fashion for every new sequence. Multiple json files "
              "can also be provided (--input-data json_file1 --input-data "
              "json-file2 and so on) and the analyzer will append data streams "
              "from each file. When using --service-kind=torchserve make sure "
@@ -645,7 +645,7 @@ CLParser::Usage(const std::string& msg)
              " --trace-level: Specify a trace level. OFF to disable tracing, "
              "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
              "may be specified multiple times to trace multiple "
-             "informations. Default is OFF.",
+             "information. Default is OFF.",
              18)
       << std::endl;
   std::cerr

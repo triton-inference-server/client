@@ -153,7 +153,7 @@ class CLParser {
  public:
   CLParser() : params_(new PerfAnalyzerParameters{}) {}
 
-  // Parse command line arguements into a parameters struct
+  // Parse command line arguments into a parameters struct
   //
   PAParamsPtr Parse(int argc, char** argv);
 

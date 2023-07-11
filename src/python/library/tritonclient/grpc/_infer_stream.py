@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,11 +27,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import queue
-import grpc
 import threading
+
+import grpc
 from tritonclient.utils import *
+
 from ._infer_result import InferResult
-from ._utils import raise_error, get_error_grpc
+from ._utils import get_error_grpc, raise_error
 
 
 class _InferStream:
@@ -82,11 +86,11 @@ class _InferStream:
 
         """
         if self._handler is not None:
-            raise_error(
-                'Attempted to initialize already initialized InferStream')
+            raise_error("Attempted to initialize already initialized InferStream")
         # Create a new thread to handle the gRPC response stream
-        self._handler = threading.Thread(target=self._process_response,
-                                         args=(response_iterator,))
+        self._handler = threading.Thread(
+            target=self._process_response, args=(response_iterator,)
+        )
         self._handler.start()
         if self._verbose:
             print("stream started...")
@@ -105,9 +109,10 @@ class _InferStream:
             self._request_queue.put(request)
         else:
             raise_error(
-                'The stream is no longer in valid state, the error detail '
-                'is reported through provided callback. A new stream should '
-                'be started after stopping the current stream.')
+                "The stream is no longer in valid state, the error detail "
+                "is reported through provided callback. A new stream should "
+                "be started after stopping the current stream."
+            )
 
     def _get_request(self):
         """Returns the request details in the order they were added.

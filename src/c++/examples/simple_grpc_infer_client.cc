@@ -86,7 +86,7 @@ Usage(char** argv, const std::string& msg = std::string())
   std::cerr
       << "\tFor -H, header must be 'Header:Value'. May be given multiple times."
       << std::endl;
-  std::cerr << "\t-C <grpc compression algortithm>. \'deflate\', "
+  std::cerr << "\t-C <grpc compression algorithm>. \'deflate\', "
                "\'gzip\' and \'none\' are supported"
             << std::endl;
   std::cerr << "\t-c <use_cached_channel>. "

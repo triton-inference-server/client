@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,7 +29,6 @@ from tritonclient.utils import raise_error
 
 
 class InferenceServerClientBase:
-
     def __init__(self):
         self._plugin = None
 
@@ -45,7 +46,7 @@ class InferenceServerClientBase:
         ----------
         plugin : InferenceServerClientPlugin
             A client plugin
-        
+
         Raises
         ------
         InferenceServerException
@@ -55,9 +56,11 @@ class InferenceServerClientBase:
         if self._plugin is None:
             self._plugin = plugin
         else:
-            raise_error("A plugin is already registered. Please "
-                        "unregister the previous plugin first before"
-                        " registering a new plugin.")
+            raise_error(
+                "A plugin is already registered. Please "
+                "unregister the previous plugin first before"
+                " registering a new plugin."
+            )
 
     def plugin(self):
         """Retrieve the registered plugin if any.

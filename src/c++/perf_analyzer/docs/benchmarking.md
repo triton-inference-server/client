@@ -51,7 +51,7 @@ Use the [`--help`](cli.md#--help) option to see a complete list of supported
 command line arguments. By default, Perf Analyzer expects the Triton instance to
 already be running. You can configure C API mode using the
 [`--service-kind`](cli.md#--service-kindtritontriton_c_apitfservingtorchserve)
-option. In additon, you will need to point Perf Analyzer to the Triton server
+option. In addition, you will need to point Perf Analyzer to the Triton server
 library path using the
 [`--triton-server-directory`](cli.md#--triton-server-directorypath) option and
 the model repository path using the
@@ -70,7 +70,7 @@ $ perf_analyzer -m my_model --service-kind=triton_c_api --triton-server-director
   Stabilizing using average latency
 
 Request concurrency: 1
-  Client: 
+  Client:
     Request count: 353
     Throughput: 19.6095 infer/sec
     Avg latency: 50951 usec (standard deviation 2265 usec)
@@ -78,8 +78,8 @@ Request concurrency: 1
     p90 latency: 50923 usec
     p95 latency: 50940 usec
     p99 latency: 50985 usec
-    
-  Server: 
+
+  Server:
     Inference count: 353
     Execution count: 353
     Successful request count: 353
@@ -94,7 +94,7 @@ Concurrency: 1, throughput: 19.6095 infer/sec, latency 50951 usec
 There are a few functionalities that are missing from C API mode. They are:
 
 1. Async mode ([`--async`](cli.md#--async))
-2. For additonal known non-working cases, please refer to
+2. For additional known non-working cases, please refer to
    [qa/L0_perf_analyzer_capi/test.sh](https://github.com/triton-inference-server/server/blob/main/qa/L0_perf_analyzer_capi/test.sh#L239-L277)
 
 # Benchmarking TensorFlow Serving

@@ -26,11 +26,12 @@
 
 package triton.client.examples;
 
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.AtomicDouble;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import triton.client.InferInput;
 import triton.client.InferRequestedOutput;
 import triton.client.InferResult;
@@ -38,11 +39,10 @@ import triton.client.InferenceServerClient;
 import triton.client.InferenceServerClient.InferArguments;
 import triton.client.endpoint.FixedEndpoint;
 import triton.client.pojo.DataType;
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.AtomicDouble;
 
 /**
- * Do inference via a stand-alone (which is not hosted inside EAS) triton server.
+ * Do inference via a stand-alone (which is not hosted inside EAS) triton
+ * server.
  *
  * @author xiafei.qiuxf
  * @date 2021/5/7
@@ -52,14 +52,18 @@ public class SimpleInferPerf {
   {
     // Initialize the data
     boolean isBinary0 = false;
-    InferInput input0 = new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
-    List<Integer> lst_0 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+    InferInput input0 =
+        new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
+    List<Integer> lst_0 =
+        IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
     int[] input0_data = lst_0.stream().mapToInt(i -> i).toArray();
     input0.setData(input0_data, isBinary0);
 
     boolean isBinary1 = true;
-    InferInput input1 = new InferInput("INPUT1", new long[] {1L, 16}, DataType.INT32);
-    List<Integer> lst_1 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+    InferInput input1 =
+        new InferInput("INPUT1", new long[] {1L, 16}, DataType.INT32);
+    List<Integer> lst_1 =
+        IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
     int[] input1_data = lst_1.stream().mapToInt(i -> i).toArray();
     input1.setData(input1_data, isBinary1);
 
@@ -79,10 +83,14 @@ public class SimpleInferPerf {
     for (int t = 0; t < nThreads; t++) {
       Thread thread = new Thread(() -> {
         long tid = Thread.currentThread().getId();
-        // For a stand-alone triton server, FixedEndpoint is used to connected to it.
+        // For a stand-alone triton server, FixedEndpoint is used to connected
+        // to it.
         FixedEndpoint endpoint = new FixedEndpoint("0.0.0.0:8000");
-        try (InferenceServerClient client = new InferenceServerClient(endpoint, 5000, 5000)) {
-          InferArguments inferArg = new InferArguments(model_name, inputs, outputs);
+        try (
+            InferenceServerClient client =
+                new InferenceServerClient(endpoint, 5000, 5000)) {
+          InferArguments inferArg =
+              new InferArguments(model_name, inputs, outputs);
           final int N = 1000;
           final int GAP = 100;
           long start = System.currentTimeMillis();
@@ -94,14 +102,17 @@ public class SimpleInferPerf {
               long gapElapsedMs = now - lastGapStart;
               double latency = 1.0 * gapElapsedMs / GAP;
               System.out.printf(
-                  "[%d][GAP] Requests: %d, avg latency(ms): %.2f%n", tid, i + 1, latency);
+                  "[%d][GAP] Requests: %d, avg latency(ms): %.2f%n", tid, i + 1,
+                  latency);
               lastGapStart = now;
             }
           }
           long totalMs = System.currentTimeMillis() - start;
           double latency = 1.0 * totalMs / N;
           double qps = 1000.0 * N / totalMs;
-          System.out.printf("[%d][TOTAL] avg latency(ms): %.2f, qps: %.2f%n", tid, latency, qps);
+          System.out.printf(
+              "[%d][TOTAL] avg latency(ms): %.2f, qps: %.2f%n", tid, latency,
+              qps);
           totalQps.addAndGet(qps);
           avgLatency.addAndGet(latency);
         }

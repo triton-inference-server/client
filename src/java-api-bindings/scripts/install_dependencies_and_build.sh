@@ -32,7 +32,7 @@ Installs Maven, Java JDK and builds Tritonserver Java bindings
 -t|--triton-home                  Expected Trition library location, default is: /opt/tritonserver
 -b|--build-home                   Expected build location, default is: /tmp/build
 -v|--maven-version                Maven version, default is: "3.8.4"
--c|--core-tag                     Tag for core repo, defaut is: "main"
+-c|--core-tag                     Tag for core repo, default is: "main"
 -j|--jar-install-path             Path to install the bindings .jar
 --javacpp-branch                  Javacpp-presets git path, default is https://github.com/bytedeco/javacpp-presets.git
 --javacpp-tag                     Javacpp-presets branch tag, default "master"
@@ -74,27 +74,27 @@ for OPTS; do
         echo "Maven version is set to: ${MAVEN_VERSION}"
         shift 2
         ;;
-        -c|--core-tag) 
+        -c|--core-tag)
         TRITON_CORE_REPO_TAG=$2
         echo "Tritonserver core branch is set to: ${TRITON_CORE_REPO_TAG}"
         shift 2
         ;;
-        -j|--jar-install-path) 
+        -j|--jar-install-path)
         JAR_INSTALL_PATH=$2
         echo "Bindings jar will be set to: ${JAR_INSTALL_PATH}"
         shift 2
         ;;
-        --javacpp-branch) 
+        --javacpp-branch)
         JAVACPP_BRANCH=$2
         echo "Javacpp-presets branch set to: ${JAVACPP_BRANCH}"
         shift 2
         ;;
-        --javacpp-tag) 
+        --javacpp-tag)
         JAVACPP_BRANCH_TAG=$2
         echo "Javacpp-presets branch tag set to: ${JAVACPP_BRANCH_TAG}"
         shift 2
         ;;
-        --enable-developer-tools-server) 
+        --enable-developer-tools-server)
         export INCLUDE_DEVELOPER_TOOLS_SERVER=0
         echo "Including developer tools server C++ bindings"
         ;;
@@ -123,7 +123,7 @@ wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apa
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
 export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/
 
-# Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver 
+# Clone JavaCPP-presets, build java bindings and copy jar to /opt/tritonserver
 cd ${BUILD_HOME}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets

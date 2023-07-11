@@ -26,36 +26,41 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 
+import numpy as np
 import tritonclient.http as httpclient
 import tritonclient.utils.shared_memory as shm
 from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
     try:
-        triton_client = httpclient.InferenceServerClient(url=FLAGS.url,
-                                                         verbose=FLAGS.verbose)
+        triton_client = httpclient.InferenceServerClient(
+            url=FLAGS.url, verbose=FLAGS.verbose
+        )
     except Exception as e:
         print("channel creation failed: " + str(e))
         sys.exit(1)
@@ -81,79 +86,87 @@ if __name__ == '__main__':
     output_byte_size = input_byte_size
 
     # Create shared memory region for output and store shared memory handle
-    shm_op_handle = shm.create_shared_memory_region("output_data",
-                                                    "/output_simple",
-                                                    output_byte_size * 2)
+    shm_op_handle = shm.create_shared_memory_region(
+        "output_data", "/output_simple", output_byte_size * 2
+    )
 
     # Register shared memory region for outputs with Triton Server
-    triton_client.register_system_shared_memory("output_data", "/output_simple",
-                                                output_byte_size * 2)
+    triton_client.register_system_shared_memory(
+        "output_data", "/output_simple", output_byte_size * 2
+    )
 
     # Create shared memory region for input and store shared memory handle
-    shm_ip_handle = shm.create_shared_memory_region("input_data",
-                                                    "/input_simple",
-                                                    input_byte_size * 2)
+    shm_ip_handle = shm.create_shared_memory_region(
+        "input_data", "/input_simple", input_byte_size * 2
+    )
 
     # Put input data values into shared memory
     shm.set_shared_memory_region(shm_ip_handle, [input0_data])
-    shm.set_shared_memory_region(shm_ip_handle, [input1_data],
-                                 offset=input_byte_size)
+    shm.set_shared_memory_region(shm_ip_handle, [input1_data], offset=input_byte_size)
 
     # Register shared memory region for inputs with Triton Server
-    triton_client.register_system_shared_memory("input_data", "/input_simple",
-                                                input_byte_size * 2)
+    triton_client.register_system_shared_memory(
+        "input_data", "/input_simple", input_byte_size * 2
+    )
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input_data", input_byte_size)
 
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
-    inputs[-1].set_shared_memory("input_data",
-                                 input_byte_size,
-                                 offset=input_byte_size)
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
+    inputs[-1].set_shared_memory("input_data", input_byte_size, offset=input_byte_size)
 
     outputs = []
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT0", binary_data=True))
     outputs[-1].set_shared_memory("output_data", output_byte_size)
 
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT1', binary_data=True))
-    outputs[-1].set_shared_memory("output_data",
-                                  output_byte_size,
-                                  offset=output_byte_size)
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT1", binary_data=True))
+    outputs[-1].set_shared_memory(
+        "output_data", output_byte_size, offset=output_byte_size
+    )
 
-    results = triton_client.infer(model_name=model_name,
-                                  inputs=inputs,
-                                  outputs=outputs)
+    results = triton_client.infer(model_name=model_name, inputs=inputs, outputs=outputs)
 
     # Read results from the shared memory.
     output0 = results.get_output("OUTPUT0")
     if output0 is not None:
         output0_data = shm.get_contents_as_numpy(
-            shm_op_handle, utils.triton_to_np_dtype(output0['datatype']),
-            output0['shape'])
+            shm_op_handle,
+            utils.triton_to_np_dtype(output0["datatype"]),
+            output0["shape"],
+        )
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
 
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
-        output1_data = shm.get_contents_as_numpy(shm_op_handle,
-                                                 utils.triton_to_np_dtype(
-                                                     output1['datatype']),
-                                                 output1['shape'],
-                                                 offset=output_byte_size)
+        output1_data = shm.get_contents_as_numpy(
+            shm_op_handle,
+            utils.triton_to_np_dtype(output1["datatype"]),
+            output1["shape"],
+            offset=output_byte_size,
+        )
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
 
     for i in range(16):
         print(
-            str(input0_data[i]) + " + " + str(input1_data[i]) + " = " +
-            str(output0_data[0][i]))
+            str(input0_data[i])
+            + " + "
+            + str(input1_data[i])
+            + " = "
+            + str(output0_data[0][i])
+        )
         print(
-            str(input0_data[i]) + " - " + str(input1_data[i]) + " = " +
-            str(output1_data[0][i]))
+            str(input0_data[i])
+            + " - "
+            + str(input1_data[i])
+            + " = "
+            + str(output1_data[0][i])
+        )
         if (input0_data[i] + input1_data[i]) != output0_data[0][i]:
             print("shm infer error: incorrect sum")
             sys.exit(1)
@@ -168,4 +181,4 @@ if __name__ == '__main__':
     shm.destroy_shared_memory_region(shm_op_handle)
     assert len(shm.mapped_shared_memory_regions()) == 0
 
-    print('PASS: system shared memory')
+    print("PASS: system shared memory")

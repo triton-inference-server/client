@@ -30,33 +30,38 @@ import argparse
 import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
     try:
-        triton_client = grpcclient.InferenceServerClient(url=FLAGS.url,
-                                                         verbose=FLAGS.verbose)
+        triton_client = grpcclient.InferenceServerClient(
+            url=FLAGS.url, verbose=FLAGS.verbose
+        )
     except Exception as e:
         print("context creation failed: " + str(e))
         sys.exit()
 
-    model_name = 'simple'
+    model_name = "simple"
 
     # Health
-    if not triton_client.is_server_live(headers={'test': '1', 'dummy': '2'}):
+    if not triton_client.is_server_live(headers={"test": "1", "dummy": "2"}):
         print("FAILED : is_server_live")
         sys.exit(1)
 
@@ -70,16 +75,14 @@ if __name__ == '__main__':
 
     # Metadata
     metadata = triton_client.get_server_metadata()
-    if not (metadata.name == 'triton'):
+    if not (metadata.name == "triton"):
         print("FAILED : get_server_metadata")
         sys.exit(1)
     print(metadata)
 
-    metadata = triton_client.get_model_metadata(model_name,
-                                                headers={
-                                                    'test': '1',
-                                                    'dummy': '2'
-                                                })
+    metadata = triton_client.get_model_metadata(
+        model_name, headers={"test": "1", "dummy": "2"}
+    )
     if not (metadata.name == model_name):
         print("FAILED : get_model_metadata")
         sys.exit(1)

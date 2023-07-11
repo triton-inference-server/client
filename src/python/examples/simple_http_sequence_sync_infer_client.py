@@ -26,11 +26,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
-import sys
 import queue
+import sys
 import uuid
 
+import numpy as np
 import tritonclient.http as httpclient
 from tritonclient.utils import InferenceServerException
 
@@ -38,71 +38,83 @@ FLAGS = None
 
 
 class UserData:
-
     def __init__(self):
         self._completed_requests = queue.Queue()
 
 
-def sync_send(triton_client, result_list, values, batch_size, sequence_id,
-              model_name, model_version):
-
+def sync_send(
+    triton_client,
+    result_list,
+    values,
+    batch_size,
+    sequence_id,
+    model_name,
+    model_version,
+):
     count = 1
     for value in values:
         # Create the tensor for INPUT
-        value_data = np.full(shape=[batch_size, 1],
-                             fill_value=value,
-                             dtype=np.int32)
+        value_data = np.full(shape=[batch_size, 1], fill_value=value, dtype=np.int32)
         inputs = []
-        inputs.append(httpclient.InferInput('INPUT', value_data.shape, "INT32"))
+        inputs.append(httpclient.InferInput("INPUT", value_data.shape, "INT32"))
         # Initialize the data
         inputs[0].set_data_from_numpy(value_data)
         outputs = []
-        outputs.append(httpclient.InferRequestedOutput('OUTPUT'))
+        outputs.append(httpclient.InferRequestedOutput("OUTPUT"))
         # Issue the synchronous sequence inference.
-        result = triton_client.infer(model_name=model_name,
-                                     inputs=inputs,
-                                     outputs=outputs,
-                                     sequence_id=sequence_id,
-                                     sequence_start=(count == 1),
-                                     sequence_end=(count == len(values)))
-        result_list.append(result.as_numpy('OUTPUT'))
+        result = triton_client.infer(
+            model_name=model_name,
+            inputs=inputs,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=(count == 1),
+            sequence_end=(count == len(values)),
+        )
+        result_list.append(result.as_numpy("OUTPUT"))
         count = count + 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
     parser.add_argument(
-        '-u',
-        '--url',
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
         type=str,
         required=False,
-        default='localhost:8000',
-        help='Inference server URL and it HTTP port. Default is localhost:8000.'
+        default="localhost:8000",
+        help="Inference server URL and it HTTP port. Default is localhost:8000.",
     )
-    parser.add_argument('-d',
-                        '--dyna',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Assume dynamic sequence model')
-    parser.add_argument('-o',
-                        '--offset',
-                        type=int,
-                        required=False,
-                        default=0,
-                        help='Add offset to sequence ID used')
+    parser.add_argument(
+        "-d",
+        "--dyna",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Assume dynamic sequence model",
+    )
+    parser.add_argument(
+        "-o",
+        "--offset",
+        type=int,
+        required=False,
+        default=0,
+        help="Add offset to sequence ID used",
+    )
 
     FLAGS = parser.parse_args()
 
     try:
-        triton_client = httpclient.InferenceServerClient(url=FLAGS.url,
-                                                         verbose=FLAGS.verbose)
+        triton_client = httpclient.InferenceServerClient(
+            url=FLAGS.url, verbose=FLAGS.verbose
+        )
     except Exception as e:
         print("context creation failed: " + str(e))
         sys.exit()
@@ -110,8 +122,12 @@ if __name__ == '__main__':
     # We use custom "sequence" models which take 1 input
     # value. The output is the accumulated value of the inputs. See
     # src/custom/sequence.
-    int_sequence_model_name = "simple_dyna_sequence" if FLAGS.dyna else "simple_sequence"
-    string_sequence_model_name = "simple_string_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    int_sequence_model_name = (
+        "simple_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    )
+    string_sequence_model_name = (
+        "simple_string_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    )
     model_version = ""
     batch_size = 1
 
@@ -137,15 +153,33 @@ if __name__ == '__main__':
     user_data = UserData()
 
     try:
-        sync_send(triton_client, int_result0_list, [0] + values, batch_size,
-                  int_sequence_id0, int_sequence_model_name, model_version)
-        sync_send(triton_client, int_result1_list,
-                  [100] + [-1 * val for val in values], batch_size,
-                  int_sequence_id1, int_sequence_model_name, model_version)
-        sync_send(triton_client, string_result0_list,
-                  [20] + [-1 * val for val in values], batch_size,
-                  string_sequence_id0, string_sequence_model_name,
-                  model_version)
+        sync_send(
+            triton_client,
+            int_result0_list,
+            [0] + values,
+            batch_size,
+            int_sequence_id0,
+            int_sequence_model_name,
+            model_version,
+        )
+        sync_send(
+            triton_client,
+            int_result1_list,
+            [100] + [-1 * val for val in values],
+            batch_size,
+            int_sequence_id1,
+            int_sequence_model_name,
+            model_version,
+        )
+        sync_send(
+            triton_client,
+            string_result0_list,
+            [20] + [-1 * val for val in values],
+            batch_size,
+            string_sequence_id0,
+            string_sequence_model_name,
+            model_version,
+        )
     except InferenceServerException as error:
         print(error)
         sys.exit(1)
@@ -161,7 +195,8 @@ if __name__ == '__main__':
             string_seq0_expected = 21
         elif i != 0 and FLAGS.dyna:
             string_seq0_expected = values[i - 1] * -1 + int(
-                string_result0_list[i - 1][0][0])
+                string_result0_list[i - 1][0][0]
+            )
         else:
             string_seq0_expected = values[i - 1] * -1
 
@@ -172,15 +207,30 @@ if __name__ == '__main__':
             int_seq1_expected += int_sequence_id1
             string_seq0_expected += int(string_sequence_id0)
 
-        print("[" + str(i) + "] " + str(int_result0_list[i][0][0]) + " : " +
-              str(int_result1_list[i][0][0]) + " : " +
-              str(string_result0_list[i][0][0]))
+        print(
+            "["
+            + str(i)
+            + "] "
+            + str(int_result0_list[i][0][0])
+            + " : "
+            + str(int_result1_list[i][0][0])
+            + " : "
+            + str(string_result0_list[i][0][0])
+        )
 
-        if ((int_seq0_expected != int_result0_list[i][0][0]) or
-            (int_seq1_expected != int_result1_list[i][0][0]) or
-            (string_seq0_expected != string_result0_list[i][0][0])):
-            print("[ expected ] " + str(int_seq0_expected) + " : " +
-                  str(int_seq1_expected) + " : " + str(string_seq0_expected))
+        if (
+            (int_seq0_expected != int_result0_list[i][0][0])
+            or (int_seq1_expected != int_result1_list[i][0][0])
+            or (string_seq0_expected != string_result0_list[i][0][0])
+        ):
+            print(
+                "[ expected ] "
+                + str(int_seq0_expected)
+                + " : "
+                + str(int_seq1_expected)
+                + " : "
+                + str(string_seq0_expected)
+            )
             sys.exit(1)
 
     print("PASS: Sequence")
