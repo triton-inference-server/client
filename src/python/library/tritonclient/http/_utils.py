@@ -45,7 +45,7 @@ def _get_error(response):
             return InferenceServerException(msg=error_response["error"],
                                             status=str(response.status_code))
         except Exception as e:
-            return InferenceServerException(msg=f"an exception occurred in the client while decoding the repsonse: {e}",
+            return InferenceServerException(msg=f"an exception occurred in the client while decoding the response: {e}",
                                             status=str(response.status_code),
                                             debug_details=body)
     else:
