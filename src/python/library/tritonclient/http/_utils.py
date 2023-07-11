@@ -41,13 +41,20 @@ def _get_error(response):
         body = None
         try:
             body = response.read().decode("utf-8")
-            error_response = json.loads(body) if len(body) else {"error": "client received an empty response from the server."}
-            return InferenceServerException(msg=error_response["error"],
-                                            status=str(response.status_code))
+            error_response = (
+                json.loads(body)
+                if len(body)
+                else {"error": "client received an empty response from the server."}
+            )
+            return InferenceServerException(
+                msg=error_response["error"], status=str(response.status_code)
+            )
         except Exception as e:
-            return InferenceServerException(msg=f"an exception occurred in the client while decoding the response: {e}",
-                                            status=str(response.status_code),
-                                            debug_details=body)
+            return InferenceServerException(
+                msg=f"an exception occurred in the client while decoding the response: {e}",
+                status=str(response.status_code),
+                debug_details=body,
+            )
     else:
         return None
 
