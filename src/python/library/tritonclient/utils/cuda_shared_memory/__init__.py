@@ -245,7 +245,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
         cval_len = start_pos + requested_byte_size
         if cuda_shm_handle._byte_size < cval_len:
             raise CudaSharedMemoryException(
-                "The size of the shared memory region is unsufficient to provide numpy array with requested size"
+                "The size of the shared memory region is insufficient to provide numpy array with requested size"
             )
         if cval_len == 0:
             result = np.empty(shape, dtype=datatype)
