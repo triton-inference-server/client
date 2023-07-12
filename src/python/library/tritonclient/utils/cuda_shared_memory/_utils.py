@@ -62,7 +62,7 @@ class CudaSharedMemoryException(Exception):
         return msg
 
 
-class CudaSharedMemoryHandle:
+class CudaSharedMemoryRegion:
 
     def __init__(self, triton_shm_name: str,
                  cuda_shm_handle: cudart.cudaIpcMemHandle_t, base_addr: Any,

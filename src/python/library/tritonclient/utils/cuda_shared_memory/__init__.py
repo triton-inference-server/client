@@ -42,7 +42,7 @@ import base64
 import ctypes
 from .. import _dlpack
 from .._shared_memory_tensor import SharedMemoryTensor
-from ._utils import CudaSharedMemoryHandle, CudaStream, CudaSharedMemoryException, call_cuda_function, maybe_set_device
+from ._utils import CudaSharedMemoryRegion, CudaStream, CudaSharedMemoryException, call_cuda_function, maybe_set_device
 
 allocated_shm_regions = []
 # Internally managed stream for properly synchronizing on DLPack data,
@@ -93,7 +93,7 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
         The GPU device ID of the cuda shared memory region to be created.
     Returns
     -------
-    cuda_shm_handle : CudaSharedMemoryHandle
+    cuda_shm_handle : CudaSharedMemoryRegion
         The handle for the cuda shared memory region.
 
     Raises
@@ -108,7 +108,7 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
         device_ptr = call_cuda_function(cudart.cudaMalloc, byte_size)
         cuda_shm_handle = call_cuda_function(cudart.cudaIpcGetMemHandle,
                                              device_ptr)
-        triton_shm_handle = CudaSharedMemoryHandle(triton_shm_name,
+        triton_shm_handle = CudaSharedMemoryRegion(triton_shm_name,
                                                    cuda_shm_handle, device_ptr,
                                                    byte_size, device_id)
         allocated_shm_regions.append(triton_shm_handle)
@@ -128,7 +128,7 @@ def get_raw_handle(cuda_shm_handle):
 
     Parameters
     ----------
-    cuda_shm_handle : CudaSharedMemoryHandle
+    cuda_shm_handle : CudaSharedMemoryRegion
         The handle for the cuda shared memory region.
 
     Returns
@@ -149,7 +149,7 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
 
     Parameters
     ----------
-    cuda_shm_handle : CudaSharedMemoryHandle
+    cuda_shm_handle : CudaSharedMemoryRegion
         The handle for the cuda shared memory region.
     input_values : list
         The list of numpy arrays to be copied into the shared memory region.
@@ -209,7 +209,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
 
     Parameters
     ----------
-    cuda_shm_handle : CudaSharedMemoryHandle
+    cuda_shm_handle : CudaSharedMemoryRegion
         The handle for the cuda shared memory region.
     datatype : np.dtype
         The datatype of the array to be returned.
@@ -304,9 +304,9 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         _support_uva(cuda_shm_handle._device_id, device_id)
 
         # Write to shared memory region
-        byte_size = _dlpack.get_byte_size(
-            dmt.dl_tensor.dtype, dmt.dl_tensor.ndim, dmt.dl_tensor.shape
-        )
+        byte_size = _dlpack.get_byte_size(dmt.dl_tensor.dtype,
+                                          dmt.dl_tensor.ndim,
+                                          dmt.dl_tensor.shape)
         # apply offset to the data pointer ('data' pointer is implicitly converted to int)
         data_ptr = dmt.dl_tensor.data + dmt.dl_tensor.byte_offset
 
@@ -348,7 +348,7 @@ def destroy_shared_memory_region(cuda_shm_handle):
 
     Parameters
     ----------
-    cuda_shm_handle : CudaSharedMemoryHandle
+    cuda_shm_handle : CudaSharedMemoryRegion
         The handle for the cuda shared memory region.
 
     Raises
