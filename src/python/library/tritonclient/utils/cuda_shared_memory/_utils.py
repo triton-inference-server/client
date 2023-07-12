@@ -24,18 +24,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from cuda import cuda as cuda_driver
 from cuda import cudart
 from typing import Any
 
 
-def _raise_errno_if_cuda_err(err, errno):
+def call_cuda_function(function, *argv):
+    res = function(*argv)
+    err = res[0]
     if isinstance(err, cudart.cudaError_t):
-        if (err != cudart.cudaError_t.cudaSuccess) and (errno != 0):
-            raise CudaSharedMemoryException(errno)
-
-
-def _raise_error(msg):
-    raise CudaSharedMemoryException(msg)
+        if err != cudart.cudaError_t.cudaSuccess:
+            _, bytes = cudart.cudaGetErrorString(err)
+            raise Exception(bytes)
+    elif isinstance(err, cuda_driver.CUresult):
+        if err != cuda_driver.CUresult.CUDA_SUCCESS:
+            _, bytes = cuda_driver.cuGetErrorString(err)
+            raise Exception(bytes)
+    if len(res) > 1:
+        return res[1:] if len(res) > 2 else res[1]
 
 
 class CudaSharedMemoryException(Exception):
@@ -48,30 +54,8 @@ class CudaSharedMemoryException(Exception):
 
     """
 
-    def __init__(self, err):
-        self.err_code_map = {
-            -1:
-                "unable to set device successfully",
-            -2:
-                "unable to create cuda shared memory handle",
-            -3:
-                "unable to set values in cuda shared memory",
-            -4:
-                "unable to free GPU device memory",
-            -5:
-                "failed to read cuda shared memory results",
-            -6:
-                "unable to read device attributes",
-            -7:
-                "device or platform does not support unified virtual addressing",
-            -8:
-                "unable to manage CUDA stream"
-        }
-        self._msg = None
-        if type(err) == str:
-            self._msg = err
-        elif (err != 0) and (err in self.err_code_map):
-            self._msg = self.err_code_map[err]
+    def __init__(self, msg):
+        self._msg = msg
 
     def __str__(self):
         msg = super().__str__() if self._msg is None else self._msg
@@ -100,28 +84,34 @@ class CudaSharedMemoryHandle:
         # uninitialized resource.
         if not hasattr(self, "_base_addr"):
             return
-        err, prev_device = cudart.cudaGetDevice()
-        _raise_errno_if_cuda_err(err, -1)
-        _raise_errno_if_cuda_err(cudart.cudaSetDevice(self._device_id), -1)
+        prev_device = None
         try:
-            err = cudart.cudaFree(self._base_addr)
-            _raise_errno_if_cuda_err(err, -4)
+            prev_device = call_cuda_function(cudart.cudaGetDevice)
+            call_cuda_function(cudart.cudaSetDevice, self._device_id)
+            call_cuda_function(cudart.cudaFree, self._base_addr)
         finally:
-            # Don't raise error again which may overwrite the actual error
-            cudart.cudaSetDevice(prev_device)
+            if prev_device is not None:
+                maybe_set_device(prev_device)
 
 
 class CudaStream:
 
     def __init__(self):
-        err, stream = cudart.cudaStreamCreate()
-        _raise_errno_if_cuda_err(err, -8)
-        self._stream = stream
+        self._stream = call_cuda_function(cudart.cudaStreamCreate)
 
     def __del__(self):
         # __init__() may fail, don't attempt to release
         # uninitialized resource.
-        if not hasattr(self, "_stream"):
+        if not hasattr(self, "_stream") or self._stream is None:
             return
-        err = cudart.cudaStreamDestroy(self._stream)
-        _raise_errno_if_cuda_err(err, -8)
+        # [FIXME] __del__ is not the best place for releasing resources
+        call_cuda_function(cudart.cudaStreamDestroy, self._stream)
+        self._stream = None
+
+
+def maybe_set_device(device_id):
+    device = call_cuda_function(cuda_driver.cuDeviceGet, device_id)
+    _, active = call_cuda_function(cuda_driver.cuDevicePrimaryCtxGetState,
+                                   device)
+    if active:
+        call_cuda_function(cudart.cudaSetDevice, device_id)

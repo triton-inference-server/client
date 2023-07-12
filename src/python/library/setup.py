@@ -69,7 +69,6 @@ install_requires = req_file("requirements.txt")
 extras_require = {
     'grpc': req_file("requirements_grpc.txt"),
     'http': req_file("requirements_http.txt"),
-    'cudashm': req_file("requirements_cudashm.txt"),
 }
 
 extras_require['all'] = list(chain(extras_require.values()))
