@@ -31,31 +31,18 @@ try:
     from cuda import cudart
 except ModuleNotFoundError as error:
     raise RuntimeError(
-        'The installation does not include CUDA shared memory support. Specify \'cudashm\' or \'all\' while installing the tritonclient package to include the support'
+        'CUDA shared memory utilities require Python package "cuda-python" to be installed'
     ) from error
 
 import os
 import numpy as np
 import pkg_resources
-
+import struct
 import base64
-
 import ctypes
 from .. import _dlpack
 from .._shared_memory_tensor import SharedMemoryTensor
-from ._utils import CudaSharedMemoryHandle, CudaStream, CudaSharedMemoryException, _raise_errno_if_cuda_err, _raise_error
-
-
-class _utf8(object):
-    @classmethod
-    def from_param(cls, value):
-        if value is None:
-            return None
-        elif isinstance(value, bytes):
-            return value
-        else:
-            return value.encode("utf8")
-
+from ._utils import CudaSharedMemoryHandle, CudaStream, CudaSharedMemoryException, call_cuda_function, maybe_set_device
 
 allocated_shm_regions = []
 # Internally managed stream for properly synchronizing on DLPack data,
@@ -74,16 +61,23 @@ def _get_or_create_global_cuda_stream():
 
 
 def _support_uva(shm_device_id, ext_device_id):
-    err, support_uva = cudart.cudaDeviceGetAttribute(
-        cudart.cudaDeviceAttr.cudaDevAttrUnifiedAddressing, shm_device_id)
-    _raise_errno_if_cuda_err(err, -6)
-    if (support_uva != 0) and (ext_device_id != -1):
-        err, support_uva = cudart.cudaDeviceGetAttribute(
-            cudart.cudaDeviceAttr.cudaDevAttrUnifiedAddressing, ext_device_id)
-        _raise_errno_if_cuda_err(err, -6)
-    if support_uva == 0:
-        _raise_error(
-            "device or platform does not support unified virtual addressing")
+    try:
+        support_uva = call_cuda_function(
+            cudart.cudaDeviceGetAttribute,
+            cudart.cudaDeviceAttr.cudaDevAttrUnifiedAddressing, shm_device_id)
+        if (support_uva != 0) and (ext_device_id != -1):
+            support_uva = call_cuda_function(
+                cudart.cudaDeviceGetAttribute,
+                cudart.cudaDeviceAttr.cudaDevAttrUnifiedAddressing,
+                ext_device_id)
+        if support_uva == 0:
+            raise CudaSharedMemoryException(
+                "device or platform does not support unified virtual addressing"
+            )
+    except Exception as ex:
+        if not isinstance(ex, CudaSharedMemoryException):
+            raise CudaSharedMemoryException(
+                "unable to check UVA support on device") from ex
 
 
 def create_shared_memory_region(triton_shm_name, byte_size, device_id):
@@ -107,14 +101,13 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
     CudaSharedMemoryException
         If unable to create the cuda shared memory region on the specified device.
     """
-    err, prev_device = cudart.cudaGetDevice()
-    _raise_errno_if_cuda_err(err, -1)
-    _raise_errno_if_cuda_err(cudart.cudaSetDevice(device_id), -1)
+    prev_device = None
     try:
-        err, device_ptr = cudart.cudaMalloc(byte_size)
-        _raise_errno_if_cuda_err(err, -2)
-        err, cuda_shm_handle = cudart.cudaIpcGetMemHandle(device_ptr)
-        _raise_errno_if_cuda_err(err, -2)
+        prev_device = call_cuda_function(cudart.cudaGetDevice)
+        call_cuda_function(cudart.cudaSetDevice, device_id)
+        device_ptr = call_cuda_function(cudart.cudaMalloc, byte_size)
+        cuda_shm_handle = call_cuda_function(cudart.cudaIpcGetMemHandle,
+                                             device_ptr)
         triton_shm_handle = CudaSharedMemoryHandle(triton_shm_name,
                                                    cuda_shm_handle, device_ptr,
                                                    byte_size, device_id)
@@ -124,8 +117,8 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
             raise CudaSharedMemoryException(
                 "unable to create cuda shared memory handle") from ex
     finally:
-        # Don't raise error again which may overwrite the actual error
-        cudart.cudaSetDevice(prev_device)
+        if prev_device is not None:
+            maybe_set_device(prev_device)
 
     return triton_shm_handle
 
@@ -168,38 +161,45 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
     """
 
     if not isinstance(input_values, (list, tuple)):
-        _raise_error("input_values must be specified as a numpy array")
+        raise CudaSharedMemoryException(
+            "input_values must be specified as a numpy array")
     for input_value in input_values:
         if not isinstance(input_value, (np.ndarray,)):
-            _raise_error(
+            raise CudaSharedMemoryException(
                 "input_values must be specified as a list/tuple of numpy arrays"
             )
 
-    _support_uva(cuda_shm_handle._device_id, -1)
-    stream = _get_or_create_global_cuda_stream()
+    try:
+        _support_uva(cuda_shm_handle._device_id, -1)
+        stream = _get_or_create_global_cuda_stream()
 
-    offset_current = 0
-    for input_value in input_values:
-        input_value = np.ascontiguousarray(input_value).flatten()
-        # When the input array is in type "BYTES" (np.object_ is
-        # the numpy equivalent), expect the array has been serialized
-        # via 'tritonclient.utils.serialize_byte_tensor'.
-        if input_value.dtype == np.object_:
-            input_value = input_value.item()
-            byte_size = np.dtype(np.byte).itemsize * len(input_value)
-            err = cudart.cudaMemcpyAsync(
-                cuda_shm_handle._base_addr + offset_current, input_value,
-                byte_size, cudart.cudaMemcpyKind.cudaMemcpyDefault, stream)
-            _raise_errno_if_cuda_err(err, -3)
-        else:
-            byte_size = input_value.size * input_value.itemsize
-            err = cudart.cudaMemcpyAsync(
-                cuda_shm_handle._base_addr + offset_current,
-                input_value.ctypes.data, byte_size,
-                cudart.cudaMemcpyKind.cudaMemcpyDefault, stream)
-            _raise_errno_if_cuda_err(err, -3)
-        offset_current += byte_size
-    _raise_errno_if_cuda_err(cudart.cudaStreamSynchronize(stream), -8)
+        offset_current = 0
+        for input_value in input_values:
+            input_value = np.ascontiguousarray(input_value).flatten()
+            # When the input array is in type "BYTES" (np.object_ is
+            # the numpy equivalent), expect the array has been serialized
+            # via 'tritonclient.utils.serialize_byte_tensor'.
+            if input_value.dtype == np.object_:
+                input_value = input_value.item()
+                byte_size = np.dtype(np.byte).itemsize * len(input_value)
+                call_cuda_function(cudart.cudaMemcpyAsync,
+                                   cuda_shm_handle._base_addr + offset_current,
+                                   input_value, byte_size,
+                                   cudart.cudaMemcpyKind.cudaMemcpyDefault,
+                                   stream)
+            else:
+                byte_size = input_value.size * input_value.itemsize
+                call_cuda_function(cudart.cudaMemcpyAsync,
+                                   cuda_shm_handle._base_addr + offset_current,
+                                   input_value.ctypes.data, byte_size,
+                                   cudart.cudaMemcpyKind.cudaMemcpyDefault,
+                                   stream)
+            offset_current += byte_size
+        call_cuda_function(cudart.cudaStreamSynchronize, stream)
+    except Exception as ex:
+        if not isinstance(ex, CudaSharedMemoryException):
+            raise CudaSharedMemoryException(
+                "unable to set values in cuda shared memory") from ex
     return
 
 
@@ -222,24 +222,29 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
         The numpy array generated using contents from the specified shared
         memory region.
     """
-    _support_uva(cuda_shm_handle._device_id, -1)
-    stream = _get_or_create_global_cuda_stream()
+    try:
+        _support_uva(cuda_shm_handle._device_id, -1)
+        stream = _get_or_create_global_cuda_stream()
 
-    # Numpy can only read from host buffer.
-    host_buffer = (ctypes.c_char * cuda_shm_handle._byte_size)()
-    err = cudart.cudaMemcpyAsync(host_buffer, cuda_shm_handle._base_addr,
-                                 cuda_shm_handle._byte_size,
-                                 cudart.cudaMemcpyKind.cudaMemcpyDefault,
-                                 stream)
-    _raise_errno_if_cuda_err(err, -5)
-    # Sync to ensure the host buffer is ready
-    _raise_errno_if_cuda_err(cudart.cudaStreamSynchronize(stream), -8)
+        # Numpy can only read from host buffer.
+        host_buffer = (ctypes.c_char * cuda_shm_handle._byte_size)()
+        call_cuda_function(cudart.cudaMemcpyAsync, host_buffer,
+                           cuda_shm_handle._base_addr,
+                           cuda_shm_handle._byte_size,
+                           cudart.cudaMemcpyKind.cudaMemcpyDefault, stream)
+        # Sync to ensure the host buffer is ready
+        call_cuda_function(cudart.cudaStreamSynchronize, stream)
+    except Exception as ex:
+        if not isinstance(ex, CudaSharedMemoryException):
+            raise CudaSharedMemoryException(
+                "failed to read cuda shared memory results") from ex
+
     start_pos = 0  # was 'handle->offset_'
     if (datatype != np.object_) and (datatype != np.bytes_):
         requested_byte_size = np.prod(shape) * np.dtype(datatype).itemsize
         cval_len = start_pos + requested_byte_size
         if cuda_shm_handle._byte_size < cval_len:
-            _raise_error(
+            raise CudaSharedMemoryException(
                 "The size of the shared memory region is unsufficient to provide numpy array with requested size"
             )
         if cval_len == 0:
@@ -288,9 +293,8 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         dlcapsule = _dlpack.get_dlpack_capsule(input_value, stream.getPtr())
         dmt = _dlpack.get_managed_tensor(dlcapsule)
         if not _dlpack.is_contiguous_data(
-            dmt.dl_tensor.ndim, dmt.dl_tensor.shape, dmt.dl_tensor.strides
-        ):
-            _raise_error(
+                dmt.dl_tensor.ndim, dmt.dl_tensor.shape, dmt.dl_tensor.strides):
+            raise CudaSharedMemoryException(
                 "DLPack tensor is not contiguous. Only contiguous DLPack tensors that are stored in C-Order are supported."
             )
         if dmt.dl_tensor.device == _dlpack.DLDeviceType.kDLCUDA:
@@ -306,11 +310,16 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
         # apply offset to the data pointer ('data' pointer is implicitly converted to int)
         data_ptr = dmt.dl_tensor.data + dmt.dl_tensor.byte_offset
 
-        err = cudart.cudaMemcpyAsync(
-            cuda_shm_handle._base_addr + offset_current, data_ptr, byte_size,
-            cudart.cudaMemcpyKind.cudaMemcpyDefault, stream)
-        _raise_errno_if_cuda_err(err, -3)
-        _raise_errno_if_cuda_err(cudart.cudaStreamSynchronize(stream), -8)
+        try:
+            call_cuda_function(cudart.cudaMemcpyAsync,
+                               cuda_shm_handle._base_addr + offset_current,
+                               data_ptr, byte_size,
+                               cudart.cudaMemcpyKind.cudaMemcpyDefault, stream)
+            call_cuda_function(cudart.cudaStreamSynchronize, stream)
+        except Exception as ex:
+            if not isinstance(ex, CudaSharedMemoryException):
+                raise CudaSharedMemoryException(
+                    "unable to set values in cuda shared memory") from ex
 
         offset_current += byte_size
     return
