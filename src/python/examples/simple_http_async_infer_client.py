@@ -26,25 +26,29 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 
+import numpy as np
 import tritonclient.http as httpclient
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -58,13 +62,13 @@ if __name__ == '__main__':
         print("context creation failed: " + str(e))
         sys.exit()
 
-    model_name = 'simple'
+    model_name = "simple"
 
     # Infer
     inputs = []
     outputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
 
     # Create the data for the two input tensors. Initialize the first
     # to unique integers and the second to all ones.
@@ -76,8 +80,8 @@ if __name__ == '__main__':
     inputs[0].set_data_from_numpy(input0_data, binary_data=True)
     inputs[1].set_data_from_numpy(input1_data, binary_data=True)
 
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT1', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT0", binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT1", binary_data=True))
     async_requests = []
 
     for i in range(request_count):
@@ -94,8 +98,8 @@ if __name__ == '__main__':
 
         print(result.get_response())
         # Validate the results by comparing with precomputed values.
-        output0_data = result.as_numpy('OUTPUT0')
-        output1_data = result.as_numpy('OUTPUT1')
+        output0_data = result.as_numpy("OUTPUT0")
+        output1_data = result.as_numpy("OUTPUT1")
         for i in range(16):
             print(
                 str(input0_data[0][i]) + " + " + str(input1_data[0][i]) +

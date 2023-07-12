@@ -43,7 +43,9 @@ ctypes.pythonapi.PyMem_RawFree.argtypes = [ctypes.c_void_p]
 
 ctypes.pythonapi.PyCapsule_New.restype = ctypes.py_object
 ctypes.pythonapi.PyCapsule_New.argtypes = [
-    ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p
+    ctypes.c_void_p,
+    ctypes.c_char_p,
+    ctypes.c_void_p,
 ]
 
 ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
@@ -217,13 +219,17 @@ def triton_to_dlpack_dtype(dtype):
 
 def is_device_supported(device: DLDevice):
     return device[0] in [
-        DLDeviceType.kDLCPU, DLDeviceType.kDLCUDA, DLDeviceType.kDLCUDAHost
+        DLDeviceType.kDLCPU,
+        DLDeviceType.kDLCUDA,
+        DLDeviceType.kDLCUDAHost,
     ]
 
 
-def is_contiguous_data(ndim: ctypes.c_int,
-                       shape: ctypes.POINTER(ctypes.c_int64),
-                       stride: ctypes.POINTER(ctypes.c_int64)):
+def is_contiguous_data(
+        ndim: ctypes.c_int,
+        shape: ctypes.POINTER(ctypes.c_int64),
+        stride: ctypes.POINTER(ctypes.c_int64),
+):
     # If 'stride' doesn't capture valid value
     if (stride is None) or (not bool(stride)):
         return True
@@ -246,8 +252,8 @@ def get_byte_size(dtype: DLDataType, ndim: ctypes.c_int,
 
 def get_dlpack_capsule(dlpack_obj, stream=None):
     # Extract PyCapsule of the DLPack object
-    if hasattr(dlpack_obj, '__dlpack__'):
-        if not hasattr(dlpack_obj, '__dlpack_device__'):
+    if hasattr(dlpack_obj, "__dlpack__"):
+        if not hasattr(dlpack_obj, "__dlpack_device__"):
             _raise_error(
                 "DLPack expects '__dlpack_device__' if '__dlpack__' has been defined"
             )

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,31 +28,29 @@
 
 try:
     import grpc
-    from tritonclient.grpc import model_config_pb2
-    from tritonclient.grpc import service_pb2
-    from tritonclient.grpc import service_pb2_grpc
-    from ._client import InferenceServerClient
-    from ._client import KeepAliveOptions
+    from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
+    from tritonclient.utils import *
+
+    from .._plugin import InferenceServerClientPlugin
+    from ._client import MAX_GRPC_MESSAGE_SIZE, InferenceServerClient, KeepAliveOptions
     from ._infer_input import InferInput
     from ._infer_result import InferResult
     from ._requested_output import InferRequestedOutput
-    from ._client import MAX_GRPC_MESSAGE_SIZE
-    from tritonclient.utils import *
     from ._utils import raise_error, raise_error_grpc
-    from .._plugin import InferenceServerClientPlugin
 except ModuleNotFoundError as error:
     raise RuntimeError(
-        'The installation does not include grpc support. '
-        'Specify \'grpc\' or \'all\' while installing the tritonclient '
-        'package to include the support') from error
+        "The installation does not include grpc support. "
+        "Specify 'grpc' or 'all' while installing the tritonclient "
+        "package to include the support") from error
+
+import warnings
 
 from packaging import version
-import warnings
 
 # Check grpc version and issue warnings if grpc version is known to have
 # memory leakage issue.
-if version.parse(grpc.__version__) >= version.parse('1.43.0') and version.parse(
-        grpc.__version__) < version.parse('1.51.1'):
+if version.parse(grpc.__version__) >= version.parse("1.43.0") and version.parse(
+        grpc.__version__) < version.parse("1.51.1"):
     warnings.warn(
         f"Imported version of grpc is {grpc.__version__}. There is a memory "
         "leak in certain Python GRPC versions (1.43.0 to be specific). Please "

@@ -26,12 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
-import sys
-import queue
-import uuid
 import asyncio
+import queue
+import sys
+import uuid
 
+import numpy as np
 import tritonclient.grpc.aio as grpcclient
 from tritonclient.utils import InferenceServerException
 
@@ -51,31 +51,32 @@ async def async_stream_yield(values, batch_size, sequence_id, model_name,
                              fill_value=value,
                              dtype=np.int32)
         inputs = []
-        inputs.append(grpcclient.InferInput('INPUT', value_data.shape, "INT32"))
+        inputs.append(grpcclient.InferInput("INPUT", value_data.shape, "INT32"))
         # Initialize the data
         inputs[0].set_data_from_numpy(value_data)
         outputs = []
-        outputs.append(grpcclient.InferRequestedOutput('OUTPUT'))
+        outputs.append(grpcclient.InferRequestedOutput("OUTPUT"))
         # Issue the asynchronous sequence inference.
         yield {
             "model_name": model_name,
             "inputs": inputs,
             "outputs": outputs,
-            "request_id": '{}_{}'.format(sequence_id, count),
+            "request_id": "{}_{}".format(sequence_id, count),
             "sequence_id": sequence_id,
             "sequence_start": (count == 1),
-            "sequence_end": (count == len(values))
+            "sequence_end": (count == len(values)),
         }
         count = count + 1
 
 
 async def main(FLAGS):
-
     # We use custom "sequence" models which take 1 input
     # value. The output is the accumulated value of the inputs. See
     # src/custom/sequence.
-    int_sequence_model_name = "simple_dyna_sequence" if FLAGS.dyna else "simple_sequence"
-    string_sequence_model_name = "simple_string_dyna_sequence" if FLAGS.dyna else "simple_sequence"
+    int_sequence_model_name = ("simple_dyna_sequence"
+                               if FLAGS.dyna else "simple_sequence")
+    string_sequence_model_name = ("simple_string_dyna_sequence"
+                                  if FLAGS.dyna else "simple_sequence")
     model_version = ""
     batch_size = 1
 
@@ -101,29 +102,39 @@ async def main(FLAGS):
 
     async with grpcclient.InferenceServerClient(
             url=FLAGS.url, verbose=FLAGS.verbose) as triton_client:
-
         # Request iterator that yields the next request
         async def async_request_iterator():
-            async for request in async_stream_yield([0] + values, batch_size,
-                                                    int_sequence_id0,
-                                                    int_sequence_model_name,
-                                                    model_version):
+            async for request in async_stream_yield(
+                [0] + values,
+                    batch_size,
+                    int_sequence_id0,
+                    int_sequence_model_name,
+                    model_version,
+            ):
                 yield request
             async for request in async_stream_yield(
-                [100] + [-1 * val for val in values], batch_size,
-                    int_sequence_id1, int_sequence_model_name, model_version):
+                [100] + [-1 * val for val in values],
+                    batch_size,
+                    int_sequence_id1,
+                    int_sequence_model_name,
+                    model_version,
+            ):
                 yield request
             async for request in async_stream_yield(
-                [20] + [-1 * val for val in values], batch_size,
-                    string_sequence_id0, string_sequence_model_name,
-                    model_version):
+                [20] + [-1 * val for val in values],
+                    batch_size,
+                    string_sequence_id0,
+                    string_sequence_model_name,
+                    model_version,
+            ):
                 yield request
 
         try:
             # Start streaming
             response_iterator = triton_client.stream_infer(
                 inputs_iterator=async_request_iterator(),
-                stream_timeout=FLAGS.stream_timeout)
+                stream_timeout=FLAGS.stream_timeout,
+            )
             # Read response from the stream
             user_data = UserData()
             async for response in response_iterator:
@@ -145,20 +156,20 @@ async def main(FLAGS):
                 sys.exit(1)
             else:
                 try:
-                    this_id = data_item.get_response().id.split('_')[0]
+                    this_id = data_item.get_response().id.split("_")[0]
                     if int(this_id) == int_sequence_id0:
-                        int_result0_list.append(data_item.as_numpy('OUTPUT'))
+                        int_result0_list.append(data_item.as_numpy("OUTPUT"))
                     elif int(this_id) == int_sequence_id1:
-                        int_result1_list.append(data_item.as_numpy('OUTPUT'))
+                        int_result1_list.append(data_item.as_numpy("OUTPUT"))
                     elif this_id == string_sequence_id0:
-                        string_result0_list.append(data_item.as_numpy('OUTPUT'))
+                        string_result0_list.append(data_item.as_numpy("OUTPUT"))
                     else:
                         print(
                             "unexpected sequence id returned by the server: {}".
                             format(this_id))
                         sys.exit(1)
                 except ValueError:
-                    string_result0_list.append(data_item.as_numpy('OUTPUT'))
+                    string_result0_list.append(data_item.as_numpy("OUTPUT"))
 
             recv_count = recv_count + 1
 
@@ -199,39 +210,47 @@ async def main(FLAGS):
     print("PASS: grpc aio sequence stream")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
     parser.add_argument(
-        '-u',
-        '--url',
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
         type=str,
         required=False,
-        default='localhost:8001',
-        help='Inference server URL and it gRPC port. Default is localhost:8001.'
+        default="localhost:8001",
+        help="Inference server URL and it gRPC port. Default is localhost:8001.",
     )
-    parser.add_argument('-t',
-                        '--stream-timeout',
-                        type=float,
-                        required=False,
-                        default=None,
-                        help='Stream timeout in seconds. Default is None.')
-    parser.add_argument('-d',
-                        '--dyna',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Assume dynamic sequence model')
-    parser.add_argument('-o',
-                        '--offset',
-                        type=int,
-                        required=False,
-                        default=0,
-                        help='Add offset to sequence ID used')
+    parser.add_argument(
+        "-t",
+        "--stream-timeout",
+        type=float,
+        required=False,
+        default=None,
+        help="Stream timeout in seconds. Default is None.",
+    )
+    parser.add_argument(
+        "-d",
+        "--dyna",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Assume dynamic sequence model",
+    )
+    parser.add_argument(
+        "-o",
+        "--offset",
+        type=int,
+        required=False,
+        default=0,
+        help="Add offset to sequence ID used",
+    )
     FLAGS = parser.parse_args()
     asyncio.run(main(FLAGS))

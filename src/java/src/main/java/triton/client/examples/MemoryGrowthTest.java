@@ -26,12 +26,11 @@
 
 package triton.client.examples;
 
+import com.google.common.collect.Lists;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import com.google.common.collect.Lists;
 import triton.client.InferInput;
 import triton.client.InferRequestedOutput;
 import triton.client.InferResult;
@@ -46,8 +45,10 @@ public class MemoryGrowthTest {
     for (int i = 0; i < repetitions; i++) {
       // Create the data for the input tensor.
       boolean isBinary = true;
-      InferInput input0 = new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
-      List<Integer> lst_0 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+      InferInput input0 =
+          new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
+      List<Integer> lst_0 =
+          IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
       int[] input0_data = lst_0.stream().mapToInt(j -> j).toArray();
       input0.setData(input0_data, isBinary);
 
@@ -55,8 +56,10 @@ public class MemoryGrowthTest {
       List<InferRequestedOutput> outputs =
           Lists.newArrayList(new InferRequestedOutput("OUTPUT0", isBinary));
 
-      InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
-      InferResult result = client.infer("custom_identity_int32", inputs, outputs);
+      InferenceServerClient client =
+          new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
+      InferResult result =
+          client.infer("custom_identity_int32", inputs, outputs);
 
       // Get the output arrays from the results and verify
       int[] output0 = result.getOutputAsInt("OUTPUT0");

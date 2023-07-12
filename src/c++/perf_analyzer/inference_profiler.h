@@ -61,7 +61,7 @@ struct LoadParams {
   double stability_threshold;
 };
 
-/// Data structure to keep track of real-time load status and determine wether
+/// Data structure to keep track of real-time load status and determine whether
 /// stopping criteria has met for the current phase of testing.
 struct LoadStatus {
   // Stores the observations of infer_per_sec and latencies in a vector
@@ -189,7 +189,7 @@ class InferenceProfiler {
   /// \param verbose Whether to print verbose logging.
   /// \param stability_threshold The range that the measurement is considered as
   /// stable. i.e. within (1 +/- stability_threshold) * average value of the
-  /// last 3 measurements. The criterias are "infer per second" and "average
+  /// last 3 measurements. The criteria are "infer per second" and "average
   /// latency", or "infer per second" and "percentile latency" if valid
   /// percentile is set (see 'percentile' below).
   /// \param measurement_window_ms The duration of each measurement in msec.
@@ -216,7 +216,7 @@ class InferenceProfiler {
   /// \param should_collect_metrics Whether server-side inference server metrics
   /// should be collected.
   /// \param overhead_pct_threshold User set threshold above which the PA
-  /// overhead is too significant to provide useable results.
+  /// overhead is too significant to provide usable results.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -342,7 +342,7 @@ class InferenceProfiler {
       const double request_rate, std::vector<PerfStatus>& perf_statuses,
       bool& meets_threshold, bool& is_stable);
 
-  /// Measures throughput and latencies for custom load without controling
+  /// Measures throughput and latencies for custom load without controlling
   /// request rate nor concurrency. Requires load manager to be loaded with
   /// a file specifying the time intervals.
   /// \param perf_statuses Appends the measurements summary at the end of this
@@ -419,7 +419,7 @@ class InferenceProfiler {
   cb::Error GetServerSideStatus(
       std::map<cb::ModelIdentifier, cb::ModelStatistics>* model_status);
 
-  /// Sumarize the measurement with the provided statistics.
+  /// Summarize the measurement with the provided statistics.
   /// \param start_status The model status at the start of the measurement.
   /// \param end_status The model status at the end of the measurement.
   /// \param start_stat The accumulated context status at the start.
@@ -691,7 +691,7 @@ class InferenceProfiler {
   bool should_collect_metrics_{false};
 
   /// User set threshold above which the PA overhead is too significant to
-  /// provide useable results.
+  /// provide usable results.
   const double overhead_pct_threshold_{0.0};
 
 #ifndef DOCTEST_CONFIG_DISABLE

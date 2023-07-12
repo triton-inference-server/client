@@ -639,7 +639,7 @@ TEST_CASE(
     "dataloader: ParseData: Missing Shape" *
     doctest::description(
         "When a tensor's shape is dynamic (-1), then it needs to be provided "
-        "via --shape option (which is not visable to this testing), or via a "
+        "via --shape option (which is not visible to this testing), or via a "
         "shape option in the json. If not, an error is thrown"))
 {
   std::string json_str{R"({"data": [{ "INPUT1": [1,2,3] } ]})"};

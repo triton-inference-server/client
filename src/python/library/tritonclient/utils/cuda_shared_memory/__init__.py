@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

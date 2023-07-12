@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,9 +27,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gzip
 import zlib
-import rapidjson as json
-from tritonclient.utils import deserialize_bytes_tensor, deserialize_bf16_tensor, raise_error, triton_to_np_dtype
+
 import numpy as np
+import rapidjson as json
+from tritonclient.utils import (
+    deserialize_bf16_tensor,
+    deserialize_bytes_tensor,
+    raise_error,
+    triton_to_np_dtype,
+)
 
 
 class InferResult:
@@ -44,7 +52,7 @@ class InferResult:
     """
 
     def __init__(self, response, verbose):
-        header_length = response.get('Inference-Header-Content-Length')
+        header_length = response.get("Inference-Header-Content-Length")
 
         # Internal class that simulate the interface of 'response'
         class DecompressedResponse:
@@ -61,12 +69,12 @@ class InferResult:
                     self.offset_ += length
                     return self.decompressed_data_[prev_offset:self.offset_]
 
-        content_encoding = response.get('Content-Encoding')
+        content_encoding = response.get("Content-Encoding")
         if content_encoding is not None:
             if content_encoding == "gzip":
                 response = DecompressedResponse(gzip.decompress(
                     response.read()))
-            elif content_encoding == 'deflate':
+            elif content_encoding == "deflate":
                 response = DecompressedResponse(zlib.decompress(
                     response.read()))
         if header_length is None:
@@ -77,8 +85,8 @@ class InferResult:
                 self._result = json.loads(content)
             except UnicodeDecodeError as e:
                 raise_error(
-                    f'Failed to encode using UTF-8. Please use binary_data=True, if'
-                    f' you want to pass a byte array. UnicodeError: {e}')
+                    f"Failed to encode using UTF-8. Please use binary_data=True, if"
+                    f" you want to pass a byte array. UnicodeError: {e}")
         else:
             header_length = int(header_length)
             content = response.read(length=header_length)
@@ -91,13 +99,13 @@ class InferResult:
             # Read the remaining data off the response body.
             self._buffer = response.read()
             buffer_index = 0
-            for output in self._result['outputs']:
+            for output in self._result["outputs"]:
                 parameters = output.get("parameters")
                 if parameters is not None:
                     this_data_size = parameters.get("binary_data_size")
                     if this_data_size is not None:
                         self._output_name_to_buffer_map[
-                            output['name']] = buffer_index
+                            output["name"]] = buffer_index
                         buffer_index = buffer_index + this_data_size
 
     @classmethod
@@ -121,7 +129,7 @@ class InferResult:
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
-        
+
         Returns
         -------
         InferResult
@@ -135,8 +143,8 @@ class InferResult:
                 self.response_body_ = response_body
                 self.offset_ = 0
                 self.parameters_ = {
-                    'Inference-Header-Content-Length': header_length,
-                    'Content-Encoding': content_encoding
+                    "Inference-Header-Content-Length": header_length,
+                    "Content-Encoding": content_encoding,
                 }
 
             def get(self, key):
@@ -168,10 +176,10 @@ class InferResult:
             The numpy array containing the response data for the tensor or
             None if the data for specified tensor name is not found.
         """
-        if self._result.get('outputs') is not None:
-            for output in self._result['outputs']:
-                if output['name'] == name:
-                    datatype = output['datatype']
+        if self._result.get("outputs") is not None:
+            for output in self._result["outputs"]:
+                if output["name"] == name:
+                    datatype = output["datatype"]
                     has_binary_data = False
                     parameters = output.get("parameters")
                     if parameters is not None:
@@ -182,7 +190,7 @@ class InferResult:
                                 start_index = self._output_name_to_buffer_map[
                                     name]
                                 end_index = start_index + this_data_size
-                                if datatype == 'BYTES':
+                                if datatype == "BYTES":
                                     # String results contain a 4-byte string length
                                     # followed by the actual string characters. Hence,
                                     # need to decode the raw bytes to convert into
@@ -195,18 +203,19 @@ class InferResult:
                                 else:
                                     np_array = np.frombuffer(
                                         self._buffer[start_index:end_index],
-                                        dtype=triton_to_np_dtype(datatype))
+                                        dtype=triton_to_np_dtype(datatype),
+                                    )
                             else:
                                 np_array = np.empty(0)
                     if not has_binary_data:
-                        np_array = np.array(output['data'],
+                        np_array = np.array(output["data"],
                                             dtype=triton_to_np_dtype(datatype))
-                    np_array = np_array.reshape(output['shape'])
+                    np_array = np_array.reshape(output["shape"])
                     return np_array
         return None
 
     def get_output(self, name):
-        """Retrieves the output tensor corresponding to the named ouput.
+        """Retrieves the output tensor corresponding to the named output.
 
         Parameters
         ----------
@@ -218,11 +227,11 @@ class InferResult:
         -------
         Dict
             If an output tensor with specified name is present in
-            the infer resonse then returns it as a json dict,
+            the infer response then returns it as a json dict,
             otherwise returns None.
         """
-        for output in self._result['outputs']:
-            if output['name'] == name:
+        for output in self._result["outputs"]:
+            if output["name"] == name:
                 return output
 
         return None

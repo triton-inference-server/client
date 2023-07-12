@@ -26,12 +26,11 @@
 
 package triton.client.examples;
 
+import com.google.common.collect.Lists;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import com.google.common.collect.Lists;
 import triton.client.InferInput;
 import triton.client.InferRequestedOutput;
 import triton.client.InferResult;
@@ -47,14 +46,18 @@ public class SimpleInferClient {
   {
     // Initialize the data
     boolean isBinary0 = false;
-    InferInput input0 = new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
-    List<Integer> lst_0 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+    InferInput input0 =
+        new InferInput("INPUT0", new long[] {1L, 16}, DataType.INT32);
+    List<Integer> lst_0 =
+        IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
     int[] input0_data = lst_0.stream().mapToInt(i -> i).toArray();
     input0.setData(input0_data, isBinary0);
 
     boolean isBinary1 = true;
-    InferInput input1 = new InferInput("INPUT1", new long[] {1L, 16}, DataType.INT32);
-    List<Integer> lst_1 = IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
+    InferInput input1 =
+        new InferInput("INPUT1", new long[] {1L, 16}, DataType.INT32);
+    List<Integer> lst_1 =
+        IntStream.rangeClosed(1, 16).boxed().collect(Collectors.toList());
     int[] input1_data = lst_1.stream().mapToInt(i -> i).toArray();
     input1.setData(input1_data, isBinary1);
 
@@ -63,7 +66,8 @@ public class SimpleInferClient {
         new InferRequestedOutput("OUTPUT0", isBinary0),
         new InferRequestedOutput("OUTPUT1", isBinary1));
 
-    InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
+    InferenceServerClient client =
+        new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
     InferResult result = client.infer("simple", inputs, outputs);
 
     // Get the output arrays from the results
@@ -73,11 +77,11 @@ public class SimpleInferClient {
     // Validate outputs
     for (int i = 0; i < op0.length; i++) {
       System.out.println(
-          Integer.toString(lst_0.get(i)) + " + " + Integer.toString(lst_1.get(i)) + " = "
-          + Integer.toString(op0[i]));
+          Integer.toString(lst_0.get(i)) + " + "
+          + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op0[i]));
       System.out.println(
-          Integer.toString(lst_0.get(i)) + " - " + Integer.toString(lst_1.get(i)) + " = "
-          + Integer.toString(op1[i]));
+          Integer.toString(lst_0.get(i)) + " - "
+          + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op1[i]));
 
       if (op0[i] != (lst_0.get(i) + lst_1.get(i))) {
         System.out.println("OUTPUT0 contains incorrect sum");

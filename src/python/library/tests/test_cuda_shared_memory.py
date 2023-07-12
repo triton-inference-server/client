@@ -26,11 +26,12 @@
 
 import unittest
 
+import numpy
 import tritonclient.utils as utils
 import tritonclient.utils.cuda_shared_memory as cudashm
+
 # Torch support read / write DLPack object on GPU
 import torch
-import numpy
 
 
 class DLPackTest(unittest.TestCase):

@@ -760,7 +760,7 @@ InferenceProfiler::ProfileHelper(
     metrics_manager_->StopQueryingMetrics();
   }
 
-  // return the appropriate error which might have occured in the
+  // return the appropriate error which might have occurred in the
   // stability_window for its proper handling.
   while (!error.empty()) {
     if (!error.front().IsOk()) {
@@ -1227,8 +1227,8 @@ InferenceProfiler::Summarize(
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
 
-  double window_duration_s{
-      window_duration_ns / static_cast<double>(NANOS_PER_SECOND)};
+  double window_duration_s{window_duration_ns /
+                           static_cast<double>(NANOS_PER_SECOND)};
 
   SummarizeSendRequestRate(
       window_duration_s, manager_->GetAndResetNumSentRequests(), summary);

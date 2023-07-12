@@ -55,7 +55,7 @@ class MetricsManager {
   /// Starts background thread that queries metrics on an interval
   void StartQueryingMetrics();
 
-  /// Checks if background thread threw exception and propogates it if so
+  /// Checks if background thread threw exception and propagates it if so
   void CheckQueryingStatus();
 
   /// Puts the latest-collected metrics from background thread into vector

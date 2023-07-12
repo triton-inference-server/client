@@ -26,25 +26,29 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 
 import grpc
+import numpy as np
 from tritonclient.grpc import service_pb2, service_pb2_grpc
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -129,7 +133,7 @@ if __name__ == '__main__':
     try:
         response = grpc_stub.ModelInfer(request)
     except Exception as e:
-        if "contents field must not be specified when using " \
-            "raw_input_contents for 'INPUT0' for model 'simple'" \
-                in e.__str__():
-            print('PASS: explicit int')
+        if ("contents field must not be specified when using "
+                "raw_input_contents for 'INPUT0' for model 'simple'"
+                in e.__str__()):
+            print("PASS: explicit int")

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,20 +28,19 @@
 
 import os
 import sys
-
-from setuptools import find_packages
-from setuptools import setup
 from itertools import chain
+
+from setuptools import find_packages, setup
 
 if "--plat-name" in sys.argv:
     PLATFORM_FLAG = sys.argv[sys.argv.index("--plat-name") + 1]
 else:
-    PLATFORM_FLAG = 'any'
+    PLATFORM_FLAG = "any"
 
-if 'VERSION' not in os.environ:
-    raise Exception('envvar VERSION must be specified')
+if "VERSION" not in os.environ:
+    raise Exception("envvar VERSION must be specified")
 
-VERSION = os.environ['VERSION']
+VERSION = os.environ["VERSION"]
 
 try:
     from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
@@ -51,8 +52,9 @@ try:
             self.root_is_pure = False
 
         def get_tag(self):
-            pyver, abi, plat = 'py3', 'none', PLATFORM_FLAG
+            pyver, abi, plat = "py3", "none", PLATFORM_FLAG
             return pyver, abi, plat
+
 except ImportError:
     bdist_wheel = None
 
@@ -67,11 +69,11 @@ def req_file(filename, folder="requirements"):
 
 install_requires = req_file("requirements.txt")
 extras_require = {
-    'grpc': req_file("requirements_grpc.txt"),
-    'http': req_file("requirements_http.txt"),
+    "grpc": req_file("requirements_grpc.txt"),
+    "http": req_file("requirements_http.txt"),
 }
 
-extras_require['all'] = list(chain(extras_require.values()))
+extras_require["all"] = list(chain(extras_require.values()))
 
 platform_package_data = []
 if PLATFORM_FLAG != 'any':
@@ -80,53 +82,60 @@ if PLATFORM_FLAG != 'any':
 data_files = [
     ("", ["LICENSE.txt"]),
 ]
-if (PLATFORM_FLAG != 'any') and ("@TRITON_ENABLE_PERF_ANALYZER@" == "ON"):
+if (PLATFORM_FLAG != "any") and ("@TRITON_ENABLE_PERF_ANALYZER@" == "ON"):
     data_files += [("bin", ["perf_analyzer", "perf_client"])]
 
 setup(
-    name='tritonclient',
+    name="tritonclient",
     version=VERSION,
-    author='NVIDIA Inc.',
-    author_email='sw-dl-triton@nvidia.com',
+    author="NVIDIA Inc.",
+    author_email="sw-dl-triton@nvidia.com",
     description=
     "Python client library and utilities for communicating with Triton Inference Server",
     long_description=
     """See [download-using-python-package-installer-pip](https://github.com/triton-inference-server/client/tree/main#download-using-python-package-installer-pip) """
     """for package details.\n\nThe [client examples](https://github.com/triton-inference-server/client/tree/main/src/python/examples) demonstrate how to use the """
     """package to issue request to [triton inference server](https://github.com/triton-inference-server/server).""",
-    long_description_content_type='text/markdown',
-    license='BSD',
-    url='https://developer.nvidia.com/nvidia-triton-inference-server',
+    long_description_content_type="text/markdown",
+    license="BSD",
+    url="https://developer.nvidia.com/nvidia-triton-inference-server",
     keywords=[
-        'grpc', 'http', 'triton', 'tensorrt', 'inference', 'server', 'service',
-        'client', 'nvidia'
+        "grpc",
+        "http",
+        "triton",
+        "tensorrt",
+        "inference",
+        "server",
+        "service",
+        "client",
+        "nvidia",
     ],
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
-        'Intended Audience :: Information Technology',
-        'Topic :: Scientific/Engineering',
-        'Topic :: Scientific/Engineering :: Image Recognition',
-        'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Utilities',
-        'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Environment :: Console',
-        'Natural Language :: English',
-        'Operating System :: OS Independent',
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "Intended Audience :: Information Technology",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Utilities",
+        "License :: OSI Approved :: BSD License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Environment :: Console",
+        "Natural Language :: English",
+        "Operating System :: OS Independent",
     ],
     install_requires=install_requires,
     extras_require=extras_require,
     packages=find_packages(),
     package_data={
-        '': platform_package_data,
+        "": platform_package_data,
     },
     zip_safe=False,
-    cmdclass={'bdist_wheel': bdist_wheel},
+    cmdclass={"bdist_wheel": bdist_wheel},
     data_files=data_files,
 )

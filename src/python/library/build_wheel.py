@@ -34,12 +34,11 @@ import subprocess
 import sys
 from distutils.dir_util import copy_tree
 from tempfile import mkstemp
-import sys
 
 
 def fail_if(p, msg):
     if p:
-        print('error: {}'.format(msg), file=sys.stderr)
+        print("error: {}".format(msg), file=sys.stderr)
         sys.exit(1)
 
 
@@ -56,12 +55,12 @@ def cpdir(src, dest):
 
 
 def sed(pattern, replace, source, dest=None):
-    fin = open(source, 'r')
+    fin = open(source, "r")
     if dest:
-        fout = open(dest, 'w')
+        fout = open(dest, "w")
     else:
         fd, name = mkstemp()
-        fout = open(name, 'w')
+        fout = open(name, "w")
 
     for line in fin:
         out = re.sub(pattern, replace, line)
@@ -73,110 +72,125 @@ def sed(pattern, replace, source, dest=None):
         shutil.copyfile(name, source)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dest-dir',
+    parser.add_argument("--dest-dir",
                         type=str,
                         required=True,
-                        help='Destination directory.')
-    parser.add_argument('--linux',
-                        action="store_true",
-                        required=False,
-                        help='Include linux specific artifacts.')
-    parser.add_argument('--perf-analyzer',
-                        type=str,
-                        required=False,
-                        default=None,
-                        help='perf-analyzer path.')
+                        help="Destination directory.")
+    parser.add_argument(
+        "--linux",
+        action="store_true",
+        required=False,
+        help="Include linux specific artifacts.",
+    )
+    parser.add_argument(
+        "--perf-analyzer",
+        type=str,
+        required=False,
+        default=None,
+        help="perf-analyzer path.",
+    )
 
     FLAGS = parser.parse_args()
 
     FLAGS.triton_version = None
-    with open('TRITON_VERSION', "r") as vfile:
+    with open("TRITON_VERSION", "r") as vfile:
         FLAGS.triton_version = vfile.readline().strip()
 
-    FLAGS.whl_dir = os.path.join(FLAGS.dest_dir, 'wheel')
+    FLAGS.whl_dir = os.path.join(FLAGS.dest_dir, "wheel")
 
     print("=== Building in: {}".format(os.getcwd()))
     print("=== Using builddir: {}".format(FLAGS.whl_dir))
     print("Adding package files")
 
-    mkdir(os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    shutil.copy('tritonclient/__init__.py',
-                os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    shutil.copy('tritonclient/_client.py',
-                os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    shutil.copy('tritonclient/_plugin.py',
-                os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    shutil.copy('tritonclient/_request.py',
-                os.path.join(FLAGS.whl_dir, 'tritonclient'))
-    shutil.copy('tritonclient/_auth.py',
-                os.path.join(FLAGS.whl_dir, 'tritonclient'))
+    mkdir(os.path.join(FLAGS.whl_dir, "tritonclient"))
+    shutil.copy("tritonclient/__init__.py",
+                os.path.join(FLAGS.whl_dir, "tritonclient"))
+    shutil.copy("tritonclient/_client.py",
+                os.path.join(FLAGS.whl_dir, "tritonclient"))
+    shutil.copy("tritonclient/_plugin.py",
+                os.path.join(FLAGS.whl_dir, "tritonclient"))
+    shutil.copy("tritonclient/_request.py",
+                os.path.join(FLAGS.whl_dir, "tritonclient"))
+    shutil.copy("tritonclient/_auth.py",
+                os.path.join(FLAGS.whl_dir, "tritonclient"))
 
     # Needed for backwards-compatibility; remove when moving
     # completely to the new structure.
-    if os.path.isdir('tritonclientutils'):
-        cpdir('tritonclientutils',
-              os.path.join(FLAGS.whl_dir, 'tritonclientutils'))
-    if os.path.isdir('tritonhttpclient'):
-        cpdir('tritonhttpclient', os.path.join(FLAGS.whl_dir,
-                                               'tritonhttpclient'))
-    if os.path.isdir('tritongrpcclient'):
-        cpdir('tritongrpcclient', os.path.join(FLAGS.whl_dir,
-                                               'tritongrpcclient'))
+    if os.path.isdir("tritonclientutils"):
+        cpdir("tritonclientutils",
+              os.path.join(FLAGS.whl_dir, "tritonclientutils"))
+    if os.path.isdir("tritonhttpclient"):
+        cpdir("tritonhttpclient", os.path.join(FLAGS.whl_dir,
+                                               "tritonhttpclient"))
+    if os.path.isdir("tritongrpcclient"):
+        cpdir("tritongrpcclient", os.path.join(FLAGS.whl_dir,
+                                               "tritongrpcclient"))
     if FLAGS.linux:
-        if os.path.isdir('tritonshmutils'):
-            cpdir('tritonshmutils', os.path.join(FLAGS.whl_dir,
-                                                 'tritonshmutils'))
+        if os.path.isdir("tritonshmutils"):
+            cpdir("tritonshmutils", os.path.join(FLAGS.whl_dir,
+                                                 "tritonshmutils"))
 
-    if os.path.isdir('tritonclient/grpc'):
-        cpdir('tritonclient/grpc',
-              os.path.join(FLAGS.whl_dir, 'tritonclient/grpc'))
+    if os.path.isdir("tritonclient/grpc"):
+        cpdir("tritonclient/grpc",
+              os.path.join(FLAGS.whl_dir, "tritonclient/grpc"))
         shutil.copyfile(
             "../_deps/repo-common-build/protobuf/model_config_pb2.py",
             os.path.join(FLAGS.whl_dir,
-                         'tritonclient/grpc/model_config_pb2.py'))
+                         "tritonclient/grpc/model_config_pb2.py"),
+        )
         shutil.copyfile(
             "../_deps/repo-common-build/protobuf/grpc_service_pb2.py",
-            os.path.join(FLAGS.whl_dir, 'tritonclient/grpc/service_pb2.py'))
+            os.path.join(FLAGS.whl_dir, "tritonclient/grpc/service_pb2.py"),
+        )
         shutil.copyfile(
             "../_deps/repo-common-build/protobuf/grpc_service_pb2_grpc.py",
             os.path.join(FLAGS.whl_dir,
-                         'tritonclient/grpc/service_pb2_grpc.py'))
+                         "tritonclient/grpc/service_pb2_grpc.py"),
+        )
 
         # Use 'sed' command to fix protoc compiled imports (see
         # https://github.com/google/protobuf/issues/1491).
-        for fl in ('model_config_pb2.py', 'service_pb2.py'):
-            sed("^import ([^ ]*)_pb2 as ([^ ]*)$",
+        for fl in ("model_config_pb2.py", "service_pb2.py"):
+            sed(
+                "^import ([^ ]*)_pb2 as ([^ ]*)$",
                 "from tritonclient.grpc import \\1_pb2 as \\2",
-                os.path.join(FLAGS.whl_dir, 'tritonclient', 'grpc', fl))
+                os.path.join(FLAGS.whl_dir, "tritonclient", "grpc", fl),
+            )
 
         sed(
             "^import grpc_([^ ]*)_pb2 as ([^ ]*)$",
             "from tritonclient.grpc import \\1_pb2 as \\2",
             os.path.join(FLAGS.whl_dir,
-                         'tritonclient/grpc/service_pb2_grpc.py'))
+                         "tritonclient/grpc/service_pb2_grpc.py"),
+        )
 
-    if os.path.isdir('tritonclient/http'):
-        cpdir('tritonclient/http',
-              os.path.join(FLAGS.whl_dir, 'tritonclient/http'))
+    if os.path.isdir("tritonclient/http"):
+        cpdir("tritonclient/http",
+              os.path.join(FLAGS.whl_dir, "tritonclient/http"))
 
-    mkdir(os.path.join(FLAGS.whl_dir, 'tritonclient/utils'))
+    mkdir(os.path.join(FLAGS.whl_dir, "tritonclient/utils"))
     shutil.copyfile(
         "tritonclient/utils/__init__.py",
-        os.path.join(FLAGS.whl_dir, 'tritonclient/utils/__init__.py'))
+        os.path.join(FLAGS.whl_dir, "tritonclient/utils/__init__.py"),
+    )
     shutil.copyfile(
         "tritonclient/utils/_dlpack.py",
-        os.path.join(FLAGS.whl_dir, 'tritonclient/utils/_dlpack.py'))
+        os.path.join(FLAGS.whl_dir, "tritonclient/utils/_dlpack.py"),
+    )
     shutil.copyfile(
         "tritonclient/utils/_shared_memory_tensor.py",
         os.path.join(FLAGS.whl_dir,
-                     'tritonclient/utils/_shared_memory_tensor.py'))
+                     "tritonclient/utils/_shared_memory_tensor.py"),
+    )
 
     if FLAGS.linux:
-        cpdir('tritonclient/utils/shared_memory',
-              os.path.join(FLAGS.whl_dir, 'tritonclient/utils/shared_memory'))
+        cpdir(
+            "tritonclient/utils/shared_memory",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
+        )
         shutil.copyfile(
             'tritonclient/utils/libcshm.so',
             os.path.join(FLAGS.whl_dir,
@@ -190,16 +204,16 @@ if __name__ == '__main__':
         if FLAGS.perf_analyzer is not None:
             # The permission bits need to be copied to along with the executable
             shutil.copy(FLAGS.perf_analyzer,
-                        os.path.join(FLAGS.whl_dir, 'perf_analyzer'))
+                        os.path.join(FLAGS.whl_dir, "perf_analyzer"))
 
             # Create a symbolic link for backwards compatibility
-            if not os.path.exists(os.path.join(FLAGS.whl_dir, 'perf_client')):
-                os.symlink('perf_analyzer',
-                           os.path.join(FLAGS.whl_dir, 'perf_client'))
+            if not os.path.exists(os.path.join(FLAGS.whl_dir, "perf_client")):
+                os.symlink("perf_analyzer",
+                           os.path.join(FLAGS.whl_dir, "perf_client"))
 
-    shutil.copyfile('LICENSE.txt', os.path.join(FLAGS.whl_dir, 'LICENSE.txt'))
-    shutil.copyfile('setup.py', os.path.join(FLAGS.whl_dir, 'setup.py'))
-    cpdir('requirements', os.path.join(FLAGS.whl_dir, 'requirements'))
+    shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
+    shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))
+    cpdir("requirements", os.path.join(FLAGS.whl_dir, "requirements"))
 
     os.chdir(FLAGS.whl_dir)
     print("=== Building wheel")
@@ -211,18 +225,18 @@ if __name__ == '__main__':
         else:
             platform_name = "manylinux1_x86_64"
         args = [
-            'python3', 'setup.py', 'bdist_wheel', '--plat-name', platform_name
+            "python3", "setup.py", "bdist_wheel", "--plat-name", platform_name
         ]
     else:
-        args = ['python3', 'setup.py', 'bdist_wheel']
+        args = ["python3", "setup.py", "bdist_wheel"]
 
     wenv = os.environ.copy()
     wenv["VERSION"] = FLAGS.triton_version
     p = subprocess.Popen(args, env=wenv)
     p.wait()
-    fail_if(p.returncode != 0, 'setup.py failed')
+    fail_if(p.returncode != 0, "setup.py failed")
 
-    cpdir('dist', FLAGS.dest_dir)
+    cpdir("dist", FLAGS.dest_dir)
 
     print("=== Output wheel file is in: {}".format(FLAGS.dest_dir))
-    touch(os.path.join(FLAGS.dest_dir, 'stamp.whl'))
+    touch(os.path.join(FLAGS.dest_dir, "stamp.whl"))

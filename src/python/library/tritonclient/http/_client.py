@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,20 +25,22 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import base64
+import gzip
+import zlib
+from urllib.parse import quote
+
 import gevent
 import gevent.pool
-from tritonclient.utils import raise_error
-from ._utils import _raise_if_error, _get_query_string, _get_inference_request
-from ._infer_result import InferResult
-from urllib.parse import quote
+import rapidjson as json
 from geventhttpclient import HTTPClient
 from geventhttpclient.url import URL
-import rapidjson as json
-import base64
-import zlib
-import gzip
+from tritonclient.utils import raise_error
+
 from .._client import InferenceServerClientBase
 from .._request import Request
+from ._infer_result import InferResult
+from ._utils import _get_inference_request, _get_query_string, _raise_if_error
 
 
 class InferAsyncRequest:
@@ -104,7 +108,7 @@ class InferenceServerClient(InferenceServerClientBase):
     Parameters
     ----------
     url : str
-        The inference server name, port and optional base path 
+        The inference server name, port and optional base path
         in the following format: host:port/<base-path>, e.g.
         'localhost:8000'.
 
@@ -154,23 +158,25 @@ class InferenceServerClient(InferenceServerClientBase):
 
     """
 
-    def __init__(self,
-                 url,
-                 verbose=False,
-                 concurrency=1,
-                 connection_timeout=60.0,
-                 network_timeout=60.0,
-                 max_greenlets=None,
-                 ssl=False,
-                 ssl_options=None,
-                 ssl_context_factory=None,
-                 insecure=False):
+    def __init__(
+        self,
+        url,
+        verbose=False,
+        concurrency=1,
+        connection_timeout=60.0,
+        network_timeout=60.0,
+        max_greenlets=None,
+        ssl=False,
+        ssl_options=None,
+        ssl_context_factory=None,
+        insecure=False,
+    ):
         super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
         scheme = "https://" if ssl else "http://"
         self._parsed_url = URL(scheme + url)
-        self._base_uri = self._parsed_url.request_uri.rstrip('/')
+        self._base_uri = self._parsed_url.request_uri.rstrip("/")
         self._client_stub = HTTPClient.from_url(
             self._parsed_url,
             concurrency=concurrency,
@@ -178,7 +184,8 @@ class InferenceServerClient(InferenceServerClientBase):
             network_timeout=network_timeout,
             ssl_options=ssl_options,
             ssl_context_factory=ssl_context_factory,
-            insecure=insecure)
+            insecure=insecure,
+        )
         self._pool = gevent.pool.Pool(max_greenlets)
         self._verbose = verbose
 
@@ -591,10 +598,12 @@ class InferenceServerClient(InferenceServerClientBase):
 
         """
         request_uri = "v2/repository/index"
-        response = self._post(request_uri=request_uri,
-                              request_body="",
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body="",
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
 
         content = response.read()
@@ -649,10 +658,12 @@ class InferenceServerClient(InferenceServerClientBase):
                 if "parameters" not in load_request:
                     load_request["parameters"] = {}
                 load_request["parameters"][path] = base64.b64encode(content)
-        response = self._post(request_uri=request_uri,
-                              request_body=json.dumps(load_request),
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=json.dumps(load_request),
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             print("Loaded model '{}'".format(model_name))
@@ -689,10 +700,12 @@ class InferenceServerClient(InferenceServerClientBase):
                 "unload_dependents": unload_dependents
             }
         }
-        response = self._post(request_uri=request_uri,
-                              request_body=json.dumps(unload_request),
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=json.dumps(unload_request),
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             print("Loaded model '{}'".format(model_name))
@@ -799,10 +812,12 @@ class InferenceServerClient(InferenceServerClientBase):
         else:
             request_uri = "v2/trace/setting"
 
-        response = self._post(request_uri=request_uri,
-                              request_body=json.dumps(settings),
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=json.dumps(settings),
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
 
         content = response.read()
@@ -882,10 +897,12 @@ class InferenceServerClient(InferenceServerClientBase):
             If unable to update the log settings.
         """
         request_uri = "v2/logging"
-        response = self._post(request_uri=request_uri,
-                              request_body=json.dumps(settings),
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=json.dumps(settings),
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
 
         content = response.read()
@@ -1014,16 +1031,18 @@ class InferenceServerClient(InferenceServerClientBase):
             quote(name))
 
         register_request = {
-            'key': key,
-            'offset': offset,
-            'byte_size': byte_size
+            "key": key,
+            "offset": offset,
+            "byte_size": byte_size
         }
         request_body = json.dumps(register_request)
 
-        response = self._post(request_uri=request_uri,
-                              request_body=request_body,
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=request_body,
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             print("Registered system shared memory with name '{}'".format(name))
@@ -1060,10 +1079,12 @@ class InferenceServerClient(InferenceServerClientBase):
         else:
             request_uri = "v2/systemsharedmemory/unregister"
 
-        response = self._post(request_uri=request_uri,
-                              request_body="",
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body="",
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             if name != "":
@@ -1156,18 +1177,20 @@ class InferenceServerClient(InferenceServerClientBase):
             quote(name))
 
         register_request = {
-            'raw_handle': {
-                'b64': raw_handle
+            "raw_handle": {
+                "b64": raw_handle
             },
-            'device_id': device_id,
-            'byte_size': byte_size
+            "device_id": device_id,
+            "byte_size": byte_size,
         }
         request_body = json.dumps(register_request)
 
-        response = self._post(request_uri=request_uri,
-                              request_body=request_body,
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=request_body,
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             print("Registered cuda shared memory with name '{}'".format(name))
@@ -1204,10 +1227,12 @@ class InferenceServerClient(InferenceServerClientBase):
         else:
             request_uri = "v2/cudasharedmemory/unregister"
 
-        response = self._post(request_uri=request_uri,
-                              request_body="",
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body="",
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
         if self._verbose:
             if name != "":
@@ -1217,15 +1242,17 @@ class InferenceServerClient(InferenceServerClientBase):
                 print("Unregistered all cuda shared memory regions")
 
     @staticmethod
-    def generate_request_body(inputs,
-                              outputs=None,
-                              request_id="",
-                              sequence_id=0,
-                              sequence_start=False,
-                              sequence_end=False,
-                              priority=0,
-                              timeout=None,
-                              parameters=None):
+    def generate_request_body(
+        inputs,
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        parameters=None,
+    ):
         """Generate a request body for inference using the supplied 'inputs'
         requesting the outputs specified by 'outputs'.
 
@@ -1267,8 +1294,8 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This option is only respected by the model that is 
-            configured with dynamic batching. See here for more details: 
+            for the model. This option is only respected by the model that is
+            configured with dynamic batching. See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         parameters: dict
             Optional fields to be included in the 'parameters' fields.
@@ -1280,22 +1307,24 @@ class InferenceServerClient(InferenceServerClientBase):
         Int
             The byte size of the inference request header in the request body.
             Returns None if the whole request body constitutes the request header.
-            
+
 
         Raises
         ------
         InferenceServerException
             If server fails to perform inference.
         """
-        return _get_inference_request(inputs=inputs,
-                                      request_id=request_id,
-                                      outputs=outputs,
-                                      sequence_id=sequence_id,
-                                      sequence_start=sequence_start,
-                                      sequence_end=sequence_end,
-                                      priority=priority,
-                                      timeout=timeout,
-                                      custom_parameters=parameters)
+        return _get_inference_request(
+            inputs=inputs,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            custom_parameters=parameters,
+        )
 
     @staticmethod
     def parse_response_body(response_body,
@@ -1316,7 +1345,7 @@ class InferenceServerClient(InferenceServerClientBase):
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
-        
+
         Returns
         -------
         InferResult
@@ -1325,22 +1354,24 @@ class InferenceServerClient(InferenceServerClientBase):
         return InferResult.from_response_body(response_body, verbose,
                                               header_length, content_encoding)
 
-    def infer(self,
-              model_name,
-              inputs,
-              model_version="",
-              outputs=None,
-              request_id="",
-              sequence_id=0,
-              sequence_start=False,
-              sequence_end=False,
-              priority=0,
-              timeout=None,
-              headers=None,
-              query_params=None,
-              request_compression_algorithm=None,
-              response_compression_algorithm=None,
-              parameters=None):
+    def infer(
+        self,
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        headers=None,
+        query_params=None,
+        request_compression_algorithm=None,
+        response_compression_algorithm=None,
+        parameters=None,
+    ):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1388,8 +1419,8 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This option is only respected by the model that is 
-            configured with dynamic batching. See here for more details: 
+            for the model. This option is only respected by the model that is
+            configured with dynamic batching. See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         headers: dict
             Optional dictionary specifying additional HTTP
@@ -1429,14 +1460,15 @@ class InferenceServerClient(InferenceServerClientBase):
             sequence_end=sequence_end,
             priority=priority,
             timeout=timeout,
-            custom_parameters=parameters)
+            custom_parameters=parameters,
+        )
 
         if request_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "gzip"
             request_body = gzip.compress(request_body)
-        elif request_compression_algorithm == 'deflate':
+        elif request_compression_algorithm == "deflate":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "deflate"
@@ -1448,7 +1480,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "gzip"
-        elif response_compression_algorithm == 'deflate':
+        elif response_compression_algorithm == "deflate":
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "deflate"
@@ -1466,30 +1498,34 @@ class InferenceServerClient(InferenceServerClientBase):
         else:
             request_uri = "v2/models/{}/infer".format(quote(model_name))
 
-        response = self._post(request_uri=request_uri,
-                              request_body=request_body,
-                              headers=headers,
-                              query_params=query_params)
+        response = self._post(
+            request_uri=request_uri,
+            request_body=request_body,
+            headers=headers,
+            query_params=query_params,
+        )
         _raise_if_error(response)
 
         return InferResult(response, self._verbose)
 
-    def async_infer(self,
-                    model_name,
-                    inputs,
-                    model_version="",
-                    outputs=None,
-                    request_id="",
-                    sequence_id=0,
-                    sequence_start=False,
-                    sequence_end=False,
-                    priority=0,
-                    timeout=None,
-                    headers=None,
-                    query_params=None,
-                    request_compression_algorithm=None,
-                    response_compression_algorithm=None,
-                    parameters=None):
+    def async_infer(
+        self,
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        headers=None,
+        query_params=None,
+        request_compression_algorithm=None,
+        response_compression_algorithm=None,
+        parameters=None,
+    ):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'. Even though this call is
         non-blocking, however, the actual number of concurrent requests to
@@ -1543,8 +1579,8 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This option is only respected by the model that is 
-            configured with dynamic batching. See here for more details: 
+            for the model. This option is only respected by the model that is
+            configured with dynamic batching. See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         headers: dict
             Optional dictionary specifying additional HTTP
@@ -1562,7 +1598,7 @@ class InferenceServerClient(InferenceServerClientBase):
             support the specified algorithm. Currently supports "deflate",
             "gzip" and None. By default, no compression is requested.
         parameters : dict
-            Optional custom parameters to be included in the inference 
+            Optional custom parameters to be included in the inference
             request.
 
         Returns
@@ -1588,14 +1624,15 @@ class InferenceServerClient(InferenceServerClientBase):
             sequence_end=sequence_end,
             priority=priority,
             timeout=timeout,
-            custom_parameters=parameters)
+            custom_parameters=parameters,
+        )
 
         if request_compression_algorithm == "gzip":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "gzip"
             request_body = gzip.compress(request_body)
-        elif request_compression_algorithm == 'deflate':
+        elif request_compression_algorithm == "deflate":
             if headers is None:
                 headers = {}
             headers["Content-Encoding"] = "deflate"
@@ -1607,7 +1644,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "gzip"
-        elif response_compression_algorithm == 'deflate':
+        elif response_compression_algorithm == "deflate":
             if headers is None:
                 headers = {}
             headers["Accept-Encoding"] = "deflate"

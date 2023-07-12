@@ -114,7 +114,7 @@ TEST_CASE("CtxIdTrackers: Rand")
       results[x]++;
     }
 
-    // Confirm that the distrubution of the picked CTX IDs is random
+    // Confirm that the distribution of the picked CTX IDs is random
     double mean =
         std::accumulate(results.begin(), results.end(), 0.0) / results.size();
     double variance = 0;

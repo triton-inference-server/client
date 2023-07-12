@@ -26,30 +26,34 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 
+import numpy as np
 import tritonclient.http as httpclient
 import tritonclient.utils.cuda_shared_memory as cudashm
 from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -114,17 +118,17 @@ if __name__ == '__main__':
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input0_data", input_byte_size)
 
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input1_data", input_byte_size)
 
     outputs = []
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT0", binary_data=True))
     outputs[-1].set_shared_memory("output0_data", output_byte_size)
 
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT1', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT1", binary_data=True))
     outputs[-1].set_shared_memory("output1_data", output_byte_size)
 
     results = triton_client.infer(model_name=model_name,
@@ -135,8 +139,10 @@ if __name__ == '__main__':
     output0 = results.get_output("OUTPUT0")
     if output0 is not None:
         output0_data = cudashm.get_contents_as_numpy(
-            shm_op0_handle, utils.triton_to_np_dtype(output0['datatype']),
-            output0['shape'])
+            shm_op0_handle,
+            utils.triton_to_np_dtype(output0["datatype"]),
+            output0["shape"],
+        )
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
@@ -144,8 +150,10 @@ if __name__ == '__main__':
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
         output1_data = cudashm.get_contents_as_numpy(
-            shm_op1_handle, utils.triton_to_np_dtype(output1['datatype']),
-            output1['shape'])
+            shm_op1_handle,
+            utils.triton_to_np_dtype(output1["datatype"]),
+            output1["shape"],
+        )
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -173,4 +181,4 @@ if __name__ == '__main__':
     cudashm.destroy_shared_memory_region(shm_op1_handle)
     assert len(cudashm.allocated_shared_memory_regions()) == 0
 
-    print('PASS: cuda shared memory')
+    print("PASS: cuda shared memory")

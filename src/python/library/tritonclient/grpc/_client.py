@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,23 +26,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import struct
-import grpc
-from tritonclient.grpc import service_pb2
-from tritonclient.grpc import service_pb2_grpc
-from ._utils import raise_error_grpc, raise_error, _grpc_compression_type, _get_inference_request, get_error_grpc
-from ._infer_result import InferResult
-from ._infer_stream import _InferStream, _RequestIterator
-from google.protobuf.json_format import MessageToJson
-import rapidjson as json
 import base64
+import struct
+
+import grpc
+import rapidjson as json
+from google.protobuf.json_format import MessageToJson
+from tritonclient.grpc import service_pb2, service_pb2_grpc
+
 from .._client import InferenceServerClientBase
 from .._request import Request
+from ._infer_result import InferResult
+from ._infer_stream import _InferStream, _RequestIterator
+from ._utils import (
+    _get_inference_request,
+    _grpc_compression_type,
+    get_error_grpc,
+    raise_error,
+    raise_error_grpc,
+)
 
 # Should be kept consistent with the value specified in
 # src/core/constants.h, which specifies MAX_GRPC_MESSAGE_SIZE
 # as INT32_MAX.
-INT32_MAX = 2**(struct.Struct('i').size * 8 - 1) - 1
+INT32_MAX = 2**(struct.Struct("i").size * 8 - 1) - 1
 MAX_GRPC_MESSAGE_SIZE = INT32_MAX
 
 
@@ -75,11 +84,13 @@ class KeepAliveOptions:
 
     """
 
-    def __init__(self,
-                 keepalive_time_ms=INT32_MAX,
-                 keepalive_timeout_ms=20000,
-                 keepalive_permit_without_calls=False,
-                 http2_max_pings_without_data=2):
+    def __init__(
+        self,
+        keepalive_time_ms=INT32_MAX,
+        keepalive_timeout_ms=20000,
+        keepalive_permit_without_calls=False,
+        http2_max_pings_without_data=2,
+    ):
         self.keepalive_time_ms = keepalive_time_ms
         self.keepalive_timeout_ms = keepalive_timeout_ms
         self.keepalive_permit_without_calls = keepalive_permit_without_calls
@@ -144,16 +155,18 @@ class InferenceServerClient(InferenceServerClientBase):
         If unable to create a client.
     """
 
-    def __init__(self,
-                 url,
-                 verbose=False,
-                 ssl=False,
-                 root_certificates=None,
-                 private_key=None,
-                 certificate_chain=None,
-                 creds=None,
-                 keepalive_options=None,
-                 channel_args=None):
+    def __init__(
+        self,
+        url,
+        verbose=False,
+        ssl=False,
+        root_certificates=None,
+        private_key=None,
+        certificate_chain=None,
+        creds=None,
+        keepalive_options=None,
+        channel_args=None,
+    ):
         super().__init__()
         # Explicitly check "is not None" here to support passing an empty
         # list to specify setting no channel arguments.
@@ -166,15 +179,19 @@ class InferenceServerClient(InferenceServerClientBase):
 
             # To specify custom channel_opt, see the channel_args parameter.
             channel_opt = [
-                ('grpc.max_send_message_length', MAX_GRPC_MESSAGE_SIZE),
-                ('grpc.max_receive_message_length', MAX_GRPC_MESSAGE_SIZE),
-                ('grpc.keepalive_time_ms', keepalive_options.keepalive_time_ms),
-                ('grpc.keepalive_timeout_ms',
+                ("grpc.max_send_message_length", MAX_GRPC_MESSAGE_SIZE),
+                ("grpc.max_receive_message_length", MAX_GRPC_MESSAGE_SIZE),
+                ("grpc.keepalive_time_ms", keepalive_options.keepalive_time_ms),
+                ("grpc.keepalive_timeout_ms",
                  keepalive_options.keepalive_timeout_ms),
-                ('grpc.keepalive_permit_without_calls',
-                 keepalive_options.keepalive_permit_without_calls),
-                ('grpc.http2.max_pings_without_data',
-                 keepalive_options.http2_max_pings_without_data),
+                (
+                    "grpc.keepalive_permit_without_calls",
+                    keepalive_options.keepalive_permit_without_calls,
+                ),
+                (
+                    "grpc.http2.max_pings_without_data",
+                    keepalive_options.http2_max_pings_without_data,
+                ),
             ]
 
         if creds:
@@ -182,17 +199,19 @@ class InferenceServerClient(InferenceServerClientBase):
         elif ssl:
             rc_bytes = pk_bytes = cc_bytes = None
             if root_certificates is not None:
-                with open(root_certificates, 'rb') as rc_fs:
+                with open(root_certificates, "rb") as rc_fs:
                     rc_bytes = rc_fs.read()
             if private_key is not None:
-                with open(private_key, 'rb') as pk_fs:
+                with open(private_key, "rb") as pk_fs:
                     pk_bytes = pk_fs.read()
             if certificate_chain is not None:
-                with open(certificate_chain, 'rb') as cc_fs:
+                with open(certificate_chain, "rb") as cc_fs:
                     cc_bytes = cc_fs.read()
-            creds = grpc.ssl_channel_credentials(root_certificates=rc_bytes,
-                                                 private_key=pk_bytes,
-                                                 certificate_chain=cc_bytes)
+            creds = grpc.ssl_channel_credentials(
+                root_certificates=rc_bytes,
+                private_key=pk_bytes,
+                certificate_chain=cc_bytes,
+            )
             self._channel = grpc.secure_channel(url, creds, options=channel_opt)
         else:
             self._channel = grpc.insecure_channel(url, options=channel_opt)
@@ -206,8 +225,8 @@ class InferenceServerClient(InferenceServerClientBase):
         request = Request(headers)
         self._call_plugin(request)
 
-        request_metadata = request.headers.items(
-        ) if request.headers is not None else ()
+        request_metadata = (request.headers.items()
+                            if request.headers is not None else ())
         return request_metadata
 
     def __enter__(self):
@@ -619,7 +638,7 @@ class InferenceServerClient(InferenceServerClientBase):
             request = service_pb2.RepositoryModelUnloadRequest(
                 model_name=model_name)
             request.parameters[
-                'unload_dependents'].bool_param = unload_dependents
+                "unload_dependents"].bool_param = unload_dependents
             if self._verbose:
                 print("unload_model, metadata {}\n{}".format(metadata, request))
             self._client_stub.RepositoryModelUnload(request=request,
@@ -1146,7 +1165,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 name=name,
                 raw_handle=base64.b64decode(raw_handle),
                 device_id=device_id,
-                byte_size=byte_size)
+                byte_size=byte_size,
+            )
             if self._verbose:
                 print("register_cuda_shared_memory, metadata {}\n{}".format(
                     metadata, request))
@@ -1196,21 +1216,23 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def infer(self,
-              model_name,
-              inputs,
-              model_version="",
-              outputs=None,
-              request_id="",
-              sequence_id=0,
-              sequence_start=False,
-              sequence_end=False,
-              priority=0,
-              timeout=None,
-              client_timeout=None,
-              headers=None,
-              compression_algorithm=None,
-              parameters=None):
+    def infer(
+        self,
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        client_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+        parameters=None,
+    ):
         """Run synchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1258,8 +1280,8 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This option is only respected by the model that is 
-            configured with dynamic batching. See here for more details: 
+            for the model. This option is only respected by the model that is
+            configured with dynamic batching. See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         client_timeout : float
             The maximum end-to-end time, in seconds, the request is allowed
@@ -1275,7 +1297,7 @@ class InferenceServerClient(InferenceServerClientBase):
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
         parameters : dict
-            Optional custom parameters to be included in the inference 
+            Optional custom parameters to be included in the inference
             request.
 
         Returns
@@ -1293,17 +1315,19 @@ class InferenceServerClient(InferenceServerClientBase):
         if type(model_version) != str:
             raise_error("model version must be a string")
 
-        request = _get_inference_request(model_name=model_name,
-                                         inputs=inputs,
-                                         model_version=model_version,
-                                         request_id=request_id,
-                                         outputs=outputs,
-                                         sequence_id=sequence_id,
-                                         sequence_start=sequence_start,
-                                         sequence_end=sequence_end,
-                                         priority=priority,
-                                         timeout=timeout,
-                                         parameters=parameters)
+        request = _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
@@ -1312,7 +1336,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 request=request,
                 metadata=metadata,
                 timeout=client_timeout,
-                compression=_grpc_compression_type(compression_algorithm))
+                compression=_grpc_compression_type(compression_algorithm),
+            )
             if self._verbose:
                 print(response)
             result = InferResult(response)
@@ -1320,22 +1345,24 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def async_infer(self,
-                    model_name,
-                    inputs,
-                    callback,
-                    model_version="",
-                    outputs=None,
-                    request_id="",
-                    sequence_id=0,
-                    sequence_start=False,
-                    sequence_end=False,
-                    priority=0,
-                    timeout=None,
-                    client_timeout=None,
-                    headers=None,
-                    compression_algorithm=None,
-                    parameters=None):
+    def async_infer(
+        self,
+        model_name,
+        inputs,
+        callback,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        client_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+        parameters=None,
+    ):
         """Run asynchronous inference using the supplied 'inputs' requesting
         the outputs specified by 'outputs'.
 
@@ -1390,8 +1417,8 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This option is only respected by the model that is 
-            configured with dynamic batching. See here for more details: 
+            for the model. This option is only respected by the model that is
+            configured with dynamic batching. See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
             The maximum end-to-end time, in seconds, the request is allowed
             to take. The client will abort request and provide
@@ -1431,17 +1458,19 @@ class InferenceServerClient(InferenceServerClientBase):
         if type(model_version) != str:
             raise_error("model version must be a string")
 
-        request = _get_inference_request(model_name=model_name,
-                                         inputs=inputs,
-                                         model_version=model_version,
-                                         request_id=request_id,
-                                         outputs=outputs,
-                                         sequence_id=sequence_id,
-                                         sequence_start=sequence_start,
-                                         sequence_end=sequence_end,
-                                         priority=priority,
-                                         timeout=timeout,
-                                         parameters=parameters)
+        request = _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
         if self._verbose:
             print("async_infer, metadata {}\n{}".format(metadata, request))
 
@@ -1450,7 +1479,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 request=request,
                 metadata=metadata,
                 timeout=client_timeout,
-                compression=_grpc_compression_type(compression_algorithm))
+                compression=_grpc_compression_type(compression_algorithm),
+            )
             self._call_future.add_done_callback(wrapped_callback)
             if self._verbose:
                 verbose_message = "Sent request"
@@ -1481,7 +1511,7 @@ class InferenceServerClient(InferenceServerClientBase):
             ownership of these objects will be given to the user. The
             'error' would be None for a successful inference.
         stream_timeout : float
-            Optional stream timeout (in seconds). The stream will be closed 
+            Optional stream timeout (in seconds). The stream will be closed
             once the specified timeout expires.
         headers: dict
             Optional dictionary specifying additional HTTP
@@ -1511,31 +1541,33 @@ class InferenceServerClient(InferenceServerClientBase):
                 _RequestIterator(self._stream),
                 metadata=metadata,
                 timeout=stream_timeout,
-                compression=_grpc_compression_type(compression_algorithm))
+                compression=_grpc_compression_type(compression_algorithm),
+            )
             self._stream._init_handler(response_iterator)
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     def stop_stream(self):
-        """Stops a stream if one available.
-        """
+        """Stops a stream if one available."""
         if self._stream is not None:
             self._stream.close()
         self._stream = None
 
-    def async_stream_infer(self,
-                           model_name,
-                           inputs,
-                           model_version="",
-                           outputs=None,
-                           request_id="",
-                           sequence_id=0,
-                           sequence_start=False,
-                           sequence_end=False,
-                           enable_empty_final_response=False,
-                           priority=0,
-                           timeout=None,
-                           parameters=None):
+    def async_stream_infer(
+        self,
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        enable_empty_final_response=False,
+        priority=0,
+        timeout=None,
+        parameters=None,
+    ):
         """Runs an asynchronous inference over gRPC bi-directional streaming
         API. A stream must be established with a call to start_stream()
         before calling this function. All the results will be provided to the
@@ -1575,7 +1607,7 @@ class InferenceServerClient(InferenceServerClientBase):
         enable_empty_final_response: bool
             Indicates whether "empty" responses should be generated and sent
             back to the client from the server during streaming inference when
-            they contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag. 
+            they contain the TRITONSERVER_RESPONSE_COMPLETE_FINAL flag.
             This strictly relates to the case of models/backends that send
             flags-only responses (use TRITONBACKEND_ResponseFactorySendFlags(TRITONSERVER_RESPONSE_COMPLETE_FINAL)
             or InferenceResponseSender.send(flags=TRITONSERVER_RESPONSE_COMPLETE_FINAL))
@@ -1597,9 +1629,9 @@ class InferenceServerClient(InferenceServerClientBase):
             cannot be completed within the time the server can take a
             model-specific action such as terminating the request. If not
             provided, the server will handle the request using default setting
-            for the model. This does not stop the grpc stream itself and is only 
-            respected by the model that is configured with dynamic batching. 
-            See here for more details: 
+            for the model. This does not stop the grpc stream itself and is only
+            respected by the model that is configured with dynamic batching.
+            See here for more details:
             https://github.com/triton-inference-server/server/blob/main/docs/user_guide/model_configuration.md#dynamic-batcher
         parameters : dict
             Optional custom parameters to be included in the inference
@@ -1618,23 +1650,25 @@ class InferenceServerClient(InferenceServerClientBase):
         if type(model_version) != str:
             raise_error("model version must be a string")
 
-        request = _get_inference_request(model_name=model_name,
-                                         inputs=inputs,
-                                         model_version=model_version,
-                                         request_id=request_id,
-                                         outputs=outputs,
-                                         sequence_id=sequence_id,
-                                         sequence_start=sequence_start,
-                                         sequence_end=sequence_end,
-                                         priority=priority,
-                                         timeout=timeout,
-                                         parameters=parameters)
+        request = _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
 
         # Unique to streaming inference as it only pertains to decoupled models
         # Only attach the parameter if True, no need to send/parse when False.
         if enable_empty_final_response:
             request.parameters[
-                'triton_enable_empty_final_response'].bool_param = True
+                "triton_enable_empty_final_response"].bool_param = True
 
         if self._verbose:
             print("async_stream_infer\n{}".format(request))

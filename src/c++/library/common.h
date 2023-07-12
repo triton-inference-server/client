@@ -66,7 +66,7 @@ class Error {
   explicit Error(const std::string& msg = "");
 
   /// Accessor for the message of this error.
-  /// \return The messsage for the error. Empty if no error.
+  /// \return The message for the error. Empty if no error.
   const std::string& Message() const { return msg_; }
 
   /// Does this error indicate OK status?
@@ -485,14 +485,14 @@ class InferResult {
   virtual Error Id(std::string* id) const = 0;
 
   /// Get the shape of output result returned in the response.
-  /// \param output_name The name of the ouput to get shape.
+  /// \param output_name The name of the output to get shape.
   /// \param shape Returns the shape of result for specified output name.
   /// \return Error object indicating success or failure.
   virtual Error Shape(
       const std::string& output_name, std::vector<int64_t>* shape) const = 0;
 
   /// Get the datatype of output result returned in the response.
-  /// \param output_name The name of the ouput to get datatype.
+  /// \param output_name The name of the output to get datatype.
   /// \param shape Returns the datatype of result for specified output name.
   /// \return Error object indicating success or failure.
   virtual Error Datatype(

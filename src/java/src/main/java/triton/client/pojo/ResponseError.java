@@ -30,13 +30,9 @@ package triton.client.pojo;
  * This is a JSON object representing error response body of triton server.
  */
 public class ResponseError {
-    private String error;
+  private String error;
 
-    public String getError() {
-        return error;
-    }
+  public String getError() { return error; }
 
-    public void setError(String error) {
-        this.error = error;
-    }
+  public void setError(String error) { this.error = error; }
 }

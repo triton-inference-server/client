@@ -88,7 +88,7 @@ Default is `triton`.
 
 #### `--bls-composing-models=<string>`
 
-Specifies the list of all BLS composing models as a comma separated list of 
+Specifies the list of all BLS composing models as a comma separated list of
 model names (with optional model version number after a colon for each) that may
 be called by the input BLS model. For example,
 `--bls-composing-models=modelA:3,modelB` would specify that modelA and modelB
@@ -302,7 +302,7 @@ When pointing to a JSON file, the user must adhere to the format described in
 the [input data documentation](input_data.md). By specifying JSON data, users
 can control data used with every request. Multiple data streams can be specified
 for a sequence model, and Perf Analyzer will select a data stream in a
-round-robin fashion for every new sequence. Muliple JSON files can also be
+round-robin fashion for every new sequence. Multiple JSON files can also be
 provided (`--input-data json_file1.json --input-data json_file2.json` and so on)
 and Perf Analyzer will append data streams from each file. When using
 `--service-kind=torchserve`, make sure this option points to a JSON file.
@@ -310,7 +310,7 @@ and Perf Analyzer will append data streams from each file. When using
 If the option is path to a directory then the directory must contain a binary
 text file for each non-string/string input respectively, named the same as the
 input. Each file must contain the data required for that input for a batch-1
-request. Each binary file should contain the raw binary representation of the 
+request. Each binary file should contain the raw binary representation of the
 input in row-major order for non-string inputs. The text file should contain
 all strings needed by batch-1, each in a new line, listed in row-major order.
 
@@ -348,7 +348,7 @@ Default is `128`.
 #### `--shared-memory=[none|system|cuda]`
 
 Specifies the type of the shared memory to use for input and output data.
-         
+
 Default is `none`.
 
 #### `--output-shared-memory-size=<n>`
@@ -359,7 +359,7 @@ and/or variable shape. The value should be larger than the size of the largest
 output tensor that the model is expected to return. Perf Analyzer will use the
 following formula to calculate the total shared memory to allocate:
 output_shared_memory_size * number_of_outputs * batch_size.
-         
+
 Default is `102400` (100 KB).
 
 #### `--input-tensor-format=[binary|json]`
@@ -548,7 +548,7 @@ details. Only used for `--service-kind=triton`.
 
 Specifies a trace level. `OFF` disables tracing. `TIMESTAMPS` traces
 timestamps. `TENSORS` traces tensors. It may be specified multiple times to
-trace multiple informations.
+trace multiple information.
 
 Default is `OFF`.
 

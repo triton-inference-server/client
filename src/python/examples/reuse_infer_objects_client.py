@@ -26,10 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 
+import numpy as np
 import tritonclient.grpc as grpcclient
 import tritonclient.http as httpclient
 import tritonclient.utils as utils
@@ -65,15 +65,18 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         if use_shared_memory:
             if protocol == "grpc":
                 output0_data = shm.get_contents_as_numpy(
-                    shm_op0_handle, utils.triton_to_np_dtype(output0.datatype),
-                    output0.shape)
+                    shm_op0_handle,
+                    utils.triton_to_np_dtype(output0.datatype),
+                    output0.shape,
+                )
             else:
                 output0_data = shm.get_contents_as_numpy(
                     shm_op0_handle,
-                    utils.triton_to_np_dtype(output0['datatype']),
-                    output0['shape'])
+                    utils.triton_to_np_dtype(output0["datatype"]),
+                    output0["shape"],
+                )
         else:
-            output0_data = results.as_numpy('OUTPUT0')
+            output0_data = results.as_numpy("OUTPUT0")
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
@@ -83,15 +86,18 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
         if use_shared_memory:
             if protocol == "grpc":
                 output1_data = shm.get_contents_as_numpy(
-                    shm_op1_handle, utils.triton_to_np_dtype(output1.datatype),
-                    output1.shape)
+                    shm_op1_handle,
+                    utils.triton_to_np_dtype(output1.datatype),
+                    output1.shape,
+                )
             else:
                 output1_data = shm.get_contents_as_numpy(
                     shm_op1_handle,
-                    utils.triton_to_np_dtype(output1['datatype']),
-                    output1['shape'])
+                    utils.triton_to_np_dtype(output1["datatype"]),
+                    output1["shape"],
+                )
         else:
-            output1_data = results.as_numpy('OUTPUT1')
+            output1_data = results.as_numpy("OUTPUT1")
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -119,27 +125,33 @@ def infer_and_validata(use_shared_memory, orig_input0_data, orig_input1_data):
 # Tests whether the same InferInput and InferRequestedOutput objects can be
 # successfully used repeatedly for different inferences using/not-using
 # shared memory.
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-i',
-                        '--protocol',
-                        type=str,
-                        required=False,
-                        default='HTTP',
-                        help='Protocol (HTTP/gRPC) used to communicate with ' +
-                        'the inference service. Default is HTTP.')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-i",
+        "--protocol",
+        type=str,
+        required=False,
+        default="HTTP",
+        help="Protocol (HTTP/gRPC) used to communicate with " +
+        "the inference service. Default is HTTP.",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -215,21 +227,21 @@ if __name__ == '__main__':
     # Set the parameters to use data from shared memory
     inputs = []
     if protocol == "grpc":
-        inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
+        inputs.append(grpcclient.InferInput("INPUT0", [1, 16], "INT32"))
 
-        inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
+        inputs.append(grpcclient.InferInput("INPUT1", [1, 16], "INT32"))
     else:
-        inputs.append(httpclient.InferInput('INPUT0', [1, 16], "INT32"))
+        inputs.append(httpclient.InferInput("INPUT0", [1, 16], "INT32"))
 
-        inputs.append(httpclient.InferInput('INPUT1', [1, 16], "INT32"))
+        inputs.append(httpclient.InferInput("INPUT1", [1, 16], "INT32"))
 
     outputs = []
     if protocol == "grpc":
-        outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
-        outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
+        outputs.append(grpcclient.InferRequestedOutput("OUTPUT0"))
+        outputs.append(grpcclient.InferRequestedOutput("OUTPUT1"))
     else:
-        outputs.append(httpclient.InferRequestedOutput('OUTPUT0'))
-        outputs.append(httpclient.InferRequestedOutput('OUTPUT1'))
+        outputs.append(httpclient.InferRequestedOutput("OUTPUT0"))
+        outputs.append(httpclient.InferRequestedOutput("OUTPUT1"))
 
     # Use shared memory
     infer_and_validata(True, input0_data, input1_data)

@@ -26,32 +26,35 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
-
-import tritonclient.grpc as grpcclient
-from tritonclient import utils
-import tritonclient.utils.cuda_shared_memory as cudashm
-
 from ctypes import *
+
+import numpy as np
+import tritonclient.grpc as grpcclient
+import tritonclient.utils.cuda_shared_memory as cudashm
+from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -116,17 +119,17 @@ if __name__ == '__main__':
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT0", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input0_data", input_byte_size)
 
-    inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT1", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input1_data", input_byte_size)
 
     outputs = []
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT0"))
     outputs[-1].set_shared_memory("output0_data", output_byte_size)
 
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT1"))
     outputs[-1].set_shared_memory("output1_data", output_byte_size)
 
     results = triton_client.infer(model_name=model_name,
@@ -175,4 +178,4 @@ if __name__ == '__main__':
     cudashm.destroy_shared_memory_region(shm_op1_handle)
     assert len(cudashm.allocated_shared_memory_regions()) == 0
 
-    print('PASS: cudashm')
+    print("PASS: cudashm")

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,10 +26,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from tritonclient.grpc import service_pb2
-from ._utils import raise_error
-from tritonclient.utils import *
 import numpy as np
+from tritonclient.grpc import service_pb2
+from tritonclient.utils import *
+
+from ._utils import raise_error
 
 
 class InferInput:
@@ -48,7 +51,7 @@ class InferInput:
     def __init__(self, name, shape, datatype):
         self._input = service_pb2.ModelInferRequest().InferInputTensor()
         self._input.name = name
-        self._input.ClearField('shape')
+        self._input.ClearField("shape")
         self._input.shape.extend(shape)
         self._input.datatype = datatype
         self._raw_content = None
@@ -91,7 +94,7 @@ class InferInput:
         shape : list
             The shape of the associated input.
         """
-        self._input.ClearField('shape')
+        self._input.ClearField("shape")
         self._input.shape.extend(shape)
 
     def set_data_from_numpy(self, input_tensor):
@@ -135,22 +138,22 @@ class InferInput:
                     str(input_tensor.shape)[1:-1],
                     str(self._input.shape)[1:-1]))
 
-        self._input.parameters.pop('shared_memory_region', None)
-        self._input.parameters.pop('shared_memory_byte_size', None)
-        self._input.parameters.pop('shared_memory_offset', None)
+        self._input.parameters.pop("shared_memory_region", None)
+        self._input.parameters.pop("shared_memory_byte_size", None)
+        self._input.parameters.pop("shared_memory_offset", None)
 
         if self._input.datatype == "BYTES":
             serialized_output = serialize_byte_tensor(input_tensor)
             if serialized_output.size > 0:
                 self._raw_content = serialized_output.item()
             else:
-                self._raw_content = b''
+                self._raw_content = b""
         elif self._input.datatype == "BF16":
             serialized_output = serialize_bf16_tensor(input_tensor)
             if serialized_output.size > 0:
                 self._raw_content = serialized_output.item()
             else:
-                self._raw_content = b''
+                self._raw_content = b""
         else:
             self._raw_content = input_tensor.tobytes()
 
@@ -172,11 +175,11 @@ class InferInput:
         self._raw_content = None
 
         self._input.parameters[
-            'shared_memory_region'].string_param = region_name
+            "shared_memory_region"].string_param = region_name
         self._input.parameters[
-            'shared_memory_byte_size'].int64_param = byte_size
+            "shared_memory_byte_size"].int64_param = byte_size
         if offset != 0:
-            self._input.parameters['shared_memory_offset'].int64_param = offset
+            self._input.parameters["shared_memory_offset"].int64_param = offset
 
     def _get_tensor(self):
         """Retrieve the underlying InferInputTensor message.

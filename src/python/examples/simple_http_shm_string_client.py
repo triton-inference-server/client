@@ -26,30 +26,34 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 
+import numpy as np
 import tritonclient.http as httpclient
-from tritonclient import utils
 import tritonclient.utils.shared_memory as shm
+from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -76,19 +80,19 @@ if __name__ == '__main__':
     # Create the data for the two input tensors. Initialize the first
     # to unique integers and the second to all ones.
     in0 = np.arange(start=0, stop=16, dtype=np.int32)
-    in0n = np.array([str(x).encode('utf-8') for x in in0.flatten()],
+    in0n = np.array([str(x).encode("utf-8") for x in in0.flatten()],
                     dtype=object)
     input0_data = in0n.reshape(in0.shape)
     in1 = np.ones(shape=16, dtype=np.int32)
-    in1n = np.array([str(x).encode('utf-8') for x in in1.flatten()],
+    in1n = np.array([str(x).encode("utf-8") for x in in1.flatten()],
                     dtype=object)
     input1_data = in1n.reshape(in1.shape)
 
     expected_sum = np.array(
-        [str(x).encode('utf-8') for x in np.add(in0, in1).flatten()],
+        [str(x).encode("utf-8") for x in np.add(in0, in1).flatten()],
         dtype=object)
     expected_diff = np.array(
-        [str(x).encode('utf-8') for x in np.subtract(in0, in1).flatten()],
+        [str(x).encode("utf-8") for x in np.subtract(in0, in1).flatten()],
         dtype=object)
     expected_sum_serialized = utils.serialize_byte_tensor(expected_sum)
     expected_diff_serialized = utils.serialize_byte_tensor(expected_diff)
@@ -136,17 +140,17 @@ if __name__ == '__main__':
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(httpclient.InferInput('INPUT0', [1, 16], "BYTES"))
+    inputs.append(httpclient.InferInput("INPUT0", [1, 16], "BYTES"))
     inputs[-1].set_shared_memory("input0_data", input0_byte_size)
 
-    inputs.append(httpclient.InferInput('INPUT1', [1, 16], "BYTES"))
+    inputs.append(httpclient.InferInput("INPUT1", [1, 16], "BYTES"))
     inputs[-1].set_shared_memory("input1_data", input1_byte_size)
 
     outputs = []
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT0', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT0", binary_data=True))
     outputs[-1].set_shared_memory("output0_data", output0_byte_size)
 
-    outputs.append(httpclient.InferRequestedOutput('OUTPUT1', binary_data=True))
+    outputs.append(httpclient.InferRequestedOutput("OUTPUT1", binary_data=True))
     outputs[-1].set_shared_memory("output1_data", output1_byte_size)
 
     results = triton_client.infer(model_name=model_name,
@@ -155,11 +159,13 @@ if __name__ == '__main__':
 
     # Read results from the shared memory.
     output0 = results.get_output("OUTPUT0")
-    print(utils.triton_to_np_dtype(output0['datatype']))
+    print(utils.triton_to_np_dtype(output0["datatype"]))
     if output0 is not None:
         output0_data = shm.get_contents_as_numpy(
-            shm_op0_handle, utils.triton_to_np_dtype(output0['datatype']),
-            output0['shape'])
+            shm_op0_handle,
+            utils.triton_to_np_dtype(output0["datatype"]),
+            output0["shape"],
+        )
     else:
         print("OUTPUT0 is missing in the response.")
         sys.exit(1)
@@ -167,8 +173,10 @@ if __name__ == '__main__':
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
         output1_data = shm.get_contents_as_numpy(
-            shm_op1_handle, utils.triton_to_np_dtype(output1['datatype']),
-            output1['shape'])
+            shm_op1_handle,
+            utils.triton_to_np_dtype(output1["datatype"]),
+            output1["shape"],
+        )
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -197,4 +205,4 @@ if __name__ == '__main__':
     shm.destroy_shared_memory_region(shm_op1_handle)
     assert len(shm.mapped_shared_memory_regions()) == 0
 
-    print('PASS: system shared memory')
+    print("PASS: system shared memory")

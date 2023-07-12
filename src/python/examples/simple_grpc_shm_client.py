@@ -26,31 +26,35 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import numpy as np
 import sys
 from builtins import range
 from ctypes import *
 
+import numpy as np
 import tritonclient.grpc as grpcclient
-from tritonclient import utils
 import tritonclient.utils.shared_memory as shm
+from tritonclient import utils
 
 FLAGS = None
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8001',
-                        help='Inference server URL. Default is localhost:8001.')
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8001",
+        help="Inference server URL. Default is localhost:8001.",
+    )
 
     FLAGS = parser.parse_args()
 
@@ -106,19 +110,19 @@ if __name__ == '__main__':
 
     # Set the parameters to use data from shared memory
     inputs = []
-    inputs.append(grpcclient.InferInput('INPUT0', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT0", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input_data", input_byte_size)
 
-    inputs.append(grpcclient.InferInput('INPUT1', [1, 16], "INT32"))
+    inputs.append(grpcclient.InferInput("INPUT1", [1, 16], "INT32"))
     inputs[-1].set_shared_memory("input_data",
                                  input_byte_size,
                                  offset=input_byte_size)
 
     outputs = []
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT0'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT0"))
     outputs[-1].set_shared_memory("output_data", output_byte_size)
 
-    outputs.append(grpcclient.InferRequestedOutput('OUTPUT1'))
+    outputs.append(grpcclient.InferRequestedOutput("OUTPUT1"))
     outputs[-1].set_shared_memory("output_data",
                                   output_byte_size,
                                   offset=output_byte_size)
@@ -139,11 +143,12 @@ if __name__ == '__main__':
 
     output1 = results.get_output("OUTPUT1")
     if output1 is not None:
-        output1_data = shm.get_contents_as_numpy(shm_op_handle,
-                                                 utils.triton_to_np_dtype(
-                                                     output1.datatype),
-                                                 output1.shape,
-                                                 offset=output_byte_size)
+        output1_data = shm.get_contents_as_numpy(
+            shm_op_handle,
+            utils.triton_to_np_dtype(output1.datatype),
+            output1.shape,
+            offset=output_byte_size,
+        )
     else:
         print("OUTPUT1 is missing in the response.")
         sys.exit(1)
@@ -169,4 +174,4 @@ if __name__ == '__main__':
     shm.destroy_shared_memory_region(shm_op_handle)
     assert len(shm.mapped_shared_memory_regions()) == 0
 
-    print('PASS: system shared memory')
+    print("PASS: system shared memory")

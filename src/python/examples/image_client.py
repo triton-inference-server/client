@@ -26,17 +26,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-from functools import partial
 import os
 import sys
+from functools import partial
 
-from PIL import Image
 import numpy as np
 import tritonclient.grpc as grpcclient
 import tritonclient.grpc.model_config_pb2 as mc
 import tritonclient.http as httpclient
-from tritonclient.utils import InferenceServerException
-from tritonclient.utils import triton_to_np_dtype
+from PIL import Image
+from tritonclient.utils import InferenceServerException, triton_to_np_dtype
 
 if sys.version_info >= (3, 0):
     import queue
@@ -90,7 +89,7 @@ def parse_model(model_metadata, model_config):
     # dimensions as long as all but 1 is size 1 (e.g. { 10 }, { 1, 10
     # }, { 10, 1, 1 } are all ok). Ignore the batch dimension if there
     # is one.
-    output_batch_dim = (model_config.max_batch_size > 0)
+    output_batch_dim = model_config.max_batch_size > 0
     non_one_cnt = 0
     for dim in output_metadata.shape:
         if output_batch_dim:
@@ -102,7 +101,7 @@ def parse_model(model_metadata, model_config):
 
     # Model input must have 3 dims, either CHW or HWC (not counting
     # the batch dimension), either CHW or HWC
-    input_batch_dim = (model_config.max_batch_size > 0)
+    input_batch_dim = model_config.max_batch_size > 0
     expected_input_dims = 3 + (1 if input_batch_dim else 0)
     if len(input_metadata.shape) != expected_input_dims:
         raise Exception(
@@ -114,8 +113,8 @@ def parse_model(model_metadata, model_config):
         FORMAT_ENUM_TO_INT = dict(mc.ModelInput.Format.items())
         input_config.format = FORMAT_ENUM_TO_INT[input_config.format]
 
-    if ((input_config.format != mc.ModelInput.FORMAT_NCHW) and
-        (input_config.format != mc.ModelInput.FORMAT_NHWC)):
+    if (input_config.format != mc.ModelInput.FORMAT_NCHW) and (
+            input_config.format != mc.ModelInput.FORMAT_NHWC):
         raise Exception("unexpected input format " +
                         mc.ModelInput.Format.Name(input_config.format) +
                         ", expecting " +
@@ -132,9 +131,16 @@ def parse_model(model_metadata, model_config):
         h = input_metadata.shape[2 if input_batch_dim else 1]
         w = input_metadata.shape[3 if input_batch_dim else 2]
 
-    return (model_config.max_batch_size, input_metadata.name,
-            output_metadata.name, c, h, w, input_config.format,
-            input_metadata.datatype)
+    return (
+        model_config.max_batch_size,
+        input_metadata.name,
+        output_metadata.name,
+        c,
+        h,
+        w,
+        input_config.format,
+        input_metadata.datatype,
+    )
 
 
 def preprocess(img, format, dtype, c, h, w, scaling, protocol):
@@ -145,9 +151,9 @@ def preprocess(img, format, dtype, c, h, w, scaling, protocol):
     # np.set_printoptions(threshold='nan')
 
     if c == 1:
-        sample_img = img.convert('L')
+        sample_img = img.convert("L")
     else:
-        sample_img = img.convert('RGB')
+        sample_img = img.convert("RGB")
 
     resized_img = sample_img.resize((w, h), Image.BILINEAR)
     resized = np.array(resized_img)
@@ -157,9 +163,9 @@ def preprocess(img, format, dtype, c, h, w, scaling, protocol):
     npdtype = triton_to_np_dtype(dtype)
     typed = resized.astype(npdtype)
 
-    if scaling == 'INCEPTION':
+    if scaling == "INCEPTION":
         scaled = (typed / 127.5) - 1
-    elif scaling == 'VGG':
+    elif scaling == "VGG":
         if c == 1:
             scaled = typed - np.asarray((128,), dtype=npdtype)
         else:
@@ -195,9 +201,9 @@ def postprocess(results, output_name, batch_size, supports_batching):
             results = [results]
         for result in results:
             if output_array.dtype.type == np.object_:
-                cls = "".join(chr(x) for x in result).split(':')
+                cls = "".join(chr(x) for x in result).split(":")
             else:
-                cls = result.split(':')
+                cls = result.split(":")
             print("    {} ({}) = {}".format(cls[0], cls[1], cls[2]))
 
 
@@ -229,6 +235,7 @@ def convert_http_metadata_config(_metadata, _config):
         # Monkey patch collections
         import collections
         import collections.abc
+
         for type_name in collections.abc.__all__:
             setattr(collections, type_name, getattr(collections.abc, type_name))
         from attrdict import AttrDict
@@ -236,77 +243,95 @@ def convert_http_metadata_config(_metadata, _config):
     return AttrDict(_metadata), AttrDict(_config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v',
-                        '--verbose',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Enable verbose output')
-    parser.add_argument('-a',
-                        '--async',
-                        dest="async_set",
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Use asynchronous inference API')
-    parser.add_argument('--streaming',
-                        action="store_true",
-                        required=False,
-                        default=False,
-                        help='Use streaming inference API. ' +
-                        'The flag is only available with gRPC protocol.')
-    parser.add_argument('-m',
-                        '--model-name',
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable verbose output",
+    )
+    parser.add_argument(
+        "-a",
+        "--async",
+        dest="async_set",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Use asynchronous inference API",
+    )
+    parser.add_argument(
+        "--streaming",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Use streaming inference API. " +
+        "The flag is only available with gRPC protocol.",
+    )
+    parser.add_argument("-m",
+                        "--model-name",
                         type=str,
                         required=True,
-                        help='Name of model')
+                        help="Name of model")
     parser.add_argument(
-        '-x',
-        '--model-version',
+        "-x",
+        "--model-version",
         type=str,
         required=False,
         default="",
-        help='Version of model. Default is to use latest version.')
-    parser.add_argument('-b',
-                        '--batch-size',
-                        type=int,
-                        required=False,
-                        default=1,
-                        help='Batch size. Default is 1.')
-    parser.add_argument('-c',
-                        '--classes',
-                        type=int,
-                        required=False,
-                        default=1,
-                        help='Number of class results to report. Default is 1.')
+        help="Version of model. Default is to use latest version.",
+    )
     parser.add_argument(
-        '-s',
-        '--scaling',
-        type=str,
-        choices=['NONE', 'INCEPTION', 'VGG'],
+        "-b",
+        "--batch-size",
+        type=int,
         required=False,
-        default='NONE',
-        help='Type of scaling to apply to image pixels. Default is NONE.')
-    parser.add_argument('-u',
-                        '--url',
-                        type=str,
-                        required=False,
-                        default='localhost:8000',
-                        help='Inference server URL. Default is localhost:8000.')
-    parser.add_argument('-i',
-                        '--protocol',
-                        type=str,
-                        required=False,
-                        default='HTTP',
-                        help='Protocol (HTTP/gRPC) used to communicate with ' +
-                        'the inference service. Default is HTTP.')
-    parser.add_argument('image_filename',
-                        type=str,
-                        nargs='?',
-                        default=None,
-                        help='Input image / Input folder.')
+        default=1,
+        help="Batch size. Default is 1.",
+    )
+    parser.add_argument(
+        "-c",
+        "--classes",
+        type=int,
+        required=False,
+        default=1,
+        help="Number of class results to report. Default is 1.",
+    )
+    parser.add_argument(
+        "-s",
+        "--scaling",
+        type=str,
+        choices=["NONE", "INCEPTION", "VGG"],
+        required=False,
+        default="NONE",
+        help="Type of scaling to apply to image pixels. Default is NONE.",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        required=False,
+        default="localhost:8000",
+        help="Inference server URL. Default is localhost:8000.",
+    )
+    parser.add_argument(
+        "-i",
+        "--protocol",
+        type=str,
+        required=False,
+        default="HTTP",
+        help="Protocol (HTTP/gRPC) used to communicate with " +
+        "the inference service. Default is HTTP.",
+    )
+    parser.add_argument(
+        "image_filename",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Input image / Input folder.",
+    )
     FLAGS = parser.parse_args()
 
     if FLAGS.streaming and FLAGS.protocol.lower() != "grpc":
@@ -426,7 +451,8 @@ if __name__ == '__main__':
                         inputs,
                         request_id=str(sent_count),
                         model_version=FLAGS.model_version,
-                        outputs=outputs)
+                        outputs=outputs,
+                    )
                 elif FLAGS.async_set:
                     if FLAGS.protocol.lower() == "grpc":
                         triton_client.async_infer(
@@ -435,7 +461,8 @@ if __name__ == '__main__':
                             partial(completion_callback, user_data),
                             request_id=str(sent_count),
                             model_version=FLAGS.model_version,
-                            outputs=outputs)
+                            outputs=outputs,
+                        )
                     else:
                         async_requests.append(
                             triton_client.async_infer(
@@ -443,14 +470,17 @@ if __name__ == '__main__':
                                 inputs,
                                 request_id=str(sent_count),
                                 model_version=FLAGS.model_version,
-                                outputs=outputs))
+                                outputs=outputs,
+                            ))
                 else:
                     responses.append(
-                        triton_client.infer(FLAGS.model_name,
-                                            inputs,
-                                            request_id=str(sent_count),
-                                            model_version=FLAGS.model_version,
-                                            outputs=outputs))
+                        triton_client.infer(
+                            FLAGS.model_name,
+                            inputs,
+                            request_id=str(sent_count),
+                            model_version=FLAGS.model_version,
+                            outputs=outputs,
+                        ))
 
         except InferenceServerException as e:
             print("inference failed: " + str(e))
