@@ -29,20 +29,13 @@
 
 #include "model_parser.h"
 #include "perf_utils.h"
+#include "tensor_data.h"
 
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
 class NaggyMockDataLoader;
 #endif
-
-/// Data for one input or output tensor
-///
-struct TensorData {
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_size{0};
-  bool is_valid{false};
-};
 
 
 class DataLoader {

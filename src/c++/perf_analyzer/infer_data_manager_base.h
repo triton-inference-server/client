@@ -32,6 +32,7 @@
 #include "infer_data.h"
 #include "model_parser.h"
 #include "perf_utils.h"
+#include "tensor_data.h"
 
 namespace triton { namespace perfanalyzer {
 

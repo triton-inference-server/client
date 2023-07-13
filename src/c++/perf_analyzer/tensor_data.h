@@ -25,39 +25,14 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "client_backend/client_backend.h"
-#include "tensor_data.h"
-
 namespace triton { namespace perfanalyzer {
 
-/// Holds all the data needed to send an inference request
-struct InferData {
-  ~InferData()
-  {
-    for (const auto input : inputs_) {
-      delete input;
-    }
-    for (const auto output : outputs_) {
-      delete output;
-    }
-  }
-
-  // The vector of pointers to InferInput objects for all possible inputs,
-  // potentially including optional inputs with no provided data.
-  std::vector<cb::InferInput*> inputs_;
-  // The vector of pointers to InferInput objects to be
-  // used for inference request.
-  std::vector<cb::InferInput*> valid_inputs_;
-  // The vector of pointers to InferRequestedOutput objects
-  // to be used with the inference request.
-  std::vector<const cb::InferRequestedOutput*> outputs_;
-  // If not empty, the expected output data in the same order as 'outputs_'
-  // The outer vector is per-output. The inner vector is for batching of each
-  // output
-  std::vector<std::vector<TensorData>> expected_outputs_;
-  // The InferOptions object holding the details of the
-  // inference.
-  std::unique_ptr<cb::InferOptions> options_;
+/// Data for one input or output tensor
+///
+struct TensorData {
+  const uint8_t* data_ptr{nullptr};
+  size_t batch1_size{0};
+  bool is_valid{false};
 };
 
 
