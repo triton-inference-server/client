@@ -65,16 +65,14 @@ InferDataManager::CreateAndPopulateInput(
     const size_t thread_id, const std::string& name, const ModelTensor& tensor,
     int stream_id, int step_id)
 {
-  std::vector<const uint8_t*> data_ptrs;
-  std::vector<size_t> byte_size;
+  std::vector<TensorData> input_datas;
   size_t count = 0;
 
-  RETURN_IF_ERROR(
-      GetInputData(name, tensor, stream_id, step_id, data_ptrs, byte_size));
+  RETURN_IF_ERROR(GetInputData(name, tensor, stream_id, step_id, input_datas));
 
   if (tensor.is_shape_tensor_) {
     RETURN_IF_ERROR(
-        ValidateShapeTensor(tensor, stream_id, step_id, data_ptrs, byte_size));
+        ValidateShapeTensor(tensor, stream_id, step_id, input_datas));
   }
 
   std::vector<int64_t> shape;
@@ -93,13 +91,14 @@ InferDataManager::CreateAndPopulateInput(
 
   // Number of missing pieces of data for optional inputs
   int missing_data_cnt = 0;
-  int total_cnt = data_ptrs.size();
+  int total_cnt = input_datas.size();
 
   for (size_t i = 0; i < total_cnt; i++) {
-    if (data_ptrs[i] == nullptr) {
+    if (!input_datas[i].is_valid) {
       missing_data_cnt++;
     } else {
-      RETURN_IF_ERROR(input->AppendRaw(data_ptrs[i], byte_size[i]));
+      RETURN_IF_ERROR(input->AppendRaw(
+          input_datas[i].data_ptr, input_datas[i].batch1_size));
     }
   }
 
@@ -153,20 +152,19 @@ InferDataManager::InitInferDataInput(
   infer_data.inputs_.push_back(infer_input);
 
 
-  const uint8_t* data_ptr{nullptr};
-  size_t batch1_bytesize;
-  RETURN_IF_ERROR(data_loader_->GetInputData(
-      model_tensor, 0, 0, &data_ptr, &batch1_bytesize));
+  TensorData input_data;
+  RETURN_IF_ERROR(data_loader_->GetInputData(model_tensor, 0, 0, input_data));
 
   // Add optional input to request if data was found
-  if (data_ptr != nullptr) {
+  if (input_data.is_valid) {
     infer_data.valid_inputs_.push_back(infer_input);
   }
 
   if (!shape.empty()) {
     size_t max_count = (parser_->MaxBatchSize() == 0) ? 1 : batch_size_;
     for (size_t i = 0; i < max_count; ++i) {
-      RETURN_IF_ERROR(infer_input->AppendRaw(data_ptr, batch1_bytesize));
+      RETURN_IF_ERROR(
+          infer_input->AppendRaw(input_data.data_ptr, input_data.batch1_size));
     }
   }
   return cb::Error::Success;

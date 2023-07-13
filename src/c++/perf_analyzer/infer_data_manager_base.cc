@@ -33,8 +33,7 @@ namespace triton { namespace perfanalyzer {
 cb::Error
 InferDataManagerBase::GetInputData(
     const std::string& name, const ModelTensor& tensor, int stream_id,
-    int step_id, std::vector<const uint8_t*>& data_ptrs,
-    std::vector<size_t>& byte_size)
+    int step_id, std::vector<TensorData>& input_datas)
 {
   size_t max_count = tensor.is_shape_tensor_ ? 1 : batch_size_;
   std::vector<int64_t> shape;
@@ -43,8 +42,8 @@ InferDataManagerBase::GetInputData(
   for (size_t count = 0; count < max_count; count++) {
     int local_step_id =
         (step_id + count) % data_loader_->GetTotalSteps(stream_id);
-    const uint8_t* data_ptr{nullptr};
-    size_t batch1_bytesize;
+
+    TensorData input_data;
 
     RETURN_IF_ERROR(
         data_loader_->GetInputShape(tensor, stream_id, local_step_id, &shape));
@@ -64,10 +63,9 @@ InferDataManagerBase::GetInputData(
     }
 
     RETURN_IF_ERROR(data_loader_->GetInputData(
-        tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
+        tensor, stream_id, local_step_id, input_data));
 
-    data_ptrs.push_back(data_ptr);
-    byte_size.push_back(batch1_bytesize);
+    input_datas.push_back(input_data);
   }
 
   return cb::Error::Success;
@@ -76,8 +74,7 @@ InferDataManagerBase::GetInputData(
 cb::Error
 InferDataManagerBase::ValidateShapeTensor(
     const ModelTensor& tensor, int stream_id, int step_id,
-    const std::vector<const uint8_t*>& data_ptrs,
-    const std::vector<size_t>& byte_size)
+    const std::vector<TensorData>& input_datas)
 {
   // Validate that steps 1 through N are exactly the same as step 0, since step
   // 0 is the only one we send for shape tensors
@@ -85,20 +82,20 @@ InferDataManagerBase::ValidateShapeTensor(
     int local_step_id =
         (step_id + count) % data_loader_->GetTotalSteps(stream_id);
 
-    const uint8_t* data_ptr{nullptr};
-    size_t batch1_bytesize;
+    TensorData input_data;
     RETURN_IF_ERROR(data_loader_->GetInputData(
-        tensor, stream_id, local_step_id, &data_ptr, &batch1_bytesize));
+        tensor, stream_id, local_step_id, input_data));
 
-    if (batch1_bytesize != byte_size.back()) {
+    if (input_data.batch1_size != input_datas.back().batch1_size) {
       return cb::Error(
           "The shape tensors should be identical in a batch (mismatch "
           "in size)",
           pa::GENERIC_ERROR);
     }
 
-    for (size_t data_idx = 0; data_idx < batch1_bytesize; data_idx++) {
-      if (*(data_ptr + data_idx) != *(data_ptrs.back() + data_idx)) {
+    for (size_t data_idx = 0; data_idx < input_data.batch1_size; data_idx++) {
+      if (*(input_data.data_ptr + data_idx) !=
+          *(input_datas.back().data_ptr + data_idx)) {
         return cb::Error(
             "The shape tensors should be identical in a batch "
             "(mismatch in content)",
@@ -146,28 +143,28 @@ InferDataManagerBase::UpdateValidationOutputs(
 
   for (const auto& output : infer_data.outputs_) {
     const auto& model_output = (*(parser_->Outputs()))[output->Name()];
-    const uint8_t* data_ptr;
-    size_t batch1_bytesize;
+
+    TensorData output_data;
     const int* set_shape_values = nullptr;
     int set_shape_value_cnt = 0;
 
-    std::vector<std::pair<const uint8_t*, size_t>> output_data;
+    std::vector<TensorData> outputs;
     for (size_t i = 0; i < batch_size_; ++i) {
       RETURN_IF_ERROR(data_loader_->GetOutputData(
           output->Name(), stream_index,
-          (step_index + i) % data_loader_->GetTotalSteps(0), &data_ptr,
-          &batch1_bytesize));
-      if (data_ptr == nullptr) {
+          (step_index + i) % data_loader_->GetTotalSteps(0), output_data));
+      if (!output_data.is_valid) {
         break;
       }
-      output_data.emplace_back(data_ptr, batch1_bytesize);
+
+      outputs.emplace_back(output_data);
       // Shape tensor only need the first batch element
       if (model_output.is_shape_tensor_) {
         break;
       }
     }
-    if (!output_data.empty()) {
-      infer_data.expected_outputs_.emplace_back(std::move(output_data));
+    if (!outputs.empty()) {
+      infer_data.expected_outputs_.emplace_back(std::move(outputs));
     }
   }
   return cb::Error::Success;

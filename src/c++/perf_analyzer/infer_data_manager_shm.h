@@ -125,15 +125,13 @@ class InferDataManagerShm : public InferDataManagerBase {
   /// \brief Helper function to handle copying shared memory to the correct
   /// memory region
   /// \param input_shm_ptr Pointer to the shared memory for a specific input
-  /// \param data_ptrs Pointer to the data for the batch
-  /// \param byte_size Size of the data being copied
+  /// \param input_datas The TensorDatas to be copied
   /// \param is_shape_tensor Is the input a shape tensor
   /// \param region_name Name of the shared memory region
   /// \return cb::Error object indicating success or failure
   virtual cb::Error CopySharedMemory(
-      uint8_t* input_shm_ptr, std::vector<const uint8_t*>& data_ptrs,
-      std::vector<size_t>& byte_size, bool is_shape_tensor,
-      std::string& region_name);
+      uint8_t* input_shm_ptr, const std::vector<TensorData>& input_datas,
+      bool is_shape_tensor, std::string& region_name);
 
   cb::Error InitInferDataInput(
       const std::string& name, const ModelTensor& model_tensor,
