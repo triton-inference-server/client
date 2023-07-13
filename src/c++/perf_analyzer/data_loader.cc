@@ -336,20 +336,14 @@ DataLoader::GetInputData(
     std::string key_name(
         input.name_ + "_" + std::to_string(stream_id) + "_" +
         std::to_string(step_id));
+
     // Get the data and the corresponding byte-size
     auto it = input_data_.find(key_name);
     if (it != input_data_.end()) {
+      std::vector<char>* data_vec = &it->second;
       data.is_valid = true;
-
-      if (input.datatype_.compare("BYTES") != 0) {
-        data.batch1_size = it->second.size();
-      } else {
-        std::vector<char>* string_data;
-        string_data = &it->second;
-        data.batch1_size = string_data->size();
-      }
-
-      data.data_ptr = (const uint8_t*)&((it->second)[0]);
+      data.batch1_size = data_vec->size();
+      data.data_ptr = (const uint8_t*)data_vec->data();
     }
   }
 
@@ -395,9 +389,10 @@ DataLoader::GetOutputData(
     // Get the data and the corresponding byte-size
     auto it = output_data_.find(key_name);
     if (it != output_data_.end()) {
-      data.batch1_size = it->second.size();
-      data.data_ptr = (const uint8_t*)&((it->second)[0]);
+      std::vector<char>* data_vec = &it->second;
       data.is_valid = true;
+      data.batch1_size = data_vec->size();
+      data.data_ptr = (const uint8_t*)data_vec->data();
     }
   }
   return cb::Error::Success;
