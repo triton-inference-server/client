@@ -207,7 +207,8 @@ InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
       result_ptr->RawData(infer_data_.outputs_[i]->Name(), &buf, &byte_size);
       for (const auto& expected : infer_data_.expected_outputs_[i]) {
         if (!expected.is_valid) {
-          continue;
+          return cb::Error(
+              "Expected output can't be invalid", pa::GENERIC_ERROR);
         }
         if (byte_size < expected.batch1_size) {
           return cb::Error(
