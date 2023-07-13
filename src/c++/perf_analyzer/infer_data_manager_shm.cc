@@ -262,7 +262,7 @@ InferDataManagerShm::CreateMemoryRegion(
 
 cb::Error
 InferDataManagerShm::CopySharedMemory(
-    uint8_t* input_shm_ptr, const std::vector<TensorData>& datas,
+    uint8_t* input_shm_ptr, const std::vector<TensorData>& tensor_datas,
     bool is_shape_tensor, std::string& region_name)
 {
   if (shared_memory_type_ == SharedMemoryType::SYSTEM_SHARED_MEMORY) {
@@ -272,9 +272,9 @@ InferDataManagerShm::CopySharedMemory(
     size_t max_count = is_shape_tensor ? 1 : batch_size_;
     while (count < max_count) {
       memcpy(
-          input_shm_ptr + offset, datas[count].data_ptr,
-          datas[count].batch1_size);
-      offset += datas[count].batch1_size;
+          input_shm_ptr + offset, tensor_datas[count].data_ptr,
+          tensor_datas[count].batch1_size);
+      offset += tensor_datas[count].batch1_size;
       count++;
     }
   } else {
@@ -285,15 +285,15 @@ InferDataManagerShm::CopySharedMemory(
     size_t max_count = is_shape_tensor ? 1 : batch_size_;
     while (count < max_count) {
       cudaError_t cuda_err = cudaMemcpy(
-          (void*)(input_shm_ptr + offset), (void*)datas[count].data_ptr,
-          datas[count].batch1_size, cudaMemcpyHostToDevice);
+          (void*)(input_shm_ptr + offset), (void*)tensor_datas[count].data_ptr,
+          tensor_datas[count].batch1_size, cudaMemcpyHostToDevice);
       if (cuda_err != cudaSuccess) {
         return cb::Error(
             "Failed to copy data to cuda shared memory for " + region_name +
                 " : " + std::string(cudaGetErrorString(cuda_err)),
             pa::GENERIC_ERROR);
       }
-      offset += datas[count].batch1_size;
+      offset += tensor_datas[count].batch1_size;
       count++;
     }
 #endif  // TRITON_ENABLE_GPU

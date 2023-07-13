@@ -73,7 +73,7 @@ class InferDataManagerBase : public IInferDataManager {
   std::unique_ptr<cb::ClientBackend> backend_;
   cb::BackendKind backend_kind_;
 
-  /// Gets the input datas for the specified input for the specified batch size
+  /// Gets the input data for the specified input for the specified batch size
   ///
   /// \param name The name of the input to get data for
   /// \param tensor The ModelTensor of the input to get data for
