@@ -28,6 +28,8 @@
 
 import base64
 
+import rapidjson as json
+from google.protobuf.json_format import MessageToJson
 from tritonclient.grpc import *
 
 from ... import _auth as auth
