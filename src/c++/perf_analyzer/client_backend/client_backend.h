@@ -623,6 +623,13 @@ class InferResult {
   {
     return Error("InferResult::IsFinalResponse() not implemented");
   };
+
+  /// Get null response bool of the request which generated this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error IsNullResponse(bool* is_null_response) const
+  {
+    return Error("InferResult::IsNullResponse() not implemented");
+  };
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

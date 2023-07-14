@@ -126,6 +126,8 @@ struct ClientSideStats {
   uint64_t sequence_count;
   // The number of requests that missed their schedule
   uint64_t delayed_request_count;
+  // The number of responses
+  uint64_t response_count;
   uint64_t duration_ns;
   uint64_t avg_latency_ns;
   // a ordered map of percentiles to be reported (<percentile, value> pair)
@@ -139,6 +141,7 @@ struct ClientSideStats {
   uint64_t avg_receive_time_ns;
   // Per sec stat
   double infer_per_sec;
+  double responses_per_sec;
   double sequence_per_sec;
 
   // Completed request count reported by the client library
@@ -439,11 +442,11 @@ class InferenceProfiler {
   /// during the measurement. A sequence is a set of correlated requests sent to
   /// sequence model.
   /// \param latencies Returns the vector of request latencies where the
-  /// requests are completed within the measurement window.
+  /// \param response_count Returns the response count
   void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies);
+      std::vector<uint64_t>* latencies, size_t& response_count);
 
   /// \param latencies The vector of request latencies collected.
   /// \param summary Returns the summary that the latency related fields are
@@ -466,6 +469,7 @@ class InferenceProfiler {
   /// \param valid_sequence_count The number of completed sequences recorded.
   /// \param delayed_request_count The number of requests that missed their
   /// schedule.
+  /// \param response_count The number of received responses.
   /// \param summary Returns the summary that the fields recorded by
   /// client are set.
   /// \return cb::Error object indicating success or failure.
@@ -473,7 +477,7 @@ class InferenceProfiler {
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
       const uint64_t duration_ns, const size_t valid_request_count,
       const size_t delayed_request_count, const size_t valid_sequence_count,
-      PerfStatus& summary);
+      const size_t response_count, PerfStatus& summary);
 
   /// Adds the send request rate metric to the summary object.
   /// \param window_duration_s The duration of the window in seconds.

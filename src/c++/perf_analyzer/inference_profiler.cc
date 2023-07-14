@@ -1012,6 +1012,8 @@ InferenceProfiler::MergePerfStatusReports(
         perf_status.client_stats.sequence_count;
     experiment_perf_status.client_stats.delayed_request_count +=
         perf_status.client_stats.delayed_request_count;
+    experiment_perf_status.client_stats.response_count +=
+        perf_status.client_stats.response_count;
     experiment_perf_status.client_stats.duration_ns +=
         perf_status.client_stats.duration_ns;
 
@@ -1079,6 +1081,13 @@ InferenceProfiler::MergePerfStatusReports(
       (experiment_perf_status.client_stats.request_count *
        experiment_perf_status.batch_size) /
       client_duration_sec;
+  experiment_perf_status.client_stats.responses_per_sec =
+      experiment_perf_status.client_stats.response_count / client_duration_sec;
+  std::cout << "Response count: "
+            << experiment_perf_status.client_stats.response_count << std::endl;
+  std::cout << "Response throughput: "
+            << experiment_perf_status.client_stats.responses_per_sec
+            << std::endl;
   RETURN_IF_ERROR(SummarizeLatency(
       experiment_perf_status.client_stats.latencies, experiment_perf_status));
 
@@ -1211,18 +1220,20 @@ InferenceProfiler::Summarize(
 {
   size_t valid_sequence_count = 0;
   size_t delayed_request_count = 0;
+  size_t response_count = 0;
 
   // Get measurement from requests that fall within the time interval
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
   uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
   ValidLatencyMeasurement(
-      valid_range, valid_sequence_count, delayed_request_count, &latencies);
+      valid_range, valid_sequence_count, delayed_request_count, &latencies,
+      response_count);
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
       start_stat, end_stat, window_duration_ns, latencies.size(),
-      valid_sequence_count, delayed_request_count, summary));
+      valid_sequence_count, delayed_request_count, response_count, summary));
   summary.client_stats.latencies = std::move(latencies);
 
   SummarizeOverhead(window_duration_ns, manager_->GetIdleTime(), summary);
@@ -1245,10 +1256,11 @@ void
 InferenceProfiler::ValidLatencyMeasurement(
     const std::pair<uint64_t, uint64_t>& valid_range,
     size_t& valid_sequence_count, size_t& delayed_request_count,
-    std::vector<uint64_t>* valid_latencies)
+    std::vector<uint64_t>* valid_latencies, size_t& response_count)
 {
   valid_latencies->clear();
   valid_sequence_count = 0;
+  response_count = 0;
   std::vector<size_t> erase_indices{};
   for (size_t i = 0; i < all_timestamps_.size(); i++) {
     const auto& timestamp = all_timestamps_[i];
@@ -1260,6 +1272,7 @@ InferenceProfiler::ValidLatencyMeasurement(
       if ((request_end_ns >= valid_range.first) &&
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
+        response_count += std::get<1>(timestamp).size();
         erase_indices.push_back(i);
         // Just add the sequence_end flag here.
         if (std::get<2>(timestamp)) {
@@ -1358,7 +1371,7 @@ InferenceProfiler::SummarizeClientStat(
     const cb::InferStat& start_stat, const cb::InferStat& end_stat,
     const uint64_t duration_ns, const size_t valid_request_count,
     const size_t valid_sequence_count, const size_t delayed_request_count,
-    PerfStatus& summary)
+    const size_t response_count, PerfStatus& summary)
 {
   summary.on_sequence_model =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
@@ -1367,6 +1380,7 @@ InferenceProfiler::SummarizeClientStat(
   summary.client_stats.request_count = valid_request_count;
   summary.client_stats.sequence_count = valid_sequence_count;
   summary.client_stats.delayed_request_count = delayed_request_count;
+  summary.client_stats.response_count = response_count;
   summary.client_stats.duration_ns = duration_ns;
   float client_duration_sec =
       (float)summary.client_stats.duration_ns / NANOS_PER_SECOND;
@@ -1374,6 +1388,7 @@ InferenceProfiler::SummarizeClientStat(
       valid_sequence_count / client_duration_sec;
   summary.client_stats.infer_per_sec =
       (valid_request_count * summary.batch_size) / client_duration_sec;
+  summary.client_stats.responses_per_sec = response_count / client_duration_sec;
 
   if (include_lib_stats_) {
     size_t completed_count =
