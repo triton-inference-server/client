@@ -53,10 +53,10 @@ _dlpack_stream = None
 
 
 # Helper function to retrieve internally managed CUDA stream
-def _get_or_create_global_cuda_stream():
+def _get_or_create_global_cuda_stream(device_id):
     global _dlpack_stream
     if _dlpack_stream is None:
-        _dlpack_stream = CudaStream()
+        _dlpack_stream = CudaStream(device_id)
     return _dlpack_stream._stream
 
 
@@ -78,6 +78,14 @@ def _support_uva(shm_device_id, ext_device_id):
         if not isinstance(ex, CudaSharedMemoryException):
             raise CudaSharedMemoryException(
                 "unable to check UVA support on device") from ex
+
+
+def _is_device_supported(device: _dlpack.DLDevice):
+    return device[0] in [
+        _dlpack.DLDeviceType.kDLCPU,
+        _dlpack.DLDeviceType.kDLCUDA,
+        _dlpack.DLDeviceType.kDLCUDAHost,
+    ]
 
 
 def create_shared_memory_region(triton_shm_name, byte_size, device_id):
@@ -171,7 +179,7 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
 
     try:
         _support_uva(cuda_shm_handle._device_id, -1)
-        stream = _get_or_create_global_cuda_stream()
+        stream = _get_or_create_global_cuda_stream(cuda_shm_handle._device_id)
 
         offset_current = 0
         for input_value in input_values:
@@ -224,7 +232,7 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
     """
     try:
         _support_uva(cuda_shm_handle._device_id, -1)
-        stream = _get_or_create_global_cuda_stream()
+        stream = _get_or_create_global_cuda_stream(cuda_shm_handle._device_id)
 
         # Numpy can only read from host buffer.
         host_buffer = (ctypes.c_char * cuda_shm_handle._byte_size)()
@@ -282,10 +290,21 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
 
 
 def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
-    stream = _get_or_create_global_cuda_stream()
     # this function basically is an implementation of 'from_dlpack'
     offset_current = 0
     for input_value in input_values:
+        dl_device = _dlpack.get_dlpack_device(input_value)
+        if dl_device is not None:
+            if not _is_device_supported(dl_device):
+                raise CudaSharedMemoryException(
+                    "DLPack device type {} is not supported".format(
+                        dl_device[0]))
+            # Use stream associated with the DLPack device, otherwise, just
+            # use the stream associated with device 0.
+            if dl_device[0] == _dlpack.DLDeviceType.kDLCUDA:
+                stream = _get_or_create_global_cuda_stream(dl_device[1])
+            else:
+                stream = _get_or_create_global_cuda_stream(0)
         # Knowing the implementation detail of how shared memory region is
         # set (cudaMemcpy). There is no need to transfer ownership of
         # 'dl_managed_tensor': the data has been copied out when dlpack

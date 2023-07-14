@@ -96,8 +96,15 @@ class CudaSharedMemoryRegion:
 
 class CudaStream:
 
-    def __init__(self):
-        self._stream = call_cuda_function(cudart.cudaStreamCreate)
+    def __init__(self, device_id):
+        prev_device = None
+        try:
+            prev_device = call_cuda_function(cudart.cudaGetDevice)
+            call_cuda_function(cudart.cudaSetDevice, device_id)
+            self._stream = call_cuda_function(cudart.cudaStreamCreate)
+        finally:
+            if prev_device is not None:
+                maybe_set_device(prev_device)
 
     def __del__(self):
         # __init__() may fail, don't attempt to release

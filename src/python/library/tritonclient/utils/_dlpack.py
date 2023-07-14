@@ -49,7 +49,9 @@ ctypes.pythonapi.PyCapsule_New.argtypes = [
 ]
 
 ctypes.pythonapi.PyCapsule_GetPointer.restype = ctypes.c_void_p
-ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [ctypes.py_object, ctypes.c_char_p]
+ctypes.pythonapi.PyCapsule_GetPointer.argtypes = [
+    ctypes.py_object, ctypes.c_char_p
+]
 
 c_str_dltensor = b"dltensor"
 
@@ -129,6 +131,7 @@ def _raise_error(msg):
 # Use as managed context in DLPack that doesn't hold ownership of the
 # data content.
 class DataViewContext:
+
     def __init__(self, shape) -> None:
         # Convert the Python object to ctypes objects expected by
         # DLPack
@@ -147,9 +150,8 @@ class DataViewContext:
 @ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 def managed_tensor_deleter(handle: ctypes.c_void_p) -> None:
     dl_managed_tensor = DLManagedTensor.from_address(handle)
-    py_obj_ptr = ctypes.cast(
-        dl_managed_tensor.manager_ctx, ctypes.POINTER(ctypes.py_object)
-    )
+    py_obj_ptr = ctypes.cast(dl_managed_tensor.manager_ctx,
+                             ctypes.POINTER(ctypes.py_object))
     py_obj = py_obj_ptr.contents
     ctypes.pythonapi.Py_DecRef(py_obj)
     ctypes.pythonapi.Py_DecRef(ctypes.py_object(py_obj_ptr))
@@ -161,8 +163,7 @@ def pycapsule_deleter(handle: ctypes.c_void_p) -> None:
     pycapsule: ctypes.py_object = ctypes.cast(handle, ctypes.py_object)
     if ctypes.pythonapi.PyCapsule_IsValid(pycapsule, c_str_dltensor):
         dl_managed_tensor = ctypes.pythonapi.PyCapsule_GetPointer(
-            pycapsule, c_str_dltensor
-        )
+            pycapsule, c_str_dltensor)
         managed_tensor_deleter(dl_managed_tensor)
         ctypes.pythonapi.PyCapsule_SetDestructor(pycapsule, None)
 
@@ -211,23 +212,15 @@ def triton_to_dlpack_dtype(dtype):
         _raise_error("DLPack currently doesn't suppose BYTES type")
     else:
         _raise_error(
-            "Can not covert unknown data type '{}' to DLPack data type".format(dtype)
-        )
+            "Can not covert unknown data type '{}' to DLPack data type".format(
+                dtype))
     return DLDataType(type_code, bits, 1)
 
 
-def is_device_supported(device: DLDevice):
-    return device[0] in [
-        DLDeviceType.kDLCPU,
-        DLDeviceType.kDLCUDA,
-        DLDeviceType.kDLCUDAHost,
-    ]
-
-
 def is_contiguous_data(
-    ndim: ctypes.c_int,
-    shape: ctypes.POINTER(ctypes.c_int64),
-    stride: ctypes.POINTER(ctypes.c_int64),
+        ndim: ctypes.c_int,
+        shape: ctypes.POINTER(ctypes.c_int64),
+        stride: ctypes.POINTER(ctypes.c_int64),
 ):
     # If 'stride' doesn't capture valid value
     if (stride is None) or (not bool(stride)):
@@ -241,9 +234,8 @@ def is_contiguous_data(
     return True
 
 
-def get_byte_size(
-    dtype: DLDataType, ndim: ctypes.c_int, shape: ctypes.POINTER(ctypes.c_int64)
-):
+def get_byte_size(dtype: DLDataType, ndim: ctypes.c_int,
+                  shape: ctypes.POINTER(ctypes.c_int64)):
     element_byte_size = dtype.bits * dtype.lanes // 8  # Assume 8 bits in a byte
     for i in range(ndim):
         element_byte_size *= shape[i]
@@ -258,8 +250,6 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
                 "DLPack expects '__dlpack_device__' if '__dlpack__' has been defined"
             )
         device = dlpack_obj.__dlpack_device__()
-        if not is_device_supported(device):
-            _raise_error("DLPack device type {} is not supported".format(device[0]))
         # Have to condition on the device type as, using numpy as example,
         # some DLPack implementation doesn't accept 'stream' as arguments
         if device != DLDeviceType.kDLCUDA:
@@ -269,6 +259,12 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj
+
+
+def get_dlpack_device(dlpack_obj):
+    if hasattr(dlpack_obj, "__dlpack_device__"):
+        return dlpack_obj.__dlpack_device__()
+    return None
 
 
 def get_managed_tensor(dlcapsule):
