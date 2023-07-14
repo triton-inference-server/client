@@ -24,9 +24,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import Any
+
 from cuda import cuda as cuda_driver
 from cuda import cudart
-from typing import Any
 
 
 def call_cuda_function(function, *argv):
@@ -42,6 +43,7 @@ def call_cuda_function(function, *argv):
             raise Exception(bytes)
     if len(res) > 1:
         return res[1:] if len(res) > 2 else res[1]
+    return None
 
 
 class CudaSharedMemoryException(Exception):
@@ -63,10 +65,14 @@ class CudaSharedMemoryException(Exception):
 
 
 class CudaSharedMemoryRegion:
-
-    def __init__(self, triton_shm_name: str,
-                 cuda_shm_handle: cudart.cudaIpcMemHandle_t, base_addr: Any,
-                 byte_size: int, device_id: int) -> None:
+    def __init__(
+        self,
+        triton_shm_name: str,
+        cuda_shm_handle: cudart.cudaIpcMemHandle_t,
+        base_addr: Any,
+        byte_size: int,
+        device_id: int,
+    ) -> None:
         self._triton_shm_name = triton_shm_name
         self._cuda_shm_handle = cuda_shm_handle
         self._base_addr = base_addr
@@ -95,7 +101,6 @@ class CudaSharedMemoryRegion:
 
 
 class CudaStream:
-
     def __init__(self, device_id):
         prev_device = None
         try:
@@ -118,7 +123,6 @@ class CudaStream:
 
 def maybe_set_device(device_id):
     device = call_cuda_function(cuda_driver.cuDeviceGet, device_id)
-    _, active = call_cuda_function(cuda_driver.cuDevicePrimaryCtxGetState,
-                                   device)
+    _, active = call_cuda_function(cuda_driver.cuDevicePrimaryCtxGetState, device)
     if active:
         call_cuda_function(cudart.cudaSetDevice, device_id)

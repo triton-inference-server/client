@@ -68,15 +68,15 @@ def req_file(filename, folder="requirements"):
 
 install_requires = req_file("requirements.txt")
 extras_require = {
-    'grpc': req_file("requirements_grpc.txt"),
-    'http': req_file("requirements_http.txt"),
+    "grpc": req_file("requirements_grpc.txt"),
+    "http": req_file("requirements_http.txt"),
 }
 
 extras_require["all"] = list(chain(extras_require.values()))
 
 platform_package_data = []
-if PLATFORM_FLAG != 'any':
-    platform_package_data += ['libcshm.so']
+if PLATFORM_FLAG != "any":
+    platform_package_data += ["libcshm.so"]
 
 data_files = [
     ("", ["LICENSE.txt"]),

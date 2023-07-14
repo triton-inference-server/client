@@ -26,10 +26,9 @@
 
 import collections
 import ctypes
+from typing import Any
 
 from . import _dlpack
-import collections
-from typing import Any
 
 
 class SharedMemoryTensor:
@@ -42,9 +41,15 @@ class SharedMemoryTensor:
 
     """
 
-    def __init__(self, dtype: str, shape: collections.abc.Iterable,
-                 shm_addr: Any, offset: int, byte_size: int,
-                 device_id: int) -> None:
+    def __init__(
+        self,
+        dtype: str,
+        shape: collections.abc.Iterable,
+        shm_addr: Any,
+        offset: int,
+        byte_size: int,
+        device_id: int,
+    ) -> None:
         self._dtype = dtype
         self._shape = shape
         self._shm_addr = shm_addr

@@ -176,13 +176,13 @@ if __name__ == "__main__":
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
         )
         shutil.copyfile(
-            'tritonclient/utils/libcshm.so',
-            os.path.join(FLAGS.whl_dir,
-                         'tritonclient/utils/shared_memory/libcshm.so'))
+            "tritonclient/utils/libcshm.so",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/libcshm.so"),
+        )
         cpdir(
-            'tritonclient/utils/cuda_shared_memory',
-            os.path.join(FLAGS.whl_dir,
-                         'tritonclient/utils/cuda_shared_memory'))
+            "tritonclient/utils/cuda_shared_memory",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+        )
 
         # Copy the pre-compiled perf_analyzer binary
         if FLAGS.perf_analyzer is not None:
