@@ -24,9 +24,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import base64
+
+import rapidjson as json
+from google.protobuf.json_format import MessageToJson
 from tritonclient.grpc import *
 from .._utils import _get_inference_request, _grpc_compression_type
-import base64
 from ..._client import InferenceServerClientBase
 from ..._request import Request
 from ..._plugin import InferenceServerClientPlugin
