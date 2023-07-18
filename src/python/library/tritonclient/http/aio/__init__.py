@@ -64,12 +64,12 @@ async def _get_error(response):
                 else {"error": "client received an empty response from the server."}
             )
             return InferenceServerException(
-                msg=error_response["error"], status=str(response.status_code)
+                msg=error_response["error"], status=str(response.status)
             )
         except Exception as e:
             return InferenceServerException(
                 msg=f"an exception occurred in the client while decoding the response: {e}",
-                status=str(response.status_code),
+                status=str(response.status),
                 debug_details=body,
             )
     else:
