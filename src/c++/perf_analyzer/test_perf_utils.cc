@@ -104,7 +104,7 @@ TEST_CASE("test_distribution")
   }
 }
 
-TEST_CASE("testing the ParseTensorFormat function")
+TEST_CASE("perf_utils: ParseTensorFormat")
 {
   CHECK(ParseTensorFormat("binary") == cb::TensorFormat::BINARY);
   CHECK(ParseTensorFormat("BINARY") == cb::TensorFormat::BINARY);
@@ -112,6 +112,17 @@ TEST_CASE("testing the ParseTensorFormat function")
   CHECK(ParseTensorFormat("JSON") == cb::TensorFormat::JSON);
   CHECK(ParseTensorFormat("abc") == cb::TensorFormat::UNKNOWN);
   CHECK(ParseTensorFormat("") == cb::TensorFormat::UNKNOWN);
+}
+
+TEST_CASE("perf_utils: ParseProtocol")
+{
+  CHECK(ParseProtocol("HTTP") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("http") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("GRPC") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("grpc") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("hhttp") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("http2") == cb::ProtocolType::UNKNOWN);
 }
 
 }}  // namespace triton::perfanalyzer
