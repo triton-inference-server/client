@@ -28,6 +28,9 @@
 #include "perf_utils.h"
 #include "test_utils.h"
 
+#include <fstream>
+#include <filesystem>
+
 namespace triton { namespace perfanalyzer {
 
 /// Helper class to test perf_utils.cc
@@ -92,7 +95,7 @@ class TestPerfUtils {
 
 /// Test all distributions across various request rates
 ///
-TEST_CASE("test_distribution")
+TEST_CASE("perf_utils: TestDistribution")
 {
   std::vector<Distribution> distTypes{CONSTANT, POISSON};
   std::vector<uint32_t> requestRates{10, 100, 1000, 10000};
@@ -123,6 +126,37 @@ TEST_CASE("perf_utils: ParseProtocol")
   CHECK(ParseProtocol("hhttp") == cb::ProtocolType::UNKNOWN);
   CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
   CHECK(ParseProtocol("http2") == cb::ProtocolType::UNKNOWN);
+}
+
+TEST_CASE("perf_utils: IsDirectory")
+{
+  // Create a temporary directory /tmp/abcdef1234
+  std::filesystem::path temp_path = std::filesystem::temp_directory_path();
+  temp_path /= "abcdef1234";
+
+  CHECK(!IsDirectory(temp_path));
+
+  std::filesystem::create_directory(temp_path);
+  CHECK(IsDirectory(temp_path));
+
+  std::filesystem::remove_all(temp_path);
+  CHECK(!IsDirectory(temp_path));
+}
+
+TEST_CASE("perf_utils: IsFile")
+{
+  // Create a temporary file /tmp/abc/test.txt
+  std::filesystem::path temp_path = std::filesystem::temp_directory_path();
+  temp_path /= "abc/test.txt";
+
+  CHECK(!IsFile(temp_path));
+
+  std::filesystem::create_directory(temp_path.parent_path());
+  std::ofstream file(temp_path);
+  CHECK(IsFile(temp_path));
+
+  std::filesystem::remove_all(temp_path.parent_path());
+  CHECK(!IsFile(temp_path));
 }
 
 }}  // namespace triton::perfanalyzer
