@@ -53,7 +53,7 @@ from ._utils import (
 )
 
 allocated_shm_regions = []
-# Internally managed stream for properly synchronizing on DLPack data,
+# Internally managed pool of streams for properly synchronizing on DLPack data,
 # the stream will be created / destroyed according to 'allocated_shm_regions'
 # and be reused throughout the process. May revisit for stream pool if
 # asynchronous write on CUDA shared memory region is requested
@@ -90,6 +90,8 @@ def _support_uva(shm_device_id, ext_device_id):
             raise CudaSharedMemoryException(
                 "unable to check UVA support on device"
             ) from ex
+        else:
+            raise ex
 
 
 def _is_device_supported(device: _dlpack.DLDevice):
@@ -136,6 +138,8 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
             raise CudaSharedMemoryException(
                 "unable to create cuda shared memory handle"
             ) from ex
+        else:
+            raise ex
     finally:
         if prev_device is not None:
             maybe_set_device(prev_device)
@@ -228,6 +232,8 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
             raise CudaSharedMemoryException(
                 "unable to set values in cuda shared memory"
             ) from ex
+        else:
+            raise ex
     return
 
 
@@ -271,6 +277,8 @@ def get_contents_as_numpy(cuda_shm_handle, datatype, shape):
             raise CudaSharedMemoryException(
                 "failed to read cuda shared memory results"
             ) from ex
+        else:
+            raise ex
 
     start_pos = 0  # was 'handle->offset_'
     if (datatype != np.object_) and (datatype != np.bytes_):
@@ -371,6 +379,8 @@ def set_shared_memory_region_from_dlpack(cuda_shm_handle, input_values):
                 raise CudaSharedMemoryException(
                     "unable to set values in cuda shared memory"
                 ) from ex
+            else:
+                raise ex
 
         offset_current += byte_size
     return
