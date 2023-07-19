@@ -159,6 +159,86 @@ TEST_CASE("perf_utils: IsFile")
   CHECK(!IsFile(temp_path));
 }
 
+TEST_CASE("perf_utils: ByteSize")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+  
+  SUBCASE("Single byte elements")
+  {
+    CHECK(ByteSize(shape, "BOOL") == 1 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "INT8") == 1 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "UINT8") == 1 * 3 * 4 * 5);
+  }
+
+  SUBCASE("2 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT16") == 2 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "UINT16") == 2 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "FP16") == 2 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "BF16") == 2 * 3 * 4 * 5);
+  }
+
+  SUBCASE("4 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT32") == 4 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "UINT32") == 4 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "FP32") == 4 * 3 * 4 * 5);
+  }
+
+  SUBCASE("8 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT64") == 8 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "UINT64") == 8 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "FP64") == 8 * 3 * 4 * 5);
+  }
+
+  SUBCASE("Dynamic shape tensor")
+  {
+    shape.insert(shape.begin(), -1);
+
+    CHECK(ByteSize(shape, "BOOL") == -1);
+    CHECK(ByteSize(shape, "INT8") == -1);
+    CHECK(ByteSize(shape, "UINT8") == -1);
+
+    CHECK(ByteSize(shape, "INT16") == -1);
+    CHECK(ByteSize(shape, "UINT16") == -1);
+    CHECK(ByteSize(shape, "FP16") == -1);
+    CHECK(ByteSize(shape, "BF16") == -1);
+
+    CHECK(ByteSize(shape, "INT32") == -1);
+    CHECK(ByteSize(shape, "UINT32") == -1);
+    CHECK(ByteSize(shape, "FP32") == -1);
+
+    CHECK(ByteSize(shape, "INT64") == -1);
+    CHECK(ByteSize(shape, "UINT64") == -1);
+    CHECK(ByteSize(shape, "FP64") == -1);
+  }
+
+  SUBCASE("Unknown data types")
+  {
+    CHECK(ByteSize(shape, "bool") == -1);
+    CHECK(ByteSize(shape, "int8") == -1);
+    CHECK(ByteSize(shape, "uint8") == -1);
+
+    CHECK(ByteSize(shape, "int16") == -1);
+    CHECK(ByteSize(shape, "uint16") == -1);
+    CHECK(ByteSize(shape, "fp16") == -1);
+    CHECK(ByteSize(shape, "bf16") == -1);
+
+    CHECK(ByteSize(shape, "int32") == -1);
+    CHECK(ByteSize(shape, "uint32") == -1);
+    CHECK(ByteSize(shape, "fp32") == -1);
+
+    CHECK(ByteSize(shape, "int64") == -1);
+    CHECK(ByteSize(shape, "uint64") == -1);
+    CHECK(ByteSize(shape, "fp64") == -1);
+
+    CHECK(ByteSize(shape, "abc") == -1);
+    CHECK(ByteSize(shape, "1234") == -1);
+    CHECK(ByteSize(shape, "") == -1);
+  }
+}
+
 TEST_CASE("perf_utils: ElementCount")
 {
   std::vector<int64_t> shape{3, 4, 5};
