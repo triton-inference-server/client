@@ -159,4 +159,82 @@ TEST_CASE("perf_utils: IsFile")
   CHECK(!IsFile(temp_path));
 }
 
+TEST_CASE("perf_utils: ElementCount")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+
+  SUBCASE("Static tensor shape")
+  {
+    CHECK(ElementCount(shape) == 60);
+
+    shape.push_back(1);
+    CHECK(ElementCount(shape) == 60);
+
+    shape.push_back(300);
+    CHECK(ElementCount(shape) == 18000);
+  }
+
+  SUBCASE("Dynamic tensor shape")
+  {
+    CHECK(ElementCount(shape) == 60);
+
+    shape.push_back(-1);
+    CHECK(ElementCount(shape) == -1);
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ElementCount(shape) == -1);
+  }
+}
+
+TEST_CASE("perf_utils: ShapeVecToString")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+
+  SUBCASE("No skipping first dim")
+  {
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5]");
+
+    shape.push_back(10);
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5,10]");
+
+    shape.push_back(-1);
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5,10,-1]");
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ShapeVecToString(shape, false) == "[-1,3,4,5,10]");
+
+    shape.clear();
+    CHECK(ShapeVecToString(shape, false) == "[]");
+  }
+
+  SUBCASE("Skipping first dim")
+  {
+    CHECK(ShapeVecToString(shape, true) == "[4,5]");
+
+    shape.push_back(-1);
+    CHECK(ShapeVecToString(shape, true) == "[4,5,-1]");
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ShapeVecToString(shape, true) == "[3,4,5]");
+
+    shape.clear();
+    CHECK(ShapeVecToString(shape, true) == "[]");
+  }
+}
+
+TEST_CASE("perf_utils: TensorToRegionName")
+{
+  CHECK(TensorToRegionName("name/with/slash") == "namewithslash");
+  CHECK(TensorToRegionName("name//with//slash") == "namewithslash");
+  CHECK(TensorToRegionName("name\\with\\backslash") == "namewithbackslash");
+  CHECK(TensorToRegionName("name\\\\with\\\\backslash") == "namewithbackslash");
+  CHECK(TensorToRegionName("name_without_slash") == "name_without_slash");
+  CHECK(TensorToRegionName("abc123!@#") == "abc123!@#");
+  CHECK(TensorToRegionName("") == "");
+}
+
+
 }}  // namespace triton::perfanalyzer
