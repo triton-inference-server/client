@@ -24,12 +24,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <filesystem>
+#include <fstream>
+
 #include "doctest.h"
 #include "perf_utils.h"
 #include "test_utils.h"
-
-#include <fstream>
-#include <filesystem>
 
 namespace triton { namespace perfanalyzer {
 
@@ -246,7 +246,7 @@ TEST_CASE("perf_utils: IsFile")
 TEST_CASE("perf_utils: ByteSize")
 {
   std::vector<int64_t> shape{3, 4, 5};
-  
+
   SUBCASE("Single byte elements")
   {
     CHECK(ByteSize(shape, "BOOL") == 1 * 3 * 4 * 5);
