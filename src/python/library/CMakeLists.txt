@@ -99,12 +99,6 @@ if (NOT WIN32)
         cshm
         ${WHEEL_DEPENDS}
   )
-  if(${TRITON_ENABLE_GPU})
-    set(LINUX_WHEEL_DEPENDS
-          ccudashm
-          ${LINUX_WHEEL_DEPENDS}
-    )
-  endif() # TRITON_ENABLE_GPU
 
   if (${TRITON_ENABLE_PERF_ANALYZER})
     set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)

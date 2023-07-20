@@ -40,27 +40,10 @@ if(NOT WIN32)
     target_link_libraries(cshm PUBLIC CUDA::cudart)
   endif() # TRITON_ENABLE_GPU
   target_link_libraries(cshm PRIVATE rt)
-
-  #
-  # libccudashm.so
-  #
-  if(${TRITON_ENABLE_GPU})
-    file(COPY cuda_shared_memory DESTINATION .)
-    add_library(
-        ccudashm SHARED
-        cuda_shared_memory/cuda_shared_memory.cc
-        cuda_shared_memory/cencode.c
-        cuda_shared_memory/cencode.h
-    )
-    target_include_directories(ccudashm PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_compile_definitions(ccudashm PUBLIC TRITON_ENABLE_GPU=1)
-    target_link_libraries(ccudashm PUBLIC CUDA::cudart)
-  endif() # TRITON_ENABLE_GPU
 endif() # WIN32
 
 if(NOT WIN32)
   configure_file(shared_memory/__init__.py shared_memory/__init__.py COPYONLY)
-  if(${TRITON_ENABLE_GPU})
-    configure_file(cuda_shared_memory/__init__.py cuda_shared_memory/__init__.py COPYONLY)
-  endif() # TRITON_ENABLE_GPU
+  configure_file(cuda_shared_memory/__init__.py cuda_shared_memory/__init__.py COPYONLY)
+  configure_file(cuda_shared_memory/_utils.py cuda_shared_memory/_utils.py COPYONLY)
 endif() # NOT WIN32

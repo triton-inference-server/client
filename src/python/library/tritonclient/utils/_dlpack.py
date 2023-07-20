@@ -216,14 +216,6 @@ def triton_to_dlpack_dtype(dtype):
     return DLDataType(type_code, bits, 1)
 
 
-def is_device_supported(device: DLDevice):
-    return device[0] in [
-        DLDeviceType.kDLCPU,
-        DLDeviceType.kDLCUDA,
-        DLDeviceType.kDLCUDAHost,
-    ]
-
-
 def is_contiguous_data(
     ndim: ctypes.c_int,
     shape: ctypes.POINTER(ctypes.c_int64),
@@ -258,8 +250,6 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
                 "DLPack expects '__dlpack_device__' if '__dlpack__' has been defined"
             )
         device = dlpack_obj.__dlpack_device__()
-        if not is_device_supported(device):
-            _raise_error("DLPack device type {} is not supported".format(device[0]))
         # Have to condition on the device type as, using numpy as example,
         # some DLPack implementation doesn't accept 'stream' as arguments
         if device != DLDeviceType.kDLCUDA:
@@ -269,3 +259,14 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj
+
+
+def get_dlpack_device(dlpack_obj):
+    if hasattr(dlpack_obj, "__dlpack_device__"):
+        return dlpack_obj.__dlpack_device__()
+    return None
+
+
+def get_managed_tensor(dlcapsule):
+    ptr = ctypes.pythonapi.PyCapsule_GetPointer(dlcapsule, c_str_dltensor)
+    return DLManagedTensor.from_address(ptr)

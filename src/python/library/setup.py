@@ -77,8 +77,6 @@ extras_require["all"] = list(chain(extras_require.values()))
 platform_package_data = []
 if PLATFORM_FLAG != "any":
     platform_package_data += ["libcshm.so"]
-    if bool(os.environ.get("CUDA_VERSION", 0)):
-        platform_package_data += ["libccudashm.so"]
 
 data_files = [
     ("", ["LICENSE.txt"]),

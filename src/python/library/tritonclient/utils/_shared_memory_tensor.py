@@ -26,6 +26,7 @@
 
 import collections
 import ctypes
+from typing import Any
 
 from . import _dlpack
 
@@ -44,10 +45,10 @@ class SharedMemoryTensor:
         self,
         dtype: str,
         shape: collections.abc.Iterable,
-        shm_addr: ctypes.c_void_p,
-        offset: ctypes.c_uint64,
-        byte_size: ctypes.c_uint64,
-        device_id: ctypes.c_int,
+        shm_addr: Any,
+        offset: int,
+        byte_size: int,
+        device_id: int,
     ) -> None:
         self._dtype = dtype
         self._shape = shape
@@ -55,8 +56,8 @@ class SharedMemoryTensor:
         self._offset = offset
         self._byte_size = byte_size
         self._device_id = device_id
-        if device_id.value != -1:
-            self._dl_device = (_dlpack.DLDeviceType.kDLCUDA, device_id.value)
+        if device_id != -1:
+            self._dl_device = (_dlpack.DLDeviceType.kDLCUDA, device_id)
         else:
             self._dl_device = (_dlpack.DLDeviceType.kDLCPU, 0)
 
