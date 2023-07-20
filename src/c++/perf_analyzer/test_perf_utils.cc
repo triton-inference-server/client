@@ -128,6 +128,90 @@ TEST_CASE("perf_utils: ParseProtocol")
   CHECK(ParseProtocol("http2") == cb::ProtocolType::UNKNOWN);
 }
 
+TEST_CASE("perf_utils: ConvertDTypeFromTFS")
+{
+  std::string datatype;
+  cb::Error status;
+
+  SUBCASE("Check for correct conversion")
+  {
+    status = ConvertDTypeFromTFS("DT_HALF", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "FP16");
+
+    status = ConvertDTypeFromTFS("DT_BFLOAT16", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "BF16");
+
+    status = ConvertDTypeFromTFS("DT_FLOAT", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "FP32");
+
+    status = ConvertDTypeFromTFS("DT_DOUBLE", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "FP64");
+
+    status = ConvertDTypeFromTFS("DT_INT32", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "INT32");
+
+    status = ConvertDTypeFromTFS("DT_INT16", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "INT16");
+
+    status = ConvertDTypeFromTFS("DT_UINT16", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "UINT16");
+
+    status = ConvertDTypeFromTFS("DT_INT8", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "INT8");
+
+    status = ConvertDTypeFromTFS("DT_UINT8", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "UINT8");
+
+    status = ConvertDTypeFromTFS("DT_STRING", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "BYTES");
+
+    status = ConvertDTypeFromTFS("DT_INT64", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "INT64");
+
+    status = ConvertDTypeFromTFS("DT_BOOL", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "BOOL");
+
+    status = ConvertDTypeFromTFS("DT_UINT32", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "UINT32");
+
+    status = ConvertDTypeFromTFS("DT_UINT64", &datatype);
+    CHECK(status.IsOk());
+    CHECK(datatype == "UINT64");
+  }
+
+  SUBCASE("Invalid tensorflow datatype")
+  {
+    status = ConvertDTypeFromTFS("dt_bool", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("dt_uint8", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("abcdef", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+  }
+}
+
 TEST_CASE("perf_utils: IsDirectory")
 {
   // Create a temporary directory /tmp/abcdef1234
