@@ -57,8 +57,6 @@ InferenceServerClient::UpdateInferStat(const RequestTimers& timer)
 {
   const uint64_t request_time_ns = timer.Duration(
       RequestTimers::Kind::REQUEST_START, RequestTimers::Kind::REQUEST_END);
-  std::cout << timer.Timestamp(RequestTimers::Kind::REQUEST_START) << " "
-            << timer.Timestamp(RequestTimers::Kind::REQUEST_END) << std::endl;
   const uint64_t send_time_ns = timer.Duration(
       RequestTimers::Kind::SEND_START, RequestTimers::Kind::SEND_END);
   const uint64_t recv_time_ns = timer.Duration(

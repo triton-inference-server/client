@@ -236,7 +236,7 @@ void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
-  bool is_final_response{false};
+  bool is_final_response{true};
   if (thread_stat_->cb_status_.IsOk()) {
     // Add the request timestamp to thread Timestamp vector with
     // proper locking

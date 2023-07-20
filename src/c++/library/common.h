@@ -513,11 +513,11 @@ class InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
 
-  /// Get final response bool of the request which generated this response.
+  /// Get final response bool for this response.
   /// \return Error object indicating the success or failure.
   virtual Error IsFinalResponse(bool* is_final_response) const = 0;
 
-  /// Get null response bool of the request which generated this response.
+  /// Get null response bool for this response.
   /// \return Error object indicating the success or failure.
   virtual Error IsNullResponse(bool* is_null_response) const = 0;
 

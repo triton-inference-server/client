@@ -48,6 +48,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockInferenceProfiler;
 class TestInferenceProfiler;
 #endif
 
@@ -442,8 +443,9 @@ class InferenceProfiler {
   /// during the measurement. A sequence is a set of correlated requests sent to
   /// sequence model.
   /// \param latencies Returns the vector of request latencies where the
-  /// \param response_count Returns the response count
-  void ValidLatencyMeasurement(
+  /// requests are completed within the measurement window.
+  /// \param response_count Returns the number of responses
+  virtual void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies, size_t& response_count);
@@ -452,7 +454,7 @@ class InferenceProfiler {
   /// \param summary Returns the summary that the latency related fields are
   /// set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeLatency(
+  virtual cb::Error SummarizeLatency(
       const std::vector<uint64_t>& latencies, PerfStatus& summary);
 
   /// \param latencies The vector of request latencies collected.
@@ -469,11 +471,11 @@ class InferenceProfiler {
   /// \param valid_sequence_count The number of completed sequences recorded.
   /// \param delayed_request_count The number of requests that missed their
   /// schedule.
-  /// \param response_count The number of received responses.
+  /// \param response_count The number of responses.
   /// \param summary Returns the summary that the fields recorded by
   /// client are set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeClientStat(
+  virtual cb::Error SummarizeClientStat(
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
       const uint64_t duration_ns, const size_t valid_request_count,
       const size_t delayed_request_count, const size_t valid_sequence_count,
@@ -561,7 +563,7 @@ class InferenceProfiler {
   /// \param perf_status List of perf status reports to be merged.
   /// \param summary_status Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergePerfStatusReports(
+  virtual cb::Error MergePerfStatusReports(
       std::deque<PerfStatus>& perf_status, PerfStatus& summary_status);
 
   /// Merge individual server side statistics into a single server side report.
@@ -569,7 +571,7 @@ class InferenceProfiler {
   /// merged.
   /// \param server_side_summary Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergeServerSideStats(
+  virtual cb::Error MergeServerSideStats(
       std::vector<ServerSideStats>& server_side_stats,
       ServerSideStats& server_side_summary);
 
@@ -699,10 +701,11 @@ class InferenceProfiler {
   const double overhead_pct_threshold_{0.0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockInferenceProfiler;
   friend TestInferenceProfiler;
 
  public:
-  InferenceProfiler(){};
+  InferenceProfiler() = default;
 #endif
 };
 

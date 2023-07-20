@@ -1083,11 +1083,6 @@ InferenceProfiler::MergePerfStatusReports(
       client_duration_sec;
   experiment_perf_status.client_stats.responses_per_sec =
       experiment_perf_status.client_stats.response_count / client_duration_sec;
-  std::cout << "Response count: "
-            << experiment_perf_status.client_stats.response_count << std::endl;
-  std::cout << "Response throughput: "
-            << experiment_perf_status.client_stats.responses_per_sec
-            << std::endl;
   RETURN_IF_ERROR(SummarizeLatency(
       experiment_perf_status.client_stats.latencies, experiment_perf_status));
 
