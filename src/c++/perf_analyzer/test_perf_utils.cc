@@ -123,7 +123,7 @@ TEST_CASE("perf_utils: ParseProtocol")
   CHECK(ParseProtocol("http") == cb::ProtocolType::HTTP);
   CHECK(ParseProtocol("GRPC") == cb::ProtocolType::GRPC);
   CHECK(ParseProtocol("grpc") == cb::ProtocolType::GRPC);
-  CHECK(ParseProtocol("hhttp") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("hhtp") == cb::ProtocolType::UNKNOWN);
   CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
   CHECK(ParseProtocol("http2") == cb::ProtocolType::UNKNOWN);
 }
@@ -329,18 +329,18 @@ TEST_CASE("perf_utils: ElementCount")
 
   SUBCASE("Static tensor shape")
   {
-    CHECK(ElementCount(shape) == 60);
+    CHECK(ElementCount(shape) == 3 * 4 * 5);
 
     shape.push_back(1);
-    CHECK(ElementCount(shape) == 60);
+    CHECK(ElementCount(shape) == 3 * 4 * 5 * 1);
 
     shape.push_back(300);
-    CHECK(ElementCount(shape) == 18000);
+    CHECK(ElementCount(shape) == 3 * 4 * 5 * 1 * 300);
   }
 
   SUBCASE("Dynamic tensor shape")
   {
-    CHECK(ElementCount(shape) == 60);
+    CHECK(ElementCount(shape) == 3 * 4 * 5);
 
     shape.push_back(-1);
     CHECK(ElementCount(shape) == -1);
