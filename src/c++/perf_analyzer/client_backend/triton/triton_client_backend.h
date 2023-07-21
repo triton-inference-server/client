@@ -331,6 +331,8 @@ class TritonInferResult : public InferResult {
       size_t* byte_size) const override;
   /// See InferResult::IsFinalResponse()
   Error IsFinalResponse(bool* is_final_response) const override;
+  /// See InferResult::IsNullResponse()
+  Error IsNullResponse(bool* is_null_response) const override;
 
  private:
   std::unique_ptr<tc::InferResult> result_;

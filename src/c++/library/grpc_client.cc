@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -190,6 +190,7 @@ class InferResultGrpc : public InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override;
   Error IsFinalResponse(bool* is_final_response) const override;
+  Error IsNullResponse(bool* is_null_response) const override;
   Error StringData(
       const std::string& output_name,
       std::vector<std::string>* string_result) const override;
@@ -211,6 +212,7 @@ class InferResultGrpc : public InferResult {
   std::shared_ptr<inference::ModelStreamInferResponse> stream_response_;
   Error request_status_;
   bool is_final_response_{true};
+  bool is_null_response_{false};
 };
 
 Error
@@ -323,6 +325,16 @@ InferResultGrpc::IsFinalResponse(bool* is_final_response) const
 }
 
 Error
+InferResultGrpc::IsNullResponse(bool* is_null_response) const
+{
+  if (is_null_response == nullptr) {
+    return Error("is_null_response cannot be nullptr");
+  }
+  *is_null_response = is_null_response_;
+  return Error::Success;
+}
+
+Error
 InferResultGrpc::StringData(
     const std::string& output_name,
     std::vector<std::string>* string_result) const
@@ -384,6 +396,7 @@ InferResultGrpc::InferResultGrpc(
   if (is_final_response_itr != response_->parameters().end()) {
     is_final_response_ = is_final_response_itr->second.bool_param();
   }
+  is_null_response_ = response_->outputs().empty() && is_final_response_;
 }
 
 InferResultGrpc::InferResultGrpc(
@@ -409,6 +422,7 @@ InferResultGrpc::InferResultGrpc(
   if (is_final_response_itr != response_->parameters().end()) {
     is_final_response_ = is_final_response_itr->second.bool_param();
   }
+  is_null_response_ = response_->outputs().empty() && is_final_response_;
 }
 
 //==============================================================================
