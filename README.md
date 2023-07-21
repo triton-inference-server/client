@@ -583,7 +583,9 @@ Python does not have a standard way of allocating and accessing shared
 memory so as an example a simple [CUDA shared memory
 module](src/python/library/tritonclient/utils/cuda_shared_memory)
 is provided that can be used with the Python client library to create,
-set and destroy CUDA shared memory.
+set and destroy CUDA shared memory. The module currently supports
+numpy arrays ([example usage](src/python/examples/simple_http_cudashm_client.py))
+and DLPack tensors ([example usage](src/python/library/tests/test_dlpack.py)).
 
 ### Client API for Stateful Models
 
