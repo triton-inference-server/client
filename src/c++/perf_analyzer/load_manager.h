@@ -40,6 +40,11 @@
 
 namespace triton { namespace perfanalyzer {
 
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockLoadManager;
+#endif
+
 class LoadManager {
  public:
   virtual ~LoadManager() = default;
@@ -97,7 +102,7 @@ class LoadManager {
   const size_t GetAndResetNumSentRequests();
 
   /// \return the batch size used for the inference requests
-  size_t BatchSize() const { return batch_size_; }
+  virtual size_t BatchSize() const { return batch_size_; }
 
   /// Count the number of requests collected until now.
   uint64_t CountCollectedRequests();
@@ -165,6 +170,8 @@ class LoadManager {
       std::shared_ptr<DataLoader> data_loader);
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockLoadManager;
+
  public:
   LoadManager() = default;
 #endif

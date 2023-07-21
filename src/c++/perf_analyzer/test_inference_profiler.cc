@@ -27,6 +27,8 @@
 #include "doctest.h"
 #include "inference_profiler.h"
 #include "mock_inference_profiler.h"
+#include "mock_load_manager.h"
+#include "mock_model_parser.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -35,12 +37,14 @@ class TestInferenceProfiler : public InferenceProfiler {
   static void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies, TimestampVector& all_timestamps)
+      std::vector<uint64_t>* latencies, size_t& response_count,
+      TimestampVector& all_timestamps)
   {
     InferenceProfiler inference_profiler{};
     inference_profiler.all_timestamps_ = all_timestamps;
     inference_profiler.ValidLatencyMeasurement(
-        valid_range, valid_sequence_count, delayed_request_count, latencies);
+        valid_range, valid_sequence_count, delayed_request_count, latencies,
+        response_count);
   }
 
   static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
@@ -162,6 +166,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   size_t valid_sequence_count{};
   size_t delayed_request_count{};
   std::vector<uint64_t> latencies{};
+  size_t response_count{};
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
@@ -201,7 +206,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
-      all_timestamps);
+      response_count, all_timestamps);
 
   const auto& convert_timestamp_to_latency{
       [](std::tuple<time_point, std::vector<time_point>, uint32_t, bool> t) {
@@ -854,4 +859,115 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
   std::cerr.rdbuf(old);
 }
 
+TEST_CASE(
+    "valid_latency_measurement: testing the ValidLatencyMeasurement function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+    auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
+    auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
+    auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+    auto timestamp1{std::make_tuple(
+        request1_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response1_timestamp, response2_timestamp},
+        0, false)};
+
+    auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
+    auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+    auto response4_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
+    auto response5_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
+    auto timestamp2{std::make_tuple(
+        request2_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response3_timestamp, response4_timestamp, response5_timestamp},
+        0, false)};
+
+    mock_inference_profiler.all_timestamps_ = {timestamp1, timestamp2};
+
+    const std::pair<uint64_t, uint64_t> valid_range{
+        std::make_pair(0, UINT64_MAX)};
+    size_t valid_sequence_count{0};
+    size_t delayed_request_count{0};
+    std::vector<uint64_t> valid_latencies{};
+    size_t response_count{0};
+
+    mock_inference_profiler.ValidLatencyMeasurement(
+        valid_range, valid_sequence_count, delayed_request_count,
+        &valid_latencies, response_count);
+
+    CHECK(response_count == 5);
+  }
+}
+
+TEST_CASE(
+    "merge_perf_status_reports: testing the MergePerfStatusReports function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    PerfStatus perf_status1{};
+    perf_status1.client_stats.response_count = 8;
+    perf_status1.client_stats.duration_ns = 2000000000;
+
+    PerfStatus perf_status2{};
+    perf_status2.client_stats.response_count = 10;
+    perf_status2.client_stats.duration_ns = 4000000000;
+
+    std::deque<PerfStatus> perf_status{perf_status1, perf_status2};
+    PerfStatus summary_status{};
+
+    cb::Error error{};
+
+    EXPECT_CALL(
+        mock_inference_profiler, MergeServerSideStats(testing::_, testing::_))
+        .WillOnce(testing::Return(cb::Error::Success));
+    EXPECT_CALL(
+        mock_inference_profiler, SummarizeLatency(testing::_, testing::_))
+        .WillOnce(testing::Return(cb::Error::Success));
+
+    error = mock_inference_profiler.MergePerfStatusReports(
+        perf_status, summary_status);
+
+    REQUIRE(error.IsOk() == true);
+    CHECK(summary_status.client_stats.response_count == 18);
+    CHECK(
+        summary_status.client_stats.responses_per_sec == doctest::Approx(3.0));
+  }
+}
+
+TEST_CASE("summarize_client_stat: testing the SummarizeClientStat function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    mock_inference_profiler.parser_ = std::make_shared<MockModelParser>();
+    mock_inference_profiler.manager_ = std::make_unique<MockLoadManager>();
+
+    const cb::InferStat start_stat{};
+    const cb::InferStat end_stat{};
+    const uint64_t duration_ns{2000000000};
+    const size_t valid_request_count{0};
+    const size_t delayed_request_count{0};
+    const size_t valid_sequence_count{0};
+    const size_t response_count{8};
+    PerfStatus summary{};
+
+    cb::Error error{};
+
+    error = mock_inference_profiler.SummarizeClientStat(
+        start_stat, end_stat, duration_ns, valid_request_count,
+        delayed_request_count, valid_sequence_count, response_count, summary);
+
+    REQUIRE(error.IsOk() == true);
+    CHECK(summary.client_stats.response_count == 8);
+    CHECK(summary.client_stats.responses_per_sec == doctest::Approx(4.0));
+  }
+}
 }}  // namespace triton::perfanalyzer
