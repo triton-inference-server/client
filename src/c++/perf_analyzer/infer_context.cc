@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -236,20 +236,26 @@ void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
+  bool is_final_response{true};
   if (thread_stat_->cb_status_.IsOk()) {
     // Add the request timestamp to thread Timestamp vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
     thread_stat_->cb_status_ = result_ptr->RequestStatus();
     if (thread_stat_->cb_status_.IsOk()) {
-      std::chrono::time_point<std::chrono::system_clock> end_time_async;
-      end_time_async = std::chrono::system_clock::now();
       std::string request_id;
       thread_stat_->cb_status_ = result_ptr->Id(&request_id);
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
-        it->second.end_times.push_back(end_time_async);
-        bool is_final_response{false};
+        bool is_null_response{false};
+        thread_stat_->cb_status_ =
+            result_ptr->IsNullResponse(&is_null_response);
+        if (thread_stat_->cb_status_.IsOk() == false) {
+          return;
+        }
+        if (is_null_response == false) {
+          it->second.end_times.push_back(std::chrono::system_clock::now());
+        }
         thread_stat_->cb_status_ =
             result_ptr->IsFinalResponse(&is_final_response);
         if (thread_stat_->cb_status_.IsOk() == false) {
@@ -267,10 +273,12 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
     }
   }
 
-  total_ongoing_requests_--;
+  if (is_final_response) {
+    total_ongoing_requests_--;
 
-  if (async_callback_finalize_func_ != nullptr) {
-    async_callback_finalize_func_(id_);
+    if (async_callback_finalize_func_ != nullptr) {
+      async_callback_finalize_func_(id_);
+    }
   }
 }
 
