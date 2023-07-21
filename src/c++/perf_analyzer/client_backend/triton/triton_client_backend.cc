@@ -827,6 +827,13 @@ TritonInferResult::IsFinalResponse(bool* is_final_response) const
   return Error::Success;
 }
 
+Error
+TritonInferResult::IsNullResponse(bool* is_null_response) const
+{
+  RETURN_IF_TRITON_ERROR(result_->IsNullResponse(is_null_response));
+  return Error::Success;
+}
+
 //==============================================================================
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::tritonremote
