@@ -128,9 +128,6 @@ std::string GetRandomString(const int string_length);
 std::string ShapeVecToString(
     const std::vector<int64_t> shape_vec, bool skip_first = false);
 
-// Returns the string containing the shape tensor values
-std::string ShapeTensorValuesToString(const int* data_ptr, const int count);
-
 // Remove slashes from tensor name, if any
 std::string TensorToRegionName(std::string name);
 
