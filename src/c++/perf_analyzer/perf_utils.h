@@ -55,7 +55,8 @@ constexpr uint64_t NANOS_PER_MILLIS = 1000000;
 //==============================================================================
 using TimestampVector = std::vector<std::tuple<
     std::chrono::time_point<std::chrono::system_clock>,
-    std::vector<std::chrono::time_point<std::chrono::system_clock>>, uint32_t, bool>>;
+    std::vector<std::chrono::time_point<std::chrono::system_clock>>, uint32_t,
+    bool>>;
 
 // Will use the characters specified here to construct random strings
 std::string const character_set =

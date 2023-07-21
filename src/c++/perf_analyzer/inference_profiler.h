@@ -48,6 +48,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockInferenceProfiler;
 class TestInferenceProfiler;
 #endif
 
@@ -126,6 +127,8 @@ struct ClientSideStats {
   uint64_t sequence_count;
   // The number of requests that missed their schedule
   uint64_t delayed_request_count;
+  // The number of responses
+  uint64_t response_count;
   uint64_t duration_ns;
   uint64_t avg_latency_ns;
   // a ordered map of percentiles to be reported (<percentile, value> pair)
@@ -139,6 +142,7 @@ struct ClientSideStats {
   uint64_t avg_receive_time_ns;
   // Per sec stat
   double infer_per_sec;
+  double responses_per_sec;
   double sequence_per_sec;
 
   // Completed request count reported by the client library
@@ -440,16 +444,17 @@ class InferenceProfiler {
   /// sequence model.
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
-  void ValidLatencyMeasurement(
+  /// \param response_count Returns the number of responses
+  virtual void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies);
+      std::vector<uint64_t>* latencies, size_t& response_count);
 
   /// \param latencies The vector of request latencies collected.
   /// \param summary Returns the summary that the latency related fields are
   /// set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeLatency(
+  virtual cb::Error SummarizeLatency(
       const std::vector<uint64_t>& latencies, PerfStatus& summary);
 
   /// \param latencies The vector of request latencies collected.
@@ -466,14 +471,15 @@ class InferenceProfiler {
   /// \param valid_sequence_count The number of completed sequences recorded.
   /// \param delayed_request_count The number of requests that missed their
   /// schedule.
+  /// \param response_count The number of responses.
   /// \param summary Returns the summary that the fields recorded by
   /// client are set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeClientStat(
+  virtual cb::Error SummarizeClientStat(
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
       const uint64_t duration_ns, const size_t valid_request_count,
       const size_t delayed_request_count, const size_t valid_sequence_count,
-      PerfStatus& summary);
+      const size_t response_count, PerfStatus& summary);
 
   /// Adds the send request rate metric to the summary object.
   /// \param window_duration_s The duration of the window in seconds.
@@ -557,7 +563,7 @@ class InferenceProfiler {
   /// \param perf_status List of perf status reports to be merged.
   /// \param summary_status Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergePerfStatusReports(
+  virtual cb::Error MergePerfStatusReports(
       std::deque<PerfStatus>& perf_status, PerfStatus& summary_status);
 
   /// Merge individual server side statistics into a single server side report.
@@ -565,7 +571,7 @@ class InferenceProfiler {
   /// merged.
   /// \param server_side_summary Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergeServerSideStats(
+  virtual cb::Error MergeServerSideStats(
       std::vector<ServerSideStats>& server_side_stats,
       ServerSideStats& server_side_summary);
 
@@ -695,10 +701,11 @@ class InferenceProfiler {
   const double overhead_pct_threshold_{0.0};
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockInferenceProfiler;
   friend TestInferenceProfiler;
 
  public:
-  InferenceProfiler(){};
+  InferenceProfiler() = default;
 #endif
 };
 
