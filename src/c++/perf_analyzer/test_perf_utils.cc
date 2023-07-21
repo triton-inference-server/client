@@ -135,61 +135,26 @@ TEST_CASE("perf_utils: ConvertDTypeFromTFS")
 
   SUBCASE("Check for correct conversion")
   {
-    status = ConvertDTypeFromTFS("DT_HALF", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "FP16");
+    std::vector<std::pair<std::string, std::string>> tf_to_datatype{
+        std::make_pair("DT_HALF", "FP16"),
+        std::make_pair("DT_BFLOAT16", "BF16"),
+        std::make_pair("DT_FLOAT", "FP32"),
+        std::make_pair("DT_DOUBLE", "FP64"),
+        std::make_pair("DT_INT32", "INT32"),
+        std::make_pair("DT_INT16", "INT16"),
+        std::make_pair("DT_INT8", "INT8"),
+        std::make_pair("DT_UINT8", "UINT8"),
+        std::make_pair("DT_STRING", "BYTES"),
+        std::make_pair("DT_INT64", "INT64"),
+        std::make_pair("DT_BOOL", "BOOL"),
+        std::make_pair("DT_UINT32", "UINT32"),
+        std::make_pair("DT_UINT64", "UINT64")};
 
-    status = ConvertDTypeFromTFS("DT_BFLOAT16", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "BF16");
-
-    status = ConvertDTypeFromTFS("DT_FLOAT", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "FP32");
-
-    status = ConvertDTypeFromTFS("DT_DOUBLE", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "FP64");
-
-    status = ConvertDTypeFromTFS("DT_INT32", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "INT32");
-
-    status = ConvertDTypeFromTFS("DT_INT16", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "INT16");
-
-    status = ConvertDTypeFromTFS("DT_UINT16", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "UINT16");
-
-    status = ConvertDTypeFromTFS("DT_INT8", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "INT8");
-
-    status = ConvertDTypeFromTFS("DT_UINT8", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "UINT8");
-
-    status = ConvertDTypeFromTFS("DT_STRING", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "BYTES");
-
-    status = ConvertDTypeFromTFS("DT_INT64", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "INT64");
-
-    status = ConvertDTypeFromTFS("DT_BOOL", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "BOOL");
-
-    status = ConvertDTypeFromTFS("DT_UINT32", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "UINT32");
-
-    status = ConvertDTypeFromTFS("DT_UINT64", &datatype);
-    CHECK(status.IsOk());
-    CHECK(datatype == "UINT64");
+    for (const auto& type_pair : tf_to_datatype) {
+      status = ConvertDTypeFromTFS(type_pair.first, &datatype);
+      CHECK(status.IsOk());
+      CHECK(datatype == type_pair.second);
+    }
   }
 
   SUBCASE("Invalid tensorflow datatype")
