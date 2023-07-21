@@ -26,7 +26,7 @@
                         },
                         "value": {
                             "description": "Concurrency or request rate for the current experiment",
-                            "type": "integer"
+                            "type": "number"
                         }
                     },
                     "required": [
@@ -49,17 +49,17 @@
                         "properties": {
                             "timestamp": {
                                 "description": "Time stamp of the request",
-                                "type": "integer"
+                                "type": "number"
                             },
                             "sequence_id": {
                                 "description": "sequence_id of the request",
-                                "type": "integer"
+                                "type": "number"
                             },
                             "responses_timestamps": {
                                 "description": "All associated responses to this request",
                                 "type": "array",
                                 "items": {
-                                    "type": "integer"
+                                    "type": "number"
                                 }
                             }
                         },
@@ -73,7 +73,7 @@
                     "description": "An array of time stamps describing window boundaries",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "number"
                     },
                     "uniqueItems": true
                 }
