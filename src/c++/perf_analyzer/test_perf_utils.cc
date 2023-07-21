@@ -24,7 +24,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <filesystem>
+#include <unistd.h>
+
+#include <cstdio>
 #include <fstream>
 
 #include "doctest.h"
@@ -180,31 +182,32 @@ TEST_CASE("perf_utils: ConvertDTypeFromTFS")
 TEST_CASE("perf_utils: IsDirectory")
 {
   // Create a temporary directory /tmp/abcdef1234
-  std::filesystem::path temp_path = std::filesystem::temp_directory_path();
-  temp_path /= "abcdef1234";
+  int status;
+  std::string temp_path{"/tmp/abcdef1234"};
 
   CHECK(!IsDirectory(temp_path));
 
-  std::filesystem::create_directory(temp_path);
+  status = mkdir(temp_path.c_str(), S_IRWXU | S_IROTH | S_IXOTH);
+  REQUIRE(status == 0);
   CHECK(IsDirectory(temp_path));
 
-  std::filesystem::remove_all(temp_path);
+  status = rmdir(temp_path.c_str());
+  REQUIRE(status == 0);
   CHECK(!IsDirectory(temp_path));
 }
 
 TEST_CASE("perf_utils: IsFile")
 {
-  // Create a temporary file /tmp/abc/test.txt
-  std::filesystem::path temp_path = std::filesystem::temp_directory_path();
-  temp_path /= "abc/test.txt";
+  // Create a temporary file /tmp/test.txt
+  int status;
+  std::string temp_path{"/tmp/test.txt"};
 
   CHECK(!IsFile(temp_path));
 
-  std::filesystem::create_directory(temp_path.parent_path());
   std::ofstream file(temp_path);
   CHECK(IsFile(temp_path));
 
-  std::filesystem::remove_all(temp_path.parent_path());
+  std::remove(temp_path.c_str());
   CHECK(!IsFile(temp_path));
 }
 
