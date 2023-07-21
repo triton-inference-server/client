@@ -1,0 +1,39 @@
+{
+    "experiments": [
+        {
+            "experiment": {
+                "mode": "concurrency",
+                "value": 4
+            },
+            "requests": [
+                {
+                    "timestamp": 1,
+                    "sequence_id": 1,
+                    "responses_timestamps": [
+                        2
+                    ]
+                },
+                {
+                    "timestamp": 5,
+                    "sequence_id": 2,
+                    "responses_timestamps": [
+                        6
+                    ]
+                },
+                {
+                    "timestamp": 7,
+                    "sequence_id": 3,
+                    "responses_timestamps": [
+                        8
+                    ]
+                }
+            ],
+            "window_boundaries": [
+                1,
+                5,
+                7
+            ]
+        }
+    ],
+    "version": "1.2.3"
+}
