@@ -949,7 +949,6 @@ TEST_CASE("summarize_client_stat: testing the SummarizeClientStat function")
   {
     mock_inference_profiler.parser_ = std::make_shared<MockModelParser>();
     mock_inference_profiler.manager_ = std::make_unique<MockLoadManager>();
-    mock_inference_profiler.include_lib_stats_ = true;
 
     const cb::InferStat start_stat{};
     const cb::InferStat end_stat{};
