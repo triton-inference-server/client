@@ -740,6 +740,7 @@ class InferResultHttp : public InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override;
   Error IsFinalResponse(bool* is_final_response) const override;
+  Error IsNullResponse(bool* is_null_response) const override;
   Error StringData(
       const std::string& output_name,
       std::vector<std::string>* string_result) const override;
@@ -769,6 +770,7 @@ class InferResultHttp : public InferResult {
 
   bool binary_data_{true};
   bool is_final_response_{true};
+  bool is_null_response_{false};
 };
 
 void
@@ -948,6 +950,16 @@ InferResultHttp::IsFinalResponse(bool* is_final_response) const
     return Error("is_final_response cannot be nullptr");
   }
   *is_final_response = is_final_response_;
+  return Error::Success;
+}
+
+Error
+InferResultHttp::IsNullResponse(bool* is_null_response) const
+{
+  if (is_null_response == nullptr) {
+    return Error("is_null_response cannot be nullptr");
+  }
+  *is_null_response = is_null_response_;
   return Error::Success;
 }
 

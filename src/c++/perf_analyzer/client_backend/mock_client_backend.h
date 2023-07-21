@@ -127,6 +127,15 @@ class MockInferResult : public InferResult {
     return Error::Success;
   }
 
+  Error IsNullResponse(bool* is_null_response) const override
+  {
+    if (is_null_response == nullptr) {
+      return Error("is_null_response cannot be nullptr");
+    }
+    *is_null_response = false;
+    return Error::Success;
+  }
+
  private:
   std::string req_id_;
 };
