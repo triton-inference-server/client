@@ -338,23 +338,6 @@ ShapeVecToString(const std::vector<int64_t> shape_vec, bool skip_first)
 }
 
 std::string
-ShapeTensorValuesToString(const int* data_ptr, const int count)
-{
-  bool first = true;
-  std::string str("[");
-  for (int i = 0; i < count; i++) {
-    if (!first) {
-      str += ",";
-    }
-    str += std::to_string(*(data_ptr + i));
-    first = false;
-  }
-
-  str += "]";
-  return str;
-}
-
-std::string
 TensorToRegionName(std::string name)
 {
   // Remove slashes from the name, if any.
