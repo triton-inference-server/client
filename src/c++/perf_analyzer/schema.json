@@ -1,96 +1,96 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer/output",
+    "$id": "https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/examples/schema.json",
     "title": "Perf Analyzer output data",
-    "description": "A json file describing the output from a perf analyzer run",
+    "description": "A json file describing the output from a perf analyzer run.",
     "type": "object",
+    "required": [
+        "experiments",
+        "version"
+    ],
     "properties": {
         "experiments": {
-            "description": "The array of all experiments run by perf analyzer",
+            "description": "The array of all experiments run by perf analyzer.",
             "type": "array",
-            "items": {
-                "type": "object"
-            },
-            "minItems": 1,
-            "uniqueItems": true,
-            "properties": {
-                "experiment": {
-                    "description": "A single experiment run by perf analyzer",
-                    "type": "object",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "properties": {
-                        "mode": {
-                            "description": "Operating mode of perf analyzer: either concurrency or request rate",
-                            "type": "string"
-                        },
-                        "value": {
-                            "description": "Concurrency or request rate for the current experiment",
-                            "type": "number"
-                        }
-                    },
-                    "required": [
-                        "mode",
-                        "value"
-                    ]
-                },
-                "requests": {
-                    "description": "The array of requests sent by perf_analyzer for this experiment",
-                    "type": "array",
-                    "uniqueItems": true,
-                    "items": {
-                        "$ref": "#/properties/experiments/properties/$defs/request"
-                    }
-                },
-                "$defs": {
-                    "request": {
-                        "description": "Info for a single request",
-                        "type": "object",
-                        "properties": {
-                            "timestamp": {
-                                "description": "Time stamp of the request",
-                                "type": "number"
-                            },
-                            "sequence_id": {
-                                "description": "sequence_id of the request",
-                                "type": "number"
-                            },
-                            "responses_timestamps": {
-                                "description": "All associated responses to this request",
-                                "type": "array",
-                                "items": {
-                                    "type": "number"
-                                }
-                            }
-                        },
-                        "required": [
-                            "timestamp",
-                            "responses_timestamps"
-                        ]
-                    }
-                },
-                "window_boundaries": {
-                    "description": "An array of time stamps describing window boundaries",
-                    "type": "array",
-                    "items": {
-                        "type": "number"
-                    },
-                    "uniqueItems": true
-                }
-            },
             "required": [
                 "experiment",
                 "requests",
                 "window_boundaries"
-            ]
+            ],
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "experiment": {
+                        "description": "A single experiment run by perf analyzer.",
+                        "type": "object",
+                        "required": [
+                            "mode",
+                            "value"
+                        ],
+                        "minItems": 1,
+                        "maxItems": 1,
+                        "properties": {
+                            "mode": {
+                                "description": "Operating mode of perf analyzer: For example, concurrency or request rate.",
+                                "type": "string"
+                            },
+                            "value": {
+                                "description": "Concurrency or request rate for the current experiment.",
+                                "type": "number"
+                            }
+                        }
+                    },
+                    "requests": {
+                        "description": "The array of requests sent by perf_analyzer for this experiment.",
+                        "type": "array",
+                        "uniqueItems": true,
+                        "items": {
+                            "$ref": "#/properties/experiments/items/properties/$defs/request"
+                        }
+                    },
+                    "$defs": {
+                        "request": {
+                            "description": "Info for a single request.",
+                            "type": "object",
+                            "required": [
+                                "timestamp",
+                                "responses_timestamps"
+                            ],
+                            "properties": {
+                                "timestamp": {
+                                    "description": "Time stamp of the request.",
+                                    "type": "number"
+                                },
+                                "sequence_id": {
+                                    "description": "The sequence_id of the request.",
+                                    "type": "number"
+                                },
+                                "responses_timestamps": {
+                                    "description": "All associated responses to this request.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "window_boundaries": {
+                        "description": "An array of time stamps describing window boundaries.",
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "uniqueItems": true
+                    }
+                }
+            }
         },
         "version": {
-            "description": "The version of perf analyzer that generated the report",
+            "description": "The version of perf analyzer that generated the report.",
             "type": "string"
         }
-    },
-    "required": [
-        "experiments",
-        "version"
-    ]
+    }
 }
