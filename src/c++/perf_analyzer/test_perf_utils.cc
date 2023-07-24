@@ -214,34 +214,35 @@ TEST_CASE("perf_utils: IsFile")
 TEST_CASE("perf_utils: ByteSize")
 {
   std::vector<int64_t> shape{3, 4, 5};
+  constexpr int num_elements = 3 * 4 * 5;
 
   SUBCASE("Single byte elements")
   {
-    CHECK(ByteSize(shape, "BOOL") == 1 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "INT8") == 1 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "UINT8") == 1 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "BOOL") == 1 * num_elements);
+    CHECK(ByteSize(shape, "INT8") == 1 * num_elements);
+    CHECK(ByteSize(shape, "UINT8") == 1 * num_elements);
   }
 
   SUBCASE("2 byte elements")
   {
-    CHECK(ByteSize(shape, "INT16") == 2 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "UINT16") == 2 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "FP16") == 2 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "BF16") == 2 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "INT16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "UINT16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "FP16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "BF16") == 2 * num_elements);
   }
 
   SUBCASE("4 byte elements")
   {
-    CHECK(ByteSize(shape, "INT32") == 4 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "UINT32") == 4 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "FP32") == 4 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "INT32") == 4 * num_elements);
+    CHECK(ByteSize(shape, "UINT32") == 4 * num_elements);
+    CHECK(ByteSize(shape, "FP32") == 4 * num_elements);
   }
 
   SUBCASE("8 byte elements")
   {
-    CHECK(ByteSize(shape, "INT64") == 8 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "UINT64") == 8 * 3 * 4 * 5);
-    CHECK(ByteSize(shape, "FP64") == 8 * 3 * 4 * 5);
+    CHECK(ByteSize(shape, "INT64") == 8 * num_elements);
+    CHECK(ByteSize(shape, "UINT64") == 8 * num_elements);
+    CHECK(ByteSize(shape, "FP64") == 8 * num_elements);
   }
 
   SUBCASE("Dynamic shape tensor")
@@ -294,21 +295,22 @@ TEST_CASE("perf_utils: ByteSize")
 TEST_CASE("perf_utils: ElementCount")
 {
   std::vector<int64_t> shape{3, 4, 5};
+  constexpr int num_elements = 3 * 4 * 5;
 
   SUBCASE("Static tensor shape")
   {
-    CHECK(ElementCount(shape) == 3 * 4 * 5);
+    CHECK(ElementCount(shape) == num_elements);
 
     shape.push_back(1);
-    CHECK(ElementCount(shape) == 3 * 4 * 5 * 1);
+    CHECK(ElementCount(shape) == num_elements * 1);
 
     shape.push_back(300);
-    CHECK(ElementCount(shape) == 3 * 4 * 5 * 1 * 300);
+    CHECK(ElementCount(shape) == num_elements * 1 * 300);
   }
 
   SUBCASE("Dynamic tensor shape")
   {
-    CHECK(ElementCount(shape) == 3 * 4 * 5);
+    CHECK(ElementCount(shape) == num_elements);
 
     shape.push_back(-1);
     CHECK(ElementCount(shape) == -1);
