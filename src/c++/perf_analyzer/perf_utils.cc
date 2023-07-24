@@ -388,14 +388,4 @@ ParseTensorFormat(const std::string& content_type_str)
   }
 }
 
-TEST_CASE("testing the ParseProtocol function")
-{
-  CHECK(ParseProtocol("http") == cb::ProtocolType::HTTP);
-  CHECK(ParseProtocol("HTTP") == cb::ProtocolType::HTTP);
-  CHECK(ParseProtocol("grpc") == cb::ProtocolType::GRPC);
-  CHECK(ParseProtocol("GRPC") == cb::ProtocolType::GRPC);
-  CHECK(ParseProtocol("abc") == cb::ProtocolType::UNKNOWN);
-  CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
-}
-
 }}  // namespace triton::perfanalyzer

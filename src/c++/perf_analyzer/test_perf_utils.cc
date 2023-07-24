@@ -24,6 +24,11 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <unistd.h>
+
+#include <cstdio>
+#include <fstream>
+
 #include "doctest.h"
 #include "perf_utils.h"
 #include "test_utils.h"
@@ -92,7 +97,7 @@ class TestPerfUtils {
 
 /// Test all distributions across various request rates
 ///
-TEST_CASE("test_distribution")
+TEST_CASE("perf_utils: TestDistribution")
 {
   std::vector<Distribution> distTypes{CONSTANT, POISSON};
   std::vector<uint32_t> requestRates{10, 100, 1000, 10000};
@@ -104,7 +109,7 @@ TEST_CASE("test_distribution")
   }
 }
 
-TEST_CASE("testing the ParseTensorFormat function")
+TEST_CASE("perf_utils: ParseTensorFormat")
 {
   CHECK(ParseTensorFormat("binary") == cb::TensorFormat::BINARY);
   CHECK(ParseTensorFormat("BINARY") == cb::TensorFormat::BINARY);
@@ -113,5 +118,257 @@ TEST_CASE("testing the ParseTensorFormat function")
   CHECK(ParseTensorFormat("abc") == cb::TensorFormat::UNKNOWN);
   CHECK(ParseTensorFormat("") == cb::TensorFormat::UNKNOWN);
 }
+
+TEST_CASE("perf_utils: ParseProtocol")
+{
+  CHECK(ParseProtocol("HTTP") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("http") == cb::ProtocolType::HTTP);
+  CHECK(ParseProtocol("GRPC") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("grpc") == cb::ProtocolType::GRPC);
+  CHECK(ParseProtocol("hhtp") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("") == cb::ProtocolType::UNKNOWN);
+  CHECK(ParseProtocol("http2") == cb::ProtocolType::UNKNOWN);
+}
+
+TEST_CASE("perf_utils: ConvertDTypeFromTFS")
+{
+  std::string datatype;
+  cb::Error status;
+
+  SUBCASE("Check for correct conversion")
+  {
+    std::vector<std::pair<std::string, std::string>> tf_to_datatype{
+        std::make_pair("DT_HALF", "FP16"),
+        std::make_pair("DT_BFLOAT16", "BF16"),
+        std::make_pair("DT_FLOAT", "FP32"),
+        std::make_pair("DT_DOUBLE", "FP64"),
+        std::make_pair("DT_INT32", "INT32"),
+        std::make_pair("DT_INT16", "INT16"),
+        std::make_pair("DT_INT8", "INT8"),
+        std::make_pair("DT_UINT8", "UINT8"),
+        std::make_pair("DT_STRING", "BYTES"),
+        std::make_pair("DT_INT64", "INT64"),
+        std::make_pair("DT_BOOL", "BOOL"),
+        std::make_pair("DT_UINT32", "UINT32"),
+        std::make_pair("DT_UINT64", "UINT64")};
+
+    for (const auto& type_pair : tf_to_datatype) {
+      status = ConvertDTypeFromTFS(type_pair.first, &datatype);
+      CHECK(status.IsOk());
+      CHECK(datatype == type_pair.second);
+    }
+  }
+
+  SUBCASE("Invalid tensorflow datatype")
+  {
+    status = ConvertDTypeFromTFS("dt_bool", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("dt_uint8", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("abcdef", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+
+    status = ConvertDTypeFromTFS("", &datatype);
+    CHECK(!status.IsOk());
+    CHECK(datatype == "");
+  }
+}
+
+TEST_CASE("perf_utils: IsDirectory")
+{
+  // Create a temporary directory /tmp/abcdef1234
+  int status;
+  std::string temp_path{"/tmp/abcdef1234"};
+
+  CHECK(!IsDirectory(temp_path));
+
+  status = mkdir(temp_path.c_str(), S_IRWXU | S_IROTH | S_IXOTH);
+  REQUIRE(status == 0);
+  CHECK(IsDirectory(temp_path));
+
+  status = rmdir(temp_path.c_str());
+  REQUIRE(status == 0);
+  CHECK(!IsDirectory(temp_path));
+}
+
+TEST_CASE("perf_utils: IsFile")
+{
+  // Create a temporary file /tmp/test.txt
+  int status;
+  std::string temp_path{"/tmp/test.txt"};
+
+  CHECK(!IsFile(temp_path));
+
+  std::ofstream file(temp_path);
+  CHECK(IsFile(temp_path));
+
+  std::remove(temp_path.c_str());
+  CHECK(!IsFile(temp_path));
+}
+
+TEST_CASE("perf_utils: ByteSize")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+  constexpr int num_elements = 3 * 4 * 5;
+
+  SUBCASE("Single byte elements")
+  {
+    CHECK(ByteSize(shape, "BOOL") == 1 * num_elements);
+    CHECK(ByteSize(shape, "INT8") == 1 * num_elements);
+    CHECK(ByteSize(shape, "UINT8") == 1 * num_elements);
+  }
+
+  SUBCASE("2 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "UINT16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "FP16") == 2 * num_elements);
+    CHECK(ByteSize(shape, "BF16") == 2 * num_elements);
+  }
+
+  SUBCASE("4 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT32") == 4 * num_elements);
+    CHECK(ByteSize(shape, "UINT32") == 4 * num_elements);
+    CHECK(ByteSize(shape, "FP32") == 4 * num_elements);
+  }
+
+  SUBCASE("8 byte elements")
+  {
+    CHECK(ByteSize(shape, "INT64") == 8 * num_elements);
+    CHECK(ByteSize(shape, "UINT64") == 8 * num_elements);
+    CHECK(ByteSize(shape, "FP64") == 8 * num_elements);
+  }
+
+  SUBCASE("Dynamic shape tensor")
+  {
+    shape.insert(shape.begin(), -1);
+
+    CHECK(ByteSize(shape, "BOOL") == -1);
+    CHECK(ByteSize(shape, "INT8") == -1);
+    CHECK(ByteSize(shape, "UINT8") == -1);
+
+    CHECK(ByteSize(shape, "INT16") == -1);
+    CHECK(ByteSize(shape, "UINT16") == -1);
+    CHECK(ByteSize(shape, "FP16") == -1);
+    CHECK(ByteSize(shape, "BF16") == -1);
+
+    CHECK(ByteSize(shape, "INT32") == -1);
+    CHECK(ByteSize(shape, "UINT32") == -1);
+    CHECK(ByteSize(shape, "FP32") == -1);
+
+    CHECK(ByteSize(shape, "INT64") == -1);
+    CHECK(ByteSize(shape, "UINT64") == -1);
+    CHECK(ByteSize(shape, "FP64") == -1);
+  }
+
+  SUBCASE("Unknown data types")
+  {
+    CHECK(ByteSize(shape, "bool") == -1);
+    CHECK(ByteSize(shape, "int8") == -1);
+    CHECK(ByteSize(shape, "uint8") == -1);
+
+    CHECK(ByteSize(shape, "int16") == -1);
+    CHECK(ByteSize(shape, "uint16") == -1);
+    CHECK(ByteSize(shape, "fp16") == -1);
+    CHECK(ByteSize(shape, "bf16") == -1);
+
+    CHECK(ByteSize(shape, "int32") == -1);
+    CHECK(ByteSize(shape, "uint32") == -1);
+    CHECK(ByteSize(shape, "fp32") == -1);
+
+    CHECK(ByteSize(shape, "int64") == -1);
+    CHECK(ByteSize(shape, "uint64") == -1);
+    CHECK(ByteSize(shape, "fp64") == -1);
+
+    CHECK(ByteSize(shape, "abc") == -1);
+    CHECK(ByteSize(shape, "1234") == -1);
+    CHECK(ByteSize(shape, "") == -1);
+  }
+}
+
+TEST_CASE("perf_utils: ElementCount")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+  constexpr int num_elements = 3 * 4 * 5;
+
+  SUBCASE("Static tensor shape")
+  {
+    CHECK(ElementCount(shape) == num_elements);
+
+    shape.push_back(1);
+    CHECK(ElementCount(shape) == num_elements * 1);
+
+    shape.push_back(300);
+    CHECK(ElementCount(shape) == num_elements * 1 * 300);
+  }
+
+  SUBCASE("Dynamic tensor shape")
+  {
+    CHECK(ElementCount(shape) == num_elements);
+
+    shape.push_back(-1);
+    CHECK(ElementCount(shape) == -1);
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ElementCount(shape) == -1);
+  }
+}
+
+TEST_CASE("perf_utils: ShapeVecToString")
+{
+  std::vector<int64_t> shape{3, 4, 5};
+
+  SUBCASE("No skipping first dim")
+  {
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5]");
+
+    shape.push_back(10);
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5,10]");
+
+    shape.push_back(-1);
+    CHECK(ShapeVecToString(shape, false) == "[3,4,5,10,-1]");
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ShapeVecToString(shape, false) == "[-1,3,4,5,10]");
+
+    shape.clear();
+    CHECK(ShapeVecToString(shape, false) == "[]");
+  }
+
+  SUBCASE("Skipping first dim")
+  {
+    CHECK(ShapeVecToString(shape, true) == "[4,5]");
+
+    shape.push_back(-1);
+    CHECK(ShapeVecToString(shape, true) == "[4,5,-1]");
+
+    shape.pop_back();
+    shape.insert(shape.begin(), -1);
+    CHECK(ShapeVecToString(shape, true) == "[3,4,5]");
+
+    shape.clear();
+    CHECK(ShapeVecToString(shape, true) == "[]");
+  }
+}
+
+TEST_CASE("perf_utils: TensorToRegionName")
+{
+  CHECK(TensorToRegionName("name/with/slash") == "namewithslash");
+  CHECK(TensorToRegionName("name//with//slash") == "namewithslash");
+  CHECK(TensorToRegionName("name\\with\\backslash") == "namewithbackslash");
+  CHECK(TensorToRegionName("name\\\\with\\\\backslash") == "namewithbackslash");
+  CHECK(TensorToRegionName("name_without_slash") == "name_without_slash");
+  CHECK(TensorToRegionName("abc123!@#") == "abc123!@#");
+  CHECK(TensorToRegionName("") == "");
+}
+
 
 }}  // namespace triton::perfanalyzer
