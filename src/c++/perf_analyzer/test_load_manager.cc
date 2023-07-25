@@ -117,15 +117,15 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 = std::make_tuple(
-        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
-        false);
-    auto timestamp2 = std::make_tuple(
-        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0,
-        false);
-    auto timestamp3 = std::make_tuple(
-        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0,
-        false);
+    auto timestamp1 = RequestProperties(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
+        0);
+    auto timestamp2 = RequestProperties(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
+        0);
+    auto timestamp3 = RequestProperties(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
+        0);
 
     TimestampVector source_timestamps;
 
@@ -278,15 +278,15 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 = std::make_tuple(
-        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
-        false);
-    auto timestamp2 = std::make_tuple(
-        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0,
-        false);
-    auto timestamp3 = std::make_tuple(
-        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0,
-        false);
+    auto timestamp1 = RequestProperties(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
+        0);
+    auto timestamp2 = RequestProperties(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
+        0);
+    auto timestamp3 = RequestProperties(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
+        0);
 
     SUBCASE("No threads")
     {

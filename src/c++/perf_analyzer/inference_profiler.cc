@@ -1259,21 +1259,21 @@ InferenceProfiler::ValidLatencyMeasurement(
   std::vector<size_t> erase_indices{};
   for (size_t i = 0; i < all_timestamps_.size(); i++) {
     const auto& timestamp = all_timestamps_[i];
-    uint64_t request_start_ns = CHRONO_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp).back());
+    uint64_t request_start_ns = CHRONO_TO_NANOS(timestamp.start_time_);
+    uint64_t request_end_ns = CHRONO_TO_NANOS(timestamp.end_times_.back());
 
     if (request_start_ns <= request_end_ns) {
       // Only counting requests that end within the time interval
       if ((request_end_ns >= valid_range.first) &&
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
-        response_count += std::get<1>(timestamp).size();
+        response_count += timestamp.end_times_.size();
         erase_indices.push_back(i);
         // Just add the sequence_end flag here.
-        if (std::get<2>(timestamp)) {
+        if (timestamp.sequence_end_) {
           valid_sequence_count++;
         }
-        if (std::get<3>(timestamp)) {
+        if (timestamp.delayed_) {
           delayed_request_count++;
         }
       }

@@ -470,11 +470,39 @@ class MockClientStats {
 ///
 class MockClientBackend : public ClientBackend {
  public:
-  MockClientBackend(std::shared_ptr<MockClientStats> stats) { stats_ = stats; }
+  MockClientBackend() { SetupMocks(); };
+  MockClientBackend(std::shared_ptr<MockClientStats> stats)
+  {
+    SetupMocks();
+    stats_ = stats;
+  }
+
+  void SetupMocks()
+  {
+    ON_CALL(*this, AsyncInfer(testing::_, testing::_, testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                OnCompleteFn callback, const InferOptions& options,
+                const std::vector<InferInput*>& inputs,
+                const std::vector<const InferRequestedOutput*>& outputs)
+                -> Error {
+              stats_->CaptureRequest(
+                  MockClientStats::ReqType::ASYNC, options, inputs, outputs);
+
+              LaunchAsyncMockRequest(options, callback);
+
+              return stats_->GetNextReturnStatus();
+            });
+  }
 
   MOCK_METHOD(
       Error, ModelConfig,
       (rapidjson::Document*, const std::string&, const std::string&),
+      (override));
+  MOCK_METHOD(
+      Error, AsyncInfer,
+      (OnCompleteFn, const InferOptions&, const std::vector<InferInput*>&,
+       const std::vector<const InferRequestedOutput*>&),
       (override));
 
   Error Infer(
@@ -489,19 +517,6 @@ class MockClientBackend : public ClientBackend {
 
     local_completed_req_count_++;
     stats_->CaptureRequestEnd(options);
-
-    return stats_->GetNextReturnStatus();
-  }
-
-  Error AsyncInfer(
-      OnCompleteFn callback, const InferOptions& options,
-      const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs) override
-  {
-    stats_->CaptureRequest(
-        MockClientStats::ReqType::ASYNC, options, inputs, outputs);
-
-    LaunchAsyncMockRequest(options, callback);
 
     return stats_->GetNextReturnStatus();
   }

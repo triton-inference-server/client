@@ -37,6 +37,7 @@
 #include "load_worker.h"
 #include "perf_utils.h"
 #include "sequence_manager.h"
+#include "timestamp_vector.h"
 
 namespace triton { namespace perfanalyzer {
 

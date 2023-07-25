@@ -175,44 +175,43 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
       // request ends before window starts, this should not be possible to exist
       // in the vector of requests, but if it is, we exclude it: not included in
       // current window
-      std::make_tuple(
+      RequestProperties(
           time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
-          false),
+          false, 0),
 
       // request starts before window starts and ends inside window: included in
       // current window
-      std::make_tuple(
+      RequestProperties(
           time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
-          false),
+          false, 0),
 
       // requests start and end inside window: included in current window
-      std::make_tuple(
+      RequestProperties(
           time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
-          false),
-      std::make_tuple(
+          false, 0),
+      RequestProperties(
           time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
-          false),
+          false, 0),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
-      std::make_tuple(
+      RequestProperties(
           time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
-          false),
+          false, 0),
 
       // request starts after window ends: not included in current window
-      std::make_tuple(
+      RequestProperties(
           time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
-          false)};
+          false, 0)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
       response_count, all_timestamps);
 
-  const auto& convert_timestamp_to_latency{
-      [](std::tuple<time_point, std::vector<time_point>, uint32_t, bool> t) {
-        return CHRONO_TO_NANOS(std::get<1>(t).back()) -
-               CHRONO_TO_NANOS(std::get<0>(t));
-      }};
+  const auto& convert_timestamp_to_latency{[](RequestProperties t) {
+    return CHRONO_TO_NANOS(t.end_times_.back()) -
+           CHRONO_TO_NANOS(t.start_time_);
+  }};
 
   CHECK(latencies.size() == 3);
   CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
@@ -871,21 +870,21 @@ TEST_CASE(
     auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
     auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
     auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
-    auto timestamp1{std::make_tuple(
+    auto timestamp1{RequestProperties(
         request1_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response1_timestamp, response2_timestamp},
-        0, false)};
+        0, false, 0)};
 
     auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
     auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
     auto response4_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
     auto response5_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
-    auto timestamp2{std::make_tuple(
+    auto timestamp2{RequestProperties(
         request2_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response3_timestamp, response4_timestamp, response5_timestamp},
-        0, false)};
+        0, false, 0)};
 
     mock_inference_profiler.all_timestamps_ = {timestamp1, timestamp2};
 

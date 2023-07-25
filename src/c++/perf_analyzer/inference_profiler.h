@@ -44,6 +44,7 @@
 #include "model_parser.h"
 #include "mpi_utils.h"
 #include "request_rate_manager.h"
+#include "timestamp_vector.h"
 
 namespace triton { namespace perfanalyzer {
 
