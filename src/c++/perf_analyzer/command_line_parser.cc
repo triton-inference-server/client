@@ -634,9 +634,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr
       << FormatMessage(
              " --trace-file: Set the file where trace output will be saved."
-             " If --trace-log-frequency is also specified, this argument "
+             " If --log-frequency is also specified, this argument "
              "value will be the prefix of the files to save the trace "
-             "output. See --trace-log-frequency for details. Only used for "
+             "output. See --log-frequency for details. Only used for "
              "service-kind of triton. Default value is none.",
              18)
       << std::endl;
