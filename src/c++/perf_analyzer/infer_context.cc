@@ -74,7 +74,9 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 
     sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
-    SendRequest(request_id_++, delayed, seq_stat_index);
+    SendRequest(
+        request_id_++, delayed,
+        sequence_manager_->GetSequenceID(seq_stat_index));
   }
 }
 
@@ -95,14 +97,15 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
     sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
     bool is_delayed = false;
-    SendRequest(request_id_++, is_delayed, seq_stat_index);
+    SendRequest(
+        request_id_++, is_delayed,
+        sequence_manager_->GetSequenceID(seq_stat_index));
   }
 }
 
 void
 InferContext::SendRequest(
-    const uint64_t request_id, const bool delayed,
-    const uint32_t seq_stat_index)
+    const uint64_t request_id, const bool delayed, const uint64_t sequence_id)
 {
   if (!thread_stat_->status_.IsOk()) {
     return;
@@ -120,7 +123,7 @@ InferContext::SendRequest(
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
-      it->second.sequence_status_index_ = seq_stat_index;
+      it->second.sequence_id_ = sequence_id;
     }
 
     thread_stat_->idle_timer.Start();
@@ -165,7 +168,7 @@ InferContext::SendRequest(
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_timestamps_.emplace_back(RequestProperties(
           start_time_sync, std::move(end_time_syncs),
-          infer_data_.options_->sequence_end_, delayed, seq_stat_index));
+          infer_data_.options_->sequence_end_, delayed, sequence_id));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -267,7 +270,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           thread_stat_->request_timestamps_.emplace_back(
               it->second.start_time_, it->second.end_times_,
               it->second.sequence_end_, it->second.delayed_,
-              it->second.sequence_status_index_);
+              it->second.sequence_id_);
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
           thread_stat_->cb_status_ = ValidateOutputs(result);
           async_req_map_.erase(request_id);

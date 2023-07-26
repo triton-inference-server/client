@@ -39,22 +39,20 @@ struct RequestProperties {
   RequestProperties(
       std::chrono::time_point<std::chrono::system_clock> start_time,
       std::vector<std::chrono::time_point<std::chrono::system_clock>> end_times,
-      bool sequence_end, bool delayed,
-
-      uint32_t sequence_status_index)
+      bool sequence_end, bool delayed, uint64_t sequence_id)
       : start_time_(start_time), end_times_(end_times),
         sequence_end_(sequence_end), delayed_(delayed),
-        sequence_status_index_(sequence_status_index)
+        sequence_id_(sequence_id)
   {
   }
   bool operator==(const RequestProperties& other) const
   {
     return std::tie(
                start_time_, end_times_, sequence_end_, delayed_,
-               sequence_status_index_) ==
+               sequence_id_) ==
            std::tie(
                other.start_time_, other.end_times_, other.sequence_end_,
-               other.delayed_, other.sequence_status_index_);
+               other.delayed_, other.sequence_id_);
   }
   // The timestamp of when the request was started.
   std::chrono::time_point<std::chrono::system_clock> start_time_;
@@ -64,8 +62,8 @@ struct RequestProperties {
   bool sequence_end_;
   // Whether or not the request is delayed as per schedule.
   bool delayed_;
-  // Sequence status index of the request
-  uint32_t sequence_status_index_;
+  // Sequence ID of the request
+  uint64_t sequence_id_;
 };
 
 }}  // namespace triton::perfanalyzer

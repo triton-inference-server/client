@@ -1269,7 +1269,6 @@ InferenceProfiler::ValidLatencyMeasurement(
         valid_latencies->push_back(request_end_ns - request_start_ns);
         response_count += timestamp.end_times_.size();
         erase_indices.push_back(i);
-        // Just add the sequence_end flag here.
         if (timestamp.sequence_end_) {
           valid_sequence_count++;
         }

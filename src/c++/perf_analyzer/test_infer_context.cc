@@ -130,31 +130,48 @@ TEST_CASE("send_request: testing the SendRequest function")
   SUBCASE("testing logic relevant to request timestamp sequence ID")
   {
     mock_infer_context.thread_stat_ = std::make_shared<ThreadStat>();
+    mock_infer_context.thread_stat_->contexts_stat_.emplace_back();
     mock_infer_context.async_ = true;
+    mock_infer_context.streaming_ = true;
     mock_infer_context.infer_data_.options_ =
         std::make_unique<cb::InferOptions>("my_model");
+    std::shared_ptr<cb::MockClientStats> mock_client_stats{
+        std::make_shared<cb::MockClientStats>()};
     mock_infer_context.infer_backend_ =
-        std::make_unique<cb::MockClientBackend>();
+        std::make_unique<cb::MockClientBackend>(mock_client_stats);
+
+    const uint64_t request_id{5};
+    const bool delayed{false};
+    const uint64_t sequence_id{2};
+
+    mock_infer_context.infer_data_.options_->request_id_ =
+        std::to_string(request_id);
+
+    cb::MockInferResult* mock_infer_result{
+        new cb::MockInferResult(*mock_infer_context.infer_data_.options_)};
+
+    cb::OnCompleteFn& stream_callback{mock_infer_context.async_callback_func_};
 
     EXPECT_CALL(
         dynamic_cast<cb::MockClientBackend&>(
             *mock_infer_context.infer_backend_),
-        AsyncInfer(testing::_, testing::_, testing::_, testing::_))
-        .WillOnce(testing::Return(cb::Error::Success));
+        AsyncStreamInfer(testing::_, testing::_, testing::_))
+        .WillOnce(
+            [&mock_infer_result, &stream_callback](
+                const cb::InferOptions& options,
+                const std::vector<cb::InferInput*>& inputs,
+                const std::vector<const cb::InferRequestedOutput*>& outputs)
+                -> cb::Error {
+              stream_callback(mock_infer_result);
+              return cb::Error::Success;
+            });
 
-    const uint64_t request_id{5};
-    const bool delayed{false};
-    const uint32_t sequence_status_index{2};
+    mock_infer_context.SendRequest(request_id, delayed, sequence_id);
 
-    mock_infer_context.SendRequest(request_id, delayed, sequence_status_index);
-
-    CHECK(mock_infer_context.async_req_map_.size() == 1);
+    CHECK(mock_infer_context.thread_stat_->request_timestamps_.size() == 1);
     CHECK(
-        mock_infer_context.async_req_map_.find(std::to_string(request_id)) !=
-        mock_infer_context.async_req_map_.end());
-    CHECK(
-        mock_infer_context.async_req_map_[std::to_string(request_id)]
-            .sequence_status_index_ == sequence_status_index);
+        mock_infer_context.thread_stat_->request_timestamps_[0].sequence_id_ ==
+        sequence_id);
   }
 }
 

@@ -38,14 +38,13 @@ class NaggyMockInferContext : public InferContext {
         .WillByDefault(
             [this](
                 const uint64_t request_id, const bool delayed,
-                const uint32_t sequence_status_index) -> void {
-              this->InferContext::SendRequest(
-                  request_id, delayed, sequence_status_index);
+                const uint64_t sequence_id) -> void {
+              this->InferContext::SendRequest(request_id, delayed, sequence_id);
             });
   }
 
   MOCK_METHOD(
-      void, SendRequest, (const uint64_t, const bool, const uint32_t),
+      void, SendRequest, (const uint64_t, const bool, const uint64_t),
       (override));
 
   std::shared_ptr<SequenceManager>& sequence_manager_{
@@ -56,12 +55,13 @@ class NaggyMockInferContext : public InferContext {
   std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
   std::reference_wrapper<const bool>& execute_{InferContext::execute_};
   bool& using_json_data_{InferContext::using_json_data_};
-  std::map<std::string, RequestProperties>& async_req_map_{
-      InferContext::async_req_map_};
   bool& async_{InferContext::async_};
+  bool& streaming_{InferContext::streaming_};
   InferData& infer_data_{InferContext::infer_data_};
   std::unique_ptr<cb::ClientBackend>& infer_backend_{
       InferContext::infer_backend_};
+  std::function<void(cb::InferResult*)>& async_callback_func_{
+      InferContext::async_callback_func_};
 };
 
 using MockInferContext = testing::NiceMock<NaggyMockInferContext>;

@@ -134,10 +134,10 @@ class InferContext {
   /// A helper function to issue inference request to the server.
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param sequence_status_index Sequence status index of the request.
+  /// \param sequence_id Sequence ID of the request.
   virtual void SendRequest(
       const uint64_t request_id, const bool delayed,
-      const uint32_t sequence_status_index);
+      const uint64_t sequence_id);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -151,7 +151,7 @@ class InferContext {
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
   bool async_{false};
-  const bool streaming_{false};
+  bool streaming_{false};
   const bool on_sequence_model_{false};
   bool using_json_data_{false};
   const int32_t batch_size_{0};
