@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/examples/schema.json",
     "title": "Perf Analyzer output data",
-    "description": "A json file describing the output from a perf analyzer run.",
+    "description": "A json file describing the output from a Perf Analyzer run.",
     "type": "object",
     "required": [
         "experiments",
@@ -10,7 +10,7 @@
     ],
     "properties": {
         "experiments": {
-            "description": "The array of all experiments run by perf analyzer.",
+            "description": "The array of all experiments run by Perf Analyzer.",
             "type": "array",
             "required": [
                 "experiment",
@@ -23,7 +23,7 @@
                 "type": "object",
                 "properties": {
                     "experiment": {
-                        "description": "A single experiment run by perf analyzer.",
+                        "description": "A single experiment run by Perf Analyzer.",
                         "type": "object",
                         "required": [
                             "mode",
@@ -33,19 +33,18 @@
                         "maxItems": 1,
                         "properties": {
                             "mode": {
-                                "description": "Operating mode of perf analyzer: For example, concurrency or request rate.",
+                                "description": "Operating mode of Perf Analyzer: For example, 'concurrency' or 'request rate'.",
                                 "type": "string"
                             },
                             "value": {
                                 "description": "Concurrency or request rate for the current experiment.",
-                                "type": "number"
+                                "type": "integer"
                             }
                         }
                     },
                     "requests": {
-                        "description": "The array of requests sent by perf_analyzer for this experiment.",
+                        "description": "The array of requests sent by Perf Analyzer for this experiment.",
                         "type": "array",
-                        "uniqueItems": true,
                         "items": {
                             "$ref": "#/properties/experiments/items/properties/$defs/request"
                         }
@@ -61,17 +60,17 @@
                             "properties": {
                                 "timestamp": {
                                     "description": "Time stamp of the request.",
-                                    "type": "number"
+                                    "type": "integer"
                                 },
                                 "sequence_id": {
                                     "description": "The sequence_id of the request.",
-                                    "type": "number"
+                                    "type": "integer"
                                 },
                                 "responses_timestamps": {
                                     "description": "All associated responses to this request.",
                                     "type": "array",
                                     "items": {
-                                        "type": "number"
+                                        "type": "integer"
                                     }
                                 }
                             }
@@ -81,7 +80,7 @@
                         "description": "An array of time stamps describing window boundaries.",
                         "type": "array",
                         "items": {
-                            "type": "number"
+                            "type": "integer"
                         },
                         "uniqueItems": true
                     }
@@ -89,7 +88,7 @@
             }
         },
         "version": {
-            "description": "The version of perf analyzer that generated the report.",
+            "description": "The version of Perf Analyzer that generated the report.",
             "type": "string"
         }
     }
