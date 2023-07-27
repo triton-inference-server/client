@@ -465,14 +465,15 @@ InferenceProfiler::Create(
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-    const bool should_collect_metrics, const double overhead_pct_threshold)
+    const bool should_collect_metrics, const double overhead_pct_threshold,
+    const std::string& profile_export_file)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
       measurement_mode, mpi_driver, metrics_interval_ms, should_collect_metrics,
-      overhead_pct_threshold));
+      overhead_pct_threshold, profile_export_file));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -488,7 +489,7 @@ InferenceProfiler::InferenceProfiler(
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-    const double overhead_pct_threshold)
+    const double overhead_pct_threshold, const std::string& profile_export_file)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -497,7 +498,8 @@ InferenceProfiler::InferenceProfiler(
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
       should_collect_metrics_(should_collect_metrics),
-      overhead_pct_threshold_(overhead_pct_threshold)
+      overhead_pct_threshold_(overhead_pct_threshold),
+      profile_export_file_(profile_export_file)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;

@@ -221,6 +221,7 @@ class InferenceProfiler {
   /// should be collected.
   /// \param overhead_pct_threshold User set threshold above which the PA
   /// overhead is too significant to provide usable results.
+  /// \param profile_export_file The profile export file path.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -232,7 +233,8 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics, const double overhead_pct_threshold);
+      const bool should_collect_metrics, const double overhead_pct_threshold,
+      const std::string& profile_export_file);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -314,7 +316,8 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold);
+      const double overhead_pct_threshold,
+      const std::string& profile_export_file);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -699,6 +702,9 @@ class InferenceProfiler {
   /// User set threshold above which the PA overhead is too significant to
   /// provide usable results.
   const double overhead_pct_threshold_{0.0};
+
+  // The profile export file path.
+  const std::string profile_export_file_{""};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;
