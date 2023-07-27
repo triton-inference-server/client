@@ -917,7 +917,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 8: {
-        params_->latency_threshold_ms = std::atoi(optarg);
+        std::string latency_threshold_ms{optarg};
+        if (std::stoi(latency_threshold_ms) >= 0) {
+          params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
+        } else {
+          Usage("The latency threshold (in msecs) must be non-negative.");
+        }
         break;
       }
       case 9: {
@@ -925,7 +930,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 10: {
-        params_->max_trials = std::atoi(optarg);
+        std::string max_trials{optarg};
+        if (std::stoi(max_trials) >= 0) {
+          params_->max_trials = std::stoi(max_trials);
+        } else {
+          Usage("The maximum number of trials must be non-negative.");
+        }
         break;
       }
       case 11: {
@@ -1258,7 +1268,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (std::stoi(log_frequency) >= 0) {
           params_->trace_options["log_frequency"] = {log_frequency};
         } else {
-          Usage("The trace log frequency must be >= 0");
+          Usage("The trace log frequency value must be non-negative.");
         }
         break;
       }
@@ -1377,16 +1387,28 @@ CLParser::ParseCommandLine(int argc, char** argv)
         (*params_->http_headers)[header] = arg.substr(header.size() + 1);
         break;
       }
-      case 'l':
-        params_->latency_threshold_ms = std::atoi(optarg);
+      case 'l': {
+        std::string latency_threshold_ms{optarg};
+        if (std::stoi(latency_threshold_ms) >= 0) {
+          params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
+        } else {
+          Usage("The latency threshold (in msecs) must be non-negative.");
+        }
         break;
+      }
       case 'c':
         params_->using_old_options = true;
         params_->max_concurrency = std::atoi(optarg);
         break;
-      case 'r':
-        params_->max_trials = std::atoi(optarg);
+      case 'r': {
+        std::string max_trials{optarg};
+        if (std::stoi(max_trials) >= 0) {
+          params_->max_trials = std::stoi(max_trials);
+        } else {
+          Usage("The maximum number of trials must be non-negative.");
+        }
         break;
+      }
       case 's':
         params_->stability_threshold = atof(optarg) / 100;
         break;

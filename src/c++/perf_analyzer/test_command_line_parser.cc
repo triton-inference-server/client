@@ -172,7 +172,7 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
 }
 
 
-#define CHECK_INT_OPTION(option_name, exp_val)                             \
+#define CHECK_INT_OPTION(option_name, exp_val, msg)                        \
   SUBCASE("valid value")                                                   \
   {                                                                        \
     int argc = 5;                                                          \
@@ -204,9 +204,8 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
     int argc = 5;                                                          \
     char* argv[argc] = {app_name, "-m", model_name, option_name, "-2000"}; \
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(!parser.UsageCalled());                                          \
-                                                                           \
-    exp_val = -2000;                                                       \
+    CHECK(parser.UsageCalled());                                           \
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), msg);          \
   }                                                                        \
                                                                            \
   SUBCASE("floating point value")                                          \
@@ -1147,7 +1146,9 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --latency-threshold")
   {
-    CHECK_INT_OPTION("--latency-threshold", exp->latency_threshold_ms);
+    CHECK_INT_OPTION(
+        "--latency-threshold", exp->latency_threshold_ms,
+        "The latency threshold (in msecs) must be non-negative.");
   }
 
   SUBCASE("Option : --stability-percentage")
@@ -1215,7 +1216,9 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --max-trials")
   {
-    CHECK_INT_OPTION("--max-trials", exp->max_trials);
+    CHECK_INT_OPTION(
+        "--max-trials", exp->max_trials,
+        "The maximum number of trials must be non-negative.");
   }
 
   SUBCASE("Option : --collect-metrics")
