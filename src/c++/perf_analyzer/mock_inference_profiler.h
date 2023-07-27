@@ -113,7 +113,8 @@ class NaggyMockInferenceProfiler : public InferenceProfiler {
   std::shared_ptr<ModelParser>& parser_{InferenceProfiler::parser_};
   std::unique_ptr<LoadManager>& manager_{InferenceProfiler::manager_};
   bool& include_lib_stats_{InferenceProfiler::include_lib_stats_};
-  TimestampVector& all_timestamps_{InferenceProfiler::all_timestamps_};
+  std::vector<RequestRecord>& all_request_records_{
+      InferenceProfiler::all_request_records_};
 };
 
 using MockInferenceProfiler = testing::NiceMock<NaggyMockInferenceProfiler>;

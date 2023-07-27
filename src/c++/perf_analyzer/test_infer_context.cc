@@ -127,7 +127,7 @@ TEST_CASE("send_request: testing the SendRequest function")
 {
   MockInferContext mock_infer_context{};
 
-  SUBCASE("testing logic relevant to request timestamp sequence ID")
+  SUBCASE("testing logic relevant to request record sequence ID")
   {
     mock_infer_context.thread_stat_ = std::make_shared<ThreadStat>();
     mock_infer_context.thread_stat_->contexts_stat_.emplace_back();
@@ -168,9 +168,9 @@ TEST_CASE("send_request: testing the SendRequest function")
 
     mock_infer_context.SendRequest(request_id, delayed, sequence_id);
 
-    CHECK(mock_infer_context.thread_stat_->request_timestamps_.size() == 1);
+    CHECK(mock_infer_context.thread_stat_->request_records_.size() == 1);
     CHECK(
-        mock_infer_context.thread_stat_->request_timestamps_[0].sequence_id_ ==
+        mock_infer_context.thread_stat_->request_records_[0].sequence_id_ ==
         sequence_id);
   }
 }

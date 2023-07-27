@@ -53,7 +53,7 @@ InferContext::SendInferRequest(bool delayed)
   if (using_json_data_) {
     UpdateJsonData();
   }
-  SendRequest(request_id_++, delayed, /* ignored */ 0);
+  SendRequest(request_id_++, delayed);
 }
 
 void
@@ -116,10 +116,9 @@ InferContext::SendRequest(
     infer_data_.options_->request_id_ = std::to_string(request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-      auto it =
-          async_req_map_
-              .emplace(infer_data_.options_->request_id_, RequestProperties())
-              .first;
+      auto it = async_req_map_
+                    .emplace(infer_data_.options_->request_id_, RequestRecord())
+                    .first;
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
@@ -162,11 +161,11 @@ InferContext::SendRequest(
     std::vector<std::chrono::time_point<std::chrono::system_clock>>
         end_time_syncs{end_time_sync};
     {
-      // Add the request timestamp to thread Timestamp vector with proper
+      // Add the request record to thread request records vector with proper
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
-      thread_stat_->request_timestamps_.emplace_back(RequestProperties(
+      thread_stat_->request_records_.emplace_back(RequestRecord(
           start_time_sync, std::move(end_time_syncs),
           infer_data_.options_->sequence_end_, delayed, sequence_id));
       thread_stat_->status_ =
@@ -243,7 +242,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
   std::shared_ptr<cb::InferResult> result_ptr(result);
   bool is_final_response{true};
   if (thread_stat_->cb_status_.IsOk()) {
-    // Add the request timestamp to thread Timestamp vector with
+    // Add the request record to thread request records vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
     thread_stat_->cb_status_ = result_ptr->RequestStatus();
@@ -259,7 +258,8 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           return;
         }
         if (is_null_response == false) {
-          it->second.end_times_.push_back(std::chrono::system_clock::now());
+          it->second.response_times_.push_back(
+              std::chrono::system_clock::now());
         }
         thread_stat_->cb_status_ =
             result_ptr->IsFinalResponse(&is_final_response);
@@ -267,8 +267,8 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           return;
         }
         if (is_final_response) {
-          thread_stat_->request_timestamps_.emplace_back(
-              it->second.start_time_, it->second.end_times_,
+          thread_stat_->request_records_.emplace_back(
+              it->second.start_time_, it->second.response_times_,
               it->second.sequence_end_, it->second.delayed_,
               it->second.sequence_id_);
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));

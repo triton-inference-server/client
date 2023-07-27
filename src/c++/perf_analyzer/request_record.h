@@ -25,12 +25,37 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
+#include <chrono>
+#include <cstdint>
+#include <tuple>
 #include <vector>
-
-#include "request_properties.h"
 
 namespace triton { namespace perfanalyzer {
 
-using TimestampVector = std::vector<RequestProperties>;
+/// A record of an individual request
+struct RequestRecord {
+  RequestRecord() = default;
+  RequestRecord(
+      std::chrono::time_point<std::chrono::system_clock> start_time,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>
+          response_times,
+      bool sequence_end, bool delayed, uint64_t sequence_id)
+      : start_time_(start_time), response_times_(response_times),
+        sequence_end_(sequence_end), delayed_(delayed),
+        sequence_id_(sequence_id)
+  {
+  }
+  // The timestamp of when the request was started.
+  std::chrono::time_point<std::chrono::system_clock> start_time_;
+  // Collection of response times
+  std::vector<std::chrono::time_point<std::chrono::system_clock>>
+      response_times_;
+  // Whether or not the request is at the end of a sequence.
+  bool sequence_end_;
+  // Whether or not the request is delayed as per schedule.
+  bool delayed_;
+  // Sequence ID of the request
+  uint64_t sequence_id_;
+};
 
 }}  // namespace triton::perfanalyzer

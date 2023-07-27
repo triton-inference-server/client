@@ -44,7 +44,6 @@
 #include "model_parser.h"
 #include "mpi_utils.h"
 #include "request_rate_manager.h"
-#include "timestamp_vector.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -184,9 +183,9 @@ cb::Error ReportPrometheusMetrics(const Metrics& metrics);
 /// time.
 /// 2. After given time interval, the profiler gets end status from the server
 ///    and records the end time.
-/// 3. The profiler obtains the timestamps recorded by concurrency manager,
-///    and uses the timestamps that are recorded between start time and end time
-///    to measure client side status and update status_summary.
+/// 3. The profiler obtains the request records recorded by concurrency manager,
+///    and uses the request records that are recorded between start time and end
+///    time to measure client side status and update status_summary.
 ///
 class InferenceProfiler {
  public:
@@ -679,8 +678,8 @@ class InferenceProfiler {
   bool include_server_stats_;
   std::shared_ptr<MPIDriver> mpi_driver_;
 
-  /// The timestamps of the requests completed during all measurements
-  TimestampVector all_timestamps_;
+  /// The request records of the requests completed during all measurements
+  std::vector<RequestRecord> all_request_records_;
 
   /// The end time of the previous measurement window
   uint64_t previous_window_end_ns_;

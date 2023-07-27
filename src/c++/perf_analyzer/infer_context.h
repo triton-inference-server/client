@@ -36,9 +36,8 @@
 #include "iinfer_data_manager.h"
 #include "infer_data.h"
 #include "perf_utils.h"
-#include "request_properties.h"
+#include "request_record.h"
 #include "sequence_manager.h"
-#include "timestamp_vector.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -57,9 +56,8 @@ struct ThreadStat {
   // Tracks the amount of time this thread spent sleeping or waiting
   IdleTimer idle_timer;
 
-  // A vector of request timestamps <start_time, end_time>
-  // Request latency will be end_time - start_time
-  TimestampVector request_timestamps_;
+  // A vector of request records
+  std::vector<RequestRecord> request_records_;
   // A lock to protect thread data
   std::mutex mu_;
   // The number of sent requests by this thread.
@@ -137,7 +135,7 @@ class InferContext {
   /// \param sequence_id Sequence ID of the request.
   virtual void SendRequest(
       const uint64_t request_id, const bool delayed,
-      const uint64_t sequence_id);
+      const uint64_t sequence_id = 0);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -163,7 +161,7 @@ class InferContext {
   std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   uint64_t request_id_ = 0;
-  std::map<std::string, RequestProperties> async_req_map_;
+  std::map<std::string, RequestRecord> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
   size_t data_step_id_;
 

@@ -38,10 +38,10 @@ class TestInferenceProfiler : public InferenceProfiler {
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies, size_t& response_count,
-      TimestampVector& all_timestamps)
+      std::vector<RequestRecord>& all_request_records)
   {
     InferenceProfiler inference_profiler{};
-    inference_profiler.all_timestamps_ = all_timestamps;
+    inference_profiler.all_request_records_ = all_request_records;
     inference_profiler.ValidLatencyMeasurement(
         valid_range, valid_sequence_count, delayed_request_count, latencies,
         response_count);
@@ -171,52 +171,58 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
   using ns = std::chrono::nanoseconds;
-  TimestampVector all_timestamps{
+  std::vector<RequestRecord> all_request_records{
       // request ends before window starts, this should not be possible to exist
       // in the vector of requests, but if it is, we exclude it: not included in
       // current window
-      RequestProperties(
+      RequestRecord(
           time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
           false, 0),
 
       // request starts before window starts and ends inside window: included in
       // current window
-      RequestProperties(
+      RequestRecord(
           time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
           false, 0),
 
       // requests start and end inside window: included in current window
-      RequestProperties(
+      RequestRecord(
           time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
           false, 0),
-      RequestProperties(
+      RequestRecord(
           time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
           false, 0),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
-      RequestProperties(
+      RequestRecord(
           time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
           false, 0),
 
       // request starts after window ends: not included in current window
-      RequestProperties(
+      RequestRecord(
           time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
           false, 0)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
-      response_count, all_timestamps);
+      response_count, all_request_records);
 
-  const auto& convert_timestamp_to_latency{[](RequestProperties t) {
-    return CHRONO_TO_NANOS(t.end_times_.back()) -
+  const auto& convert_request_record_to_latency{[](RequestRecord t) {
+    return CHRONO_TO_NANOS(t.response_times_.back()) -
            CHRONO_TO_NANOS(t.start_time_);
   }};
 
   CHECK(latencies.size() == 3);
-  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
-  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
-  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+  CHECK(
+      latencies[0] ==
+      convert_request_record_to_latency(all_request_records[1]));
+  CHECK(
+      latencies[1] ==
+      convert_request_record_to_latency(all_request_records[2]));
+  CHECK(
+      latencies[2] ==
+      convert_request_record_to_latency(all_request_records[3]));
 }
 
 TEST_CASE("test_check_window_for_stability")
@@ -870,7 +876,7 @@ TEST_CASE(
     auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
     auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
     auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
-    auto timestamp1{RequestProperties(
+    auto request_record1{RequestRecord(
         request1_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response1_timestamp, response2_timestamp},
@@ -880,13 +886,14 @@ TEST_CASE(
     auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
     auto response4_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
     auto response5_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
-    auto timestamp2{RequestProperties(
+    auto request_record2{RequestRecord(
         request2_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response3_timestamp, response4_timestamp, response5_timestamp},
         0, false, 0)};
 
-    mock_inference_profiler.all_timestamps_ = {timestamp1, timestamp2};
+    mock_inference_profiler.all_request_records_ = {
+        request_record1, request_record2};
 
     const std::pair<uint64_t, uint64_t> valid_range{
         std::make_pair(0, UINT64_MAX)};
