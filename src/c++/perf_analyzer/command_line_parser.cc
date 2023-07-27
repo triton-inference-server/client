@@ -808,14 +808,29 @@ CLParser::ParseCommandLine(int argc, char** argv)
       case 0:
         params_->streaming = true;
         break;
-      case 1:
-        params_->max_threads = std::atoi(optarg);
-        params_->max_threads_specified = true;
+      case 1: {
+        std::string max_threads{optarg};
+        if (std::stoi(max_threads) > 0) {
+          params_->max_threads = std::stoi(max_threads);
+          params_->max_threads_specified = true;
+        } else {
+          Usage("maximum number of threads must be > 0");
+        }
         break;
-      case 2:
-        params_->sequence_length = std::atoi(optarg);
+      }
+      case 2: {
+        std::string sequence_length{optarg};
+        if (std::stoi(sequence_length) > 0) {
+          params_->sequence_length = std::stoi(sequence_length);
+        } else {
+          std::cerr
+              << "WARNING: The sequence length must be > 0. Perf Analyzer will"
+              << " use default value if it is measuring on sequence model."
+              << std::endl;
+        }
         params_->sequence_length_specified = true;
         break;
+      }
       case 3:
         params_->percentile = std::atoi(optarg);
         break;
@@ -928,7 +943,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 12: {
-        params_->string_length = std::atoi(optarg);
+        std::string string_length{optarg};
+        if (std::stoi(string_length) > 0) {
+          params_->string_length = std::stoi(string_length);
+        } else {
+          Usage("The string length must be > 0");
+        }
         break;
       }
       case 13: {
@@ -974,7 +994,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 17: {
-        params_->num_of_sequences = std::atoi(optarg);
+        std::string num_of_sequences{optarg};
+        if (std::stoi(num_of_sequences) > 0) {
+          params_->num_of_sequences = std::stoi(num_of_sequences);
+        } else {
+          Usage("The number of concurrent sequences must be > 0");
+        }
         break;
       }
       case 18: {
@@ -1220,11 +1245,21 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 47: {
-        params_->trace_options["trace_count"] = {optarg};
+        std::string trace_count{optarg};
+        if (std::stoi(trace_count) >= -1) {
+          params_->trace_options["trace_count"] = {trace_count};
+        } else {
+          Usage("The trace count must be >= -1");
+        }
         break;
       }
       case 48: {
-        params_->trace_options["log_frequency"] = {optarg};
+        std::string log_frequency{optarg};
+        if (std::stoi(log_frequency) >= 0) {
+          params_->trace_options["log_frequency"] = {log_frequency};
+        } else {
+          Usage("The trace log frequency must be >= 0");
+        }
         break;
       }
       case 49: {
@@ -1237,8 +1272,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 51: {
-        params_->metrics_interval_ms = std::stoull(optarg);
-        params_->metrics_interval_ms_specified = true;
+        std::string metrics_interval_ms{optarg};
+        if (std::stoi(metrics_interval_ms) > 0) {
+          params_->metrics_interval_ms = std::stoull(metrics_interval_ms);
+          params_->metrics_interval_ms_specified = true;
+        } else {
+          Usage("Metrics interval must be larger than 0 milliseconds.");
+        }
         break;
       }
       case 52: {
@@ -1418,15 +1458,6 @@ CLParser::VerifyOptions()
       (params_->protocol != cb::ProtocolType::GRPC)) {
     Usage("compression is only allowed with gRPC protocol");
   }
-  if (params_->max_threads == 0) {
-    Usage("maximum number of threads must be > 0");
-  }
-  if (params_->sequence_length == 0) {
-    params_->sequence_length = 20;
-    std::cerr << "WARNING: using an invalid sequence length. Perf Analyzer will"
-              << " use default value if it is measuring on sequence model."
-              << std::endl;
-  }
   if (params_->sequence_length_variation < 0.0) {
     Usage("sequence length variation must be positive");
   }
@@ -1578,10 +1609,6 @@ CLParser::VerifyOptions()
     Usage(
         "Must specify --collect-metrics when using the --metrics-interval "
         "option.");
-  }
-
-  if (params_->metrics_interval_ms == 0) {
-    Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 
   if (params_->should_collect_metrics && !params_->metrics_url_specified) {
