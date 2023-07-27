@@ -797,6 +797,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"input-tensor-format", required_argument, 0, 55},
       {"output-tensor-format", required_argument, 0, 56},
       {"version", no_argument, 0, 57},
+      {"profile-export-file", required_argument, 0, 58},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1294,6 +1295,14 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 57: {
         PrintVersion();
+        break;
+      }
+      case 58: {
+        std::string profile_export_file{optarg};
+        if (IsFile(profile_export_file) || IsDirectory(profile_export_file)) {
+          Usage("--profile-export-file must not already exist");
+        }
+        params_->profile_export_file = profile_export_file;
         break;
       }
       case 'v':
