@@ -132,7 +132,8 @@ class InferContext {
   /// A helper function to issue inference request to the server.
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  /// \param sequence_id Sequence ID of the request.
+  /// \param sequence_id Sequence ID of the request. Note that the default of
+  /// `0` means the request is not a sequence.
   virtual void SendRequest(
       const uint64_t request_id, const bool delayed,
       const uint64_t sequence_id = 0);
