@@ -1182,12 +1182,10 @@ TEST_CASE("Testing Command Line Parser")
           app_name, "-m", model_name, "--stability-percentage", "-20"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
-
-      // BUG: There should be some check for negative values
-      // This will be interpreted as threshold of 18446744073709549616 ms
-      //
-      exp->stability_threshold = -.2f;
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "The stability percentage must be non-negative.");
     }
 
     SUBCASE("floating point value")

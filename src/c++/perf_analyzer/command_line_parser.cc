@@ -926,7 +926,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 9: {
-        params_->stability_threshold = atof(optarg) / 100;
+        std::string stability_threshold{optarg};
+        if (std::stof(stability_threshold) >= 0.0) {
+          params_->stability_threshold = std::stof(optarg) / 100;
+        } else {
+          Usage("The stability percentage must be non-negative.");
+        }
         break;
       }
       case 10: {
@@ -1029,10 +1034,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         break;
       }
-      case 20:
-        params_->using_custom_intervals = true;
-        params_->request_intervals_file = optarg;
+      case 20: {
+        std::string request_intervals_file{optarg};
+        if (IsFile(request_intervals_file)) {
+          params_->request_intervals_file = request_intervals_file;
+          params_->using_custom_intervals = true;
+        } else {
+          Usage("--request-intervals must be a valid file path");
+        }
         break;
+      }
       case 21: {
         std::string arg = optarg;
         if (arg.compare("system") == 0) {
@@ -1054,7 +1065,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 22: {
-        params_->output_shm_size = std::atoi(optarg);
+        std::string output_shm_size{optarg};
+        if (std::stoi(output_shm_size) >= 0) {
+          params_->output_shm_size = std::stoi(output_shm_size);
+        } else {
+          Usage("The output shared memory size must be non-negative.");
+        }
         break;
       }
       case 23: {
@@ -1247,7 +1263,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 45: {
-        params_->trace_options["trace_level"] = {optarg};
+        std::string trace_level{optarg};
+        if (trace_level == "OFF" || trace_level == "TIMESTAMPS" ||
+            trace_level == "TENSORS") {
+          params_->trace_options["trace_level"] = {trace_level};
+        } else {
+          Usage("--trace-level must be 'OFF', 'TIMESTAMPS', or 'TENSORS'");
+        }
         break;
       }
       case 46: {
@@ -1409,9 +1431,15 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         break;
       }
-      case 's':
-        params_->stability_threshold = atof(optarg) / 100;
+      case 's': {
+        std::string stability_threshold{optarg};
+        if (std::stof(stability_threshold) >= 0.0) {
+          params_->stability_threshold = std::stof(optarg) / 100;
+        } else {
+          Usage("The stability percentage must be non-negative.");
+        }
         break;
+      }
       case 'f':
         params_->filename = optarg;
         break;
