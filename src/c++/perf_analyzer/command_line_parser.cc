@@ -1130,8 +1130,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 30: {
         std::string arg = optarg;
-        int64_t start;
-        int64_t end;
+        int64_t start_id;
+        int64_t end_id;
         size_t pos = 0;
         int index = 0;
         try {
@@ -1145,14 +1145,14 @@ CLParser::ParseCommandLine(int argc, char** argv)
             if (colon_pos == std::string::npos) {
               std::string sequence_id{arg.substr(pos, colon_pos)};
               if (index == 0) {
-                start = std::stoi(sequence_id);
+                start_id = std::stoi(sequence_id);
               } else {
-                end = std::stoi(sequence_id);
+                end_id = std::stoi(sequence_id);
               }
               pos = colon_pos;
             } else {
               std::string sequence_id{arg.substr(pos, colon_pos - pos)};
-              start = std::stoi(sequence_id);
+              start_id = std::stoi(sequence_id);
               pos = colon_pos + 1;
               index++;
             }
@@ -1163,17 +1163,17 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
 
         // Check for invalid inputs
-        if (start < 0 || end < 0) {
+        if (start_id < 0 || end_id < 0) {
           Usage("Start and end sequence IDs must be non-negative.");
-        } else if (start > end) {
+        } else if (start_id > end_id) {
           Usage("Start sequence ID cannot be greater than end sequence ID.");
         }
 
         if (index == 0) {  // Only start ID is given
-          params_->start_sequence_id = start;
+          params_->start_sequence_id = start_id;
         } else {
-          params_->start_sequence_id = start;
-          params_->sequence_id_range = end - start;
+          params_->start_sequence_id = start_id;
+          params_->sequence_id_range = end_id - start_id;
         }
         break;
       }
