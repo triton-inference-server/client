@@ -681,6 +681,8 @@ TEST_CASE("Testing Command Line Parser")
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
           "failed to parse sequence-id-range: BAD");
+
+      check_params = false;  // Usage message called
     }
     SUBCASE("Not a number 2")
     {
@@ -694,9 +696,7 @@ TEST_CASE("Testing Command Line Parser")
           "Usage Message", parser.GetUsageMessage(),
           "failed to parse sequence-id-range: 53:BAD");
 
-      // It will get the valid value
-      //
-      exp->start_sequence_id = 53;
+      check_params = false;  // Usage message called
     }
   }
 

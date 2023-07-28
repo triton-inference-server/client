@@ -1092,7 +1092,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->model_signature_name = optarg;
         break;
       case 25: {
-        params_->using_grpc_compression = true;
         std::string arg = optarg;
         if (arg.compare("none") == 0) {
           params_->compression_algorithm = cb::COMPRESS_NONE;
@@ -1103,6 +1102,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         } else {
           Usage("unsupported --grpc-compression-algorithm specified");
         }
+        params_->using_grpc_compression = true;
         break;
       }
       case 26: {
@@ -1130,6 +1130,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 30: {
         std::string arg = optarg;
+        int64_t start;
+        int64_t end;
         size_t pos = 0;
         int index = 0;
         try {
@@ -1141,18 +1143,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
                   "elements");
             }
             if (colon_pos == std::string::npos) {
+              std::string sequence_id{arg.substr(pos, colon_pos)};
               if (index == 0) {
-                params_->start_sequence_id =
-                    std::stoll(arg.substr(pos, colon_pos));
+                start = std::stoi(sequence_id);
               } else {
-                params_->sequence_id_range =
-                    std::stoll(arg.substr(pos, colon_pos)) -
-                    params_->start_sequence_id;
+                end = std::stoi(sequence_id);
               }
               pos = colon_pos;
             } else {
-              params_->start_sequence_id =
-                  std::stoll(arg.substr(pos, colon_pos - pos));
+              std::string sequence_id{arg.substr(pos, colon_pos - pos)};
+              start = std::stoi(sequence_id);
               pos = colon_pos + 1;
               index++;
             }
@@ -1160,6 +1160,20 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         catch (const std::invalid_argument& ia) {
           Usage("failed to parse sequence-id-range: " + std::string(optarg));
+        }
+
+        // Check for invalid inputs
+        if (start < 0 || end < 0) {
+          Usage("Start and end sequence IDs must be non-negative.");
+        } else if (start > end) {
+          Usage("Start sequence ID cannot be greater than end sequence ID.");
+        }
+
+        if (index == 0) {  // Only start ID is given
+          params_->start_sequence_id = start;
+        } else {
+          params_->start_sequence_id = start;
+          params_->sequence_id_range = end - start;
         }
         break;
       }
