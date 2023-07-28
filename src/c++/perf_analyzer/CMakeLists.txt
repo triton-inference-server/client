@@ -104,6 +104,7 @@ set(
   concurrency_ctx_id_tracker.h
   fifo_ctx_id_tracker.h
   rand_ctx_id_tracker.h
+  request_record.h
 )
 
 add_executable(

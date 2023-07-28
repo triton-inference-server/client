@@ -681,13 +681,13 @@ InferenceProfiler::ProfileHelper(
   size_t completed_trials = 0;
   std::queue<cb::Error> error;
   std::deque<PerfStatus> measurement_perf_statuses;
-  all_timestamps_.clear();
+  all_request_records_.clear();
   previous_window_end_ns_ = 0;
 
-  // Start with a fresh empty timestamp vector in the manager
+  // Start with a fresh empty request records vector in the manager
   //
-  TimestampVector empty_timestamps;
-  RETURN_IF_ERROR(manager_->SwapTimestamps(empty_timestamps));
+  std::vector<RequestRecord> empty_request_records;
+  RETURN_IF_ERROR(manager_->SwapRequestRecords(empty_request_records));
 
   do {
     PerfStatus measurement_perf_status;
@@ -1193,11 +1193,11 @@ InferenceProfiler::Measure(
   RETURN_IF_ERROR(manager_->GetAccumulatedClientStat(&end_stat));
   prev_client_side_stats_ = end_stat;
 
-  TimestampVector current_timestamps;
-  RETURN_IF_ERROR(manager_->SwapTimestamps(current_timestamps));
-  all_timestamps_.insert(
-      all_timestamps_.end(), current_timestamps.begin(),
-      current_timestamps.end());
+  std::vector<RequestRecord> current_request_records;
+  RETURN_IF_ERROR(manager_->SwapRequestRecords(current_request_records));
+  all_request_records_.insert(
+      all_request_records_.end(), current_request_records.begin(),
+      current_request_records.end());
 
   RETURN_IF_ERROR(Summarize(
       start_status, end_status, start_stat, end_stat, perf_status,
@@ -1257,23 +1257,23 @@ InferenceProfiler::ValidLatencyMeasurement(
   valid_sequence_count = 0;
   response_count = 0;
   std::vector<size_t> erase_indices{};
-  for (size_t i = 0; i < all_timestamps_.size(); i++) {
-    const auto& timestamp = all_timestamps_[i];
-    uint64_t request_start_ns = CHRONO_TO_NANOS(std::get<0>(timestamp));
-    uint64_t request_end_ns = CHRONO_TO_NANOS(std::get<1>(timestamp).back());
+  for (size_t i = 0; i < all_request_records_.size(); i++) {
+    const auto& request_record = all_request_records_[i];
+    uint64_t request_start_ns = CHRONO_TO_NANOS(request_record.start_time_);
+    uint64_t request_end_ns =
+        CHRONO_TO_NANOS(request_record.response_times_.back());
 
     if (request_start_ns <= request_end_ns) {
       // Only counting requests that end within the time interval
       if ((request_end_ns >= valid_range.first) &&
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
-        response_count += std::get<1>(timestamp).size();
+        response_count += request_record.response_times_.size();
         erase_indices.push_back(i);
-        // Just add the sequence_end flag here.
-        if (std::get<2>(timestamp)) {
+        if (request_record.sequence_end_) {
           valid_sequence_count++;
         }
-        if (std::get<3>(timestamp)) {
+        if (request_record.delayed_) {
           delayed_request_count++;
         }
       }
@@ -1281,10 +1281,10 @@ InferenceProfiler::ValidLatencyMeasurement(
   }
 
   // Iterate through erase indices backwards so that erases from
-  // `all_timestamps_` happen from the back to the front to avoid using wrong
-  // indices after subsequent erases
+  // `all_request_records_` happen from the back to the front to avoid using
+  // wrong indices after subsequent erases
   std::for_each(erase_indices.rbegin(), erase_indices.rend(), [this](size_t i) {
-    this->all_timestamps_.erase(this->all_timestamps_.begin() + i);
+    this->all_request_records_.erase(this->all_request_records_.begin() + i);
   });
 
   // Always sort measured latencies as percentile will be reported as default

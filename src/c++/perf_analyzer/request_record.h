@@ -25,45 +25,37 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include "gmock/gmock.h"
-#include "infer_context.h"
+#include <chrono>
+#include <cstdint>
+#include <tuple>
+#include <vector>
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockInferContext : public InferContext {
- public:
-  NaggyMockInferContext()
+/// A record of an individual request
+struct RequestRecord {
+  RequestRecord() = default;
+  RequestRecord(
+      std::chrono::time_point<std::chrono::system_clock> start_time,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>
+          response_times,
+      bool sequence_end, bool delayed, uint64_t sequence_id)
+      : start_time_(start_time), response_times_(response_times),
+        sequence_end_(sequence_end), delayed_(delayed),
+        sequence_id_(sequence_id)
   {
-    ON_CALL(*this, SendRequest(testing::_, testing::_, testing::_))
-        .WillByDefault(
-            [this](
-                const uint64_t request_id, const bool delayed,
-                const uint64_t sequence_id) -> void {
-              this->InferContext::SendRequest(request_id, delayed, sequence_id);
-            });
   }
-
-  MOCK_METHOD(
-      void, SendRequest, (const uint64_t, const bool, const uint64_t),
-      (override));
-
-  std::shared_ptr<SequenceManager>& sequence_manager_{
-      InferContext::sequence_manager_};
-  std::shared_ptr<DataLoader>& data_loader_{InferContext::data_loader_};
-  std::shared_ptr<IInferDataManager>& infer_data_manager_{
-      InferContext::infer_data_manager_};
-  std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
-  std::reference_wrapper<const bool>& execute_{InferContext::execute_};
-  bool& using_json_data_{InferContext::using_json_data_};
-  bool& async_{InferContext::async_};
-  bool& streaming_{InferContext::streaming_};
-  InferData& infer_data_{InferContext::infer_data_};
-  std::unique_ptr<cb::ClientBackend>& infer_backend_{
-      InferContext::infer_backend_};
-  std::function<void(cb::InferResult*)>& async_callback_func_{
-      InferContext::async_callback_func_};
+  // The timestamp of when the request was started.
+  std::chrono::time_point<std::chrono::system_clock> start_time_;
+  // Collection of response times
+  std::vector<std::chrono::time_point<std::chrono::system_clock>>
+      response_times_;
+  // Whether or not the request is at the end of a sequence.
+  bool sequence_end_;
+  // Whether or not the request is delayed as per schedule.
+  bool delayed_;
+  // Sequence ID of the request
+  uint64_t sequence_id_;
 };
-
-using MockInferContext = testing::NiceMock<NaggyMockInferContext>;
 
 }}  // namespace triton::perfanalyzer

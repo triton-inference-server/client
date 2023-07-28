@@ -31,6 +31,18 @@
 
 namespace triton { namespace perfanalyzer {
 
+TEST_CASE("get_sequence_id: testing the GetSequenceID function")
+{
+  MockSequenceManager msm{};
+
+  std::shared_ptr<SequenceStatus> sequence_status{
+      std::make_shared<SequenceStatus>(5)};
+
+  msm.sequence_statuses_.push_back(sequence_status);
+
+  CHECK(msm.GetSequenceID(0) == 5);
+}
+
 TEST_CASE(
     "test_set_infer_sequence_options: testing the SetInferSequenceOptions "
     "function")
