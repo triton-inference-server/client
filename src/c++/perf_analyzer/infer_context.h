@@ -36,6 +36,7 @@
 #include "iinfer_data_manager.h"
 #include "infer_data.h"
 #include "perf_utils.h"
+#include "request_record.h"
 #include "sequence_manager.h"
 
 namespace triton { namespace perfanalyzer {
@@ -55,31 +56,16 @@ struct ThreadStat {
   // Tracks the amount of time this thread spent sleeping or waiting
   IdleTimer idle_timer;
 
-  // A vector of request timestamps <start_time, end_time>
-  // Request latency will be end_time - start_time
-  TimestampVector request_timestamps_;
+  // A vector of request records
+  std::vector<RequestRecord> request_records_;
   // A lock to protect thread data
   std::mutex mu_;
   // The number of sent requests by this thread.
   std::atomic<size_t> num_sent_requests_{0};
 };
 
-/// The properties of an asynchronous request required in
-/// the callback to effectively interpret the response.
-struct AsyncRequestProperties {
-  AsyncRequestProperties() : sequence_end_(false), delayed_(true) {}
-  // The timestamp of when the request was started.
-  std::chrono::time_point<std::chrono::system_clock> start_time_;
-  // Whether or not the request is at the end of a sequence.
-  bool sequence_end_;
-  // Whether or not the request is delayed as per schedule.
-  bool delayed_;
-  // Collection of response times
-  std::vector<std::chrono::time_point<std::chrono::system_clock>> end_times;
-};
-
 #ifndef DOCTEST_CONFIG_DISABLE
-class MockInferContext;
+class NaggyMockInferContext;
 #endif
 
 /// Sends inference requests to the server
@@ -146,7 +132,11 @@ class InferContext {
   /// A helper function to issue inference request to the server.
   /// \param request_id The unique id to be associated with the request.
   /// \param delayed Whether the request fell behind its scheduled time.
-  virtual void SendRequest(const uint64_t request_id, const bool delayed);
+  /// \param sequence_id Sequence ID of the request. Note that the default of
+  /// `0` means the request is not a sequence.
+  virtual void SendRequest(
+      const uint64_t request_id, const bool delayed,
+      const uint64_t sequence_id = 0);
 
   /// Update inputs based on custom json data
   void UpdateJsonData();
@@ -159,8 +149,8 @@ class InferContext {
   // Callback function for handling asynchronous requests
   void AsyncCallbackFuncImpl(cb::InferResult* result);
 
-  const bool async_{false};
-  const bool streaming_{false};
+  bool async_{false};
+  bool streaming_{false};
   const bool on_sequence_model_{false};
   bool using_json_data_{false};
   const int32_t batch_size_{0};
@@ -172,7 +162,7 @@ class InferContext {
   std::shared_ptr<IInferDataManager> infer_data_manager_;
 
   uint64_t request_id_ = 0;
-  std::map<std::string, AsyncRequestProperties> async_req_map_;
+  std::map<std::string, RequestRecord> async_req_map_;
   std::atomic<uint> total_ongoing_requests_{0};
   size_t data_step_id_;
 
@@ -203,7 +193,7 @@ class InferContext {
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend MockInferContext;
+  friend NaggyMockInferContext;
 
  public:
   InferContext() = default;
