@@ -76,11 +76,11 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error CheckHealth();
 
-  /// Swap the content of the timestamp vector recorded by the load
-  /// manager with a new timestamp vector
-  /// \param new_timestamps The timestamp vector to be swapped.
+  /// Swap the content of the request records vector recorded by the load
+  /// manager with a new request records vector
+  /// \param new_request_records The request records vector to be swapped.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SwapTimestamps(TimestampVector& new_timestamps);
+  cb::Error SwapRequestRecords(std::vector<RequestRecord>& new_request_records);
 
   /// Get the sum of all contexts' stat
   /// \param contexts_stat Returned the accumulated stat from all contexts
