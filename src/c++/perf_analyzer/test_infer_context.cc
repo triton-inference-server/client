@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -24,6 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include "client_backend/mock_client_backend.h"
 #include "doctest.h"
 #include "gmock/gmock.h"
 #include "infer_context.h"
@@ -92,7 +93,7 @@ TEST_CASE("update_seq_json_data: testing the UpdateSeqJsonData function")
 
   std::shared_ptr<MockInferContext> mic{std::make_shared<MockInferContext>()};
 
-  EXPECT_CALL(*mic, SendRequest(testing::_, testing::_))
+  EXPECT_CALL(*mic, SendRequest(testing::_, testing::_, testing::_))
       .Times(6)
       .WillRepeatedly(testing::Return());
 
@@ -120,6 +121,58 @@ TEST_CASE("update_seq_json_data: testing the UpdateSeqJsonData function")
   mock_infer_data_manager.reset();
   mic.reset();
   REQUIRE(testing::Test::HasFailure() == false);
+}
+
+TEST_CASE("send_request: testing the SendRequest function")
+{
+  MockInferContext mock_infer_context{};
+
+  SUBCASE("testing logic relevant to request record sequence ID")
+  {
+    mock_infer_context.thread_stat_ = std::make_shared<ThreadStat>();
+    mock_infer_context.thread_stat_->contexts_stat_.emplace_back();
+    mock_infer_context.async_ = true;
+    mock_infer_context.streaming_ = true;
+    mock_infer_context.infer_data_.options_ =
+        std::make_unique<cb::InferOptions>("my_model");
+    std::shared_ptr<cb::MockClientStats> mock_client_stats{
+        std::make_shared<cb::MockClientStats>()};
+    mock_infer_context.infer_backend_ =
+        std::make_unique<cb::MockClientBackend>(mock_client_stats);
+
+    const uint64_t request_id{5};
+    const bool delayed{false};
+    const uint64_t sequence_id{2};
+
+    mock_infer_context.infer_data_.options_->request_id_ =
+        std::to_string(request_id);
+
+    cb::MockInferResult* mock_infer_result{
+        new cb::MockInferResult(*mock_infer_context.infer_data_.options_)};
+
+    cb::OnCompleteFn& stream_callback{mock_infer_context.async_callback_func_};
+
+    EXPECT_CALL(
+        dynamic_cast<cb::MockClientBackend&>(
+            *mock_infer_context.infer_backend_),
+        AsyncStreamInfer(testing::_, testing::_, testing::_))
+        .WillOnce(
+            [&mock_infer_result, &stream_callback](
+                const cb::InferOptions& options,
+                const std::vector<cb::InferInput*>& inputs,
+                const std::vector<const cb::InferRequestedOutput*>& outputs)
+                -> cb::Error {
+              stream_callback(mock_infer_result);
+              return cb::Error::Success;
+            });
+
+    mock_infer_context.SendRequest(request_id, delayed, sequence_id);
+
+    CHECK(mock_infer_context.thread_stat_->request_records_.size() == 1);
+    CHECK(
+        mock_infer_context.thread_stat_->request_records_[0].sequence_id_ ==
+        sequence_id);
+  }
 }
 
 }}  // namespace triton::perfanalyzer

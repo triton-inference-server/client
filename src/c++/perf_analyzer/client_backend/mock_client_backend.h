@@ -103,7 +103,7 @@ class MockInferInput : public InferInput {
 ///
 class MockInferResult : public InferResult {
  public:
-  MockInferResult(const InferOptions& options) : req_id_{options.request_id_} {}
+  MockInferResult(const InferOptions& options) : req_id_(options.request_id_) {}
 
   Error Id(std::string* id) const override
   {
@@ -468,13 +468,35 @@ class MockClientStats {
 
 /// Mock implementation of ClientBackend interface
 ///
-class MockClientBackend : public ClientBackend {
+class NaggyMockClientBackend : public ClientBackend {
  public:
-  MockClientBackend(std::shared_ptr<MockClientStats> stats) { stats_ = stats; }
+  NaggyMockClientBackend(std::shared_ptr<MockClientStats> stats) : stats_(stats)
+  {
+    ON_CALL(*this, AsyncStreamInfer(testing::_, testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                const InferOptions& options,
+                const std::vector<InferInput*>& inputs,
+                const std::vector<const InferRequestedOutput*>& outputs)
+                -> Error {
+              stats_->CaptureRequest(
+                  MockClientStats::ReqType::ASYNC_STREAM, options, inputs,
+                  outputs);
+
+              LaunchAsyncMockRequest(options, stream_callback_);
+
+              return stats_->GetNextReturnStatus();
+            });
+  }
 
   MOCK_METHOD(
       Error, ModelConfig,
       (rapidjson::Document*, const std::string&, const std::string&),
+      (override));
+  MOCK_METHOD(
+      Error, AsyncStreamInfer,
+      (const InferOptions&, const std::vector<InferInput*>&,
+       const std::vector<const InferRequestedOutput*>&),
       (override));
 
   Error Infer(
@@ -502,18 +524,6 @@ class MockClientBackend : public ClientBackend {
         MockClientStats::ReqType::ASYNC, options, inputs, outputs);
 
     LaunchAsyncMockRequest(options, callback);
-
-    return stats_->GetNextReturnStatus();
-  }
-
-  Error AsyncStreamInfer(
-      const InferOptions& options, const std::vector<InferInput*>& inputs,
-      const std::vector<const InferRequestedOutput*>& outputs)
-  {
-    stats_->CaptureRequest(
-        MockClientStats::ReqType::ASYNC_STREAM, options, inputs, outputs);
-
-    LaunchAsyncMockRequest(options, stream_callback_);
 
     return stats_->GetNextReturnStatus();
   }
@@ -601,6 +611,8 @@ class MockClientBackend : public ClientBackend {
     return Error::Success;
   }
 
+  OnCompleteFn stream_callback_;
+
  private:
   void LaunchAsyncMockRequest(const InferOptions options, OnCompleteFn callback)
   {
@@ -619,8 +631,9 @@ class MockClientBackend : public ClientBackend {
   size_t local_completed_req_count_ = 0;
 
   std::shared_ptr<MockClientStats> stats_;
-  OnCompleteFn stream_callback_;
 };
+
+using MockClientBackend = testing::NiceMock<NaggyMockClientBackend>;
 
 /// Mock factory that always creates a MockClientBackend instead
 /// of a real backend
