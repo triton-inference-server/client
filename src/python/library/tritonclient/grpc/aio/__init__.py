@@ -204,7 +204,7 @@ class InferenceServerClient(InferenceServerClientBase):
             )
             if self._verbose:
                 print(response)
-            return self._return_response(response)
+            return self._return_response(response, as_json)
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
