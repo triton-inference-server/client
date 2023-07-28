@@ -37,6 +37,7 @@
 #include "model_parser.h"
 #include "mpi_utils.h"
 #include "perf_utils.h"
+#include "raw_data_collector.h"
 
 // Perf Analyzer provides various metrics to measure the performance of
 // the inference server. It can either be used to measure the throughput,
@@ -182,6 +183,7 @@ class PerfAnalyzer {
   std::unique_ptr<cb::ClientBackend> backend_;
   std::shared_ptr<pa::ModelParser> parser_;
   std::vector<pa::PerfStatus> perf_statuses_;
+  std::shared_ptr<pa::RawDataCollector> collector_;
 
   //
   // Helper methods

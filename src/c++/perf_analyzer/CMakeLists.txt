@@ -67,6 +67,7 @@ set(
   infer_data_manager.cc
   infer_data_manager_shm.cc
   sequence_manager.cc
+  raw_data_collector.cc
 )
 
 set(
@@ -105,6 +106,7 @@ set(
   fifo_ctx_id_tracker.h
   rand_ctx_id_tracker.h
   request_record.h
+  raw_data_collector.h
 )
 
 add_executable(
