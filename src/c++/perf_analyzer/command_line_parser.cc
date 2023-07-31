@@ -871,7 +871,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->input_shapes[name] = shape;
           break;
         }
-        case 6: {
+        case 6:
+        case 'p': {
           std::string measurement_window_ms{optarg};
           if (std::stoi(measurement_window_ms) > 0) {
             params_->measurement_window_ms = std::stoi(measurement_window_ms);
@@ -916,7 +917,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
 
           break;
         }
-        case 8: {
+        case 8:
+        case 'l': {
           std::string latency_threshold_ms{optarg};
           if (std::stoi(latency_threshold_ms) >= 0) {
             params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
@@ -925,7 +927,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 9: {
+        case 9:
+        case 's': {
           std::string stability_threshold{optarg};
           if (std::stof(stability_threshold) >= 0.0) {
             params_->stability_threshold = std::stof(optarg) / 100;
@@ -934,7 +937,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 10: {
+        case 10:
+        case 'r': {
           std::string max_trials{optarg};
           if (std::stoi(max_trials) >= 0) {
             params_->max_trials = std::stoi(max_trials);
@@ -970,7 +974,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->string_data = optarg;
           break;
         }
-        case 14: {
+        case 14:
+        case 'a': {
           params_->async = true;
           break;
         }
@@ -1409,15 +1414,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->using_old_options = true;
           params_->concurrent_request_count = std::atoi(optarg);
           break;
-        case 'p': {
-          std::string measurement_window_ms{optarg};
-          if (std::stoi(measurement_window_ms) > 0) {
-            params_->measurement_window_ms = std::stoi(measurement_window_ms);
-          } else {
-            Usage("The --measurement-interval (-p) must be > 0 msec.");
-          }
-          break;
-        }
         case 'i':
           params_->protocol = ParseProtocol(optarg);
           break;
@@ -1427,42 +1423,12 @@ CLParser::ParseCommandLine(int argc, char** argv)
           (*params_->http_headers)[header] = arg.substr(header.size() + 1);
           break;
         }
-        case 'l': {
-          std::string latency_threshold_ms{optarg};
-          if (std::stoi(latency_threshold_ms) >= 0) {
-            params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
-          } else {
-            Usage("The latency threshold (in msecs) must be non-negative.");
-          }
-          break;
-        }
         case 'c':
           params_->using_old_options = true;
           params_->max_concurrency = std::atoi(optarg);
           break;
-        case 'r': {
-          std::string max_trials{optarg};
-          if (std::stoi(max_trials) >= 0) {
-            params_->max_trials = std::stoi(max_trials);
-          } else {
-            Usage("The maximum number of trials must be non-negative.");
-          }
-          break;
-        }
-        case 's': {
-          std::string stability_threshold{optarg};
-          if (std::stof(stability_threshold) >= 0.0) {
-            params_->stability_threshold = std::stof(optarg) / 100;
-          } else {
-            Usage("The stability percentage must be non-negative.");
-          }
-          break;
-        }
         case 'f':
           params_->filename = optarg;
-          break;
-        case 'a':
-          params_->async = true;
           break;
         case '?':
           Usage();
