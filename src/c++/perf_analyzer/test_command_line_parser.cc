@@ -680,7 +680,7 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse sequence-id-range: BAD");
+          "Failed to parse argument for --sequence-id-range: BAD");
 
       check_params = false;  // Usage message called
     }
@@ -694,7 +694,7 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse sequence-id-range: 53:BAD");
+          "Failed to parse argument for --sequence-id-range: 53:BAD");
 
       check_params = false;  // Usage message called
     }
@@ -854,10 +854,9 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse input shape: input_name:a,b,c");
+          "Failed to parse argument for --shape: input_name:a,b,c");
 
-      exp->input_shapes.emplace(
-          std::string("input_name"), std::vector<int64_t>{});
+      check_params = false;  // Usage message called
     }
 
     SUBCASE("bad shapes - [1,2,3]")
@@ -870,10 +869,9 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse input shape: input_name:[1,2,3]");
+          "Failed to parse argument for --shape: input_name:[1,2,3]");
 
-      exp->input_shapes.emplace(
-          std::string("input_name"), std::vector<int64_t>{});
+      check_params = false;  // Usage message called
     }
   }
 
@@ -920,19 +918,17 @@ TEST_CASE("Testing Command Line Parser")
       CAPTURE(argv[3]);
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
-
-      // BUG: may want to actually error out here, and not just use the unsigned
-      // conversion. This will result in unexpected behavior. The actual value
-      // becomes 18446744073709551416ULL, which is not what you would want.
-      //
-      exp->measurement_window_ms = -200;
+      CHECK(parser.UsageCalled());
+      CHECK_STRING(
+          "Usage Message", parser.GetUsageMessage(),
+          "The --measurement-interval (-p) must be > 0 msec.");
     }
 
     SUBCASE("set to non-numeric value")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "", "foobar"};
+      std::string expected_msg;
 
       SUBCASE("Long form")
       {
@@ -948,11 +944,15 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
+
+      expected_msg =
+          "Failed to parse argument for " + std::string{argv[3]} + ": foobar";
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "measurement window must be > 0 in msec");
+          // "Failed to parse argument for " + option_name + ": foobar");
+          expected_msg.c_str());
 
-      exp->measurement_window_ms = 0;
+      check_params = false;  // Usage message called
     }
   }
 
@@ -1083,7 +1083,7 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse concurrency range: bad:400:10");
+          "Failed to parse argument for --concurrency-range: bad:400:10");
 
       exp->using_concurrency_range = true;
     }
@@ -1098,7 +1098,7 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse concurrency range: 100:bad:10");
+          "Failed to parse argument for --concurrency-range: 100:bad:10");
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
@@ -1114,7 +1114,7 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "failed to parse concurrency range: 100:400:bad");
+          "Failed to parse argument for --concurrency-range: 100:400:bad");
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
