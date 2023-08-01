@@ -922,7 +922,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 8:
         case 'l': {
           std::string latency_threshold_ms{optarg};
-          if (std::stoi(latency_threshold_ms) >= 0) {
+          if (std::stoi(latency_threshold_ms) == 0) {
+            params_->latency_threshold_ms = NO_LIMIT;
+          }
+          if (std::stoi(latency_threshold_ms) > 0) {
             params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
           } else {
             Usage(
