@@ -101,7 +101,7 @@ struct PerfAnalyzerParameters {
   std::string url{"localhost:8000"};
   std::string model_name;
   std::string model_version;
-  int32_t batch_size = 1;
+  uint64_t batch_size = 1;
   bool using_batch_size = false;
   int32_t concurrent_request_count = 1;
   clientbackend::ProtocolType protocol = clientbackend::ProtocolType::HTTP;

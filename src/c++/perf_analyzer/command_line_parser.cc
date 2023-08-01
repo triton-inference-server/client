@@ -812,7 +812,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 1: {
           std::string max_threads{optarg};
           if (std::stoi(max_threads) > 0) {
-            params_->max_threads = std::stoi(max_threads);
+            params_->max_threads = std::stoull(max_threads);
             params_->max_threads_specified = true;
           } else {
             Usage("Failed to parse --max-threads. The value must be > 0.");
@@ -822,7 +822,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 2: {
           std::string sequence_length{optarg};
           if (std::stoi(sequence_length) > 0) {
-            params_->sequence_length = std::stoi(sequence_length);
+            params_->sequence_length = std::stoull(sequence_length);
           } else {
             std::cerr << "WARNING: The sequence length must be > 0. Perf "
                          "Analyzer will use default value if it is measuring "
@@ -875,7 +875,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 'p': {
           std::string measurement_window_ms{optarg};
           if (std::stoi(measurement_window_ms) > 0) {
-            params_->measurement_window_ms = std::stoi(measurement_window_ms);
+            params_->measurement_window_ms = std::stoull(measurement_window_ms);
           } else {
             Usage(
                 "Failed to parse --measurement-interval (-p). The value must "
@@ -897,10 +897,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
             }
             int64_t val;
             if (colon_pos == std::string::npos) {
-              val = std::stoll(arg.substr(pos, colon_pos));
+              val = std::stoull(arg.substr(pos, colon_pos));
               pos = colon_pos;
             } else {
-              val = std::stoll(arg.substr(pos, colon_pos - pos));
+              val = std::stoull(arg.substr(pos, colon_pos - pos));
               pos = colon_pos + 1;
             }
             switch (index) {
@@ -924,9 +924,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::string latency_threshold_ms{optarg};
           if (std::stoi(latency_threshold_ms) == 0) {
             params_->latency_threshold_ms = NO_LIMIT;
-          }
-          if (std::stoi(latency_threshold_ms) > 0) {
-            params_->latency_threshold_ms = std::stoi(latency_threshold_ms);
+          } else if (std::stoi(latency_threshold_ms) > 0) {
+            params_->latency_threshold_ms = std::stoull(latency_threshold_ms);
           } else {
             Usage(
                 "Failed to parse --latency-threshold (-l). The value must be "
@@ -949,10 +948,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 10:
         case 'r': {
           std::string max_trials{optarg};
-          if (std::stoi(max_trials) >= 0) {
-            params_->max_trials = std::stoi(max_trials);
+          if (std::stoi(max_trials) > 0) {
+            params_->max_trials = std::stoull(max_trials);
           } else {
-            Usage("Failed to parse --max-trials (-r). The value must be >= 0.");
+            Usage("Failed to parse --max-trials (-r). The value must be > 0.");
           }
           break;
         }
@@ -977,7 +976,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 12: {
           std::string string_length{optarg};
           if (std::stoi(string_length) > 0) {
-            params_->string_length = std::stoi(string_length);
+            params_->string_length = std::stoull(string_length);
           } else {
             Usage("Failed to parse --string-length. The value must be > 0");
           }
@@ -1025,7 +1024,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 17: {
           std::string num_of_sequences{optarg};
           if (std::stoi(num_of_sequences) > 0) {
-            params_->num_of_sequences = std::stoi(num_of_sequences);
+            params_->num_of_sequences = std::stoul(num_of_sequences);
           } else {
             Usage("Failed to parse --num-of-sequences. The value must be > 0.");
           }
@@ -1088,7 +1087,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 22: {
           std::string output_shm_size{optarg};
           if (std::stoi(output_shm_size) >= 0) {
-            params_->output_shm_size = std::stoi(output_shm_size);
+            params_->output_shm_size = std::stoull(output_shm_size);
           } else {
             Usage(
                 "Failed to parse --output-shared-memory-size. The value must "
@@ -1153,7 +1152,14 @@ CLParser::ParseCommandLine(int argc, char** argv)
           break;
         }
         case 27: {
-          params_->measurement_request_count = std::atoi(optarg);
+          std::string request_count{optarg};
+          if (std::stoi(request_count) > 0) {
+            params_->measurement_request_count = std::stoull(request_count);
+          } else {
+            Usage(
+                "Failed to parse --measurement-request-count. The value must "
+                "be > 0.");
+          }
           break;
         }
         case 28: {
@@ -1478,10 +1484,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 'x':
           params_->model_version = optarg;
           break;
-        case 'b':
-          params_->batch_size = std::atoi(optarg);
-          params_->using_batch_size = true;
+        case 'b': {
+          std::string batch_size{optarg};
+          if (std::stoi(batch_size) > 0) {
+            params_->batch_size = std::stoull(batch_size);
+            params_->using_batch_size = true;
+          } else {
+            Usage("Failed to parse -b (batch size). The value must be > 0.");
+          }
           break;
+        }
         case 't':
           params_->using_old_options = true;
           params_->concurrent_request_count = std::atoi(optarg);
@@ -1549,13 +1561,6 @@ CLParser::VerifyOptions()
 {
   if (params_->model_name.empty()) {
     Usage("Failed to parse -m (model name). The value must be specified.");
-  }
-  if (params_->batch_size <= 0) {
-    Usage("Failed to parse -b (batch size). The value must be > 0.");
-  }
-  if (params_->measurement_request_count <= 0) {
-    Usage(
-        "Failed to parse --measurement-request-count. The value must be > 0.");
   }
   if (params_->concurrency_range.start <= 0 ||
       params_->concurrent_request_count < 0) {

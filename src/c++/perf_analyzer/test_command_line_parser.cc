@@ -194,17 +194,6 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
     CAPTURE(exp_val);                                                      \
   }                                                                        \
                                                                            \
-  SUBCASE("set to 0")                                                      \
-  {                                                                        \
-    int argc = 5;                                                          \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "0"};     \
-                                                                           \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(!parser.UsageCalled());                                          \
-                                                                           \
-    exp_val = 0;                                                           \
-  }                                                                        \
-                                                                           \
   SUBCASE("negative value")                                                \
   {                                                                        \
     int argc = 5;                                                          \
@@ -1175,6 +1164,16 @@ TEST_CASE("Testing Command Line Parser")
         "--latency-threshold (-l)", "The value must be >= 0 msecs.");
     CHECK_INT_OPTION(
         "--latency-threshold", exp->latency_threshold_ms, expected_msg);
+
+    SUBCASE("set to 0")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--latency-threshold", "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+    }
   }
 
   SUBCASE("Option : --stability-percentage")
@@ -1242,8 +1241,19 @@ TEST_CASE("Testing Command Line Parser")
   SUBCASE("Option : --max-trials")
   {
     expected_msg =
-        CreateUsageMessage("--max-trials (-r)", "The value must be >= 0.");
+        CreateUsageMessage("--max-trials (-r)", "The value must be > 0.");
     CHECK_INT_OPTION("--max-trials", exp->max_trials, expected_msg);
+
+    SUBCASE("set to 0")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--max-trials", "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    }
   }
 
   SUBCASE("Option : --collect-metrics")
