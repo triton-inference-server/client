@@ -1291,6 +1291,13 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
+  // Iterate through erase indices backwards so that erases from
+  // `all_request_records_` happen from the back to the front to avoid using
+  // wrong indices after subsequent erases
+  std::for_each(erase_indices.rbegin(), erase_indices.rend(), [this](size_t i) {
+    this->all_request_records_.erase(this->all_request_records_.begin() + i);
+  });
+
   // Always sort measured latencies as percentile will be reported as default
   std::sort(valid_latencies->begin(), valid_latencies->end());
 }
