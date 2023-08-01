@@ -330,7 +330,8 @@ ReportClientSideStats(
     const ClientSideStats& stats, const int64_t percentile,
     const cb::ProtocolType protocol, const bool verbose,
     const bool on_sequence_model, const bool include_lib_stats,
-    const double overhead_pct, const double send_request_rate)
+    const double overhead_pct, const double send_request_rate,
+    const bool is_decoupled_model)
 {
   const uint64_t avg_latency_us = stats.avg_latency_ns / 1000;
   const uint64_t std_us = stats.std_us;
@@ -396,6 +397,10 @@ ReportClientSideStats(
   }
   std::cout << "    Throughput: " << stats.infer_per_sec << " infer/sec"
             << std::endl;
+  if (is_decoupled_model) {
+    std::cout << "    Response Throughput: " << stats.responses_per_sec
+              << " infer/sec" << std::endl;
+  }
 
   if (verbose) {
     std::stringstream client_overhead{""};
@@ -432,7 +437,7 @@ Report(
   ReportClientSideStats(
       summary.client_stats, percentile, protocol, verbose,
       summary.on_sequence_model, include_lib_stats, summary.overhead_pct,
-      summary.send_request_rate);
+      summary.send_request_rate, parser->IsDecoupled());
 
   if (include_server_stats) {
     std::cout << "  Server: " << std::endl;
