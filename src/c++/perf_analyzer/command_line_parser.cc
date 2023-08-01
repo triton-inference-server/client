@@ -148,6 +148,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
   std::cerr << "\t-f <filename for storing report in csv format>" << std::endl;
+  std::cerr << "\t--profile-export-file <path>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
   std::cerr << "\t--streaming" << std::endl;
   std::cerr << "\t--grpc-compression-algorithm <compression_algorithm>"
@@ -608,6 +609,13 @@ CLParser::Usage(const std::string& msg)
              "this option. By default, the result is not recorded in a file.",
              9)
       << std::endl;
+  std::cerr << std::setw(9) << std::left << " --profile-export-file: "
+            << FormatMessage(
+                   "Specifies the path that the profile export will be "
+                   "generated at. By default, the profile export will not be "
+                   "generated.",
+                   9)
+            << std::endl;
   std::cerr
       << std::setw(9) << std::left << " -H: "
       << FormatMessage(
