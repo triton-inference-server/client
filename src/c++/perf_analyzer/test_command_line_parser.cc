@@ -34,7 +34,7 @@
 namespace triton { namespace perfanalyzer {
 
 inline void
-CHECK_STRING(const char* name, std::string str, const char* val)
+CHECK_STRING(const char* name, const std::string& str, const std::string& val)
 {
   CHECK_MESSAGE(
       !str.compare(val), name, " expecting '", val, "', found '", str, "'");
@@ -45,6 +45,12 @@ CHECK_STRING(std::string act, std::string exp)
 {
   CHECK_MESSAGE(
       !act.compare(exp), "Expecting: '", exp, "', Found: '", act, "'");
+}
+
+std::string
+CreateUsageMessage(const std::string& option_name, const std::string& msg)
+{
+  return "Failed to parse " + option_name + ". " + msg;
 }
 
 // Performs a doc test check against all the individual parameters
@@ -351,6 +357,7 @@ TEST_CASE("Testing Command Line Parser")
 {
   char* model_name = "my_model";
   char* app_name = "test_perf_analyzer";
+  std::string expected_msg;
 
   opterr = 1;  // Enable error output for GetOpt library
   bool check_params = true;
@@ -370,8 +377,10 @@ TEST_CASE("Testing Command Line Parser")
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     REQUIRE(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(), "-m flag must be specified");
+
+    expected_msg =
+        CreateUsageMessage("-m (model name)", "The value must be specified.");
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
     exp->model_name = "";
   }
@@ -396,7 +405,7 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "streaming is only allowed with gRPC protocol");
+          "Streaming is only allowed with gRPC protocol.");
 
       exp->model_name = "";
       exp->streaming = true;
@@ -415,7 +424,7 @@ TEST_CASE("Testing Command Line Parser")
       //
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "streaming is only allowed with gRPC protocol");
+          "Streaming is only allowed with gRPC protocol.");
 
       exp->streaming = true;
     }
@@ -430,7 +439,7 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE(parser.UsageCalled());
       CHECK_STRING(
           "Usage Message", parser.GetUsageMessage(),
-          "streaming is only allowed with gRPC protocol");
+          "Streaming is only allowed with gRPC protocol.");
 
       exp->streaming = true;
     }
@@ -547,9 +556,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "sequence length variation must be positive");
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-length-variation", "The value must be >= 0.0.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->sequence_length_variation = -10.0;
     }
@@ -575,9 +585,11 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "percentile must be -1 for not reporting or in range (0, 100)");
+
+      expected_msg = CreateUsageMessage(
+          "--percentile",
+          "The value must be -1 for not reporting or in range (0, 100).");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->percentile = 225;
     }
@@ -661,9 +673,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "option sequence-id-range can have maximum of two elements");
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range", "The value does not match <start:end>.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       // It will get the final 2 values
       //
@@ -678,9 +691,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --sequence-id-range: BAD");
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range", "Invalid value provided: BAD");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       check_params = false;  // Usage message called
     }
@@ -692,9 +706,11 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --sequence-id-range: 53:BAD");
+
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range", "Invalid value provided: 53:BAD");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       check_params = false;  // Usage message called
     }
@@ -787,8 +803,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(), "input shape must be > 0");
+
+      expected_msg = CreateUsageMessage(
+          "--shape", "The dimensions of input tensor must be > 0.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->input_shapes.emplace(
           std::string("input_name"), std::vector<int64_t>{-1, 2, 3});
@@ -852,9 +870,11 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --shape: input_name:a,b,c");
+
+
+      expected_msg = CreateUsageMessage(
+          "--shape", "Invalid value provided: input_name:a,b,c");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       check_params = false;  // Usage message called
     }
@@ -867,9 +887,11 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --shape: input_name:[1,2,3]");
+
+
+      expected_msg = CreateUsageMessage(
+          "--shape", "Invalid value provided: input_name:[1,2,3]");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       check_params = false;  // Usage message called
     }
@@ -919,38 +941,36 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "The --measurement-interval (-p) must be > 0 msec.");
+
+      expected_msg = CreateUsageMessage(
+          "--measurement-interval (-p)", "The value must be > 0 msec.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
     }
 
     SUBCASE("set to non-numeric value")
     {
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "", "foobar"};
-      std::string expected_msg;
 
       SUBCASE("Long form")
       {
         argv[3] = "--measurement-interval";
+        expected_msg = CreateUsageMessage(
+            "--measurement-interval", "Invalid value provided: foobar");
       }
 
       SUBCASE("Short form")
       {
         argv[3] = "-p";
+        expected_msg =
+            CreateUsageMessage("-p", "Invalid value provided: foobar");
       }
 
       CAPTURE(argv[3]);
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-
-      expected_msg =
-          "Failed to parse argument for " + std::string{argv[3]} + ": foobar";
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          // "Failed to parse argument for " + option_name + ": foobar");
-          expected_msg.c_str());
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       check_params = false;  // Usage message called
     }
@@ -1027,9 +1047,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "option concurrency-range can have maximum of three elements");
+
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range", "The value does not match <start:end:step>.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 200;
@@ -1046,9 +1067,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "option concurrency-range can have maximum of three elements");
+
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range", "The value does not match <start:end:step>.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 200;
@@ -1081,9 +1103,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --concurrency-range: bad:400:10");
+
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range", "Invalid value provided: bad:400:10");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->using_concurrency_range = true;
     }
@@ -1096,9 +1119,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --concurrency-range: 100:bad:10");
+
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range", "Invalid value provided: 100:bad:10");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
@@ -1112,9 +1136,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Failed to parse argument for --concurrency-range: 100:400:bad");
+
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range", "Invalid value provided: 100:400:bad");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
@@ -1146,9 +1171,10 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --latency-threshold")
   {
+    expected_msg = CreateUsageMessage(
+        "--latency-threshold (-l)", "The value must be >= 0 msecs.");
     CHECK_INT_OPTION(
-        "--latency-threshold", exp->latency_threshold_ms,
-        "The latency threshold (in msecs) must be non-negative.");
+        "--latency-threshold", exp->latency_threshold_ms, expected_msg);
   }
 
   SUBCASE("Option : --stability-percentage")
@@ -1183,9 +1209,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "The stability percentage must be non-negative.");
+
+      expected_msg = CreateUsageMessage(
+          "--stability-percentage (-s)", "The value must be >= 0.0.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
     }
 
     SUBCASE("floating point value")
@@ -1214,9 +1241,9 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --max-trials")
   {
-    CHECK_INT_OPTION(
-        "--max-trials", exp->max_trials,
-        "The maximum number of trials must be non-negative.");
+    expected_msg =
+        CreateUsageMessage("--max-trials (-r)", "The value must be >= 0.");
+    CHECK_INT_OPTION("--max-trials", exp->max_trials, expected_msg);
   }
 
   SUBCASE("Option : --collect-metrics")
@@ -1280,9 +1307,10 @@ TEST_CASE("Testing Command Line Parser")
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Metrics interval must be larger than 0 milliseconds.");
+
+      expected_msg = CreateUsageMessage(
+          "--metrics-interval", "The value must be > 0 msecs.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
       exp->metrics_interval_ms = 0;
     }
