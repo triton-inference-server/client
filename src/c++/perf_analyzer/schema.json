@@ -55,7 +55,7 @@
                             "type": "object",
                             "required": [
                                 "timestamp",
-                                "responses_timestamps"
+                                "response_timestamps"
                             ],
                             "properties": {
                                 "timestamp": {
@@ -66,7 +66,7 @@
                                     "description": "The sequence_id of the request.",
                                     "type": "integer"
                                 },
-                                "responses_timestamps": {
+                                "response_timestamps": {
                                     "description": "All associated responses to this request.",
                                     "type": "array",
                                     "items": {
