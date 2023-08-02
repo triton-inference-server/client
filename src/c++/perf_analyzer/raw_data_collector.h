@@ -83,6 +83,12 @@ class RawDataCollector {
   /// @param request_records The request information for the current experiment.
   void AddData(PerfMode& id, std::vector<RequestRecord>&& request_records);
 
+  /// Get the raw experiment data for the profile
+  /// @return Raw experiment data
+  std::vector<Experiment>& GetData() { return experiments_; }
+
+  std::string& GetVersion() { return version_; }
+
  private:
   RawDataCollector() = default;
 
@@ -94,6 +100,6 @@ class RawDataCollector {
   };
 
   std::vector<Experiment> experiments_{};
-  std::string version{VERSION};
+  std::string version_{VERSION};
 };
 }}  // namespace triton::perfanalyzer
