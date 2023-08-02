@@ -200,7 +200,7 @@ def set_shared_memory_region(cuda_shm_handle, input_values):
 
         offset_current = 0
         for input_value in input_values:
-            input_value = np.ascontiguousarray(input_value).flatten()
+            input_value = np.ascontiguousarray(input_value).ravel()
             # When the input array is in type "BYTES" (np.object_ is
             # the numpy equivalent), expect the array has been serialized
             # via 'tritonclient.utils.serialize_byte_tensor'.
