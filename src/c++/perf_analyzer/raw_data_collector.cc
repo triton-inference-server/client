@@ -65,20 +65,18 @@ RawDataCollector::AddWindow(
 
 void
 RawDataCollector::AddData(
-    PerfMode& id, std::vector<RequestRecord>& all_request_records)
+    PerfMode& id, std::vector<RequestRecord>&& request_records)
 {
-  std::vector<RequestRecord> local_records{};
-  all_request_records.swap(local_records);
-
   auto it = FindEntry(id);
 
   if (it == experiments_.end()) {
     Experiment new_experiment{};
     new_experiment.mode = id;
-    new_experiment.requests.swap(local_records);
+    new_experiment.requests = std::move(request_records);
   } else {
     it->requests.insert(
-        it->requests.end(), local_records.begin(), local_records.end());
+        it->requests.end(), std::make_move_iterator(request_records.begin()),
+        std::make_move_iterator(request_records.end()));
   }
 }
 

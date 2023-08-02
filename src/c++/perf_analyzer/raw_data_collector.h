@@ -80,9 +80,8 @@ class RawDataCollector {
 
   /// Add request records to an experiment
   /// @param id Identifier for the experiment
-  /// @param all_request_records The request information for the current
-  /// experiment.
-  void AddData(PerfMode& id, std::vector<RequestRecord>& all_request_records);
+  /// @param request_records The request information for the current experiment.
+  void AddData(PerfMode& id, std::vector<RequestRecord>&& request_records);
 
  private:
   RawDataCollector() = default;

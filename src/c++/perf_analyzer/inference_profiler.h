@@ -450,18 +450,21 @@ class InferenceProfiler {
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
   /// \param response_count Returns the number of responses
+  /// \param valid_requests Returns a vector of valid request records
   virtual void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies, size_t& response_count);
+      std::vector<uint64_t>* latencies, size_t& response_count,
+      std::vector<RequestRecord>& valid_requests);
 
   /// Add the data from the request records to the Raw Data Collector
   /// \param perf_status Perf_status of the current measurement
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// \param request_records The request records to collect.
   void CollectData(
-      PerfStatus& perf_status, uint64_t window_start_ns,
-      uint64_t window_end_ns);
+      PerfStatus& perf_status, uint64_t window_start_ns, uint64_t window_end_ns,
+      std::vector<RequestRecord>&& request_records);
 
   /// \param latencies The vector of request latencies collected.
   /// \param summary Returns the summary that the latency related fields are

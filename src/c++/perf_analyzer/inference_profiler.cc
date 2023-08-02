@@ -1230,11 +1230,13 @@ InferenceProfiler::Summarize(
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
   uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
+  std::vector<RequestRecord> valid_requests{};
   ValidLatencyMeasurement(
       valid_range, valid_sequence_count, delayed_request_count, &latencies,
-      response_count);
+      response_count, valid_requests);
 
-  CollectData(summary, window_start_ns, window_end_ns);
+  CollectData(
+      summary, window_start_ns, window_end_ns, std::move(valid_requests));
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
@@ -1262,7 +1264,8 @@ void
 InferenceProfiler::ValidLatencyMeasurement(
     const std::pair<uint64_t, uint64_t>& valid_range,
     size_t& valid_sequence_count, size_t& delayed_request_count,
-    std::vector<uint64_t>* valid_latencies, size_t& response_count)
+    std::vector<uint64_t>* valid_latencies, size_t& response_count,
+    std::vector<RequestRecord>& valid_requests)
 {
   valid_latencies->clear();
   valid_sequence_count = 0;
@@ -1291,6 +1294,12 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
+  std::for_each(
+      erase_indices.begin(), erase_indices.end(),
+      [this, &valid_requests](size_t i) {
+        valid_requests.push_back(std::move(this->all_request_records_[i]));
+      });
+
   // Iterate through erase indices backwards so that erases from
   // `all_request_records_` happen from the back to the front to avoid using
   // wrong indices after subsequent erases
@@ -1304,11 +1313,12 @@ InferenceProfiler::ValidLatencyMeasurement(
 
 void
 InferenceProfiler::CollectData(
-    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns)
+    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
+    std::vector<RequestRecord>&& request_records)
 {
   PerfMode id{summary.concurrency, summary.request_rate};
   collector_->AddWindow(id, window_start_ns, window_end_ns);
-  collector_->AddData(id, all_request_records_);
+  collector_->AddData(id, std::move(request_records));
 }
 
 cb::Error
