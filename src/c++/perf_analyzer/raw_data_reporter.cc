@@ -52,14 +52,6 @@ RawDataReporter::ConvertToJson(
   ClearDocument();
   Value experiments(kArrayType);
 
-
-  // iterate over the json
-  // create experiments object
-  // create version object
-  // create experiment object -- new method?
-  // create requests array -- new method?
-  //  create window boundary -- new method?
-
   for (const auto& raw_experiment : raw_experiments) {
     Value experiment(kObjectType);
     Value requests(kArrayType);
@@ -158,9 +150,9 @@ RawDataReporter::Print()
 }
 
 void
-RawDataReporter::OutputToFile()
+RawDataReporter::OutputToFile(std::string& file_path)
 {
-  FILE* fp = fopen("fix_me", "w");
+  FILE* fp = fopen(file_path.c_str(), "w");
   char writeBuffer[65536];
   FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 

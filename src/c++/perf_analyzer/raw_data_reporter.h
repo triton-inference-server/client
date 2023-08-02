@@ -50,7 +50,7 @@ class RawDataReporter {
   /// Output to stdout
   void Print();
 
-  void OutputToFile();
+  void OutputToFile(std::string& file_path);
 
  private:
   RawDataReporter() = default;

@@ -64,6 +64,7 @@ PerfAnalyzer::Run()
   PrerunReport();
   Profile();
   WriteReport();
+  GenerateProfileExportReport();
   Finalize();
 }
 
@@ -258,6 +259,10 @@ PerfAnalyzer::CreateAnalyzerObjects()
       "failed to create data collector");
 
   FAIL_IF_ERR(
+      pa::RawDataReporter::Create(&reporter_),
+      "failed to create data reporter");
+
+  FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
           params_->verbose, params_->stability_threshold,
           params_->measurement_window_ms, params_->max_trials,
@@ -424,6 +429,12 @@ PerfAnalyzer::WriteReport()
       "failed to create report writer");
 
   writer->GenerateReport();
+}
+
+void
+PerfAnalyzer::GenerateProfileExportReport()
+{
+  reporter_->OutputToFile(params_->profile_export_file);
 }
 
 void
