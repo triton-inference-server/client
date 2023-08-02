@@ -1,0 +1,150 @@
+// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+//  * Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//  * Neither the name of NVIDIA CORPORATION nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+#include "raw_data_reporter.h"
+
+#include "client_backend/client_backend.h"
+
+namespace triton { namespace perfanalyzer {
+
+using namespace rapidjson;
+
+cb::Error
+RawDataReporter::Create(std::shared_ptr<RawDataReporter>* reporter)
+{
+  std::shared_ptr<RawDataReporter> local_reporter{new RawDataReporter()};
+  *reporter = std::move(local_reporter);
+  return cb::Error::Success;
+}
+
+void
+RawDataReporter::ConvertToJson(
+    std::vector<Experiment>& raw_experiments, std::string& raw_version)
+{
+  ClearDocument();
+  Value experiments(kArrayType);
+
+
+  // iterate over the json
+  // create experiments object
+  // create version object
+  // create experiment object -- new method?
+  // create requests array -- new method?
+  //  create window boundary -- new method?
+
+  for (const auto& raw_experiment : raw_experiments) {
+    Value experiment(kObjectType);
+    Value requests(kArrayType);
+    Value window_boundaries(kArrayType);
+    AddExperiment(experiment, raw_experiment);
+    AddRequests(requests, raw_experiment);
+    AddWindowBoundaries(window_boundaries, raw_experiment);
+  }
+  AddVersion(raw_version);
+}
+
+void
+RawDataReporter::ClearDocument()
+{
+  Document d{};
+  document_.Swap(d);
+  document_.SetObject();
+}
+
+void
+RawDataReporter::AddExperiment(
+    Value& experiment, const Experiment& raw_experiment)
+{
+  Value mode;
+  Value value;
+  if (raw_experiment.mode.concurrency != 0) {
+    mode = StringRef("concurrency");
+    value.SetInt(raw_experiment.mode.concurrency);
+  } else {
+    mode = StringRef("request_rate");
+    value.SetInt(raw_experiment.mode.request_rate);
+  }
+  experiment.AddMember("mode", mode, document_.GetAllocator());
+  experiment.AddMember("value", value, document_.GetAllocator());
+}
+
+void
+RawDataReporter::AddRequests(Value& requests, const Experiment& raw_experiment)
+{
+  for (auto& raw_request : raw_experiment.requests) {
+    Value request(kObjectType);
+    Value timestamp;
+    Value sequence_id;
+
+    timestamp.SetInt(raw_request.start_time_.time_since_epoch().count());
+    sequence_id.SetInt(raw_request.sequence_id_);
+    request.AddMember("timestamp", timestamp, document_.GetAllocator());
+    request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
+    Value responses(kArrayType);
+    AddResponses(responses, raw_request.response_times_);
+    request.AddMember(
+        "response_timestamps", responses, document_.GetAllocator());
+  }
+}
+
+void
+RawDataReporter::AddResponses(
+    Value& responses,
+    const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
+        response_times)
+{
+  for (auto& response : response_times) {
+    Value time;
+    time.SetInt(response.time_since_epoch().count());
+    responses.PushBack(time, document_.GetAllocator());
+  }
+}
+
+void
+RawDataReporter::AddWindowBoundaries(
+    Value& window_boundaries, const Experiment& raw_experiment)
+{
+  for (auto& window : raw_experiment.window_boundaries) {
+    Value w;
+    w.SetInt(window);
+    window_boundaries.PushBack(w, document_.GetAllocator());
+  }
+}
+
+void
+RawDataReporter::AddVersion(std::string& raw_version)
+{
+  Value version;
+  version = StringRef(raw_version.c_str());
+  document_.AddMember("version", version, document_.GetAllocator());
+}
+
+// print to std::cout
+// print to file
+
+
+}}  // namespace triton::perfanalyzer
