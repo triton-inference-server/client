@@ -39,6 +39,11 @@ class RawDataReporter {
   static cb::Error Create(std::shared_ptr<RawDataReporter>* reporter);
   ~RawDataReporter() = default;
 
+  /// Convert the raw data collected to json output
+  /// @param raw_experiments All of the raw data for the experiments run by perf
+  /// analyzer
+  /// @param raw_version String containing the version number for the json
+  /// output
   void ConvertToJson(
       std::vector<Experiment>& raw_experiments, std::string& raw_version);
 
