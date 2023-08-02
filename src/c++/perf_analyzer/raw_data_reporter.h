@@ -47,6 +47,11 @@ class RawDataReporter {
   void ConvertToJson(
       std::vector<Experiment>& raw_experiments, std::string& raw_version);
 
+  /// Output to stdout
+  void Print();
+
+  void OutputToFile();
+
  private:
   RawDataReporter() = default;
   void ClearDocument();

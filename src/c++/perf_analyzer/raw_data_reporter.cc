@@ -27,6 +27,10 @@
 
 #include "raw_data_reporter.h"
 
+#include <rapidjson/filewritestream.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/writer.h>
+
 #include "client_backend/client_backend.h"
 
 namespace triton { namespace perfanalyzer {
@@ -143,8 +147,27 @@ RawDataReporter::AddVersion(std::string& raw_version)
   document_.AddMember("version", version, document_.GetAllocator());
 }
 
-// print to std::cout
 // print to file
 
+void
+RawDataReporter::Print()
+{
+  OStreamWrapper out(std::cout);
+  Writer<OStreamWrapper> writer(out);
+  document_.Accept(writer);
+}
+
+void
+RawDataReporter::OutputToFile()
+{
+  FILE* fp = fopen("fix_me", "w");
+  char writeBuffer[65536];
+  FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+
+  Writer<FileWriteStream> writer(os);
+  document_.Accept(writer);
+
+  fclose(fp);
+}
 
 }}  // namespace triton::perfanalyzer
