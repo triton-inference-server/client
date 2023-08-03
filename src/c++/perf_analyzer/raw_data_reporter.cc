@@ -64,6 +64,8 @@ RawDataReporter::ConvertToJson(
 
     experiments.PushBack(entry, document_.GetAllocator());
   }
+
+  document_.AddMember("experiments", experiments, document_.GetAllocator());
   AddVersion(raw_version);
 }
 
