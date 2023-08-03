@@ -470,17 +470,13 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
 
-      // NOTE: Empty message is not helpful
-      //
+      // Helpful error message handled by getopt_long
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
-      // BUG: Dumping string "option '--max-threads' requires an argument"
-      // directly to std::out, instead of through usage()
-      //
     }
 
     SUBCASE("bad value")
     {
-      int argc = 4;
+      int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads", "bad"};
 
       opterr = 0;  // Disable error output for GetOpt library for this case
@@ -488,12 +484,9 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       REQUIRE(parser.UsageCalled());
 
-      // NOTE: Empty message is not helpful
-      //
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
-      // BUG: Dumping string "option '--max-threads' requires an argument"
-      // directly to std::out, instead of through usage()
-      //
+      expected_msg =
+          CreateUsageMessage("--max-threads", "Invalid value provided: bad");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
     }
   }
 
@@ -1021,10 +1014,7 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
 
-      // BUG: Usage message does not contain error. Error statement
-      // "option '--concurrency-range' requires an argument" written directly
-      // to std::out
-      //
+      // Helpful error message handled by getopt_long
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
     }
 
