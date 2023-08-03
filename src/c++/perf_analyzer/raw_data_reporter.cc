@@ -85,14 +85,14 @@ RawDataReporter::AddExperiment(
   Value value;
   if (raw_experiment.mode.concurrency != 0) {
     mode = StringRef("concurrency");
-    value.SetInt(raw_experiment.mode.concurrency);
+    value.SetUint64(raw_experiment.mode.concurrency);
   } else {
     mode = StringRef("request_rate");
-    value.SetInt(raw_experiment.mode.request_rate);
+    value.SetUint64(raw_experiment.mode.request_rate);
   }
   experiment.AddMember("mode", mode, document_.GetAllocator());
   experiment.AddMember("value", value, document_.GetAllocator());
-  entry.PushBack(experiment, document_.GetAllocator());
+  entry.AddMember("experiment", experiment, document_.GetAllocator());
 }
 
 void
@@ -104,8 +104,8 @@ RawDataReporter::AddRequests(
     Value timestamp;
     Value sequence_id;
 
-    timestamp.SetInt(raw_request.start_time_.time_since_epoch().count());
-    sequence_id.SetInt(raw_request.sequence_id_);
+    timestamp.SetUint64(raw_request.start_time_.time_since_epoch().count());
+    sequence_id.SetUint64(raw_request.sequence_id_);
     request.AddMember("timestamp", timestamp, document_.GetAllocator());
     request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     Value responses(kArrayType);
@@ -114,7 +114,7 @@ RawDataReporter::AddRequests(
         "response_timestamps", responses, document_.GetAllocator());
     requests.PushBack(request, document_.GetAllocator());
   }
-  entry.PushBack(requests, document_.GetAllocator());
+  entry.AddMember("requests", requests, document_.GetAllocator());
 }
 
 void
@@ -125,7 +125,7 @@ RawDataReporter::AddResponses(
 {
   for (auto& response : response_times) {
     Value time;
-    time.SetInt(response.time_since_epoch().count());
+    time.SetUint64(response.time_since_epoch().count());
     responses.PushBack(time, document_.GetAllocator());
   }
 }
@@ -136,10 +136,11 @@ RawDataReporter::AddWindowBoundaries(
 {
   for (auto& window : raw_experiment.window_boundaries) {
     Value w;
-    w.SetInt(window);
+    w.SetUint64(window);
     window_boundaries.PushBack(w, document_.GetAllocator());
   }
-  entry.PushBack(window_boundaries, document_.GetAllocator());
+  entry.AddMember(
+      "window_boundaries", window_boundaries, document_.GetAllocator());
 }
 
 void
