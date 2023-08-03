@@ -102,12 +102,16 @@ RawDataReporter::AddRequests(
   for (auto& raw_request : raw_experiment.requests) {
     Value request(kObjectType);
     Value timestamp;
-    Value sequence_id;
 
     timestamp.SetUint64(raw_request.start_time_.time_since_epoch().count());
-    sequence_id.SetUint64(raw_request.sequence_id_);
     request.AddMember("timestamp", timestamp, document_.GetAllocator());
-    request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
+
+    if (raw_request.sequence_id_ != 0) {
+      Value sequence_id;
+      sequence_id.SetUint64(raw_request.sequence_id_);
+      request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
+    }
+
     Value responses(kArrayType);
     AddResponses(responses, raw_request.response_times_);
     request.AddMember(
