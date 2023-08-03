@@ -56,15 +56,18 @@ class RawDataReporter {
   RawDataReporter() = default;
   void ClearDocument();
   void AddExperiment(
-      rapidjson::Value& experiment, const Experiment& raw_experiment);
+      rapidjson::Value& entry, rapidjson::Value& experiment,
+      const Experiment& raw_experiment);
   void AddRequests(
-      rapidjson::Value& requests, const Experiment& raw_experiment);
+      rapidjson::Value& entry, rapidjson::Value& requests,
+      const Experiment& raw_experiment);
   void AddResponses(
       rapidjson::Value& responses,
       const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
           response_times);
   void AddWindowBoundaries(
-      rapidjson::Value& window_boundaries, const Experiment& raw_experiment);
+      rapidjson::Value& entry, rapidjson::Value& window_boundaries,
+      const Experiment& raw_experiment);
   void AddVersion(std::string& raw_version);
 
   rapidjson::Document document_{};

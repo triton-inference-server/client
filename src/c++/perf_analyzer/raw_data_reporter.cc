@@ -53,12 +53,16 @@ RawDataReporter::ConvertToJson(
   Value experiments(kArrayType);
 
   for (const auto& raw_experiment : raw_experiments) {
+    Value entry(kObjectType);
     Value experiment(kObjectType);
     Value requests(kArrayType);
     Value window_boundaries(kArrayType);
-    AddExperiment(experiment, raw_experiment);
-    AddRequests(requests, raw_experiment);
-    AddWindowBoundaries(window_boundaries, raw_experiment);
+
+    AddExperiment(entry, experiment, raw_experiment);
+    AddRequests(entry, requests, raw_experiment);
+    AddWindowBoundaries(entry, window_boundaries, raw_experiment);
+
+    experiments.PushBack(entry, document_.GetAllocator());
   }
   AddVersion(raw_version);
 }
@@ -73,7 +77,7 @@ RawDataReporter::ClearDocument()
 
 void
 RawDataReporter::AddExperiment(
-    Value& experiment, const Experiment& raw_experiment)
+    Value& entry, Value& experiment, const Experiment& raw_experiment)
 {
   Value mode;
   Value value;
@@ -86,10 +90,12 @@ RawDataReporter::AddExperiment(
   }
   experiment.AddMember("mode", mode, document_.GetAllocator());
   experiment.AddMember("value", value, document_.GetAllocator());
+  entry.PushBack(experiment, document_.GetAllocator());
 }
 
 void
-RawDataReporter::AddRequests(Value& requests, const Experiment& raw_experiment)
+RawDataReporter::AddRequests(
+    Value& entry, Value& requests, const Experiment& raw_experiment)
 {
   for (auto& raw_request : raw_experiment.requests) {
     Value request(kObjectType);
@@ -104,7 +110,9 @@ RawDataReporter::AddRequests(Value& requests, const Experiment& raw_experiment)
     AddResponses(responses, raw_request.response_times_);
     request.AddMember(
         "response_timestamps", responses, document_.GetAllocator());
+    requests.PushBack(request, document_.GetAllocator());
   }
+  entry.PushBack(requests, document_.GetAllocator());
 }
 
 void
@@ -122,13 +130,14 @@ RawDataReporter::AddResponses(
 
 void
 RawDataReporter::AddWindowBoundaries(
-    Value& window_boundaries, const Experiment& raw_experiment)
+    Value& entry, Value& window_boundaries, const Experiment& raw_experiment)
 {
   for (auto& window : raw_experiment.window_boundaries) {
     Value w;
     w.SetInt(window);
     window_boundaries.PushBack(w, document_.GetAllocator());
   }
+  entry.PushBack(window_boundaries, document_.GetAllocator());
 }
 
 void
