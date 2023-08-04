@@ -38,6 +38,22 @@
 
 namespace triton { namespace perfanalyzer {
 
+bool
+IsNonNegativeNumber(const std::string& str)
+{
+  if (str.empty()) {
+    return false;
+  } else if (str.size() > 1 && str[0] == '0') {
+    return false;
+  } else {
+    return std::all_of(
+               str.begin(), str.end(),
+               [](unsigned char c) { return std::isdigit(c); })
+               ? true
+               : false;
+  }
+}
+
 PAParamsPtr
 CLParser::Parse(int argc, char** argv)
 {
@@ -904,23 +920,30 @@ CLParser::ParseCommandLine(int argc, char** argv)
                   "Failed to parse --concurrency-range. The value does not "
                   "match <start:end:step>.");
             }
-            int64_t val;
+            std::string val;
             if (colon_pos == std::string::npos) {
-              val = std::stoull(arg.substr(pos, colon_pos));
+              val = arg.substr(pos, colon_pos);
               pos = colon_pos;
             } else {
-              val = std::stoull(arg.substr(pos, colon_pos - pos));
+              val = arg.substr(pos, colon_pos - pos);
               pos = colon_pos + 1;
             }
+
+            if (!IsNonNegativeNumber(val)) {
+              Usage(
+                  "Failed to parse --concurrency-range. The values must be a "
+                  "valid non-negative number.");
+            }
+
             switch (index) {
               case 0:
-                params_->concurrency_range.start = val;
+                params_->concurrency_range.start = std::stoull(val);
                 break;
               case 1:
-                params_->concurrency_range.end = val;
+                params_->concurrency_range.end = std::stoull(val);
                 break;
               case 2:
-                params_->concurrency_range.step = val;
+                params_->concurrency_range.step = std::stoull(val);
                 break;
             }
             index++;
