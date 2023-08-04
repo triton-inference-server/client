@@ -853,7 +853,6 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
 
-
       expected_msg = CreateUsageMessage(
           "--shape", "Invalid value provided: input_name:a,b,c");
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
@@ -1064,14 +1063,14 @@ TEST_CASE("Testing Command Line Parser")
           app_name, "-m", model_name, "--concurrency-range", "100,400,10"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
+      CHECK(parser.UsageCalled());
 
-      // BUG: Should detect this and through an error. User will enter this and
-      // have no clue why the end and step sizes are not used correctly.
-      //
+      expected_msg = CreateUsageMessage(
+          "--concurrency-range",
+          "The values must be a valid non-negative number.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
 
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
+      check_params = false;  // Usage message called
     }
 
     SUBCASE("bad start value")
