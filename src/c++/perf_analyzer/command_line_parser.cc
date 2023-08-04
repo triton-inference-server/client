@@ -877,20 +877,20 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::vector<int64_t> shape;
           while (pos != std::string::npos) {
             size_t comma_pos = shape_str.find(",", pos);
-            int64_t dim;
+            std::string dim;
             if (comma_pos == std::string::npos) {
-              dim = std::stoll(shape_str.substr(pos, comma_pos));
+              dim = shape_str.substr(pos, comma_pos);
               pos = comma_pos;
             } else {
-              dim = std::stoll(shape_str.substr(pos, comma_pos - pos));
+              dim = shape_str.substr(pos, comma_pos - pos);
               pos = comma_pos + 1;
             }
-            if (dim <= 0) {
+            if (dim == "0" || !IsNonNegativeNumber(dim)) {
               Usage(
                   "Failed to parse --shape. The dimensions of input tensor "
                   "must be > 0.");
             }
-            shape.emplace_back(dim);
+            shape.emplace_back(std::stoll(dim));
           }
 
           params_->input_shapes[name] = shape;
@@ -1204,8 +1204,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         case 30: {
           std::string arg = optarg;
-          int64_t start_id;
-          int64_t end_id;
+          int64_t start_id{1};
+          int64_t end_id{1};
           size_t pos = 0;
           int index = 0;
           while (pos != std::string::npos) {
@@ -1236,7 +1236,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
             Usage(
                 "Failed to parse --sequence-id-range. The range values must be "
                 ">= 0.");
-          } else if (start_id > end_id) {
+          } else if (index > 0 && (start_id > end_id)) {
             Usage(
                 "Failed to parse --sequence-id-range. The 'end' value must be "
                 "greater than 'start' value.");
