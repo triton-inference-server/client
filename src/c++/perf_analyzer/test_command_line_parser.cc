@@ -661,6 +661,52 @@ TEST_CASE("Testing Command Line Parser")
 
       check_params = false;  // Usage message called
     }
+
+    SUBCASE("Negative start value")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "-12:34"};
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range", "The range values must be >= 0.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+
+      check_params = false;  // Usage message called
+    }
+
+    SUBCASE("Negative end value")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "12:-34"};
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range", "The range values must be >= 0.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+
+      check_params = false;  // Usage message called
+    }
+
+    SUBCASE("Start value greater than end value")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--sequence-id-range", "34:12"};
+
+      expected_msg = CreateUsageMessage(
+          "--sequence-id-range",
+          "The 'end' value must be greater than 'start' value.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+
+      check_params = false;  // Usage message called
+    }
   }
 
 
