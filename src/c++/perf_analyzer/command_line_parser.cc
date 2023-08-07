@@ -39,19 +39,33 @@
 namespace triton { namespace perfanalyzer {
 
 bool
-IsNonNegativeNumber(const std::string& str)
+IsPositiveInteger(const std::string& str)
 {
   if (str.empty()) {
     return false;
+  } else if (str.size() == 1 && str[0] == '0') {
+    return false;
   } else if (str.size() > 1 && str[0] == '0') {
     return false;
-  } else {
-    return std::all_of(
-               str.begin(), str.end(),
-               [](unsigned char c) { return std::isdigit(c); })
-               ? true
-               : false;
   }
+  return std::all_of(
+             str.begin(), str.end(),
+             [](unsigned char c) { return std::isdigit(c); })
+             ? true
+             : false;
+}
+
+bool
+IsNonNegativeInteger(const std::string& str)
+{
+  if (str.empty()) {
+    return false;
+  } else if (str.size() == 1 && str[0] == '0') {
+    return true;
+  } else if (str[0] == '-') {
+    return false;
+  }
+  return IsPositiveInteger(str);
 }
 
 PAParamsPtr
@@ -885,7 +899,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
               dim = shape_str.substr(pos, comma_pos - pos);
               pos = comma_pos + 1;
             }
-            if (dim == "0" || !IsNonNegativeNumber(dim)) {
+            if (!IsPositiveInteger(dim)) {
               Usage(
                   "Failed to parse --shape. The values must be a valid "
                   "positive number.");
@@ -929,7 +943,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
               pos = colon_pos + 1;
             }
 
-            if (!IsNonNegativeNumber(val)) {
+            if (!IsNonNegativeInteger(val)) {
               Usage(
                   "Failed to parse --concurrency-range. The values must be a "
                   "valid non-negative number.");
@@ -1204,8 +1218,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         case 30: {
           std::string arg = optarg;
-          int64_t start_id{1};
-          int64_t end_id{1};
           size_t pos = 0;
           int index = 0;
           while (pos != std::string::npos) {
@@ -1215,39 +1227,39 @@ CLParser::ParseCommandLine(int argc, char** argv)
                   "Failed to parse --sequence-id-range. The value does not "
                   "match <start:end>.");
             }
+
+            std::string sequence_id;
             if (colon_pos == std::string::npos) {
-              std::string sequence_id{arg.substr(pos, colon_pos)};
-              if (index == 0) {
-                start_id = std::stoi(sequence_id);
-              } else {
-                end_id = std::stoi(sequence_id);
-              }
+              sequence_id = arg.substr(pos, colon_pos);
               pos = colon_pos;
             } else {
-              std::string sequence_id{arg.substr(pos, colon_pos - pos)};
-              start_id = std::stoi(sequence_id);
+              sequence_id = arg.substr(pos, colon_pos - pos);
               pos = colon_pos + 1;
-              index++;
             }
+
+            if (!IsNonNegativeInteger(sequence_id)) {
+              Usage(
+                  "Failed to parse --sequence-id-range. The range values must "
+                  "be >= 0.");
+            }
+
+            switch (index) {
+              case 0:
+                params_->start_sequence_id = std::stoull(sequence_id);
+                break;
+              case 1:
+                if (params_->start_sequence_id > std::stoull(sequence_id)) {
+                  Usage(
+                      "Failed to parse --sequence-id-range. The 'end' value "
+                      "must be greater than 'start' value.");
+                }
+                params_->sequence_id_range =
+                    std::stoull(sequence_id) - params_->start_sequence_id;
+                break;
+            }
+            index++;
           }
 
-          // Check for invalid inputs
-          if (start_id < 0 || end_id < 0) {
-            Usage(
-                "Failed to parse --sequence-id-range. The range values must be "
-                ">= 0.");
-          } else if (index > 0 && (start_id > end_id)) {
-            Usage(
-                "Failed to parse --sequence-id-range. The 'end' value must be "
-                "greater than 'start' value.");
-          }
-
-          if (index == 0) {  // Only start ID is given
-            params_->start_sequence_id = start_id;
-          } else {
-            params_->start_sequence_id = start_id;
-            params_->sequence_id_range = end_id - start_id;
-          }
           break;
         }
         case 31: {
