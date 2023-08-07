@@ -93,9 +93,15 @@ class InferInput:
         ----------
         shape : list
             The shape of the associated input.
+
+        Returns
+        -------
+        InferInput
+            The updated input
         """
         self._input.ClearField("shape")
         self._input.shape.extend(shape)
+        return self
 
     def set_data_from_numpy(self, input_tensor):
         """Set the tensor data from the specified numpy array for
@@ -105,6 +111,11 @@ class InferInput:
         ----------
         input_tensor : numpy array
             The tensor data in numpy array format
+
+        Returns
+        -------
+        InferInput
+            The updated input
 
         Raises
         ------
@@ -160,6 +171,7 @@ class InferInput:
                 self._raw_content = b""
         else:
             self._raw_content = input_tensor.tobytes()
+        return self
 
     def set_shared_memory(self, region_name, byte_size, offset=0):
         """Set the tensor data from the specified shared memory region.
@@ -174,6 +186,10 @@ class InferInput:
             The offset, in bytes, into the region where the data for
             the tensor starts. The default value is 0.
 
+        Returns
+        -------
+        InferInput
+            The updated input
         """
         self._input.ClearField("contents")
         self._raw_content = None
@@ -182,6 +198,7 @@ class InferInput:
         self._input.parameters["shared_memory_byte_size"].int64_param = byte_size
         if offset != 0:
             self._input.parameters["shared_memory_offset"].int64_param = offset
+        return self
 
     def _get_tensor(self):
         """Retrieve the underlying InferInputTensor message.
