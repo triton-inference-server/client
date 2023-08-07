@@ -94,8 +94,14 @@ class InferInput:
         ----------
         shape : list
             The shape of the associated input.
+
+        Returns
+        -------
+        InferInput
+            The updated input
         """
         self._shape = shape
+        return self
 
     def set_data_from_numpy(self, input_tensor, binary_data=True):
         """Set the tensor data from the specified numpy array for
@@ -110,6 +116,11 @@ class InferInput:
             or explicit tensor within JSON. The default value is True,
             which means the data will be delivered as binary data in the
             HTTP body after the JSON object.
+
+        Returns
+        -------
+        InferInput
+            The updated input
 
         Raises
         ------
@@ -200,6 +211,7 @@ class InferInput:
             else:
                 self._raw_data = input_tensor.tobytes()
             self._parameters["binary_data_size"] = len(self._raw_data)
+        return self
 
     def set_shared_memory(self, region_name, byte_size, offset=0):
         """Set the tensor data from the specified shared memory region.
@@ -214,6 +226,10 @@ class InferInput:
             The offset, in bytes, into the region where the data for
             the tensor starts. The default value is 0.
 
+        Returns
+        -------
+        InferInput
+            The updated input
         """
         self._data = None
         self._raw_data = None
@@ -223,6 +239,7 @@ class InferInput:
         self._parameters["shared_memory_byte_size"] = byte_size
         if offset != 0:
             self._parameters["shared_memory_offset"] = offset
+        return self
 
     def _get_binary_data(self):
         """Returns the raw binary data if available
