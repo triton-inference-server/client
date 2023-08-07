@@ -563,6 +563,7 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
+  // FIXME: Deprecated flag (TMA-1318)
   SUBCASE("Option : --data-directory")
   {
     SUBCASE("set to `/usr/data`")
@@ -579,10 +580,6 @@ TEST_CASE("Testing Command Line Parser")
 
     SUBCASE("call twice")
     {
-      // QUESTION: Is this the expected behavior? There is not enough details in
-      // in the output. It is marked as deprecated, what does that mean? Is it
-      // used?
-      //
       int argc = 7;
       char* argv[argc] = {app_name,           "-m",        model_name,
                           "--data-directory", "/usr/data", "--data-directory",
@@ -937,7 +934,7 @@ TEST_CASE("Testing Command Line Parser")
       exp->concurrency_range.step = 10;
     }
 
-    SUBCASE("only two options")
+    SUBCASE("only the start and end value")
     {
       int argc = 5;
       char* argv[argc] = {
@@ -951,14 +948,12 @@ TEST_CASE("Testing Command Line Parser")
       exp->concurrency_range.end = 400;
     }
 
-    SUBCASE("only one options")
+    SUBCASE("only the start value")
     {
       int argc = 5;
       char* argv[argc] = {
           app_name, "-m", model_name, "--concurrency-range", "100"};
 
-      // QUESTION: What does this mean? Why pass only one?
-      //
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
