@@ -744,7 +744,7 @@ CLParser::Usage(const std::string& msg)
                    "version 3, while modelB's version is unspecified",
                    18)
             << std::endl;
-  exit(GENERIC_ERROR);
+  throw PerfAnalyzerException(GENERIC_ERROR);
 }
 
 void
@@ -887,8 +887,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
             }
             if (dim == "0" || !IsNonNegativeNumber(dim)) {
               Usage(
-                  "Failed to parse --shape. The dimensions of input tensor "
-                  "must be > 0.");
+                  "Failed to parse --shape. The values must be a valid "
+                  "positive number.");
             }
             shape.emplace_back(std::stoll(dim));
           }
