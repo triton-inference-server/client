@@ -640,7 +640,7 @@ TEST_CASE("Testing Command Line Parser")
           app_name, "-m", model_name, "--sequence-id-range", "BAD"};
 
       expected_msg = CreateUsageMessage(
-          "--sequence-id-range", "Invalid value provided: BAD");
+          "--sequence-id-range", "The range values must be >= 0.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
@@ -654,7 +654,7 @@ TEST_CASE("Testing Command Line Parser")
           app_name, "-m", model_name, "--sequence-id-range", "53:BAD"};
 
       expected_msg = CreateUsageMessage(
-          "--sequence-id-range", "Invalid value provided: 53:BAD");
+          "--sequence-id-range", "The range values must be >= 0.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
