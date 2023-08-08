@@ -434,8 +434,10 @@ PerfAnalyzer::WriteReport()
 void
 PerfAnalyzer::GenerateProfileExportReport()
 {
-  reporter_->ConvertToJson(collector_->GetData(), collector_->GetVersion());
-  reporter_->OutputToFile(params_->profile_export_file);
+  if (!params_->profile_export_file.empty()) {
+    reporter_->ConvertToJson(collector_->GetData(), collector_->GetVersion());
+    reporter_->OutputToFile(params_->profile_export_file);
+  }
 }
 
 void

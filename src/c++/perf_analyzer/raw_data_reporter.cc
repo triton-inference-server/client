@@ -169,6 +169,10 @@ void
 RawDataReporter::OutputToFile(std::string& file_path)
 {
   FILE* fp = fopen(file_path.c_str(), "w");
+  if (fp == nullptr) {
+    throw PerfAnalyzerException(
+        "failed to open file for outputting raw profile data", GENERIC_ERROR);
+  }
   char writeBuffer[65536];
   FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
