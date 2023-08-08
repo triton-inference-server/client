@@ -64,7 +64,7 @@ PerfAnalyzer::Run()
   PrerunReport();
   Profile();
   WriteReport();
-  GenerateProfileExportReport();
+  GenerateProfileExport();
   Finalize();
 }
 
@@ -255,12 +255,12 @@ PerfAnalyzer::CreateAnalyzerObjects()
       params_->sequence_length_specified, params_->sequence_length_variation);
 
   FAIL_IF_ERR(
-      pa::RawDataCollector::Create(&collector_),
-      "failed to create data collector");
+      pa::ProfileDataCollector::Create(&collector_),
+      "failed to create profile data collector");
 
   FAIL_IF_ERR(
-      pa::RawDataReporter::Create(&reporter_),
-      "failed to create data reporter");
+      pa::ProfileDataExporter::Create(&exporter_),
+      "failed to create profile data exporter");
 
   FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
@@ -432,11 +432,12 @@ PerfAnalyzer::WriteReport()
 }
 
 void
-PerfAnalyzer::GenerateProfileExportReport()
+PerfAnalyzer::GenerateProfileExport()
 {
   if (!params_->profile_export_file.empty()) {
-    reporter_->ConvertToJson(collector_->GetData(), collector_->GetVersion());
-    reporter_->OutputToFile(params_->profile_export_file);
+    exporter_->Export(
+        collector_->GetData(), collector_->GetVersion(),
+        params_->profile_export_file);
   }
 }
 

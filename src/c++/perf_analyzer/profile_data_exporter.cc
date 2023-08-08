@@ -25,7 +25,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include "raw_data_reporter.h"
+#include "profile_data_exporter.h"
 
 #include <rapidjson/filewritestream.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -35,28 +35,36 @@
 
 namespace triton { namespace perfanalyzer {
 
-using namespace rapidjson;
-
 cb::Error
-RawDataReporter::Create(std::shared_ptr<RawDataReporter>* reporter)
+ProfileDataExporter::Create(std::shared_ptr<ProfileDataExporter>* exporter)
 {
-  std::shared_ptr<RawDataReporter> local_reporter{new RawDataReporter()};
-  *reporter = std::move(local_reporter);
+  std::shared_ptr<ProfileDataExporter> local_exporter{
+      new ProfileDataExporter()};
+  *exporter = std::move(local_exporter);
   return cb::Error::Success;
 }
 
 void
-RawDataReporter::ConvertToJson(
-    std::vector<Experiment>& raw_experiments, std::string& raw_version)
+ProfileDataExporter::Export(
+    const std::vector<Experiment>& raw_experiments, std::string& raw_version,
+    std::string& file_path)
+{
+  ConvertToJson(raw_experiments, raw_version);
+  OutputToFile(file_path);
+}
+
+void
+ProfileDataExporter::ConvertToJson(
+    const std::vector<Experiment>& raw_experiments, std::string& raw_version)
 {
   ClearDocument();
-  Value experiments(kArrayType);
+  rapidjson::Value experiments(rapidjson::kArrayType);
 
   for (const auto& raw_experiment : raw_experiments) {
-    Value entry(kObjectType);
-    Value experiment(kObjectType);
-    Value requests(kArrayType);
-    Value window_boundaries(kArrayType);
+    rapidjson::Value entry(rapidjson::kObjectType);
+    rapidjson::Value experiment(rapidjson::kObjectType);
+    rapidjson::Value requests(rapidjson::kArrayType);
+    rapidjson::Value window_boundaries(rapidjson::kArrayType);
 
     AddExperiment(entry, experiment, raw_experiment);
     AddRequests(entry, requests, raw_experiment);
@@ -70,24 +78,25 @@ RawDataReporter::ConvertToJson(
 }
 
 void
-RawDataReporter::ClearDocument()
+ProfileDataExporter::ClearDocument()
 {
-  Document d{};
+  rapidjson::Document d{};
   document_.Swap(d);
   document_.SetObject();
 }
 
 void
-RawDataReporter::AddExperiment(
-    Value& entry, Value& experiment, const Experiment& raw_experiment)
+ProfileDataExporter::AddExperiment(
+    rapidjson::Value& entry, rapidjson::Value& experiment,
+    const Experiment& raw_experiment)
 {
-  Value mode;
-  Value value;
+  rapidjson::Value mode;
+  rapidjson::Value value;
   if (raw_experiment.mode.concurrency != 0) {
-    mode = StringRef("concurrency");
+    mode = rapidjson::StringRef("concurrency");
     value.SetUint64(raw_experiment.mode.concurrency);
   } else {
-    mode = StringRef("request_rate");
+    mode = rapidjson::StringRef("request_rate");
     value.SetUint64(raw_experiment.mode.request_rate);
   }
   experiment.AddMember("mode", mode, document_.GetAllocator());
@@ -96,23 +105,24 @@ RawDataReporter::AddExperiment(
 }
 
 void
-RawDataReporter::AddRequests(
-    Value& entry, Value& requests, const Experiment& raw_experiment)
+ProfileDataExporter::AddRequests(
+    rapidjson::Value& entry, rapidjson::Value& requests,
+    const Experiment& raw_experiment)
 {
   for (auto& raw_request : raw_experiment.requests) {
-    Value request(kObjectType);
-    Value timestamp;
+    rapidjson::Value request(rapidjson::kObjectType);
+    rapidjson::Value timestamp;
 
     timestamp.SetUint64(raw_request.start_time_.time_since_epoch().count());
     request.AddMember("timestamp", timestamp, document_.GetAllocator());
 
     if (raw_request.sequence_id_ != 0) {
-      Value sequence_id;
+      rapidjson::Value sequence_id;
       sequence_id.SetUint64(raw_request.sequence_id_);
       request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     }
 
-    Value responses(kArrayType);
+    rapidjson::Value responses(rapidjson::kArrayType);
     AddResponses(responses, raw_request.response_times_);
     request.AddMember(
         "response_timestamps", responses, document_.GetAllocator());
@@ -122,24 +132,25 @@ RawDataReporter::AddRequests(
 }
 
 void
-RawDataReporter::AddResponses(
-    Value& responses,
+ProfileDataExporter::AddResponses(
+    rapidjson::Value& responses,
     const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
         response_times)
 {
   for (auto& response : response_times) {
-    Value time;
+    rapidjson::Value time;
     time.SetUint64(response.time_since_epoch().count());
     responses.PushBack(time, document_.GetAllocator());
   }
 }
 
 void
-RawDataReporter::AddWindowBoundaries(
-    Value& entry, Value& window_boundaries, const Experiment& raw_experiment)
+ProfileDataExporter::AddWindowBoundaries(
+    rapidjson::Value& entry, rapidjson::Value& window_boundaries,
+    const Experiment& raw_experiment)
 {
   for (auto& window : raw_experiment.window_boundaries) {
-    Value w;
+    rapidjson::Value w;
     w.SetUint64(window);
     window_boundaries.PushBack(w, document_.GetAllocator());
   }
@@ -148,25 +159,15 @@ RawDataReporter::AddWindowBoundaries(
 }
 
 void
-RawDataReporter::AddVersion(std::string& raw_version)
+ProfileDataExporter::AddVersion(std::string& raw_version)
 {
-  Value version;
-  version = StringRef(raw_version.c_str());
+  rapidjson::Value version;
+  version = rapidjson::StringRef(raw_version.c_str());
   document_.AddMember("version", version, document_.GetAllocator());
 }
 
-// print to file
-
 void
-RawDataReporter::Print()
-{
-  OStreamWrapper out(std::cout);
-  Writer<OStreamWrapper> writer(out);
-  document_.Accept(writer);
-}
-
-void
-RawDataReporter::OutputToFile(std::string& file_path)
+ProfileDataExporter::OutputToFile(std::string& file_path)
 {
   FILE* fp = fopen(file_path.c_str(), "w");
   if (fp == nullptr) {
@@ -174,9 +175,9 @@ RawDataReporter::OutputToFile(std::string& file_path)
         "failed to open file for outputting raw profile data", GENERIC_ERROR);
   }
   char writeBuffer[65536];
-  FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
+  rapidjson::FileWriteStream os(fp, writeBuffer, sizeof(writeBuffer));
 
-  Writer<FileWriteStream> writer(os);
+  rapidjson::Writer<rapidjson::FileWriteStream> writer(os);
   document_.Accept(writer);
 
   fclose(fp);

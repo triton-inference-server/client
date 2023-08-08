@@ -43,7 +43,7 @@
 #include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
-#include "raw_data_collector.h"
+#include "profile_data_collector.h"
 #include "request_rate_manager.h"
 
 namespace triton { namespace perfanalyzer {
@@ -222,8 +222,7 @@ class InferenceProfiler {
   /// should be collected.
   /// \param overhead_pct_threshold User set threshold above which the PA
   /// overhead is too significant to provide usable results.
-  /// \param collector Collects all of the raw data from experiments into a
-  /// central location
+  /// \param collector Collector for the profile data from experiments
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -236,7 +235,7 @@ class InferenceProfiler {
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
       const bool should_collect_metrics, const double overhead_pct_threshold,
-      const std::shared_ptr<RawDataCollector> collector);
+      const std::shared_ptr<ProfileDataCollector> collector);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -319,7 +318,7 @@ class InferenceProfiler {
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
       const double overhead_pct_threshold,
-      const std::shared_ptr<RawDataCollector> collector);
+      const std::shared_ptr<ProfileDataCollector> collector);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -458,7 +457,7 @@ class InferenceProfiler {
       std::vector<RequestRecord>& valid_requests);
 
   /// Add the data from the request records to the Raw Data Collector
-  /// \param perf_status Perf_status of the current measurement
+  /// \param perf_status PerfStatus of the current measurement
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
   /// \param request_records The request records to collect.
@@ -688,7 +687,7 @@ class InferenceProfiler {
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackend> profile_backend_;
   std::unique_ptr<LoadManager> manager_;
-  std::shared_ptr<RawDataCollector> collector_;
+  std::shared_ptr<ProfileDataCollector> collector_;
   LoadParams load_parameters_;
 
   bool include_lib_stats_;

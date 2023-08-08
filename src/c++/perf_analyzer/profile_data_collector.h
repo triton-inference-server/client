@@ -37,39 +37,45 @@
 
 namespace triton { namespace perfanalyzer {
 
-struct PerfMode {
+/// Data structure to hold which inference load mode was used for an experiment.
+/// Only one data member will be nonzero, indicating the inference load mode for
+/// a particular experiment.
+struct InferenceLoadMode {
   uint32_t concurrency;
   double request_rate;
 
-  PerfMode()
+  InferenceLoadMode()
   {
     concurrency = 0;
     request_rate = 0.0;
   }
 
-  PerfMode(uint64_t c, double rr)
+  InferenceLoadMode(uint64_t c, double rr)
   {
     concurrency = c;
     request_rate = rr;
   }
 
-  bool operator==(const PerfMode& rhs) const
+  bool operator==(const InferenceLoadMode& rhs) const
   {
     return (concurrency == rhs.concurrency) &&
            (request_rate == rhs.request_rate);
   }
 };
 
+/// Data structure to hold profile export data for an experiment (e.g.
+/// concurrency 4 or request rate 50)
 struct Experiment {
-  PerfMode mode;
+  InferenceLoadMode mode;
   std::vector<RequestRecord> requests;
   std::vector<uint64_t> window_boundaries;
 };
 
-class RawDataCollector {
+/// Data structure and methods for storing profile export data.
+class ProfileDataCollector {
  public:
-  static cb::Error Create(std::shared_ptr<RawDataCollector>* collector);
-  ~RawDataCollector() = default;
+  static cb::Error Create(std::shared_ptr<ProfileDataCollector>* collector);
+  ~ProfileDataCollector() = default;
 
 
   /// Add a measurement window to the collector
@@ -77,23 +83,24 @@ class RawDataCollector {
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
   void AddWindow(
-      PerfMode& id, uint64_t window_start_ns, uint64_t window_end_ns);
+      InferenceLoadMode& id, uint64_t window_start_ns, uint64_t window_end_ns);
 
   /// Add request records to an experiment
   /// @param id Identifier for the experiment
   /// @param request_records The request information for the current experiment.
-  void AddData(PerfMode& id, std::vector<RequestRecord>&& request_records);
+  void AddData(
+      InferenceLoadMode& id, std::vector<RequestRecord>&& request_records);
 
-  /// Get the raw experiment data for the profile
-  /// @return Raw experiment data
+  /// Get the experiment data for the profile
+  /// @return Experiment data
   std::vector<Experiment>& GetData() { return experiments_; }
 
   std::string& GetVersion() { return version_; }
 
  private:
-  RawDataCollector() = default;
+  ProfileDataCollector() = default;
 
-  std::vector<Experiment>::iterator FindEntry(PerfMode& id)
+  std::vector<Experiment>::iterator FindExperiment(InferenceLoadMode& id)
   {
     return std::find_if(
         experiments_.begin(), experiments_.end(),

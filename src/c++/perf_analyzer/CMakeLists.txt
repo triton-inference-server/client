@@ -67,8 +67,8 @@ set(
   infer_data_manager.cc
   infer_data_manager_shm.cc
   sequence_manager.cc
-  raw_data_collector.cc
-  raw_data_reporter.cc
+  profile_data_collector.cc
+  profile_data_exporter.cc
 )
 
 set(
@@ -107,8 +107,8 @@ set(
   fifo_ctx_id_tracker.h
   rand_ctx_id_tracker.h
   request_record.h
-  raw_data_collector.h
-  raw_data_reporter.h
+  profile_data_collector.h
+  profile_data_exporter.h
 )
 
 add_executable(

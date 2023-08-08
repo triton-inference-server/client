@@ -471,7 +471,7 @@ InferenceProfiler::Create(
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
     const bool should_collect_metrics, const double overhead_pct_threshold,
-    const std::shared_ptr<RawDataCollector> collector)
+    const std::shared_ptr<ProfileDataCollector> collector)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
@@ -495,7 +495,7 @@ InferenceProfiler::InferenceProfiler(
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
     const double overhead_pct_threshold,
-    const std::shared_ptr<RawDataCollector> collector)
+    const std::shared_ptr<ProfileDataCollector> collector)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -1316,7 +1316,7 @@ InferenceProfiler::CollectData(
     PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
     std::vector<RequestRecord>&& request_records)
 {
-  PerfMode id{summary.concurrency, summary.request_rate};
+  InferenceLoadMode id{summary.concurrency, summary.request_rate};
   collector_->AddWindow(id, window_start_ns, window_end_ns);
   collector_->AddData(id, std::move(request_records));
 }

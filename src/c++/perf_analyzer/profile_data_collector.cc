@@ -24,7 +24,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "raw_data_collector.h"
+#include "profile_data_collector.h"
 
 #include <memory>
 
@@ -33,18 +33,19 @@
 namespace triton { namespace perfanalyzer {
 
 cb::Error
-RawDataCollector::Create(std::shared_ptr<RawDataCollector>* collector)
+ProfileDataCollector::Create(std::shared_ptr<ProfileDataCollector>* collector)
 {
-  std::shared_ptr<RawDataCollector> local_collector{new RawDataCollector()};
+  std::shared_ptr<ProfileDataCollector> local_collector{
+      new ProfileDataCollector()};
   *collector = std::move(local_collector);
   return cb::Error::Success;
 }
 
 void
-RawDataCollector::AddWindow(
-    PerfMode& id, uint64_t window_start_ns, uint64_t window_end_ns)
+ProfileDataCollector::AddWindow(
+    InferenceLoadMode& id, uint64_t window_start_ns, uint64_t window_end_ns)
 {
-  auto it = FindEntry(id);
+  auto it = FindExperiment(id);
 
   if (it == experiments_.end()) {
     Experiment new_experiment{};
@@ -64,10 +65,10 @@ RawDataCollector::AddWindow(
 }
 
 void
-RawDataCollector::AddData(
-    PerfMode& id, std::vector<RequestRecord>&& request_records)
+ProfileDataCollector::AddData(
+    InferenceLoadMode& id, std::vector<RequestRecord>&& request_records)
 {
-  auto it = FindEntry(id);
+  auto it = FindExperiment(id);
 
   if (it == experiments_.end()) {
     Experiment new_experiment{};

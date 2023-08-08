@@ -29,31 +29,38 @@
 #include <rapidjson/document.h>
 
 #include "client_backend/client_backend.h"
-#include "raw_data_collector.h"
+#include "profile_data_collector.h"
 
 namespace triton { namespace perfanalyzer {
 
 
-class RawDataReporter {
+/// Exports profile data.
+class ProfileDataExporter {
  public:
-  static cb::Error Create(std::shared_ptr<RawDataReporter>* reporter);
-  ~RawDataReporter() = default;
+  static cb::Error Create(std::shared_ptr<ProfileDataExporter>* exporter);
+  ~ProfileDataExporter() = default;
 
+  /// Export profile data to json file
+  /// @param raw_experiments All of the raw data for the experiments run by perf
+  /// analyzer
+  /// @param raw_version String containing the version number for the json
+  /// output
+  /// @param file_path File path to export profile data to.
+  void Export(
+      const std::vector<Experiment>& raw_experiments, std::string& raw_version,
+      std::string& file_path);
+
+ private:
+  ProfileDataExporter() = default;
   /// Convert the raw data collected to json output
   /// @param raw_experiments All of the raw data for the experiments run by perf
   /// analyzer
   /// @param raw_version String containing the version number for the json
   /// output
   void ConvertToJson(
-      std::vector<Experiment>& raw_experiments, std::string& raw_version);
-
-  /// Output to stdout
-  void Print();
+      const std::vector<Experiment>& raw_experiments, std::string& raw_version);
 
   void OutputToFile(std::string& file_path);
-
- private:
-  RawDataReporter() = default;
   void ClearDocument();
   void AddExperiment(
       rapidjson::Value& entry, rapidjson::Value& experiment,
