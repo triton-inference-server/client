@@ -258,7 +258,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           return;
         }
         it->second.response_times_.push_back(std::chrono::system_clock::now());
-        if (is_null_response == false) {
+        if (is_null_response == true) {
           it->second.has_null_last_response_ = true;
         }
         thread_stat_->cb_status_ =
