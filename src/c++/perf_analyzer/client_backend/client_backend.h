@@ -633,3 +633,5 @@ class InferResult {
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend
+
+namespace cb = triton::perfanalyzer::clientbackend;

@@ -64,6 +64,7 @@ PerfAnalyzer::Run()
   PrerunReport();
   Profile();
   WriteReport();
+  GenerateProfileExport();
   Finalize();
 }
 
@@ -254,6 +255,14 @@ PerfAnalyzer::CreateAnalyzerObjects()
       params_->sequence_length_specified, params_->sequence_length_variation);
 
   FAIL_IF_ERR(
+      pa::ProfileDataCollector::Create(&collector_),
+      "failed to create profile data collector");
+
+  FAIL_IF_ERR(
+      pa::ProfileDataExporter::Create(&exporter_),
+      "failed to create profile data exporter");
+
+  FAIL_IF_ERR(
       pa::InferenceProfiler::Create(
           params_->verbose, params_->stability_threshold,
           params_->measurement_window_ms, params_->max_trials,
@@ -261,7 +270,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
           parser_, std::move(backend_), std::move(manager), &profiler_,
           params_->measurement_request_count, params_->measurement_mode,
           params_->mpi_driver, params_->metrics_interval_ms,
-          params_->should_collect_metrics, params_->overhead_pct_threshold),
+          params_->should_collect_metrics, params_->overhead_pct_threshold,
+          collector_, !params_->profile_export_file.empty()),
       "failed to create profiler");
 }
 
@@ -419,6 +429,16 @@ PerfAnalyzer::WriteReport()
       "failed to create report writer");
 
   writer->GenerateReport();
+}
+
+void
+PerfAnalyzer::GenerateProfileExport()
+{
+  if (!params_->profile_export_file.empty()) {
+    exporter_->Export(
+        collector_->GetData(), collector_->GetVersion(),
+        params_->profile_export_file);
+  }
 }
 
 void

@@ -43,6 +43,7 @@
 #include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
+#include "profile_data_collector.h"
 #include "request_rate_manager.h"
 
 namespace triton { namespace perfanalyzer {
@@ -221,6 +222,8 @@ class InferenceProfiler {
   /// should be collected.
   /// \param overhead_pct_threshold User set threshold above which the PA
   /// overhead is too significant to provide usable results.
+  /// \param collector Collector for the profile data from experiments
+  /// \param should_collect_profile_data Whether to collect profile data.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -232,7 +235,9 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics, const double overhead_pct_threshold);
+      const bool should_collect_metrics, const double overhead_pct_threshold,
+      const std::shared_ptr<ProfileDataCollector> collector,
+      const bool should_collect_profile_data);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -314,7 +319,9 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold);
+      const double overhead_pct_threshold,
+      const std::shared_ptr<ProfileDataCollector> collector,
+      const bool should_collect_profile_data);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -445,10 +452,21 @@ class InferenceProfiler {
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
   /// \param response_count Returns the number of responses
+  /// \param valid_requests Returns a vector of valid request records
   virtual void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies, size_t& response_count);
+      std::vector<uint64_t>* latencies, size_t& response_count,
+      std::vector<RequestRecord>& valid_requests);
+
+  /// Add the data from the request records to the Raw Data Collector
+  /// \param perf_status PerfStatus of the current measurement
+  /// \param window_start_ns The window start timestamp in nanoseconds.
+  /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// \param request_records The request records to collect.
+  void CollectData(
+      PerfStatus& perf_status, uint64_t window_start_ns, uint64_t window_end_ns,
+      std::vector<RequestRecord>&& request_records);
 
   /// \param latencies The vector of request latencies collected.
   /// \param summary Returns the summary that the latency related fields are
@@ -672,6 +690,7 @@ class InferenceProfiler {
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackend> profile_backend_;
   std::unique_ptr<LoadManager> manager_;
+  std::shared_ptr<ProfileDataCollector> collector_;
   LoadParams load_parameters_;
 
   bool include_lib_stats_;
@@ -699,6 +718,9 @@ class InferenceProfiler {
   /// User set threshold above which the PA overhead is too significant to
   /// provide usable results.
   const double overhead_pct_threshold_{0.0};
+
+  // Whether to collect profile data.
+  bool should_collect_profile_data_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;

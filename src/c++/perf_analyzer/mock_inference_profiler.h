@@ -36,16 +36,17 @@ class NaggyMockInferenceProfiler : public InferenceProfiler {
   {
     ON_CALL(
         *this, ValidLatencyMeasurement(
-                   testing::_, testing::_, testing::_, testing::_, testing::_))
+                   testing::_, testing::_, testing::_, testing::_, testing::_,
+                   testing::_))
         .WillByDefault(
             [this](
                 const std::pair<uint64_t, uint64_t>& valid_range,
                 size_t& valid_sequence_count, size_t& delayed_request_count,
-                std::vector<uint64_t>* latencies,
-                size_t& response_count) -> void {
+                std::vector<uint64_t>* latencies, size_t& response_count,
+                std::vector<RequestRecord>& valid_requests) -> void {
               this->InferenceProfiler::ValidLatencyMeasurement(
                   valid_range, valid_sequence_count, delayed_request_count,
-                  latencies, response_count);
+                  latencies, response_count, valid_requests);
             });
     ON_CALL(*this, SummarizeLatency(testing::_, testing::_))
         .WillByDefault(
@@ -93,7 +94,7 @@ class NaggyMockInferenceProfiler : public InferenceProfiler {
   MOCK_METHOD(
       void, ValidLatencyMeasurement,
       ((const std::pair<uint64_t, uint64_t>&), size_t&, size_t&,
-       std::vector<uint64_t>*, size_t&),
+       std::vector<uint64_t>*, size_t&, std::vector<RequestRecord>&),
       (override));
   MOCK_METHOD(
       cb::Error, SummarizeLatency, (const std::vector<uint64_t>&, PerfStatus&),

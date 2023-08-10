@@ -9,7 +9,7 @@
                 {
                     "timestamp": 1,
                     "sequence_id": 1,
-                    "responses_timestamps": [
+                    "response_timestamps": [
                         2,
                         3,
                         4
@@ -18,12 +18,12 @@
                 {
                     "timestamp": 5,
                     "sequence_id": 2,
-                    "responses_timestamps": []
+                    "response_timestamps": []
                 },
                 {
                     "timestamp": 6,
                     "sequence_id": 2,
-                    "responses_timestamps": [
+                    "response_timestamps": [
                         7,
                         8,
                         9
