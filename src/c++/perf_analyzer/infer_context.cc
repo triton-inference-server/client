@@ -167,7 +167,7 @@ InferContext::SendRequest(
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_records_.emplace_back(RequestRecord(
           start_time_sync, std::move(end_time_syncs),
-          infer_data_.options_->sequence_end_, delayed, sequence_id));
+          infer_data_.options_->sequence_end_, delayed, sequence_id, false));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -257,9 +257,9 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         if (thread_stat_->cb_status_.IsOk() == false) {
           return;
         }
+        it->second.response_times_.push_back(std::chrono::system_clock::now());
         if (is_null_response == false) {
-          it->second.response_times_.push_back(
-              std::chrono::system_clock::now());
+          it->second.has_null_last_response_ = true;
         }
         thread_stat_->cb_status_ =
             result_ptr->IsFinalResponse(&is_final_response);
@@ -270,7 +270,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           thread_stat_->request_records_.emplace_back(
               it->second.start_time_, it->second.response_times_,
               it->second.sequence_end_, it->second.delayed_,
-              it->second.sequence_id_);
+              it->second.sequence_id_, it->second.has_null_last_response_);
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
           thread_stat_->cb_status_ = ValidateOutputs(result);
           async_req_map_.erase(request_id);

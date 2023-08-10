@@ -40,10 +40,10 @@ operator==(const RequestRecord& lhs, const RequestRecord& rhs)
 {
   return std::tie(
              lhs.start_time_, lhs.response_times_, lhs.sequence_end_,
-             lhs.delayed_, lhs.sequence_id_) ==
+             lhs.delayed_, lhs.sequence_id_, lhs.has_null_last_response_) ==
          std::tie(
              rhs.start_time_, rhs.response_times_, rhs.sequence_end_,
-             rhs.delayed_, rhs.sequence_id_);
+             rhs.delayed_, rhs.sequence_id_, rhs.has_null_last_response_);
 }
 
 }  // namespace
@@ -134,13 +134,13 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     using ns = std::chrono::nanoseconds;
     auto request_record1 = RequestRecord(
         time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
-        0);
+        0, false);
     auto request_record2 = RequestRecord(
         time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
-        0);
+        0, false);
     auto request_record3 = RequestRecord(
         time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
-        0);
+        0, false);
 
     std::vector<RequestRecord> source_request_records;
 
@@ -295,13 +295,13 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     using ns = std::chrono::nanoseconds;
     auto request_record1 = RequestRecord(
         time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
-        0);
+        0, false);
     auto request_record2 = RequestRecord(
         time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
-        0);
+        0, false);
     auto request_record3 = RequestRecord(
         time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
-        0);
+        0, false);
 
     SUBCASE("No threads")
     {
