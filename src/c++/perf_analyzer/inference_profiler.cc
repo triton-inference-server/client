@@ -470,14 +470,16 @@ InferenceProfiler::Create(
     std::unique_ptr<InferenceProfiler>* profiler,
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-    const bool should_collect_metrics, const double overhead_pct_threshold)
+    const bool should_collect_metrics, const double overhead_pct_threshold,
+    const std::shared_ptr<ProfileDataCollector> collector,
+    const bool should_collect_profile_data)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
       measurement_mode, mpi_driver, metrics_interval_ms, should_collect_metrics,
-      overhead_pct_threshold));
+      overhead_pct_threshold, collector, should_collect_profile_data));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -493,7 +495,9 @@ InferenceProfiler::InferenceProfiler(
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-    const double overhead_pct_threshold)
+    const double overhead_pct_threshold,
+    const std::shared_ptr<ProfileDataCollector> collector,
+    const bool should_collect_profile_data)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -502,7 +506,8 @@ InferenceProfiler::InferenceProfiler(
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
       should_collect_metrics_(should_collect_metrics),
-      overhead_pct_threshold_(overhead_pct_threshold)
+      overhead_pct_threshold_(overhead_pct_threshold), collector_(collector),
+      should_collect_profile_data_(should_collect_profile_data)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -696,6 +701,8 @@ InferenceProfiler::ProfileHelper(
 
   do {
     PerfStatus measurement_perf_status;
+    measurement_perf_status.concurrency = experiment_perf_status.concurrency;
+    measurement_perf_status.request_rate = experiment_perf_status.request_rate;
     RETURN_IF_ERROR(manager_->CheckHealth());
 
     if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
@@ -1226,9 +1233,15 @@ InferenceProfiler::Summarize(
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
   uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
+  std::vector<RequestRecord> valid_requests{};
   ValidLatencyMeasurement(
       valid_range, valid_sequence_count, delayed_request_count, &latencies,
-      response_count);
+      response_count, valid_requests);
+
+  if (should_collect_profile_data_) {
+    CollectData(
+        summary, window_start_ns, window_end_ns, std::move(valid_requests));
+  }
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
@@ -1256,7 +1269,8 @@ void
 InferenceProfiler::ValidLatencyMeasurement(
     const std::pair<uint64_t, uint64_t>& valid_range,
     size_t& valid_sequence_count, size_t& delayed_request_count,
-    std::vector<uint64_t>* valid_latencies, size_t& response_count)
+    std::vector<uint64_t>* valid_latencies, size_t& response_count,
+    std::vector<RequestRecord>& valid_requests)
 {
   valid_latencies->clear();
   valid_sequence_count = 0;
@@ -1285,6 +1299,12 @@ InferenceProfiler::ValidLatencyMeasurement(
     }
   }
 
+  std::for_each(
+      erase_indices.begin(), erase_indices.end(),
+      [this, &valid_requests](size_t i) {
+        valid_requests.push_back(std::move(this->all_request_records_[i]));
+      });
+
   // Iterate through erase indices backwards so that erases from
   // `all_request_records_` happen from the back to the front to avoid using
   // wrong indices after subsequent erases
@@ -1294,6 +1314,16 @@ InferenceProfiler::ValidLatencyMeasurement(
 
   // Always sort measured latencies as percentile will be reported as default
   std::sort(valid_latencies->begin(), valid_latencies->end());
+}
+
+void
+InferenceProfiler::CollectData(
+    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
+    std::vector<RequestRecord>&& request_records)
+{
+  InferenceLoadMode id{summary.concurrency, summary.request_rate};
+  collector_->AddWindow(id, window_start_ns, window_end_ns);
+  collector_->AddData(id, std::move(request_records));
 }
 
 cb::Error

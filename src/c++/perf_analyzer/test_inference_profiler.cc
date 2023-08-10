@@ -38,13 +38,14 @@ class TestInferenceProfiler : public InferenceProfiler {
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies, size_t& response_count,
+      std::vector<RequestRecord>& valid_requests,
       std::vector<RequestRecord>& all_request_records)
   {
     InferenceProfiler inference_profiler{};
     inference_profiler.all_request_records_ = all_request_records;
     inference_profiler.ValidLatencyMeasurement(
         valid_range, valid_sequence_count, delayed_request_count, latencies,
-        response_count);
+        response_count, valid_requests);
   }
 
   static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
@@ -167,6 +168,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   size_t delayed_request_count{};
   std::vector<uint64_t> latencies{};
   size_t response_count{};
+  std::vector<RequestRecord> valid_requests{};
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
@@ -206,7 +208,7 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
-      response_count, all_request_records);
+      response_count, valid_requests, all_request_records);
 
   const auto& convert_request_record_to_latency{[](RequestRecord t) {
     return CHRONO_TO_NANOS(t.response_times_.back()) -
@@ -901,12 +903,59 @@ TEST_CASE(
     size_t delayed_request_count{0};
     std::vector<uint64_t> valid_latencies{};
     size_t response_count{0};
+    std::vector<RequestRecord> valid_requests{};
 
     mock_inference_profiler.ValidLatencyMeasurement(
         valid_range, valid_sequence_count, delayed_request_count,
-        &valid_latencies, response_count);
+        &valid_latencies, response_count, valid_requests);
 
     CHECK(response_count == 5);
+  }
+  SUBCASE("testing logic relevant to valid request output")
+  {
+    auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+    auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
+    auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
+    auto request_record1{RequestRecord(
+        request1_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response1_timestamp},
+        0, false, 0)};
+
+    auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+    auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
+    auto request_record2{RequestRecord(
+        request2_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response2_timestamp},
+        0, false, 0)};
+
+    auto request3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+    auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
+    auto request_record3{RequestRecord(
+        request3_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response3_timestamp},
+        0, false, 0)};
+
+    mock_inference_profiler.all_request_records_ = {
+        request_record1, request_record2, request_record3};
+
+    const std::pair<uint64_t, uint64_t> valid_range{std::make_pair(0, 4)};
+    size_t valid_sequence_count{0};
+    size_t delayed_request_count{0};
+    std::vector<uint64_t> valid_latencies{};
+    size_t response_count{0};
+    std::vector<RequestRecord> valid_requests{};
+
+    mock_inference_profiler.ValidLatencyMeasurement(
+        valid_range, valid_sequence_count, delayed_request_count,
+        &valid_latencies, response_count, valid_requests);
+
+    CHECK(valid_requests.size() == 2);
+    CHECK(valid_requests[0].start_time_ == request1_timestamp);
+    CHECK(valid_requests[1].start_time_ == request2_timestamp);
   }
 }
 
