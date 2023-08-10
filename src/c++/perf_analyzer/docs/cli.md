@@ -540,8 +540,8 @@ Analyzer.
 
 Specifies the file where trace output will be saved.
 
-If `--trace-log-frequency` is also specified, this argument value will be the
-prefix of the files to save the trace output. See `--trace-log-frequency` for
+If `--log-frequency` is also specified, this argument value will be the
+prefix of the files to save the trace output. See `--log-frequency` for
 details. Only used for `--service-kind=triton`.
 
 #### `--trace-level=[OFF|TIMESTAMPS|TENSORS]`

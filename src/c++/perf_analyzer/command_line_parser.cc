@@ -67,7 +67,7 @@ void
 CLParser::Usage(const std::string& msg)
 {
   if (!msg.empty()) {
-    std::cerr << "error: " << msg << std::endl;
+    std::cerr << "Error: " << msg << std::endl;
   }
 
   std::cerr << "Usage: " << argv_[0] << " [options]" << std::endl;
@@ -634,9 +634,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr
       << FormatMessage(
              " --trace-file: Set the file where trace output will be saved."
-             " If --trace-log-frequency is also specified, this argument "
+             " If --log-frequency is also specified, this argument "
              "value will be the prefix of the files to save the trace "
-             "output. See --trace-log-frequency for details. Only used for "
+             "output. See --log-frequency for details. Only used for "
              "service-kind of triton. Default value is none.",
              18)
       << std::endl;
@@ -804,37 +804,52 @@ CLParser::ParseCommandLine(int argc, char** argv)
   while ((opt = getopt_long(
               argc, argv, "vdazc:u:m:x:b:t:p:i:H:l:r:s:f:", long_options,
               NULL)) != -1) {
-    switch (opt) {
-      case 0:
-        params_->streaming = true;
-        break;
-      case 1:
-        params_->max_threads = std::atoi(optarg);
-        params_->max_threads_specified = true;
-        break;
-      case 2:
-        params_->sequence_length = std::atoi(optarg);
-        params_->sequence_length_specified = true;
-        break;
-      case 3:
-        params_->percentile = std::atoi(optarg);
-        break;
-      case 4:
-        params_->user_data.push_back(optarg);
-        break;
-      case 5: {
-        std::string arg = optarg;
-        auto colon_pos = arg.rfind(":");
-        if (colon_pos == std::string::npos) {
-          Usage(
-              "failed to parse input shape. There must be a colon after input "
-              "name.");
+    try {
+      switch (opt) {
+        case 0:
+          params_->streaming = true;
+          break;
+        case 1: {
+          std::string max_threads{optarg};
+          if (std::stoi(max_threads) > 0) {
+            params_->max_threads = std::stoull(max_threads);
+            params_->max_threads_specified = true;
+          } else {
+            Usage("Failed to parse --max-threads. The value must be > 0.");
+          }
+          break;
         }
-        std::string name = arg.substr(0, colon_pos);
-        std::string shape_str = arg.substr(name.size() + 1);
-        size_t pos = 0;
-        std::vector<int64_t> shape;
-        try {
+        case 2: {
+          std::string sequence_length{optarg};
+          if (std::stoi(sequence_length) > 0) {
+            params_->sequence_length = std::stoull(sequence_length);
+          } else {
+            std::cerr << "WARNING: The sequence length must be > 0. Perf "
+                         "Analyzer will use default value if it is measuring "
+                         "on sequence model."
+                      << std::endl;
+          }
+          params_->sequence_length_specified = true;
+          break;
+        }
+        case 3:
+          params_->percentile = std::atoi(optarg);
+          break;
+        case 4:
+          params_->user_data.push_back(optarg);
+          break;
+        case 5: {
+          std::string arg = optarg;
+          auto colon_pos = arg.rfind(":");
+          if (colon_pos == std::string::npos) {
+            Usage(
+                "Failed to parse --shape. There must be a colon after input "
+                "name.");
+          }
+          std::string name = arg.substr(0, colon_pos);
+          std::string shape_str = arg.substr(name.size() + 1);
+          size_t pos = 0;
+          std::vector<int64_t> shape;
           while (pos != std::string::npos) {
             size_t comma_pos = shape_str.find(",", pos);
             int64_t dim;
@@ -846,40 +861,46 @@ CLParser::ParseCommandLine(int argc, char** argv)
               pos = comma_pos + 1;
             }
             if (dim <= 0) {
-              Usage("input shape must be > 0");
+              Usage(
+                  "Failed to parse --shape. The dimensions of input tensor "
+                  "must be > 0.");
             }
             shape.emplace_back(dim);
           }
+
+          params_->input_shapes[name] = shape;
+          break;
         }
-        catch (const std::invalid_argument& ia) {
-          Usage("failed to parse input shape: " + std::string(optarg));
+        case 6:
+        case 'p': {
+          std::string measurement_window_ms{optarg};
+          if (std::stoi(measurement_window_ms) > 0) {
+            params_->measurement_window_ms = std::stoull(measurement_window_ms);
+          } else {
+            Usage(
+                "Failed to parse --measurement-interval (-p). The value must "
+                "be > 0 msec.");
+          }
+          break;
         }
-        params_->input_shapes[name] = shape;
-        break;
-      }
-      case 6: {
-        params_->measurement_window_ms = std::atoi(optarg);
-        break;
-      }
-      case 7: {
-        params_->using_concurrency_range = true;
-        std::string arg = optarg;
-        size_t pos = 0;
-        int index = 0;
-        try {
+        case 7: {
+          params_->using_concurrency_range = true;
+          std::string arg = optarg;
+          size_t pos = 0;
+          int index = 0;
           while (pos != std::string::npos) {
             size_t colon_pos = arg.find(":", pos);
             if (index > 2) {
               Usage(
-                  "option concurrency-range can have maximum of three "
-                  "elements");
+                  "Failed to parse --concurrency-range. The value does not "
+                  "match <start:end:step>.");
             }
             int64_t val;
             if (colon_pos == std::string::npos) {
-              val = std::stoll(arg.substr(pos, colon_pos));
+              val = std::stoull(arg.substr(pos, colon_pos));
               pos = colon_pos;
             } else {
-              val = std::stoll(arg.substr(pos, colon_pos - pos));
+              val = std::stoull(arg.substr(pos, colon_pos - pos));
               pos = colon_pos + 1;
             }
             switch (index) {
@@ -895,66 +916,96 @@ CLParser::ParseCommandLine(int argc, char** argv)
             }
             index++;
           }
-        }
-        catch (const std::invalid_argument& ia) {
-          Usage("failed to parse concurrency range: " + std::string(optarg));
-        }
-        break;
-      }
-      case 8: {
-        params_->latency_threshold_ms = std::atoi(optarg);
-        break;
-      }
-      case 9: {
-        params_->stability_threshold = atof(optarg) / 100;
-        break;
-      }
-      case 10: {
-        params_->max_trials = std::atoi(optarg);
-        break;
-      }
-      case 11: {
-        std::string arg = optarg;
-        // Check whether the argument is a directory
-        if (IsDirectory(arg) || IsFile(arg)) {
-          params_->user_data.push_back(optarg);
-        } else if (arg.compare("zero") == 0) {
-          params_->zero_input = true;
-        } else if (arg.compare("random") == 0) {
+
           break;
-        } else {
-          Usage("unsupported input data provided " + std::string(optarg));
         }
-        break;
-      }
-      case 12: {
-        params_->string_length = std::atoi(optarg);
-        break;
-      }
-      case 13: {
-        params_->string_data = optarg;
-        break;
-      }
-      case 14: {
-        params_->async = true;
-        break;
-      }
-      case 15: {
-        params_->forced_sync = true;
-        break;
-      }
-      case 16: {
-        params_->using_request_rate_range = true;
-        std::string arg = optarg;
-        size_t pos = 0;
-        int index = 0;
-        try {
+        case 8:
+        case 'l': {
+          std::string latency_threshold_ms{optarg};
+          if (std::stoi(latency_threshold_ms) == 0) {
+            params_->latency_threshold_ms = NO_LIMIT;
+          } else if (std::stoi(latency_threshold_ms) > 0) {
+            params_->latency_threshold_ms = std::stoull(latency_threshold_ms);
+          } else {
+            Usage(
+                "Failed to parse --latency-threshold (-l). The value must be "
+                ">= 0 msecs.");
+          }
+          break;
+        }
+        case 9:
+        case 's': {
+          std::string stability_threshold{optarg};
+          if (std::stof(stability_threshold) >= 0.0) {
+            params_->stability_threshold = std::stof(optarg) / 100;
+          } else {
+            Usage(
+                "Failed to parse --stability-percentage (-s). The value must "
+                "be >= 0.0.");
+          }
+          break;
+        }
+        case 10:
+        case 'r': {
+          std::string max_trials{optarg};
+          if (std::stoi(max_trials) > 0) {
+            params_->max_trials = std::stoull(max_trials);
+          } else {
+            Usage("Failed to parse --max-trials (-r). The value must be > 0.");
+          }
+          break;
+        }
+        case 11: {
+          std::string arg = optarg;
+          // Check whether the argument is a directory
+          if (IsDirectory(arg) || IsFile(arg)) {
+            params_->user_data.push_back(optarg);
+          } else if (arg.compare("zero") == 0) {
+            params_->zero_input = true;
+          } else if (arg.compare("random") == 0) {
+            break;
+          } else {
+            Usage(
+                "Failed to parse --input-data. Unsupported type provided: '" +
+                std::string(optarg) +
+                "'. The available options are 'zero', 'random', path to a "
+                "directory, or a json file.");
+          }
+          break;
+        }
+        case 12: {
+          std::string string_length{optarg};
+          if (std::stoi(string_length) > 0) {
+            params_->string_length = std::stoull(string_length);
+          } else {
+            Usage("Failed to parse --string-length. The value must be > 0");
+          }
+          break;
+        }
+        case 13: {
+          params_->string_data = optarg;
+          break;
+        }
+        case 14:
+        case 'a': {
+          params_->async = true;
+          break;
+        }
+        case 15: {
+          params_->forced_sync = true;
+          break;
+        }
+        case 16: {
+          params_->using_request_rate_range = true;
+          std::string arg = optarg;
+          size_t pos = 0;
+          int index = 0;
           while (pos != std::string::npos) {
             size_t colon_pos = arg.find(":", pos);
             if (index > 2) {
               Usage(
-                  "option request_rate_range can have maximum of three "
-                  "elements");
+                  "Failed to parse --request-rate-range. The value does not "
+                  "match <start:end:step>.");
             }
             if (colon_pos == std::string::npos) {
               params_->request_rate_range[index] =
@@ -967,398 +1018,517 @@ CLParser::ParseCommandLine(int argc, char** argv)
               index++;
             }
           }
+
+          break;
         }
-        catch (const std::invalid_argument& ia) {
-          Usage("failed to parse request rate range: " + std::string(optarg));
+        case 17: {
+          std::string num_of_sequences{optarg};
+          if (std::stoi(num_of_sequences) > 0) {
+            params_->num_of_sequences = std::stoul(num_of_sequences);
+          } else {
+            Usage("Failed to parse --num-of-sequences. The value must be > 0.");
+          }
+          break;
         }
-        break;
-      }
-      case 17: {
-        params_->num_of_sequences = std::atoi(optarg);
-        break;
-      }
-      case 18: {
-        params_->search_mode = SearchMode::BINARY;
-        break;
-      }
-      case 19: {
-        std::string arg = optarg;
-        if (arg.compare("poisson") == 0) {
-          params_->request_distribution = Distribution::POISSON;
-        } else if (arg.compare("constant") == 0) {
-          params_->request_distribution = Distribution::CONSTANT;
-        } else {
-          Usage(
-              "unsupported request distribution provided " +
-              std::string(optarg));
+        case 18: {
+          params_->search_mode = SearchMode::BINARY;
+          break;
         }
-        break;
-      }
-      case 20:
-        params_->using_custom_intervals = true;
-        params_->request_intervals_file = optarg;
-        break;
-      case 21: {
-        std::string arg = optarg;
-        if (arg.compare("system") == 0) {
-          params_->shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
-        } else if (arg.compare("cuda") == 0) {
+        case 19: {
+          std::string arg = optarg;
+          if (arg.compare("poisson") == 0) {
+            params_->request_distribution = Distribution::POISSON;
+          } else if (arg.compare("constant") == 0) {
+            params_->request_distribution = Distribution::CONSTANT;
+          } else {
+            Usage(
+                "Failed to parse --request-distribution. Unsupported type "
+                "provided: '" +
+                std::string(optarg) + "'. Choices are 'posson' or 'constant'.");
+          }
+          break;
+        }
+        case 20: {
+          std::string request_intervals_file{optarg};
+          if (IsFile(request_intervals_file)) {
+            params_->request_intervals_file = request_intervals_file;
+            params_->using_custom_intervals = true;
+          } else {
+            Usage(
+                "Failed to parse --request-intervals. The value must be a "
+                "valid file path");
+          }
+          break;
+        }
+        case 21: {
+          std::string arg = optarg;
+          if (arg.compare("system") == 0) {
+            params_->shared_memory_type =
+                SharedMemoryType::SYSTEM_SHARED_MEMORY;
+          } else if (arg.compare("cuda") == 0) {
 #ifdef TRITON_ENABLE_GPU
-          params_->shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
+            params_->shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
 #else
-          Usage("cuda shared memory is not supported when TRITON_ENABLE_GPU=0");
+            Usage(
+                "Cuda shared memory is not supported when "
+                "TRITON_ENABLE_GPU=0.");
 #endif  // TRITON_ENABLE_GPU
-        } else if (arg.compare("none") == 0) {
-          params_->shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
-        } else {
-          Usage(
-              "unsupported --shared-memory type provided: '" +
-              std::string(optarg) +
-              "'. Choices are 'system', 'cuda', or 'none'.");
+          } else if (arg.compare("none") == 0) {
+            params_->shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
+          } else {
+            Usage(
+                "Failed to parse --shared-memory. Unsupported type provided: "
+                "'" +
+                std::string(optarg) +
+                "'. The available options are 'system', 'cuda', or 'none'.");
+          }
+          break;
         }
-        break;
-      }
-      case 22: {
-        params_->output_shm_size = std::atoi(optarg);
-        break;
-      }
-      case 23: {
-        std::string arg = optarg;
-        if (arg.compare("triton") == 0) {
-          params_->kind = cb::TRITON;
-        } else if (arg.compare("tfserving") == 0) {
-          params_->kind = cb::TENSORFLOW_SERVING;
-        } else if (arg.compare("torchserve") == 0) {
-          params_->kind = cb::TORCHSERVE;
-        } else if (arg.compare("triton_c_api") == 0) {
-          params_->kind = cb::TRITON_C_API;
-        } else {
-          Usage("unsupported --service-kind specified");
+        case 22: {
+          std::string output_shm_size{optarg};
+          if (std::stoi(output_shm_size) >= 0) {
+            params_->output_shm_size = std::stoull(output_shm_size);
+          } else {
+            Usage(
+                "Failed to parse --output-shared-memory-size. The value must "
+                "be >= 0.");
+          }
+          break;
         }
-        break;
-      }
-      case 24:
-        params_->model_signature_name = optarg;
-        break;
-      case 25: {
-        params_->using_grpc_compression = true;
-        std::string arg = optarg;
-        if (arg.compare("none") == 0) {
-          params_->compression_algorithm = cb::COMPRESS_NONE;
-        } else if (arg.compare("deflate") == 0) {
-          params_->compression_algorithm = cb::COMPRESS_DEFLATE;
-        } else if (arg.compare("gzip") == 0) {
-          params_->compression_algorithm = cb::COMPRESS_GZIP;
-        } else {
-          Usage("unsupported --grpc-compression-algorithm specified");
+        case 23: {
+          std::string arg = optarg;
+          if (arg.compare("triton") == 0) {
+            params_->kind = cb::TRITON;
+          } else if (arg.compare("tfserving") == 0) {
+            params_->kind = cb::TENSORFLOW_SERVING;
+          } else if (arg.compare("torchserve") == 0) {
+            params_->kind = cb::TORCHSERVE;
+          } else if (arg.compare("triton_c_api") == 0) {
+            params_->kind = cb::TRITON_C_API;
+          } else {
+            Usage(
+                "Failed to parse --service-kind. Unsupported type provided: '" +
+                std::string{optarg} +
+                "'. The available options are 'triton', 'tfserving', "
+                "'torchserve', or 'triton_c_api'.");
+          }
+          break;
         }
-        break;
-      }
-      case 26: {
-        std::string arg = optarg;
-        if (arg.compare("time_windows") == 0) {
-          params_->measurement_mode = MeasurementMode::TIME_WINDOWS;
-        } else if (arg.compare("count_windows") == 0) {
-          params_->measurement_mode = MeasurementMode::COUNT_WINDOWS;
-        } else {
-          Usage("unsupported --measurement-mode specified");
+        case 24:
+          params_->model_signature_name = optarg;
+          break;
+        case 25: {
+          std::string arg = optarg;
+          if (arg.compare("none") == 0) {
+            params_->compression_algorithm = cb::COMPRESS_NONE;
+          } else if (arg.compare("deflate") == 0) {
+            params_->compression_algorithm = cb::COMPRESS_DEFLATE;
+          } else if (arg.compare("gzip") == 0) {
+            params_->compression_algorithm = cb::COMPRESS_GZIP;
+          } else {
+            Usage(
+                "Failed to parse --grpc-compression-algorithm. Unsupported "
+                "type provided: '" +
+                arg +
+                "'. The available options are 'gzip', 'deflate', or 'none'.");
+          }
+          params_->using_grpc_compression = true;
+          break;
         }
-        break;
-      }
-      case 27: {
-        params_->measurement_request_count = std::atoi(optarg);
-        break;
-      }
-      case 28: {
-        params_->triton_server_path = optarg;
-        break;
-      }
-      case 29: {
-        params_->model_repository_path = optarg;
-        break;
-      }
-      case 30: {
-        std::string arg = optarg;
-        size_t pos = 0;
-        int index = 0;
-        try {
+        case 26: {
+          std::string arg = optarg;
+          if (arg.compare("time_windows") == 0) {
+            params_->measurement_mode = MeasurementMode::TIME_WINDOWS;
+          } else if (arg.compare("count_windows") == 0) {
+            params_->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+          } else {
+            Usage(
+                "Failed to parse --measurement-mode. Unsupported type "
+                "provided: '" +
+                arg +
+                "'. The available options are 'time_windows' or "
+                "'count_windows'.");
+          }
+          break;
+        }
+        case 27: {
+          std::string request_count{optarg};
+          if (std::stoi(request_count) > 0) {
+            params_->measurement_request_count = std::stoull(request_count);
+          } else {
+            Usage(
+                "Failed to parse --measurement-request-count. The value must "
+                "be > 0.");
+          }
+          break;
+        }
+        case 28: {
+          params_->triton_server_path = optarg;
+          break;
+        }
+        case 29: {
+          params_->model_repository_path = optarg;
+          break;
+        }
+        case 30: {
+          std::string arg = optarg;
+          int64_t start_id;
+          int64_t end_id;
+          size_t pos = 0;
+          int index = 0;
           while (pos != std::string::npos) {
             size_t colon_pos = arg.find(":", pos);
             if (index > 1) {
               Usage(
-                  "option sequence-id-range can have maximum of two "
-                  "elements");
+                  "Failed to parse --sequence-id-range. The value does not "
+                  "match <start:end>.");
             }
             if (colon_pos == std::string::npos) {
+              std::string sequence_id{arg.substr(pos, colon_pos)};
               if (index == 0) {
-                params_->start_sequence_id =
-                    std::stoll(arg.substr(pos, colon_pos));
+                start_id = std::stoi(sequence_id);
               } else {
-                params_->sequence_id_range =
-                    std::stoll(arg.substr(pos, colon_pos)) -
-                    params_->start_sequence_id;
+                end_id = std::stoi(sequence_id);
               }
               pos = colon_pos;
             } else {
-              params_->start_sequence_id =
-                  std::stoll(arg.substr(pos, colon_pos - pos));
+              std::string sequence_id{arg.substr(pos, colon_pos - pos)};
+              start_id = std::stoi(sequence_id);
               pos = colon_pos + 1;
               index++;
             }
           }
-        }
-        catch (const std::invalid_argument& ia) {
-          Usage("failed to parse sequence-id-range: " + std::string(optarg));
-        }
-        break;
-      }
-      case 31: {
-        params_->ssl_options.ssl_grpc_use_ssl = true;
-        break;
-      }
-      case 32: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_grpc_root_certifications_file = optarg;
-        } else {
-          Usage(
-              "--ssl-grpc-root-certifications-file must be a valid file path");
-        }
-        break;
-      }
-      case 33: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_grpc_private_key_file = optarg;
-        } else {
-          Usage("--ssl-grpc-private-key-file must be a valid file path");
-        }
-        break;
-      }
-      case 34: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_grpc_certificate_chain_file = optarg;
-        } else {
-          Usage("--ssl-grpc-certificate-chain-file must be a valid file path");
-        }
-        break;
-      }
-      case 35: {
-        if (std::atol(optarg) == 0 || std::atol(optarg) == 1) {
-          params_->ssl_options.ssl_https_verify_peer = std::atol(optarg);
-        } else {
-          Usage("--ssl-https-verify-peer must be 0 or 1");
-        }
-        break;
-      }
-      case 36: {
-        if (std::atol(optarg) == 0 || std::atol(optarg) == 1 ||
-            std::atol(optarg) == 2) {
-          params_->ssl_options.ssl_https_verify_host = std::atol(optarg);
-        } else {
-          Usage("--ssl-https-verify-host must be 0, 1, or 2");
-        }
-        break;
-      }
-      case 37: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_https_ca_certificates_file = optarg;
-        } else {
-          Usage("--ssl-https-ca-certificates-file must be a valid file path");
-        }
-        break;
-      }
-      case 38: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_https_client_certificate_file = optarg;
-        } else {
-          Usage(
-              "--ssl-https-client-certificate-file must be a valid file path");
-        }
-        break;
-      }
-      case 39: {
-        if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
-          params_->ssl_options.ssl_https_client_certificate_type = optarg;
-        } else {
-          Usage("--ssl-https-client-certificate-type must be 'PEM' or 'DER'");
-        }
-        break;
-      }
-      case 40: {
-        if (IsFile(optarg)) {
-          params_->ssl_options.ssl_https_private_key_file = optarg;
-        } else {
-          Usage("--ssl-https-private-key-file must be a valid file path");
-        }
-        break;
-      }
-      case 41: {
-        if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
-          params_->ssl_options.ssl_https_private_key_type = optarg;
-        } else {
-          Usage("--ssl-https-private-key-type must be 'PEM' or 'DER'");
-        }
-        break;
-      }
-      case 42: {
-        params_->verbose_csv = true;
-        break;
-      }
-      case 43: {
-        params_->enable_mpi = true;
-        break;
-      }
-      case 44: {
-        params_->trace_options["trace_file"] = {optarg};
-        break;
-      }
-      case 45: {
-        params_->trace_options["trace_level"] = {optarg};
-        break;
-      }
-      case 46: {
-        params_->trace_options["trace_rate"] = {optarg};
-        break;
-      }
-      case 47: {
-        params_->trace_options["trace_count"] = {optarg};
-        break;
-      }
-      case 48: {
-        params_->trace_options["log_frequency"] = {optarg};
-        break;
-      }
-      case 49: {
-        params_->should_collect_metrics = true;
-        break;
-      }
-      case 50: {
-        params_->metrics_url = optarg;
-        params_->metrics_url_specified = true;
-        break;
-      }
-      case 51: {
-        params_->metrics_interval_ms = std::stoull(optarg);
-        params_->metrics_interval_ms_specified = true;
-        break;
-      }
-      case 52: {
-        params_->sequence_length_variation = std::stod(optarg);
-        break;
-      }
-      case 53: {
-        std::string arg = optarg;
 
-        // Remove all spaces in the string
-        arg.erase(std::remove_if(arg.begin(), arg.end(), ::isspace), arg.end());
-
-        std::stringstream ss(arg);
-        while (ss.good()) {
-          std::string model_name;
-          std::string model_version{""};
-          std::string tmp_model_name;
-
-          getline(ss, tmp_model_name, ',');
-
-          size_t colon_pos = tmp_model_name.find(":");
-
-          if (colon_pos == std::string::npos) {
-            model_name = tmp_model_name;
-          } else {
-            model_name = tmp_model_name.substr(0, colon_pos);
-            model_version = tmp_model_name.substr(colon_pos + 1);
+          // Check for invalid inputs
+          if (start_id < 0 || end_id < 0) {
+            Usage(
+                "Failed to parse --sequence-id-range. The range values must be "
+                ">= 0.");
+          } else if (start_id > end_id) {
+            Usage(
+                "Failed to parse --sequence-id-range. The 'end' value must be "
+                "greater than 'start' value.");
           }
 
-          params_->bls_composing_models.push_back({model_name, model_version});
+          if (index == 0) {  // Only start ID is given
+            params_->start_sequence_id = start_id;
+          } else {
+            params_->start_sequence_id = start_id;
+            params_->sequence_id_range = end_id - start_id;
+          }
+          break;
         }
-        break;
-      }
-      case 54: {
-        params_->serial_sequences = true;
-        break;
-      }
-      case 55: {
-        cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};
-        if (input_tensor_format == cb::TensorFormat::UNKNOWN) {
-          Usage("--input-tensor-format must be 'binary' or 'json'");
+        case 31: {
+          params_->ssl_options.ssl_grpc_use_ssl = true;
+          break;
         }
-        params_->input_tensor_format = input_tensor_format;
-        break;
-      }
-      case 56: {
-        cb::TensorFormat output_tensor_format{ParseTensorFormat(optarg)};
-        if (output_tensor_format == cb::TensorFormat::UNKNOWN) {
-          Usage("--output-tensor-format must be 'binary' or 'json'");
+        case 32: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_grpc_root_certifications_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-grpc-root-certifications-file. The "
+                "value must be a valid file path.");
+          }
+          break;
         }
-        params_->output_tensor_format = output_tensor_format;
-        break;
+        case 33: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_grpc_private_key_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-grpc-private-key-file. The value must "
+                "be a valid file path.");
+          }
+          break;
+        }
+        case 34: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_grpc_certificate_chain_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-grpc-certificate-chain-file. The value "
+                "must be a valid file path.");
+          }
+          break;
+        }
+        case 35: {
+          if (std::atol(optarg) == 0 || std::atol(optarg) == 1) {
+            params_->ssl_options.ssl_https_verify_peer = std::atol(optarg);
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-verify-peer. The value must be "
+                "either 0 or 1.");
+          }
+          break;
+        }
+        case 36: {
+          if (std::atol(optarg) == 0 || std::atol(optarg) == 1 ||
+              std::atol(optarg) == 2) {
+            params_->ssl_options.ssl_https_verify_host = std::atol(optarg);
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-verify-host. The value must be "
+                "either 0, 1, or 2.");
+          }
+          break;
+        }
+        case 37: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_https_ca_certificates_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-ca-certificates-file. The value "
+                "must be a valid file path.");
+          }
+          break;
+        }
+        case 38: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_https_client_certificate_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-client-certificate-file. The "
+                "value must be a valid file path.");
+          }
+          break;
+        }
+        case 39: {
+          if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
+            params_->ssl_options.ssl_https_client_certificate_type = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-client-certificate-type. "
+                "Unsupported type provided: '" +
+                std::string{optarg} +
+                "'. The available options are 'PEM' or 'DER'.");
+          }
+          break;
+        }
+        case 40: {
+          if (IsFile(optarg)) {
+            params_->ssl_options.ssl_https_private_key_file = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-private-key-file. The value must "
+                "be a valid file path.");
+          }
+          break;
+        }
+        case 41: {
+          if (std::string(optarg) == "PEM" || std::string(optarg) == "DER") {
+            params_->ssl_options.ssl_https_private_key_type = optarg;
+          } else {
+            Usage(
+                "Failed to parse --ssl-https-private-key-type. Unsupported "
+                "type provided: '" +
+                std::string{optarg} +
+                "'. The available options are 'PEM' or 'DER'.");
+          }
+          break;
+        }
+        case 42: {
+          params_->verbose_csv = true;
+          break;
+        }
+        case 43: {
+          params_->enable_mpi = true;
+          break;
+        }
+        case 44: {
+          params_->trace_options["trace_file"] = {optarg};
+          break;
+        }
+        case 45: {
+          std::string trace_level{optarg};
+          if (trace_level == "OFF" || trace_level == "TIMESTAMPS" ||
+              trace_level == "TENSORS") {
+            params_->trace_options["trace_level"] = {trace_level};
+          } else {
+            Usage(
+                "Failed to parse --trace-level. Unsupported type provided: '" +
+                trace_level +
+                "'. The available options are 'OFF', 'TIMESTAMPS', or "
+                "'TENSORS'.");
+          }
+          break;
+        }
+        case 46: {
+          params_->trace_options["trace_rate"] = {optarg};
+          break;
+        }
+        case 47: {
+          std::string trace_count{optarg};
+          if (std::stoi(trace_count) >= -1) {
+            params_->trace_options["trace_count"] = {trace_count};
+          } else {
+            Usage(
+                "Failed to parse --trace-count. The value must be >= 0 or set "
+                "to -1 (default).");
+          }
+          break;
+        }
+        case 48: {
+          std::string log_frequency{optarg};
+          if (std::stoi(log_frequency) >= 0) {
+            params_->trace_options["log_frequency"] = {log_frequency};
+          } else {
+            Usage("Failed to parse --log-frequency. The value must be >= 0.");
+          }
+          break;
+        }
+        case 49: {
+          params_->should_collect_metrics = true;
+          break;
+        }
+        case 50: {
+          params_->metrics_url = optarg;
+          params_->metrics_url_specified = true;
+          break;
+        }
+        case 51: {
+          std::string metrics_interval_ms{optarg};
+          if (std::stoi(metrics_interval_ms) > 0) {
+            params_->metrics_interval_ms = std::stoull(metrics_interval_ms);
+            params_->metrics_interval_ms_specified = true;
+          } else {
+            Usage(
+                "Failed to parse --metrics-interval. The value must be > 0 "
+                "msecs.");
+          }
+          break;
+        }
+        case 52: {
+          params_->sequence_length_variation = std::stod(optarg);
+          break;
+        }
+        case 53: {
+          std::string arg = optarg;
+
+          // Remove all spaces in the string
+          arg.erase(
+              std::remove_if(arg.begin(), arg.end(), ::isspace), arg.end());
+
+          std::stringstream ss(arg);
+          while (ss.good()) {
+            std::string model_name;
+            std::string model_version{""};
+            std::string tmp_model_name;
+
+            getline(ss, tmp_model_name, ',');
+
+            size_t colon_pos = tmp_model_name.find(":");
+
+            if (colon_pos == std::string::npos) {
+              model_name = tmp_model_name;
+            } else {
+              model_name = tmp_model_name.substr(0, colon_pos);
+              model_version = tmp_model_name.substr(colon_pos + 1);
+            }
+
+            params_->bls_composing_models.push_back(
+                {model_name, model_version});
+          }
+          break;
+        }
+        case 54: {
+          params_->serial_sequences = true;
+          break;
+        }
+        case 55: {
+          cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};
+          if (input_tensor_format == cb::TensorFormat::UNKNOWN) {
+            Usage(
+                "Failed to parse --input-tensor-format. Unsupported type "
+                "provided: '" +
+                std::string{optarg} +
+                "'. The available options are 'binary' or 'json'.");
+          }
+          params_->input_tensor_format = input_tensor_format;
+          break;
+        }
+        case 56: {
+          cb::TensorFormat output_tensor_format{ParseTensorFormat(optarg)};
+          if (output_tensor_format == cb::TensorFormat::UNKNOWN) {
+            Usage(
+                "Failed to parse --output-tensor-format. Unsupported type "
+                "provided: '" +
+                std::string{optarg} +
+                "'. The available options are 'binary' or 'json'.");
+          }
+          params_->output_tensor_format = output_tensor_format;
+          break;
+        }
+        case 57: {
+          PrintVersion();
+          break;
+        }
+        case 'v':
+          params_->extra_verbose = params_->verbose;
+          params_->verbose = true;
+          break;
+        case 'z':
+          params_->zero_input = true;
+          break;
+        case 'd':
+          params_->using_old_options = true;
+          params_->dynamic_concurrency_mode = true;
+          break;
+        case 'u':
+          params_->url_specified = true;
+          params_->url = optarg;
+          break;
+        case 'm':
+          params_->model_name = optarg;
+          break;
+        case 'x':
+          params_->model_version = optarg;
+          break;
+        case 'b': {
+          std::string batch_size{optarg};
+          if (std::stoi(batch_size) > 0) {
+            params_->batch_size = std::stoull(batch_size);
+            params_->using_batch_size = true;
+          } else {
+            Usage("Failed to parse -b (batch size). The value must be > 0.");
+          }
+          break;
+        }
+        case 't':
+          params_->using_old_options = true;
+          params_->concurrent_request_count = std::atoi(optarg);
+          break;
+        case 'i':
+          params_->protocol = ParseProtocol(optarg);
+          break;
+        case 'H': {
+          std::string arg = optarg;
+          std::string header = arg.substr(0, arg.find(":"));
+          (*params_->http_headers)[header] = arg.substr(header.size() + 1);
+          break;
+        }
+        case 'c':
+          params_->using_old_options = true;
+          params_->max_concurrency = std::atoi(optarg);
+          break;
+        case 'f':
+          params_->filename = optarg;
+          break;
+        case '?':
+          Usage();
+          break;
       }
-      case 57: {
-        PrintVersion();
-        break;
+    }
+    catch (const std::invalid_argument& ia) {
+      if (opt >= 'A') {  // short options
+        Usage(
+            "Failed to parse -" + std::string{(char)opt} +
+            ". Invalid value provided: " + std::string{optarg});
+      } else {
+        Usage(
+            "Failed to parse --" + std::string{long_options[opt].name} +
+            ". Invalid value provided: " + std::string{optarg});
       }
-      case 'v':
-        params_->extra_verbose = params_->verbose;
-        params_->verbose = true;
-        break;
-      case 'z':
-        params_->zero_input = true;
-        break;
-      case 'd':
-        params_->using_old_options = true;
-        params_->dynamic_concurrency_mode = true;
-        break;
-      case 'u':
-        params_->url_specified = true;
-        params_->url = optarg;
-        break;
-      case 'm':
-        params_->model_name = optarg;
-        break;
-      case 'x':
-        params_->model_version = optarg;
-        break;
-      case 'b':
-        params_->batch_size = std::atoi(optarg);
-        params_->using_batch_size = true;
-        break;
-      case 't':
-        params_->using_old_options = true;
-        params_->concurrent_request_count = std::atoi(optarg);
-        break;
-      case 'p':
-        params_->measurement_window_ms = std::atoi(optarg);
-        break;
-      case 'i':
-        params_->protocol = ParseProtocol(optarg);
-        break;
-      case 'H': {
-        std::string arg = optarg;
-        std::string header = arg.substr(0, arg.find(":"));
-        (*params_->http_headers)[header] = arg.substr(header.size() + 1);
-        break;
-      }
-      case 'l':
-        params_->latency_threshold_ms = std::atoi(optarg);
-        break;
-      case 'c':
-        params_->using_old_options = true;
-        params_->max_concurrency = std::atoi(optarg);
-        break;
-      case 'r':
-        params_->max_trials = std::atoi(optarg);
-        break;
-      case 's':
-        params_->stability_threshold = atof(optarg) / 100;
-        break;
-      case 'f':
-        params_->filename = optarg;
-        break;
-      case 'a':
-        params_->async = true;
-        break;
-      case '?':
-        Usage();
-        break;
     }
   }
 
@@ -1390,45 +1560,33 @@ void
 CLParser::VerifyOptions()
 {
   if (params_->model_name.empty()) {
-    Usage("-m flag must be specified");
-  }
-  if (params_->batch_size <= 0) {
-    Usage("batch size must be > 0");
-  }
-  if (params_->measurement_window_ms <= 0) {
-    Usage("measurement window must be > 0 in msec");
-  }
-  if (params_->measurement_request_count <= 0) {
-    Usage("measurement request count must be > 0");
+    Usage("Failed to parse -m (model name). The value must be specified.");
   }
   if (params_->concurrency_range.start <= 0 ||
       params_->concurrent_request_count < 0) {
     Usage("The start of the search range must be > 0");
   }
   if (params_->request_rate_range[SEARCH_RANGE::kSTART] <= 0) {
-    Usage("The start of the search range must be > 0");
+    Usage(
+        "Failed to parse --request-rate-range. The start of the search range "
+        "must be > 0.");
   }
   if (params_->protocol == cb::ProtocolType::UNKNOWN) {
-    Usage("protocol should be either HTTP or gRPC");
+    Usage(
+        "Failed to parse -i (protocol). The value should be either HTTP or "
+        "gRPC.");
   }
   if (params_->streaming && (params_->protocol != cb::ProtocolType::GRPC)) {
-    Usage("streaming is only allowed with gRPC protocol");
+    Usage("Streaming is only allowed with gRPC protocol.");
   }
   if (params_->using_grpc_compression &&
       (params_->protocol != cb::ProtocolType::GRPC)) {
-    Usage("compression is only allowed with gRPC protocol");
-  }
-  if (params_->max_threads == 0) {
-    Usage("maximum number of threads must be > 0");
-  }
-  if (params_->sequence_length == 0) {
-    params_->sequence_length = 20;
-    std::cerr << "WARNING: using an invalid sequence length. Perf Analyzer will"
-              << " use default value if it is measuring on sequence model."
-              << std::endl;
+    Usage("Using compression algorithm is only allowed with gRPC protocol.");
   }
   if (params_->sequence_length_variation < 0.0) {
-    Usage("sequence length variation must be positive");
+    Usage(
+        "Failed to parse --sequence-length-variation. The value must be >= "
+        "0.0.");
   }
   if (params_->start_sequence_id == 0) {
     params_->start_sequence_id = 1;
@@ -1438,17 +1596,19 @@ CLParser::VerifyOptions()
   }
   if (params_->percentile != -1 &&
       (params_->percentile > 99 || params_->percentile < 1)) {
-    Usage("percentile must be -1 for not reporting or in range (0, 100)");
+    Usage(
+        "Failed to parse --percentile. The value must be -1 for not reporting "
+        "or in range (0, 100).");
   }
   if (params_->zero_input && !params_->user_data.empty()) {
-    Usage("zero input can't be set when data directory is provided");
+    Usage("The -z flag cannot be set when --data-directory is provided.");
   }
   if (params_->async && params_->forced_sync) {
-    Usage("Both --async and --sync can not be specified simultaneously.");
+    Usage("Cannot specify --async and --sync simultaneously.");
   }
 
   if (params_->using_concurrency_range && params_->using_old_options) {
-    Usage("can not use deprecated options with --concurrency-range");
+    Usage("Cannot use deprecated options with --concurrency-range.");
   } else if (params_->using_old_options) {
     if (params_->dynamic_concurrency_mode) {
       params_->concurrency_range.end = params_->max_concurrency;
@@ -1457,36 +1617,36 @@ CLParser::VerifyOptions()
   }
 
   if (params_->using_request_rate_range && params_->using_old_options) {
-    Usage("can not use concurrency options with --request-rate-range");
+    Usage("Cannot use concurrency options with --request-rate-range.");
   }
 
   if (params_->using_request_rate_range && params_->using_concurrency_range) {
     Usage(
-        "can not specify concurrency_range and request_rate_range "
-        "simultaneously");
+        "Cannot specify --concurrency-range and --request-rate-range "
+        "simultaneously.");
   }
 
   if (params_->using_request_rate_range && params_->mpi_driver->IsMPIRun() &&
       (params_->request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
        params_->request_rate_range[SEARCH_RANGE::kSTEP] != 1.0)) {
-    Usage("cannot use request rate range with multi-model mode");
+    Usage("Cannot specify --request-rate-range when in multi-model mode.");
   }
 
   if (params_->using_custom_intervals && params_->using_old_options) {
-    Usage("can not use deprecated options with --request-intervals");
+    Usage("Cannot use deprecated options with --request-intervals.");
   }
 
   if ((params_->using_custom_intervals) &&
       (params_->using_request_rate_range || params_->using_concurrency_range)) {
     Usage(
-        "can not use --concurrency-range or --request-rate-range "
-        "along with --request-intervals");
+        "Cannot use --concurrency-range or --request-rate-range "
+        "along with --request-intervals.");
   }
 
   if (params_->using_concurrency_range && params_->mpi_driver->IsMPIRun() &&
       (params_->concurrency_range.end != 1 ||
        params_->concurrency_range.step != 1)) {
-    Usage("cannot use concurrency range with multi-model mode");
+    Usage("Cannot specify --concurrency-range when in multi-model mode.");
   }
 
   if (((params_->concurrency_range.end == NO_LIMIT) ||
@@ -1507,7 +1667,7 @@ CLParser::VerifyOptions()
 
   if ((params_->search_mode == SearchMode::BINARY) &&
       (params_->latency_threshold_ms == NO_LIMIT)) {
-    Usage("The latency threshold can not be 0 for binary search mode.");
+    Usage("The --latency-threshold cannot be 0 for binary search mode.");
   }
 
   if (((params_->concurrency_range.end < params_->concurrency_range.start) ||
@@ -1534,7 +1694,7 @@ CLParser::VerifyOptions()
     if (params_->user_data.empty()) {
       Usage(
           "--input-data should be provided with a json file with "
-          "input data for torchserve");
+          "input data for torchserve.");
     }
   }
 
@@ -1578,10 +1738,6 @@ CLParser::VerifyOptions()
     Usage(
         "Must specify --collect-metrics when using the --metrics-interval "
         "option.");
-  }
-
-  if (params_->metrics_interval_ms == 0) {
-    Usage("Metrics interval must be larger than 0 milliseconds.");
   }
 
   if (params_->should_collect_metrics && !params_->metrics_url_specified) {
