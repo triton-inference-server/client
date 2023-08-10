@@ -1298,6 +1298,9 @@ InferenceProfiler::ValidLatencyMeasurement(
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
         response_count += request_record.response_times_.size();
+        if (request_record.has_null_last_response_) {
+          response_count--;
+        }
         erase_indices.push_back(i);
         if (request_record.sequence_end_) {
           valid_sequence_count++;
