@@ -471,14 +471,15 @@ InferenceProfiler::Create(
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
     const bool should_collect_metrics, const double overhead_pct_threshold,
-    const std::shared_ptr<ProfileDataCollector> collector)
+    const std::shared_ptr<ProfileDataCollector> collector,
+    const bool should_collect_profile_data)
 {
   std::unique_ptr<InferenceProfiler> local_profiler(new InferenceProfiler(
       verbose, stability_threshold, measurement_window_ms, max_trials,
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
       measurement_mode, mpi_driver, metrics_interval_ms, should_collect_metrics,
-      overhead_pct_threshold, collector));
+      overhead_pct_threshold, collector, should_collect_profile_data));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -495,7 +496,8 @@ InferenceProfiler::InferenceProfiler(
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
     const double overhead_pct_threshold,
-    const std::shared_ptr<ProfileDataCollector> collector)
+    const std::shared_ptr<ProfileDataCollector> collector,
+    const bool should_collect_profile_data)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
       max_trials_(max_trials), extra_percentile_(extra_percentile),
       percentile_(percentile), latency_threshold_ms_(latency_threshold_ms_),
@@ -504,7 +506,8 @@ InferenceProfiler::InferenceProfiler(
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
       should_collect_metrics_(should_collect_metrics),
-      overhead_pct_threshold_(overhead_pct_threshold), collector_(collector)
+      overhead_pct_threshold_(overhead_pct_threshold), collector_(collector),
+      should_collect_profile_data_(should_collect_profile_data)
 {
   load_parameters_.stability_threshold = stability_threshold;
   load_parameters_.stability_window = 3;
@@ -1235,8 +1238,10 @@ InferenceProfiler::Summarize(
       valid_range, valid_sequence_count, delayed_request_count, &latencies,
       response_count, valid_requests);
 
-  CollectData(
-      summary, window_start_ns, window_end_ns, std::move(valid_requests));
+  if (should_collect_profile_data_) {
+    CollectData(
+        summary, window_start_ns, window_end_ns, std::move(valid_requests));
+  }
 
   RETURN_IF_ERROR(SummarizeLatency(latencies, summary));
   RETURN_IF_ERROR(SummarizeClientStat(
