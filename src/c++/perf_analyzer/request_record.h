@@ -39,10 +39,12 @@ struct RequestRecord {
       std::chrono::time_point<std::chrono::system_clock> start_time,
       std::vector<std::chrono::time_point<std::chrono::system_clock>>
           response_times,
-      bool sequence_end, bool delayed, uint64_t sequence_id)
+      bool sequence_end, bool delayed, uint64_t sequence_id,
+      bool has_null_last_response)
       : start_time_(start_time), response_times_(response_times),
         sequence_end_(sequence_end), delayed_(delayed),
-        sequence_id_(sequence_id)
+        sequence_id_(sequence_id),
+        has_null_last_response_(has_null_last_response)
   {
   }
   // The timestamp of when the request was started.
@@ -56,6 +58,8 @@ struct RequestRecord {
   bool delayed_;
   // Sequence ID of the request
   uint64_t sequence_id_;
+  // Whether the last response is null
+  bool has_null_last_response_;
 };
 
 }}  // namespace triton::perfanalyzer
