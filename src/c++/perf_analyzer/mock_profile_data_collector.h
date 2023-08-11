@@ -32,7 +32,18 @@ namespace triton { namespace perfanalyzer {
 
 class NaggyMockProfileDataCollector : public ProfileDataCollector {
  public:
-  NaggyMockProfileDataCollector() {}
+  NaggyMockProfileDataCollector()
+  {
+    ON_CALL(*this, FindExperiment(testing::_))
+        .WillByDefault(
+            [this](InferenceLoadMode& id) -> std::vector<Experiment>::iterator {
+              this->ProfileDataCollector::FindExperiment(id);
+            });
+  }
+
+  MOCK_METHOD(
+      std::vector<Experiment>::iterator, FindExperiment,
+      (InferenceLoadMode & id), ());
 };
 
 using MockProfileDataCollector =
