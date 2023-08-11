@@ -32,6 +32,25 @@ namespace triton { namespace perfanalyzer {
 
 class NaggyMockProfileDataExporter : public ProfileDataExporter {
  public:
-  NaggyMockProfileDataExporter() {}
+  NaggyMockProfileDataExporter()
+  {
+    ON_CALL(*this, ConvertToJson(testing::_, testing::_))
+        .WillByDefault([this](
+                           const std::vector<Experiment>& raw_experiments,
+                           std::string& raw_version) {
+          return this->ProfileDataExporter::ConvertToJson(
+              raw_experiments, raw_version);
+        });
+  }
+
+  MOCK_METHOD(
+      void, ConvertToJson,
+      (const std::vector<Experiment>& raw_experiments,
+       std::string& raw_version));
+
+  rapidjson::Document& document_{ProfileDataExporter::document_};
 };
+
+using MockProfileDataExporter = testing::NiceMock<NaggyMockProfileDataExporter>;
+
 }}  // namespace triton::perfanalyzer

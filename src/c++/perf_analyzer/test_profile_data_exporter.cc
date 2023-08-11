@@ -32,7 +32,39 @@ namespace triton { namespace perfanalyzer {
 
 TEST_CASE("profile_data_exporter")
 {
-  CHECK(false);
+  MockProfileDataExporter exporter{};
+
+  SUBCASE("ConvertToJson")
+  {
+    const char* json =
+        "{"
+        "\"experiments\": ["
+        "    {"
+        "        \"experiment\": {"
+        "            \"mode\": \"concurrency\","
+        "            \"value\": 4"
+        "        },"
+        "        \"requests\": ["
+        "            {"
+        "                \"timestamp\": 1,"
+        "                \"sequence_id\": 1,"
+        "                \"response_timestamps\": ["
+        "                    2,"
+        "                    3,"
+        "                    4"
+        "                ]"
+        "            },"
+        "        ],"
+        "        \"window_boundaries\": ["
+        "            1,"
+        "            5,"
+        "            6"
+        "        ]"
+        "    }"
+        "],"
+        "\"version\": \"1.2.3\""
+        "}";
+  }
 }
 
 }}  // namespace triton::perfanalyzer
