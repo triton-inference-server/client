@@ -74,6 +74,7 @@ ProfileDataCollector::AddData(
     Experiment new_experiment{};
     new_experiment.mode = id;
     new_experiment.requests = std::move(request_records);
+    experiments_.push_back(new_experiment);
   } else {
     it->requests.insert(
         it->requests.end(), std::make_move_iterator(request_records.begin()),

@@ -25,15 +25,31 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "doctest.h"
+#include "mock_profile_data_collector.h"
 #include "profile_data_collector.h"
 
 namespace triton { namespace perfanalyzer {
 
 TEST_CASE("profile_data_collector")
 {
-  SUBCASE("Test")
+  MockProfileDataCollector collector{};
+
+  SUBCASE("FindExperiment")
   {
-    CHECK(false);
+    CHECK(collector.experiments_.empty());
+
+    InferenceLoadMode infer_mode{10, 20.0};
+    std::vector<RequestRecord> request_records{RequestRecord{}};
+
+    std::vector<Experiment>::iterator it;
+    it = collector.FindExperiment(infer_mode);
+    CHECK(it == collector.experiments_.end());
+
+    collector.AddData(infer_mode, std::move(request_records));
+
+    it = collector.FindExperiment(infer_mode);
+    CHECK(it != collector.experiments_.end());
+    CHECK((*it).mode == infer_mode);
   }
 }
 
