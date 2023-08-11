@@ -33,6 +33,10 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockProfileDataExporter;
+#endif
+
 
 /// Exports profile data.
 class ProfileDataExporter {
@@ -78,5 +82,9 @@ class ProfileDataExporter {
   void AddVersion(std::string& raw_version);
 
   rapidjson::Document document_{};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockProfileDataExporter;
+#endif
 };
 }}  // namespace triton::perfanalyzer
