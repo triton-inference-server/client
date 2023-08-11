@@ -33,23 +33,77 @@ namespace triton { namespace perfanalyzer {
 TEST_CASE("profile_data_collector")
 {
   MockProfileDataCollector collector{};
+  InferenceLoadMode infer_mode{10, 20.0};
+
+  std::vector<Experiment>::iterator it;
+  it = collector.FindExperiment(infer_mode);
+  CHECK(it == collector.experiments_.end());
+
 
   SUBCASE("FindExperiment")
   {
-    CHECK(collector.experiments_.empty());
-
-    InferenceLoadMode infer_mode{10, 20.0};
     std::vector<RequestRecord> request_records{RequestRecord{}};
-
-    std::vector<Experiment>::iterator it;
-    it = collector.FindExperiment(infer_mode);
-    CHECK(it == collector.experiments_.end());
-
     collector.AddData(infer_mode, std::move(request_records));
 
     it = collector.FindExperiment(infer_mode);
     CHECK(it != collector.experiments_.end());
     CHECK((*it).mode == infer_mode);
+  }
+
+  SUBCASE("AddData")
+  {
+    // Add RequestRecords
+    uint64_t sequence_id_0{123};
+    RequestRecord request_record_0{
+        std::chrono::system_clock::now(),
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            std::chrono::system_clock::now()},
+        false,
+        false,
+        sequence_id_0,
+        false};
+
+    uint64_t sequence_id_1{456};
+    RequestRecord request_record_1{
+        std::chrono::system_clock::now(),
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            std::chrono::system_clock::now()},
+        false,
+        false,
+        sequence_id_1,
+        false};
+
+    std::vector<RequestRecord> request_records{
+        request_record_0, request_record_1};
+    collector.AddData(infer_mode, std::move(request_records));
+
+    it = collector.FindExperiment(infer_mode);
+    CHECK(it != collector.experiments_.end());
+
+    std::vector<RequestRecord> rr{(*it).requests};
+    CHECK(rr[0].sequence_id_ == sequence_id_0);
+    CHECK(rr[1].sequence_id_ == sequence_id_1);
+  }
+
+  SUBCASE("AddWindow")
+  {
+    uint64_t window_start_ns_0{123};
+    uint64_t window_end_ns_0{456};
+    collector.AddWindow(infer_mode, window_start_ns_0, window_end_ns_0);
+
+    it = collector.FindExperiment(infer_mode);
+    CHECK(it != collector.experiments_.end());
+    CHECK((*it).window_boundaries[0] == window_start_ns_0);
+    CHECK((*it).window_boundaries[1] == window_end_ns_0);
+
+    uint64_t window_start_ns_1{678};
+    uint64_t window_end_ns_1{912};
+    collector.AddWindow(infer_mode, window_start_ns_1, window_end_ns_1);
+
+    it = collector.FindExperiment(infer_mode);
+    CHECK(it != collector.experiments_.end());
+    CHECK((*it).window_boundaries[2] == window_start_ns_1);
+    CHECK((*it).window_boundaries[3] == window_end_ns_1);
   }
 }
 

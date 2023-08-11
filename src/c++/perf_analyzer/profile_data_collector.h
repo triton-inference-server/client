@@ -83,9 +83,9 @@ class ProfileDataCollector {
 
 
   /// Add a measurement window to the collector
-  /// \param id Identifier for the experiment
-  /// \param window_start_ns The window start timestamp in nanoseconds.
-  /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// @param id Identifier for the experiment
+  /// @param window_start_ns The window start timestamp in nanoseconds.
+  /// @param window_end_ns The window end timestamp in nanoseconds.
   void AddWindow(
       InferenceLoadMode& id, uint64_t window_start_ns, uint64_t window_end_ns);
 
