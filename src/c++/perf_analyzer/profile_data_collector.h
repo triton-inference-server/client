@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -71,6 +71,10 @@ struct Experiment {
   std::vector<uint64_t> window_boundaries;
 };
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockProfileDataCollector;
+#endif
+
 /// Data structure and methods for storing profile export data.
 class ProfileDataCollector {
  public:
@@ -109,5 +113,9 @@ class ProfileDataCollector {
 
   std::vector<Experiment> experiments_{};
   std::string version_{VERSION};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockProfileDataCollector;
+#endif
 };
 }}  // namespace triton::perfanalyzer
