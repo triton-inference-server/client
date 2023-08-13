@@ -36,35 +36,93 @@ TEST_CASE("profile_data_exporter")
 
   SUBCASE("ConvertToJson")
   {
-    const char* json =
-        "{"
-        "\"experiments\": ["
-        "    {"
-        "        \"experiment\": {"
-        "            \"mode\": \"concurrency\","
-        "            \"value\": 4"
-        "        },"
-        "        \"requests\": ["
-        "            {"
-        "                \"timestamp\": 1,"
-        "                \"sequence_id\": 1,"
-        "                \"response_timestamps\": ["
-        "                    2,"
-        "                    3,"
-        "                    4"
-        "                ]"
-        "            },"
-        "        ],"
-        "        \"window_boundaries\": ["
-        "            1,"
-        "            5,"
-        "            6"
-        "        ]"
-        "    }"
-        "],"
-        "\"version\": \"1.2.3\""
-        "}";
+    InferenceLoadMode infer_mode{4, 0.0};
+    uint64_t sequence_id{1};
+
+    auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+    auto request_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
+    auto response_timestamp1{clock_epoch + std::chrono::nanoseconds(2)};
+    auto response_timestamp2{clock_epoch + std::chrono::nanoseconds(3)};
+
+    RequestRecord request_record{
+        request_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response_timestamp1, response_timestamp2},
+        0,
+        false,
+        sequence_id,
+        false};
+    std::vector<RequestRecord> requests{request_record};
+    std::vector<uint64_t> window_boundaries{1, 5, 6};
+
+    Experiment experiment;
+    experiment.mode = infer_mode;
+    experiment.requests = requests;
+    experiment.window_boundaries = window_boundaries;
+    std::vector<Experiment> experiments{experiment};
+
+    std::string version{"1.2.3"};
+
+    exporter.ConvertToJson(experiments, version);
+
+    std::string json{R"(
+      {
+        "experiments" : [
+          {
+            "experiment" : {
+              "mode" : "concurrency",
+              "value" : 4
+            },
+            "requests" : [
+              {
+                "timestamp" : 1,
+                "sequence_id" : 1,
+                "response_timestamps" : [ 2, 3 ]
+              }
+            ],
+            "window_boundaries" : [ 1, 5, 6 ]
+          }
+        ],
+        "version" : "1.2.3"
+      }
+      )"};
+
+    rapidjson::Document expected_document;
+    expected_document.Parse(json.c_str());
+
+    const rapidjson::Value& expected_experiment{
+        expected_document["experiments"][0]["experiment"]};
+    const rapidjson::Value& expected_request{
+        expected_document["experiments"][0]["requests"][0]};
+    const rapidjson::Value& expected_windows{
+        expected_document["experiments"][0]["window_boundaries"]};
+    const rapidjson::Value& expected_version{expected_document["version"]};
+
+    const rapidjson::Value& actual_experiment{
+        exporter.document_["experiments"][0]["experiment"]};
+    const rapidjson::Value& actual_request{
+        exporter.document_["experiments"][0]["requests"][0]};
+    const rapidjson::Value& actual_windows{
+        exporter.document_["experiments"][0]["window_boundaries"]};
+    const rapidjson::Value& actual_version{exporter.document_["version"]};
+
+    CHECK(actual_experiment["mode"] == expected_experiment["mode"]);
+    CHECK(actual_experiment["value"] == expected_experiment["value"]);
+
+    CHECK(actual_request["timestamp"] == expected_request["timestamp"]);
+    CHECK(actual_request["sequence_id"] == expected_request["sequence_id"]);
+    CHECK(
+        actual_request["response_timestamps"][0] ==
+        expected_request["response_timestamps"][0]);
+    CHECK(
+        actual_request["response_timestamps"][1] ==
+        expected_request["response_timestamps"][1]);
+
+    CHECK(actual_windows[0] == expected_windows[0]);
+    CHECK(actual_windows[1] == expected_windows[1]);
+    CHECK(actual_windows[2] == expected_windows[2]);
+
+    CHECK(actual_version == expected_version);
   }
 }
-
 }}  // namespace triton::perfanalyzer
