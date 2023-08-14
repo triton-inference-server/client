@@ -137,4 +137,10 @@ std::function<std::chrono::nanoseconds(std::mt19937&)> ScheduleDistribution(
 // Parse the HTTP tensor format
 cb::TensorFormat ParseTensorFormat(const std::string& tensor_format_str);
 
+// Check if the given string is a valid positive integer.
+bool IsPositiveInteger(const std::string& str);
+
+// Check if the given string is a valid non-negative integer.
+bool IsNonNegativeInteger(const std::string& str);
+
 }}  // namespace triton::perfanalyzer
