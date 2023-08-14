@@ -178,35 +178,6 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
   CHECK_STRING(act->memory_type, exp->memory_type);
 }
 
-
-#define CHECK_INT_OPTION(option_name, exp_val)                            \
-  SUBCASE("valid value")                                                  \
-  {                                                                       \
-    int argc = 5;                                                         \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "2000"}; \
-    CAPTURE(argv[3]);                                                     \
-    CAPTURE(argv[4]);                                                     \
-                                                                          \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                      \
-    CHECK(!parser.UsageCalled());                                         \
-    CAPTURE(parser.GetUsageMessage());                                    \
-                                                                          \
-    exp_val = 2000;                                                       \
-    CAPTURE(exp_val);                                                     \
-  }                                                                       \
-                                                                          \
-  SUBCASE("floating point value")                                         \
-  {                                                                       \
-    int argc = 5;                                                         \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "29.5"}; \
-                                                                          \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                      \
-    CHECK(!parser.UsageCalled());                                         \
-                                                                          \
-    exp_val = 29;                                                         \
-  }
-
-
 TEST_CASE("Testing PerfAnalyzerParameters")
 {
   PAParamsPtr params(new PerfAnalyzerParameters{});
@@ -458,7 +429,7 @@ TEST_CASE("Testing Command Line Parser")
       opterr = 0;  // Disable error output for GetOpt library for this case
 
       expected_msg =
-          CreateUsageMessage("--max-threads", "Invalid value provided: bad");
+          CreateUsageMessage("--max-threads", "The value must be > 0.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
@@ -942,19 +913,16 @@ TEST_CASE("Testing Command Line Parser")
       SUBCASE("Long form")
       {
         argv[3] = "--measurement-interval";
-        expected_msg = CreateUsageMessage(
-            "--measurement-interval", "Invalid value provided: foobar");
       }
 
       SUBCASE("Short form")
       {
         argv[3] = "-p";
-        expected_msg =
-            CreateUsageMessage("-p", "Invalid value provided: foobar");
       }
 
       CAPTURE(argv[3]);
-
+      expected_msg = CreateUsageMessage(
+          "--measurement-interval (-p)", "The value must be > 0 msec.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
@@ -1135,9 +1103,21 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --latency-threshold")
   {
-    expected_msg = CreateUsageMessage(
-        "--latency-threshold (-l)", "The value must be >= 0 msecs.");
-    CHECK_INT_OPTION("--latency-threshold", exp->latency_threshold_ms);
+    SUBCASE("valid value")
+    {
+      int argc = 5;
+      char* argv[argc] = {
+          app_name, "-m", model_name, "--latency-threshold", "2000"};
+      CAPTURE(argv[3]);
+      CAPTURE(argv[4]);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+      CAPTURE(parser.GetUsageMessage());
+
+      exp->latency_threshold_ms = 2000;
+      CAPTURE(exp->latency_threshold_ms);
+    }
 
     SUBCASE("set to 0")
     {
@@ -1155,6 +1135,8 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--latency-threshold", "-2000"};
 
+      expected_msg = CreateUsageMessage(
+          "--latency-threshold (-l)", "The value must be >= 0 msecs.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
@@ -1243,7 +1225,21 @@ TEST_CASE("Testing Command Line Parser")
   {
     expected_msg =
         CreateUsageMessage("--max-trials (-r)", "The value must be > 0.");
-    CHECK_INT_OPTION("--max-trials", exp->max_trials);
+
+    SUBCASE("valid value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--max-trials", "2000"};
+      CAPTURE(argv[3]);
+      CAPTURE(argv[4]);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+      CAPTURE(parser.GetUsageMessage());
+
+      exp->max_trials = 2000;
+      CAPTURE(exp->max_trials);
+    }
 
     SUBCASE("set to 0")
     {
