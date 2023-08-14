@@ -479,7 +479,8 @@ InferenceServerGrpcClient::Create(
 }
 
 Error
-InferenceServerGrpcClient::IsServerLive(bool* live, const Headers& headers)
+InferenceServerGrpcClient::IsServerLive(
+    bool* live, const Headers& headers, const int timeout_ms)
 {
   Error err;
 
@@ -487,6 +488,9 @@ InferenceServerGrpcClient::IsServerLive(bool* live, const Headers& headers)
   inference::ServerLiveResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -505,7 +509,8 @@ InferenceServerGrpcClient::IsServerLive(bool* live, const Headers& headers)
 }
 
 Error
-InferenceServerGrpcClient::IsServerReady(bool* ready, const Headers& headers)
+InferenceServerGrpcClient::IsServerReady(
+    bool* ready, const Headers& headers, const int timeout_ms)
 {
   Error err;
 
@@ -513,6 +518,9 @@ InferenceServerGrpcClient::IsServerReady(bool* ready, const Headers& headers)
   inference::ServerReadyResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -533,7 +541,8 @@ InferenceServerGrpcClient::IsServerReady(bool* ready, const Headers& headers)
 Error
 InferenceServerGrpcClient::IsModelReady(
     bool* ready, const std::string& model_name,
-    const std::string& model_version, const Headers& headers)
+    const std::string& model_version, const Headers& headers,
+    const int timeout_ms = INT_MAX)
 {
   Error err;
 
@@ -541,6 +550,9 @@ InferenceServerGrpcClient::IsModelReady(
   inference::ModelReadyResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -567,7 +579,8 @@ InferenceServerGrpcClient::IsModelReady(
 
 Error
 InferenceServerGrpcClient::ServerMetadata(
-    inference::ServerMetadataResponse* server_metadata, const Headers& headers)
+    inference::ServerMetadataResponse* server_metadata, const Headers& headers,
+    const int timeout_ms)
 {
   server_metadata->Clear();
   Error err;
@@ -575,6 +588,9 @@ InferenceServerGrpcClient::ServerMetadata(
   inference::ServerMetadataRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -597,7 +613,7 @@ Error
 InferenceServerGrpcClient::ModelMetadata(
     inference::ModelMetadataResponse* model_metadata,
     const std::string& model_name, const std::string& model_version,
-    const Headers& headers)
+    const Headers& headers, const int timeout_ms)
 {
   model_metadata->Clear();
   Error err;
@@ -605,6 +621,9 @@ InferenceServerGrpcClient::ModelMetadata(
   inference::ModelMetadataRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -628,7 +647,8 @@ InferenceServerGrpcClient::ModelMetadata(
 Error
 InferenceServerGrpcClient::ModelConfig(
     inference::ModelConfigResponse* model_config, const std::string& model_name,
-    const std::string& model_version, const Headers& headers)
+    const std::string& model_version, const Headers& headers,
+    const int timeout_ms)
 {
   model_config->Clear();
   Error err;
@@ -636,6 +656,9 @@ InferenceServerGrpcClient::ModelConfig(
   inference::ModelConfigRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -658,7 +681,7 @@ InferenceServerGrpcClient::ModelConfig(
 Error
 InferenceServerGrpcClient::ModelRepositoryIndex(
     inference::RepositoryIndexResponse* repository_index,
-    const Headers& headers)
+    const Headers& headers, const int timeout_ms)
 {
   repository_index->Clear();
   Error err;
@@ -666,6 +689,9 @@ InferenceServerGrpcClient::ModelRepositoryIndex(
   inference::RepositoryIndexRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -687,7 +713,7 @@ Error
 InferenceServerGrpcClient::LoadModel(
     const std::string& model_name, const Headers& headers,
     const std::string& config,
-    const std::map<std::string, std::vector<char>>& files)
+    const std::map<std::string, std::vector<char>>& files, const int timeout_ms)
 {
   Error err;
 
@@ -695,6 +721,9 @@ InferenceServerGrpcClient::LoadModel(
   inference::RepositoryModelLoadResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -722,7 +751,7 @@ InferenceServerGrpcClient::LoadModel(
 
 Error
 InferenceServerGrpcClient::UnloadModel(
-    const std::string& model_name, const Headers& headers)
+    const std::string& model_name, const Headers& headers, const int timeout_ms)
 {
   Error err;
 
@@ -730,6 +759,9 @@ InferenceServerGrpcClient::UnloadModel(
   inference::RepositoryModelUnloadResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -752,7 +784,7 @@ Error
 InferenceServerGrpcClient::ModelInferenceStatistics(
     inference::ModelStatisticsResponse* infer_stat,
     const std::string& model_name, const std::string& model_version,
-    const Headers& headers)
+    const Headers& headers, const int timeout_ms)
 {
   infer_stat->Clear();
   Error err;
@@ -760,6 +792,9 @@ InferenceServerGrpcClient::ModelInferenceStatistics(
   inference::ModelStatisticsRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -783,12 +818,15 @@ Error
 InferenceServerGrpcClient::UpdateTraceSettings(
     inference::TraceSettingResponse* response, const std::string& model_name,
     const std::map<std::string, std::vector<std::string>>& settings,
-    const Headers& headers)
+    const Headers& headers, const int timeout_ms)
 {
   inference::TraceSettingRequest request;
   grpc::ClientContext context;
   Error err;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -823,7 +861,7 @@ InferenceServerGrpcClient::UpdateTraceSettings(
 Error
 InferenceServerGrpcClient::GetTraceSettings(
     inference::TraceSettingResponse* settings, const std::string& model_name,
-    const Headers& headers)
+    const Headers& headers, const int timeout_ms)
 {
   settings->Clear();
   Error err;
@@ -831,6 +869,9 @@ InferenceServerGrpcClient::GetTraceSettings(
   inference::TraceSettingRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -853,7 +894,8 @@ InferenceServerGrpcClient::GetTraceSettings(
 Error
 InferenceServerGrpcClient::SystemSharedMemoryStatus(
     inference::SystemSharedMemoryStatusResponse* status,
-    const std::string& region_name, const Headers& headers)
+    const std::string& region_name, const Headers& headers,
+    const int timeout_ms)
 {
   status->Clear();
   Error err;
@@ -861,6 +903,9 @@ InferenceServerGrpcClient::SystemSharedMemoryStatus(
   inference::SystemSharedMemoryStatusRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -882,7 +927,7 @@ InferenceServerGrpcClient::SystemSharedMemoryStatus(
 Error
 InferenceServerGrpcClient::RegisterSystemSharedMemory(
     const std::string& name, const std::string& key, const size_t byte_size,
-    const size_t offset, const Headers& headers)
+    const size_t offset, const Headers& headers, const int timeout_ms)
 {
   Error err;
 
@@ -890,6 +935,9 @@ InferenceServerGrpcClient::RegisterSystemSharedMemory(
   inference::SystemSharedMemoryRegisterResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -914,7 +962,7 @@ InferenceServerGrpcClient::RegisterSystemSharedMemory(
 
 Error
 InferenceServerGrpcClient::UnregisterSystemSharedMemory(
-    const std::string& name, const Headers& headers)
+    const std::string& name, const Headers& headers, const int timeout_ms)
 {
   Error err;
 
@@ -922,6 +970,9 @@ InferenceServerGrpcClient::UnregisterSystemSharedMemory(
   inference::SystemSharedMemoryUnregisterResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -949,7 +1000,8 @@ InferenceServerGrpcClient::UnregisterSystemSharedMemory(
 Error
 InferenceServerGrpcClient::CudaSharedMemoryStatus(
     inference::CudaSharedMemoryStatusResponse* status,
-    const std::string& region_name, const Headers& headers)
+    const std::string& region_name, const Headers& headers,
+    const int timeout_ms)
 {
   status->Clear();
   Error err;
@@ -957,6 +1009,9 @@ InferenceServerGrpcClient::CudaSharedMemoryStatus(
   inference::CudaSharedMemoryStatusRequest request;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -978,7 +1033,8 @@ InferenceServerGrpcClient::CudaSharedMemoryStatus(
 Error
 InferenceServerGrpcClient::RegisterCudaSharedMemory(
     const std::string& name, const cudaIpcMemHandle_t& cuda_shm_handle,
-    const size_t device_id, const size_t byte_size, const Headers& headers)
+    const size_t device_id, const size_t byte_size, const Headers& headers,
+    const int timeout_ms)
 {
   Error err;
 
@@ -986,6 +1042,9 @@ InferenceServerGrpcClient::RegisterCudaSharedMemory(
   inference::CudaSharedMemoryRegisterResponse response;
   grpc::ClientContext context;
 
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
   }
@@ -1010,13 +1069,18 @@ InferenceServerGrpcClient::RegisterCudaSharedMemory(
 
 Error
 InferenceServerGrpcClient::UnregisterCudaSharedMemory(
-    const std::string& name, const Headers& headers)
+    const std::string& name, const Headers& headers, const int timeout_ms,
+    const int timeout_ms)
 {
   Error err;
 
   inference::CudaSharedMemoryUnregisterRequest request;
   inference::CudaSharedMemoryUnregisterResponse response;
   grpc::ClientContext context;
+
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::microseconds(timeout_ms);
+  context.set_deadline(deadline);
 
   for (const auto& it : headers) {
     context.AddMetadata(it.first, it.second);
