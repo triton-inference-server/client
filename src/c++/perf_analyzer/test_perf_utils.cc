@@ -370,5 +370,35 @@ TEST_CASE("perf_utils: TensorToRegionName")
   CHECK(TensorToRegionName("") == "");
 }
 
+TEST_CASE("perf_utils: Test string input numbers")
+{
+  std::string pos{"123"};
+  std::string neg{"-123"};
+  std::string zero{"0"};
+  std::string not_number{"helloworld"};
+  std::string almost_number{"123hello"};
+  std::string empty{""};
+
+  SUBCASE("IsPositiveInteger")
+  {
+    CHECK(IsPositiveInteger(pos));
+    CHECK(!IsPositiveInteger(neg));
+    CHECK(!IsPositiveInteger(zero));
+    CHECK(!IsPositiveInteger(not_number));
+    CHECK(!IsPositiveInteger(almost_number));
+    CHECK(!IsPositiveInteger(empty));
+  }
+
+  SUBCASE("IsNonNegativeInteger")
+  {
+    CHECK(IsNonNegativeInteger(pos));
+    CHECK(!IsNonNegativeInteger(neg));
+    CHECK(IsNonNegativeInteger(zero));
+    CHECK(!IsNonNegativeInteger(not_number));
+    CHECK(!IsNonNegativeInteger(almost_number));
+    CHECK(!IsNonNegativeInteger(empty));
+  }
+}
+
 
 }}  // namespace triton::perfanalyzer
