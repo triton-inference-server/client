@@ -395,8 +395,6 @@ IsPositiveInteger(const std::string& str)
     return false;
   } else if (str.size() == 1 && str[0] == '0') {
     return false;
-  } else if (str.size() > 1 && str[0] == '0') {
-    return false;
   }
   return std::all_of(
              str.begin(), str.end(),
@@ -416,6 +414,19 @@ IsNonNegativeInteger(const std::string& str)
     return false;
   }
   return IsPositiveInteger(str);
+}
+
+bool
+IsNonNegativeFloat(const std::string& str)
+{
+  size_t pos{0};
+  size_t dot_pos = str.find(".", pos);
+  if (dot_pos == std::string::npos) {
+    return IsNonNegativeInteger(str);
+  } else {
+    return IsNonNegativeInteger(str.substr(0, dot_pos)) &&
+           IsNonNegativeInteger(str.substr(dot_pos + 1));
+  }
 }
 
 }}  // namespace triton::perfanalyzer
