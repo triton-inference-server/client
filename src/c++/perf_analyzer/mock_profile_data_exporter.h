@@ -41,12 +41,19 @@ class NaggyMockProfileDataExporter : public ProfileDataExporter {
           return this->ProfileDataExporter::ConvertToJson(
               raw_experiments, raw_version);
         });
+
+    ON_CALL(*this, OutputToFile(testing::_))
+        .WillByDefault([this](std::string& file_path) {
+          this->ProfileDataExporter::OutputToFile(file_path);
+        });
   }
 
   MOCK_METHOD(
       void, ConvertToJson,
       (const std::vector<Experiment>& raw_experiments,
        std::string& raw_version));
+
+  MOCK_METHOD(void, OutputToFile, (std::string & file_path));
 
   rapidjson::Document& document_{ProfileDataExporter::document_};
 };

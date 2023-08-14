@@ -124,5 +124,29 @@ TEST_CASE("profile_data_exporter")
 
     CHECK(actual_version == expected_version);
   }
+
+  SUBCASE("OutputToFile")
+  {
+    std::string file_path;
+
+    SUBCASE("Empty file path")
+    {
+      file_path = "";
+      CHECK_THROWS_WITH_AS(
+          exporter.OutputToFile(file_path),
+          "failed to open file for outputting raw profile data",
+          PerfAnalyzerException);
+    }
+
+    SUBCASE("With file path")
+    {
+      file_path = "/tmp/test-" + GetRandomString(4) + ".json";
+      CHECK_NOTHROW(exporter.OutputToFile(file_path));
+      CHECK(IsFile(file_path));
+
+      std::remove(file_path.c_str());
+      CHECK(!IsFile(file_path));
+    }
+  }
 }
 }}  // namespace triton::perfanalyzer
