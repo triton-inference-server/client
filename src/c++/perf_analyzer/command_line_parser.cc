@@ -38,36 +38,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-bool
-IsPositiveInteger(const std::string& str)
-{
-  if (str.empty()) {
-    return false;
-  } else if (str.size() == 1 && str[0] == '0') {
-    return false;
-  } else if (str.size() > 1 && str[0] == '0') {
-    return false;
-  }
-  return std::all_of(
-             str.begin(), str.end(),
-             [](unsigned char c) { return std::isdigit(c); })
-             ? true
-             : false;
-}
-
-bool
-IsNonNegativeInteger(const std::string& str)
-{
-  if (str.empty()) {
-    return false;
-  } else if (str.size() == 1 && str[0] == '0') {
-    return true;
-  } else if (str[0] == '-') {
-    return false;
-  }
-  return IsPositiveInteger(str);
-}
-
 PAParamsPtr
 CLParser::Parse(int argc, char** argv)
 {
