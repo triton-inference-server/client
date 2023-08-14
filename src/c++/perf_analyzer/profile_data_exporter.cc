@@ -97,7 +97,7 @@ ProfileDataExporter::AddExperiment(
     value.SetUint64(raw_experiment.mode.concurrency);
   } else {
     mode = rapidjson::StringRef("request_rate");
-    value.SetUint64(raw_experiment.mode.request_rate);
+    value.SetDouble(raw_experiment.mode.request_rate);
   }
   experiment.AddMember("mode", mode, document_.GetAllocator());
   experiment.AddMember("value", value, document_.GetAllocator());

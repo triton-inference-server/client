@@ -88,6 +88,7 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   rapidjson::Document expected_document;
   expected_document.Parse(json.c_str());
 
+  // FIXME (TMA-1339): Look into the testing the order of things in the json
   const rapidjson::Value& expected_experiment{
       expected_document["experiments"][0]["experiment"]};
   const rapidjson::Value& expected_request{
@@ -144,13 +145,13 @@ TEST_CASE("profile_data_exporter: AddExperiment")
 
   SUBCASE("Request rate mode")
   {
-    InferenceLoadMode infer_mode{0, 23.0};
+    InferenceLoadMode infer_mode{0, 23.5};
     raw_experiment.mode = infer_mode;
 
     exporter.AddExperiment(entry, experiment, raw_experiment);
     CHECK(entry.HasMember("experiment"));
     CHECK(entry["experiment"]["mode"] == "request_rate");
-    CHECK(entry["experiment"]["value"] == 23);
+    CHECK(entry["experiment"]["value"] == 23.5);
   }
 }
 
