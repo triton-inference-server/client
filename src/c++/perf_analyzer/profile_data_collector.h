@@ -104,7 +104,8 @@ class ProfileDataCollector {
  private:
   ProfileDataCollector() = default;
 
-  std::vector<Experiment>::iterator FindExperiment(InferenceLoadMode& id)
+  virtual std::vector<Experiment>::iterator FindExperiment(
+      InferenceLoadMode& id)
   {
     return std::find_if(
         experiments_.begin(), experiments_.end(),

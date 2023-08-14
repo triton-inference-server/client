@@ -60,12 +60,10 @@ class ProfileDataExporter {
   /// analyzer
   /// @param raw_version String containing the version number for the json
   /// output
-  void ConvertToJson(
+  virtual void ConvertToJson(
       const std::vector<Experiment>& raw_experiments, std::string& raw_version);
-
-  void OutputToFile(std::string& file_path);
-  void ClearDocument();
-  void AddExperiment(
+  virtual void OutputToFile(std::string& file_path);
+  virtual void AddExperiment(
       rapidjson::Value& entry, rapidjson::Value& experiment,
       const Experiment& raw_experiment);
   void AddRequests(
@@ -79,6 +77,7 @@ class ProfileDataExporter {
       rapidjson::Value& entry, rapidjson::Value& window_boundaries,
       const Experiment& raw_experiment);
   void AddVersion(std::string& raw_version);
+  void ClearDocument();
 
   rapidjson::Document document_{};
 

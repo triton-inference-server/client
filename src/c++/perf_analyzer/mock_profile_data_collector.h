@@ -35,14 +35,15 @@ class NaggyMockProfileDataCollector : public ProfileDataCollector {
   NaggyMockProfileDataCollector()
   {
     ON_CALL(*this, FindExperiment(testing::_))
-        .WillByDefault([this](InferenceLoadMode& id) {
-          return this->ProfileDataCollector::FindExperiment(id);
-        });
+        .WillByDefault(
+            [this](InferenceLoadMode& id) -> std::vector<Experiment>::iterator {
+              return this->ProfileDataCollector::FindExperiment(id);
+            });
   }
 
   MOCK_METHOD(
-      std::vector<Experiment>::iterator, FindExperiment,
-      (InferenceLoadMode & id));
+      std::vector<Experiment>::iterator, FindExperiment, (InferenceLoadMode&),
+      (override));
 
   std::vector<Experiment>& experiments_{ProfileDataCollector::experiments_};
 };

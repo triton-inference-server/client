@@ -35,37 +35,36 @@ class NaggyMockProfileDataExporter : public ProfileDataExporter {
   NaggyMockProfileDataExporter()
   {
     ON_CALL(*this, ConvertToJson(testing::_, testing::_))
-        .WillByDefault([this](
-                           const std::vector<Experiment>& raw_experiments,
-                           std::string& raw_version) {
-          return this->ProfileDataExporter::ConvertToJson(
-              raw_experiments, raw_version);
-        });
+        .WillByDefault(
+            [this](
+                const std::vector<Experiment>& raw_experiments,
+                std::string& raw_version) -> void {
+              return this->ProfileDataExporter::ConvertToJson(
+                  raw_experiments, raw_version);
+            });
 
     ON_CALL(*this, OutputToFile(testing::_))
-        .WillByDefault([this](std::string& file_path) {
+        .WillByDefault([this](std::string& file_path) -> void {
           this->ProfileDataExporter::OutputToFile(file_path);
         });
 
     ON_CALL(*this, AddExperiment(testing::_, testing::_, testing::_))
-        .WillByDefault([this](
-                           rapidjson::Value& entry,
-                           rapidjson::Value& experiment,
-                           const Experiment& raw_experiment) {
-          this->ProfileDataExporter::AddExperiment(
-              entry, experiment, raw_experiment);
-        });
+        .WillByDefault(
+            [this](
+                rapidjson::Value& entry, rapidjson::Value& experiment,
+                const Experiment& raw_experiment) -> void {
+              this->ProfileDataExporter::AddExperiment(
+                  entry, experiment, raw_experiment);
+            });
   }
 
   MOCK_METHOD(
-      void, ConvertToJson,
-      (const std::vector<Experiment>& raw_experiments,
-       std::string& raw_version));
+      void, ConvertToJson, (const std::vector<Experiment>&, std::string&),
+      (override));
   MOCK_METHOD(
       void, AddExperiment,
-      (rapidjson::Value & entry, rapidjson::Value& experiment,
-       const Experiment& raw_experiment));
-  MOCK_METHOD(void, OutputToFile, (std::string & file_path));
+      (rapidjson::Value&, rapidjson::Value&, const Experiment&), (override));
+  MOCK_METHOD(void, OutputToFile, (std::string&), (override));
 
   rapidjson::Document& document_{ProfileDataExporter::document_};
 };
