@@ -153,4 +153,4 @@ def _get_inference_request(
         )
         return request_body, json_size
 
-    return request_body, None
+    return request_body.encode(), None
