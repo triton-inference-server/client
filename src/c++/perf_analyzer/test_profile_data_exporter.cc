@@ -125,6 +125,35 @@ TEST_CASE("profile_data_exporter")
     CHECK(actual_version == expected_version);
   }
 
+  SUBCASE("AddExperiment")
+  {
+    Experiment raw_experiment;
+    rapidjson::Value entry(rapidjson::kObjectType);
+    rapidjson::Value experiment(rapidjson::kObjectType);
+
+    SUBCASE("Concurrency mode")
+    {
+      InferenceLoadMode infer_mode{15, 0.0};
+      raw_experiment.mode = infer_mode;
+
+      exporter.AddExperiment(entry, experiment, raw_experiment);
+      CHECK(entry.HasMember("experiment"));
+      CHECK(entry["experiment"]["mode"] == "concurrency");
+      CHECK(entry["experiment"]["value"] == 15);
+    }
+
+    SUBCASE("Request rate mode")
+    {
+      InferenceLoadMode infer_mode{0, 23.0};
+      raw_experiment.mode = infer_mode;
+
+      exporter.AddExperiment(entry, experiment, raw_experiment);
+      CHECK(entry.HasMember("experiment"));
+      CHECK(entry["experiment"]["mode"] == "request_rate");
+      CHECK(entry["experiment"]["value"] == 23);
+    }
+  }
+
   SUBCASE("OutputToFile")
   {
     std::string file_path;
