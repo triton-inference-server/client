@@ -143,4 +143,7 @@ bool IsPositiveInteger(const std::string& str);
 // Check if the given string is a valid non-negative integer.
 bool IsNonNegativeInteger(const std::string& str);
 
+// Check if the given string is a valid non-negative floating point number.
+bool IsNonNegativeFloat(const std::string& str);
+
 }}  // namespace triton::perfanalyzer

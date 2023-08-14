@@ -949,9 +949,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
       }
       case 9:
       case 's': {
-        // TODO
         std::string stability_threshold{optarg};
-        if (std::stof(stability_threshold) >= 0.0) {
+        if (IsNonNegativeFloat(stability_threshold)) {
           params_->stability_threshold = std::stof(optarg) / 100;
         } else {
           Usage(
@@ -2032,7 +2031,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
         break;
       }
       case 47: {
-        // TODO
         std::string trace_count{optarg};
         if (std::stoi(trace_count) >= -1) {
           params_->trace_options["trace_count"] = {trace_count};
