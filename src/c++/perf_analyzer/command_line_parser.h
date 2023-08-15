@@ -145,6 +145,9 @@ struct PerfAnalyzerParameters {
 
   // Triton inference response output tensor format.
   cb::TensorFormat output_tensor_format{cb::TensorFormat::BINARY};
+
+  // The profile export file path.
+  std::string profile_export_file{""};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

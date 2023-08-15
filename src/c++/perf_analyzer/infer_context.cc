@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -74,7 +74,9 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
 
     sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
-    SendRequest(request_id_++, delayed);
+    SendRequest(
+        request_id_++, delayed,
+        sequence_manager_->GetSequenceID(seq_stat_index));
   }
 }
 
@@ -95,12 +97,15 @@ InferContext::CompleteOngoingSequence(uint32_t seq_stat_index)
     sequence_manager_->DecrementRemainingQueries(seq_stat_index);
 
     bool is_delayed = false;
-    SendRequest(request_id_++, is_delayed);
+    SendRequest(
+        request_id_++, is_delayed,
+        sequence_manager_->GetSequenceID(seq_stat_index));
   }
 }
 
 void
-InferContext::SendRequest(const uint64_t request_id, const bool delayed)
+InferContext::SendRequest(
+    const uint64_t request_id, const bool delayed, const uint64_t sequence_id)
 {
   if (!thread_stat_->status_.IsOk()) {
     return;
@@ -111,14 +116,13 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
     infer_data_.options_->request_id_ = std::to_string(request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
-      auto it =
-          async_req_map_
-              .emplace(
-                  infer_data_.options_->request_id_, AsyncRequestProperties())
-              .first;
+      auto it = async_req_map_
+                    .emplace(infer_data_.options_->request_id_, RequestRecord())
+                    .first;
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
+      it->second.sequence_id_ = sequence_id;
     }
 
     thread_stat_->idle_timer.Start();
@@ -154,14 +158,16 @@ InferContext::SendRequest(const uint64_t request_id, const bool delayed)
       return;
     }
     end_time_sync = std::chrono::system_clock::now();
+    std::vector<std::chrono::time_point<std::chrono::system_clock>>
+        end_time_syncs{end_time_sync};
     {
-      // Add the request timestamp to thread Timestamp vector with proper
+      // Add the request record to thread request records vector with proper
       // locking
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
-      thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-          start_time_sync, end_time_sync, infer_data_.options_->sequence_end_,
-          delayed));
+      thread_stat_->request_records_.emplace_back(RequestRecord(
+          start_time_sync, std::move(end_time_syncs),
+          infer_data_.options_->sequence_end_, delayed, sequence_id, false));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -234,32 +240,51 @@ void
 InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
 {
   std::shared_ptr<cb::InferResult> result_ptr(result);
+  bool is_final_response{true};
   if (thread_stat_->cb_status_.IsOk()) {
-    // Add the request timestamp to thread Timestamp vector with
+    // Add the request record to thread request records vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
     thread_stat_->cb_status_ = result_ptr->RequestStatus();
     if (thread_stat_->cb_status_.IsOk()) {
-      std::chrono::time_point<std::chrono::system_clock> end_time_async;
-      end_time_async = std::chrono::system_clock::now();
       std::string request_id;
       thread_stat_->cb_status_ = result_ptr->Id(&request_id);
       const auto& it = async_req_map_.find(request_id);
       if (it != async_req_map_.end()) {
-        thread_stat_->request_timestamps_.emplace_back(std::make_tuple(
-            it->second.start_time_, end_time_async, it->second.sequence_end_,
-            it->second.delayed_));
-        infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
-        thread_stat_->cb_status_ = ValidateOutputs(result);
-        async_req_map_.erase(request_id);
+        bool is_null_response{false};
+        thread_stat_->cb_status_ =
+            result_ptr->IsNullResponse(&is_null_response);
+        if (thread_stat_->cb_status_.IsOk() == false) {
+          return;
+        }
+        it->second.response_times_.push_back(std::chrono::system_clock::now());
+        if (is_null_response == true) {
+          it->second.has_null_last_response_ = true;
+        }
+        thread_stat_->cb_status_ =
+            result_ptr->IsFinalResponse(&is_final_response);
+        if (thread_stat_->cb_status_.IsOk() == false) {
+          return;
+        }
+        if (is_final_response) {
+          thread_stat_->request_records_.emplace_back(
+              it->second.start_time_, it->second.response_times_,
+              it->second.sequence_end_, it->second.delayed_,
+              it->second.sequence_id_, it->second.has_null_last_response_);
+          infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
+          thread_stat_->cb_status_ = ValidateOutputs(result);
+          async_req_map_.erase(request_id);
+        }
       }
     }
   }
 
-  total_ongoing_requests_--;
+  if (is_final_response) {
+    total_ongoing_requests_--;
 
-  if (async_callback_finalize_func_ != nullptr) {
-    async_callback_finalize_func_(id_);
+    if (async_callback_finalize_func_ != nullptr) {
+      async_callback_finalize_func_(id_);
+    }
   }
 }
 

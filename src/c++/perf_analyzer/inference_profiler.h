@@ -43,11 +43,13 @@
 #include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
+#include "profile_data_collector.h"
 #include "request_rate_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockInferenceProfiler;
 class TestInferenceProfiler;
 #endif
 
@@ -126,6 +128,8 @@ struct ClientSideStats {
   uint64_t sequence_count;
   // The number of requests that missed their schedule
   uint64_t delayed_request_count;
+  // The number of responses
+  uint64_t response_count;
   uint64_t duration_ns;
   uint64_t avg_latency_ns;
   // a ordered map of percentiles to be reported (<percentile, value> pair)
@@ -139,6 +143,7 @@ struct ClientSideStats {
   uint64_t avg_receive_time_ns;
   // Per sec stat
   double infer_per_sec;
+  double responses_per_sec;
   double sequence_per_sec;
 
   // Completed request count reported by the client library
@@ -179,9 +184,9 @@ cb::Error ReportPrometheusMetrics(const Metrics& metrics);
 /// time.
 /// 2. After given time interval, the profiler gets end status from the server
 ///    and records the end time.
-/// 3. The profiler obtains the timestamps recorded by concurrency manager,
-///    and uses the timestamps that are recorded between start time and end time
-///    to measure client side status and update status_summary.
+/// 3. The profiler obtains the request records recorded by concurrency manager,
+///    and uses the request records that are recorded between start time and end
+///    time to measure client side status and update status_summary.
 ///
 class InferenceProfiler {
  public:
@@ -217,6 +222,8 @@ class InferenceProfiler {
   /// should be collected.
   /// \param overhead_pct_threshold User set threshold above which the PA
   /// overhead is too significant to provide usable results.
+  /// \param collector Collector for the profile data from experiments
+  /// \param should_collect_profile_data Whether to collect profile data.
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool verbose, const double stability_threshold,
@@ -228,7 +235,9 @@ class InferenceProfiler {
       std::unique_ptr<InferenceProfiler>* profiler,
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
-      const bool should_collect_metrics, const double overhead_pct_threshold);
+      const bool should_collect_metrics, const double overhead_pct_threshold,
+      const std::shared_ptr<ProfileDataCollector> collector,
+      const bool should_collect_profile_data);
 
   /// Performs the profiling on the given range with the given search algorithm.
   /// For profiling using request rate invoke template with double, otherwise
@@ -310,7 +319,9 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold);
+      const double overhead_pct_threshold,
+      const std::shared_ptr<ProfileDataCollector> collector,
+      const bool should_collect_profile_data);
 
   /// Actively measure throughput in every 'measurement_window' msec until the
   /// throughput is stable. Once the throughput is stable, it adds the
@@ -440,16 +451,28 @@ class InferenceProfiler {
   /// sequence model.
   /// \param latencies Returns the vector of request latencies where the
   /// requests are completed within the measurement window.
-  void ValidLatencyMeasurement(
+  /// \param response_count Returns the number of responses
+  /// \param valid_requests Returns a vector of valid request records
+  virtual void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies);
+      std::vector<uint64_t>* latencies, size_t& response_count,
+      std::vector<RequestRecord>& valid_requests);
+
+  /// Add the data from the request records to the Raw Data Collector
+  /// \param perf_status PerfStatus of the current measurement
+  /// \param window_start_ns The window start timestamp in nanoseconds.
+  /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// \param request_records The request records to collect.
+  void CollectData(
+      PerfStatus& perf_status, uint64_t window_start_ns, uint64_t window_end_ns,
+      std::vector<RequestRecord>&& request_records);
 
   /// \param latencies The vector of request latencies collected.
   /// \param summary Returns the summary that the latency related fields are
   /// set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeLatency(
+  virtual cb::Error SummarizeLatency(
       const std::vector<uint64_t>& latencies, PerfStatus& summary);
 
   /// \param latencies The vector of request latencies collected.
@@ -466,14 +489,15 @@ class InferenceProfiler {
   /// \param valid_sequence_count The number of completed sequences recorded.
   /// \param delayed_request_count The number of requests that missed their
   /// schedule.
+  /// \param response_count The number of responses.
   /// \param summary Returns the summary that the fields recorded by
   /// client are set.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SummarizeClientStat(
+  virtual cb::Error SummarizeClientStat(
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
       const uint64_t duration_ns, const size_t valid_request_count,
       const size_t delayed_request_count, const size_t valid_sequence_count,
-      PerfStatus& summary);
+      const size_t response_count, PerfStatus& summary);
 
   /// Adds the send request rate metric to the summary object.
   /// \param window_duration_s The duration of the window in seconds.
@@ -557,7 +581,7 @@ class InferenceProfiler {
   /// \param perf_status List of perf status reports to be merged.
   /// \param summary_status Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergePerfStatusReports(
+  virtual cb::Error MergePerfStatusReports(
       std::deque<PerfStatus>& perf_status, PerfStatus& summary_status);
 
   /// Merge individual server side statistics into a single server side report.
@@ -565,7 +589,7 @@ class InferenceProfiler {
   /// merged.
   /// \param server_side_summary Final merged summary status.
   /// \return cb::Error object indicating success or failure.
-  cb::Error MergeServerSideStats(
+  virtual cb::Error MergeServerSideStats(
       std::vector<ServerSideStats>& server_side_stats,
       ServerSideStats& server_side_summary);
 
@@ -666,14 +690,15 @@ class InferenceProfiler {
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackend> profile_backend_;
   std::unique_ptr<LoadManager> manager_;
+  std::shared_ptr<ProfileDataCollector> collector_;
   LoadParams load_parameters_;
 
   bool include_lib_stats_;
   bool include_server_stats_;
   std::shared_ptr<MPIDriver> mpi_driver_;
 
-  /// The timestamps of the requests completed during all measurements
-  TimestampVector all_timestamps_;
+  /// The request records of the requests completed during all measurements
+  std::vector<RequestRecord> all_request_records_;
 
   /// The end time of the previous measurement window
   uint64_t previous_window_end_ns_;
@@ -694,11 +719,15 @@ class InferenceProfiler {
   /// provide usable results.
   const double overhead_pct_threshold_{0.0};
 
+  // Whether to collect profile data.
+  bool should_collect_profile_data_{false};
+
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockInferenceProfiler;
   friend TestInferenceProfiler;
 
  public:
-  InferenceProfiler(){};
+  InferenceProfiler() = default;
 #endif
 };
 

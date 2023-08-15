@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023 (c), NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -26,44 +26,12 @@
 #pragma once
 
 #include "gmock/gmock.h"
-#include "infer_context.h"
+#include "load_manager.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockInferContext : public InferContext {
- public:
-  NaggyMockInferContext()
-  {
-    ON_CALL(*this, SendRequest(testing::_, testing::_, testing::_))
-        .WillByDefault(
-            [this](
-                const uint64_t request_id, const bool delayed,
-                const uint64_t sequence_id) -> void {
-              this->InferContext::SendRequest(request_id, delayed, sequence_id);
-            });
-  }
+class NaggyMockLoadManager : public LoadManager {};
 
-  MOCK_METHOD(
-      void, SendRequest, (const uint64_t, const bool, const uint64_t),
-      (override));
-
-  std::shared_ptr<SequenceManager>& sequence_manager_{
-      InferContext::sequence_manager_};
-  std::shared_ptr<DataLoader>& data_loader_{InferContext::data_loader_};
-  std::shared_ptr<IInferDataManager>& infer_data_manager_{
-      InferContext::infer_data_manager_};
-  std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
-  std::reference_wrapper<const bool>& execute_{InferContext::execute_};
-  bool& using_json_data_{InferContext::using_json_data_};
-  bool& async_{InferContext::async_};
-  bool& streaming_{InferContext::streaming_};
-  InferData& infer_data_{InferContext::infer_data_};
-  std::unique_ptr<cb::ClientBackend>& infer_backend_{
-      InferContext::infer_backend_};
-  std::function<void(cb::InferResult*)>& async_callback_func_{
-      InferContext::async_callback_func_};
-};
-
-using MockInferContext = testing::NiceMock<NaggyMockInferContext>;
+using MockLoadManager = testing::NiceMock<NaggyMockLoadManager>;
 
 }}  // namespace triton::perfanalyzer

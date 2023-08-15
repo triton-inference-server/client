@@ -12,7 +12,7 @@
 //    contributors may be used to endorse or promote products derived
 //    from this software without specific prior written permission.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS"" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
 // PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
@@ -26,44 +26,49 @@
 #pragma once
 
 #include "gmock/gmock.h"
-#include "infer_context.h"
+#include "profile_data_exporter.h"
 
 namespace triton { namespace perfanalyzer {
 
-class NaggyMockInferContext : public InferContext {
+class NaggyMockProfileDataExporter : public ProfileDataExporter {
  public:
-  NaggyMockInferContext()
+  NaggyMockProfileDataExporter()
   {
-    ON_CALL(*this, SendRequest(testing::_, testing::_, testing::_))
+    ON_CALL(*this, ConvertToJson(testing::_, testing::_))
         .WillByDefault(
             [this](
-                const uint64_t request_id, const bool delayed,
-                const uint64_t sequence_id) -> void {
-              this->InferContext::SendRequest(request_id, delayed, sequence_id);
+                const std::vector<Experiment>& raw_experiments,
+                std::string& raw_version) -> void {
+              return this->ProfileDataExporter::ConvertToJson(
+                  raw_experiments, raw_version);
+            });
+
+    ON_CALL(*this, OutputToFile(testing::_))
+        .WillByDefault([this](std::string& file_path) -> void {
+          this->ProfileDataExporter::OutputToFile(file_path);
+        });
+
+    ON_CALL(*this, AddExperiment(testing::_, testing::_, testing::_))
+        .WillByDefault(
+            [this](
+                rapidjson::Value& entry, rapidjson::Value& experiment,
+                const Experiment& raw_experiment) -> void {
+              this->ProfileDataExporter::AddExperiment(
+                  entry, experiment, raw_experiment);
             });
   }
 
   MOCK_METHOD(
-      void, SendRequest, (const uint64_t, const bool, const uint64_t),
+      void, ConvertToJson, (const std::vector<Experiment>&, std::string&),
       (override));
+  MOCK_METHOD(
+      void, AddExperiment,
+      (rapidjson::Value&, rapidjson::Value&, const Experiment&), (override));
+  MOCK_METHOD(void, OutputToFile, (std::string&), (override));
 
-  std::shared_ptr<SequenceManager>& sequence_manager_{
-      InferContext::sequence_manager_};
-  std::shared_ptr<DataLoader>& data_loader_{InferContext::data_loader_};
-  std::shared_ptr<IInferDataManager>& infer_data_manager_{
-      InferContext::infer_data_manager_};
-  std::shared_ptr<ThreadStat>& thread_stat_{InferContext::thread_stat_};
-  std::reference_wrapper<const bool>& execute_{InferContext::execute_};
-  bool& using_json_data_{InferContext::using_json_data_};
-  bool& async_{InferContext::async_};
-  bool& streaming_{InferContext::streaming_};
-  InferData& infer_data_{InferContext::infer_data_};
-  std::unique_ptr<cb::ClientBackend>& infer_backend_{
-      InferContext::infer_backend_};
-  std::function<void(cb::InferResult*)>& async_callback_func_{
-      InferContext::async_callback_func_};
+  rapidjson::Document& document_{ProfileDataExporter::document_};
 };
 
-using MockInferContext = testing::NiceMock<NaggyMockInferContext>;
+using MockProfileDataExporter = testing::NiceMock<NaggyMockProfileDataExporter>;
 
 }}  // namespace triton::perfanalyzer

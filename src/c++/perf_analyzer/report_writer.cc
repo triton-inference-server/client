@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -76,7 +76,11 @@ ReportWriter::GenerateReport()
     } else {
       ofs << "Request Rate,";
     }
-    ofs << "Inferences/Second,Client Send,";
+    ofs << "Inferences/Second,";
+    if (parser_->IsDecoupled()) {
+      ofs << "Response Throughput,";
+    }
+    ofs << "Client Send,";
     if (include_server_stats_) {
       ofs << "Network+Server Send/Recv,Server Queue,"
           << "Server Compute Input,Server Compute Infer,"
@@ -123,8 +127,11 @@ ReportWriter::GenerateReport()
         ofs << status.request_rate << ",";
       }
 
-      ofs << status.client_stats.infer_per_sec << ","
-          << (status.client_stats.avg_send_time_ns / 1000) << ",";
+      ofs << status.client_stats.infer_per_sec << ",";
+      if (parser_->IsDecoupled()) {
+        ofs << status.client_stats.responses_per_sec << ",";
+      }
+      ofs << (status.client_stats.avg_send_time_ns / 1000) << ",";
       if (include_server_stats_) {
         uint64_t avg_queue_ns = status.server_stats.queue_count > 0
                                     ? (status.server_stats.queue_time_ns /

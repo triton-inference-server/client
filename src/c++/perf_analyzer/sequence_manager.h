@@ -68,6 +68,12 @@ class SequenceManager {
   ///
   void InitSequenceStatuses(size_t num_sequence_statuses);
 
+  /// Gets the sequence ID for the specified sequence status object.
+  /// \param sequence_status_index The index of the sequence status object.
+  /// \return The sequence ID for the specified sequence status object.
+  ///
+  const uint64_t GetSequenceID(size_t sequence_status_index) const;
+
   /// Gets a non-const reference to the mutex for the specified sequence status
   /// object.
   /// \param sequence_status_index The index of the sequence status object.

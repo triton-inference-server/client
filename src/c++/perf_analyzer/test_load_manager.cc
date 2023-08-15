@@ -33,6 +33,21 @@ namespace cb = triton::perfanalyzer::clientbackend;
 
 namespace triton { namespace perfanalyzer {
 
+namespace {
+
+bool
+operator==(const RequestRecord& lhs, const RequestRecord& rhs)
+{
+  return std::tie(
+             lhs.start_time_, lhs.response_times_, lhs.sequence_end_,
+             lhs.delayed_, lhs.sequence_id_, lhs.has_null_last_response_) ==
+         std::tie(
+             rhs.start_time_, rhs.response_times_, rhs.sequence_end_,
+             rhs.delayed_, rhs.sequence_id_, rhs.has_null_last_response_);
+}
+
+}  // namespace
+
 class TestLoadManager : public TestLoadManagerBase, public LoadManager {
  public:
   ~TestLoadManager() = default;
@@ -108,80 +123,83 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     CHECK(CheckHealth().IsOk() == expect_ok);
   }
 
-  /// Test the public function SwapTimestamps
+  /// Test the public function SwapRequestRecords
   ///
-  /// It will gather all timestamps from the thread_stats
-  /// and return them, and clear the thread_stats timestamps
+  /// It will gather all request records from the thread_stats
+  /// and return them, and clear the thread_stats request records
   ///
-  void TestSwapTimeStamps()
+  void TestSwapRequestRecords()
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+    auto request_record1 = RequestRecord(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
+        0, false);
+    auto request_record2 = RequestRecord(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
+        0, false);
+    auto request_record3 = RequestRecord(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
+        0, false);
 
-    TimestampVector source_timestamps;
+    std::vector<RequestRecord> source_request_records;
 
     SUBCASE("No threads")
     {
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(source_timestamps.size() == 0);
+      auto ret = SwapRequestRecords(source_request_records);
+      CHECK(source_request_records.size() == 0);
       CHECK(ret.IsOk() == true);
     }
-    SUBCASE("Source has timestamps")
+    SUBCASE("Source has request records")
     {
-      // Any timestamps in the vector passed in to Swaptimestamps will
+      // Any request records in the vector passed in to SwapRequestRecords will
       // be dropped on the floor
       //
-      source_timestamps.push_back(timestamp1);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(source_timestamps.size() == 0);
+      source_request_records.push_back(request_record1);
+      auto ret = SwapRequestRecords(source_request_records);
+      CHECK(source_request_records.size() == 0);
       CHECK(ret.IsOk() == true);
     }
     SUBCASE("One thread")
     {
       auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp1);
-      stat1->request_timestamps_.push_back(timestamp2);
-      stat1->request_timestamps_.push_back(timestamp3);
+      stat1->request_records_.push_back(request_record1);
+      stat1->request_records_.push_back(request_record2);
+      stat1->request_records_.push_back(request_record3);
       threads_stat_.push_back(stat1);
 
-      CHECK(stat1->request_timestamps_.size() == 3);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(stat1->request_timestamps_.size() == 0);
+      CHECK(stat1->request_records_.size() == 3);
+      auto ret = SwapRequestRecords(source_request_records);
+      CHECK(stat1->request_records_.size() == 0);
 
-      REQUIRE(source_timestamps.size() == 3);
-      CHECK(source_timestamps[0] == timestamp1);
-      CHECK(source_timestamps[1] == timestamp2);
-      CHECK(source_timestamps[2] == timestamp3);
+      REQUIRE(source_request_records.size() == 3);
+      CHECK(source_request_records[0] == request_record1);
+      CHECK(source_request_records[1] == request_record2);
+      CHECK(source_request_records[2] == request_record3);
       CHECK(ret.IsOk() == true);
     }
     SUBCASE("Multiple threads")
     {
       auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp2);
+      stat1->request_records_.push_back(request_record2);
 
       auto stat2 = std::make_shared<ThreadStat>();
-      stat2->request_timestamps_.push_back(timestamp1);
-      stat2->request_timestamps_.push_back(timestamp3);
+      stat2->request_records_.push_back(request_record1);
+      stat2->request_records_.push_back(request_record3);
 
       threads_stat_.push_back(stat1);
       threads_stat_.push_back(stat2);
 
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
-      auto ret = SwapTimestamps(source_timestamps);
-      CHECK(stat1->request_timestamps_.size() == 0);
-      CHECK(stat2->request_timestamps_.size() == 0);
+      CHECK(stat1->request_records_.size() == 1);
+      CHECK(stat2->request_records_.size() == 2);
+      auto ret = SwapRequestRecords(source_request_records);
+      CHECK(stat1->request_records_.size() == 0);
+      CHECK(stat2->request_records_.size() == 0);
 
-      REQUIRE(source_timestamps.size() == 3);
-      CHECK(source_timestamps[0] == timestamp2);
-      CHECK(source_timestamps[1] == timestamp1);
-      CHECK(source_timestamps[2] == timestamp3);
+      REQUIRE(source_request_records.size() == 3);
+      CHECK(source_request_records[0] == request_record2);
+      CHECK(source_request_records[1] == request_record1);
+      CHECK(source_request_records[2] == request_record3);
       CHECK(ret.IsOk() == true);
     }
   }
@@ -268,19 +286,22 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
 
   /// Test the public function CountCollectedRequests
   ///
-  /// It will count all timestamps in the thread_stats (and not modify
+  /// It will count all request records in the thread_stats (and not modify
   /// the thread_stats in any way)
   ///
   void TestCountCollectedRequests()
   {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
-    auto timestamp1 =
-        std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false);
-    auto timestamp2 =
-        std::make_tuple(time_point(ns(3)), time_point(ns(4)), 0, false);
-    auto timestamp3 =
-        std::make_tuple(time_point(ns(5)), time_point(ns(6)), 0, false);
+    auto request_record1 = RequestRecord(
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0, false,
+        0, false);
+    auto request_record2 = RequestRecord(
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, 0, false,
+        0, false);
+    auto request_record3 = RequestRecord(
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, 0, false,
+        0, false);
 
     SUBCASE("No threads")
     {
@@ -289,32 +310,32 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     SUBCASE("One thread")
     {
       auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp1);
-      stat1->request_timestamps_.push_back(timestamp2);
-      stat1->request_timestamps_.push_back(timestamp3);
+      stat1->request_records_.push_back(request_record1);
+      stat1->request_records_.push_back(request_record2);
+      stat1->request_records_.push_back(request_record3);
       threads_stat_.push_back(stat1);
 
-      CHECK(stat1->request_timestamps_.size() == 3);
+      CHECK(stat1->request_records_.size() == 3);
       CHECK(CountCollectedRequests() == 3);
-      CHECK(stat1->request_timestamps_.size() == 3);
+      CHECK(stat1->request_records_.size() == 3);
     }
     SUBCASE("Multiple threads")
     {
       auto stat1 = std::make_shared<ThreadStat>();
-      stat1->request_timestamps_.push_back(timestamp2);
+      stat1->request_records_.push_back(request_record2);
 
       auto stat2 = std::make_shared<ThreadStat>();
-      stat2->request_timestamps_.push_back(timestamp1);
-      stat2->request_timestamps_.push_back(timestamp3);
+      stat2->request_records_.push_back(request_record1);
+      stat2->request_records_.push_back(request_record3);
 
       threads_stat_.push_back(stat1);
       threads_stat_.push_back(stat2);
 
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
+      CHECK(stat1->request_records_.size() == 1);
+      CHECK(stat2->request_records_.size() == 2);
       CHECK(CountCollectedRequests() == 3);
-      CHECK(stat1->request_timestamps_.size() == 1);
-      CHECK(stat2->request_timestamps_.size() == 2);
+      CHECK(stat1->request_records_.size() == 1);
+      CHECK(stat2->request_records_.size() == 2);
     }
   }
 
@@ -355,10 +376,11 @@ TEST_CASE("load_manager_check_health: Test the public function CheckHealth()")
 }
 
 TEST_CASE(
-    "load_manager_swap_timestamps: Test the public function SwapTimeStamps()")
+    "load_manager_swap_request_records: Test the public function "
+    "SwapRequestRecords()")
 {
   TestLoadManager tlm(PerfAnalyzerParameters{});
-  tlm.TestSwapTimeStamps();
+  tlm.TestSwapRequestRecords();
 }
 
 TEST_CASE(

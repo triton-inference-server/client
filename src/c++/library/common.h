@@ -161,7 +161,7 @@ struct InferOptions {
       : model_name_(model_name), model_version_(""), request_id_(""),
         sequence_id_(0), sequence_id_str_(""), sequence_start_(false),
         sequence_end_(false), priority_(0), server_timeout_(0),
-        client_timeout_(0)
+        client_timeout_(0), triton_enable_empty_final_response_(false)
   {
   }
   /// The name of the model to run inference.
@@ -219,6 +219,8 @@ struct InferOptions {
   // timeout < 1000 microseconds will be rounded down to 0 milliseconds and have
   // no effect.
   uint64_t client_timeout_;
+  /// Whether to tell Triton to enable an empty final response.
+  bool triton_enable_empty_final_response_;
 };
 
 //==============================================================================
@@ -510,6 +512,14 @@ class InferResult {
   virtual Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const = 0;
+
+  /// Get final response bool for this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error IsFinalResponse(bool* is_final_response) const = 0;
+
+  /// Get null response bool for this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error IsNullResponse(bool* is_null_response) const = 0;
 
   /// Get the result data as a vector of strings. The vector will
   /// receive a copy of result data. An error will be generated if

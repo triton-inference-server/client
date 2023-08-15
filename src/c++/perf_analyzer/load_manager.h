@@ -40,6 +40,11 @@
 
 namespace triton { namespace perfanalyzer {
 
+
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockLoadManager;
+#endif
+
 class LoadManager {
  public:
   virtual ~LoadManager() = default;
@@ -71,11 +76,11 @@ class LoadManager {
   /// \return cb::Error object indicating success or failure.
   cb::Error CheckHealth();
 
-  /// Swap the content of the timestamp vector recorded by the load
-  /// manager with a new timestamp vector
-  /// \param new_timestamps The timestamp vector to be swapped.
+  /// Swap the content of the request records vector recorded by the load
+  /// manager with a new request records vector
+  /// \param new_request_records The request records vector to be swapped.
   /// \return cb::Error object indicating success or failure.
-  cb::Error SwapTimestamps(TimestampVector& new_timestamps);
+  cb::Error SwapRequestRecords(std::vector<RequestRecord>& new_request_records);
 
   /// Get the sum of all contexts' stat
   /// \param contexts_stat Returned the accumulated stat from all contexts
@@ -97,7 +102,7 @@ class LoadManager {
   const size_t GetAndResetNumSentRequests();
 
   /// \return the batch size used for the inference requests
-  size_t BatchSize() const { return batch_size_; }
+  virtual size_t BatchSize() const { return batch_size_; }
 
   /// Count the number of requests collected until now.
   uint64_t CountCollectedRequests();
@@ -165,6 +170,8 @@ class LoadManager {
       std::shared_ptr<DataLoader> data_loader);
 
 #ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockLoadManager;
+
  public:
   LoadManager() = default;
 #endif

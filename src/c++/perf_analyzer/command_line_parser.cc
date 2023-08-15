@@ -148,6 +148,7 @@ CLParser::Usage(const std::string& msg)
   std::cerr << std::endl;
   std::cerr << "IV. OTHER OPTIONS: " << std::endl;
   std::cerr << "\t-f <filename for storing report in csv format>" << std::endl;
+  std::cerr << "\t--profile-export-file <path>" << std::endl;
   std::cerr << "\t-H <HTTP header>" << std::endl;
   std::cerr << "\t--streaming" << std::endl;
   std::cerr << "\t--grpc-compression-algorithm <compression_algorithm>"
@@ -608,6 +609,13 @@ CLParser::Usage(const std::string& msg)
              "this option. By default, the result is not recorded in a file.",
              9)
       << std::endl;
+  std::cerr << std::setw(9) << std::left << " --profile-export-file: "
+            << FormatMessage(
+                   "Specifies the path that the profile export will be "
+                   "generated at. By default, the profile export will not be "
+                   "generated.",
+                   9)
+            << std::endl;
   std::cerr
       << std::setw(9) << std::left << " -H: "
       << FormatMessage(
@@ -797,6 +805,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"input-tensor-format", required_argument, 0, 55},
       {"output-tensor-format", required_argument, 0, 56},
       {"version", no_argument, 0, 57},
+      {"profile-export-file", required_argument, 0, 58},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1461,6 +1470,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
         }
         case 57: {
           PrintVersion();
+          break;
+        }
+        case 58: {
+          std::string profile_export_file{optarg};
+          if (IsFile(profile_export_file) || IsDirectory(profile_export_file)) {
+            Usage(
+                "Failed to parse --profile-export-file. Path must not already "
+                "exist.");
+          }
+          params_->profile_export_file = profile_export_file;
           break;
         }
         case 'v':

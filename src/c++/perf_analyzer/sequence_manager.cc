@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -51,6 +51,12 @@ SequenceManager::InitSequenceStatuses(size_t num_sequence_statuses)
        sequence_status_index < num_sequence_statuses; sequence_status_index++) {
     sequence_statuses_.push_back(std::make_shared<SequenceStatus>());
   }
+}
+
+const uint64_t
+SequenceManager::GetSequenceID(size_t sequence_status_index) const
+{
+  return sequence_statuses_.at(sequence_status_index)->seq_id_;
 }
 
 std::mutex&

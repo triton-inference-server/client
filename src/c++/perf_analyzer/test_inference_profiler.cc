@@ -27,6 +27,8 @@
 #include "doctest.h"
 #include "inference_profiler.h"
 #include "mock_inference_profiler.h"
+#include "mock_load_manager.h"
+#include "mock_model_parser.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -35,12 +37,15 @@ class TestInferenceProfiler : public InferenceProfiler {
   static void ValidLatencyMeasurement(
       const std::pair<uint64_t, uint64_t>& valid_range,
       size_t& valid_sequence_count, size_t& delayed_request_count,
-      std::vector<uint64_t>* latencies, TimestampVector& all_timestamps)
+      std::vector<uint64_t>* latencies, size_t& response_count,
+      std::vector<RequestRecord>& valid_requests,
+      std::vector<RequestRecord>& all_request_records)
   {
     InferenceProfiler inference_profiler{};
-    inference_profiler.all_timestamps_ = all_timestamps;
+    inference_profiler.all_request_records_ = all_request_records;
     inference_profiler.ValidLatencyMeasurement(
-        valid_range, valid_sequence_count, delayed_request_count, latencies);
+        valid_range, valid_sequence_count, delayed_request_count, latencies,
+        response_count, valid_requests);
   }
 
   static std::tuple<uint64_t, uint64_t> GetMeanAndStdDev(
@@ -162,48 +167,64 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
   size_t valid_sequence_count{};
   size_t delayed_request_count{};
   std::vector<uint64_t> latencies{};
+  size_t response_count{};
+  std::vector<RequestRecord> valid_requests{};
 
   const std::pair<uint64_t, uint64_t> window{4, 17};
   using time_point = std::chrono::time_point<std::chrono::system_clock>;
   using ns = std::chrono::nanoseconds;
-  TimestampVector all_timestamps{
+  std::vector<RequestRecord> all_request_records{
       // request ends before window starts, this should not be possible to exist
       // in the vector of requests, but if it is, we exclude it: not included in
       // current window
-      std::make_tuple(time_point(ns(1)), time_point(ns(2)), 0, false),
+      RequestRecord(
+          time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, 0,
+          false, 0, false),
 
       // request starts before window starts and ends inside window: included in
       // current window
-      std::make_tuple(time_point(ns(3)), time_point(ns(5)), 0, false),
+      RequestRecord(
+          time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, 0,
+          false, 0, false),
 
       // requests start and end inside window: included in current window
-      std::make_tuple(time_point(ns(6)), time_point(ns(9)), 0, false),
-      std::make_tuple(time_point(ns(10)), time_point(ns(14)), 0, false),
+      RequestRecord(
+          time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, 0,
+          false, 0, false),
+      RequestRecord(
+          time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, 0,
+          false, 0, false),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
-      std::make_tuple(time_point(ns(15)), time_point(ns(20)), 0, false),
+      RequestRecord(
+          time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, 0,
+          false, 0, false),
 
       // request starts after window ends: not included in current window
-      std::make_tuple(time_point(ns(21)), time_point(ns(27)), 0, false)};
+      RequestRecord(
+          time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, 0,
+          false, 0, false)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
-      all_timestamps);
+      response_count, valid_requests, all_request_records);
 
-  const auto& convert_timestamp_to_latency{
-      [](std::tuple<
-          std::chrono::time_point<std::chrono::system_clock>,
-          std::chrono::time_point<std::chrono::system_clock>, uint32_t, bool>
-             t) {
-        return CHRONO_TO_NANOS(std::get<1>(t)) -
-               CHRONO_TO_NANOS(std::get<0>(t));
-      }};
+  const auto& convert_request_record_to_latency{[](RequestRecord t) {
+    return CHRONO_TO_NANOS(t.response_times_.back()) -
+           CHRONO_TO_NANOS(t.start_time_);
+  }};
 
   CHECK(latencies.size() == 3);
-  CHECK(latencies[0] == convert_timestamp_to_latency(all_timestamps[1]));
-  CHECK(latencies[1] == convert_timestamp_to_latency(all_timestamps[2]));
-  CHECK(latencies[2] == convert_timestamp_to_latency(all_timestamps[3]));
+  CHECK(
+      latencies[0] ==
+      convert_request_record_to_latency(all_request_records[1]));
+  CHECK(
+      latencies[1] ==
+      convert_request_record_to_latency(all_request_records[2]));
+  CHECK(
+      latencies[2] ==
+      convert_request_record_to_latency(all_request_records[3]));
 }
 
 TEST_CASE("test_check_window_for_stability")
@@ -845,4 +866,190 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
   std::cerr.rdbuf(old);
 }
 
+TEST_CASE(
+    "valid_latency_measurement: testing the ValidLatencyMeasurement function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+    auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
+    auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
+    auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+    auto request_record1{RequestRecord(
+        request1_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response1_timestamp, response2_timestamp},
+        0, false, 0, false)};
+
+    auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
+    RequestRecord request_record2{};
+    size_t expected_response_count{0};
+
+    SUBCASE("second request has three data responses")
+    {
+      auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+      auto response4_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
+      auto response5_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
+      request_record2 = RequestRecord(
+          request2_timestamp,
+          std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+              response3_timestamp, response4_timestamp, response5_timestamp},
+          0, false, 0, false);
+      expected_response_count = 5;
+    }
+    SUBCASE("second request has two data responses and one null response")
+    {
+      auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+      auto response4_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
+      auto response5_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
+      request_record2 = RequestRecord(
+          request2_timestamp,
+          std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+              response3_timestamp, response4_timestamp, response5_timestamp},
+          0, false, 0, true);
+      expected_response_count = 4;
+    }
+    SUBCASE("second request has one null response")
+    {
+      request_record2 = RequestRecord(
+          request2_timestamp,
+          std::vector<std::chrono::time_point<std::chrono::system_clock>>{}, 0,
+          false, 0, true);
+      expected_response_count = 2;
+    }
+
+    mock_inference_profiler.all_request_records_ = {
+        request_record1, request_record2};
+
+    const std::pair<uint64_t, uint64_t> valid_range{
+        std::make_pair(0, UINT64_MAX)};
+    size_t valid_sequence_count{0};
+    size_t delayed_request_count{0};
+    std::vector<uint64_t> valid_latencies{};
+    size_t response_count{0};
+    std::vector<RequestRecord> valid_requests{};
+
+    mock_inference_profiler.ValidLatencyMeasurement(
+        valid_range, valid_sequence_count, delayed_request_count,
+        &valid_latencies, response_count, valid_requests);
+
+    CHECK(response_count == expected_response_count);
+  }
+  SUBCASE("testing logic relevant to valid request output")
+  {
+    auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+    auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
+    auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
+    auto request_record1{RequestRecord(
+        request1_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response1_timestamp},
+        0, false, 0, false)};
+
+    auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+    auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
+    auto request_record2{RequestRecord(
+        request2_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response2_timestamp},
+        0, false, 0, false)};
+
+    auto request3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+    auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
+    auto request_record3{RequestRecord(
+        request3_timestamp,
+        std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+            response3_timestamp},
+        0, false, 0, false)};
+
+    mock_inference_profiler.all_request_records_ = {
+        request_record1, request_record2, request_record3};
+
+    const std::pair<uint64_t, uint64_t> valid_range{std::make_pair(0, 4)};
+    size_t valid_sequence_count{0};
+    size_t delayed_request_count{0};
+    std::vector<uint64_t> valid_latencies{};
+    size_t response_count{0};
+    std::vector<RequestRecord> valid_requests{};
+
+    mock_inference_profiler.ValidLatencyMeasurement(
+        valid_range, valid_sequence_count, delayed_request_count,
+        &valid_latencies, response_count, valid_requests);
+
+    CHECK(valid_requests.size() == 2);
+    CHECK(valid_requests[0].start_time_ == request1_timestamp);
+    CHECK(valid_requests[1].start_time_ == request2_timestamp);
+  }
+}
+
+TEST_CASE(
+    "merge_perf_status_reports: testing the MergePerfStatusReports function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    PerfStatus perf_status1{};
+    perf_status1.client_stats.response_count = 8;
+    perf_status1.client_stats.duration_ns = 2000000000;
+
+    PerfStatus perf_status2{};
+    perf_status2.client_stats.response_count = 10;
+    perf_status2.client_stats.duration_ns = 4000000000;
+
+    std::deque<PerfStatus> perf_status{perf_status1, perf_status2};
+    PerfStatus summary_status{};
+
+    cb::Error error{};
+
+    EXPECT_CALL(
+        mock_inference_profiler, MergeServerSideStats(testing::_, testing::_))
+        .WillOnce(testing::Return(cb::Error::Success));
+    EXPECT_CALL(
+        mock_inference_profiler, SummarizeLatency(testing::_, testing::_))
+        .WillOnce(testing::Return(cb::Error::Success));
+
+    error = mock_inference_profiler.MergePerfStatusReports(
+        perf_status, summary_status);
+
+    REQUIRE(error.IsOk() == true);
+    CHECK(summary_status.client_stats.response_count == 18);
+    CHECK(
+        summary_status.client_stats.responses_per_sec == doctest::Approx(3.0));
+  }
+}
+
+TEST_CASE("summarize_client_stat: testing the SummarizeClientStat function")
+{
+  MockInferenceProfiler mock_inference_profiler{};
+
+  SUBCASE("testing logic relevant to response throughput metric")
+  {
+    mock_inference_profiler.parser_ = std::make_shared<MockModelParser>();
+    mock_inference_profiler.manager_ = std::make_unique<MockLoadManager>();
+
+    const cb::InferStat start_stat{};
+    const cb::InferStat end_stat{};
+    const uint64_t duration_ns{2000000000};
+    const size_t valid_request_count{0};
+    const size_t delayed_request_count{0};
+    const size_t valid_sequence_count{0};
+    const size_t response_count{8};
+    PerfStatus summary{};
+
+    cb::Error error{};
+
+    error = mock_inference_profiler.SummarizeClientStat(
+        start_stat, end_stat, duration_ns, valid_request_count,
+        delayed_request_count, valid_sequence_count, response_count, summary);
+
+    REQUIRE(error.IsOk() == true);
+    CHECK(summary.client_stats.response_count == 8);
+    CHECK(summary.client_stats.responses_per_sec == doctest::Approx(4.0));
+  }
+}
 }}  // namespace triton::perfanalyzer

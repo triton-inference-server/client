@@ -59,20 +59,19 @@ LoadManager::CheckHealth()
 }
 
 cb::Error
-LoadManager::SwapTimestamps(TimestampVector& new_timestamps)
+LoadManager::SwapRequestRecords(std::vector<RequestRecord>& new_request_records)
 {
-  TimestampVector total_timestamp;
-  // Gather request timestamps with proper locking from all the worker
-  // threads
+  std::vector<RequestRecord> total_request_records;
+  // Gather request records with proper locking from all the worker threads
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    total_timestamp.insert(
-        total_timestamp.end(), thread_stat->request_timestamps_.begin(),
-        thread_stat->request_timestamps_.end());
-    thread_stat->request_timestamps_.clear();
+    total_request_records.insert(
+        total_request_records.end(), thread_stat->request_records_.begin(),
+        thread_stat->request_records_.end());
+    thread_stat->request_records_.clear();
   }
   // Swap the results
-  total_timestamp.swap(new_timestamps);
+  total_request_records.swap(new_request_records);
   return cb::Error::Success;
 }
 
@@ -82,7 +81,7 @@ LoadManager::CountCollectedRequests()
   uint64_t num_of_requests = 0;
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    num_of_requests += thread_stat->request_timestamps_.size();
+    num_of_requests += thread_stat->request_records_.size();
   }
   return num_of_requests;
 }

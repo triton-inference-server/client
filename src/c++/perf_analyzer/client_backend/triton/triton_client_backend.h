@@ -329,6 +329,10 @@ class TritonInferResult : public InferResult {
   Error RawData(
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override;
+  /// See InferResult::IsFinalResponse()
+  Error IsFinalResponse(bool* is_final_response) const override;
+  /// See InferResult::IsNullResponse()
+  Error IsNullResponse(bool* is_null_response) const override;
 
  private:
   std::unique_ptr<tc::InferResult> result_;
