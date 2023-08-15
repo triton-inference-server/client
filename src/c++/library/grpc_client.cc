@@ -542,7 +542,7 @@ Error
 InferenceServerGrpcClient::IsModelReady(
     bool* ready, const std::string& model_name,
     const std::string& model_version, const Headers& headers,
-    const int timeout_ms = INT_MAX)
+    const int timeout_ms)
 {
   Error err;
 
@@ -1069,8 +1069,7 @@ InferenceServerGrpcClient::RegisterCudaSharedMemory(
 
 Error
 InferenceServerGrpcClient::UnregisterCudaSharedMemory(
-    const std::string& name, const Headers& headers, const int timeout_ms,
-    const int timeout_ms)
+    const std::string& name, const Headers& headers, const int timeout_ms)
 {
   Error err;
 

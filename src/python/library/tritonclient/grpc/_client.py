@@ -264,7 +264,7 @@ class InferenceServerClient(InferenceServerClientBase):
         self.stop_stream()
         self._channel.close()
 
-    def is_server_live(self, headers=None):
+    def is_server_live(self, headers=None, client_timeout=sys.maxint):
         """Contact the inference server and get liveness.
 
         Parameters
@@ -272,6 +272,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request.
 
         Returns
         -------
@@ -289,14 +291,16 @@ class InferenceServerClient(InferenceServerClientBase):
             request = service_pb2.ServerLiveRequest()
             if self._verbose:
                 print("is_server_live, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.ServerLive(request=request, metadata=metadata)
+            response = self._client_stub.ServerLive(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             return response.live
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def is_server_ready(self, headers=None):
+    def is_server_ready(self, headers=None, timeout=sys.intmax):
         """Contact the inference server and get readiness.
 
         Parameters
@@ -304,6 +308,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request.
 
         Returns
         -------
@@ -321,14 +327,18 @@ class InferenceServerClient(InferenceServerClientBase):
             request = service_pb2.ServerReadyRequest()
             if self._verbose:
                 print("is_server_ready, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.ServerReady(request=request, metadata=metadata)
+            response = self._client_stub.ServerReady(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             return response.ready
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def is_model_ready(self, model_name, model_version="", headers=None):
+    def is_model_ready(
+        self, model_name, model_version="", headers=None, client_timeout=sys.maxint
+    ):
         """Contact the inference server and get the readiness of specified model.
 
         Parameters
@@ -342,6 +352,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -363,14 +375,18 @@ class InferenceServerClient(InferenceServerClientBase):
             )
             if self._verbose:
                 print("is_model_ready, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.ModelReady(request=request, metadata=metadata)
+            response = self._client_stub.ModelReady(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             return response.ready
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def get_server_metadata(self, headers=None, as_json=False):
+    def get_server_metadata(
+        self, headers=None, as_json=False, client_timeout=sys.maxint
+    ):
         """Contact the inference server and get its metadata.
 
         Parameters
@@ -386,6 +402,9 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
+        client_timeout: int
+            Optional timeout for the request
+
 
         Returns
         -------
@@ -405,7 +424,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_server_metadata, metadata {}\n{}".format(metadata, request))
             response = self._client_stub.ServerMetadata(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -419,7 +438,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def get_model_metadata(
-        self, model_name, model_version="", headers=None, as_json=False
+        self,
+        model_name,
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=sys.maxint,
     ):
         """Contact the inference server and get the metadata for specified model.
 
@@ -442,6 +466,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -465,7 +491,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_model_metadata, metadata {}\n{}".format(metadata, request))
             response = self._client_stub.ModelMetadata(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -479,7 +505,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def get_model_config(
-        self, model_name, model_version="", headers=None, as_json=False
+        self,
+        model_name,
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=sys.maxint,
     ):
         """Contact the inference server and get the configuration for specified model.
 
@@ -502,6 +533,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -524,7 +557,9 @@ class InferenceServerClient(InferenceServerClientBase):
             )
             if self._verbose:
                 print("get_model_config, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.ModelConfig(request=request, metadata=metadata)
+            response = self._client_stub.ModelConfig(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             if as_json:
@@ -536,7 +571,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def get_model_repository_index(self, headers=None, as_json=False):
+    def get_model_repository_index(
+        self, headers=None, as_json=False, client_timeout=sys.maxint
+    ):
         """Get the index of model repository contents
 
         Parameters
@@ -553,6 +590,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -571,7 +610,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = self._client_stub.RepositoryIndex(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -584,7 +623,14 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def load_model(self, model_name, headers=None, config=None, files=None):
+    def load_model(
+        self,
+        model_name,
+        headers=None,
+        config=None,
+        files=None,
+        client_timeout=sys.maxint,
+    ):
         """Request the inference server to load or reload specified model.
 
         Parameters
@@ -604,6 +650,8 @@ class InferenceServerClient(InferenceServerClientBase):
             The files will form the model directory that the model will be
             loaded from. If specified, 'config' must be provided to be
             the model configuration of the override model directory.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -626,13 +674,21 @@ class InferenceServerClient(InferenceServerClientBase):
             if files is not None:
                 for path, content in files.items():
                     request.parameters[path].bytes_param = content
-            self._client_stub.RepositoryModelLoad(request=request, metadata=metadata)
+            self._client_stub.RepositoryModelLoad(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print("Loaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def unload_model(self, model_name, headers=None, unload_dependents=False):
+    def unload_model(
+        self,
+        model_name,
+        headers=None,
+        unload_dependents=False,
+        client_timeout=sys.maxint,
+    ):
         """Request the inference server to unload specified model.
 
         Parameters
@@ -644,6 +700,8 @@ class InferenceServerClient(InferenceServerClientBase):
             headers to include in the request.
         unload_dependents : bool
             Whether the dependents of the model should also be unloaded.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -657,14 +715,21 @@ class InferenceServerClient(InferenceServerClientBase):
             request.parameters["unload_dependents"].bool_param = unload_dependents
             if self._verbose:
                 print("unload_model, metadata {}\n{}".format(metadata, request))
-            self._client_stub.RepositoryModelUnload(request=request, metadata=metadata)
+            self._client_stub.RepositoryModelUnload(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print("Unloaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
     def get_inference_statistics(
-        self, model_name="", model_version="", headers=None, as_json=False
+        self,
+        model_name="",
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=sys.maxint,
     ):
         """Get the inference statistics for the specified model name and
         version.
@@ -691,6 +756,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -712,7 +779,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = self._client_stub.ModelStatistics(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -726,7 +793,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def update_trace_settings(
-        self, model_name=None, settings={}, headers=None, as_json=False
+        self,
+        model_name=None,
+        settings={},
+        headers=None,
+        as_json=False,
+        client_timeout=sys.maxint,
     ):
         """Update the trace settings for the specified model name, or
         global trace settings if model name is not given.
@@ -754,6 +826,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -785,7 +859,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     "update_trace_settings, metadata {}\n{}".format(metadata, request)
                 )
             response = self._client_stub.TraceSetting(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -798,7 +872,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def get_trace_settings(self, model_name=None, headers=None, as_json=False):
+    def get_trace_settings(
+        self, model_name=None, headers=None, as_json=False, client_timeout=sys.maxint
+    ):
         """Get the trace settings for the specified model name, or global trace
         settings if model name is not given
 
@@ -820,6 +896,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -841,7 +919,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_trace_settings, metadata {}\n{}".format(metadata, request))
             response = self._client_stub.TraceSetting(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -854,7 +932,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def update_log_settings(self, settings, headers=None, as_json=False):
+    def update_log_settings(
+        self, settings, headers=None, as_json=False, client_timeout=sys.maxint
+    ):
         """Update the global log settings.
         Returns the log settings after the update.
         Parameters
@@ -874,6 +954,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
         Returns
         -------
         dict or protobuf message
@@ -900,7 +982,9 @@ class InferenceServerClient(InferenceServerClientBase):
 
             if self._verbose:
                 print("update_log_settings, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.LogSettings(request=request, metadata=metadata)
+            response = self._client_stub.LogSettings(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             if as_json:
@@ -912,7 +996,7 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def get_log_settings(self, headers=None, as_json=False):
+    def get_log_settings(self, headers=None, as_json=False, client_timeout=sys.maxint):
         """Get the global log settings.
         Parameters
         ----------
@@ -928,6 +1012,8 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
+        client_timeout: int
+            Optional timeout for the request
         Returns
         -------
         dict or protobuf message
@@ -943,7 +1029,9 @@ class InferenceServerClient(InferenceServerClientBase):
             request = service_pb2.LogSettingsRequest()
             if self._verbose:
                 print("get_log_settings, metadata {}\n{}".format(metadata, request))
-            response = self._client_stub.LogSettings(request=request, metadata=metadata)
+            response = self._client_stub.LogSettings(
+                request=request, metadata=metadata, timeout=client_timeout
+            )
             if self._verbose:
                 print(response)
             if as_json:
@@ -956,7 +1044,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def get_system_shared_memory_status(
-        self, region_name="", headers=None, as_json=False
+        self, region_name="", headers=None, as_json=False, client_timeout=sys.maxint
     ):
         """Request system shared memory status from the server.
 
@@ -977,6 +1065,8 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -1000,7 +1090,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = self._client_stub.SystemSharedMemoryStatus(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -1014,7 +1104,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def register_system_shared_memory(
-        self, name, key, byte_size, offset=0, headers=None
+        self, name, key, byte_size, offset=0, headers=None, client_timeout=sys.maxint
     ):
         """Request the server to register a system shared memory with the
         following specification.
@@ -1035,6 +1125,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -1054,14 +1146,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             self._client_stub.SystemSharedMemoryRegister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Registered system shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def unregister_system_shared_memory(self, name="", headers=None):
+    def unregister_system_shared_memory(
+        self, name="", headers=None, client_timeout=sys.maxint
+    ):
         """Request the server to unregister a system shared memory with the
         specified name.
 
@@ -1074,6 +1168,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -1091,7 +1187,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             self._client_stub.SystemSharedMemoryUnregister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 if name != "":
@@ -1104,7 +1200,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def get_cuda_shared_memory_status(
-        self, region_name="", headers=None, as_json=False
+        self, region_name="", headers=None, as_json=False, client_timeout=sys.maxint
     ):
         """Request cuda shared memory status from the server.
 
@@ -1125,6 +1221,8 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
+        client_timeout: int
+            Optional timeout for the request
 
         Returns
         -------
@@ -1149,7 +1247,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = self._client_stub.CudaSharedMemoryStatus(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -1163,7 +1261,13 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def register_cuda_shared_memory(
-        self, name, raw_handle, device_id, byte_size, headers=None
+        self,
+        name,
+        raw_handle,
+        device_id,
+        byte_size,
+        headers=None,
+        client_timeout=sys.maxint,
     ):
         """Request the server to register a system shared memory with the
         following specification.
@@ -1181,6 +1285,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -1203,14 +1309,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             self._client_stub.CudaSharedMemoryRegister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Registered cuda shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def unregister_cuda_shared_memory(self, name="", headers=None):
+    def unregister_cuda_shared_memory(
+        self, name="", headers=None, client_timeout=sys.maxint
+    ):
         """Request the server to unregister a cuda shared memory with the
         specified name.
 
@@ -1223,6 +1331,8 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
+        client_timeout: int
+            Optional timeout for the request
 
         Raises
         ------
@@ -1240,7 +1350,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             self._client_stub.CudaSharedMemoryUnregister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 if name != "":
