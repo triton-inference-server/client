@@ -32,7 +32,6 @@ import re
 import shutil
 import subprocess
 import sys
-from distutils.dir_util import copy_tree
 from tempfile import mkstemp
 
 
@@ -51,7 +50,7 @@ def touch(path):
 
 
 def cpdir(src, dest):
-    copy_tree(src, dest, preserve_symlinks=1)
+    shutil.copytree(src, dest, preserve_symlinks=1)
 
 
 def sed(pattern, replace, source, dest=None):
