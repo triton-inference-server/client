@@ -381,22 +381,22 @@ TEST_CASE("perf_utils: Test string input numbers")
 
   SUBCASE("IsPositiveInteger")
   {
-    CHECK(IsPositiveInteger(pos));
-    CHECK(!IsPositiveInteger(neg));
-    CHECK(!IsPositiveInteger(zero));
-    CHECK(!IsPositiveInteger(not_integer));
-    CHECK(!IsPositiveInteger(almost_integer));
-    CHECK(!IsPositiveInteger(empty));
+    CHECK(IsPositiveInteger(pos) == true);
+    CHECK(IsPositiveInteger(neg) == false);
+    CHECK(IsPositiveInteger(zero) == false);
+    CHECK(IsPositiveInteger(not_integer) == false);
+    CHECK(IsPositiveInteger(almost_integer) == false);
+    CHECK(IsPositiveInteger(empty) == false);
   }
 
   SUBCASE("IsNonNegativeInteger")
   {
-    CHECK(IsNonNegativeInteger(pos));
-    CHECK(!IsNonNegativeInteger(neg));
-    CHECK(IsNonNegativeInteger(zero));
-    CHECK(!IsNonNegativeInteger(not_integer));
-    CHECK(!IsNonNegativeInteger(almost_integer));
-    CHECK(!IsNonNegativeInteger(empty));
+    CHECK(IsNonNegativeInteger(pos) == true);
+    CHECK(IsNonNegativeInteger(neg) == false);
+    CHECK(IsNonNegativeInteger(zero) == true);
+    CHECK(IsNonNegativeInteger(not_integer) == false);
+    CHECK(IsNonNegativeInteger(almost_integer) == false);
+    CHECK(IsNonNegativeInteger(empty) == false);
   }
 
   SUBCASE("IsNonNegativeFloat")
@@ -407,17 +407,17 @@ TEST_CASE("perf_utils: Test string input numbers")
     std::string fraction{"0.01"};
     std::string almost_float{"123.01hello"};
 
-    CHECK(IsNonNegativeFloat(pos_float));
-    CHECK(!IsNonNegativeFloat(neg_float));
-    CHECK(IsNonNegativeFloat(zero_float));
-    CHECK(IsNonNegativeFloat(fraction));
-    CHECK(IsNonNegativeFloat(pos));
-    CHECK(!IsNonNegativeFloat(neg));
-    CHECK(IsNonNegativeFloat(zero));
-    CHECK(!IsNonNegativeFloat(not_integer));
-    CHECK(!IsNonNegativeFloat(almost_integer));
-    CHECK(!IsNonNegativeFloat(almost_float));
-    CHECK(!IsNonNegativeFloat(empty));
+    CHECK(IsNonNegativeFloat(pos_float) == true);
+    CHECK(IsNonNegativeFloat(neg_float) == false);
+    CHECK(IsNonNegativeFloat(zero_float) == true);
+    CHECK(IsNonNegativeFloat(fraction) == true);
+    CHECK(IsNonNegativeFloat(pos) == true);
+    CHECK(IsNonNegativeFloat(neg) == false);
+    CHECK(IsNonNegativeFloat(zero) == true);
+    CHECK(IsNonNegativeFloat(not_integer) == false);
+    CHECK(IsNonNegativeFloat(almost_integer) == false);
+    CHECK(IsNonNegativeFloat(almost_float) == false);
+    CHECK(IsNonNegativeFloat(empty) == false);
   }
 }
 
