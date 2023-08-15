@@ -1472,6 +1472,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
         PrintVersion();
         break;
       }
+      case 58: {
+        std::string profile_export_file{optarg};
+        if (IsFile(profile_export_file) || IsDirectory(profile_export_file)) {
+          Usage(
+              "Failed to parse --profile-export-file. Path must not already "
+              "exist.");
+        }
+        params_->profile_export_file = profile_export_file;
+        break;
+      }
       case 'v':
         params_->extra_verbose = params_->verbose;
         params_->verbose = true;
