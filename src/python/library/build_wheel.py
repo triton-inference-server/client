@@ -50,7 +50,7 @@ def touch(path):
 
 
 def cpdir(src, dest):
-    shutil.copytree(src, dest, preserve_symlinks=1)
+    shutil.copytree(src, dest, symlinks=True)
 
 
 def sed(pattern, replace, source, dest=None):
