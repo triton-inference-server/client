@@ -199,6 +199,8 @@ add_executable(
   mock_infer_data_manager.h
   mock_request_rate_worker.h
   mock_sequence_manager.h
+  mock_profile_data_collector.h
+  mock_profile_data_exporter.h
   test_dataloader.cc
   test_inference_profiler.cc
   test_command_line_parser.cc
@@ -216,6 +218,8 @@ add_executable(
   test_sequence_manager.cc
   test_infer_context.cc
   test_ctx_id_tracker.cc
+  test_profile_data_collector.cc
+  test_profile_data_exporter.cc
   $<TARGET_OBJECTS:json-utils-library>
 )
 

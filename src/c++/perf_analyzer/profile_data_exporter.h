@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -33,6 +33,9 @@
 
 namespace triton { namespace perfanalyzer {
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockProfileDataExporter;
+#endif
 
 /// Exports profile data.
 class ProfileDataExporter {
@@ -57,12 +60,10 @@ class ProfileDataExporter {
   /// analyzer
   /// @param raw_version String containing the version number for the json
   /// output
-  void ConvertToJson(
+  virtual void ConvertToJson(
       const std::vector<Experiment>& raw_experiments, std::string& raw_version);
-
-  void OutputToFile(std::string& file_path);
-  void ClearDocument();
-  void AddExperiment(
+  virtual void OutputToFile(std::string& file_path);
+  virtual void AddExperiment(
       rapidjson::Value& entry, rapidjson::Value& experiment,
       const Experiment& raw_experiment);
   void AddRequests(
@@ -76,7 +77,12 @@ class ProfileDataExporter {
       rapidjson::Value& entry, rapidjson::Value& window_boundaries,
       const Experiment& raw_experiment);
   void AddVersion(std::string& raw_version);
+  void ClearDocument();
 
   rapidjson::Document document_{};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockProfileDataExporter;
+#endif
 };
 }}  // namespace triton::perfanalyzer

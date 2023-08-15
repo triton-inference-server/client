@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -23,63 +23,32 @@
 // OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#pragma once
 
+#include "gmock/gmock.h"
 #include "profile_data_collector.h"
-
-#include <memory>
-
-#include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
-cb::Error
-ProfileDataCollector::Create(std::shared_ptr<ProfileDataCollector>* collector)
-{
-  std::shared_ptr<ProfileDataCollector> local_collector{
-      new ProfileDataCollector()};
-  *collector = std::move(local_collector);
-  return cb::Error::Success;
-}
-
-void
-ProfileDataCollector::AddWindow(
-    InferenceLoadMode& id, uint64_t window_start_ns, uint64_t window_end_ns)
-{
-  auto it = FindExperiment(id);
-
-  if (it == experiments_.end()) {
-    Experiment new_experiment{};
-    new_experiment.mode = id;
-    new_experiment.window_boundaries.push_back(window_start_ns);
-    new_experiment.window_boundaries.push_back(window_end_ns);
-
-    experiments_.push_back(new_experiment);
-  } else {
-    // Window timestamps are always increasing so it is safe to check only the
-    // last element
-    if (it->window_boundaries.back() != window_start_ns) {
-      it->window_boundaries.push_back(window_start_ns);
-    }
-    it->window_boundaries.push_back(window_end_ns);
+class NaggyMockProfileDataCollector : public ProfileDataCollector {
+ public:
+  NaggyMockProfileDataCollector()
+  {
+    ON_CALL(*this, FindExperiment(testing::_))
+        .WillByDefault(
+            [this](InferenceLoadMode& id) -> std::vector<Experiment>::iterator {
+              return this->ProfileDataCollector::FindExperiment(id);
+            });
   }
-}
 
-void
-ProfileDataCollector::AddData(
-    InferenceLoadMode& id, std::vector<RequestRecord>&& request_records)
-{
-  auto it = FindExperiment(id);
+  MOCK_METHOD(
+      std::vector<Experiment>::iterator, FindExperiment, (InferenceLoadMode&),
+      (override));
 
-  if (it == experiments_.end()) {
-    Experiment new_experiment{};
-    new_experiment.mode = id;
-    new_experiment.requests = std::move(request_records);
-    experiments_.push_back(new_experiment);
-  } else {
-    it->requests.insert(
-        it->requests.end(), std::make_move_iterator(request_records.begin()),
-        std::make_move_iterator(request_records.end()));
-  }
-}
+  std::vector<Experiment>& experiments_{ProfileDataCollector::experiments_};
+};
+
+using MockProfileDataCollector =
+    testing::NiceMock<NaggyMockProfileDataCollector>;
 
 }}  // namespace triton::perfanalyzer

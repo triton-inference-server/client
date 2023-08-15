@@ -1,4 +1,4 @@
-// Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -71,6 +71,10 @@ struct Experiment {
   std::vector<uint64_t> window_boundaries;
 };
 
+#ifndef DOCTEST_CONFIG_DISABLE
+class NaggyMockProfileDataCollector;
+#endif
+
 /// Data structure and methods for storing profile export data.
 class ProfileDataCollector {
  public:
@@ -79,9 +83,9 @@ class ProfileDataCollector {
 
 
   /// Add a measurement window to the collector
-  /// \param id Identifier for the experiment
-  /// \param window_start_ns The window start timestamp in nanoseconds.
-  /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// @param id Identifier for the experiment
+  /// @param window_start_ns The window start timestamp in nanoseconds.
+  /// @param window_end_ns The window end timestamp in nanoseconds.
   void AddWindow(
       InferenceLoadMode& id, uint64_t window_start_ns, uint64_t window_end_ns);
 
@@ -100,7 +104,8 @@ class ProfileDataCollector {
  private:
   ProfileDataCollector() = default;
 
-  std::vector<Experiment>::iterator FindExperiment(InferenceLoadMode& id)
+  virtual std::vector<Experiment>::iterator FindExperiment(
+      InferenceLoadMode& id)
   {
     return std::find_if(
         experiments_.begin(), experiments_.end(),
@@ -109,5 +114,9 @@ class ProfileDataCollector {
 
   std::vector<Experiment> experiments_{};
   std::string version_{VERSION};
+
+#ifndef DOCTEST_CONFIG_DISABLE
+  friend NaggyMockProfileDataCollector;
+#endif
 };
 }}  // namespace triton::perfanalyzer
