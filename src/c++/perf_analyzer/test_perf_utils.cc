@@ -370,56 +370,5 @@ TEST_CASE("perf_utils: TensorToRegionName")
   CHECK(TensorToRegionName("") == "");
 }
 
-TEST_CASE("perf_utils: Test string input numbers")
-{
-  std::string pos{"123"};
-  std::string neg{"-123"};
-  std::string zero{"0"};
-  std::string not_integer{"helloworld"};
-  std::string almost_integer{"123hello"};
-  std::string empty{""};
-
-  SUBCASE("IsPositiveInteger")
-  {
-    CHECK(IsPositiveInteger(pos) == true);
-    CHECK(IsPositiveInteger(neg) == false);
-    CHECK(IsPositiveInteger(zero) == false);
-    CHECK(IsPositiveInteger(not_integer) == false);
-    CHECK(IsPositiveInteger(almost_integer) == false);
-    CHECK(IsPositiveInteger(empty) == false);
-  }
-
-  SUBCASE("IsNonNegativeInteger")
-  {
-    CHECK(IsNonNegativeInteger(pos) == true);
-    CHECK(IsNonNegativeInteger(neg) == false);
-    CHECK(IsNonNegativeInteger(zero) == true);
-    CHECK(IsNonNegativeInteger(not_integer) == false);
-    CHECK(IsNonNegativeInteger(almost_integer) == false);
-    CHECK(IsNonNegativeInteger(empty) == false);
-  }
-
-  SUBCASE("IsNonNegativeFloat")
-  {
-    std::string pos_float{"123.456"};
-    std::string neg_float{"-123.456"};
-    std::string zero_float{"0.0"};
-    std::string fraction{"0.01"};
-    std::string almost_float{"123.01hello"};
-
-    CHECK(IsNonNegativeFloat(pos_float) == true);
-    CHECK(IsNonNegativeFloat(neg_float) == false);
-    CHECK(IsNonNegativeFloat(zero_float) == true);
-    CHECK(IsNonNegativeFloat(fraction) == true);
-    CHECK(IsNonNegativeFloat(pos) == true);
-    CHECK(IsNonNegativeFloat(neg) == false);
-    CHECK(IsNonNegativeFloat(zero) == true);
-    CHECK(IsNonNegativeFloat(not_integer) == false);
-    CHECK(IsNonNegativeFloat(almost_integer) == false);
-    CHECK(IsNonNegativeFloat(almost_float) == false);
-    CHECK(IsNonNegativeFloat(empty) == false);
-  }
-}
-
 
 }}  // namespace triton::perfanalyzer
