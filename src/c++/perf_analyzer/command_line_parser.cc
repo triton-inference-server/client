@@ -823,7 +823,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->max_threads = std::stoull(max_threads);
           params_->max_threads_specified = true;
         } else {
-          Usage("Failed to parse --max-threads. The value must be > 0.");
+          Usage(
+              "Failed to parse --max-threads. The value must be a positive "
+              "integer.");
         }
         break;
       }
@@ -832,9 +834,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (IsPositiveInteger(sequence_length)) {
           params_->sequence_length = std::stoull(sequence_length);
         } else {
-          std::cerr << "WARNING: The sequence length must be > 0. Perf "
-                       "Analyzer will use default value if it is measuring "
-                       "on sequence model."
+          std::cerr << "WARNING: The sequence length must be a positive "
+                       "integer. Perf Analyzer will use default value if it is "
+                       "measuring on sequence model."
                     << std::endl;
         }
         params_->sequence_length_specified = true;
@@ -887,7 +889,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         } else {
           Usage(
               "Failed to parse --measurement-interval (-p). The value must "
-              "be > 0 msec.");
+              "be a positive integer in msecs.");
         }
         break;
       }
@@ -942,8 +944,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->latency_threshold_ms = threshold > 0 ? threshold : NO_LIMIT;
         } else {
           Usage(
-              "Failed to parse --latency-threshold (-l). The value must be "
-              ">= 0 msecs.");
+              "Failed to parse --latency-threshold (-l). The value must be a "
+              "non-negative integer in msec.");
         }
         break;
       }
@@ -954,8 +956,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->stability_threshold = std::stof(optarg) / 100;
         } else {
           Usage(
-              "Failed to parse --stability-percentage (-s). The value must "
-              "be >= 0.0.");
+              "Failed to parse --stability-percentage (-s). The value must be "
+              "a non-negative floating point number.");
         }
         break;
       }
@@ -965,7 +967,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (IsPositiveInteger(max_trials)) {
           params_->max_trials = std::stoull(max_trials);
         } else {
-          Usage("Failed to parse --max-trials (-r). The value must be > 0.");
+          Usage(
+              "Failed to parse --max-trials (-r). The value must be a positive "
+              "integer.");
         }
         break;
       }
@@ -992,7 +996,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (IsPositiveInteger(string_length)) {
           params_->string_length = std::stoull(string_length);
         } else {
-          Usage("Failed to parse --string-length. The value must be > 0");
+          Usage(
+              "Failed to parse --string-length. The value must be a positive "
+              "integer.");
         }
         break;
       }
@@ -1040,7 +1046,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (IsPositiveInteger(num_of_sequences)) {
           params_->num_of_sequences = std::stoul(num_of_sequences);
         } else {
-          Usage("Failed to parse --num-of-sequences. The value must be > 0.");
+          Usage(
+              "Failed to parse --num-of-sequences. The value must be a "
+              "positive integer.");
         }
         break;
       }
@@ -1104,7 +1112,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         } else {
           Usage(
               "Failed to parse --output-shared-memory-size. The value must "
-              "be >= 0.");
+              "be a non-negative integer.");
         }
         break;
       }
@@ -1171,7 +1179,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
         } else {
           Usage(
               "Failed to parse --measurement-request-count. The value must "
-              "be > 0.");
+              "be a positive integer.");
         }
         break;
       }
@@ -1207,7 +1215,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           if (!IsNonNegativeInteger(sequence_id)) {
             Usage(
                 "Failed to parse --sequence-id-range. The range values must "
-                "be >= 0.");
+                "be a non-negative integer.");
           }
 
           switch (index) {
@@ -1374,8 +1382,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->trace_options["trace_count"] = {trace_count};
         } else {
           Usage(
-              "Failed to parse --trace-count. The value must be >= 0 or set "
-              "to -1 (default).");
+              "Failed to parse --trace-count. The value must be either "
+              "non-negative integer or -1 (default).");
         }
         break;
       }
@@ -1384,7 +1392,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         if (IsNonNegativeInteger(log_frequency)) {
           params_->trace_options["log_frequency"] = {log_frequency};
         } else {
-          Usage("Failed to parse --log-frequency. The value must be >= 0.");
+          Usage(
+              "Failed to parse --log-frequency. The value must be a "
+              "non-negative integer.");
         }
         break;
       }
@@ -1404,8 +1414,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->metrics_interval_ms_specified = true;
         } else {
           Usage(
-              "Failed to parse --metrics-interval. The value must be > 0 "
-              "msecs.");
+              "Failed to parse --metrics-interval. The value must be a "
+              "positive integer in msec.");
         }
         break;
       }
@@ -1499,7 +1509,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->batch_size = std::stoull(batch_size);
           params_->using_batch_size = true;
         } else {
-          Usage("Failed to parse -b (batch size). The value must be > 0.");
+          Usage(
+              "Failed to parse -b (batch size). The value must be a positive "
+              "integer.");
         }
         break;
       }
