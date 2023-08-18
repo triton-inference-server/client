@@ -273,8 +273,12 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -284,7 +288,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get liveness.
+            If unable to get liveness or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -309,9 +313,12 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
-
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
         Returns
         -------
         bool
@@ -320,7 +327,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get readiness.
+            If unable to get readiness or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -353,8 +360,12 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -364,7 +375,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get model readiness.
+            If unable to get model readiness or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -403,8 +414,12 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
 
         Returns
@@ -416,7 +431,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get server metadata.
+            If unable to get server metadata or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -467,8 +482,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -479,7 +498,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get model metadata.
+            If unable to get model metadata or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -534,8 +553,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -546,7 +569,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get model configuration.
+            If unable to get model configuration or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -591,8 +614,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -651,13 +678,17 @@ class InferenceServerClient(InferenceServerClientBase):
             The files will form the model directory that the model will be
             loaded from. If specified, 'config' must be provided to be
             the model configuration of the override model directory.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to load the model.
+            If unable to load the model or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -701,13 +732,17 @@ class InferenceServerClient(InferenceServerClientBase):
             headers to include in the request.
         unload_dependents : bool
             Whether the dependents of the model should also be unloaded.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to unload the model.
+            If unable to unload the model or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -757,13 +792,17 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to get the model inference statistics.
+            If unable to get the model inference statistics or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -827,8 +866,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -839,7 +882,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to update the trace settings.
+            If unable to update the trace settings or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -897,8 +940,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -909,7 +956,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get the trace settings.
+            If unable to get the trace settings or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -955,8 +1002,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
         Returns
         -------
         dict or protobuf message
@@ -965,7 +1016,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to update the log settings.
+            If unable to update the log settings or has timed out.
         """
         metadata = self._get_metadata(headers)
         try:
@@ -1013,8 +1064,12 @@ class InferenceServerClient(InferenceServerClientBase):
             represented as string. It is the caller's responsibility
             to convert these strings back to int64 values as
             necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
         Returns
         -------
         dict or protobuf message
@@ -1023,7 +1078,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get the log settings.
+            If unable to get the log settings or has timed out.
         """
         metadata = self._get_metadata(headers)
         try:
@@ -1066,8 +1121,12 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -1078,7 +1137,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get the status of specified shared memory.
+            If unable to get the status of specified shared memory or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -1126,13 +1185,17 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to register the specified system shared memory.
+            If unable to register the specified system shared memory or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -1169,13 +1232,17 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to unregister the specified system shared memory region.
+            If unable to unregister the specified system shared memory region or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -1222,8 +1289,12 @@ class InferenceServerClient(InferenceServerClientBase):
             are represented as string. It is the caller's
             responsibility to convert these strings back to int64
             values as necessary.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Returns
         -------
@@ -1234,7 +1305,7 @@ class InferenceServerClient(InferenceServerClientBase):
         Raises
         ------
         InferenceServerException
-            If unable to get the status of specified shared memory.
+            If unable to get the status of specified shared memory or has timed out.
 
         """
 
@@ -1286,13 +1357,17 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to register the specified cuda shared memory.
+            If unable to register the specified cuda shared memory or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -1332,13 +1407,17 @@ class InferenceServerClient(InferenceServerClientBase):
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.
-        client_timeout: int
-            Optional timeout for the request.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
 
         Raises
         ------
         InferenceServerException
-            If unable to unregister the specified cuda shared memory region.
+            If unable to unregister the specified cuda shared memory region or has timed out.
 
         """
         metadata = self._get_metadata(headers)
@@ -1686,7 +1765,7 @@ class InferenceServerClient(InferenceServerClientBase):
         ------
         InferenceServerException
             If unable to start a stream or a stream was already running
-            for this client.
+            for this client or has timed out.
 
         """
         if self._stream is not None:
