@@ -417,6 +417,21 @@ IsNonNegativeInteger(const std::string& str)
 }
 
 bool
+IsPositiveFloat(const std::string& str)
+{
+  size_t pos{0};
+  size_t dot_pos = str.find(".", pos);
+  if (dot_pos == std::string::npos) {
+    return IsPositiveInteger(str);
+  } else if (str == "0.0") {
+    return false;
+  } else {
+    return IsNonNegativeInteger(str.substr(0, dot_pos)) &&
+           IsNonNegativeInteger(str.substr(dot_pos + 1));
+  }
+}
+
+bool
 IsNonNegativeFloat(const std::string& str)
 {
   size_t pos{0};

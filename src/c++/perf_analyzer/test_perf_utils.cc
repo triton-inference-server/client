@@ -419,6 +419,27 @@ TEST_CASE("perf_utils: Test string input numbers")
     CHECK(IsNonNegativeFloat(almost_float) == false);
     CHECK(IsNonNegativeFloat(empty) == false);
   }
+
+  SUBCASE("IsPositiveFloat")
+  {
+    std::string pos_float{"123.456"};
+    std::string neg_float{"-123.456"};
+    std::string zero_float{"0.0"};
+    std::string fraction{"0.01"};
+    std::string almost_float{"123.01hello"};
+
+    CHECK(IsPositiveFloat(pos_float) == true);
+    CHECK(IsPositiveFloat(neg_float) == false);
+    CHECK(IsPositiveFloat(zero_float) == false);
+    CHECK(IsPositiveFloat(fraction) == true);
+    CHECK(IsPositiveFloat(pos) == true);
+    CHECK(IsPositiveFloat(neg) == false);
+    CHECK(IsPositiveFloat(zero) == false);
+    CHECK(IsPositiveFloat(not_integer) == false);
+    CHECK(IsPositiveFloat(almost_integer) == false);
+    CHECK(IsPositiveFloat(almost_float) == false);
+    CHECK(IsPositiveFloat(empty) == false);
+  }
 }
 
 
