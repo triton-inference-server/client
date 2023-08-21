@@ -818,6 +818,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
         params_->streaming = true;
         break;
       case 1: {
+        // FIXME (TMA-1307): We should warn the user when they pass float when
+        // the flag expects integer (e.g. 1000.0 vs. 1000). But it should still
+        // work.
         std::string max_threads{optarg};
         if (IsPositiveInteger(max_threads)) {
           params_->max_threads = std::stoull(max_threads);
@@ -827,21 +830,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
               "Failed to parse --max-threads. The value must be a positive "
               "integer.");
         }
-
-        // TODO: We should warn the user when they pass float when the flag
-        // expects integer (e.g. 1000.0 vs. 1000). But it should still work.
-        if (!IsPositiveInteger(max_threads)) {
-          if (IsPositiveFloat(max_threads)) {
-            std::cerr << "" << std::endl;
-          }
-        } else {
-          Usage(
-              "Failed to parse --max-threads. The value must be a positive "
-              "integer.");
-        }
-        params_->max_threads = std::stoull(max_threads);
-        params_->max_threads_specified = true;
-
         break;
       }
       case 2: {
