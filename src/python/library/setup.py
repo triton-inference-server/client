@@ -28,9 +28,10 @@
 
 import os
 import sys
-from itertools import chain
 
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup, Extension
+from itertools import chain
 
 if "--plat-name" in sys.argv:
     PLATFORM_FLAG = sys.argv[sys.argv.index("--plat-name") + 1]
@@ -132,7 +133,14 @@ setup(
     package_data={
         "": platform_package_data,
     },
+    platforms=['linux_x86_64'],
     zip_safe=False,
     cmdclass={"bdist_wheel": bdist_wheel},
     data_files=data_files,
+    ext_modules=[
+        Extension(
+            name="test.extension",
+            sources=[]
+        ),
+    ],
 )

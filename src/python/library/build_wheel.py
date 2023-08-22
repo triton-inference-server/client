@@ -218,7 +218,14 @@ if __name__ == "__main__":
     p.wait()
     fail_if(p.returncode != 0, "setup.py failed")
 
-    cpdir("dist", FLAGS.dest_dir)
+    wenv = os.environ.copy()
+    wenv["VERSION"] = FLAGS.triton_version
+    args = ['auditwheel', 'show', '/tmp/wheel/dist/tritonclient-2.36.0-py3-none-linux_x86_64.whl']
+    p = subprocess.Popen(args, env=wenv)
+    p.wait()
+    fail_if(p.returncode != 0, 'auditwheel failed')
 
+    cpdir('dist', FLAGS.dest_dir)
+    
     print("=== Output wheel file is in: {}".format(FLAGS.dest_dir))
     touch(os.path.join(FLAGS.dest_dir, "stamp.whl"))
