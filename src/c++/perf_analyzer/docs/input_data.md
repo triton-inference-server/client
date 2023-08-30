@@ -45,7 +45,7 @@ of your model. You can select a different input data mode with the
   [`--input-data`](cli.md#--input-datazerorandompath) can be provided multiple
   times with different file paths to specific multiple JSON files.
 
-For tensors with with `STRING`/`BYTES` datatype, the
+For tensors with `STRING`/`BYTES` datatype, the
 [`--string-length`](cli.md#--string-lengthn) and
 [`--string-data`](cli.md#--string-datastring) options may be used in some cases
 (see [`--help`](cli.md#--help) for full documentation).
