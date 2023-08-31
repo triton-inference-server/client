@@ -58,6 +58,9 @@ struct PerfAnalyzerParameters {
   uint64_t measurement_window_ms = 5000;
   bool using_concurrency_range = false;
   Range<uint64_t> concurrency_range{1, 1, 1};
+  bool using_periodic_concurrency_range = false;
+  Range<uint64_t> periodic_concurrency_range{1, 1, 1};
+  uint64_t request_period = 10;
   uint64_t latency_threshold_ms = NO_LIMIT;
   double stability_threshold = 0.1;
   size_t max_trials = 10;

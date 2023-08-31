@@ -88,6 +88,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--measurement-interval (-p) <measurement window (in msec)>"
             << std::endl;
   std::cerr << "\t--concurrency-range <start:end:step>" << std::endl;
+  std::cerr << "\t--periodic-concurrency-range <start:end:step>" << std::endl;
+  std::cerr << "\t--request-period <number of responses>" << std::endl;
   std::cerr << "\t--request-rate-range <start:end:step>" << std::endl;
   std::cerr << "\t--request-distribution <\"poisson\"|\"constant\">"
             << std::endl;
@@ -272,6 +274,31 @@ CLParser::Usage(const std::string& msg)
              "incremented by 'step' till latency threshold is met. 'end' and "
              "--latency-threshold can not be both 0 simultaneously. 'end' can "
              "not be 0 for sequence models while using asynchronous mode.",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             "--periodic-concurrency-range <start:end:step>: Determines the "
+             "range of concurrency levels in the similar manner as the "
+             "--concurrency-range. The perf_analyzer will start from the "
+             "concurrency level of 'start' and go until it reaches 'end' with "
+             "a stride of 'step'. Unlike --concurrency-range, the user can "
+             "specify *when* to periodically increase the concurrency level "
+             "using the --request-period option. The concurrency level will "
+             "periodically increase for every n-th response specified by "
+             "--request-period. Since this disables stability check in "
+             "perf_analyzer and reports response timestamps only, the user "
+             "must provide --profile-export-file to specify where to dump all "
+             "the measured timestamps. The default values of 'start', 'end', "
+             "and 'step' are 1.",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             "--request-period: Indicates the number of responses that each "
+             "request will wait until it launches a new, concurrent "
+             "request when --periodic-concurrency-range is specified. "
+             "Default value is 10.",
              18)
       << std::endl;
   std::cerr
@@ -806,6 +833,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"output-tensor-format", required_argument, 0, 56},
       {"version", no_argument, 0, 57},
       {"profile-export-file", required_argument, 0, 58},
+      {"periodic-concurrency-range", required_argument, 0, 59},
+      {"request-period", required_argument, 0, 60},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1482,6 +1511,51 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->profile_export_file = profile_export_file;
           break;
         }
+        case 59: {
+          params_->using_periodic_concurrency_range = true;
+          std::string arg = optarg;
+          size_t pos = 0;
+          int index = 0;
+          while (pos != std::string::npos) {
+            size_t colon_pos = arg.find(":", pos);
+            if (index > 2) {
+              Usage(
+                  "Failed to parse --periodic-concurrency-range. The value "
+                  "does not match <start:end:step>.");
+            }
+            int64_t val;
+            if (colon_pos == std::string::npos) {
+              val = std::stoull(arg.substr(pos, colon_pos));
+              pos = colon_pos;
+            } else {
+              val = std::stoull(arg.substr(pos, colon_pos - pos));
+              pos = colon_pos + 1;
+            }
+            switch (index) {
+              case 0:
+                params_->periodic_concurrency_range.start = val;
+                break;
+              case 1:
+                params_->periodic_concurrency_range.end = val;
+                break;
+              case 2:
+                params_->periodic_concurrency_range.step = val;
+                break;
+            }
+            index++;
+          }
+
+          break;
+        }
+        case 60: {
+          std::string request_period{optarg};
+          if (std::stoi(request_period) > 0) {
+            params_->request_period = std::stoull(request_period);
+          } else {
+            Usage("Failed to parse --request-period. The value must be > 0");
+          }
+          break;
+        }
         case 'v':
           params_->extra_verbose = params_->verbose;
           params_->verbose = true;
@@ -1644,6 +1718,11 @@ CLParser::VerifyOptions()
         "Cannot specify --concurrency-range and --request-rate-range "
         "simultaneously.");
   }
+
+  // TODO:
+  //   - check if two or more mode is specified
+  //   - check if --profile-export-file is specified
+  //   - check if (end - start) % step == 0
 
   if (params_->using_request_rate_range && params_->mpi_driver->IsMPIRun() &&
       (params_->request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
