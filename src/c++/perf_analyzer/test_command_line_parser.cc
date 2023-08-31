@@ -1171,6 +1171,24 @@ TEST_CASE("Testing Command Line Parser")
     CHECK_RANGE_STEP_VALUE("--periodic-concurrency-range", expected_msg);
   }
 
+  SUBCASE("Option : --request-period")
+  {
+    expected_msg =
+        CreateUsageMessage("--request-period", "The value must be > 0");
+    CHECK_INT_OPTION("--request-period", exp->request_period, expected_msg);
+
+    SUBCASE("set to 0")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--request-period", "0"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    }
+  }
+
   SUBCASE("Option : --latency-threshold")
   {
     expected_msg = CreateUsageMessage(
