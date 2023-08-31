@@ -47,6 +47,105 @@ CHECK_STRING(std::string act, std::string exp)
       !act.compare(exp), "Expecting: '", exp, "', Found: '", act, "'");
 }
 
+#define CHECK_RANGE_PASS(option_name, using_range, start, end, step)         \
+  SUBCASE("only start provided")                                             \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "100"};     \
+                                                                             \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                         \
+    CHECK(!parser.UsageCalled());                                            \
+                                                                             \
+    using_range = true;                                                      \
+    start = 100;                                                             \
+  }                                                                          \
+                                                                             \
+  SUBCASE("start and end provided")                                          \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "100:400"}; \
+                                                                             \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                         \
+    CHECK(!parser.UsageCalled());                                            \
+                                                                             \
+    using_range = true;                                                      \
+    start = 100;                                                             \
+    end = 400;                                                               \
+  }                                                                          \
+                                                                             \
+  SUBCASE("start, end, and step provided")                                   \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {                                                     \
+        app_name, "-m", model_name, option_name, "100:400:10"};              \
+                                                                             \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                         \
+    CHECK(!parser.UsageCalled());                                            \
+                                                                             \
+    using_range = true;                                                      \
+    start = 100;                                                             \
+    end = 400;                                                               \
+    step = 10;                                                               \
+  }
+
+#define CHECK_RANGE_FAIL(option_name, msg)                         \
+  SUBCASE("too many input values")                                 \
+  {                                                                \
+    int argc = 5;                                                  \
+    char* argv[argc] = {                                           \
+        app_name, "-m", model_name, option_name, "200:100:25:10"}; \
+                                                                   \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));               \
+    CHECK(parser.UsageCalled());                                   \
+                                                                   \
+    check_params = false;                                          \
+  }
+
+#define CHECK_RANGE_START_VALUE(option_name, msg)                          \
+  SUBCASE("invalid start value")                                           \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {                                                   \
+        app_name, "-m", model_name, option_name, "bad:400:10"};            \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(parser.UsageCalled());                                           \
+                                                                           \
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg); \
+                                                                           \
+    check_params = false;                                                  \
+  }
+
+#define CHECK_RANGE_END_VALUE(option_name, msg)                            \
+  SUBCASE("invalid end value")                                             \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {                                                   \
+        app_name, "-m", model_name, option_name, "100:bad:10"};            \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(parser.UsageCalled());                                           \
+                                                                           \
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg); \
+                                                                           \
+    check_params = false;                                                  \
+  }
+
+#define CHECK_RANGE_STEP_VALUE(option_name, msg)                           \
+  SUBCASE("invalid step value")                                            \
+  {                                                                        \
+    int argc = 5;                                                          \
+    char* argv[argc] = {                                                   \
+        app_name, "-m", model_name, option_name, "100:400:bad"};           \
+                                                                           \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
+    CHECK(parser.UsageCalled());                                           \
+                                                                           \
+    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg); \
+                                                                           \
+    check_params = false;                                                  \
+  }
+
 std::string
 CreateUsageMessage(const std::string& option_name, const std::string& msg)
 {
@@ -967,49 +1066,26 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --concurrency-range")
   {
-    SUBCASE("expected use")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "100:400:10"};
+    CHECK_RANGE_PASS(
+        "--concurrency-range", exp->using_concurrency_range,
+        exp->concurrency_range.start, exp->concurrency_range.end,
+        exp->concurrency_range.step);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
+    expected_msg = CreateUsageMessage(
+        "--concurrency-range", "The value does not match <start:end:step>.");
+    CHECK_RANGE_FAIL("--concurrency-range", expected_msg);
 
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-      exp->concurrency_range.end = 400;
-      exp->concurrency_range.step = 10;
-    }
+    expected_msg = CreateUsageMessage(
+        "--concurrency-range", "Invalid value provided: bad:400:10");
+    CHECK_RANGE_START_VALUE("--concurrency-range", expected_msg);
 
-    SUBCASE("only two options")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "100:400"};
+    expected_msg = CreateUsageMessage(
+        "--concurrency-range", "Invalid value provided: 100:bad:10");
+    CHECK_RANGE_END_VALUE("--concurrency-range", expected_msg);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-      exp->concurrency_range.end = 400;
-    }
-
-    SUBCASE("only one options")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "100"};
-
-      // QUESTION: What does this mean? Why pass only one?
-      //
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(!parser.UsageCalled());
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-    }
+    expected_msg = CreateUsageMessage(
+        "--concurrency-range", "Invalid value provided: 100:400:bad");
+    CHECK_RANGE_STEP_VALUE("--concurrency-range", expected_msg);
 
     SUBCASE("no options")
     {
@@ -1021,50 +1097,11 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
 
-      // BUG: Usage message does not contain error. Error statement
+      // BUG (TMA-1307): Usage message does not contain error. Error statement
       // "option '--concurrency-range' requires an argument" written directly
       // to std::out
       //
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
-    }
-
-    SUBCASE("too many options")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "200:100:25:10"};
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      expected_msg = CreateUsageMessage(
-          "--concurrency-range", "The value does not match <start:end:step>.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 200;
-      exp->concurrency_range.end = 100;
-      exp->concurrency_range.step = 25;
-    }
-
-    SUBCASE("way too many options")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range",
-          "200:100:25:10:20:30"};
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      expected_msg = CreateUsageMessage(
-          "--concurrency-range", "The value does not match <start:end:step>.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 200;
-      exp->concurrency_range.end = 100;
-      exp->concurrency_range.step = 25;
     }
 
     SUBCASE("wrong separator")
@@ -1076,63 +1113,13 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      // BUG: Should detect this and through an error. User will enter this and
-      // have no clue why the end and step sizes are not used correctly.
+      // BUG (TMA-1307): Should detect this and through an error. User will
+      // enter this and have no clue why the end and step sizes are not used
+      // correctly.
       //
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
-    }
-
-    SUBCASE("bad start value")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "bad:400:10"};
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      expected_msg = CreateUsageMessage(
-          "--concurrency-range", "Invalid value provided: bad:400:10");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      exp->using_concurrency_range = true;
-    }
-
-    SUBCASE("bad end value")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "100:bad:10"};
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      expected_msg = CreateUsageMessage(
-          "--concurrency-range", "Invalid value provided: 100:bad:10");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-    }
-
-    SUBCASE("bad step value")
-    {
-      int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--concurrency-range", "100:400:bad"};
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      expected_msg = CreateUsageMessage(
-          "--concurrency-range", "Invalid value provided: 100:400:bad");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-      exp->concurrency_range.end = 400;
     }
 
     SUBCASE("invalid condition - end and latency threshold are 0")
