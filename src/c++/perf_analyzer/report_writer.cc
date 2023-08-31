@@ -98,17 +98,16 @@ ReportWriter::GenerateReport()
       ofs << ",p" << percentile.first << " latency";
     }
     if (verbose_csv_) {
-      ofs << ",";
       if (percentile_ == -1) {
-        ofs << "Avg latency,";
+        ofs << ",Avg latency";
       }
-      ofs << "request/response,";
-      ofs << "response wait,";
+      ofs << ",request/response";
+      ofs << ",response wait";
       if (should_output_metrics_) {
-        ofs << "Avg GPU Utilization,";
-        ofs << "Avg GPU Power Usage,";
-        ofs << "Max GPU Memory Usage,";
-        ofs << "Total GPU Memory";
+        ofs << ",Avg GPU Utilization";
+        ofs << ",Avg GPU Power Usage";
+        ofs << ",Max GPU Memory Usage";
+        ofs << ",Total GPU Memory";
       }
     }
     ofs << std::endl;
@@ -221,12 +220,11 @@ ReportWriter::GenerateReport()
             status.client_stats.avg_request_time_ns / 1000;
         const uint64_t avg_response_wait_time_us =
             avg_request_time_us - avg_send_time_us - avg_receive_time_us;
-        ofs << ",";
         if (percentile_ == -1) {
-          ofs << avg_latency_us << ",";
+          ofs << "," << avg_latency_us;
         }
-        ofs << std::to_string(avg_send_time_us + avg_receive_time_us) << ",";
-        ofs << std::to_string(avg_response_wait_time_us) << ",";
+        ofs << "," << std::to_string(avg_send_time_us + avg_receive_time_us);
+        ofs << "," << std::to_string(avg_response_wait_time_us);
         if (should_output_metrics_) {
           if (status.metrics.size() == 1) {
             WriteGpuMetrics(ofs, status.metrics[0]);
@@ -371,6 +369,8 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
   auto& gpu_power_usage_map = metric.gpu_power_usage_per_gpu;
   auto& gpu_mem_usage_map = metric.gpu_memory_used_bytes_per_gpu;
   auto& gpu_total_mem_map = metric.gpu_memory_total_bytes_per_gpu;
+  // Currently assume GPU metrics will be appended to existing line
+  ofs << ",";
   for (auto& entry : gpu_util_map) {
     ofs << entry.first << ":" << entry.second << ";";
   }
@@ -386,7 +386,6 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
   for (auto& entry : gpu_total_mem_map) {
     ofs << entry.first << ":" << entry.second << ";";
   }
-  ofs << ",";
 }
 
 }}  // namespace triton::perfanalyzer
