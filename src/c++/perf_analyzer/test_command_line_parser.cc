@@ -1145,6 +1145,32 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
+  SUBCASE("Option: --periodic-concurrency-range")
+  {
+    CHECK_RANGE_PASS(
+        "--periodic-concurrency-range", exp->using_periodic_concurrency_range,
+        exp->periodic_concurrency_range.start,
+        exp->periodic_concurrency_range.end,
+        exp->periodic_concurrency_range.step);
+
+    expected_msg = CreateUsageMessage(
+        "--periodic-concurrency-range",
+        "The value does not match <start:end:step>.");
+    CHECK_RANGE_FAIL("--periodic-concurrency-range", expected_msg);
+
+    expected_msg = CreateUsageMessage(
+        "--periodic-concurrency-range", "Invalid value provided: bad:400:10");
+    CHECK_RANGE_START_VALUE("--periodic-concurrency-range", expected_msg);
+
+    expected_msg = CreateUsageMessage(
+        "--periodic-concurrency-range", "Invalid value provided: 100:bad:10");
+    CHECK_RANGE_END_VALUE("--periodic-concurrency-range", expected_msg);
+
+    expected_msg = CreateUsageMessage(
+        "--periodic-concurrency-range", "Invalid value provided: 100:400:bad");
+    CHECK_RANGE_STEP_VALUE("--periodic-concurrency-range", expected_msg);
+  }
+
   SUBCASE("Option : --latency-threshold")
   {
     expected_msg = CreateUsageMessage(
