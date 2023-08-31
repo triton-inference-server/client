@@ -173,12 +173,34 @@ Specifies the range of concurrency levels covered by Perf Analyzer. Perf
 Analyzer will start from the concurrency level of 'start' and go until 'end'
 with a stride of 'step'.
 
-Default of 'end' and 'step' are `1`. If 'end' is not specified then Perf
-Analyzer will run for a single concurrency level determined by 'start'. If
+Default of 'start', 'end', and 'step' are `1`. If 'end' is not specified then
+Perf Analyzer will run for a single concurrency level determined by 'start'. If
 'end' is set as `0`, then the concurrency limit will be incremented by 'step'
 until the latency threshold is met. 'end' and `--latency-threshold` cannot
 both be `0`. 'end' cannot be `0` for sequence models while using asynchronous
 mode.
+
+#### `--periodic-concurrency-range=<start:end:step>`
+
+Determines the range of concurrency levels in the similar manner as the
+`--concurrency-range`. The perf_analyzer will start from the concurrency level
+of 'start' and go until it reaches 'end' with a stride of 'step'.
+Unlike `--concurrency-range`, the user can specify *when* to periodically
+increase the concurrency level using the `--request-period` option.
+The concurrency level will periodically increase for every `n`-th response
+specified by `--request-period`.
+Since this disables stability check in perf_analyzer and reports response
+timestamps only, the user must provide `--profile-export-file` to specify where
+to dump all the measured response timestamps.
+
+The default values of 'start', 'end', and 'step' are `1`.
+
+#### `--request-period <number of responses>`
+
+Indicates the number of responses that each request will wait until it launches
+a new, concurrent request when `--periodic-concurrency-range` is specified.
+
+Default value is `10`.
 
 #### `--request-rate-range=<start:end:step>`
 
