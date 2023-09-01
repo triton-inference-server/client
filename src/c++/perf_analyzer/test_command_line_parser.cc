@@ -344,13 +344,17 @@ class TestCLParser : public CLParser {
 
 void
 CheckValidRange(
-    char* app_name, char* model_name, char* option_name, TestCLParser& parser,
+    std::vector<char*>& args, char* option_name, TestCLParser& parser,
     PAParamsPtr& act, bool& using_range, Range<uint64_t>& range)
 {
-  SUBCASE("only start provided")
+  SUBCASE("start provided")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100"};
+    args.push_back(option_name);
+    args.push_back("100");  // start
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(!parser.UsageCalled());
@@ -359,10 +363,14 @@ CheckValidRange(
     range.start = 100;
   }
 
-  SUBCASE("start and end provided")
+  SUBCASE("start:end provided")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100:400"};
+    args.push_back(option_name);
+    args.push_back("100:400");  // start:end
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(!parser.UsageCalled());
@@ -372,10 +380,14 @@ CheckValidRange(
     range.end = 400;
   }
 
-  SUBCASE("start, end, and step provided")
+  SUBCASE("start:end:step provided")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100:400:10"};
+    args.push_back(option_name);
+    args.push_back("100:400:10");  // start:end:step
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(!parser.UsageCalled());
@@ -389,16 +401,24 @@ CheckValidRange(
 
 void
 CheckInvalidRange(
-    char* app_name, char* model_name, char* option_name, TestCLParser& parser,
+    std::vector<char*>& args, char* option_name, TestCLParser& parser,
     PAParamsPtr& act, bool& check_params)
 {
   std::string expected_msg;
 
+  // FIXME (TMA-1307): Uncomment the subcase below when the issue is resolved.
+  // Currently the expected error message does not match the actual error
+  // message since TestCLParser ignores the exit statement when the Usage() is
+  // called and proceeds executing the program when it should stop the program.
+  /*
   SUBCASE("too many input values")
   {
-    int argc = 5;
-    char* argv[argc] = {
-        app_name, "-m", model_name, option_name, "200:100:25:10"};
+    args.push_back(option_name);
+    args.push_back("200:100:25:10");
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(parser.UsageCalled());
@@ -409,11 +429,16 @@ CheckInvalidRange(
 
     check_params = false;
   }
+  */
 
   SUBCASE("invalid start value")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "bad:400:10"};
+    args.push_back(option_name);
+    args.push_back("bad:400:10");
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(parser.UsageCalled());
@@ -427,8 +452,12 @@ CheckInvalidRange(
 
   SUBCASE("invalid end value")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100:bad:10"};
+    args.push_back(option_name);
+    args.push_back("100:bad:10");
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(parser.UsageCalled());
@@ -442,8 +471,12 @@ CheckInvalidRange(
 
   SUBCASE("invalid step value")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100:400:bad"};
+    args.push_back(option_name);
+    args.push_back("100:400:bad");
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(parser.UsageCalled());
@@ -455,10 +488,13 @@ CheckInvalidRange(
     check_params = false;
   }
 
-  SUBCASE("no options")
+  SUBCASE("no input values")
   {
-    int argc = 4;
-    char* argv[argc] = {app_name, "-m", model_name, option_name};
+    args.push_back(option_name);
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     opterr = 0;  // Disable error output for GetOpt library for this case
 
@@ -476,8 +512,12 @@ CheckInvalidRange(
 
   SUBCASE("wrong separator")
   {
-    int argc = 5;
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "100,400,10"};
+    args.push_back(option_name);
+    args.push_back("100,400,10");
+
+    int argc = args.size();
+    char* argv[argc];
+    std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
     CHECK(!parser.UsageCalled());
@@ -487,8 +527,6 @@ CheckInvalidRange(
     // correctly.
     //
 
-    // using_range = true;
-    // range.start = 100;
     check_params = false;
   }
 }
@@ -1119,12 +1157,12 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --concurrency-range")
   {
+    std::vector<char*> args{app_name, "-m", model_name};
     CheckValidRange(
-        app_name, model_name, "--concurrency-range", parser, act,
-        exp->using_concurrency_range, exp->concurrency_range);
+        args, "--concurrency-range", parser, act, exp->using_concurrency_range,
+        exp->concurrency_range);
 
-    CheckInvalidRange(
-        app_name, model_name, "--concurrency-range", parser, act, check_params);
+    CheckInvalidRange(args, "--concurrency-range", parser, act, check_params);
 
     SUBCASE("invalid condition - end and latency threshold are 0")
     {
@@ -1149,15 +1187,102 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
-  SUBCASE("Option: --periodic-concurrency-range")
+  SUBCASE("Option : --periodic-concurrency-range")
   {
-    CheckValidRange(
-        app_name, model_name, "--periodic-concurrency-range", parser, act,
-        exp->using_periodic_concurrency_range, exp->periodic_concurrency_range);
+    char* option_name = "--periodic-concurrency-range";
+    std::vector<char*> args{
+        app_name, "-m", model_name, "--profile-export-file", "profile.json"};
 
-    CheckInvalidRange(
-        app_name, model_name, "--periodic-concurrency-range", parser, act,
-        check_params);
+    CheckValidRange(
+        args, option_name, parser, act, exp->using_periodic_concurrency_range,
+        exp->periodic_concurrency_range);
+
+    CheckInvalidRange(args, option_name, parser, act, check_params);
+
+    SUBCASE("more than one load mode")
+    {
+      args.push_back(option_name);
+      args.push_back("100:400");
+      args.push_back("--concurrency-range");
+      args.push_back("10:40");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      expected_msg =
+          "Cannot specify more then one inference load mode. Please choose "
+          "only one of the following modes: --concurrency-range, "
+          "--periodic-concurrency-range, --request-rate-range, or "
+          "--request-intervals.";
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
+    }
+
+    SUBCASE("no export file specified")
+    {
+      std::vector<char*> args_{app_name, "-m", model_name};
+      args_.push_back(option_name);
+      args_.push_back("100:400");
+
+      int argc = args_.size();
+      char* argv[argc];
+      std::copy(args_.begin(), args_.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      expected_msg =
+          "Must provide --profile-export-file when using the "
+          "--periodic-concurrency-range option.";
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
+    }
+
+    SUBCASE("step is not factor of range size")
+    {
+      args.push_back(option_name);
+      args.push_back("100:400:7");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      expected_msg = CreateUsageMessage(
+          option_name,
+          "The <step> value must be a factor of the range size (<end> - "
+          "<start>).");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
+    }
+
+    SUBCASE("step is zero")
+    {
+      args.push_back(option_name);
+      args.push_back("10:400:0");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      expected_msg =
+          CreateUsageMessage(option_name, "The <step> value must be > 0.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
+    }
   }
 
   SUBCASE("Option : --request-period")
@@ -1477,6 +1602,12 @@ TEST_CASE("Testing Command Line Parser")
   }
 
   if (check_params) {
+    if (act == nullptr) {
+      std::cerr << "Error: Attempting to access a null pointer `act` will lead "
+                   "to undefined behavior. Terminating the test."
+                << std::endl;
+      exit(1);
+    }
     CHECK_PARAMS(act, exp);
   }
   optind = 1;  // Reset GotOpt index, needed to parse the next command line

@@ -1545,6 +1545,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
             index++;
           }
 
+          Range<uint64_t> range{params_->periodic_concurrency_range};
+          if (range.step == 0) {
+            Usage(
+                "Failed to parse --periodic-concurrency-range. The <step> "
+                "value must be > 0.");
+          } else if ((range.end - range.start) % range.step != 0) {
+            Usage(
+                "Failed to parse --periodic-concurrency-range. The <step> "
+                "value must be a factor of the range size (<end> - <start>).");
+          }
           break;
         }
         case 60: {
@@ -1713,16 +1723,24 @@ CLParser::VerifyOptions()
     Usage("Cannot use concurrency options with --request-rate-range.");
   }
 
-  if (params_->using_request_rate_range && params_->using_concurrency_range) {
+  std::vector<bool> load_modes{
+      params_->using_periodic_concurrency_range,
+      params_->using_concurrency_range, params_->using_request_rate_range,
+      params_->using_custom_intervals};
+  if (std::count(load_modes.begin(), load_modes.end(), true) > 1) {
     Usage(
-        "Cannot specify --concurrency-range and --request-rate-range "
-        "simultaneously.");
+        "Cannot specify more then one inference load mode. Please choose only "
+        "one of the following modes: --concurrency-range, "
+        "--periodic-concurrency-range, --request-rate-range, or "
+        "--request-intervals.");
   }
 
-  // TODO:
-  //   - check if two or more mode is specified
-  //   - check if --profile-export-file is specified
-  //   - check if (end - start) % step == 0
+  if (params_->using_periodic_concurrency_range &&
+      (params_->profile_export_file == "")) {
+    Usage(
+        "Must provide --profile-export-file when using the "
+        "--periodic-concurrency-range option.");
+  }
 
   if (params_->using_request_rate_range && params_->mpi_driver->IsMPIRun() &&
       (params_->request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
