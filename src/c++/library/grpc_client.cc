@@ -135,12 +135,15 @@ GetStub(
       grpc::CreateCustomChannel(url, credentials, arguments);
   std::shared_ptr<inference::GRPCInferenceService::Stub> stub =
       inference::GRPCInferenceService::NewStub(channel);
-  // Replace if channel / stub have been in the map
-  if (channel_itr != grpc_channel_stub_map_.end()) {
-    channel_itr->second = std::make_tuple(1, channel, stub);
-  } else {
-    grpc_channel_stub_map_.insert(
-        std::make_pair(url, std::make_tuple(1, channel, stub)));
+
+  if (use_cached_channel) {
+    // Replace if channel / stub have been in the map
+    if (channel_itr != grpc_channel_stub_map_.end()) {
+      channel_itr->second = std::make_tuple(1, channel, stub);
+    } else {
+      grpc_channel_stub_map_.insert(
+          std::make_pair(url, std::make_tuple(1, channel, stub)));
+    }
   }
 
   return stub;
