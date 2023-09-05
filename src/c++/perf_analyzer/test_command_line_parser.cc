@@ -1159,19 +1159,24 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --concurrency-range")
   {
+    char* option_name = "--concurrency-range";
+
     CheckValidRange(
-        args, "--concurrency-range", parser, act, exp->using_concurrency_range,
+        args, option_name, parser, act, exp->using_concurrency_range,
         exp->concurrency_range);
 
-    CheckInvalidRange(args, "--concurrency-range", parser, act, check_params);
+    CheckInvalidRange(args, option_name, parser, act, check_params);
 
     SUBCASE("invalid condition - end and latency threshold are 0")
     {
-      int argc = 7;
-      char* argv[argc] = {app_name,   "-m",
-                          model_name, "--concurrency-range",
-                          "100:0:25", "--latency-threshold",
-                          "0"};
+      args.push_back(option_name);
+      args.push_back("100:0:25");
+      args.push_back("--latency-threshold");
+      args.push_back("0");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1180,11 +1185,7 @@ TEST_CASE("Testing Command Line Parser")
           "The end of the search range and the latency limit can not be both 0 "
           "(or 0.0) simultaneously");
 
-      exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-      exp->concurrency_range.end = 0;
-      exp->concurrency_range.step = 25;
-      exp->latency_threshold_ms = 0;
+      check_params = false;
     }
   }
 
