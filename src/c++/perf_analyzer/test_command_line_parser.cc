@@ -1614,9 +1614,10 @@ TEST_CASE("Testing Command Line Parser")
 
   if (check_params) {
     if (act == nullptr) {
-      std::cerr << "Error: Attempting to access a null pointer `act` will lead "
-                   "to undefined behavior. Terminating the test."
-                << std::endl;
+      std::cerr
+          << "Error: Attempting to access `act` but was not initialized. Check "
+             "if the test cases are missing `check_params = false` statement."
+          << std::endl;
       exit(1);
     }
     CHECK_PARAMS(act, exp);
