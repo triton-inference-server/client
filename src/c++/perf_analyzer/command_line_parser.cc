@@ -1735,6 +1735,12 @@ CLParser::VerifyOptions()
         "--request-intervals.");
   }
 
+  if (params_->using_periodic_concurrency_range && !params_->streaming) {
+    Usage(
+        "The --periodic-concurrency-range option requires bi-directional gRPC "
+        "streaming.");
+  }
+
   if (params_->using_periodic_concurrency_range &&
       (params_->profile_export_file == "")) {
     Usage(
