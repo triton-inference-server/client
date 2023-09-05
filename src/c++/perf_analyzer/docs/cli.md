@@ -182,23 +182,23 @@ mode.
 
 #### `--periodic-concurrency-range=<start:end:step>`
 
-Determines the range of concurrency levels in the similar manner as the
-`--concurrency-range`. The perf_analyzer will start from the concurrency level
+Specifies the range of concurrency levels in the similar manner as
+`--concurrency-range`. Perf Analyzer will start from the concurrency level
 of 'start' and go until it reaches 'end' with a stride of 'step'.
 Unlike `--concurrency-range`, the user can specify *when* to periodically
 increase the concurrency level using the `--request-period` option.
 The concurrency level will periodically increase for every `n`-th response
 specified by `--request-period`.
-Since this disables stability check in perf_analyzer and reports response
+Since this disables stability check in Perf Analyzer and reports response
 timestamps only, the user must provide `--profile-export-file` to specify where
 to dump all the measured response timestamps.
 
 The default values of 'start', 'end', and 'step' are `1`.
 
-#### `--request-period <number of responses>`
+#### `--request-period=<n>`
 
-Indicates the number of responses that each request will wait until it launches
-a new, concurrent request when `--periodic-concurrency-range` is specified.
+Specifies the number of responses that each request must receive before new,
+concurrent requests are sent when `--periodic-concurrency-range` is specified.
 
 Default value is `10`.
 
