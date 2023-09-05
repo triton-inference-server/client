@@ -536,7 +536,9 @@ TEST_CASE("Testing Command Line Parser")
 {
   char* model_name = "my_model";
   char* app_name = "test_perf_analyzer";
+
   std::string expected_msg;
+  std::vector<char*> args{app_name, "-m", model_name};
 
   opterr = 1;  // Enable error output for GetOpt library
   bool check_params = true;
@@ -1157,7 +1159,6 @@ TEST_CASE("Testing Command Line Parser")
 
   SUBCASE("Option : --concurrency-range")
   {
-    std::vector<char*> args{app_name, "-m", model_name};
     CheckValidRange(
         args, "--concurrency-range", parser, act, exp->using_concurrency_range,
         exp->concurrency_range);
@@ -1190,8 +1191,10 @@ TEST_CASE("Testing Command Line Parser")
   SUBCASE("Option : --periodic-concurrency-range")
   {
     char* option_name = "--periodic-concurrency-range";
-    std::vector<char*> args{
-        app_name, "-m", model_name, "--profile-export-file", "profile.json"};
+
+    // Add required args that specifies where to dump profiled data
+    args.push_back("--profile-export-file");
+    args.push_back("profile.json");
 
     CheckValidRange(
         args, option_name, parser, act, exp->using_periodic_concurrency_range,
@@ -1225,13 +1228,16 @@ TEST_CASE("Testing Command Line Parser")
 
     SUBCASE("no export file specified")
     {
-      std::vector<char*> args_{app_name, "-m", model_name};
-      args_.push_back(option_name);
-      args_.push_back("100:400");
+      // Remove the required args
+      args.pop_back();
+      args.pop_back();
 
-      int argc = args_.size();
+      args.push_back(option_name);
+      args.push_back("100:400");
+
+      int argc = args.size();
       char* argv[argc];
-      std::copy(args_.begin(), args_.end(), argv);
+      std::copy(args.begin(), args.end(), argv);
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
@@ -1293,8 +1299,12 @@ TEST_CASE("Testing Command Line Parser")
 
     SUBCASE("set to 0")
     {
-      int argc = 5;
-      char* argv[argc] = {app_name, "-m", model_name, "--request-period", "0"};
+      args.push_back("--request-period");
+      args.push_back("0");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(parser.UsageCalled());
