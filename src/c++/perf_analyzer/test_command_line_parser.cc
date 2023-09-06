@@ -1194,8 +1194,13 @@ TEST_CASE("Testing Command Line Parser")
     char* option_name = "--periodic-concurrency-range";
 
     // Add required args that specifies where to dump profiled data
-    args.push_back("--profile-export-file");
-    args.push_back("profile.json");
+    args.insert(
+        args.end(), {"-i", "grpc", "--async", "--streaming",
+                     "--profile-export-file", "profile.json"});
+    exp->protocol = cb::ProtocolType::GRPC;
+    exp->async = true;
+    exp->streaming = true;
+    exp->url = "localhost:8001";  // gRPC url
 
     CheckValidRange(
         args, option_name, parser, act, exp->using_periodic_concurrency_range,
@@ -1229,7 +1234,7 @@ TEST_CASE("Testing Command Line Parser")
 
     SUBCASE("no export file specified")
     {
-      // Remove the required args
+      // Remove the export file args
       args.pop_back();
       args.pop_back();
 
