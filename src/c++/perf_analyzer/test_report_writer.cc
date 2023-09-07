@@ -52,7 +52,7 @@ TEST_CASE("testing WriteGpuMetrics")
   SUBCASE("single gpu complete output")
   {
     trw.WriteGpuMetrics(actual_output, m);
-    const std::string expected_output{"a:1;,a:2.2;,a:3;,a:4;,"};
+    const std::string expected_output{",a:1;,a:2.2;,a:3;,a:4;"};
     CHECK(actual_output.str() == expected_output);
   }
 
@@ -60,7 +60,7 @@ TEST_CASE("testing WriteGpuMetrics")
   {
     m.gpu_power_usage_per_gpu.erase("a");
     trw.WriteGpuMetrics(actual_output, m);
-    const std::string expected_output{"a:1;,,a:3;,a:4;,"};
+    const std::string expected_output{",a:1;,,a:3;,a:4;"};
     CHECK(actual_output.str() == expected_output);
   }
 
@@ -75,7 +75,7 @@ TEST_CASE("testing WriteGpuMetrics")
     {
       trw.WriteGpuMetrics(actual_output, m);
       const std::string expected_output{
-          "a:1;z:100;,a:2.2;z:222.2;,a:3;z:45;,a:4;z:89;,"};
+          ",a:1;z:100;,a:2.2;z:222.2;,a:3;z:45;,a:4;z:89;"};
       CHECK(actual_output.str() == expected_output);
     }
 
@@ -84,7 +84,7 @@ TEST_CASE("testing WriteGpuMetrics")
       m.gpu_utilization_per_gpu.erase("z");
       m.gpu_power_usage_per_gpu.erase("a");
       trw.WriteGpuMetrics(actual_output, m);
-      const std::string expected_output{"a:1;,z:222.2;,a:3;z:45;,a:4;z:89;,"};
+      const std::string expected_output{",a:1;,z:222.2;,a:3;z:45;,a:4;z:89;"};
       CHECK(actual_output.str() == expected_output);
     }
   }
