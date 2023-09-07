@@ -33,7 +33,7 @@ import grpc
 from tritonclient.utils import *
 
 from ._infer_result import InferResult
-from ._utils import get_error_grpc, raise_error
+from ._utils import CancelledError, get_error_grpc, raise_error
 
 
 class _InferStream:
@@ -57,18 +57,25 @@ class _InferStream:
         self._verbose = verbose
         self._request_queue = queue.Queue()
         self._handler = None
+        self._cancelled = False
         self._active = True
+        self._response_iterator = None
 
     def __del__(self):
         self.close()
 
-    def close(self):
+    def close(self, cancel_requests=False):
         """Gracefully close underlying gRPC streams. Note that this call
         blocks till response of all currently enqueued requests are not
         received.
         """
+        if cancel_requests and self._response_iterator:
+            self._response_iterator.cancel()
+            self._cancelled = True
+
         if self._handler is not None:
-            self._request_queue.put(None)
+            if not self._cancelled:
+                self._request_queue.put(None)
             if self._handler.is_alive():
                 self._handler.join()
                 if self._verbose:
@@ -85,12 +92,11 @@ class _InferStream:
             The iterator over the gRPC response stream.
 
         """
+        self._response_iterator = response_iterator
         if self._handler is not None:
             raise_error("Attempted to initialize already initialized InferStream")
         # Create a new thread to handle the gRPC response stream
-        self._handler = threading.Thread(
-            target=self._process_response, args=(response_iterator,)
-        )
+        self._handler = threading.Thread(target=self._process_response)
         self._handler.start()
         if self._verbose:
             print("stream started...")
@@ -129,19 +135,13 @@ class _InferStream:
         request = self._request_queue.get()
         return request
 
-    def _process_response(self, responses):
+    def _process_response(self):
         """Worker thread function to iterate through the response stream and
         executes the provided callbacks.
 
-        Parameters
-        ----------
-        responses : iterator
-            The iterator to the response from the server for the
-            requests in the stream.
-
         """
         try:
-            for response in responses:
+            for response in self._response_iterator:
                 if self._verbose:
                     print(response)
                 result = error = None
@@ -155,8 +155,11 @@ class _InferStream:
             # can still be used. The stream won't be closed here as the thread
             # executing this function is managed by stream and may cause
             # circular wait
-            self._active = responses.is_active()
-            error = get_error_grpc(rpc_error)
+            self._active = self._response_iterator.is_active()
+            if rpc_error.cancelled:
+                error = CancelledError()
+            else:
+                error = get_error_grpc(rpc_error)
             self._callback(result=None, error=error)
 
 

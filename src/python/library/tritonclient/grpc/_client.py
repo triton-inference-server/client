@@ -39,6 +39,7 @@ from .._request import Request
 from ._infer_result import InferResult
 from ._infer_stream import _InferStream, _RequestIterator
 from ._utils import (
+    CancelledError,
     _get_inference_request,
     _grpc_compression_type,
     get_error_grpc,
@@ -1391,10 +1392,13 @@ class InferenceServerClient(InferenceServerClientBase):
         callback : function
             Python function that is invoked once the request is completed.
             The function must reserve the last two arguments (result, error)
-            to hold InferResult and InferenceServerException objects
-            respectively which will be provided to the function when executing
-            the callback. The ownership of these objects will be given to the
-            user. The 'error' would be None for a successful inference.
+            to hold InferResult and InferenceServerException(or CancelledError)
+            objects respectively which will be provided to the function when
+            executing the callback. The ownership of these objects will be given
+            to the user. The 'error' would be None for a successful inference.
+            Note if the request is cancelled using the returned future object,
+            error provided to callback will be a CancelledError exception
+            object.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
@@ -1451,6 +1455,26 @@ class InferenceServerClient(InferenceServerClientBase):
             Optional custom parameters to be included in the inference
             request.
 
+        Returns
+        -------
+        grpc.future
+            A representation of a computation in another control flow.
+            Computations represented by a Future may be yet to be begun,
+            may be ongoing, or may have already completed.
+
+            This object can be used to cancel the inference request like
+            below:
+            ----------
+            future = async_infer(...)
+            ret = future.cancel()
+            ----------
+            See here for more details of future object:
+            https://grpc.github.io/grpc/python/grpc.html#grpc.Future
+
+            The callback will be invoked with
+            (result=None, error=CancelledError) for the requests that
+            were successfully cancelled.
+
         Raises
         ------
         InferenceServerException
@@ -1466,6 +1490,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 result = InferResult(response)
             except grpc.RpcError as rpc_error:
                 error = get_error_grpc(rpc_error)
+            except grpc.FutureCancelledError:
+                error = CancelledError()
             callback(result=result, error=error)
 
         metadata = self._get_metadata(headers)
@@ -1502,6 +1528,7 @@ class InferenceServerClient(InferenceServerClientBase):
                 if request_id != "":
                     verbose_message = verbose_message + " '{}'".format(request_id)
                 print(verbose_message)
+            return self._call_future
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
@@ -1518,10 +1545,13 @@ class InferenceServerClient(InferenceServerClientBase):
             Python function that is invoked upon receiving response from
             the underlying stream. The function must reserve the last two
             arguments (result, error) to hold InferResult and
-            InferenceServerException objects respectively which will be
-            provided to the function when executing the callback. The
-            ownership of these objects will be given to the user. The
-            'error' would be None for a successful inference.
+            InferenceServerException(or CancelledError) objects respectively
+            which will be provided to the function when executing the callback.
+            The ownership of these objects will be given to the user. The 'error'
+            would be None for a successful inference.
+            Note if the stream is closed with cancel_requests set True, then
+            the error provided to callback will be a CancelledError object.
+
         stream_timeout : float
             Optional stream timeout (in seconds). The stream will be closed
             once the specified timeout expires.
@@ -1561,10 +1591,19 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    def stop_stream(self):
-        """Stops a stream if one available."""
+    def stop_stream(self, cancel_requests=False):
+        """Stops a stream if one available.
+
+        Parameters
+        ----------
+        cancel_requests : bool
+            If set True, then client cancels all the pending requests
+            and closes the stream. If set False, the call blocks till
+            all the pending requests on the stream are processed.
+
+        """
         if self._stream is not None:
-            self._stream.close()
+            self._stream.close(cancel_requests)
         self._stream = None
 
     def async_stream_infer(

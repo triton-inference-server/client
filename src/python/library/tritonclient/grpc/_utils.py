@@ -31,6 +31,10 @@ from tritonclient.grpc import service_pb2
 from tritonclient.utils import *
 
 
+class CancelledError(Exception):
+    """Indicates that the issued operation was cancelled."""
+
+
 def get_error_grpc(rpc_error):
     """Convert a gRPC error to an InferenceServerException.
 
