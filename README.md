@@ -120,10 +120,10 @@ that can be installed using a recent version of pip.
 $ pip install tritonclient[all]
 ```
 
-Using *all* installs both the HTTP/REST and GRPC client
-libraries. There are two optional packages available, *grpc* and
+Using *all* installs both the HTTP/REST, CUDA and GRPC client
+libraries. There are three optional packages available, *cuda*, *grpc*, and
 *http* that can be used to install support specifically for the
-protocol. For example, to install only the HTTP/REST client library
+protocol or for memory handling with cuda. For example, to install only the HTTP/REST client library
 use,
 
 ```
@@ -134,7 +134,7 @@ The components of the install packages are:
 
 * http
 * grpc [ `service_pb2`, `service_pb2_grpc`, `model_config_pb2` ]
-* utils [ linux distribution will include `shared_memory` and `cuda_shared_memory`]
+* cuda [ linux distribution will include `shared_memory` and `cuda_shared_memory`]
 
 The Linux version of the package also includes the
 [perf_analyzer](src/c++/perf_analyzer/README.md)
