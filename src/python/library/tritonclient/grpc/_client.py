@@ -1475,7 +1475,7 @@ class InferenceServerClient(InferenceServerClientBase):
         CallContext
             A representation of a computation in another control flow.
             Computations represented by a Future may be yet to be begun,
-            may be ongoing, or may have already completed.
+            ongoing, or have already completed.
 
             This object can be used to cancel the inference request like
             below:
