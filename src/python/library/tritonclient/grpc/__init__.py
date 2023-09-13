@@ -36,7 +36,7 @@ try:
     from ._infer_input import InferInput
     from ._infer_result import InferResult
     from ._requested_output import InferRequestedOutput
-    from ._utils import CancelledError, raise_error, raise_error_grpc
+    from ._utils import raise_error, raise_error_grpc
 except ModuleNotFoundError as error:
     raise RuntimeError(
         "The installation does not include grpc support. "

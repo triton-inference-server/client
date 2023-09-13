@@ -33,7 +33,7 @@ import grpc
 from tritonclient.utils import *
 
 from ._infer_result import InferResult
-from ._utils import CancelledError, get_error_grpc, raise_error
+from ._utils import get_cancelled_error, get_error_grpc, raise_error
 
 
 class _InferStream:
@@ -65,9 +65,11 @@ class _InferStream:
         self.close()
 
     def close(self, cancel_requests=False):
-        """Gracefully close underlying gRPC streams. Note that this call
-        blocks till response of all currently enqueued requests are not
-        received.
+        """Gracefully close underlying gRPC streams.
+        If cancel_requests is set True, then client cancels all the
+        pending requests and closes the stream. If set False, the
+        call blocks till all the pending requests on the stream are
+        processed.
         """
         if cancel_requests and self._response_iterator:
             self._response_iterator.cancel()
@@ -157,7 +159,7 @@ class _InferStream:
             # circular wait
             self._active = self._response_iterator.is_active()
             if rpc_error.cancelled:
-                error = CancelledError()
+                error = get_cancelled_error()
             else:
                 error = get_error_grpc(rpc_error)
             self._callback(result=None, error=error)

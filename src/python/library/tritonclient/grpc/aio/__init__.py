@@ -602,10 +602,17 @@ class InferenceServerClient(InferenceServerClientBase):
             cancellation if required. This can be attained
             by following:
             -------
-            call = await client.infer(..., get_call_obj=True)
-            call.cancel()
+            generator = client.infer(..., get_call_obj=True)
+            grpc_call = await anext(generator)
+            grpc_call.cancel()
             -------
 
+        Returns
+        -------
+        async_generator
+            If get_call_obj is set True, then it generates the
+            streaming_call object before generating the inference
+            results.
 
         """
 
@@ -679,8 +686,8 @@ class InferenceServerClient(InferenceServerClientBase):
             The call object can be used to cancel the execution of the
             ongoing stream and exit. This can be done like below:
             -------
-            async_generator = await client.infer(..., get_call_obj=True)
-            streaming_call = await response_iterator.__next__()
+            async_generator = client.stream_infer(..., get_call_obj=True)
+            streaming_call = await anext(response_iterator)
             streaming_call.cancel()
             -------
 
@@ -688,8 +695,8 @@ class InferenceServerClient(InferenceServerClientBase):
         -------
         async_generator
             Yield tuple holding (InferResult, InferenceServerException) objects.
-            If get_call_obj is set True, then it yields the streaming_call
-            object before yielding the tuples.
+            If get_call_obj is set True, then it first generates streaming_call
+            object associated with the call before generating these tuples.
 
         Raises
         ------

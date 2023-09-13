@@ -39,9 +39,9 @@ from .._request import Request
 from ._infer_result import InferResult
 from ._infer_stream import _InferStream, _RequestIterator
 from ._utils import (
-    CancelledError,
     _get_inference_request,
     _grpc_compression_type,
+    get_cancelled_error,
     get_error_grpc,
     raise_error,
     raise_error_grpc,
@@ -1392,13 +1392,10 @@ class InferenceServerClient(InferenceServerClientBase):
         callback : function
             Python function that is invoked once the request is completed.
             The function must reserve the last two arguments (result, error)
-            to hold InferResult and InferenceServerException(or CancelledError)
+            to hold InferResult and InferenceServerException
             objects respectively which will be provided to the function when
             executing the callback. The ownership of these objects will be given
             to the user. The 'error' would be None for a successful inference.
-            Note if the request is cancelled using the returned future object,
-            error provided to callback will be a CancelledError exception
-            object.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
@@ -1471,9 +1468,6 @@ class InferenceServerClient(InferenceServerClientBase):
             See here for more details of future object:
             https://grpc.github.io/grpc/python/grpc.html#grpc.Future
 
-            The callback will be invoked with
-            (result=None, error=CancelledError) for the requests that
-            were successfully cancelled.
 
         Raises
         ------
@@ -1490,8 +1484,8 @@ class InferenceServerClient(InferenceServerClientBase):
                 result = InferResult(response)
             except grpc.RpcError as rpc_error:
                 error = get_error_grpc(rpc_error)
-            except grpc.FutureCancelledError:
-                error = CancelledError()
+            except grpc.FutureCancelledError as err:
+                error = get_cancelled_error()
             callback(result=result, error=error)
 
         metadata = self._get_metadata(headers)
@@ -1545,12 +1539,10 @@ class InferenceServerClient(InferenceServerClientBase):
             Python function that is invoked upon receiving response from
             the underlying stream. The function must reserve the last two
             arguments (result, error) to hold InferResult and
-            InferenceServerException(or CancelledError) objects respectively
+            InferenceServerException objects respectively
             which will be provided to the function when executing the callback.
             The ownership of these objects will be given to the user. The 'error'
             would be None for a successful inference.
-            Note if the stream is closed with cancel_requests set True, then
-            the error provided to callback will be a CancelledError object.
 
         stream_timeout : float
             Optional stream timeout (in seconds). The stream will be closed
