@@ -98,6 +98,24 @@ class KeepAliveOptions:
         self.http2_max_pings_without_data = http2_max_pings_without_data
 
 
+class CallContext():
+    """ This is a wrapper over grpc future call which can be used to
+    issue cancellation on an ongoing RPC call.
+
+    Parameters
+    ----------
+    grpc_future : gRPC.Future
+        The future tracking gRPC call.
+    """
+    def __init__(self, grpc_future):
+        self._grpc_future = grpc_future
+
+    def cancel(self):
+        """Issues cancellation on the underlying request.
+        """
+        self._grpc_future.cancel()
+
+
 class InferenceServerClient(InferenceServerClientBase):
     """An InferenceServerClient object is used to perform any kind of
     communication with the InferenceServer using gRPC protocol. Most
@@ -1454,7 +1472,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         Returns
         -------
-        grpc.future
+        CallContext
             A representation of a computation in another control flow.
             Computations represented by a Future may be yet to be begun,
             may be ongoing, or may have already completed.
@@ -1465,8 +1483,6 @@ class InferenceServerClient(InferenceServerClientBase):
             future = async_infer(...)
             ret = future.cancel()
             ----------
-            See here for more details of future object:
-            https://grpc.github.io/grpc/python/grpc.html#grpc.Future
 
 
         Raises
@@ -1516,13 +1532,13 @@ class InferenceServerClient(InferenceServerClientBase):
                 timeout=client_timeout,
                 compression=_grpc_compression_type(compression_algorithm),
             )
-            self._call_future.add_done_callback(wrapped_callback)
             if self._verbose:
                 verbose_message = "Sent request"
                 if request_id != "":
                     verbose_message = verbose_message + " '{}'".format(request_id)
                 print(verbose_message)
-            return self._call_future
+            self._call_future.add_done_callback(wrapped_callback)
+            return CallContext(self._call_future)
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 

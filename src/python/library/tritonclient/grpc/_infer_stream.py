@@ -62,7 +62,7 @@ class _InferStream:
         self._response_iterator = None
 
     def __del__(self):
-        self.close()
+        self.close(cancel_requests=True)
 
     def close(self, cancel_requests=False):
         """Gracefully close underlying gRPC streams.
