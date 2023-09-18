@@ -98,8 +98,8 @@ class KeepAliveOptions:
         self.http2_max_pings_without_data = http2_max_pings_without_data
 
 
-class CallContext():
-    """ This is a wrapper over grpc future call which can be used to
+class CallContext:
+    """This is a wrapper over grpc future call which can be used to
     issue cancellation on an ongoing RPC call.
 
     Parameters
@@ -107,12 +107,12 @@ class CallContext():
     grpc_future : gRPC.Future
         The future tracking gRPC call.
     """
+
     def __init__(self, grpc_future):
         self._grpc_future = grpc_future
 
     def cancel(self):
-        """Issues cancellation on the underlying request.
-        """
+        """Issues cancellation on the underlying request."""
         self._grpc_future.cancel()
 
 
