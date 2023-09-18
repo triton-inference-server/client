@@ -52,6 +52,7 @@ JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.gi
 JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 CMAKE_VERSION=${CMAKE_VERSION:="3.21.1"}
 export JAR_INSTALL_PATH="/workspace/install/java-api-bindings"
+# Note: Following bashscript convention where True/success == 0 and False == 1
 export INCLUDE_DEVELOPER_TOOLS_SERVER=1
 KEEP_BUILD_DEPENDENCIES=1
 
