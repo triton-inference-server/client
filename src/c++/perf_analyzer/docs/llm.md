@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
-(LLMs) using Triton with vLLM.
+(LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
 
 ### Setup model/server environment
 
@@ -77,7 +77,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 3. Run PA
+#### 3. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -143,7 +143,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 3. Run PA
+#### 3. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
