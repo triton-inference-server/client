@@ -36,11 +36,12 @@ Installs Maven, Java JDK and builds Tritonserver Java bindings
 -j|--jar-install-path             Path to install the bindings .jar
 --javacpp-branch                  Javacpp-presets git path, default is https://github.com/bytedeco/javacpp-presets.git
 --javacpp-tag                     Javacpp-presets branch tag, default "master"
---enable-developer-tools-server  Include C++ bindings from developer_tools repository
+--enable-developer-tools-server   Include C++ bindings from developer_tools repository
+--keep-build-dependencies         Keep build dependencies instead of deleting
 "
 
 # Get all options:
-OPTS=$(getopt -l ht:b:v:c:j:,help,triton-home,build-home:,maven-version:,core-tag:,jar-install-path:,javacpp-branch:,javacpp-tag:,enable-developer-tools-server -- "$@")
+OPTS=$(getopt -l ht:b:v:c:j:,help,triton-home,build-home:,maven-version:,core-tag:,jar-install-path:,javacpp-branch:,javacpp-tag:,enable-developer-tools-server,keep-build-dependencies -- "$@")
 
 TRITON_HOME="/opt/tritonserver"
 BUILD_HOME="/tmp/build"
@@ -51,7 +52,9 @@ JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.gi
 JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 CMAKE_VERSION=${CMAKE_VERSION:="3.21.1"}
 export JAR_INSTALL_PATH="/workspace/install/java-api-bindings"
+# Note: Following bashscript convention where True/success == 0 and False == 1
 export INCLUDE_DEVELOPER_TOOLS_SERVER=1
+KEEP_BUILD_DEPENDENCIES=1
 
 for OPTS; do
     case "$OPTS" in
@@ -66,11 +69,13 @@ for OPTS; do
         ;;
         -b|--build-home)
         BUILD_HOME=$2
+        export MAVEN_PATH=${BUILD_HOME}/apache-maven-${MAVEN_VERSION}/bin/mvn
         shift 2
         echo "Build home set to: ${BUILD_HOME}"
         ;;
         -v|--maven-version)
         MAVEN_VERSION=$2
+        export MAVEN_PATH=${BUILD_HOME}/apache-maven-${MAVEN_VERSION}/bin/mvn
         echo "Maven version is set to: ${MAVEN_VERSION}"
         shift 2
         ;;
@@ -96,6 +101,10 @@ for OPTS; do
         ;;
         --enable-developer-tools-server)
         export INCLUDE_DEVELOPER_TOOLS_SERVER=0
+        echo "Including developer tools server C++ bindings"
+        ;;
+        --keep-build-dependencies)
+        KEEP_BUILD_DEPENDENCIES=0
         echo "Including developer tools server C++ bindings"
         ;;
     esac
@@ -128,14 +137,22 @@ cd ${BUILD_HOME}
 git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
 
-${MAVEN_PATH} clean install --projects .,tritonserver
-${MAVEN_PATH} clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
+# Remove developer_tools/server related build
+if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
+    rm -r tritonserver/src/gen
+    rm tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritondevelopertoolsserver.java
+fi
+
+mvn clean install --projects .,tritonserver
+mvn clean install -f platform --projects ../tritonserver/platform -Djavacpp.platform=linux-x86_64
 
 # Copy over the jar to a specific location
 mkdir -p ${JAR_INSTALL_PATH}
 cp ${BUILD_HOME}/javacpp-presets/tritonserver/platform/target/tritonserver-platform-*shaded.jar ${JAR_INSTALL_PATH}/tritonserver-java-bindings.jar
 
-rm -r ${BUILD_HOME}/javacpp-presets/
-rm -r /root/.m2/repository
+if [ ${KEEP_BUILD_DEPENDENCIES} -eq 1 ]; then
+    rm -r ${BUILD_HOME}/javacpp-presets/
+    rm -r /root/.m2/repository
+fi
 
 set +x
