@@ -109,11 +109,11 @@ class CallContext:
     """
 
     def __init__(self, grpc_future):
-        self._grpc_future = grpc_future
+        self.__grpc_future = grpc_future
 
     def cancel(self):
         """Issues cancellation on the underlying request."""
-        self._grpc_future.cancel()
+        self.__grpc_future.cancel()
 
 
 class InferenceServerClient(InferenceServerClientBase):
