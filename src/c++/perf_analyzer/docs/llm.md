@@ -95,7 +95,7 @@ perf_analyzer \
 #### 4. Calculate average first-token latency
 
 ```bash
-python3 calculate_avg_first_token_latency.py
+python3 examples/calculate_avg_first_token_latency.py
 # Average first-token latency: 0.3065654714375 s
 ```
 
@@ -161,7 +161,7 @@ perf_analyzer \
 #### 4. Calculate average token-to-token latency
 
 ```bash
-python3 calculate_avg_token_to_token_latency.py
+python3 examples/calculate_avg_token_to_token_latency.py
 # Average token-to-token latency: 0.003090155677419355 s
 ```
 
