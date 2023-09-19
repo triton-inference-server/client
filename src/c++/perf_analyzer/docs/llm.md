@@ -28,6 +28,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Benchmarking LLM
 
+**Note**
+These benchmarks currently only work with Perf Analyzer built from the latest
+`main` branch. See
+[build from source instructions](install.md#build-from-source). If you are using
+Perf Analyzer from the Triton SDK container (e.g.
+`nvcr.io/nvidia/tritonserver:<xx.yy>-py3-sdk`), you will need to wait until the
+`23.09` container is released.
+
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
