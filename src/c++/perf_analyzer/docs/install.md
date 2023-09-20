@@ -90,7 +90,7 @@ cmake -DTRITON_ENABLE_PERF_ANALYZER=ON ..
 
 make -j8 cc-clients
 
-cc-clients/install/bin/perf_analyzer -m <model>
+cc-clients/perf_analyzer/perf_analyzer -m <model>
 ```
 
 - To enable
