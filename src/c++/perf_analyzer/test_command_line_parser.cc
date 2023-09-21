@@ -493,26 +493,6 @@ CheckInvalidRange(
 
     check_params = false;
   }
-
-  SUBCASE("wrong separator")
-  {
-    args.push_back(option_name);
-    args.push_back("100,400,10");
-
-    int argc = args.size();
-    char* argv[argc];
-    std::copy(args.begin(), args.end(), argv);
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
-    // BUG (TMA-1307): Should detect this and through an error. User will
-    // enter this and have no clue why the end and step sizes are not used
-    // correctly.
-    //
-
-    check_params = false;
-  }
 }
 
 
@@ -1166,6 +1146,26 @@ TEST_CASE("Testing Command Line Parser")
         exp->concurrency_range);
 
     CheckInvalidRange(args, option_name, parser, act, check_params);
+
+    SUBCASE("wrong separator")
+    {
+      args.push_back(option_name);
+      args.push_back("100,400,10");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      // BUG (TMA-1307): Should detect this and through an error. User will
+      // enter this and have no clue why the end and step sizes are not used
+      // correctly.
+      //
+
+      check_params = false;
+    }
 
     SUBCASE("invalid condition - end and latency threshold are 0")
     {

@@ -964,37 +964,23 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 7: {
           params_->using_concurrency_range = true;
           std::string arg = optarg;
-          size_t pos = 0;
-          int index = 0;
-          while (pos != std::string::npos) {
-            size_t colon_pos = arg.find(":", pos);
-            if (index > 2) {
-              Usage(
-                  "Failed to parse --concurrency-range. The value does not "
-                  "match <start:end:step>.");
-            }
-            int64_t val;
-            if (colon_pos == std::string::npos) {
-              val = std::stoull(arg.substr(pos, colon_pos));
-              pos = colon_pos;
-            } else {
-              val = std::stoull(arg.substr(pos, colon_pos - pos));
-              pos = colon_pos + 1;
-            }
-            switch (index) {
-              case 0:
-                params_->concurrency_range.start = val;
-                break;
-              case 1:
-                params_->concurrency_range.end = val;
-                break;
-              case 2:
-                params_->concurrency_range.step = val;
-                break;
-            }
-            index++;
+          std::vector<std::string> values{SplitString(arg)};
+          if (values.size() > 3) {
+            Usage(
+                "Failed to parse --concurrency-range. The value does not match "
+                "<start:end:step>.");
           }
 
+          for (size_t i = 0; i < values.size(); ++i) {
+            uint64_t val = std::stoull(values[i]);
+            if (i == 0) {
+              params_->concurrency_range.start = val;
+            } else if (i == 1) {
+              params_->concurrency_range.end = val;
+            } else if (i == 2) {
+              params_->concurrency_range.step = val;
+            }
+          }
           break;
         }
         case 8:
