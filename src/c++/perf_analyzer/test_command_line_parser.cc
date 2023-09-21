@@ -1367,6 +1367,23 @@ TEST_CASE("Testing Command Line Parser")
       check_params = false;
     }
 
+    SUBCASE("valid parameter")
+    {
+      args.push_back(option_name);
+      args.push_back("max_tokens:256:uint");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      RequestParameter param;
+      param.uint_value = 256;
+      exp->request_parameters["max_tokens"] = param;
+    }
+
     SUBCASE("unsupported type")
     {
       args.push_back(option_name);
