@@ -1799,6 +1799,13 @@ CLParser::VerifyOptions()
         "--periodic-concurrency-range option.");
   }
 
+  if (params_->request_parameters.size() > 0 &&
+      params_->protocol != cb::ProtocolType::GRPC) {
+    Usage(
+        "The --request-parameter option is currently only supported by gRPC "
+        "protocol.");
+  }
+
   if (params_->using_request_rate_range && params_->mpi_driver->IsMPIRun() &&
       (params_->request_rate_range[SEARCH_RANGE::kEND] != 1.0 ||
        params_->request_rate_range[SEARCH_RANGE::kSTEP] != 1.0)) {
