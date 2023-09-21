@@ -28,23 +28,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Benchmarking LLM
 
-**Note**
-These benchmarks currently only work with Perf Analyzer built from the latest
-`main` branch. See
-[build from source instructions](install.md#build-from-source). If you are using
-Perf Analyzer from the Triton SDK container (e.g.
-`nvcr.io/nvidia/tritonserver:<xx.yy>-py3-sdk`), you will need to wait until the
-`23.09` container is released.
+> **Note**
+> 
+> These benchmarks currently only work with Perf Analyzer built from the latest
+> `main` branch. See
+> [build from source instructions](install.md#build-from-source). If you are using
+> Perf Analyzer from the Triton SDK container (e.g.
+> `nvcr.io/nvidia/tritonserver:<xx.yy>-py3-sdk`), you **will need to wait until the
+> `23.09` container is released to perform the steps in this guide**.
 
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
 (LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup model/server environment
+### Setup: Download and configure server environment
 
-Follow step 1 from the
-[Triton + vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md).
+```bash
+git clone https://github.com/triton-inference-server/tutorials
+cd tutorials/Quick_Deploy/vLLM
+docker build -t tritonserver_vllm .
+# wait for command to finish, might take several minutes
+```
 
 ### Benchmark 1: Profiling the Prefill Phase
 
@@ -56,6 +61,7 @@ essentially means one pass through the model.
 #### 1. Run the following commands to set the `max_tokens` to 1
 
 ```bash
+# in the `tutorials/Quick_Deploy/vLLM` directory from above
 PATH_TO_MODEL_PY="model_repository/vllm/1/model.py"
 MAX_TOKENS=1
 sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${PATH_TO_MODEL_PY}
@@ -63,8 +69,11 @@ sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${
 
 #### 2. Start server
 
-Follow step 2 from the
-[Triton + vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md).
+```bash
+docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
+# this will run continuously in the current shell
+# open a new shell in the same directory you were in when running the above command
+```
 
 #### 3. Generate prompts input data JSON
 
@@ -85,7 +94,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 3. Run Perf Analyzer
+#### 4. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -100,14 +109,14 @@ perf_analyzer \
     --stability-percentage=999
 ```
 
-#### 4. Calculate average first-token latency
+#### 5. Calculate average first-token latency
 
 ```bash
 python3 examples/calculate_avg_first_token_latency.py
 # Average first-token latency: 0.3065654714375 s
 ```
 
-#### 5. Repeat steps 3-4 with different prompt lengths to measure effects of initial prompt size (prefill) on first-token latency.
+#### 6. Repeat steps 3-5 with different prompt lengths to measure effects of initial prompt size (prefill) on first-token latency.
 
 For example:
 ![](examples/avg_first_token_latency_chart.jpg)
