@@ -158,8 +158,8 @@ class _InferStream:
             # executing this function is managed by stream and may cause
             # circular wait
             self._active = self._response_iterator.is_active()
-            if rpc_error.cancelled:
-                error = get_cancelled_error()
+            if rpc_error.code() == grpc.StatusCode.CANCELLED:
+                error = get_cancelled_error(rpc_error.details())
             else:
                 error = get_error_grpc(rpc_error)
             self._callback(result=None, error=error)
