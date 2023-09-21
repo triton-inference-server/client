@@ -57,7 +57,7 @@ def get_cancelled_error(msg=None):
     -------
     InferenceServerException
     """
-    if msg == None:
+    if not msg:
         msg = "Locally cancelled by application!"
     return InferenceServerException(msg=msg, status="StatusCode.CANCELLED")
 
