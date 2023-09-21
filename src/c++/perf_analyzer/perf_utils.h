@@ -83,6 +83,13 @@ class Range {
   T step;
 };
 
+struct RequestParameter {
+  std::string str_value;
+  int64_t int_value;
+  uint64_t uint_value;
+  bool bool_value;
+};
+
 // Converts the datatype from tensorflow to perf analyzer space
 // \param tf_dtype The data type string returned from the model metadata.
 // \param datatype Returns the datatype in perf_analyzer space.

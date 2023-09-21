@@ -347,22 +347,6 @@ CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
     PAParamsPtr& act, bool& using_range, Range<uint64_t>& range)
 {
-  SUBCASE("start provided")
-  {
-    args.push_back(option_name);
-    args.push_back("100");  // start
-
-    int argc = args.size();
-    char* argv[argc];
-    std::copy(args.begin(), args.end(), argv);
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(!parser.UsageCalled());
-
-    using_range = true;
-    range.start = 100;
-  }
-
   SUBCASE("start:end provided")
   {
     args.push_back(option_name);
@@ -520,7 +504,7 @@ CheckInvalidRange(
     std::copy(args.begin(), args.end(), argv);
 
     REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(!parser.UsageCalled());
+    CHECK(parser.UsageCalled());
 
     // BUG (TMA-1307): Should detect this and through an error. User will
     // enter this and have no clue why the end and step sizes are not used
@@ -1161,6 +1145,22 @@ TEST_CASE("Testing Command Line Parser")
   {
     char* option_name = "--concurrency-range";
 
+    SUBCASE("start provided")
+    {
+      args.push_back(option_name);
+      args.push_back("100");  // start
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 100;
+    }
+
     CheckValidRange(
         args, option_name, parser, act, exp->using_concurrency_range,
         exp->concurrency_range);
@@ -1201,6 +1201,26 @@ TEST_CASE("Testing Command Line Parser")
     exp->async = true;
     exp->streaming = true;
     exp->url = "localhost:8001";  // gRPC url
+
+    SUBCASE("start provided")
+    {
+      args.push_back(option_name);
+      args.push_back("100");  // start
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      // FIXME (TMA-1307): Currently the expected error message does not match
+      // the actual error message since TestCLParser ignores the exit statement
+      // when the Usage() is called and proceeds executing the program when it
+      // should stop the program.
+
+      check_params = false;
+    }
 
     CheckValidRange(
         args, option_name, parser, act, exp->using_periodic_concurrency_range,
@@ -1316,6 +1336,54 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(parser.UsageCalled());
 
       CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    }
+  }
+
+  SUBCASE("Option : --request-parameter")
+  {
+    char* option_name = "--request-parameter";
+
+    SUBCASE("missing type")
+    {
+      args.push_back(option_name);
+      args.push_back("max_tokens:256");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      // FIXME (TMA-1307): Currently the expected error message does not match
+      // the actual error message since TestCLParser ignores the exit statement
+      // when the Usage() is called and proceeds executing the program when it
+      // should stop the program.
+      //
+      // expected_msg = CreateUsageMessage(
+      //     option_name, "The value does not match <name:value:type>.");
+      // CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
+    }
+
+    SUBCASE("unsupported type")
+    {
+      args.push_back(option_name);
+      args.push_back("max_tokens:256:hello");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(parser.UsageCalled());
+
+      expected_msg =
+          CreateUsageMessage(option_name, "Unsupported type: 'hello'.");
+      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
     }
   }
 

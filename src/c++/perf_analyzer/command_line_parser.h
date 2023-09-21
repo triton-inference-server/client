@@ -61,6 +61,7 @@ struct PerfAnalyzerParameters {
   bool using_periodic_concurrency_range = false;
   Range<uint64_t> periodic_concurrency_range{1, 1, 1};
   uint64_t request_period = 10;
+  std::unordered_map<std::string, RequestParameter> request_parameters;
   uint64_t latency_threshold_ms = NO_LIMIT;
   double stability_threshold = 0.1;
   size_t max_trials = 10;

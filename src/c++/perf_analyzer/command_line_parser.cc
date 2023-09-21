@@ -47,6 +47,31 @@ CLParser::Parse(int argc, char** argv)
   return params_;
 }
 
+std::vector<std::string>
+SplitString(const std::string& str, const std::string& delimiter = ":")
+{
+  std::vector<std::string> substrs;
+  size_t pos = 0;
+  while (pos != std::string::npos) {
+    size_t colon_pos = str.find(":", pos);
+    substrs.push_back(str.substr(pos, colon_pos - pos));
+    if (colon_pos == std::string::npos) {
+      pos = colon_pos;
+    } else {
+      pos = colon_pos + 1;
+    }
+  }
+  return substrs;
+}
+
+void
+ToLowerCase(std::string& s)
+{
+  std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+    return std::tolower(c);
+  });
+}
+
 // Used to format the usage message
 std::string
 CLParser::FormatMessage(std::string str, int offset) const
@@ -279,18 +304,21 @@ CLParser::Usage(const std::string& msg)
   std::cerr
       << FormatMessage(
              "--periodic-concurrency-range <start:end:step>: Determines the "
-             "range of concurrency levels in the similar manner as "
-             "--concurrency-range. Perf Analyzer will start from the "
-             "concurrency level of 'start' and go until it reaches 'end' with "
-             "a stride of 'step'. Unlike --concurrency-range, the user can "
+             "range of concurrency levels in the similar but slightly "
+             "different manner as the --concurrency-range. Perf Analyzer will "
+             "start from the concurrency level of 'start' and increase by "
+             "'step' each time. Unlike --concurrency-range, the 'end' "
+             "indicates the *total* number of concurrency since the 'start' "
+             "(including) and will stop increasing once the cumulative number "
+             "of concurrent requests has reached the 'end'. The user can "
              "specify *when* to periodically increase the concurrency level "
              "using the --request-period option. The concurrency level will "
              "periodically increase for every n-th response specified by "
-             "--request-period. Since this disables stability check in "
-             "Perf Analyzer and reports response timestamps only, the user "
-             "must provide --profile-export-file to specify where to dump all "
-             "the measured timestamps. The default values of 'start', 'end', "
-             "and 'step' are 1.",
+             "--request-period. Since this disables stability check in Perf "
+             "Analyzer and reports response timestamps only, the user must "
+             "provide --profile-export-file to specify where to dump all the "
+             "measured timestamps. The default values of 'start', 'end', and "
+             "'step' are 1.",
              18)
       << std::endl;
   std::cerr
@@ -299,6 +327,17 @@ CLParser::Usage(const std::string& msg)
              "each request must receive before new, concurrent requests are "
              "sent when --periodic-concurrency-range is specified. Default "
              "value is 10.",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             "--request-parameter <name:value:type>: Specifies a custom "
+             "parameter that can be sent to a Triton backend as part of the "
+             "request. For example, providing '--request-parameter "
+             "max_tokens:256:uint' to the command line will set an additional "
+             "parameter 'max_tokens' of type 'uint' to 256 as part of the "
+             "request. The --request-parameter may be specified multiple times "
+             "for different custom parameters.",
              18)
       << std::endl;
   std::cerr
@@ -835,6 +874,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"profile-export-file", required_argument, 0, 58},
       {"periodic-concurrency-range", required_argument, 0, 59},
       {"request-period", required_argument, 0, 60},
+      {"request-parameter", required_argument, 0, 61},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1514,35 +1554,26 @@ CLParser::ParseCommandLine(int argc, char** argv)
         case 59: {
           params_->using_periodic_concurrency_range = true;
           std::string arg = optarg;
-          size_t pos = 0;
-          int index = 0;
-          while (pos != std::string::npos) {
-            size_t colon_pos = arg.find(":", pos);
-            if (index > 2) {
-              Usage(
-                  "Failed to parse --periodic-concurrency-range. The value "
-                  "does not match <start:end:step>.");
+          std::vector<std::string> values{SplitString(arg)};
+          if (values.size() < 2) {
+            Usage(
+                "Failed to parse --periodic-concurrency-range. Both <start> "
+                "and <end> values must be provided.");
+          } else if (values.size() > 3) {
+            Usage(
+                "Failed to parse --periodic-concurrency-range. The value does "
+                "not match <start:end:step>.");
+          }
+
+          for (size_t i = 0; i < values.size(); ++i) {
+            uint64_t val = std::stoull(values[i]);
+            if (i == 0) {
+              params_->periodic_concurrency_range.start = val;
+            } else if (i == 1) {
+              params_->periodic_concurrency_range.end = val;
+            } else if (i == 2) {
+              params_->periodic_concurrency_range.step = val;
             }
-            int64_t val;
-            if (colon_pos == std::string::npos) {
-              val = std::stoull(arg.substr(pos, colon_pos));
-              pos = colon_pos;
-            } else {
-              val = std::stoull(arg.substr(pos, colon_pos - pos));
-              pos = colon_pos + 1;
-            }
-            switch (index) {
-              case 0:
-                params_->periodic_concurrency_range.start = val;
-                break;
-              case 1:
-                params_->periodic_concurrency_range.end = val;
-                break;
-              case 2:
-                params_->periodic_concurrency_range.step = val;
-                break;
-            }
-            index++;
           }
 
           Range<uint64_t> range{params_->periodic_concurrency_range};
@@ -1550,6 +1581,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
             Usage(
                 "Failed to parse --periodic-concurrency-range. The <step> "
                 "value must be > 0.");
+          } else if (range.start > range.end) {
+            Usage(
+                "Failed to parse --periodic-concurrency-range. The <start> "
+                "must be <= <end>.");
           } else if ((range.end - range.start) % range.step != 0) {
             Usage(
                 "Failed to parse --periodic-concurrency-range. The <step> "
@@ -1563,6 +1598,36 @@ CLParser::ParseCommandLine(int argc, char** argv)
             params_->request_period = std::stoull(request_period);
           } else {
             Usage("Failed to parse --request-period. The value must be > 0");
+          }
+          break;
+        }
+        case 61: {
+          std::string arg = optarg;
+          std::vector<std::string> values{SplitString(arg)};
+          if (values.size() != 3) {
+            Usage(
+                "Failed to parse --request-parameter. The value does not match "
+                "<name:value:type>.");
+          }
+
+          std::for_each(values.begin(), values.end(), ToLowerCase);
+          std::string name{values[0]};
+          std::string value{values[1]};
+          std::string type{values[2]};
+
+          RequestParameter param;
+          if (type == "bool") {
+            param.bool_value = value == "true" ? true : false;
+          } else if (type == "uint") {
+            param.uint_value = std::stoull(value);
+          } else if (type == "int") {
+            param.int_value = std::stoll(value);
+          } else if (type == "string") {
+            param.str_value = value;
+          } else {
+            Usage(
+                "Failed to parse --request-parameter. Unsupported type: '" +
+                type + "'.");
           }
           break;
         }
