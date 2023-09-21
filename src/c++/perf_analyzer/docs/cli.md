@@ -182,16 +182,18 @@ mode.
 
 #### `--periodic-concurrency-range=<start:end:step>`
 
-Specifies the range of concurrency levels in the similar manner as
-`--concurrency-range`. Perf Analyzer will start from the concurrency level
-of 'start' and go until it reaches 'end' with a stride of 'step'.
-Unlike `--concurrency-range`, the user can specify *when* to periodically
-increase the concurrency level using the `--request-period` option.
-The concurrency level will periodically increase for every `n`-th response
-specified by `--request-period`.
-Since this disables stability check in Perf Analyzer and reports response
-timestamps only, the user must provide `--profile-export-file` to specify where
-to dump all the measured response timestamps.
+Specifies the range of concurrency levels in the similar but slightly different
+manner as the `--concurrency-range`. Perf Analyzer will start from the
+concurrency level of 'start' and increase by 'step' each time. Unlike
+`--concurrency-range`, the 'end' indicates the *total* number of concurrency
+since the 'start' (including) and will stop increasing once the cumulative
+number of concurrent requests has reached the 'end'. The user can specify
+*when* to periodically increase the concurrency level using the
+`--request-period` option. The concurrency level will periodically increase for
+every `n`-th response specified by `--request-period`. Since this disables
+stability check in Perf Analyzer and reports response timestamps only, the user
+must provide `--profile-export-file` to specify where to dump all the measured
+timestamps.
 
 The default values of 'start', 'end', and 'step' are `1`.
 
@@ -201,6 +203,20 @@ Specifies the number of responses that each request must receive before new,
 concurrent requests are sent when `--periodic-concurrency-range` is specified.
 
 Default value is `10`.
+
+#### `--request-parameter=<name:value:type>`
+
+Specifies a custom parameter that can be sent to a Triton backend as part of
+the request. For example, providing '--request-parameter max_tokens:256:uint'
+to the command line will set an additional parameter 'max_tokens' of type
+'uint' to 256 as part of the request. The --request-parameter may be specified
+multiple times for different custom parameters.
+
+Valid `type` values are: `bool`, `int`, `uint`, and `string`.
+
+> **NOTE**
+>
+> The `--request-parameter` is currently only supported by gRPC protocol.
 
 #### `--request-rate-range=<start:end:step>`
 
