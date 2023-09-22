@@ -42,7 +42,9 @@ The following guide shows the reader how to use Triton
 to measure and characterize the performance behaviors of Large Language Models
 (LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup: Download and configure server environment
+### Setup: Download and configure Triton Server environment
+
+From [Step 1 of the Triton vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md#step-1-build-a-triton-container-image-with-vllm).
 
 ```bash
 git clone https://github.com/triton-inference-server/tutorials
@@ -58,7 +60,7 @@ size on first-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute at most one new token. This
 essentially means one pass through the model.
 
-#### 1. Run the following commands to set the `max_tokens` to 1
+#### 1. Run the following commands to set `max_tokens` to `1`
 
 ```bash
 # in the `tutorials/Quick_Deploy/vLLM` directory from above
@@ -67,17 +69,17 @@ MAX_TOKENS=1
 sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${PATH_TO_MODEL_PY}
 ```
 
-#### 2. Start server
+#### 2. Start Triton Server
 
 ```bash
 docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
 # this will run continuously in the current shell
-# open a new shell in the same directory you were in when running the above command
 ```
 
 #### 3. Generate prompts input data JSON
 
 ```bash
+# open a new shell in the same directory you were in when running the above command
 echo '
 {
     "data": [
@@ -127,7 +129,13 @@ In this benchmarking scenario, we want to measure the effect of input prompt
 size on token-to-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute a fixed amount of tokens.
 
-#### 1. Run the following commands to set the `max_tokens = 256` and `ignore_eos = true`
+#### (Optional) Stop Triton Server if already running
+
+```bash
+pkill tritonserver
+```
+
+#### 1. Run the following commands to set the `max_tokens` to `256` and `ignore_eos` to `true`
 
 ```bash
 PATH_TO_MODEL_PY="model_repository/vllm/1/model.py"
@@ -136,14 +144,17 @@ sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${
 sed -i "128i\ \ \ \ \ \ \ \ params_dict[\"ignore_eos\"] = True" ${PATH_TO_MODEL_PY}
 ```
 
-#### 2. Start server
+#### 2. Start Triton Server
 
-Follow step 2 from the
-[Triton + vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md).
+```bash
+docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
+# this will run continuously in the current shell
+```
 
 #### 3. Generate prompts input data JSON
 
 ```bash
+# open a new shell in the same directory you were in when running the above command
 echo '
 {
     "data": [
@@ -160,7 +171,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 3. Run Perf Analyzer
+#### 4. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -175,11 +186,11 @@ perf_analyzer \
     --stability-percentage=999
 ```
 
-#### 4. Calculate average token-to-token latency
+#### 5. Calculate average token-to-token latency
 
 ```bash
 python3 examples/calculate_avg_token_to_token_latency.py
 # Average token-to-token latency: 0.003090155677419355 s
 ```
 
-#### 5. Repeat steps 3-4 with different prompt lengths to measure effects of initial prompt size (prefill) on token-to-token latency (generation).
+#### 6. Repeat steps 3-5 with different prompt lengths to measure effects of initial prompt size (prefill) on token-to-token latency (generation).
