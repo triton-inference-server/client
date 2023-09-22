@@ -29,7 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # Benchmarking LLM
 
 > **Note**
-> 
+>
 > These benchmarks currently only work with Perf Analyzer built from the latest
 > `main` branch. See
 > [build from source instructions](install.md#build-from-source). If you are using
