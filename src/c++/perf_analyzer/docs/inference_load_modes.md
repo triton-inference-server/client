@@ -40,6 +40,36 @@ example, when using
 will to attempt to have 4 outgoing inference requests at all times during
 profiling.
 
+## Periodic Concurrency Mode
+
+In periodic concurrency mode, Perf Analyzer will periodically launch a new set
+of inference requests until the total number of inference requests that has been
+launched since the start reaches N requests.
+
+For example, when using `--periodic-concurrency-range=10:100:20`, Perf Analyzer
+will start with 10 concurrent requests and for every step, it will launch 20 new
+inference requests until the total number of requests launched since the
+beginning reaches 100. Additionally, the user can also specify *when* to launch
+the new requests by specifying `--request-period=<M>`. This will set Perf Analyzer
+to launch new set of requests whenever the *first* request (among the set of new
+requests) receives M number of responses back from the server.
+
+The user can also specify custom parameters to the model using `--request-parameter=<name:value:type>`
+option. For instance, passing `--request-parameter max_tokens:256:uint` will add
+
+```bash
+perf_analyzer -m <model_name> -i grpc --async --streaming \
+    --profile-export-file profile.json \
+    --periodic-concurrency-range 10:100:20 \
+    --request-period 10 \
+    --request-parameter max_tokens:256:uint
+```
+
+> **Note**
+>
+> The periodic concurrency mode is currently supported only by gRPC protocol and
+> with decoupled model.
+
 ## Request Rate Mode
 
 In request rate mode, Perf Analyzer attempts to send N inference requests per
