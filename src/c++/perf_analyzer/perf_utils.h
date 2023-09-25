@@ -83,11 +83,14 @@ class Range {
   T step;
 };
 
+enum RequestParameterType { STRING = 0, INT = 1, UINT = 2, BOOL = 3 };
+
 struct RequestParameter {
   std::string str_value;
   int64_t int_value;
   uint64_t uint_value;
   bool bool_value;
+  RequestParameterType type;
 };
 
 // Converts the datatype from tensorflow to perf analyzer space
