@@ -175,6 +175,37 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
   CHECK_STRING(act->filename, act->filename);
   CHECK(act->mpi_driver != nullptr);
   CHECK_STRING(act->memory_type, exp->memory_type);
+  CHECK(
+      act->using_periodic_concurrency_range ==
+      exp->using_periodic_concurrency_range);
+  CHECK(
+      act->periodic_concurrency_range.start ==
+      exp->periodic_concurrency_range.start);
+  CHECK(
+      act->periodic_concurrency_range.end ==
+      exp->periodic_concurrency_range.end);
+  CHECK(
+      act->periodic_concurrency_range.step ==
+      exp->periodic_concurrency_range.step);
+  CHECK(act->request_period == exp->request_period);
+  CHECK(act->request_parameters.size() == exp->request_parameters.size());
+  for (auto act_param : act->request_parameters) {
+    auto exp_param = exp->request_parameters.find(act_param.first);
+    REQUIRE_MESSAGE(
+        exp_param != exp->request_parameters.end(),
+        "Unexpected parameter: ", act_param.first);
+
+    CHECK(act_param.second.type == exp_param->second.type);
+    if (act_param.second.type == RequestParameterType::STRING) {
+      CHECK(act_param.second.str_value == exp_param->second.str_value);
+    } else if (act_param.second.type == RequestParameterType::INT) {
+      CHECK(act_param.second.int_value == exp_param->second.int_value);
+    } else if (act_param.second.type == RequestParameterType::UINT) {
+      CHECK(act_param.second.uint_value == exp_param->second.uint_value);
+    } else if (act_param.second.type == RequestParameterType::BOOL) {
+      CHECK(act_param.second.bool_value == exp_param->second.bool_value);
+    }
+  }
 }
 
 
@@ -1343,29 +1374,12 @@ TEST_CASE("Testing Command Line Parser")
   {
     char* option_name = "--request-parameter";
 
-    SUBCASE("missing type")
-    {
-      args.push_back(option_name);
-      args.push_back("max_tokens:256");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      // FIXME (TMA-1307): Currently the expected error message does not match
-      // the actual error message since TestCLParser ignores the exit statement
-      // when the Usage() is called and proceeds executing the program when it
-      // should stop the program.
-      //
-      // expected_msg = CreateUsageMessage(
-      //     option_name, "The value does not match <name:value:type>.");
-      // CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
-
-      check_params = false;
-    }
+    // Add required args that specifies where to dump profiled data
+    args.insert(args.end(), {"-i", "grpc", "--async", "--streaming"});
+    exp->protocol = cb::ProtocolType::GRPC;
+    exp->async = true;
+    exp->streaming = true;
+    exp->url = "localhost:8001";  // gRPC url
 
     SUBCASE("valid parameter")
     {
@@ -1381,7 +1395,31 @@ TEST_CASE("Testing Command Line Parser")
 
       RequestParameter param;
       param.uint_value = 256;
+      param.type = RequestParameterType::UINT;
       exp->request_parameters["max_tokens"] = param;
+    }
+
+    SUBCASE("missing type")
+    {
+      args.push_back(option_name);
+      args.push_back("max_tokens:256");
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      // FIXME (TMA-1307): Currently the expected error message does not match
+      // the actual error message since TestCLParser ignores the exit statement
+      // when the Usage() is called and proceeds executing the program when it
+      // should stop the program.
+      //
+      // REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      // CHECK(parser.UsageCalled());
+      // expected_msg = CreateUsageMessage(
+      //     option_name, "The value does not match <name:value:type>.");
+      // CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+
+      check_params = false;
     }
 
     SUBCASE("unsupported type")
