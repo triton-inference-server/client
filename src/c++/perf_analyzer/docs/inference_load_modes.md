@@ -44,18 +44,19 @@ profiling.
 
 In periodic concurrency mode, Perf Analyzer will periodically launch a new set
 of inference requests until the total number of inference requests that has been
-launched since the start reaches N requests.
+launched since the beginning reaches N requests.
 
-For example, when using `--periodic-concurrency-range=10:100:20`, Perf Analyzer
+For example, when using `--periodic-concurrency-range 10:100:20`, Perf Analyzer
 will start with 10 concurrent requests and for every step, it will launch 20 new
 inference requests until the total number of requests launched since the
 beginning reaches 100. Additionally, the user can also specify *when* to launch
-the new requests by specifying `--request-period=<M>`. This will set Perf Analyzer
-to launch new set of requests whenever the *first* request (among the set of new
+the new requests by specifying `--request-period M`. This will set Perf Analyzer
+to launch a new set of requests whenever the *last* request (among the set of new
 requests) receives M number of responses back from the server.
 
-The user can also specify custom parameters to the model using `--request-parameter=<name:value:type>`
-option. For instance, passing `--request-parameter max_tokens:256:uint` will add
+The user can also specify custom parameters to the model using
+`--request-parameter <name:value:type>` option.
+For instance, passing `--request-parameter max_tokens:256:uint` will add
 
 ```bash
 perf_analyzer -m <model_name> -i grpc --async --streaming \
@@ -68,7 +69,7 @@ perf_analyzer -m <model_name> -i grpc --async --streaming \
 > **Note**
 >
 > The periodic concurrency mode is currently supported only by gRPC protocol and
-> with decoupled model.
+> with [decoupled model](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md).
 
 ## Request Rate Mode
 
