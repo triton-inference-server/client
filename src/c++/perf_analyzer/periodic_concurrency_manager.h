@@ -60,8 +60,6 @@ class PeriodicConcurrencyManager : public ConcurrencyManager {
       std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
       override;
 
-  void MaybeAddConcurrentRequests();
-
   void AddConcurrentRequests(uint64_t num_concurrent_requests);
 
   void AddConcurrentRequest(size_t seq_stat_index_offset);

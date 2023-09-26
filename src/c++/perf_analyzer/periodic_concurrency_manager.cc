@@ -52,14 +52,6 @@ PeriodicConcurrencyManager::MakeWorker(
 };
 
 void
-PeriodicConcurrencyManager::MaybeAddConcurrentRequests()
-{
-  if (steps_completed_ * concurrency_range_.step < concurrency_range_.end) {
-    AddConcurrentRequests(concurrency_range_.step);
-  }
-}
-
-void
 PeriodicConcurrencyManager::AddConcurrentRequests(
     uint64_t num_concurrent_requests)
 {
@@ -89,7 +81,10 @@ PeriodicConcurrencyManager::PeriodCompletedCallback()
   num_incomplete_periods_--;
   if (num_incomplete_periods_ == 0) {
     steps_completed_++;
-    MaybeAddConcurrentRequests();
+    uint64_t num_requests_sent{steps_completed_ * concurrency_range_.step};
+    if (num_requests_sent < concurrency_range_.end) {
+      AddConcurrentRequests(concurrency_range_.step);
+    }
   }
 }
 
