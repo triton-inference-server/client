@@ -46,22 +46,23 @@ In periodic concurrency mode, Perf Analyzer will periodically launch a new set
 of inference requests until the total number of inference requests that has been
 launched since the beginning reaches N requests.
 
-For example, when using `--periodic-concurrency-range 10:100:20`, Perf Analyzer
-will start with 10 concurrent requests and for every step, it will launch 20 new
+For example, when using `--periodic-concurrency-range 10:100:30`, Perf Analyzer
+will start with 10 concurrent requests and for every step, it will launch 30 new
 inference requests until the total number of requests launched since the
 beginning reaches 100. Additionally, the user can also specify *when* to launch
 the new requests by specifying `--request-period M`. This will set Perf Analyzer
-to launch a new set of requests whenever the *last* request (among the set of new
-requests) receives M number of responses back from the server.
+to launch a new set of requests whenever *all* of the latest set of launched
+concurrent requests received M number of responses back from the server.
 
 The user can also specify custom parameters to the model using
 `--request-parameter <name:value:type>` option.
-For instance, passing `--request-parameter max_tokens:256:uint` will add
+For instance, passing `--request-parameter max_tokens:256:uint` will set an
+additional parameter `max_tokens` of type `uint` to 256 as part of the request.
 
 ```bash
 perf_analyzer -m <model_name> -i grpc --async --streaming \
     --profile-export-file profile.json \
-    --periodic-concurrency-range 10:100:20 \
+    --periodic-concurrency-range 10:100:30 \
     --request-period 10 \
     --request-parameter max_tokens:256:uint
 ```
@@ -69,8 +70,8 @@ perf_analyzer -m <model_name> -i grpc --async --streaming \
 > **Note**
 >
 > The periodic concurrency mode is currently supported only by gRPC protocol and
-> with [decoupled model](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md).
-> Additionally, the user must also specify a file where PA could dump all the
+> with [decoupled models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md).
+> Additionally, the user must also specify a file where Perf Analyzer could dump all the
 > profiled data using `--profile-export-file`.
 
 ## Request Rate Mode
