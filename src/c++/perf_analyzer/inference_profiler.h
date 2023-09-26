@@ -43,6 +43,7 @@
 #include "metrics_manager.h"
 #include "model_parser.h"
 #include "mpi_utils.h"
+#include "periodic_concurrency_manager.h"
 #include "profile_data_collector.h"
 #include "request_rate_manager.h"
 
@@ -303,6 +304,18 @@ class InferenceProfiler {
         }
       }
     }
+    return cb::Error::Success;
+  }
+
+  cb::Error ProfilePeriodicConcurrencyMode()
+  {
+    auto& manager{dynamic_cast<PeriodicConcurrencyManager&>(*manager_)};
+    std::vector<RequestRecord> request_records{manager.RunExperiment()};
+
+    InferenceLoadMode id{1, 0.0};
+    collector_->AddWindow(id, 0, UINT64_MAX);
+    collector_->AddData(id, std::move(request_records));
+
     return cb::Error::Success;
   }
 

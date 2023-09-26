@@ -50,9 +50,11 @@ class NaggyMockConcurrencyWorker;
 class ConcurrencyWorker : public LoadWorker {
  public:
   struct ThreadConfig {
-    ThreadConfig(size_t thread_id)
-        : thread_id_(thread_id), concurrency_(0), seq_stat_index_offset_(0),
-          is_paused_(false)
+    ThreadConfig(
+        size_t thread_id, size_t concurrency = 0,
+        size_t seq_stat_index_offset = 0)
+        : thread_id_(thread_id), concurrency_(concurrency),
+          seq_stat_index_offset_(seq_stat_index_offset), is_paused_(false)
     {
     }
 
@@ -91,7 +93,15 @@ class ConcurrencyWorker : public LoadWorker {
   {
   }
 
-  void Infer() override;
+  virtual void Infer() override;
+
+ protected:
+  bool RunInference();
+
+  void CreateCtxIdTracker();
+
+  // Reserve vector size for contexts
+  void ReserveContexts();
 
  private:
   const size_t max_concurrency_;
@@ -100,11 +110,6 @@ class ConcurrencyWorker : public LoadWorker {
   size_t& active_threads_;
 
   std::shared_ptr<ThreadConfig> thread_config_;
-
-  void CreateCtxIdTracker();
-
-  // Reserve vector size for contexts
-  void ReserveContexts();
 
   // Handle the case where execute_ is false
   void HandleExecuteOff();
