@@ -42,7 +42,6 @@ PeriodicConcurrencyManager::MakeWorker(
     std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
 {
   uint32_t id = workers_.size();
-
   auto worker = std::make_shared<PeriodicConcurrencyWorker>(
       id, thread_stat, thread_config, parser_, data_loader_, factory_,
       on_sequence_model_, async_, max_concurrency_, using_json_data_,
@@ -53,34 +52,44 @@ PeriodicConcurrencyManager::MakeWorker(
 };
 
 void
+PeriodicConcurrencyManager::MaybeAddConcurrentRequests()
+{
+  if (steps_completed_ * concurrency_range_.step < concurrency_range_.end) {
+    AddConcurrentRequests(concurrency_range_.step);
+  }
+}
+
+void
 PeriodicConcurrencyManager::AddConcurrentRequests(
     uint64_t num_concurrent_requests)
 {
   for (size_t i = 0; i < num_concurrent_requests; i++) {
-    threads_stat_.emplace_back(std::make_shared<ThreadStat>());
-    threads_config_.emplace_back(
-        std::make_shared<ConcurrencyWorker::ThreadConfig>(
-            threads_config_.size(), 1, i));
-    workers_.emplace_back(
-        MakeWorker(threads_stat_.back(), threads_config_.back()));
-    threads_.emplace_back(&IWorker::Infer, workers_.back());
-    active_threads_++;
+    AddConcurrentRequest(i);
   }
   num_incomplete_periods_ = num_concurrent_requests;
+}
+
+void
+PeriodicConcurrencyManager::AddConcurrentRequest(size_t seq_stat_index_offset)
+{
+  threads_stat_.emplace_back(std::make_shared<ThreadStat>());
+  threads_config_.emplace_back(
+      std::make_shared<ConcurrencyWorker::ThreadConfig>(
+          threads_config_.size(), 1, seq_stat_index_offset));
+  workers_.emplace_back(
+      MakeWorker(threads_stat_.back(), threads_config_.back()));
+  threads_.emplace_back(&IWorker::Infer, workers_.back());
+  active_threads_++;
 }
 
 void
 PeriodicConcurrencyManager::PeriodCompletedCallback()
 {
   std::lock_guard<std::mutex> lock(period_completed_callback_mutex_);
-
   num_incomplete_periods_--;
-
   if (num_incomplete_periods_ == 0) {
     steps_completed_++;
-    if (steps_completed_ * concurrency_range_.step < concurrency_range_.end) {
-      AddConcurrentRequests(concurrency_range_.step);
-    }
+    MaybeAddConcurrentRequests();
   }
 }
 
@@ -88,9 +97,7 @@ void
 PeriodicConcurrencyManager::RequestCompletedCallback()
 {
   std::lock_guard<std::mutex> lock(request_completed_callback_mutex_);
-
   num_completed_requests_++;
-
   if (num_completed_requests_ == concurrency_range_.end) {
     all_requests_completed_promise_.set_value(true);
   }
@@ -108,13 +115,11 @@ std::vector<RequestRecord>
 PeriodicConcurrencyManager::GetRequestRecords()
 {
   std::vector<RequestRecord> request_records{};
-
   for (const auto& thread_stat : threads_stat_) {
     request_records.insert(
         request_records.end(), thread_stat->request_records_.cbegin(),
         thread_stat->request_records_.cend());
   }
-
   return request_records;
 }
 

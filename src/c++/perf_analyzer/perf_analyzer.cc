@@ -160,7 +160,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
   }
 
   std::unique_ptr<pa::LoadManager> manager;
-  params_->using_periodic_concurrency_mode = true;
+  params_->is_using_periodic_concurrency_mode = true;
   params_->periodic_concurrency_range = {
       std::stoi(std::getenv("MY_START")), std::stoi(std::getenv("MY_END")),
       std::stoi(std::getenv("MY_STEP"))};
@@ -216,7 +216,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
             factory, &manager),
         "failed to create concurrency manager");
 
-  } else if (params_->using_periodic_concurrency_mode) {
+  } else if (params_->is_using_periodic_concurrency_mode) {
     manager = std::make_unique<pa::PeriodicConcurrencyManager>(
         params_->async, params_->streaming, params_->batch_size,
         params_->max_threads, params_->max_concurrency,
@@ -384,7 +384,7 @@ PerfAnalyzer::Profile()
     err = profiler_->Profile<size_t>(
         params_->concurrency_range.start, params_->concurrency_range.end,
         params_->concurrency_range.step, params_->search_mode, perf_statuses_);
-  } else if (params_->using_periodic_concurrency_mode) {
+  } else if (params_->is_using_periodic_concurrency_mode) {
     err = profiler_->ProfilePeriodicConcurrencyMode();
   } else {
     err = profiler_->Profile<double>(
@@ -409,7 +409,7 @@ PerfAnalyzer::Profile()
 void
 PerfAnalyzer::WriteReport()
 {
-  if (!perf_statuses_.size() || params_->using_periodic_concurrency_mode) {
+  if (!perf_statuses_.size() || params_->is_using_periodic_concurrency_mode) {
     return;
   }
 

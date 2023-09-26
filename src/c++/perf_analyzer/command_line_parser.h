@@ -131,7 +131,7 @@ struct PerfAnalyzerParameters {
     return (
         using_concurrency_range || using_old_options ||
         !(using_request_rate_range || using_custom_intervals ||
-          using_periodic_concurrency_mode));
+          is_using_periodic_concurrency_mode));
   }
 
   // Sets the threshold for PA client overhead.
@@ -150,8 +150,7 @@ struct PerfAnalyzerParameters {
   // The profile export file path.
   std::string profile_export_file{""};
 
-  // Whether periodic concurrency mode is being used
-  bool using_periodic_concurrency_mode{false};
+  bool is_using_periodic_concurrency_mode{false};
 
   Range<uint64_t> periodic_concurrency_range{1, 1, 1};
   uint64_t periodic_concurrency_request_period{10};

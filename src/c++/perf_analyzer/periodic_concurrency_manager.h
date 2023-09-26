@@ -60,7 +60,11 @@ class PeriodicConcurrencyManager : public ConcurrencyManager {
       std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
       override;
 
+  void MaybeAddConcurrentRequests();
+
   void AddConcurrentRequests(uint64_t num_concurrent_requests);
+
+  void AddConcurrentRequest(size_t seq_stat_index_offset);
 
   void PeriodCompletedCallback();
 
@@ -82,7 +86,6 @@ class PeriodicConcurrencyManager : public ConcurrencyManager {
       std::bind(&PeriodicConcurrencyManager::PeriodCompletedCallback, this)};
   std::function<void()> request_completed_callback_{
       std::bind(&PeriodicConcurrencyManager::RequestCompletedCallback, this)};
-  std::function<void(std::vector<RequestRecord>&&)> finalize_callback_{nullptr};
 };
 
 }}  // namespace triton::perfanalyzer

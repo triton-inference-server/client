@@ -311,11 +311,11 @@ class InferenceProfiler {
   {
     auto& manager{dynamic_cast<PeriodicConcurrencyManager&>(*manager_)};
     std::vector<RequestRecord> request_records{manager.RunExperiment()};
-
+    // FIXME - Refactor collector class to not need ID or window in the case of
+    // periodic concurrency mode
     InferenceLoadMode id{1, 0.0};
     collector_->AddWindow(id, 0, UINT64_MAX);
     collector_->AddData(id, std::move(request_records));
-
     return cb::Error::Success;
   }
 

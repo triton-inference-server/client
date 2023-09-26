@@ -56,29 +56,21 @@ bool
 ConcurrencyWorker::RunInference()
 {
   HandleExecuteOff();
-
   if (HandleNoConcurrency()) {
     return true;
   }
-
   CreateContextsAsNecessary();
-
   if (HandleExitConditions()) {
     return true;
   }
-
   SendInferRequests();
-
   if (HandleExitConditions()) {
     return true;
   }
-
   WaitForResponses();
-
   if (HandleExitConditions()) {
     return true;
   }
-
   return false;
 }
 
