@@ -70,6 +70,8 @@ perf_analyzer -m <model_name> -i grpc --async --streaming \
 >
 > The periodic concurrency mode is currently supported only by gRPC protocol and
 > with [decoupled model](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md).
+> Additionally, the user must also specify a file where PA could dump all the
+> profiled data using `--profile-export-file`.
 
 ## Request Rate Mode
 
