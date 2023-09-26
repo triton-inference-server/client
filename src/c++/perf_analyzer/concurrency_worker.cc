@@ -46,31 +46,32 @@ ConcurrencyWorker::Infer()
 
   // run inferencing until receiving exit signal to maintain server load.
   do {
-    HandleExecuteOff();
-
-    if (HandleNoConcurrency()) {
-      return;
+    if (RunInference()) {
+      break;
     }
-
-    CreateContextsAsNecessary();
-
-    if (HandleExitConditions()) {
-      return;
-    }
-
-    SendInferRequests();
-
-    if (HandleExitConditions()) {
-      return;
-    }
-
-    WaitForResponses();
-
-    if (HandleExitConditions()) {
-      return;
-    }
-
   } while (true);
+}
+
+bool
+ConcurrencyWorker::RunInference()
+{
+  HandleExecuteOff();
+  if (HandleNoConcurrency()) {
+    return true;
+  }
+  CreateContextsAsNecessary();
+  if (HandleExitConditions()) {
+    return true;
+  }
+  SendInferRequests();
+  if (HandleExitConditions()) {
+    return true;
+  }
+  WaitForResponses();
+  if (HandleExitConditions()) {
+    return true;
+  }
+  return false;
 }
 
 void

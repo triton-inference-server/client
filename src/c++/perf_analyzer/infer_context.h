@@ -116,10 +116,18 @@ class InferContext {
   // object and have not returned
   uint GetNumOngoingRequests() { return total_ongoing_requests_; }
 
+  // Returns the number of responses for the current request
+  uint64_t GetNumResponsesForCurrentRequest() { return num_responses_; }
+
   // Register a function that will get called after every async request returns
   void RegisterAsyncCallbackFinalize(std::function<void(uint32_t)> callback)
   {
     async_callback_finalize_func_ = callback;
+  }
+
+  void RegisterWorkerCallback(std::function<void(uint32_t)> worker_callback)
+  {
+    worker_callback_ = worker_callback;
   }
 
   // TODO REFACTOR TMA-1043 this should be in memory class
@@ -127,6 +135,8 @@ class InferContext {
   {
     num_active_threads_ = num_threads;
   }
+
+  bool HasReceivedFinalResponse() { return has_received_final_response_; }
 
  protected:
   /// A helper function to issue inference request to the server.
@@ -191,6 +201,9 @@ class InferContext {
   std::reference_wrapper<const bool> execute_{execute_placeholder_};
 
   std::shared_ptr<SequenceManager> sequence_manager_{nullptr};
+  uint64_t num_responses_{0};
+  std::function<void(uint32_t)> worker_callback_{nullptr};
+  bool has_received_final_response_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferContext;
