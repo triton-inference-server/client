@@ -258,6 +258,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           return;
         }
         it->second.response_times_.push_back(std::chrono::system_clock::now());
+        num_responses_++;
         if (is_null_response == true) {
           it->second.has_null_last_response_ = true;
         }
@@ -267,6 +268,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
           return;
         }
         if (is_final_response) {
+          has_received_final_response_ = is_final_response;
           thread_stat_->request_records_.emplace_back(
               it->second.start_time_, it->second.response_times_,
               it->second.sequence_end_, it->second.delayed_,
@@ -279,8 +281,13 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
     }
   }
 
+  if (worker_callback_) {
+    worker_callback_(id_);
+  }
+
   if (is_final_response) {
     total_ongoing_requests_--;
+    num_responses_ = 0;
 
     if (async_callback_finalize_func_ != nullptr) {
       async_callback_finalize_func_(id_);

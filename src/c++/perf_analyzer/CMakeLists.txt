@@ -69,6 +69,8 @@ set(
   sequence_manager.cc
   profile_data_collector.cc
   profile_data_exporter.cc
+  periodic_concurrency_manager.cc
+  periodic_concurrency_worker.cc
 )
 
 set(
@@ -109,6 +111,8 @@ set(
   request_record.h
   profile_data_collector.h
   profile_data_exporter.h
+  periodic_concurrency_manager.h
+  periodic_concurrency_worker.h
 )
 
 add_executable(

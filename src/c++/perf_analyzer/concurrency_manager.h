@@ -95,7 +95,6 @@ class ConcurrencyManager : public LoadManager {
       std::shared_ptr<ThreadStat>,
       std::shared_ptr<ConcurrencyWorker::ThreadConfig>);
 
- private:
   ConcurrencyManager(
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
@@ -103,6 +102,16 @@ class ConcurrencyManager : public LoadManager {
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
+  // The number of worker threads with non-zero concurrencies
+  size_t active_threads_;
+
+  bool execute_;
+
+  size_t max_concurrency_;
+
+  std::vector<std::shared_ptr<ConcurrencyWorker::ThreadConfig>> threads_config_;
+
+ private:
   void InitManagerFinalize() override;
 
   // Pause all worker threads that are working on sequences
@@ -117,14 +126,6 @@ class ConcurrencyManager : public LoadManager {
   // Restart all worker threads that were working on sequences
   //
   void ResumeSequenceWorkers();
-
-  // The number of worker threads with non-zero concurrencies
-  size_t active_threads_;
-
-  bool execute_;
-
-  size_t max_concurrency_;
-  std::vector<std::shared_ptr<ConcurrencyWorker::ThreadConfig>> threads_config_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestConcurrencyManager;
