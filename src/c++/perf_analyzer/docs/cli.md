@@ -207,12 +207,12 @@ Default value is `10`.
 #### `--request-parameter=<name:value:type>`
 
 Specifies a custom parameter that can be sent to a Triton backend as part of
-the request. For example, providing '--request-parameter max_tokens:256:uint'
+the request. For example, providing '--request-parameter max_tokens:256:int'
 to the command line will set an additional parameter 'max_tokens' of type
-'uint' to 256 as part of the request. The --request-parameter may be specified
+'int' to 256 as part of the request. The --request-parameter may be specified
 multiple times for different custom parameters.
 
-Valid `type` values are: `bool`, `int`, `uint`, and `string`.
+Valid `type` values are: `bool`, `int`, and `string`.
 
 > **NOTE**
 >

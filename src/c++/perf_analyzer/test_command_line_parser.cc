@@ -176,8 +176,8 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
   CHECK(act->mpi_driver != nullptr);
   CHECK_STRING(act->memory_type, exp->memory_type);
   CHECK(
-      act->using_periodic_concurrency_range ==
-      exp->using_periodic_concurrency_range);
+      act->is_using_periodic_concurrency_mode ==
+      exp->is_using_periodic_concurrency_mode);
   CHECK(
       act->periodic_concurrency_range.start ==
       exp->periodic_concurrency_range.start);
@@ -200,8 +200,6 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
       CHECK(act_param.second.str_value == exp_param->second.str_value);
     } else if (act_param.second.type == RequestParameterType::INT) {
       CHECK(act_param.second.int_value == exp_param->second.int_value);
-    } else if (act_param.second.type == RequestParameterType::UINT) {
-      CHECK(act_param.second.uint_value == exp_param->second.uint_value);
     } else if (act_param.second.type == RequestParameterType::BOOL) {
       CHECK(act_param.second.bool_value == exp_param->second.bool_value);
     }
@@ -1232,6 +1230,7 @@ TEST_CASE("Testing Command Line Parser")
     exp->async = true;
     exp->streaming = true;
     exp->url = "localhost:8001";  // gRPC url
+    exp->max_threads = 4;         // not targeting concurrency
 
     SUBCASE("start provided")
     {
@@ -1254,7 +1253,7 @@ TEST_CASE("Testing Command Line Parser")
     }
 
     CheckValidRange(
-        args, option_name, parser, act, exp->using_periodic_concurrency_range,
+        args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
         exp->periodic_concurrency_range);
 
     CheckInvalidRange(args, option_name, parser, act, check_params);
@@ -1384,7 +1383,7 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("valid parameter")
     {
       args.push_back(option_name);
-      args.push_back("max_tokens:256:uint");
+      args.push_back("max_tokens:256:int");
 
       int argc = args.size();
       char* argv[argc];
@@ -1394,8 +1393,8 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       RequestParameter param;
-      param.uint_value = 256;
-      param.type = RequestParameterType::UINT;
+      param.int_value = 256;
+      param.type = RequestParameterType::INT;
       exp->request_parameters["max_tokens"] = param;
     }
 

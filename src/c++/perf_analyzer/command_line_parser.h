@@ -58,9 +58,6 @@ struct PerfAnalyzerParameters {
   uint64_t measurement_window_ms = 5000;
   bool using_concurrency_range = false;
   Range<uint64_t> concurrency_range{1, 1, 1};
-  bool using_periodic_concurrency_range = false;
-  Range<uint64_t> periodic_concurrency_range{1, 1, 1};
-  uint64_t request_period = 10;
   std::unordered_map<std::string, RequestParameter> request_parameters;
   uint64_t latency_threshold_ms = NO_LIMIT;
   double stability_threshold = 0.1;
@@ -155,9 +152,8 @@ struct PerfAnalyzerParameters {
   std::string profile_export_file{""};
 
   bool is_using_periodic_concurrency_mode{false};
-
   Range<uint64_t> periodic_concurrency_range{1, 1, 1};
-  uint64_t periodic_concurrency_request_period{10};
+  uint64_t request_period{10};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

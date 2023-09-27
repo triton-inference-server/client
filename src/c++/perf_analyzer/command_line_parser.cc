@@ -334,8 +334,8 @@ CLParser::Usage(const std::string& msg)
              "--request-parameter <name:value:type>: Specifies a custom "
              "parameter that can be sent to a Triton backend as part of the "
              "request. For example, providing '--request-parameter "
-             "max_tokens:256:uint' to the command line will set an additional "
-             "parameter 'max_tokens' of type 'uint' to 256 as part of the "
+             "max_tokens:256:int' to the command line will set an additional "
+             "parameter 'max_tokens' of type 'int' to 256 as part of the "
              "request. The --request-parameter may be specified multiple times "
              "for different custom parameters.",
              18)
@@ -1538,7 +1538,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           break;
         }
         case 59: {
-          params_->using_periodic_concurrency_range = true;
+          params_->is_using_periodic_concurrency_mode = true;
           std::string arg = optarg;
           std::vector<std::string> values{SplitString(arg)};
           if (values.size() < 2) {
@@ -1605,9 +1605,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
           if (type == "bool") {
             param.type = RequestParameterType::BOOL;
             param.bool_value = value == "true" ? true : false;
-          } else if (type == "uint") {
-            param.type = RequestParameterType::UINT;
-            param.uint_value = std::stoull(value);
           } else if (type == "int") {
             param.type = RequestParameterType::INT;
             param.int_value = std::stoll(value);
@@ -1780,7 +1777,7 @@ CLParser::VerifyOptions()
   }
 
   std::vector<bool> load_modes{
-      params_->using_periodic_concurrency_range,
+      params_->is_using_periodic_concurrency_mode,
       params_->using_concurrency_range, params_->using_request_rate_range,
       params_->using_custom_intervals};
   if (std::count(load_modes.begin(), load_modes.end(), true) > 1) {
@@ -1791,13 +1788,13 @@ CLParser::VerifyOptions()
         "--request-intervals.");
   }
 
-  if (params_->using_periodic_concurrency_range && !params_->streaming) {
+  if (params_->is_using_periodic_concurrency_mode && !params_->streaming) {
     Usage(
         "The --periodic-concurrency-range option requires bi-directional gRPC "
         "streaming.");
   }
 
-  if (params_->using_periodic_concurrency_range &&
+  if (params_->is_using_periodic_concurrency_mode &&
       (params_->profile_export_file == "")) {
     Usage(
         "Must provide --profile-export-file when using the "
