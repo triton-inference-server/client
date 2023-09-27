@@ -1408,6 +1408,23 @@ InferenceServerGrpcClient::PreRunProcessing(
         options.server_timeout_);
   }
 
+
+  for (auto& param : options.request_parameters) {
+    if (param.second.type == RequestParameterType::STRING) {
+      (*infer_request_.mutable_parameters())[param.first].set_string_param(
+          param.second.str_value);
+    } else if (param.second.type == RequestParameterType::INT) {
+      (*infer_request_.mutable_parameters())[param.first].set_int64_param(
+          param.second.int_value);
+    } else if (param.second.type == RequestParameterType::UINT) {
+      (*infer_request_.mutable_parameters())[param.first].set_uint64_param(
+          param.second.uint_value);
+    } else if (param.second.type == RequestParameterType::BOOL) {
+      (*infer_request_.mutable_parameters())[param.first].set_bool_param(
+          param.second.bool_value);
+    }
+  }
+
   int index = 0;
   infer_request_.mutable_raw_input_contents()->Clear();
   for (const auto input : inputs) {

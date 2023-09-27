@@ -590,6 +590,22 @@ TritonClientBackend::ParseInferOptionsToTriton(
   }
   triton_options->triton_enable_empty_final_response_ =
       options.triton_enable_empty_final_response_;
+
+  for (auto& map_entry : options.request_parameters_) {
+    auto rp = tc::RequestParameter();
+    rp.str_value = map_entry.second.str_value;
+    rp.int_value = map_entry.second.int_value;
+    rp.uint_value = map_entry.second.uint_value;
+    rp.bool_value = map_entry.second.bool_value;
+    uint64_t val =
+        static_cast<std::underlying_type<cb::RequestParameterType>::type>(
+            map_entry.second.type);
+    rp.type = static_cast<tc::RequestParameterType>(val);
+    triton_options->request_parameters.insert(
+        std::make_pair(map_entry.first, rp));
+  }
+  // triton_options->request_parameters.insert(rp)
+  //     options.request_parameters.begin(), options.request_parameters.end());
 }
 
 

@@ -167,6 +167,9 @@ InferDataManager::InitInferDataInput(
           infer_input->AppendRaw(input_data.data_ptr, input_data.batch1_size));
     }
   }
+
+  AddInferDataParameters(infer_data);
+
   return cb::Error::Success;
 }
 

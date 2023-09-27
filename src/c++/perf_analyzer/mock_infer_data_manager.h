@@ -32,17 +32,22 @@
 
 namespace triton { namespace perfanalyzer {
 
+// std::unordered_map<std::string, clientbackend::RequestParameter>
+//     request_parameters;
 
 class MockInferDataManagerShm : public InferDataManagerShm {
  public:
   MockInferDataManagerShm(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t output_shm_size,
+      std::unordered_map<std::string, clientbackend::RequestParameter>
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
       : InferDataManagerShm(
-            batch_size, shared_memory_type, output_shm_size, parser, factory,
-            data_loader)
+            batch_size, shared_memory_type, output_shm_size, request_parameters,
+            parser, factory, data_loader)
   {
   }
 
@@ -83,10 +88,14 @@ class MockInferDataManager : public InferDataManager {
 
   MockInferDataManager(
       const size_t max_threads, const int32_t batch_size,
+      std::unordered_map<std::string, clientbackend::RequestParameter>
+          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
-      : InferDataManager(max_threads, batch_size, parser, factory, data_loader)
+      : InferDataManager(
+            max_threads, batch_size, request_parameters, parser, factory,
+            data_loader)
   {
     SetupMocks();
   }
@@ -122,17 +131,20 @@ class MockInferDataManagerFactory {
   static std::shared_ptr<IInferDataManager> CreateMockInferDataManager(
       const size_t max_threads, const int32_t batch_size,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+      std::unordered_map<std::string, clientbackend::RequestParameter>
+          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
       return std::make_shared<testing::NiceMock<MockInferDataManager>>(
-          max_threads, batch_size, parser, factory, data_loader);
+          max_threads, batch_size, request_parameters, parser, factory,
+          data_loader);
     } else {
       return std::make_shared<testing::NiceMock<MockInferDataManagerShm>>(
-          batch_size, shared_memory_type, output_shm_size, parser, factory,
-          data_loader);
+          batch_size, shared_memory_type, output_shm_size, request_parameters,
+          parser, factory, data_loader);
     }
   }
 };

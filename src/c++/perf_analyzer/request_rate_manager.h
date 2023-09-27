@@ -80,6 +80,7 @@ class RequestRateManager : public LoadManager {
   /// \param output_shm_size The size of the shared memory to allocate for the
   /// output.
   /// \param serial_sequences Enable serial sequence mode.
+  /// \param request_parameters Custom request parameters to send to the server
   /// \param parser The ModelParser object to get the model details.
   /// \param factory The ClientBackendFactory object used to create
   /// client to the server.
@@ -91,7 +92,10 @@ class RequestRateManager : public LoadManager {
       Distribution request_distribution, const int32_t batch_size,
       const size_t max_threads, const uint32_t num_of_sequences,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
+      const bool serial_sequences,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       std::unique_ptr<LoadManager>* manager);
 
@@ -108,7 +112,10 @@ class RequestRateManager : public LoadManager {
       const size_t max_trials, const size_t max_threads,
       const uint32_t num_of_sequences,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
+      const bool serial_sequences,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory);
 
   void InitManagerFinalize() override;

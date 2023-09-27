@@ -39,14 +39,18 @@ CustomLoadManager::Create(
     const std::string& request_intervals_file, const int32_t batch_size,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters,
+    const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
     std::unique_ptr<LoadManager>* manager)
 {
   std::unique_ptr<CustomLoadManager> local_manager(new CustomLoadManager(
       async, streaming, request_intervals_file, batch_size,
       measurement_window_ms, max_trials, max_threads, num_of_sequences,
-      shared_memory_type, output_shm_size, serial_sequences, parser, factory));
+      shared_memory_type, output_shm_size, serial_sequences, request_parameters,
+      parser, factory));
 
   *manager = std::move(local_manager);
 
@@ -59,13 +63,16 @@ CustomLoadManager::CustomLoadManager(
     const uint64_t measurement_window_ms, const size_t max_trials,
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
+    const bool serial_sequences,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters,
+    const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory)
     : RequestRateManager(
           async, streaming, Distribution::CUSTOM, batch_size,
           measurement_window_ms, max_trials, max_threads, num_of_sequences,
-          shared_memory_type, output_shm_size, serial_sequences, parser,
-          factory),
+          shared_memory_type, output_shm_size, serial_sequences,
+          request_parameters, parser, factory),
       request_intervals_file_(request_intervals_file)
 {
 }

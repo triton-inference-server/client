@@ -205,8 +205,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
         pa::ConcurrencyManager::Create(
             params_->async, params_->streaming, params_->batch_size,
             params_->max_threads, params_->max_concurrency,
-            params_->shared_memory_type, params_->output_shm_size, parser_,
-            factory, &manager),
+            params_->shared_memory_type, params_->output_shm_size,
+            params_->request_parameters, parser_, factory, &manager),
         "failed to create concurrency manager");
 
   } else if (params_->is_using_periodic_concurrency_mode) {
@@ -214,7 +214,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
         params_->async, params_->streaming, params_->batch_size,
         params_->max_threads, params_->max_concurrency,
         params_->shared_memory_type, params_->output_shm_size, parser_, factory,
-        params_->periodic_concurrency_range, params_->request_period);
+        params_->periodic_concurrency_range, params_->request_period,
+        params_->request_parameters);
   } else if (params_->using_request_rate_range) {
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
@@ -230,8 +231,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->max_trials, params_->request_distribution,
             params_->batch_size, params_->max_threads,
             params_->num_of_sequences, params_->shared_memory_type,
-            params_->output_shm_size, params_->serial_sequences, parser_,
-            factory, &manager),
+            params_->output_shm_size, params_->serial_sequences,
+            params_->request_parameters, parser_, factory, &manager),
         "failed to create request rate manager");
 
   } else {
@@ -249,8 +250,8 @@ PerfAnalyzer::CreateAnalyzerObjects()
             params_->max_trials, params_->request_intervals_file,
             params_->batch_size, params_->max_threads,
             params_->num_of_sequences, params_->shared_memory_type,
-            params_->output_shm_size, params_->serial_sequences, parser_,
-            factory, &manager),
+            params_->output_shm_size, params_->serial_sequences,
+            params_->request_parameters, parser_, factory, &manager),
         "failed to create custom load manager");
   }
 

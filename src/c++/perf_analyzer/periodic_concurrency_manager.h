@@ -42,12 +42,16 @@ class PeriodicConcurrencyManager : public ConcurrencyManager {
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      const Range<uint64_t> concurrency_range, const uint64_t request_period)
+      const Range<uint64_t> concurrency_range, const uint64_t request_period,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters)
       : ConcurrencyManager(
             async, streaming, batch_size, max_threads, max_concurrency,
-            shared_memory_type, output_shm_size, parser, factory),
+            shared_memory_type, output_shm_size, parser, factory,
+            request_parameters),
         concurrency_range_(concurrency_range), request_period_(request_period)
   {
   }
