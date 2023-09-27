@@ -57,14 +57,14 @@ concurrent requests received M number of responses back from the server.
 The user can also specify custom parameters to the model using
 `--request-parameter <name:value:type>` option.
 For instance, passing `--request-parameter max_tokens:256:uint` will set an
-additional parameter `max_tokens` of type `uint` to 256 as part of the request.
+additional parameter `max_tokens` of type `int` to 256 as part of the request.
 
 ```bash
 perf_analyzer -m <model_name> -i grpc --async --streaming \
     --profile-export-file profile.json \
     --periodic-concurrency-range 10:100:30 \
     --request-period 10 \
-    --request-parameter max_tokens:256:uint
+    --request-parameter max_tokens:256:int
 ```
 
 > **Note**
