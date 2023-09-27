@@ -160,13 +160,6 @@ PerfAnalyzer::CreateAnalyzerObjects()
   }
 
   std::unique_ptr<pa::LoadManager> manager;
-  params_->is_using_periodic_concurrency_mode = true;
-  params_->periodic_concurrency_range = {
-      std::stoi(std::getenv("MY_START")), std::stoi(std::getenv("MY_END")),
-      std::stoi(std::getenv("MY_STEP"))};
-  params_->periodic_concurrency_request_period =
-      std::stoi(std::getenv("MY_REQUEST_PERIOD"));
-
   if (params_->targeting_concurrency()) {
     if ((parser_->SchedulerType() == pa::ModelParser::SEQUENCE) ||
         (parser_->SchedulerType() == pa::ModelParser::ENSEMBLE_SEQUENCE)) {
@@ -221,8 +214,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
         params_->async, params_->streaming, params_->batch_size,
         params_->max_threads, params_->max_concurrency,
         params_->shared_memory_type, params_->output_shm_size, parser_, factory,
-        params_->periodic_concurrency_range,
-        params_->periodic_concurrency_request_period);
+        params_->periodic_concurrency_range, params_->request_period);
   } else if (params_->using_request_rate_range) {
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
