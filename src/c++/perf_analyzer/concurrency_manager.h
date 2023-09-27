@@ -70,21 +70,21 @@ class ConcurrencyManager : public LoadManager {
   /// \param shared_memory_type The type of shared memory to use for inputs.
   /// \param output_shm_size The size in bytes of the shared memory to
   /// allocate for the output.
-  /// \param request_parameters Custom request parameters to send to the server
   /// \param parser The ModelParser object to get the model details.
   /// \param factory The ClientBackendFactory object used to create
   /// client to the server.
   /// \param manager Returns a new ConcurrencyManager object.
+  /// \param request_parameters Custom request parameters to send to the server
   /// \return cb::Error object indicating success or failure.
   static cb::Error Create(
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const std::unordered_map<std::string, cb::RequestParameter>&
-          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
-      std::unique_ptr<LoadManager>* manager);
+      std::unique_ptr<LoadManager>* manager,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters);
 
   /// Adjusts the number of concurrent requests to be the same as
   /// 'concurrent_request_count' (by creating or pausing threads)
@@ -102,10 +102,10 @@ class ConcurrencyManager : public LoadManager {
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const size_t max_concurrency,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-      const std::unordered_map<std::string, cb::RequestParameter>&
-          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory);
+      const std::shared_ptr<cb::ClientBackendFactory>& factory,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters);
 
   // The number of worker threads with non-zero concurrencies
   size_t active_threads_;

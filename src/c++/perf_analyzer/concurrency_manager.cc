@@ -42,16 +42,16 @@ ConcurrencyManager::Create(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t max_concurrency,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const std::unordered_map<std::string, cb::RequestParameter>&
-        request_parameters,
     const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
-    std::unique_ptr<LoadManager>* manager)
+    std::unique_ptr<LoadManager>* manager,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters)
 {
   std::unique_ptr<ConcurrencyManager> local_manager(new ConcurrencyManager(
       async, streaming, batch_size, max_threads, max_concurrency,
-      shared_memory_type, output_shm_size, request_parameters, parser,
-      factory));
+      shared_memory_type, output_shm_size, parser, factory,
+      request_parameters));
 
   *manager = std::move(local_manager);
 
@@ -62,13 +62,13 @@ ConcurrencyManager::ConcurrencyManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const size_t max_concurrency,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
-    const std::unordered_map<std::string, cb::RequestParameter>&
-        request_parameters,
     const std::shared_ptr<ModelParser>& parser,
-    const std::shared_ptr<cb::ClientBackendFactory>& factory)
+    const std::shared_ptr<cb::ClientBackendFactory>& factory,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters)
     : LoadManager(
           async, streaming, batch_size, max_threads, shared_memory_type,
-          output_shm_size, request_parameters, parser, factory),
+          output_shm_size, parser, factory, request_parameters),
       execute_(true), max_concurrency_(max_concurrency)
 {
   threads_config_.reserve(max_threads);

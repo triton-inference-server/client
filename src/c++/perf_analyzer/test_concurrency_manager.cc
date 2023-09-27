@@ -53,8 +53,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
         ConcurrencyManager(
             params.async, params.streaming, params.batch_size,
             params.max_threads, params.max_concurrency,
-            params.shared_memory_type, params.output_shm_size,
-            params.request_parameters, GetParser(), GetFactory())
+            params.shared_memory_type, params.output_shm_size, GetParser(),
+            GetFactory(), params.request_parameters)
   {
   }
 

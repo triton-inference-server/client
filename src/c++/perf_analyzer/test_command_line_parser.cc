@@ -196,11 +196,11 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
         "Unexpected parameter: ", act_param.first);
 
     CHECK(act_param.second.type == exp_param->second.type);
-    if (act_param.second.type == RequestParameterType::STRING) {
+    if (act_param.second.type == cb::RequestParameterType::STRING) {
       CHECK(act_param.second.str_value == exp_param->second.str_value);
-    } else if (act_param.second.type == RequestParameterType::INT) {
+    } else if (act_param.second.type == cb::RequestParameterType::INT) {
       CHECK(act_param.second.int_value == exp_param->second.int_value);
-    } else if (act_param.second.type == RequestParameterType::BOOL) {
+    } else if (act_param.second.type == cb::RequestParameterType::BOOL) {
       CHECK(act_param.second.bool_value == exp_param->second.bool_value);
     }
   }
@@ -1392,9 +1392,9 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      RequestParameter param;
+      cb::RequestParameter param;
       param.int_value = 256;
-      param.type = RequestParameterType::INT;
+      param.type = cb::RequestParameterType::INT;
       exp->request_parameters["max_tokens"] = param;
     }
 

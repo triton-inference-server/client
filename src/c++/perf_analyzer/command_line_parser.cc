@@ -1601,15 +1601,15 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::string value{values[1]};
           std::string type{values[2]};
 
-          RequestParameter param;
+          cb::RequestParameter param;
           if (type == "bool") {
-            param.type = RequestParameterType::BOOL;
+            param.type = cb::RequestParameterType::BOOL;
             param.bool_value = value == "true" ? true : false;
           } else if (type == "int") {
-            param.type = RequestParameterType::INT;
+            param.type = cb::RequestParameterType::INT;
             param.int_value = std::stoll(value);
           } else if (type == "string") {
-            param.type = RequestParameterType::STRING;
+            param.type = cb::RequestParameterType::STRING;
             param.str_value = value;
           } else {
             Usage(

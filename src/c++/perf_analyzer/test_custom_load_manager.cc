@@ -58,8 +58,8 @@ class TestCustomLoadManager : public TestLoadManagerBase,
             params.async, params.streaming, "INTERVALS_FILE", params.batch_size,
             params.measurement_window_ms, params.max_trials, params.max_threads,
             params.num_of_sequences, params.shared_memory_type,
-            params.output_shm_size, params.serial_sequences,
-            params.request_parameters, GetParser(), GetFactory())
+            params.output_shm_size, params.serial_sequences, GetParser(),
+            GetFactory(), params.request_parameters)
   {
     InitManager(
         params.string_length, params.string_data, params.zero_input,

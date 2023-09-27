@@ -111,11 +111,10 @@ class LoadManager {
   LoadManager(
       const bool async, const bool streaming, const int32_t batch_size,
       const size_t max_threads, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size,
+      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::unordered_map<std::string, cb::RequestParameter>&
-          request_parameters,
-      const std::shared_ptr<ModelParser>& parser,
-      const std::shared_ptr<cb::ClientBackendFactory>& factory);
+          request_parameters);
 
   /// Complete any subclass-specific manager initialization tasks.
   virtual void InitManagerFinalize() {}
