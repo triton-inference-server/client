@@ -83,7 +83,7 @@ class Range {
   T step;
 };
 
-enum RequestParameterType { STRING = 0, INT = 1, BOOL = 3 };
+enum RequestParameterType { STRING = 0, INT = 1, BOOL = 2 };
 
 struct RequestParameter {
   std::string str_value;
