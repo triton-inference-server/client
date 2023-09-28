@@ -25,32 +25,43 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-
 import subprocess
 from pathlib import Path
 
-# Clean up
-export_file = Path('profile_export.json')
-export_file.unlink(missing_ok=True)
+if __name__ == "__main__":
+    # Clean up
+    export_file = Path("profile_export.json")
+    export_file.unlink(missing_ok=True)
 
-with open('prompts.json', 'w') as f:
-    json.dump({
-        'data': [
+    with open("prompts.json", "w") as f:
+        json.dump(
             {
-                'PROMPT': [ "Hello, my name is " ],
-                "STREAM": [ True ],
-            }
-        ],
-    }, f)
+                "data": [
+                    {
+                        "PROMPT": ["Hello, my name is "],
+                        "STREAM": [True],
+                    }
+                ],
+            },
+            f,
+        )
 
-ret = subprocess.run(args=['perf_analyzer -m vllm -i grpc --async --streaming --input-data=prompts.json --profile-export-file=profile_export.json --measurement-mode=count_windows --measurement-request-count=10 --stability-percentage=999'], shell=True)
+    # Run Perf Analyzer
+    command = (
+        "perf_analyzer -m vllm -i grpc --async --streaming "
+        "--input-data=prompts.json "
+        "--profile-export-file=profile_export.json "
+        "--measurement-mode=count_windows "
+        "--measurement-request-count=10 "
+        "--stability-percentage=999"
+    )
+    ret = subprocess.run(args=[command], shell=True)
 
-if ret.returncode == 0:
-    with open("profile_export.json") as f:
+    if ret.returncode == 0:
         # example json demonstrating format:
         # https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/docs/examples/decoupled_output_file.json
-        requests = json.load(f)["experiments"][0]["requests"]
-        latencies = [r["response_timestamps"][0] - r["timestamp"] for r in requests]
-        avg_latency_s = sum(latencies) / len(latencies) / 1000000000
-    
-        print("Average first-token latency: " + str(avg_latency_s) + " sec")
+        with open("profile_export.json") as f:
+            requests = json.load(f)["experiments"][0]["requests"]
+            latencies = [r["response_timestamps"][0] - r["timestamp"] for r in requests]
+            avg_latency_s = sum(latencies) / len(latencies) / 1_000_000_000
+            print(f"Average first-token latency: {avg_latency_s} sec")
