@@ -83,15 +83,6 @@ class Range {
   T step;
 };
 
-// enum RequestParameterType { STRING = 0, INT = 1, BOOL = 2 };
-
-// struct RequestParameter {
-//   std::string str_value;
-//   int64_t int_value;
-//   bool bool_value;
-//   RequestParameterType type;
-// };
-
 // Converts the datatype from tensorflow to perf analyzer space
 // \param tf_dtype The data type string returned from the model metadata.
 // \param datatype Returns the datatype in perf_analyzer space.
