@@ -61,7 +61,8 @@ PeriodicConcurrencyWorker::WorkerCallback(uint32_t infer_context_id)
     if (has_not_completed_period) {
       throw std::runtime_error(
           "Request received final response before request period was reached. "
-          "Request period parameter must be less than or equal to max tokens.");
+          "Request period must be at most the total number of responses "
+          "received by any request.");
     }
     request_completed_callback_();
   }
