@@ -32,8 +32,6 @@
 
 namespace triton { namespace perfanalyzer {
 
-// std::unordered_map<std::string, clientbackend::RequestParameter>
-//     request_parameters;
 
 class MockInferDataManagerShm : public InferDataManagerShm {
  public:

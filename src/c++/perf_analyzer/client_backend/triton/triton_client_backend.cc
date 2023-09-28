@@ -600,8 +600,7 @@ TritonClientBackend::ParseInferOptionsToTriton(
         static_cast<std::underlying_type<cb::RequestParameterType>::type>(
             map_entry.second.type);
     rp.type = static_cast<tc::RequestParameterType>(val);
-    triton_options->request_parameters.insert(
-        std::make_pair(map_entry.first, rp));
+    triton_options->request_parameters[map_entry.first] = rp;
   }
 }
 

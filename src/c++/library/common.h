@@ -34,11 +34,11 @@
 #include <functional>
 #include <iostream>
 #include <list>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
