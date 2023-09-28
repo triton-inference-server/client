@@ -1416,9 +1416,6 @@ InferenceServerGrpcClient::PreRunProcessing(
     } else if (param.second.type == RequestParameterType::INT) {
       (*infer_request_.mutable_parameters())[param.first].set_int64_param(
           param.second.int_value);
-    } else if (param.second.type == RequestParameterType::UINT) {
-      (*infer_request_.mutable_parameters())[param.first].set_uint64_param(
-          param.second.uint_value);
     } else if (param.second.type == RequestParameterType::BOOL) {
       (*infer_request_.mutable_parameters())[param.first].set_bool_param(
           param.second.bool_value);
