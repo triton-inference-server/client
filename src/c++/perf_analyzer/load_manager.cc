@@ -160,7 +160,9 @@ LoadManager::LoadManager(
     const bool async, const bool streaming, const int32_t batch_size,
     const size_t max_threads, const SharedMemoryType shared_memory_type,
     const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
-    const std::shared_ptr<cb::ClientBackendFactory>& factory)
+    const std::shared_ptr<cb::ClientBackendFactory>& factory,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
       max_threads_(max_threads), parser_(parser), factory_(factory),
       using_json_data_(false)
@@ -172,8 +174,8 @@ LoadManager::LoadManager(
   data_loader_.reset(new DataLoader(batch_size_));
 
   infer_data_manager_ = InferDataManagerFactory::CreateInferDataManager(
-      max_threads, batch_size, shared_memory_type, output_shm_size, parser,
-      factory, data_loader_);
+      max_threads, batch_size, shared_memory_type, output_shm_size,
+      request_parameters, parser, factory, data_loader_);
 }
 
 void

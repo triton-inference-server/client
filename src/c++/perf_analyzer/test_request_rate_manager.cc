@@ -61,7 +61,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
             params.batch_size, params.measurement_window_ms, params.max_trials,
             params.max_threads, params.num_of_sequences,
             params.shared_memory_type, params.output_shm_size,
-            params.serial_sequences, GetParser(), GetFactory())
+            params.serial_sequences, GetParser(), GetFactory(),
+            params.request_parameters)
   {
   }
 
@@ -368,7 +369,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
     infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
             params_.max_threads, params_.batch_size, params_.shared_memory_type,
-            params_.output_shm_size, mmp, factory_, mdl);
+            params_.output_shm_size, params_.request_parameters, mmp, factory_,
+            mdl);
 
     parser_ = mmp;
     data_loader_ = mdl;
@@ -1549,8 +1551,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
             params.max_threads, params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_);
+            params.output_shm_size, params.request_parameters,
+            mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
@@ -1576,8 +1578,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
             params.max_threads, params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_);
+            params.output_shm_size, params.request_parameters,
+            mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
@@ -1601,8 +1603,8 @@ TEST_CASE("Request rate - Shared memory methods")
     trrm.infer_data_manager_ =
         MockInferDataManagerFactory::CreateMockInferDataManager(
             params.max_threads, params.batch_size, params.shared_memory_type,
-            params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-            mip.mock_data_loader_);
+            params.output_shm_size, params.request_parameters,
+            mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
     trrm.parser_ = mip.mock_model_parser_;
     trrm.data_loader_ = mip.mock_data_loader_;
@@ -1692,8 +1694,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
   trrm.infer_data_manager_ =
       MockInferDataManagerFactory::CreateMockInferDataManager(
           params.max_threads, params.batch_size, params.shared_memory_type,
-          params.output_shm_size, mip.mock_model_parser_, trrm.factory_,
-          mip.mock_data_loader_);
+          params.output_shm_size, params.request_parameters,
+          mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
   std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{

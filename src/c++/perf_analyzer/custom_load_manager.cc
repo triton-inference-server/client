@@ -41,12 +41,15 @@ CustomLoadManager::Create(
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
     const std::shared_ptr<cb::ClientBackendFactory>& factory,
-    std::unique_ptr<LoadManager>* manager)
+    std::unique_ptr<LoadManager>* manager,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters)
 {
   std::unique_ptr<CustomLoadManager> local_manager(new CustomLoadManager(
       async, streaming, request_intervals_file, batch_size,
       measurement_window_ms, max_trials, max_threads, num_of_sequences,
-      shared_memory_type, output_shm_size, serial_sequences, parser, factory));
+      shared_memory_type, output_shm_size, serial_sequences, parser, factory,
+      request_parameters));
 
   *manager = std::move(local_manager);
 
@@ -60,12 +63,14 @@ CustomLoadManager::CustomLoadManager(
     const size_t max_threads, const uint32_t num_of_sequences,
     const SharedMemoryType shared_memory_type, const size_t output_shm_size,
     const bool serial_sequences, const std::shared_ptr<ModelParser>& parser,
-    const std::shared_ptr<cb::ClientBackendFactory>& factory)
+    const std::shared_ptr<cb::ClientBackendFactory>& factory,
+    const std::unordered_map<std::string, cb::RequestParameter>&
+        request_parameters)
     : RequestRateManager(
           async, streaming, Distribution::CUSTOM, batch_size,
           measurement_window_ms, max_trials, max_threads, num_of_sequences,
           shared_memory_type, output_shm_size, serial_sequences, parser,
-          factory),
+          factory, request_parameters),
       request_intervals_file_(request_intervals_file)
 {
 }

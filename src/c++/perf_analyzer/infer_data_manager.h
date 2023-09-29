@@ -41,11 +41,14 @@ class InferDataManager : public InferDataManagerBase {
  public:
   InferDataManager(
       const size_t max_threads, const int32_t batch_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
       : max_threads_(max_threads),
-        InferDataManagerBase(batch_size, parser, factory, data_loader)
+        InferDataManagerBase(
+            batch_size, request_parameters, parser, factory, data_loader)
   {
   }
 

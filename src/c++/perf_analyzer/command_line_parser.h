@@ -58,7 +58,7 @@ struct PerfAnalyzerParameters {
   uint64_t measurement_window_ms = 5000;
   bool using_concurrency_range = false;
   Range<uint64_t> concurrency_range{1, 1, 1};
-  std::unordered_map<std::string, RequestParameter> request_parameters;
+  std::unordered_map<std::string, cb::RequestParameter> request_parameters;
   uint64_t latency_threshold_ms = NO_LIMIT;
   double stability_threshold = 0.1;
   size_t max_trials = 10;

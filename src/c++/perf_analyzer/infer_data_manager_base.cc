@@ -179,5 +179,10 @@ InferDataManagerBase::CreateInferInput(
   return cb::InferInput::Create(infer_input, kind, name, dims, datatype);
 }
 
+void
+InferDataManagerBase::AddInferDataParameters(InferData& infer_data)
+{
+  infer_data.options_->request_parameters_ = request_parameters_;
+}
 
 }}  // namespace triton::perfanalyzer

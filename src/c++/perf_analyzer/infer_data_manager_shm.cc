@@ -331,6 +331,8 @@ InferDataManagerShm::InitInferDataInput(
   RETURN_IF_ERROR(infer_input->SetSharedMemory(
       region_name, shared_memory_regions_[region_name].byte_size_));
 
+  AddInferDataParameters(infer_data);
+
   return cb::Error::Success;
 }
 
