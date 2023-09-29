@@ -593,13 +593,9 @@ TritonClientBackend::ParseInferOptionsToTriton(
 
   for (auto& map_entry : options.request_parameters_) {
     auto rp = tc::RequestParameter();
-    rp.str_value = map_entry.second.str_value;
-    rp.int_value = map_entry.second.int_value;
-    rp.bool_value = map_entry.second.bool_value;
-    uint64_t val =
-        static_cast<std::underlying_type<cb::RequestParameterType>::type>(
-            map_entry.second.type);
-    rp.type = static_cast<tc::RequestParameterType>(val);
+    rp.name = map_entry.second.name;
+    rp.value = map_entry.second.value;
+    rp.type = map_entry.second.type;
     triton_options->request_parameters[map_entry.first] = rp;
   }
 }

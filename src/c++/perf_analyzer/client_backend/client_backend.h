@@ -192,15 +192,13 @@ struct ModelStatistics {
   uint64_t cache_miss_time_ns_;
 };
 
-enum RequestParameterType { STRING = 0, INT = 1, BOOL = 2 };
 ///
 /// Structure to hold Request parameter data for Inference Request.
 ///
 struct RequestParameter {
-  std::string str_value;
-  int64_t int_value;
-  bool bool_value;
-  RequestParameterType type;
+  std::string name;
+  std::string value;
+  std::string type;
 };
 
 //==============================================================================

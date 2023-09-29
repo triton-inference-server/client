@@ -35,6 +35,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include <string>
 
 #include "common.h"
 
@@ -1410,15 +1411,18 @@ InferenceServerGrpcClient::PreRunProcessing(
 
 
   for (auto& param : options.request_parameters) {
-    if (param.second.type == RequestParameterType::STRING) {
+    if (param.second.type == "string") {
       (*infer_request_.mutable_parameters())[param.first].set_string_param(
-          param.second.str_value);
-    } else if (param.second.type == RequestParameterType::INT) {
+          param.second.value);
+    } else if (param.second.type == "int") {
       (*infer_request_.mutable_parameters())[param.first].set_int64_param(
-          param.second.int_value);
-    } else if (param.second.type == RequestParameterType::BOOL) {
-      (*infer_request_.mutable_parameters())[param.first].set_bool_param(
-          param.second.bool_value);
+          std::stoi(param.second.value));
+    } else if (param.second.type == "bool") {
+      bool val = false;
+      if (param.second.value == "true") {
+        val = true;
+      }
+      (*infer_request_.mutable_parameters())[param.first].set_bool_param(val);
     }
   }
 
