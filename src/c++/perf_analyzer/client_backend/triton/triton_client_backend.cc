@@ -590,6 +590,14 @@ TritonClientBackend::ParseInferOptionsToTriton(
   }
   triton_options->triton_enable_empty_final_response_ =
       options.triton_enable_empty_final_response_;
+
+  for (auto& map_entry : options.request_parameters_) {
+    auto rp = tc::RequestParameter();
+    rp.name = map_entry.second.name;
+    rp.value = map_entry.second.value;
+    rp.type = map_entry.second.type;
+    triton_options->request_parameters[map_entry.first] = rp;
+  }
 }
 
 

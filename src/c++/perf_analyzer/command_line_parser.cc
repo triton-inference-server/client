@@ -1601,21 +1601,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::string value{values[1]};
           std::string type{values[2]};
 
-          RequestParameter param;
-          if (type == "bool") {
-            param.type = RequestParameterType::BOOL;
-            param.bool_value = value == "true" ? true : false;
-          } else if (type == "int") {
-            param.type = RequestParameterType::INT;
-            param.int_value = std::stoll(value);
-          } else if (type == "string") {
-            param.type = RequestParameterType::STRING;
-            param.str_value = value;
-          } else {
-            Usage(
-                "Failed to parse --request-parameter. Unsupported type: '" +
-                type + "'.");
-          }
+          cb::RequestParameter param;
+          param.name = name;
+          param.value = value;
+          param.type = type;
           params_->request_parameters[name] = param;
           break;
         }

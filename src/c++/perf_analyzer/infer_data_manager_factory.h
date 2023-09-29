@@ -30,6 +30,7 @@
 #include "infer_data_manager.h"
 #include "infer_data_manager_shm.h"
 #include "model_parser.h"
+#include "perf_utils.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -38,40 +39,49 @@ class InferDataManagerFactory {
   static std::shared_ptr<IInferDataManager> CreateInferDataManager(
       const size_t max_threads, const int32_t batch_size,
       const SharedMemoryType shared_memory_type, const size_t output_shm_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     if (shared_memory_type == SharedMemoryType::NO_SHARED_MEMORY) {
       return CreateInferDataManagerNoShm(
-          max_threads, batch_size, parser, factory, data_loader);
+          max_threads, batch_size, request_parameters, parser, factory,
+          data_loader);
     } else {
       return CreateInferDataManagerShm(
-          batch_size, shared_memory_type, output_shm_size, parser, factory,
-          data_loader);
+          batch_size, shared_memory_type, output_shm_size, request_parameters,
+          parser, factory, data_loader);
     }
   }
 
  private:
   static std::shared_ptr<IInferDataManager> CreateInferDataManagerNoShm(
       const size_t max_threads, const int32_t batch_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
       const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     return std::make_shared<InferDataManager>(
-        max_threads, batch_size, parser, factory, data_loader);
+        max_threads, batch_size, request_parameters, parser, factory,
+        data_loader);
   }
 
   static std::shared_ptr<IInferDataManager> CreateInferDataManagerShm(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t output_shm_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
   {
     return std::make_shared<InferDataManagerShm>(
-        batch_size, shared_memory_type, output_shm_size, parser, factory,
-        data_loader);
+        batch_size, shared_memory_type, output_shm_size, request_parameters,
+        parser, factory, data_loader);
   }
 };
 
