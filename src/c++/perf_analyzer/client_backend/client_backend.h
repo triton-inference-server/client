@@ -192,6 +192,15 @@ struct ModelStatistics {
   uint64_t cache_miss_time_ns_;
 };
 
+///
+/// Structure to hold Request parameter data for Inference Request.
+///
+struct RequestParameter {
+  std::string name;
+  std::string value;
+  std::string type;
+};
+
 //==============================================================================
 /// Structure to hold options for Inference Request.
 ///
@@ -230,6 +239,9 @@ struct InferOptions {
   bool sequence_end_;
   /// Whether to tell Triton to enable an empty final response.
   bool triton_enable_empty_final_response_;
+
+  /// Additional parameters to pass to the model
+  std::unordered_map<std::string, RequestParameter> request_parameters_;
 };
 
 struct SslOptionsBase {

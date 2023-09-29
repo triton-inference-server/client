@@ -38,6 +38,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
@@ -153,6 +154,12 @@ class InferenceServerClient {
   InferStat infer_stat_;
 };
 
+struct RequestParameter {
+  std::string name;
+  std::string value;
+  std::string type;
+};
+
 //==============================================================================
 /// Structure to hold options for Inference Request.
 ///
@@ -221,6 +228,8 @@ struct InferOptions {
   uint64_t client_timeout_;
   /// Whether to tell Triton to enable an empty final response.
   bool triton_enable_empty_final_response_;
+  /// Additional parameters to pass to the model
+  std::unordered_map<std::string, RequestParameter> request_parameters;
 };
 
 //==============================================================================

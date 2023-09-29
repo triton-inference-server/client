@@ -35,6 +35,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
+#include <string>
 
 #include "common.h"
 
@@ -1406,6 +1407,23 @@ InferenceServerGrpcClient::PreRunProcessing(
   if (options.server_timeout_ != 0) {
     (*infer_request_.mutable_parameters())["timeout"].set_int64_param(
         options.server_timeout_);
+  }
+
+
+  for (auto& param : options.request_parameters) {
+    if (param.second.type == "string") {
+      (*infer_request_.mutable_parameters())[param.first].set_string_param(
+          param.second.value);
+    } else if (param.second.type == "int") {
+      (*infer_request_.mutable_parameters())[param.first].set_int64_param(
+          std::stoi(param.second.value));
+    } else if (param.second.type == "bool") {
+      bool val = false;
+      if (param.second.value == "true") {
+        val = true;
+      }
+      (*infer_request_.mutable_parameters())[param.first].set_bool_param(val);
+    }
   }
 
   int index = 0;

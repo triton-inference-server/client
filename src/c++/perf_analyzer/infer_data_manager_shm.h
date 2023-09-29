@@ -94,12 +94,16 @@ class InferDataManagerShm : public InferDataManagerBase {
  public:
   InferDataManagerShm(
       const int32_t batch_size, const SharedMemoryType shared_memory_type,
-      const size_t output_shm_size, const std::shared_ptr<ModelParser>& parser,
+      const size_t output_shm_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
       : shared_memory_type_(shared_memory_type),
         output_shm_size_(output_shm_size),
-        InferDataManagerBase(batch_size, parser, factory, data_loader)
+        InferDataManagerBase(
+            batch_size, request_parameters, parser, factory, data_loader)
   {
   }
 

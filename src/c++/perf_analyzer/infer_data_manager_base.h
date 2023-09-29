@@ -41,11 +41,15 @@ namespace triton { namespace perfanalyzer {
 class InferDataManagerBase : public IInferDataManager {
  public:
   InferDataManagerBase(
-      const int32_t batch_size, const std::shared_ptr<ModelParser>& parser,
+      const int32_t batch_size,
+      const std::unordered_map<std::string, cb::RequestParameter>&
+          request_parameters,
+      const std::shared_ptr<ModelParser>& parser,
       const std::shared_ptr<cb::ClientBackendFactory>& factory,
       const std::shared_ptr<DataLoader>& data_loader)
-      : batch_size_(batch_size), parser_(parser), factory_(factory),
-        data_loader_(data_loader), backend_kind_(factory->Kind())
+      : batch_size_(batch_size), request_parameters_(request_parameters),
+        parser_(parser), factory_(factory), data_loader_(data_loader),
+        backend_kind_(factory->Kind())
   {
   }
 
@@ -72,6 +76,7 @@ class InferDataManagerBase : public IInferDataManager {
   std::shared_ptr<DataLoader> data_loader_;
   std::unique_ptr<cb::ClientBackend> backend_;
   cb::BackendKind backend_kind_;
+  std::unordered_map<std::string, cb::RequestParameter> request_parameters_;
 
   /// Gets the input data for the specified input for the specified batch size
   ///
@@ -134,6 +139,8 @@ class InferDataManagerBase : public IInferDataManager {
 
   virtual cb::Error InitInferDataOutput(
       const std::string& name, InferData& infer_data) = 0;
+
+  void AddInferDataParameters(InferData& infer_data);
 
 #ifndef DOCTEST_CONFIG_DISABLE
  public:
