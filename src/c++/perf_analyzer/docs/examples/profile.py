@@ -26,32 +26,8 @@
 
 import argparse
 import json
-import random
 import subprocess
 from pathlib import Path
-
-RANDOM_WORDS = [
-    "system",
-    "plug",
-    "gentle",
-    "efficient",
-    "library",
-    "tested",
-    "careful",
-    "sneeze",
-    "excuse",
-    "zoo",
-    "rock",
-    "delight",
-    "hammer",
-    "unit",
-    "happen",
-    "multiply",
-    "texture",
-    "tired",
-    "knot",
-    "yawn",
-]
 
 
 def profile(args):
@@ -70,8 +46,8 @@ def profile(args):
         with open("profile_export.json") as f:
             requests = json.load(f)["experiments"][0]["requests"]
             latencies = [r["response_timestamps"][0] - r["timestamp"] for r in requests]
-            avg_latency_s = sum(latencies) / len(latencies) / 1_000_000_000
-        return avg_latency_s
+            avg_latency_in_sec = sum(latencies) / len(latencies) / 1_000_000_000
+        return avg_latency_in_sec
 
 
 if __name__ == "__main__":
@@ -90,8 +66,7 @@ if __name__ == "__main__":
     results = []
 
     for prompt_length in prompt_lengths:
-        # Generate random prompt
-        prompt = random.choices(RANDOM_WORDS, k=prompt_length)
+        prompt = ["hi"] * prompt_length  # Generate dummy prompt
         input_data["data"][0]["PROMPT"] = [" ".join(prompt)]
         with open("prompts.json", "w") as f:
             json.dump(input_data, f)
