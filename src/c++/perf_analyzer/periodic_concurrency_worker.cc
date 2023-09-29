@@ -55,6 +55,15 @@ PeriodicConcurrencyWorker::WorkerCallback(uint32_t infer_context_id)
     period_completed_callback_();
   }
   if (ctxs_.at(infer_context_id)->HasReceivedFinalResponse()) {
+    bool has_not_completed_period{
+        ctxs_.at(infer_context_id)->GetNumResponsesForCurrentRequest() <
+        request_period_};
+    if (has_not_completed_period) {
+      throw std::runtime_error(
+          "Request received final response before request period was reached. "
+          "Request period must be at most the total number of responses "
+          "received by any request.");
+    }
     request_completed_callback_();
   }
 }
