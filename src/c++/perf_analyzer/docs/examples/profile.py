@@ -68,9 +68,28 @@ if __name__ == "__main__":
         default=[10, 10, 1],
         help="The range of prompt sizes '<[START, END], STEP>' where END is inclusive.",
     )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=256,
+        help="The maximum number of tokens to generate.",
+    )
+    parser.add_argument(
+        "--ignore-eos",
+        action="store_true",
+        help="Whether to ignore end-of-sequence token.",
+    )
     args = parser.parse_args()
 
+    request_parameters = f"""
+    {{
+        "max_tokens": {args.max_tokens},
+        "ignore_eos": {"true" if args.ignore_eos else "false"}
+    }}
+    """
     input_data = {"data": [{"STREAM": [True]}]}
+    input_data["data"][0]["SAMPLING_PARAMETERS"] = [request_parameters]
+
     results = []
 
     start, end, step = args.prompt_size_range
