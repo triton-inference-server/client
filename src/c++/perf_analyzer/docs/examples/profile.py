@@ -57,16 +57,25 @@ if __name__ == "__main__":
         "--model",
         type=str,
         default="vllm",
+        choices=["vllm"],
         help="The name of the model to profile.",
+    )
+    parser.add_argument(
+        "--prompt-size-range",
+        type=int,
+        nargs=3,
+        metavar=("START", "END", "STEP"),
+        default=[10, 10, 1],
+        help="The range of prompt sizes '<[START, END], STEP>' where END is inclusive.",
     )
     args = parser.parse_args()
 
-    prompt_lengths = [10, 100, 500, 800, 1000]
     input_data = {"data": [{"STREAM": [True]}]}
     results = []
 
-    for prompt_length in prompt_lengths:
-        prompt = ["hi"] * prompt_length  # Generate dummy prompt
+    start, end, step = args.prompt_size_range
+    for prompt_size in range(start, end + 1, step):
+        prompt = ["hi"] * prompt_size  # Generate dummy prompt
         input_data["data"][0]["PROMPT"] = [" ".join(prompt)]
         with open("prompts.json", "w") as f:
             json.dump(input_data, f)
@@ -75,10 +84,10 @@ if __name__ == "__main__":
         export_file = Path("profile_export.json")
         export_file.unlink(missing_ok=True)
 
-        results.append(profile(args))
+        results.append((prompt_size, profile(args)))
 
-    print("[ Summary: First-Token Latency ]")
-    for prompt_length, latency in zip(prompt_lengths, results):
+    print("\n[ Summary: First-Token Latency ]")
+    for prompt_size, latency in results:
         print(
-            f"- Prompt Length: {prompt_length} | Average first-token latency: {latency}"
+            f"  Prompt size: {prompt_size} | Average first-token latency: {latency:.4f} sec"
         )
