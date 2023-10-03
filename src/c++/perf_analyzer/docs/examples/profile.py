@@ -30,6 +30,29 @@ import subprocess
 from pathlib import Path
 
 
+def calculate_avg_latencies():
+    # Example json demonstrating format:
+    #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
+    first_token_latencies = []
+    token_to_token_latencies = []
+    with open("profile_export.json") as f:
+        requests = json.load(f)["experiments"][0]["requests"]
+        for request in requests:
+            prev_response = request["response_timestamps"][0]
+            first_token_latencies.append(prev_response - request["timestamp"])
+            for response in request["response_timestamps"][1:]:
+                token_to_token_latencies.append(response - prev_response)
+                prev_response = response
+
+    avg_first_token_latency = (
+        sum(first_token_latencies) / len(first_token_latencies) / 1_000_000_000
+    )
+    avg_token_to_token_latency = (
+        sum(token_to_token_latencies) / len(token_to_token_latencies) / 1_000_000_000
+    )
+    return avg_first_token_latency, avg_token_to_token_latency
+
+
 def profile(args):
     command = (
         f"perf_analyzer -m {args.model} -i grpc --async --streaming "
@@ -40,14 +63,7 @@ def profile(args):
         "--stability-percentage=999"
     )
     ret = subprocess.run(args=[command], shell=True)
-    if ret.returncode == 0:
-        # Example json demonstrating format:
-        #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
-        with open("profile_export.json") as f:
-            requests = json.load(f)["experiments"][0]["requests"]
-            latencies = [r["response_timestamps"][0] - r["timestamp"] for r in requests]
-            avg_latency_in_sec = sum(latencies) / len(latencies) / 1_000_000_000
-        return avg_latency_in_sec
+    ret.check_returncode()
 
 
 if __name__ == "__main__":
@@ -103,10 +119,16 @@ if __name__ == "__main__":
         export_file = Path("profile_export.json")
         export_file.unlink(missing_ok=True)
 
-        results.append((prompt_size, profile(args)))
+        profile(args)
+        avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
+        results.append(
+            (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
+        )
 
-    print("\n[ Summary: First-Token Latency ]")
-    for prompt_size, latency in results:
+    print("\n[ Benchmark Summary ]")
+    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
         print(
-            f"  Prompt size: {prompt_size} | Average first-token latency: {latency:.4f} sec"
+            f"  Prompt size: {prompt_size}, "
+            f"Average first-token latency: {avg_first_token_latency:.4f} sec, "
+            f"Average token-token latency: {avg_token_to_token_latency:.4f} sec"
         )
