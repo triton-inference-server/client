@@ -122,7 +122,7 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 
 # Sample output
 # [ Benchmark Summary ]
-#   Prompt size: 100, Average first-token latency: 0.0436 sec, Average token-token latency: 0.0070 sec
-#   Prompt size: 300, Average first-token latency: 0.0311 sec, Average token-token latency: 0.0071 sec
-#   Prompt size: 500, Average first-token latency: 0.0875 sec, Average token-token latency: 0.0073 sec
+#   Prompt size: 100, Average first-token latency: 0.0388 sec, Average token-token latency: 0.0066 sec
+#   Prompt size: 300, Average first-token latency: 0.0431 sec, Average token-token latency: 0.0071 sec
+#   Prompt size: 500, Average first-token latency: 0.0400 sec, Average token-token latency: 0.0070 sec
 ```
