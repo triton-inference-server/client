@@ -29,6 +29,8 @@ import json
 import subprocess
 from pathlib import Path
 
+TEMP_INPUT_FILE = "temp_input_data.json"
+
 
 def calculate_avg_latencies():
     # Example json demonstrating format:
@@ -53,10 +55,14 @@ def calculate_avg_latencies():
     return avg_first_token_latency, avg_token_to_token_latency
 
 
-def profile(args):
+def profile(args, input_data_file):
+    # Clean up
+    export_file = Path("profile_export.json")
+    export_file.unlink(missing_ok=True)
+
     command = (
         f"perf_analyzer -m {args.model} -i grpc --async --streaming "
-        "--input-data=prompts.json "
+        f"--input-data={input_data_file} "
         "--profile-export-file=profile_export.json "
         "--measurement-mode=count_windows "
         "--measurement-request-count=10 "
@@ -64,6 +70,22 @@ def profile(args):
     )
     ret = subprocess.run(args=[command], shell=True)
     ret.check_returncode()
+
+
+def generate_input_data(args, filename):
+    request_parameters = f"""
+    {{
+        "max_tokens": {args.max_tokens},
+        "ignore_eos": {"true" if args.ignore_eos else "false"}
+    }}
+    """
+    input_data = {"data": [{"STREAM": [True]}]}
+    input_data["data"][0]["SAMPLING_PARAMETERS"] = [request_parameters]
+
+    prompt = ["hi"] * prompt_size  # Generate dummy prompt
+    input_data["data"][0]["PROMPT"] = [" ".join(prompt)]
+    with open(filename, "w") as f:
+        json.dump(input_data, f)
 
 
 if __name__ == "__main__":
@@ -95,31 +117,29 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to ignore end-of-sequence token.",
     )
+    parser.add_argument(
+        "--input-data",
+        type=str,
+        default=None,
+        help="The input data file to be used for inference request.",
+    )
     args = parser.parse_args()
-
-    request_parameters = f"""
-    {{
-        "max_tokens": {args.max_tokens},
-        "ignore_eos": {"true" if args.ignore_eos else "false"}
-    }}
-    """
-    input_data = {"data": [{"STREAM": [True]}]}
-    input_data["data"][0]["SAMPLING_PARAMETERS"] = [request_parameters]
 
     results = []
 
+    if args.input_data:
+        print(f"Using input data file '{args.input_data}' for inference request.\n")
+        with open(args.input_data) as f:
+            input_data = json.load(f)
+            prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
+            args.prompt_size_range = [prompt_size, prompt_size, 1]
+
     start, end, step = args.prompt_size_range
     for prompt_size in range(start, end + 1, step):
-        prompt = ["hi"] * prompt_size  # Generate dummy prompt
-        input_data["data"][0]["PROMPT"] = [" ".join(prompt)]
-        with open("prompts.json", "w") as f:
-            json.dump(input_data, f)
+        if not args.input_data:
+            generate_input_data(args, TEMP_INPUT_FILE)
 
-        # Clean up
-        export_file = Path("profile_export.json")
-        export_file.unlink(missing_ok=True)
-
-        profile(args)
+        profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
         avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
         results.append(
             (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
