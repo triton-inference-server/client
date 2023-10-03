@@ -60,23 +60,14 @@ size on first-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute at most one new token. This
 essentially means one pass through the model.
 
-#### 1. Run the following commands to set `max_tokens` to `1`
-
-```bash
-# in the `tutorials/Quick_Deploy/vLLM` directory from above
-PATH_TO_MODEL_PY="model_repository/vllm/1/model.py"
-MAX_TOKENS=1
-sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${PATH_TO_MODEL_PY}
-```
-
-#### 2. Start Triton Server
+#### (Optional) Start Triton Server if not already running
 
 ```bash
 docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
 # this will run continuously in the current shell
 ```
 
-#### 3. Generate prompts input data JSON
+#### 1. Generate prompts input data JSON
 
 ```bash
 # open a new shell in the same directory you were in when running the above command
@@ -89,6 +80,9 @@ echo '
             ],
             "STREAM": [
                 true
+            ],
+            "SAMPLING_PARAMETERS": [
+                "{\"max_tokens\":1,\"ignore_eos\":true}"
             ]
         }
     ]
@@ -96,7 +90,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 4. Run Perf Analyzer
+#### 2. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -111,14 +105,14 @@ perf_analyzer \
     --stability-percentage=999
 ```
 
-#### 5. Calculate average first-token latency
+#### 3. Calculate average first-token latency
 
 ```bash
 python3 examples/calculate_avg_first_token_latency.py
 # Average first-token latency: 0.3065654714375 s
 ```
 
-#### 6. Repeat steps 3-5 with different prompt lengths to measure effects of initial prompt size (prefill) on first-token latency.
+#### 4. Repeat steps 1-3 with different prompt lengths to measure effects of initial prompt size (prefill) on first-token latency.
 
 For example:
 ![](examples/avg_first_token_latency_chart.jpg)
@@ -129,29 +123,14 @@ In this benchmarking scenario, we want to measure the effect of input prompt
 size on token-to-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute a fixed amount of tokens.
 
-#### (Optional) Stop Triton Server if already running
-
-```bash
-pkill tritonserver
-```
-
-#### 1. Run the following commands to set the `max_tokens` to `256` and `ignore_eos` to `true`
-
-```bash
-PATH_TO_MODEL_PY="model_repository/vllm/1/model.py"
-MAX_TOKENS=256
-sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${PATH_TO_MODEL_PY}
-sed -i "128i\ \ \ \ \ \ \ \ params_dict[\"ignore_eos\"] = True" ${PATH_TO_MODEL_PY}
-```
-
-#### 2. Start Triton Server
+#### (Optional) Start Triton Server if not already running
 
 ```bash
 docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
 # this will run continuously in the current shell
 ```
 
-#### 3. Generate prompts input data JSON
+#### 1. Generate prompts input data JSON
 
 ```bash
 # open a new shell in the same directory you were in when running the above command
@@ -164,6 +143,9 @@ echo '
             ],
             "STREAM": [
                 true
+            ],
+            "SAMPLING_PARAMETERS": [
+                "{\"max_tokens\":256,\"ignore_eos\":true}"
             ]
         }
     ]
@@ -171,7 +153,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 4. Run Perf Analyzer
+#### 2. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -186,14 +168,14 @@ perf_analyzer \
     --stability-percentage=999
 ```
 
-#### 5. Calculate average token-to-token latency
+#### 3. Calculate average token-to-token latency
 
 ```bash
 python3 examples/calculate_avg_token_to_token_latency.py
 # Average token-to-token latency: 0.003090155677419355 s
 ```
 
-#### 6. Repeat steps 3-5 with different prompt lengths to measure effects of initial prompt size (prefill) on token-to-token latency (generation).
+#### 4. Repeat steps 1-3 with different prompt lengths to measure effects of initial prompt size (prefill) on token-to-token latency (generation).
 
 ### Benchmark 3: Profiling Continuous Batch Size
 
@@ -202,29 +184,14 @@ batch size on token-to-token latency. We systematically issue requests to the
 server of fixed input sizes and request the model to compute a fixed amount of
 tokens in order to increase the continuous batching size over time.
 
-#### (Optional) Stop Triton Server if already running
-
-```bash
-pkill tritonserver
-```
-
-#### 1. Run the following commands to set the `max_tokens` to `16` and `ignore_eos` to `true`
-
-```bash
-PATH_TO_MODEL_PY="model_repository/vllm/1/model.py"
-MAX_TOKENS=100
-sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"max_tokens\"] = ${MAX_TOKENS}/" ${PATH_TO_MODEL_PY}
-sed -i "128s/.*/\ \ \ \ \ \ \ \ params_dict[\"ignore_eos\"] = True" ${PATH_TO_MODEL_PY}
-```
-
-#### 2. Start Triton Server
+#### (Optional) Start Triton Server if not already running
 
 ```bash
 docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
 # this will run continuously in the current shell
 ```
 
-#### 3. Generate prompts input data JSON
+#### 1. Generate prompts input data JSON
 
 ```bash
 # open a new shell in the same directory you were in when running the above command
@@ -237,6 +204,9 @@ echo '
             ],
             "STREAM": [
                 true
+            ],
+            "SAMPLING_PARAMETERS": [
+                "{\"max_tokens\":16,\"ignore_eos\":true}"
             ]
         }
     ]
@@ -244,7 +214,7 @@ echo '
 ' > prompts.json
 ```
 
-#### 4. Run Perf Analyzer
+#### 2. Run Perf Analyzer
 
 ```bash
 perf_analyzer \
@@ -261,11 +231,11 @@ perf_analyzer \
     --request-period=10
 ```
 
-#### 5. Calculate average token-to-token latency
+#### 3. Calculate average token-to-token latency
 
 ```bash
 python3 examples/calculate_avg_token_to_token_latency.py
 # Average token-to-token latency: 0.003090155677419355 s
 ```
 
-#### 6. Repeat steps 4-5 with different period concurrency range start/end/step and different request period to measure effects of continuous batch size on token-to-token latency (generation).
+#### 4. Repeat steps 1-3 with different period concurrency range start/end/step and different request period to measure effects of continuous batch size on token-to-token latency (generation).
