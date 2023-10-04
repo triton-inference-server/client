@@ -38,20 +38,24 @@ def load_profile_data():
         return json.load(f)
 
 
-def calculate_avg_latencies():
+def collect_latencies(requests):
     # Example json demonstrating format:
     #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
     first_token_latencies = []
     token_to_token_latencies = []
-
-    requests = load_profile_data()["experiments"][0]["requests"]
-
+    requests = requests["experiments"][0]["requests"]
     for request in requests:
         prev_response = request["response_timestamps"][0]
         first_token_latencies.append(prev_response - request["timestamp"])
         for response in request["response_timestamps"][1:]:
             token_to_token_latencies.append(response - prev_response)
             prev_response = response
+    return first_token_latencies, token_to_token_latencies
+
+
+def calculate_avg_latencies():
+    requests = load_profile_data()
+    first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
     # Compute mean and convert from nanosec to sec
     avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
