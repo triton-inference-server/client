@@ -45,9 +45,10 @@ def collect_latencies(requests):
     token_to_token_latencies = []
     requests = requests["experiments"][0]["requests"]
     for request in requests:
-        prev_response = request["response_timestamps"][0]
-        first_token_latencies.append(prev_response - request["timestamp"])
-        for response in request["response_timestamps"][1:]:
+        first_response, *remaining_responses, _ = request["response_timestamps"]
+        first_token_latencies.append(first_response - request["timestamp"])
+        prev_response = first_response
+        for response in remaining_responses:
             token_to_token_latencies.append(response - prev_response)
             prev_response = response
     return first_token_latencies, token_to_token_latencies
@@ -59,7 +60,10 @@ def calculate_avg_latencies():
 
     # Compute mean and convert from nanosec to sec
     avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
-    avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
+    if token_to_token_latencies:
+        avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
+    else:
+        avg_token_to_token_latency = None
     return avg_first_token_latency, avg_token_to_token_latency
 
 
@@ -155,8 +159,13 @@ if __name__ == "__main__":
 
     print("\n[ Benchmark Summary ]")
     for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
-        print(
+        line = (
             f"  Prompt size: {prompt_size}, "
-            f"Average first-token latency: {avg_first_token_latency:.4f} sec, "
-            f"Average token-token latency: {avg_token_to_token_latency:.4f} sec"
+            f"Average first-token latency: {avg_first_token_latency:.4f} sec"
         )
+        line += (
+            f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
+            if avg_token_to_token_latency
+            else ""
+        )
+        print(line)
