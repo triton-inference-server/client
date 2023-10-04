@@ -50,6 +50,18 @@ def get_error_grpc(rpc_error):
     )
 
 
+def get_cancelled_error(msg=None):
+    """Get InferenceServerException object for a cancelled RPC.
+
+    Returns
+    -------
+    InferenceServerException
+    """
+    if not msg:
+        msg = "Locally cancelled by application!"
+    return InferenceServerException(msg=msg, status="StatusCode.CANCELLED")
+
+
 def raise_error_grpc(rpc_error):
     """Raise an InferenceServerException from a gRPC error.
 
