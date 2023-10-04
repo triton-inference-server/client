@@ -28,6 +28,7 @@ import argparse
 import json
 import subprocess
 from pathlib import Path
+from statistics import mean
 
 TEMP_INPUT_FILE = "temp_input_data.json"
 
@@ -46,12 +47,9 @@ def calculate_avg_latencies():
                 token_to_token_latencies.append(response - prev_response)
                 prev_response = response
 
-    avg_first_token_latency = (
-        sum(first_token_latencies) / len(first_token_latencies) / 1_000_000_000
-    )
-    avg_token_to_token_latency = (
-        sum(token_to_token_latencies) / len(token_to_token_latencies) / 1_000_000_000
-    )
+    # Compute mean and conversion from nanosec to sec
+    avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
+    avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
     return avg_first_token_latency, avg_token_to_token_latency
 
 
