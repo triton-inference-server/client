@@ -33,21 +33,27 @@ from statistics import mean
 TEMP_INPUT_FILE = "temp_input_data.json"
 
 
+def load_profile_data():
+    with open("profile_export.json") as f:
+        return json.load(f)
+
+
 def calculate_avg_latencies():
     # Example json demonstrating format:
     #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
     first_token_latencies = []
     token_to_token_latencies = []
-    with open("profile_export.json") as f:
-        requests = json.load(f)["experiments"][0]["requests"]
-        for request in requests:
-            prev_response = request["response_timestamps"][0]
-            first_token_latencies.append(prev_response - request["timestamp"])
-            for response in request["response_timestamps"][1:]:
-                token_to_token_latencies.append(response - prev_response)
-                prev_response = response
 
-    # Compute mean and conversion from nanosec to sec
+    requests = load_profile_data()["experiments"][0]["requests"]
+
+    for request in requests:
+        prev_response = request["response_timestamps"][0]
+        first_token_latencies.append(prev_response - request["timestamp"])
+        for response in request["response_timestamps"][1:]:
+            token_to_token_latencies.append(response - prev_response)
+            prev_response = response
+
+    # Compute mean and convert from nanosec to sec
     avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
     avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
     return avg_first_token_latency, avg_token_to_token_latency
