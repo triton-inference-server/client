@@ -1790,6 +1790,24 @@ CLParser::VerifyOptions()
         "--periodic-concurrency-range option.");
   }
 
+  if (params_->is_using_periodic_concurrency_mode) {
+    if (params_->periodic_concurrency_range.end == pa::NO_LIMIT) {
+      std::cerr
+          << "WARNING: The maximum attainable concurrency will be limited by "
+             "max_threads specification."
+          << std::endl;
+      params_->periodic_concurrency_range.end = params_->max_threads;
+    } else {
+      if (params_->max_threads_specified) {
+        std::cerr << "WARNING: Overriding max_threads specification to ensure "
+                     "requested concurrency range."
+                  << std::endl;
+      }
+      params_->max_threads = std::max(
+          params_->max_threads, params_->periodic_concurrency_range.end);
+    }
+  }
+
   if (params_->request_parameters.size() > 0 &&
       params_->protocol != cb::ProtocolType::GRPC) {
     Usage(
