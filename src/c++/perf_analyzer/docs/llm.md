@@ -42,7 +42,7 @@ The following guide shows the reader how to use Triton
 to measure and characterize the performance behaviors of Large Language Models
 (LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup: Download and configure Triton Server environment
+### Setup: Download, configure, and start Triton Server
 
 From [Step 1 of the Triton vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md#step-1-build-a-triton-container-image-with-vllm).
 
@@ -51,6 +51,8 @@ git clone https://github.com/triton-inference-server/tutorials
 cd tutorials/Quick_Deploy/vLLM
 docker build -t tritonserver_vllm .
 # wait for command to finish, might take several minutes
+docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
+# this will run continuously in the current shell
 ```
 
 ### Benchmark 1: Profiling the Prefill Phase
@@ -59,13 +61,6 @@ In this benchmarking scenario, we want to measure the effect of input prompt
 size on first-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute at most one new token. This
 essentially means one pass through the model.
-
-#### (Optional) Start Triton Server if not already running
-
-```bash
-docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
-# this will run continuously in the current shell
-```
 
 #### 1. Generate prompts input data JSON
 
@@ -123,13 +118,6 @@ In this benchmarking scenario, we want to measure the effect of input prompt
 size on token-to-token latency. We issue single request to the server of fixed
 input sizes and request the model to compute a fixed amount of tokens.
 
-#### (Optional) Start Triton Server if not already running
-
-```bash
-docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
-# this will run continuously in the current shell
-```
-
 #### 1. Generate prompts input data JSON
 
 ```bash
@@ -184,13 +172,6 @@ batch size on token-to-token latency. We systematically issue requests to the
 server of fixed input sizes and request the model to compute a fixed amount of
 tokens in order to increase the continuous batching size over time.
 
-#### (Optional) Start Triton Server if not already running
-
-```bash
-docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
-# this will run continuously in the current shell
-```
-
 #### 1. Generate prompts input data JSON
 
 ```bash
@@ -224,9 +205,6 @@ perf_analyzer \
     --streaming \
     --input-data=prompts.json \
     --profile-export-file=profile_export.json \
-    --measurement-mode=count_windows \
-    --measurement-request-count=10 \
-    --stability-percentage=999
     --periodic-concurrency-range=1:20:1
     --request-period=10
 ```
