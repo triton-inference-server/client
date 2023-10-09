@@ -88,13 +88,13 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
 > {
 >     "data": [
 >         {
->             "PROMPT": [
+>             "text_input": [
 >                 "Hello, my name is"  // user-provided prompt
 >             ],
->             "STREAM": [
+>             "stream": [
 >                 true
 >             ],
->             "SAMPLING_PARAMETERS": [
+>             "sampling_parameters": [
 >                 "{ \"max_tokens\": 1 }"
 >             ]
 >         }
@@ -142,13 +142,13 @@ echo '
 {
     "data": [
         {
-            "PROMPT": [
+            "text_input": [
                 "Hello, my name is"
             ],
-            "STREAM": [
+            "stream": [
                 true
             ],
-            "SAMPLING_PARAMETERS": [
+            "sampling_parameters": [
                 "{\"max_tokens\":16,\"ignore_eos\":true}"
             ]
         }
