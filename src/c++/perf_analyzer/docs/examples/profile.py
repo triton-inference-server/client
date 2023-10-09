@@ -76,12 +76,20 @@ def profile(args, input_data_file):
         f"perf_analyzer -m {args.model} -i grpc --async --streaming "
         f"--input-data={input_data_file} "
         "--profile-export-file=profile_export.json "
-        "--measurement-mode=count_windows "
-        "--measurement-request-count=10 "
-        "--stability-percentage=999"
     )
-    ret = subprocess.run(args=[command], shell=True)
-    ret.check_returncode()
+    if args.periodic_concurrency_range:
+        start, end, step = args.periodic_concurrency_range
+        command += (
+            f"--periodic-concurrency-range={start}:{end}:{step} "
+            f"--request-period={args.request_period}"
+        )
+    else:
+        command += (
+            "--measurement-mode=count_windows "
+            "--measurement-request-count=10 "
+            "--stability-percentage=999"
+        )
+    subprocess.run(args=[command], shell=True)
 
 
 def generate_input_data(args, filename):
@@ -119,6 +127,19 @@ if __name__ == "__main__":
         help="The range of prompt sizes '<[START, END], STEP>' where END is inclusive.",
     )
     parser.add_argument(
+        "--periodic-concurrency-range",
+        type=int,
+        nargs=3,
+        metavar=("START", "END", "STEP"),
+        help="The range of concurrency level that periodically increases until it reaches END.",
+    )
+    parser.add_argument(
+        "--request-period",
+        type=int,
+        default=10,
+        help="The number of responses that each request must receive before launching new requests.",
+    )
+    parser.add_argument(
         "--max-tokens",
         type=int,
         default=256,
@@ -132,7 +153,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input-data",
         type=str,
-        default=None,
         help="The input data file to be used for inference request.",
     )
     args = parser.parse_args()
