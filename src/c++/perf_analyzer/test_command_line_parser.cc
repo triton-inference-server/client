@@ -1224,7 +1224,6 @@ TEST_CASE("Testing Command Line Parser")
     exp->async = true;
     exp->streaming = true;
     exp->url = "localhost:8001";  // gRPC url
-    exp->max_threads = 4;         // not targeting concurrency
 
     SUBCASE("start provided")
     {
@@ -1246,6 +1245,8 @@ TEST_CASE("Testing Command Line Parser")
       check_params = false;
     }
 
+    exp->max_threads = 400;
+    
     CheckValidRange(
         args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
         exp->periodic_concurrency_range);
