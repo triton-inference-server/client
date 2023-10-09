@@ -91,11 +91,11 @@ def generate_input_data(args, filename):
         "ignore_eos": {"true" if args.ignore_eos else "false"}
     }}
     """
-    input_data = {"data": [{"STREAM": [True]}]}
-    input_data["data"][0]["SAMPLING_PARAMETERS"] = [request_parameters]
+    input_data = {"data": [{"stream": [True]}]}
+    input_data["data"][0]["sampling_parameters"] = [request_parameters]
 
-    prompt = ["hi"] * prompt_size  # Generate dummy prompt
-    input_data["data"][0]["PROMPT"] = [" ".join(prompt)]
+    text_input = ["hi"] * text_input_size  # Generate dummy text input
+    input_data["data"][0]["text_input"] = [" ".join(text_input)]
     with open(filename, "w") as f:
         json.dump(input_data, f)
 
@@ -111,12 +111,12 @@ if __name__ == "__main__":
         help="The name of the model to profile.",
     )
     parser.add_argument(
-        "--prompt-size-range",
+        "--text-input-size-range",
         type=int,
         nargs=3,
         metavar=("START", "END", "STEP"),
         default=[10, 10, 1],
-        help="The range of prompt sizes '<[START, END], STEP>' where END is inclusive.",
+        help="The range of text input sizes '<[START, END], STEP>' where END is inclusive.",
     )
     parser.add_argument(
         "--max-tokens",
@@ -143,24 +143,24 @@ if __name__ == "__main__":
         print(f"Using input data file '{args.input_data}' for inference request.\n")
         with open(args.input_data) as f:
             input_data = json.load(f)
-            prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
-            args.prompt_size_range = [prompt_size, prompt_size, 1]
+            text_input_size = len(input_data["data"][0]["text_input"][0].split())
+            args.text_input_size_range = [text_input_size, text_input_size, 1]
 
-    start, end, step = args.prompt_size_range
-    for prompt_size in range(start, end + 1, step):
+    start, end, step = args.text_input_size_range
+    for text_input_size in range(start, end + 1, step):
         if not args.input_data:
             generate_input_data(args, TEMP_INPUT_FILE)
 
         profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
         avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
         results.append(
-            (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
+            (text_input_size, avg_first_token_latency, avg_token_to_token_latency)
         )
 
     print("\n[ Benchmark Summary ]")
-    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
+    for text_input_size, avg_first_token_latency, avg_token_to_token_latency in results:
         line = (
-            f"  Prompt size: {prompt_size}, "
+            f"  Text input size: {text_input_size}, "
             f"Average first-token latency: {avg_first_token_latency:.4f} sec"
         )
         line += (
