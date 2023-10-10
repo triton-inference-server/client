@@ -543,7 +543,7 @@ sent via this stream.
   for _ in range(10):
     client.async_stream_infer(...)
 
-  # Cancells all pending requests on stream closure rather than blocking until requests complete
+  # Cancels all pending requests on stream closure rather than blocking until requests complete
   client.stop_stream(cancel_requests=True)
 ```
 
