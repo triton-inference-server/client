@@ -528,9 +528,26 @@ examples demonstrate how to infer with AsyncIO.
 Starting from r23.10, triton python gRPC client can issue cancellation
 to inflight requests. This can be done by calling `cancel()` on the
 CallContext object returned by `async_infer()` API.
+
+```python
+  ctx = client.async_infer(...)
+  ctx.cancel()
+```
+
 For streaming requests, `cancel_requests=True` can be sent to
 `stop_stream()` API to terminate all the inflight requests
-sent via this stream. See more details about these APIs in
+sent via this stream.
+
+```python
+  client.start_stream()
+  for _ in range(10):
+    client.async_stream_infer(...)
+
+  # Cancells all pending requests on stream closure rather than blocking until requests complete
+  client.stop_stream(cancel_requests=True)
+```
+
+See more details about these APIs in
 [grpc/\_client.py](src/python/library/tritonclient/grpc/_client.py).
 
 See [request_cancellation](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/request_cancellation.md)
