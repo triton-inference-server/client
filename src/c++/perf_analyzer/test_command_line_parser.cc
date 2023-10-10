@@ -1246,7 +1246,7 @@ TEST_CASE("Testing Command Line Parser")
     }
 
     exp->max_threads = 400;
-    
+
     CheckValidRange(
         args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
         exp->periodic_concurrency_range);
