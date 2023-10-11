@@ -145,11 +145,11 @@ You can also specify the timing of the new requests: For example, setting the `-
 Perf Analyzer to wait for all the requests to receives 50 responses before it launches the new requests.
 
 ```bash
-python profile.py -m vllm --periodic-concurrency-range 1 30 1 --request-period 50 --max-tokens 256 --ignore-eos
+python profile.py -m vllm --prompt-size-range 100 500 200 --periodic-concurrency-range 1 30 1 --request-period 50 --max-tokens 256 --ignore-eos
 
 # Sample output
 # [ Benchmark Summary ]
-#   Prompt size: 100, Average first-token latency: 0.0397 sec, Average token-token latency: 0.0105 sec
-#   Prompt size: 300, Average first-token latency: 0.0269 sec, Average token-token latency: 0.0094 sec
-#   Prompt size: 500, Average first-token latency: 0.0357 sec, Average token-token latency: 0.0119 sec
+#   Prompt size: 100, Average first-token latency: 0.0381 sec, Average token-token latency: 0.0106 sec
+#   Prompt size: 300, Average first-token latency: 0.0347 sec, Average token-token latency: 0.0109 sec
+#   Prompt size: 500, Average first-token latency: 0.0336 sec, Average token-token latency: 0.0101 sec
 ```
