@@ -27,8 +27,11 @@
 import argparse
 import json
 import subprocess
+from itertools import pairwise
 from pathlib import Path
 from statistics import mean
+
+import numpy as np
 
 TEMP_INPUT_FILE = "temp_input_data.json"
 
@@ -36,6 +39,62 @@ TEMP_INPUT_FILE = "temp_input_data.json"
 def load_profile_data():
     with open("profile_export.json") as f:
         return json.load(f)
+
+
+def collect_periodic_latencies(args):
+    """Split the entire benchmark results into segments with size
+    of request period and collect latencies for each segment.
+    """
+    start, end, _ = args.periodic_concurrency_range
+
+    num_bins = int(args.max_tokens // args.request_period + (end - start))
+    if args.max_tokens % args.request_period != 0:
+        num_bins += 1  # extra bin
+
+    bins = [[] for _ in range(num_bins)]
+    start_pos = 0
+
+    data = load_profile_data()
+    requests = data["experiments"][0]["requests"]
+
+    for r in requests:
+        current_pos = start_pos
+        for i, (prev_res, res) in enumerate(pairwise(r["response_timestamps"])):
+            bins[current_pos].append(res - prev_res)
+            if (i + 1) % args.request_period == 0:
+                current_pos += 1
+        start_pos += 1
+    return bins
+
+
+def calculate_avg_periodic_latencies(args):
+    """Calculate average token-to-token latency for each
+    request period.
+    """
+    bins = collect_periodic_latencies(args)
+
+    latencies = []
+    for bin in bins:
+        latencies.append(np.mean(bin) / 1_000_000_000)
+    return latencies
+
+
+def plot_results(latencies):
+    """Plot continuous batch size LLM bencharmark results."""
+    import matplotlib.pyplot as plt  # Lazy import
+
+    periods = np.arange(1, len(latencies) + 1)
+    fig, ax = plt.subplots()
+    ax.plot(periods, latencies)
+
+    ax.set(
+        xlabel="Request Periods",
+        ylabel="Avg Token-to-Token Latency (s)",
+        title="Continuous Batch Size Benchmark",
+    )
+    ax.grid()
+    fig.savefig("continuous_batch_size_benchmark.png")
+    print("Saved benchmark result @ 'continuous_batch_size_benchmark.png'.")
 
 
 def collect_latencies(requests):
@@ -115,7 +174,6 @@ if __name__ == "__main__":
         "--model",
         type=str,
         default="vllm",
-        choices=["vllm"],
         help="The name of the model to profile.",
     )
     parser.add_argument(
@@ -172,20 +230,29 @@ if __name__ == "__main__":
             generate_input_data(args, prompt_size, TEMP_INPUT_FILE)
 
         profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
-        avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
-        results.append(
-            (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
-        )
 
-    print("\n[ Benchmark Summary ]")
-    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
-        line = (
-            f"  Prompt size: {prompt_size}, "
-            f"Average first-token latency: {avg_first_token_latency:.4f} sec"
-        )
-        line += (
-            f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
-            if avg_token_to_token_latency
-            else ""
-        )
-        print(line)
+        if not args.periodic_concurrency_range:
+            (
+                avg_first_token_latency,
+                avg_token_to_token_latency,
+            ) = calculate_avg_latencies()
+            results.append(
+                (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
+            )
+
+    if args.periodic_concurrency_range:
+        avg_latencies = calculate_avg_periodic_latencies(args)
+        plot_results(avg_latencies)
+    else:
+        print("\n[ Benchmark Summary ]")
+        for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
+            line = (
+                f"  Prompt size: {prompt_size}, "
+                f"Average first-token latency: {avg_first_token_latency:.4f} sec"
+            )
+            line += (
+                f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
+                if avg_token_to_token_latency
+                else ""
+            )
+            print(line)
