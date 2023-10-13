@@ -52,8 +52,8 @@ JAVACPP_BRANCH=${JAVACPP_BRANCH:="https://github.com/bytedeco/javacpp-presets.gi
 JAVACPP_BRANCH_TAG=${JAVACPP_BRANCH_TAG:="master"}
 CMAKE_VERSION=${CMAKE_VERSION:="3.21.1"}
 export JAR_INSTALL_PATH="/workspace/install/java-api-bindings"
-# Note: Following bashscript convention where True/success == 0 and False == 1
-export INCLUDE_DEVELOPER_TOOLS_SERVER=1
+# Note: True != 0 and False == 0
+export INCLUDE_DEVELOPER_TOOLS_SERVER=0
 KEEP_BUILD_DEPENDENCIES=1
 
 for OPTS; do
@@ -100,7 +100,7 @@ for OPTS; do
         shift 2
         ;;
         --enable-developer-tools-server)
-        export INCLUDE_DEVELOPER_TOOLS_SERVER=0
+        export INCLUDE_DEVELOPER_TOOLS_SERVER=1
         echo "Including developer tools server C++ bindings"
         ;;
         --keep-build-dependencies)
@@ -111,7 +111,7 @@ for OPTS; do
 done
 set -x
 
-if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 0 ]; then
+if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0]; then
     # install cmake and rapidjson
     apt-get update && apt-get install -y gpg wget && \
         wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
@@ -138,7 +138,7 @@ git clone --single-branch --depth=1 -b ${JAVACPP_BRANCH_TAG} ${JAVACPP_BRANCH}
 cd javacpp-presets
 
 # Remove developer_tools/server related build
-if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 1 ]; then
+if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 0 ]; then
     rm -r tritonserver/src/gen
     rm tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritondevelopertoolsserver.java
 fi
