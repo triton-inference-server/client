@@ -92,7 +92,7 @@ def profile(args, input_data_file):
     subprocess.run(args=[command], shell=True)
 
 
-def generate_input_data(args, filename):
+def generate_input_data(args, prompt_size, filename):
     request_parameters = f"""
     {{
         "max_tokens": {args.max_tokens},
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     start, end, step = args.prompt_size_range
     for prompt_size in range(start, end + 1, step):
         if not args.input_data:
-            generate_input_data(args, TEMP_INPUT_FILE)
+            generate_input_data(args, prompt_size, TEMP_INPUT_FILE)
 
         profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
         avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
