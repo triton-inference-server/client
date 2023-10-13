@@ -41,6 +41,21 @@ def load_profile_data():
         return json.load(f)
 
 
+def print_benchmark_summary(results):
+    output = "\n[ Benchmark Summary ]"
+    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
+        output += (
+            f"\n  Prompt size: {prompt_size}, "
+            f"Average first-token latency: {avg_first_token_latency:.4f} sec"
+        )
+        output += (
+            f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
+            if avg_token_to_token_latency
+            else ""
+        )
+    print(output)
+
+
 def collect_periodic_latencies(args):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
@@ -249,15 +264,4 @@ if __name__ == "__main__":
         avg_latencies = calculate_avg_periodic_latencies(args)
         plot_results(avg_latencies)
     else:
-        print("\n[ Benchmark Summary ]")
-        for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
-            line = (
-                f"  Prompt size: {prompt_size}, "
-                f"Average first-token latency: {avg_first_token_latency:.4f} sec"
-            )
-            line += (
-                f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
-                if avg_token_to_token_latency
-                else ""
-            )
-            print(line)
+        print_benchmark_summary(results)
