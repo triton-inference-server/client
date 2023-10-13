@@ -555,7 +555,6 @@ be safely cancelled.
 
 ```python
   infer_task = asyncio.create_task(aio_client.infer(...))
-  await something_else
   infer_task.cancel()
 ```
 
@@ -568,7 +567,7 @@ asynchronous iterator returned by `stream_infer()` API.
 ```
 
 See more details about these APIs in
-[grpc/\aio/\__init__.py](src/python/library/tritonclient/grpc/aio/__init__.py).
+[grpc/aio/\__init__.py](src/python/library/tritonclient/grpc/aio/__init__.py).
 
 See [request_cancellation](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/request_cancellation.md)
 in the server user-guide to learn about how this is handled on the
