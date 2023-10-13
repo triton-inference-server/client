@@ -550,6 +550,25 @@ sent via this stream.
 See more details about these APIs in
 [grpc/\_client.py](src/python/library/tritonclient/grpc/_client.py).
 
+For gRPC AsyncIO requests, an AsyncIO task wrapping an `infer()` coroutine can
+be safely cancelled.
+
+```python
+  infer_task = asyncio.create_task(aio_client.infer(...))
+  infer_task.cancel()
+```
+
+For gRPC AsyncIO streaming requests, `cancel()` can be called on the
+asynchronous iterator returned by `stream_infer()` API.
+
+```python
+  responses_iterator = aio_client.stream_infer(...)
+  responses_iterator.cancel()
+```
+
+See more details about these APIs in
+[grpc/aio/\__init__.py](src/python/library/tritonclient/grpc/aio/__init__.py).
+
 See [request_cancellation](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/request_cancellation.md)
 in the server user-guide to learn about how this is handled on the
 server side.
