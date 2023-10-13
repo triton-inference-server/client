@@ -624,7 +624,7 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def stream_infer(
+    def stream_infer(
         self,
         inputs_iterator,
         stream_timeout=None,
@@ -636,7 +636,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         Parameters
         ----------
-        inputs_iterator : async_generator
+        inputs_iterator : asynchronous iterator
             Async iterator that yields a dict(s) consists of the input
             parameters to the async_stream_infer function defined in
             tritonclient.grpc.InferenceServerClient.
@@ -653,8 +653,14 @@ class InferenceServerClient(InferenceServerClientBase):
 
         Returns
         -------
-        async_generator
+        asynchronous iterator
             Yield tuple holding (InferResult, InferenceServerException) objects.
+
+            This object can be used to cancel the inference request like below:
+            ----------
+            it = stream_infer(...)
+            ret = it.cancel()
+            ----------
 
         Raises
         ------
@@ -708,14 +714,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     parameters=inputs["parameters"],
                 )
 
-        try:
-            response_iterator = self._client_stub.ModelStreamInfer(
-                _request_iterator(inputs_iterator),
-                metadata=metadata,
-                timeout=stream_timeout,
-                compression=_grpc_compression_type(compression_algorithm),
-            )
-            async for response in response_iterator:
+        class _ResponseIterator:
+            def __init__(self, grpc_call, verbose):
+                self._grpc_call = grpc_call
+                self._verbose = verbose
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                response = await self._grpc_call.__aiter__().__anext__()
                 if self._verbose:
                     print(response)
                 result = error = None
@@ -723,6 +731,18 @@ class InferenceServerClient(InferenceServerClientBase):
                     error = InferenceServerException(msg=response.error_message)
                 else:
                     result = InferResult(response.infer_response)
-                yield (result, error)
+                return result, error
+
+            def cancel(self):
+                return self._grpc_call.cancel()
+
+        try:
+            grpc_call = self._client_stub.ModelStreamInfer(
+                _request_iterator(inputs_iterator),
+                metadata=metadata,
+                timeout=stream_timeout,
+                compression=_grpc_compression_type(compression_algorithm),
+            )
+            return _ResponseIterator(grpc_call, self._verbose)
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
