@@ -45,9 +45,9 @@ def collect_periodic_latencies(args):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
     """
-    start, end, _ = args.periodic_concurrency_range
+    start, end, step = args.periodic_concurrency_range
 
-    num_bins = int(args.max_tokens // args.request_period + (end - start))
+    num_bins = args.max_tokens // args.request_period + (end - start) // step
     if args.max_tokens % args.request_period != 0:
         num_bins += 1  # extra bin
 
@@ -57,13 +57,18 @@ def collect_periodic_latencies(args):
     data = load_profile_data()
     requests = data["experiments"][0]["requests"]
 
-    for r in requests:
+    for i, r in enumerate(requests):
         current_pos = start_pos
-        for i, (prev_res, res) in enumerate(pairwise(r["response_timestamps"])):
+        for j, (prev_res, res) in enumerate(pairwise(r["response_timestamps"])):
             bins[current_pos].append(res - prev_res)
-            if (i + 1) % args.request_period == 0:
+            if (j + 1) % args.request_period == 0:
                 current_pos += 1
-        start_pos += 1
+
+        # Shift the start position once we iterate through
+        # entire initial requests and then for every step
+        # number of requests
+        if (i + 1) >= start and (i - start + 1) % step == 0:
+            start_pos += 1
     return bins
 
 
