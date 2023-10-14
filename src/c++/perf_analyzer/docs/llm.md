@@ -129,6 +129,12 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 
 ## Benchmark 3: Profiling Continuous Batch Size
 
+> **Note**
+>
+> This benchmark relies on the feature that will be available from `23.10` release
+> which is on its way soon. You can either wait until the `23.10` container
+> is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source).
+
 In this benchmarking scenario, we want to measure the effect of continuous
 batch size on token-to-token latency. We systematically issue requests to the
 server of fixed input sizes and request the model to compute a fixed amount of
@@ -142,7 +148,7 @@ Perf Analyzer will run in [periodic concurrency mode](https://github.com/triton-
 that periodically launches a new concurrent request to the model using `--periodic-concurrency-range START END STEP` option.
 In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 30.
 You can also specify the timing of the new requests: For example, setting the `--request-period` to 50 will make
-Perf Analyzer to wait for all the requests to receives 50 responses before it launches the new requests.
+Perf Analyzer to wait for all the requests to receive 50 responses before it launches the new requests.
 
 ```bash
 python profile.py -m vllm --prompt-size-range 100 500 200 --periodic-concurrency-range 1 30 1 --request-period 50 --max-tokens 256 --ignore-eos
