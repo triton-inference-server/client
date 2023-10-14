@@ -127,55 +127,35 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 #   Prompt size: 500, Average first-token latency: 0.0400 sec, Average token-token latency: 0.0070 sec
 ```
 
-### Benchmark 3: Profiling Continuous Batch Size
+## Benchmark 3: Profiling Continuous Batch Size
+
+> **Note**
+>
+> This benchmark relies on the feature that will be available from `23.10` release
+> which is on its way soon. You can either wait until the `23.10` container
+> is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source)).
 
 In this benchmarking scenario, we want to measure the effect of continuous
 batch size on token-to-token latency. We systematically issue requests to the
 server of fixed input sizes and request the model to compute a fixed amount of
 tokens in order to increase the continuous batching size over time.
 
-#### 1. Generate prompts input data JSON
+#### Example
+
+In this benchmark, we are interested in how continuous batch size affects token-to-token latency
+by increasing the number of concurrent requests to the model.
+Perf Analyzer will run in [periodic concurrency mode](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/docs/inference_load_modes.md#periodic-concurrency-mode)
+that periodically launches a new concurrent request to the model using `--periodic-concurrency-range START END STEP` option.
+In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 30.
+You can also specify the timing of the new requests: For example, setting the `--request-period` to 50 will make
+Perf Analyzer to wait for all the requests to receive 50 responses before it launches the new requests.
 
 ```bash
-# open a new shell in the same directory you were in when running the above command
-echo '
-{
-    "data": [
-        {
-            "PROMPT": [
-                "Hello, my name is"
-            ],
-            "STREAM": [
-                true
-            ],
-            "SAMPLING_PARAMETERS": [
-                "{\"max_tokens\":16,\"ignore_eos\":true}"
-            ]
-        }
-    ]
-}
-' > prompts.json
+python profile.py -m vllm --prompt-size-range 100 500 200 --periodic-concurrency-range 1 30 1 --request-period 50 --max-tokens 256 --ignore-eos
+
+# Sample output
+# [ Benchmark Summary ]
+#   Prompt size: 100, Average first-token latency: 0.0381 sec, Average token-token latency: 0.0106 sec
+#   Prompt size: 300, Average first-token latency: 0.0347 sec, Average token-token latency: 0.0109 sec
+#   Prompt size: 500, Average first-token latency: 0.0336 sec, Average token-token latency: 0.0101 sec
 ```
-
-#### 2. Run Perf Analyzer
-
-```bash
-perf_analyzer \
-    -m vllm \
-    -i grpc \
-    --async \
-    --streaming \
-    --input-data=prompts.json \
-    --profile-export-file=profile_export.json \
-    --periodic-concurrency-range=1:20:1
-    --request-period=10
-```
-
-#### 3. Calculate average token-to-token latency
-
-```bash
-python3 examples/calculate_avg_token_to_token_latency.py
-# Average token-to-token latency: 0.003090155677419355 s
-```
-
-#### 4. Repeat steps 1-3 with different period concurrency range start/end/step and different request period to measure effects of continuous batch size on token-to-token latency (generation).
