@@ -30,6 +30,7 @@
 
 #include "command_line_parser.h"
 #include "doctest.h"
+#include "perf_analyzer_exception.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -360,8 +361,7 @@ class TestCLParser : public CLParser {
 
   virtual void Usage(const std::string& msg = std::string())
   {
-    usage_called_ = true;
-    usage_message_ = msg;
+    throw PerfAnalyzerException(msg, GENERIC_ERROR);
   }
 };
 
@@ -543,14 +543,13 @@ TEST_CASE("Testing Command Line Parser")
     int argc = 1;
     char* argv[argc] = {app_name};
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    REQUIRE(parser.UsageCalled());
-
     expected_msg =
         CreateUsageMessage("-m (model name)", "The value must be specified.");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    REQUIRE_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
-    exp->model_name = "";
+    check_params = false;
   }
 
   SUBCASE("with min parameters")
@@ -569,14 +568,13 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 2;
       char* argv[argc] = {app_name, "--streaming"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
+      expected_msg =
+          CreateUsageMessage("-m (model name)", "The value must be specified.");
+      REQUIRE_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->model_name = "";
-      exp->streaming = true;
+      check_params = false;
     }
 
     SUBCASE("with model")
@@ -584,17 +582,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--streaming"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: This is not an informative error message, how do I specify a gRPC
       // protocol? Error output should list missing params.
       //
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
+      REQUIRE_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
+          "Streaming is only allowed with gRPC protocol.",
+          PerfAnalyzerException);
 
-      exp->streaming = true;
+      check_params = false;
     }
 
     SUBCASE("with model last")
@@ -602,14 +598,12 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "--streaming", "-m", model_name};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      REQUIRE_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
+          "Streaming is only allowed with gRPC protocol.",
+          PerfAnalyzerException);
 
-      REQUIRE(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
-
-      exp->streaming = true;
+      check_params = false;
     }
   }
 
