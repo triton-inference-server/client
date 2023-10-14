@@ -149,13 +149,15 @@ that periodically launches a new concurrent request to the model using `--period
 In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 30.
 You can also specify the timing of the new requests: For example, setting the `--request-period` to 50 will make
 Perf Analyzer to wait for all the requests to receive 50 responses before it launches the new requests.
+Run the following command inside the client container.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --periodic-concurrency-range 1 30 1 --request-period 50 --max-tokens 256 --ignore-eos
+pip install matplotlib
+python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
-# Sample output
-# [ Benchmark Summary ]
-#   Prompt size: 100, Average first-token latency: 0.0381 sec, Average token-token latency: 0.0106 sec
-#   Prompt size: 300, Average first-token latency: 0.0347 sec, Average token-token latency: 0.0109 sec
-#   Prompt size: 500, Average first-token latency: 0.0336 sec, Average token-token latency: 0.0101 sec
+# Output
+# Saved benchmark result @ 'continuous_batch_size_benchmark.png'.
 ```
+
+The resulting plot will be saved as `continuous_batch_size_benchmark.png`:
+
