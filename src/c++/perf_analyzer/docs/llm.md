@@ -133,7 +133,7 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 >
 > This benchmark relies on the feature that will be available from `23.10` release
 > which is on its way soon. You can either wait until the `23.10` container
-> is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source).
+> is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source)).
 
 In this benchmarking scenario, we want to measure the effect of continuous
 batch size on token-to-token latency. We systematically issue requests to the
