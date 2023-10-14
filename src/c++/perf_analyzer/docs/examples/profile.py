@@ -56,6 +56,24 @@ def print_benchmark_summary(results):
     print(output)
 
 
+def plot_results(latencies):
+    """Plot continuous batch size LLM bencharmark results."""
+    import matplotlib.pyplot as plt  # Lazy import
+
+    periods = np.arange(1, len(latencies) + 1)
+    fig, ax = plt.subplots()
+    ax.plot(periods, latencies)
+
+    ax.set(
+        xlabel="Request Periods",
+        ylabel="Avg Token-to-Token Latency (s)",
+        title="Continuous Batch Size Benchmark",
+    )
+    ax.grid()
+    fig.savefig("continuous_batch_size_benchmark.png")
+    print("Saved benchmark result @ 'continuous_batch_size_benchmark.png'.")
+
+
 def collect_periodic_latencies(args):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
@@ -97,24 +115,6 @@ def calculate_avg_periodic_latencies(args):
     for bin in bins:
         latencies.append(np.mean(bin) / 1_000_000_000)
     return latencies
-
-
-def plot_results(latencies):
-    """Plot continuous batch size LLM bencharmark results."""
-    import matplotlib.pyplot as plt  # Lazy import
-
-    periods = np.arange(1, len(latencies) + 1)
-    fig, ax = plt.subplots()
-    ax.plot(periods, latencies)
-
-    ax.set(
-        xlabel="Request Periods",
-        ylabel="Avg Token-to-Token Latency (s)",
-        title="Continuous Batch Size Benchmark",
-    )
-    ax.grid()
-    fig.savefig("continuous_batch_size_benchmark.png")
-    print("Saved benchmark result @ 'continuous_batch_size_benchmark.png'.")
 
 
 def collect_latencies(requests):
