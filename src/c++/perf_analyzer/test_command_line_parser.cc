@@ -638,17 +638,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads"};
 
-      opterr = 0;  // Disable error output for GetOpt library for this case
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: Empty message is not helpful
       //
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+      REQUIRE_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), "", PerfAnalyzerException);
+
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
+      check_params = false;
     }
 
     SUBCASE("bad value")
@@ -656,17 +654,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads", "bad"};
 
-      opterr = 0;  // Disable error output for GetOpt library for this case
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: Empty message is not helpful
       //
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+      REQUIRE_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), "", PerfAnalyzerException);
+
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
+      check_params = false;
     }
   }
 
