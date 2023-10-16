@@ -161,5 +161,6 @@ python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 
 
 The resulting plot will look like
 
-![Continuous Batch Size Benchmark Plot](examples/continuous_batch_size_benchmark.png)
+<img src="examples/continuous_batch_size_benchmark.png" width="600">
+
 
