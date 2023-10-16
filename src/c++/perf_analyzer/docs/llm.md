@@ -146,16 +146,19 @@ In this benchmark, we are interested in how continuous batch size affects token-
 by increasing the number of concurrent requests to the model.
 Perf Analyzer will run in [periodic concurrency mode](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/docs/inference_load_modes.md#periodic-concurrency-mode)
 that periodically launches a new concurrent request to the model using `--periodic-concurrency-range START END STEP` option.
-In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 30.
-You can also specify the timing of the new requests: For example, setting the `--request-period` to 50 will make
-Perf Analyzer to wait for all the requests to receive 50 responses before it launches the new requests.
+In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 100.
+You can also specify the timing of the new requests: Setting the `--request-period` to 32 (as shown below) will make
+Perf Analyzer to wait for all the requests to receive 32 responses before it launches the new requests.
 Run the following command inside the client container.
 
 ```bash
+# Install matplotlib to generate the benchmark plot
 pip install matplotlib
+
+# Run Perf Analyzer
 python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
-# Output
+# Sample output
 # Saved benchmark result @ 'continuous_batch_size_benchmark.png'.
 ```
 
