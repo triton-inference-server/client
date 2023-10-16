@@ -64,13 +64,14 @@ def plot_results(latencies):
     fig, ax = plt.subplots()
     ax.plot(periods, latencies)
 
-    ax.set(
-        xlabel="Request Periods",
-        ylabel="Avg Token-to-Token Latency (s)",
-        title="Continuous Batch Size Benchmark",
-    )
-    ax.grid()
-    fig.savefig("continuous_batch_size_benchmark.png")
+    # Set pyplot parameters
+    ax.grid(linestyle="--")
+    ax.set_xlabel("i-th Request Period", fontsize=12)
+    ax.set_ylabel("Avg Token-to-Token Latency (sec)", fontsize=12)
+    ax.set_title("Continuous Batch Size Benchmark Summary", fontsize=14)
+    ax.set_ylim(bottom=0.0)
+
+    fig.savefig("continuous_batch_size_benchmark.png", dpi=300)
     print("Saved benchmark result @ 'continuous_batch_size_benchmark.png'.")
 
 

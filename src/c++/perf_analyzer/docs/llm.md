@@ -159,5 +159,7 @@ python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 
 # Saved benchmark result @ 'continuous_batch_size_benchmark.png'.
 ```
 
-The resulting plot will be saved as `continuous_batch_size_benchmark.png`:
+The resulting plot will look like
+
+![Continuous Batch Size Benchmark Plot](examples/continuous_batch_size_benchmark.png)
 
