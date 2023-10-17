@@ -127,7 +127,7 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 #   Prompt size: 500, Average first-token latency: 0.0400 sec, Average token-token latency: 0.0070 sec
 ```
 
-## Benchmark 3: Profiling Continuous Batch Size
+## Benchmark 3: Profiling In-Flight Batching
 
 > **Note**
 >
@@ -135,16 +135,14 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 > which is on its way soon. You can either wait until the `23.10` container
 > is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source)).
 
-In this benchmarking scenario, we want to measure the effect of continuous
+In this benchmarking scenario, we want to measure the effect of in-flight
 batch size on token-to-token latency. We systematically issue requests to the
 server of fixed input sizes and request the model to compute a fixed amount of
-tokens in order to increase the continuous batching size over time.
+tokens in order to increase the in-flight batch size over time.
 
 #### Example
 
-In this benchmark, we are interested in how continuous batch size affects token-to-token latency
-by increasing the number of concurrent requests to the model.
-Perf Analyzer will run in [periodic concurrency mode](https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/docs/inference_load_modes.md#periodic-concurrency-mode)
+In this benchmark, we will run Perf Analyzer in [periodic concurrency mode](inference_load_modes.md#periodic-concurrency-mode)
 that periodically launches a new concurrent request to the model using `--periodic-concurrency-range START END STEP` option.
 In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 100.
 You can also specify the timing of the new requests: Setting the `--request-period` to 32 (as shown below) will make
@@ -159,12 +157,12 @@ pip install matplotlib
 python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # Sample output
-# Saved benchmark result @ 'continuous_batch_size_benchmark.png'.
+# Saved benchmark result @ 'inflight_batching_benchmark.png'.
 ```
 
 The resulting plot will look like
 
-<img src="examples/continuous_batch_size_benchmark.png" width="600">
+<img src="examples/inflight_batching_benchmark.png" width="600">
 
 The plot above shows the change in average token-to-token latency at each request period sized segments across the benchmark.
 What this means is that we split the entire benchmark timeline into segments, each with equal size of `--request-period`.

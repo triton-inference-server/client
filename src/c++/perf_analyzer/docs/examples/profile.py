@@ -57,7 +57,7 @@ def print_benchmark_summary(results):
 
 
 def plot_results(latencies):
-    """Plot continuous batch size LLM bencharmark results."""
+    """Plot in-flight batching LLM bencharmark results."""
     import matplotlib.pyplot as plt  # Lazy import
 
     periods = np.arange(1, len(latencies) + 1)
@@ -68,11 +68,11 @@ def plot_results(latencies):
     ax.grid(linestyle="--")
     ax.set_xlabel("i-th Request Period", fontsize=12)
     ax.set_ylabel("Avg Token-to-Token Latency (sec)", fontsize=12)
-    ax.set_title("Continuous Batch Size Benchmark Summary", fontsize=14)
+    ax.set_title("In-Flight Batching Benchmark Summary", fontsize=14)
     ax.set_ylim(bottom=0.0)
 
-    fig.savefig("continuous_batch_size_benchmark.png", dpi=300)
-    print("Saved benchmark result @ 'continuous_batch_size_benchmark.png'.")
+    fig.savefig("inflight_batching_benchmark.png", dpi=300)
+    print("Saved benchmark result @ 'inflight_batching_benchmark.png'.")
 
 
 def collect_periodic_latencies(args):
