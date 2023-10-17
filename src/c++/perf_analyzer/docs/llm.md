@@ -166,4 +166,22 @@ The resulting plot will look like
 
 <img src="examples/continuous_batch_size_benchmark.png" width="600">
 
-
+The plot above shows the change in average token-to-token latency at each request period sized segments across the benchmark.
+What this means is that we split the entire benchmark timeline into segments, each with equal size of `--request-period`.
+In this example, the first segment will contain 32 responses, the second segment will contain 2*32 responses, and so on:
+```
+              32 responses (=request period)
+                ┌────┐
+      request 1 ──────┊──────┊──────┊──────┊──────┊     
+      request 2       ┊──────┊──────┊──────┊──────┊──────┊
+      request 3       ┊      ┊──────┊──────┊──────┊──────┊──────┊
+      request 4       ┊      ┊      ┊──────┊──────┊──────┊──────┊──────
+                      ┊      ┊      ┊      ┊      ┊      ┊      ┊      
+         ...
+      																
+       segment    1      2      3       4      5      6      7      8      ...
+(i-th request period)
+```
+For each segment (or i-th request period), we compute average token-to-token latency and plot the results.
+Since we send total 100 requests, expect 1024 responses back from server, and set request period to 32,
+the total number of segments comes out as 131 (see [profile.py](examples/profile.py) for more detail).
