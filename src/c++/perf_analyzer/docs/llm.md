@@ -172,13 +172,13 @@ In this example, the first segment will contain 32 responses, the second segment
 ```
               32 responses (=request period)
                 ┌────┐
-      request 1 ──────┊──────┊──────┊──────┊──────┊     
+      request 1 ──────┊──────┊──────┊──────┊──────┊
       request 2       ┊──────┊──────┊──────┊──────┊──────┊
       request 3       ┊      ┊──────┊──────┊──────┊──────┊──────┊
       request 4       ┊      ┊      ┊──────┊──────┊──────┊──────┊──────
-                      ┊      ┊      ┊      ┊      ┊      ┊      ┊      
+                      ┊      ┊      ┊      ┊      ┊      ┊      ┊
          ...
-      																
+
        segment    1      2      3       4      5      6      7      8      ...
 (i-th request period)
 ```
