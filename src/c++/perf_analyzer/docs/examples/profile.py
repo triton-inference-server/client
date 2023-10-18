@@ -75,6 +75,33 @@ def plot_results(latencies):
     print("Saved benchmark result @ 'inflight_batching_benchmark.png'.")
 
 
+def add_latencies_to_bins(bins, pos, responses, request_period):
+    """Add token-to-token latencies into the corresponding bin.
+
+    Given the responses of a single request, calculate token-to-token
+    latency and add it into bin. Update the bin position to the next
+    for every request period.
+    """
+    for res_id, (prev_res, res) in enumerate(pairwise(responses)):
+        bins[pos].append(res - prev_res)
+        if (res_id + 1) % request_period == 0:
+            pos += 1
+
+
+def update_start_position(request_id, start_pos, start, step):
+    """Shift the start position of the bin.
+
+    Once we iterate through the entire <start> requests, we shift
+    the start position. Then, we shift the start position for every
+    <step> requests.
+    """
+    finished_start_requests = (request_id + 1) >= start
+    finished_step_requests = (request_id + 1 - start) % step == 0
+    if finished_start_requests and finished_step_requests:
+        start_pos += 1
+    return start_pos
+
+
 def collect_periodic_latencies(args):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
@@ -93,16 +120,15 @@ def collect_periodic_latencies(args):
 
     for i, r in enumerate(requests):
         current_pos = start_pos
-        for j, (prev_res, res) in enumerate(pairwise(r["response_timestamps"])):
-            bins[current_pos].append(res - prev_res)
-            if (j + 1) % args.request_period == 0:
-                current_pos += 1
-
-        # Shift the start position once we iterate through
-        # entire initial requests and then for every step
-        # number of requests
-        if (i + 1) >= start and (i - start + 1) % step == 0:
-            start_pos += 1
+        add_latencies_to_bins(
+            bins=bins,
+            pos=current_pos,
+            responses=r["response_timestamps"],
+            request_period=args.request_period,
+        )
+        start_pos = update_start_position(
+            request_id=i, start_pos=start_pos, start=start, step=step
+        )
     return bins
 
 
