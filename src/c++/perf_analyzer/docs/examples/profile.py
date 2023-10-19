@@ -215,6 +215,38 @@ def generate_input_data(args, prompt_size, filename):
         json.dump(input_data, f)
 
 
+def main(args):
+    results = []
+
+    if args.input_data:
+        print(f"Using input data file '{args.input_data}' for inference request.\n")
+        input_data = load_json_data(filename=args.input_data)
+        prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
+        args.prompt_size_range = [prompt_size, prompt_size, 1]
+
+    start, end, step = args.prompt_size_range
+    for prompt_size in range(start, end + 1, step):
+        if not args.input_data:
+            generate_input_data(args, prompt_size, TEMP_INPUT_FILE)
+
+        profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
+
+        if not args.periodic_concurrency_range:
+            (
+                avg_first_token_latency,
+                avg_token_to_token_latency,
+            ) = calculate_avg_latencies()
+            results.append(
+                (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
+            )
+
+    if args.periodic_concurrency_range:
+        avg_latencies = calculate_avg_periodic_latencies(args)
+        plot_results(avg_latencies)
+    else:
+        print_benchmark_summary(results)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -262,33 +294,4 @@ if __name__ == "__main__":
         help="The input data file to be used for inference request.",
     )
     args = parser.parse_args()
-
-    results = []
-
-    if args.input_data:
-        print(f"Using input data file '{args.input_data}' for inference request.\n")
-        input_data = load_json_data(filename=args.input_data)
-        prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
-        args.prompt_size_range = [prompt_size, prompt_size, 1]
-
-    start, end, step = args.prompt_size_range
-    for prompt_size in range(start, end + 1, step):
-        if not args.input_data:
-            generate_input_data(args, prompt_size, TEMP_INPUT_FILE)
-
-        profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
-
-        if not args.periodic_concurrency_range:
-            (
-                avg_first_token_latency,
-                avg_token_to_token_latency,
-            ) = calculate_avg_latencies()
-            results.append(
-                (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
-            )
-
-    if args.periodic_concurrency_range:
-        avg_latencies = calculate_avg_periodic_latencies(args)
-        plot_results(avg_latencies)
-    else:
-        print_benchmark_summary(results)
+    main(args)
