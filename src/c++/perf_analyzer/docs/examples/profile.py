@@ -29,7 +29,6 @@ import json
 import subprocess
 from itertools import pairwise
 from pathlib import Path
-from statistics import mean
 
 import numpy as np
 
@@ -82,23 +81,23 @@ def add_latencies_to_bins(bins, pos, responses, request_period):
     latency and add it into bin. Update the bin position to the next
     for every request period.
     """
-    for res_id, (prev_res, res) in enumerate(pairwise(responses)):
+    for response_id, (prev_res, res) in enumerate(pairwise(responses)):
         bins[pos].append(res - prev_res)
-        if (res_id + 1) % request_period == 0:
+        if (response_id + 1) % request_period == 0:
             pos += 1
 
 
-def update_start_position(request_id, start_pos, start, step):
+def update_start_position(request_id, start_pos, initial_requests, step):
     """Shift the start position of the bin.
 
     Once we iterate through the entire <start> requests, we shift
     the start position. Then, we shift the start position for every
     <step> requests.
     """
-    finished_start_requests = (request_id + 1) >= start
-    finished_step_requests = (request_id + 1 - start) % step == 0
-    if finished_start_requests and finished_step_requests:
-        start_pos += 1
+    if (request_id + 1) >= initial_requests:
+        num_requests_after_start = request_id + 1 - initial_requests
+        if num_requests_after_start % step == 0:
+            start_pos += 1
     return start_pos
 
 
@@ -113,21 +112,23 @@ def collect_periodic_latencies(args):
         num_bins += 1  # extra bin
 
     bins = [[] for _ in range(num_bins)]
-    start_pos = 0
+    bin_start_position = 0
 
     data = load_profile_data()
     requests = data["experiments"][0]["requests"]
 
     for i, r in enumerate(requests):
-        current_pos = start_pos
         add_latencies_to_bins(
             bins=bins,
-            pos=current_pos,
+            pos=bin_start_position,
             responses=r["response_timestamps"],
             request_period=args.request_period,
         )
-        start_pos = update_start_position(
-            request_id=i, start_pos=start_pos, start=start, step=step
+        bin_start_position = update_start_position(
+            request_id=i,
+            start_pos=bin_start_position,
+            initial_requests=start,
+            step=step,
         )
     return bins
 
@@ -165,9 +166,9 @@ def calculate_avg_latencies():
     first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
     # Compute mean and convert from nanosec to sec
-    avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
+    avg_first_token_latency = np.mean(first_token_latencies) / 1_000_000_000
     if token_to_token_latencies:
-        avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
+        avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000_000
     else:
         avg_token_to_token_latency = None
     return avg_first_token_latency, avg_token_to_token_latency
