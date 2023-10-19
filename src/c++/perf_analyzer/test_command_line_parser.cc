@@ -30,6 +30,7 @@
 
 #include "command_line_parser.h"
 #include "doctest.h"
+#include "perf_analyzer_exception.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -201,51 +202,52 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
 }
 
 
-#define CHECK_INT_OPTION(option_name, exp_val, msg)                        \
-  SUBCASE("valid value")                                                   \
-  {                                                                        \
-    int argc = 5;                                                          \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "2000"};  \
-    CAPTURE(argv[3]);                                                      \
-    CAPTURE(argv[4]);                                                      \
-                                                                           \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(!parser.UsageCalled());                                          \
-    CAPTURE(parser.GetUsageMessage());                                     \
-                                                                           \
-    exp_val = 2000;                                                        \
-    CAPTURE(exp_val);                                                      \
-  }                                                                        \
-                                                                           \
-  SUBCASE("negative value")                                                \
-  {                                                                        \
-    int argc = 5;                                                          \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "-2000"}; \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(parser.UsageCalled());                                           \
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), msg);          \
-  }                                                                        \
-                                                                           \
-  SUBCASE("floating point value")                                          \
-  {                                                                        \
-    int argc = 5;                                                          \
-    char* argv[argc] = {app_name, "-m", model_name, option_name, "29.5"};  \
-                                                                           \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(!parser.UsageCalled());                                          \
-                                                                           \
-    exp_val = 29;                                                          \
-  }                                                                        \
-                                                                           \
-  SUBCASE("missing value")                                                 \
-  {                                                                        \
-    int argc = 4;                                                          \
-    char* argv[argc] = {app_name, "-m", model_name, option_name};          \
-                                                                           \
-    opterr = 0;                                                            \
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                       \
-    CHECK(parser.UsageCalled());                                           \
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");           \
+#define CHECK_INT_OPTION(option_name, exp_val, msg)                          \
+  SUBCASE("valid value")                                                     \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "2000"};    \
+    CAPTURE(argv[3]);                                                        \
+    CAPTURE(argv[4]);                                                        \
+                                                                             \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                         \
+    CHECK(!parser.UsageCalled());                                            \
+    CAPTURE(parser.GetUsageMessage());                                       \
+                                                                             \
+    exp_val = 2000;                                                          \
+    CAPTURE(exp_val);                                                        \
+  }                                                                          \
+                                                                             \
+  SUBCASE("negative value")                                                  \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "-2000"};   \
+    CHECK_THROWS_WITH_AS(                                                    \
+        act = parser.Parse(argc, argv), msg.c_str(), PerfAnalyzerException); \
+                                                                             \
+    check_params = false;                                                    \
+  }                                                                          \
+                                                                             \
+  SUBCASE("floating point value")                                            \
+  {                                                                          \
+    int argc = 5;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name, "29.5"};    \
+                                                                             \
+    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));                         \
+    CHECK(!parser.UsageCalled());                                            \
+                                                                             \
+    exp_val = 29;                                                            \
+  }                                                                          \
+                                                                             \
+  SUBCASE("missing value")                                                   \
+  {                                                                          \
+    int argc = 4;                                                            \
+    char* argv[argc] = {app_name, "-m", model_name, option_name};            \
+                                                                             \
+    CHECK_THROWS_WITH_AS(                                                    \
+        act = parser.Parse(argc, argv), "", PerfAnalyzerException);          \
+                                                                             \
+    check_params = false;                                                    \
   }
 
 
@@ -360,8 +362,7 @@ class TestCLParser : public CLParser {
 
   virtual void Usage(const std::string& msg = std::string())
   {
-    usage_called_ = true;
-    usage_message_ = msg;
+    throw PerfAnalyzerException(msg, GENERIC_ERROR);
   }
 };
 
@@ -413,11 +414,6 @@ CheckInvalidRange(
 {
   std::string expected_msg;
 
-  // FIXME (TMA-1307): Uncomment the subcase below when the issue is resolved.
-  // Currently the expected error message does not match the actual error
-  // message since TestCLParser ignores the exit statement when the Usage() is
-  // called and proceeds executing the program when it should stop the program.
-  /*
   SUBCASE("too many input values")
   {
     args.push_back(option_name);
@@ -427,16 +423,14 @@ CheckInvalidRange(
     char* argv[argc];
     std::copy(args.begin(), args.end(), argv);
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
     expected_msg = CreateUsageMessage(
         option_name, "The value does not match <start:end:step>.");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
     check_params = false;
   }
-  */
 
   SUBCASE("invalid start value")
   {
@@ -447,12 +441,11 @@ CheckInvalidRange(
     char* argv[argc];
     std::copy(args.begin(), args.end(), argv);
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
     expected_msg =
         CreateUsageMessage(option_name, "Invalid value provided: bad:400:10");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
     check_params = false;
   }
@@ -466,12 +459,11 @@ CheckInvalidRange(
     char* argv[argc];
     std::copy(args.begin(), args.end(), argv);
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
     expected_msg =
         CreateUsageMessage(option_name, "Invalid value provided: 100:bad:10");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
     check_params = false;
   }
@@ -485,12 +477,11 @@ CheckInvalidRange(
     char* argv[argc];
     std::copy(args.begin(), args.end(), argv);
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
     expected_msg =
         CreateUsageMessage(option_name, "Invalid value provided: 100:400:bad");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
     check_params = false;
   }
@@ -503,16 +494,12 @@ CheckInvalidRange(
     char* argv[argc];
     std::copy(args.begin(), args.end(), argv);
 
-    opterr = 0;  // Disable error output for GetOpt library for this case
-
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-
     // BUG (TMA-1307): Usage message does not contain error. Error statement
     // "option '--concurrency-range' requires an argument" written directly
     // to std::out
     //
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), "", PerfAnalyzerException);
 
     check_params = false;
   }
@@ -543,14 +530,13 @@ TEST_CASE("Testing Command Line Parser")
     int argc = 1;
     char* argv[argc] = {app_name};
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    REQUIRE(parser.UsageCalled());
-
     expected_msg =
         CreateUsageMessage("-m (model name)", "The value must be specified.");
-    CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv), expected_msg.c_str(),
+        PerfAnalyzerException);
 
-    exp->model_name = "";
+    check_params = false;
   }
 
   SUBCASE("with min parameters")
@@ -569,14 +555,13 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 2;
       char* argv[argc] = {app_name, "--streaming"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
+      expected_msg =
+          CreateUsageMessage("-m (model name)", "The value must be specified.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->model_name = "";
-      exp->streaming = true;
+      check_params = false;
     }
 
     SUBCASE("with model")
@@ -584,17 +569,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--streaming"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: This is not an informative error message, how do I specify a gRPC
       // protocol? Error output should list missing params.
       //
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
+          "Streaming is only allowed with gRPC protocol.",
+          PerfAnalyzerException);
 
-      exp->streaming = true;
+      check_params = false;
     }
 
     SUBCASE("with model last")
@@ -602,14 +585,12 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "--streaming", "-m", model_name};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
+          "Streaming is only allowed with gRPC protocol.",
+          PerfAnalyzerException);
 
-      REQUIRE(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Streaming is only allowed with gRPC protocol.");
-
-      exp->streaming = true;
+      check_params = false;
     }
   }
 
@@ -644,17 +625,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads"};
 
-      opterr = 0;  // Disable error output for GetOpt library for this case
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: Empty message is not helpful
       //
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), "", PerfAnalyzerException);
+
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
+      check_params = false;
     }
 
     SUBCASE("bad value")
@@ -662,17 +641,15 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--max-threads", "bad"};
 
-      opterr = 0;  // Disable error output for GetOpt library for this case
-
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       // NOTE: Empty message is not helpful
       //
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), "", PerfAnalyzerException);
+
       // BUG: Dumping string "option '--max-threads' requires an argument"
       // directly to std::out, instead of through usage()
       //
+      check_params = false;
     }
   }
 
@@ -722,14 +699,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--sequence-length-variation", "-10"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      REQUIRE(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--sequence-length-variation", "The value must be >= 0.0.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->sequence_length_variation = -10.0;
+      check_params = false;
     }
   }
 
@@ -751,15 +727,14 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "--percentile", "225"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--percentile",
           "The value must be -1 for not reporting or in range (0, 100).");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->percentile = 225;
+      check_params = false;
     }
 
     SUBCASE("set to -1 - use average latency")
@@ -839,17 +814,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--sequence-id-range", "53:67:92"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--sequence-id-range", "The value does not match <start:end>.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      // It will get the final 2 values
-      //
-      exp->start_sequence_id = 67;
-      exp->sequence_id_range = 25;
+      check_params = false;
     }
     SUBCASE("Not a number")
     {
@@ -857,12 +828,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--sequence-id-range", "BAD"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--sequence-id-range", "Invalid value provided: BAD");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;  // Usage message called
     }
@@ -872,13 +842,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--sequence-id-range", "53:BAD"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-
       expected_msg = CreateUsageMessage(
           "--sequence-id-range", "Invalid value provided: 53:BAD");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;  // Usage message called
     }
@@ -915,10 +883,15 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--input-tensor-format", "invalid"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
+      expected_msg = CreateUsageMessage(
+          "--input-tensor-format",
+          "Unsupported type provided: 'invalid'. The available options are "
+          "'binary' or 'json'.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->input_tensor_format = cb::TensorFormat::UNKNOWN;
+      check_params = false;
     }
   }
 
@@ -969,15 +942,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--shape", "input_name:-1,2,3"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--shape", "The dimensions of input tensor must be > 0.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->input_shapes.emplace(
-          std::string("input_name"), std::vector<int64_t>{-1, 2, 3});
+      check_params = false;
     }
 
     SUBCASE("equals sign, not colon")
@@ -986,13 +957,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--shape", "input_name=-1,2,3"};
 
-      // BUG this should call usages with the message
-      // "failed to parse input shape. There must be a colon after input name
-      //
-      CHECK_THROWS_WITH(
-          act = parser.Parse(argc, argv),
-          "basic_string::substr: __pos (which is 18) > this->size() (which is "
-          "17)");
+      expected_msg = CreateUsageMessage(
+          "--shape", "There must be a colon after input name.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1002,13 +971,11 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "--shape", "input_name"};
 
-      // BUG this should call usages with the message
-      // "failed to parse input shape. There must be a colon after input name
-      //
-      CHECK_THROWS_WITH(
-          act = parser.Parse(argc, argv),
-          "basic_string::substr: __pos (which is 11) > this->size() (which is "
-          "10)");
+      expected_msg = CreateUsageMessage(
+          "--shape", "There must be a colon after input name.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1019,13 +986,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--shape", "input_name1,2,3"};
 
-      // BUG this should call usages with the message
-      // "failed to parse input shape. There must be a colon after input name
-      //
-      CHECK_THROWS_WITH(
-          act = parser.Parse(argc, argv),
-          "basic_string::substr: __pos (which is 16) > this->size() (which is "
-          "15)");
+      expected_msg = CreateUsageMessage(
+          "--shape", "There must be a colon after input name.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1036,13 +1001,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--shape", "input_name:a,b,c"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-
       expected_msg = CreateUsageMessage(
           "--shape", "Invalid value provided: input_name:a,b,c");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;  // Usage message called
     }
@@ -1053,13 +1016,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--shape", "input_name:[1,2,3]"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-
       expected_msg = CreateUsageMessage(
           "--shape", "Invalid value provided: input_name:[1,2,3]");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;  // Usage message called
     }
@@ -1107,12 +1068,13 @@ TEST_CASE("Testing Command Line Parser")
 
       CAPTURE(argv[3]);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--measurement-interval (-p)", "The value must be > 0 msec.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+
+      check_params = false;
     }
 
     SUBCASE("set to non-numeric value")
@@ -1136,9 +1098,9 @@ TEST_CASE("Testing Command Line Parser")
 
       CAPTURE(argv[3]);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;  // Usage message called
     }
@@ -1201,12 +1163,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
           "The end of the search range and the latency limit can not be both 0 "
-          "(or 0.0) simultaneously");
+          "(or 0.0) simultaneously",
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1234,13 +1195,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
-      // FIXME (TMA-1307): Currently the expected error message does not match
-      // the actual error message since TestCLParser ignores the exit statement
-      // when the Usage() is called and proceeds executing the program when it
-      // should stop the program.
+      expected_msg = CreateUsageMessage(
+          option_name, "Both <start> and <end> values must be provided.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1264,15 +1223,14 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg =
           "Cannot specify more then one inference load mode. Please choose "
           "only one of the following modes: --concurrency-range, "
           "--periodic-concurrency-range, --request-rate-range, or "
           "--request-intervals.";
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1290,13 +1248,12 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg =
           "Must provide --profile-export-file when using the "
           "--periodic-concurrency-range option.";
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1310,14 +1267,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           option_name,
           "The <step> value must be a factor of the range size (<end> - "
           "<start>).");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1331,12 +1287,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg =
           CreateUsageMessage(option_name, "The <step> value must be > 0.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1357,10 +1312,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      check_params = false;
     }
   }
 
@@ -1402,16 +1358,11 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc];
       std::copy(args.begin(), args.end(), argv);
 
-      // FIXME (TMA-1307): Currently the expected error message does not match
-      // the actual error message since TestCLParser ignores the exit statement
-      // when the Usage() is called and proceeds executing the program when it
-      // should stop the program.
-      //
-      // REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      // CHECK(parser.UsageCalled());
-      // expected_msg = CreateUsageMessage(
-      //     option_name, "The value does not match <name:value:type>.");
-      // CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      expected_msg = CreateUsageMessage(
+          option_name, "The value does not match <name:value:type>.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
       check_params = false;
     }
@@ -1465,12 +1416,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--stability-percentage", "-20"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--stability-percentage (-s)", "The value must be >= 0.0.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+
+      check_params = false;
     }
 
     SUBCASE("floating point value")
@@ -1490,10 +1442,10 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 4;
       char* argv[argc] = {app_name, "-m", model_name, "--stability-percentage"};
 
-      opterr = 0;
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), "");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), "", PerfAnalyzerException);
+
+      check_params = false;
     }
   }
 
@@ -1508,10 +1460,11 @@ TEST_CASE("Testing Command Line Parser")
       int argc = 5;
       char* argv[argc] = {app_name, "-m", model_name, "--max-trials", "0"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      check_params = false;
     }
   }
 
@@ -1523,17 +1476,14 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name,         "-m",        model_name, "--collect-metrics",
           "--service-kind", "tfserving", "-i",       "grpc"};
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
-          "Server-side metric collection is only supported with Triton client "
-          "backend.");
 
-      exp->kind = cb::BackendKind::TENSORFLOW_SERVING;
-      exp->url = "localhost:8500";
-      exp->batch_size = 0;
-      exp->protocol = cb::ProtocolType::GRPC;
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
+          "Server-side metric collection is only supported with Triton client "
+          "backend.",
+          PerfAnalyzerException);
+
+      check_params = false;
     }
   }
 
@@ -1544,11 +1494,12 @@ TEST_CASE("Testing Command Line Parser")
     char* argv[argc] = {
         app_name, "-m", model_name, "--metrics-url", "localhost:8002/metrics"};
 
-    REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-    CHECK(parser.UsageCalled());
-    CHECK_STRING(
-        "Usage Message", parser.GetUsageMessage(),
-        "Must specify --collect-metrics when using the --metrics-url option.");
+    CHECK_THROWS_WITH_AS(
+        act = parser.Parse(argc, argv),
+        "Must specify --collect-metrics when using the --metrics-url option.",
+        PerfAnalyzerException);
+
+    check_params = false;
   }
 
   SUBCASE("Option : --metrics-interval")
@@ -1559,12 +1510,13 @@ TEST_CASE("Testing Command Line Parser")
       char* argv[argc] = {
           app_name, "-m", model_name, "--metrics-interval", "1000"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-      CHECK_STRING(
-          "Usage Message", parser.GetUsageMessage(),
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv),
           "Must specify --collect-metrics when using the --metrics-interval "
-          "option.");
+          "option.",
+          PerfAnalyzerException);
+
+      check_params = false;
     }
 
     SUBCASE("metrics interval 0")
@@ -1574,14 +1526,13 @@ TEST_CASE("Testing Command Line Parser")
           app_name, "-m", model_name, "--collect-metrics", "--metrics-interval",
           "0"};
 
-      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
-      CHECK(parser.UsageCalled());
-
       expected_msg = CreateUsageMessage(
           "--metrics-interval", "The value must be > 0 msecs.");
-      CHECK_STRING("Usage Message", parser.GetUsageMessage(), expected_msg);
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
 
-      exp->metrics_interval_ms = 0;
+      check_params = false;
     }
   }
 

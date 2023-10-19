@@ -794,7 +794,7 @@ CLParser::Usage(const std::string& msg)
                    "version 3, while modelB's version is unspecified",
                    18)
             << std::endl;
-  exit(GENERIC_ERROR);
+  throw pa::PerfAnalyzerException(GENERIC_ERROR);
 }
 
 void
