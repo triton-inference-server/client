@@ -35,8 +35,8 @@ import numpy as np
 TEMP_INPUT_FILE = "temp_input_data.json"
 
 
-def load_profile_data():
-    with open("profile_export.json") as f:
+def load_json_data(filename):
+    with open(filename) as f:
         return json.load(f)
 
 
@@ -114,7 +114,7 @@ def collect_periodic_latencies(args):
     bins = [[] for _ in range(num_bins)]
     bin_start_position = 0
 
-    data = load_profile_data()
+    data = load_json_data(filename="profile_export.json")
     requests = data["experiments"][0]["requests"]
 
     for i, r in enumerate(requests):
@@ -162,7 +162,7 @@ def collect_latencies(requests):
 
 
 def calculate_avg_latencies():
-    requests = load_profile_data()
+    requests = load_json_data(filename="profile_export.json")
     first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
     # Compute mean and convert from nanosec to sec
@@ -267,10 +267,9 @@ if __name__ == "__main__":
 
     if args.input_data:
         print(f"Using input data file '{args.input_data}' for inference request.\n")
-        with open(args.input_data) as f:
-            input_data = json.load(f)
-            prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
-            args.prompt_size_range = [prompt_size, prompt_size, 1]
+        input_data = load_json_data(filename=args.input_data)
+        prompt_size = len(input_data["data"][0]["PROMPT"][0].split())
+        args.prompt_size_range = [prompt_size, prompt_size, 1]
 
     start, end, step = args.prompt_size_range
     for prompt_size in range(start, end + 1, step):
