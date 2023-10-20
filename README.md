@@ -130,6 +130,16 @@ use,
 $ pip install tritonclient[http]
 ```
 
+There is another optional package namely *cuda*, that must be installed
+in order to use cuda_shared_memory utilities. *all* specification will
+install the *cuda* package by default but in other cases *cuda* needs to
+be explicitly specified for installing client with cuda_shared_memory
+support.
+
+```
+$ pip install tritonclient[http, cuda]
+```
+
 The components of the install packages are:
 
 * http

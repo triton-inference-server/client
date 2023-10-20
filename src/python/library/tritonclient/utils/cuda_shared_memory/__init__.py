@@ -31,7 +31,9 @@ try:
     from cuda import cudart
 except ModuleNotFoundError as error:
     raise RuntimeError(
-        'CUDA shared memory utilities require Python package "cuda-python" to be installed'
+        "CUDA shared memory utilities require Python package 'cuda-python'"
+        "to be installed. Specify 'cuda' or 'all' while installing the tritonclient "
+        "package to include the support."
     ) from error
 
 import base64
