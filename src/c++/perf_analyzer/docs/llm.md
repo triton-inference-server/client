@@ -72,10 +72,10 @@ of size 100, 300, and 500 and receive single token from the model for each promp
 python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
 
 # Sample output
-# [ Benchmark Summary ]
-#   Prompt size: 100, Average first-token latency: 0.0459 sec
-#   Prompt size: 300, Average first-token latency: 0.0415 sec
-#   Prompt size: 500, Average first-token latency: 0.0451 sec
+# [ BENCHMARK SUMMARY ]
+#   Prompt size: 100, Average first-token latency: 0.0441 sec
+#   Prompt size: 300, Average first-token latency: 0.0427 sec
+#   Prompt size: 500, Average first-token latency: 0.0555 sec
 ```
 
 > **Note**
@@ -160,10 +160,13 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
+python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # Sample output
-# Saved benchmark result @ 'inflight_batching_benchmark.png'.
+# [ BENCHMARK SUMMARY ]
+#   Prompt size: 10, Average first-token latency: 0.0799 sec, Average total token-token latency: 0.0324 sec
+#
+# Saved in-flight benchmark plots @ 'inflight_batching_benchmark-*.png'.
 ```
 
 The resulting plot will look like
