@@ -269,9 +269,7 @@ def generate_prompts(args, input_data):
     prompt = input_data["data"][0]["PROMPT"][0]
 
     if not prompt:  # Generate dummy prompt
-        assert (
-            args.prompt_size_range
-        ), "Must specify --prompt-size-range if prompt is not provided."
+        assert args.prompt_size_range, "Must specify --prompt-size-range."
         start, end, step = args.prompt_size_range
         return [" ".join(["hi"] * size) for size in range(start, end + 1, step)]
     return [prompt]
