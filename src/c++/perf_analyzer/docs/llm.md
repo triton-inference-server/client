@@ -115,7 +115,8 @@ input sizes and request the model to compute a fixed amount of tokens.
 #### Example
 
 Inside the client container, run the following command to generate dummy prompts
-of size 100, 300, and 500 and receive total 256 tokens from the model for each prompts.
+of size 100, 300, and 500 and receive total 256 tokens from the model for each
+prompts.
 
 ```bash
 python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
@@ -131,22 +132,27 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 
 > **Note**
 >
-> This benchmark relies on the feature that will be available from `23.10` release
-> which is on its way soon. You can either wait until the `23.10` container
-> is ready or build Perf Analyzer from the latest `main` branch (see [build from source instructions](install.md#build-from-source)).
+> This benchmark relies on the feature that will be available from `23.10`
+> release which is on its way soon. You can either wait until the `23.10`
+> container is ready or build Perf Analyzer from the latest `main` branch
+> (see [build from source instructions](install.md#build-from-source)).
 
 In this benchmarking scenario, we want to measure the effect of in-flight
-batch size on token-to-token latency. We systematically issue requests to the
-server of fixed input sizes and request the model to compute a fixed amount of
-tokens in order to increase the in-flight batch size over time.
+batch size on token-to-token (T2T) latency. We systematically issue requests to
+the server of fixed input sizes and request the model to compute a fixed amount
+of tokens in order to increase the in-flight batch size over time.
 
 #### Example
 
-In this benchmark, we will run Perf Analyzer in [periodic concurrency mode](inference_load_modes.md#periodic-concurrency-mode)
-that periodically launches a new concurrent request to the model using `--periodic-concurrency-range START END STEP` option.
-In this example, Perf Analyzer starts with a single request and launches the new ones until the total number reaches 100.
-You can also specify the timing of the new requests: Setting the `--request-period` to 32 (as shown below) will make
-Perf Analyzer to wait for all the requests to receive 32 responses before it launches the new requests.
+In this benchmark, we will run Perf Analyzer in
+[periodic concurrency mode](inference_load_modes.md#periodic-concurrency-mode)
+that periodically launches a new concurrent request to the model using
+`--periodic-concurrency-range START END STEP` option.
+In this example, Perf Analyzer starts with a single request and launches the new
+ones until the total number reaches 100.
+You can also specify the timing of the new requests:
+Setting `--request-period` to 32 (as shown below) will make Perf Analyzer to
+wait for all the requests to receive 32 responses before launching new requests.
 Run the following command inside the client container.
 
 ```bash
@@ -164,22 +170,35 @@ The resulting plot will look like
 
 <img src="examples/inflight_batching_benchmark.png" width="600">
 
-The plot above shows the change in average token-to-token latency at each request period sized segments across the benchmark.
-What this means is that we split the entire benchmark timeline into segments, each with equal size of `--request-period`.
-In this example, the first segment will contain 32 responses, the second segment will contain 2*32 responses, and so on:
-```
-              32 responses (=request period)
-                ┌────┐
-      request 1 ──────┊──────┊──────┊──────┊──────┊
-      request 2       ┊──────┊──────┊──────┊──────┊──────┊
-      request 3       ┊      ┊──────┊──────┊──────┊──────┊──────┊
-      request 4       ┊      ┊      ┊──────┊──────┊──────┊──────┊──────
-                      ┊      ┊      ┊      ┊      ┊      ┊      ┊
-         ...
+The plot demonstrates how the average T2T latency changes across the entire
+benchmark process as we increase the number of requests.
+To observe the change, we first align the responses of every requests and then
+split them into multiple segments of responses.
+For instance, assume we ran the following benchmark command:
 
-       segment    1      2      3       4      5      6      7      8      ...
-(i-th request period)
+```bash
+python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
 ```
-For each segment (or i-th request period), we compute average token-to-token latency and plot the results.
-Since we send total 100 requests, expect 1024 responses back from server, and set request period to 32,
-the total number of segments comes out as 131 (see [profile.py](examples/profile.py) for more detail).
+
+We start from a single request and increment up to 4 requests one by one for
+every 32 responses (defined by `--request-period`).
+For each request, there are total 1024 generated responses (defined by `--max-tokens`).
+We align these total 1024 generated responses and split them by request period,
+giving us 1024/32 = 32 total segments per request as shown below:
+
+```
+          32 responses (=request period)
+            ┌────┐
+request 1   ──────┊──────┊──────┊──────┊─ ··· ─┊──────┊
+request 2         ┊──────┊──────┊──────┊─ ··· ─┊──────┊──────┊
+request 3         ┊      ┊──────┊──────┊─ ··· ─┊──────┊──────┊──────┊
+request 4         ┊      ┊      ┊──────┊─ ··· ─┊──────┊──────┊──────┊──────
+
+segment #     1      2      3       4     ···     32     33     34     35
+```
+
+Then for each segment, we compute the mean of T2T latencies of the responses.
+This will allow us to visualize the change in T2T latency as the number of
+requests increase, filling up the inflight batch slots, and as they terminate.
+See [profile.py](examples/profile.py) for more details.
+
