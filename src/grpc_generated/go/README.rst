@@ -36,6 +36,8 @@ To generate the stubs::
   git clone https://github.com/triton-inference-server/common.git
 
   # Compiles *.proto to *.pb.go
+  # install protoc-gen-go-grpc with
+  # go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
   ./gen_go_stubs.sh
 
 Example Go Client
