@@ -159,8 +159,9 @@ func ModelInferRequest(client triton.GRPCInferenceServiceClient, rawInput [][]by
 
 func ModelInferRequestFromText(client triton.GRPCInferenceServiceClient, rawInput []string, modelName string, modelVersion string) *triton.ModelInferResponse {
 	/*
-		length in first 4 bytes followed,and little endian
-		text not set LittleEndian
+		The encoded bytes tensor where each element has its length in first 4 bytes followed by the content
+		first 4 bytes need to be little endian
+		content does not require encoding LittleEndian
 	*/
 	var _bytes []byte
 	for _, text := range rawInput {
