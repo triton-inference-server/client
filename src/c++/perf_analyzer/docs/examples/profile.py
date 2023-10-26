@@ -60,8 +60,30 @@ def save_json_data(data, filename):
         json.dump(data, f)
 
 
-def get_export_filename(model, prompt_size):
-    filename = f"profile_export-{model}_prompt_{prompt_size}.json"
+def get_postfix(args, prompt_size):
+    """Generate postfix for profile export filename and plot.
+
+    e.g.
+      - trtllm-prompt100-maxtokens256
+      - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
+    """
+    postfix = f"{args.model}-prompt{prompt_size}-"
+    if args.periodic_concurrency_range:
+        start, end, step = args.periodic_concurrency_range
+        postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
+    postfix += f"maxtokens{args.max_tokens}"
+    return postfix
+
+
+def get_export_filename(args, prompt_size):
+    postfix = get_postfix(args, prompt_size)
+    filename = f"profile_export-{postfix}.json"
+    return filename
+
+
+def get_plot_filename(args, prompt_size):
+    postfix = get_postfix(args, prompt_size)
+    filename = f"inflight_batching_benchmark-{postfix}.png"
     return filename
 
 
@@ -197,7 +219,7 @@ def summarize_profile_results(args, prompts):
     results = []
     for prompt in prompts:
         prompt_size = len(prompt.split())
-        export_file = get_export_filename(args.model, prompt_size)
+        export_file = get_export_filename(args, prompt_size)
         avg_first_token_latency, avg_total_t2t_latency = calculate_avg_latencies(
             filename=export_file
         )
@@ -211,10 +233,9 @@ def summarize_profile_results(args, prompts):
         if args.periodic_concurrency_range:
             periodic_latencies = calculate_avg_periodic_latencies(args, export_file)
             profile_result.avg_periodic_t2t_latencies = periodic_latencies
-
             plot_results(
                 latencies=periodic_latencies,
-                filename=f"inflight_batching_benchmark-{args.model}_prompt_{prompt_size}.png",
+                filename=get_plot_filename(args, prompt_size),
             )
 
         results.append(profile_result)
@@ -253,7 +274,7 @@ def profile(args, export_file):
 
 def prepare_export_file(args, prompt):
     prompt_size = len(prompt.split())
-    filename = get_export_filename(args.model, prompt_size)
+    filename = get_export_filename(args, prompt_size)
 
     # If exists, clean up
     export_file = Path(filename)
@@ -299,6 +320,8 @@ def construct_input_data(args):
     # If specified, overwrite max_tokens
     if args.max_tokens:
         sampling_params["max_tokens"] = args.max_tokens
+    else:
+        args.max_tokens = sampling_params["max_tokens"]
 
     # If specified, overwrite ignore_eos
     if "ignore_eos" not in sampling_params:
