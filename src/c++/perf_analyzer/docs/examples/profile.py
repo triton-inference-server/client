@@ -27,8 +27,10 @@
 import argparse
 import json
 import subprocess
+from itertools import pairwise
 from pathlib import Path
-from statistics import mean
+
+import numpy as np
 
 TEMP_INPUT_FILE = "temp_input_data.json"
 
@@ -36,6 +38,111 @@ TEMP_INPUT_FILE = "temp_input_data.json"
 def load_profile_data():
     with open("profile_export.json") as f:
         return json.load(f)
+
+
+def print_benchmark_summary(results):
+    output = "\n[ Benchmark Summary ]"
+    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
+        output += (
+            f"\n  Prompt size: {prompt_size}, "
+            f"Average first-token latency: {avg_first_token_latency:.4f} sec"
+        )
+        output += (
+            f", Average token-to-token latency: {avg_token_to_token_latency:.4f} sec"
+            if avg_token_to_token_latency
+            else ""
+        )
+    print(output)
+
+
+def plot_results(latencies):
+    """Plot in-flight batching LLM bencharmark results."""
+    import matplotlib.pyplot as plt  # Lazy import
+
+    periods = np.arange(1, len(latencies) + 1)
+    fig, ax = plt.subplots()
+    ax.plot(periods, latencies)
+
+    # Set pyplot parameters
+    ax.grid(linestyle="--")
+    ax.set_xlabel("i-th Request Period", fontsize=12)
+    ax.set_ylabel("Avg Token-to-Token Latency (sec)", fontsize=12)
+    ax.set_title("In-Flight Batching Benchmark Summary", fontsize=14)
+    ax.set_ylim(bottom=0.0)
+
+    fig.savefig("inflight_batching_benchmark.png", dpi=300)
+    print("Saved benchmark result @ 'inflight_batching_benchmark.png'.")
+
+
+def add_latencies_to_bins(bins, pos, responses, request_period):
+    """Add token-to-token latencies into the corresponding bin.
+
+    Given the responses of a single request, calculate token-to-token
+    latency and add it into bin. Update the bin position to the next
+    for every request period.
+    """
+    for response_id, (prev_res, res) in enumerate(pairwise(responses)):
+        bins[pos].append(res - prev_res)
+        if (response_id + 1) % request_period == 0:
+            pos += 1
+
+
+def update_start_position(request_id, start_pos, initial_requests, step):
+    """Shift the start position of the bin.
+
+    Once we iterate through the entire <start> requests, we shift
+    the start position. Then, we shift the start position for every
+    <step> requests.
+    """
+    if (request_id + 1) >= initial_requests:
+        num_requests_after_start = request_id + 1 - initial_requests
+        if num_requests_after_start % step == 0:
+            start_pos += 1
+    return start_pos
+
+
+def collect_periodic_latencies(args):
+    """Split the entire benchmark results into segments with size
+    of request period and collect latencies for each segment.
+    """
+    start, end, step = args.periodic_concurrency_range
+
+    num_bins = args.max_tokens // args.request_period + (end - start) // step
+    if args.max_tokens % args.request_period != 0:
+        num_bins += 1  # extra bin
+
+    bins = [[] for _ in range(num_bins)]
+    bin_start_position = 0
+
+    data = load_profile_data()
+    requests = data["experiments"][0]["requests"]
+
+    for i, r in enumerate(requests):
+        add_latencies_to_bins(
+            bins=bins,
+            pos=bin_start_position,
+            responses=r["response_timestamps"],
+            request_period=args.request_period,
+        )
+        bin_start_position = update_start_position(
+            request_id=i,
+            start_pos=bin_start_position,
+            initial_requests=start,
+            step=step,
+        )
+    return bins
+
+
+def calculate_avg_periodic_latencies(args):
+    """Calculate average token-to-token latency for each
+    request period.
+    """
+    bins = collect_periodic_latencies(args)
+
+    latencies = []
+    for bin in bins:
+        latencies.append(np.mean(bin) / 1_000_000_000)
+    return latencies
 
 
 def collect_latencies(requests):
@@ -59,9 +166,9 @@ def calculate_avg_latencies():
     first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
     # Compute mean and convert from nanosec to sec
-    avg_first_token_latency = mean(first_token_latencies) / 1_000_000_000
+    avg_first_token_latency = np.mean(first_token_latencies) / 1_000_000_000
     if token_to_token_latencies:
-        avg_token_to_token_latency = mean(token_to_token_latencies) / 1_000_000_000
+        avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000_000
     else:
         avg_token_to_token_latency = None
     return avg_first_token_latency, avg_token_to_token_latency
@@ -115,7 +222,6 @@ if __name__ == "__main__":
         "--model",
         type=str,
         default="vllm",
-        choices=["vllm"],
         help="The name of the model to profile.",
     )
     parser.add_argument(
@@ -172,20 +278,18 @@ if __name__ == "__main__":
             generate_input_data(args, prompt_size, TEMP_INPUT_FILE)
 
         profile(args, args.input_data if args.input_data else TEMP_INPUT_FILE)
-        avg_first_token_latency, avg_token_to_token_latency = calculate_avg_latencies()
-        results.append(
-            (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
-        )
 
-    print("\n[ Benchmark Summary ]")
-    for prompt_size, avg_first_token_latency, avg_token_to_token_latency in results:
-        line = (
-            f"  Prompt size: {prompt_size}, "
-            f"Average first-token latency: {avg_first_token_latency:.4f} sec"
-        )
-        line += (
-            f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
-            if avg_token_to_token_latency
-            else ""
-        )
-        print(line)
+        if not args.periodic_concurrency_range:
+            (
+                avg_first_token_latency,
+                avg_token_to_token_latency,
+            ) = calculate_avg_latencies()
+            results.append(
+                (prompt_size, avg_first_token_latency, avg_token_to_token_latency)
+            )
+
+    if args.periodic_concurrency_range:
+        avg_latencies = calculate_avg_periodic_latencies(args)
+        plot_results(avg_latencies)
+    else:
+        print_benchmark_summary(results)
