@@ -222,7 +222,10 @@ def summarize_profile_results(args, prompts):
     print_benchmark_summary(results)
 
     if args.periodic_concurrency_range:
-        print("Saved in-flight benchmark plots @ 'inflight_batching_benchmark-*.png'.")
+        print(
+            "Saved in-flight batching benchmark plots "
+            "@ 'inflight_batching_benchmark-*.png'."
+        )
 
 
 def profile(args, export_file):

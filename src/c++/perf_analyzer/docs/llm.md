@@ -123,9 +123,9 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ign
 
 # Sample output
 # [ Benchmark Summary ]
-#   Prompt size: 100, Average first-token latency: 0.0388 sec, Average token-to-token latency: 0.0066 sec
-#   Prompt size: 300, Average first-token latency: 0.0431 sec, Average token-to-token latency: 0.0071 sec
-#   Prompt size: 500, Average first-token latency: 0.0400 sec, Average token-to-token latency: 0.0070 sec
+#   Prompt size: 100, Average first-token latency: 0.0388 sec, Average total token-to-token latency: 0.0066 sec
+#   Prompt size: 300, Average first-token latency: 0.0431 sec, Average total token-to-token latency: 0.0071 sec
+#   Prompt size: 500, Average first-token latency: 0.0400 sec, Average total token-to-token latency: 0.0070 sec
 ```
 
 ## Benchmark 3: Profiling In-Flight Batching
@@ -164,9 +164,9 @@ python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-ran
 
 # Sample output
 # [ BENCHMARK SUMMARY ]
-#   Prompt size: 10, Average first-token latency: 0.0799 sec, Average total token-token latency: 0.0324 sec
+#   Prompt size: 10, Average first-token latency: 0.0799 sec, Average total token-to-token latency: 0.0324 sec
 #
-# Saved in-flight benchmark plots @ 'inflight_batching_benchmark-*.png'.
+# Saved in-flight batching benchmark plots @ 'inflight_batching_benchmark-*.png'.
 ```
 
 The resulting plot will look like
