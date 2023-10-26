@@ -48,7 +48,7 @@ def print_benchmark_summary(results):
             f"Average first-token latency: {avg_first_token_latency:.4f} sec"
         )
         output += (
-            f", Average token-token latency: {avg_token_to_token_latency:.4f} sec"
+            f", Average token-to-token latency: {avg_token_to_token_latency:.4f} sec"
             if avg_token_to_token_latency
             else ""
         )
