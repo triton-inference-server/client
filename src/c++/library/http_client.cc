@@ -449,6 +449,23 @@ HttpInferRequest::PrepareRequestJson(
       if (outputs.empty()) {
         parameters_json.AddBool("binary_data_output", true);
       }
+
+      for (auto& param : options.request_parameters) {
+        if (param.second.type == "string") {
+          parameters_json.AddString(
+              param.first.c_str(), param.second.value.c_str(),
+              param.second.value.size());
+        } else if (param.second.type == "int") {
+          parameters_json.AddInt(
+              param.first.c_str(), std::stoi(param.second.value));
+        } else if (param.second.type == "bool") {
+          bool val = false;
+          if (param.second.value == "true") {
+            val = true;
+          }
+          parameters_json.AddBool(param.first.c_str(), val);
+        }
+      }
     }
 
     request_json->Add("parameters", std::move(parameters_json));
