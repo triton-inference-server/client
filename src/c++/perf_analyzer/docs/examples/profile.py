@@ -96,7 +96,7 @@ def get_plot_filename(args, prompt_size):
     return filename
 
 
-def print_benchmark_summary(profile_results):
+def print_benchmark_summary(args, profile_results):
     # output = [TITLE]
     # for pr in profile_results:
     #    line = [PROMPT_SIZE.format(pr.prompt_size)]
@@ -108,9 +108,11 @@ def print_benchmark_summary(profile_results):
 
     # TODO: create proper output
     for pr in profile_results:
-        for k, v in asdict(pr).items():
-            print(f"{k} : {v}")
-        print("")
+        postfix = get_postfix(args, pr.prompt_size)
+        with open(f"results-{postfix}.log", "w") as f:
+            for k, v in asdict(pr).items():
+                print(f"{k} : {v}", file=f)
+            print("", file=f)
 
 
 def plot_results(latencies, filename="inflight_batching_benchmark.png"):
@@ -276,7 +278,7 @@ def summarize_profile_results(args, prompts):
             )
         results.append(profile_result)
 
-    print_benchmark_summary(results)
+    print_benchmark_summary(args, results)
     if args.periodic_concurrency_range:
         print(
             "Saved in-flight batching benchmark plots "
