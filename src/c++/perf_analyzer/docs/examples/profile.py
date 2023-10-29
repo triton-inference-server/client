@@ -38,8 +38,8 @@ INPUT_FILENAME = "generated_input_data.json"
 
 TITLE = "\n[ BENCHMARK SUMMARY ]\n"
 PROMPT_SIZE = "  Prompt size: {}"
-FIRST_TOKEN_LATENCY = "Average first-token latency: {:.4f} sec"
-T2T_LATENCY = "Average total token-to-token latency: {:.4f} sec"
+FIRST_TOKEN_LATENCY = "Average first-token latency: {:.4f} ms"
+T2T_LATENCY = "Average total token-to-token latency: {:.4f} ms"
 
 
 @dataclass
@@ -126,7 +126,7 @@ def plot_results(latencies, filename="inflight_batching_benchmark.png"):
     # Set pyplot parameters
     ax.grid(linestyle="--")
     ax.set_xlabel("i-th Request Period", fontsize=12)
-    ax.set_ylabel("Avg Token-to-Token Latency (sec)", fontsize=12)
+    ax.set_ylabel("Avg Token-to-Token Latency (ms)", fontsize=12)
     ax.set_title("In-Flight Batching Benchmark Summary", fontsize=14)
     ax.set_ylim(bottom=0.0)
 
@@ -198,7 +198,7 @@ def calculate_avg_periodic_latencies(args, profile_result, filename):
 
     latencies = []
     for bin in bins:
-        latencies.append(np.mean(bin) / 1_000_000_000)
+        latencies.append(np.mean(bin) / 1_000_000)
 
     profile_result.avg_periodic_t2t_latencies = latencies
 
@@ -227,10 +227,10 @@ def calculate_online_latencies(args, profile_result, filename):
     requests = load_json_data(filename)
     first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
-    # Compute mean and convert from nanosec to sec
-    avg_first_token_latency = np.mean(first_token_latencies) / 1_000_000_000
+    # Compute mean and convert from nanosec to msec
+    avg_first_token_latency = np.mean(first_token_latencies) / 1_000_000
     if token_to_token_latencies:
-        avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000_000
+        avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000
     else:
         avg_token_to_token_latency = None
 
@@ -248,9 +248,10 @@ def calculate_throughput(args, profile_result, filename):
 
     for request in requests:
         total_time = request["response_timestamps"][-1] - request["timestamp"]
-        total_time /= 1_000_000_000  # sec
-        end_to_end_latencies.append(total_time)
-        throughputs.append(total_tokens / total_time)
+        time_s = total_time / 1_000_000_000  # sec
+        time_ms = total_time / 1_000_000  # msec
+        end_to_end_latencies.append(time_ms)
+        throughputs.append(total_tokens / time_s)
 
     profile_result.avg_e2e_latency = np.mean(end_to_end_latencies)
     profile_result.avg_throughput = np.mean(throughputs)
