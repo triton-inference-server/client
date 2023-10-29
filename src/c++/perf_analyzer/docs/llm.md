@@ -69,7 +69,7 @@ Inside the client container, run the following command to generate dummy prompts
 of size 100, 300, and 500 and receive single token from the model for each prompt.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
+python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 1
 
 # Sample output
 # [ BENCHMARK SUMMARY ]
@@ -121,7 +121,7 @@ of size 100, 300, and 500 and receive total 256 tokens from the model for each
 prompts.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
+python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 256 --ignore-eos
 
 # Sample output
 # [ BENCHMARK SUMMARY ]
@@ -162,7 +162,7 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
+python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --stream --max-tokens 1024 --ignore-eos
 
 # Sample output
 # [ BENCHMARK SUMMARY ]
@@ -182,7 +182,7 @@ split them into multiple segments of responses.
 For instance, assume we ran the following benchmark command:
 
 ```bash
-python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
+python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --stream --max-tokens 1024 --ignore-eos
 ```
 
 We start from a single request and increment up to 4 requests one by one for
@@ -206,4 +206,22 @@ Then for each segment, we compute the mean of T2T latencies of the responses.
 This will allow us to visualize the change in T2T latency as the number of
 requests increase, filling up the inflight batch slots, and as they terminate.
 See [profile.py](examples/profile.py) for more details.
+
+## Benchmark 4: Offline Case
+
+The first three benchmarks were online scenarios where the LLM model streamed
+each output tokens as response.
+This allows us to measure the performance of the model at a granular level.
+In this benchmark, we are interested in an end-to-end performance of the model.
+
+```bash
+python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256
+
+# Sample output
+# [ BENCHMARK SUMMARY ]
+#   Prompt size: 100, Average first-token latency: 0.0441 sec
+#   Prompt size: 300, Average first-token latency: 0.0427 sec
+#   Prompt size: 500, Average first-token latency: 0.0555 sec
+```
+
 

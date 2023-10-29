@@ -27,7 +27,7 @@
 import argparse
 import json
 import subprocess
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from itertools import pairwise
 from pathlib import Path
 from typing import Optional
@@ -45,9 +45,17 @@ T2T_LATENCY = "Average total token-to-token latency: {:.4f} sec"
 @dataclass
 class ProfileResults:
     prompt_size: int
-    avg_first_token_latency: int
-    avg_total_t2t_latency: int
-    avg_periodic_t2t_latencies: Optional[list[int]] = None
+    avg_first_token_latency: Optional[float] = None
+    avg_total_t2t_latency: Optional[float] = None
+    avg_periodic_t2t_latencies: Optional[list[float]] = None
+    avg_e2e_latency: Optional[float] = None
+    avg_token_latency: Optional[float] = None
+    avg_gen_token_latency: Optional[float] = None
+    avg_throughput: Optional[float] = None
+    p50_throughput: Optional[float] = None
+    p90_throughput: Optional[float] = None
+    p95_throughput: Optional[float] = None
+    p99_throughput: Optional[float] = None
 
 
 def load_json_data(filename):
@@ -67,7 +75,8 @@ def get_postfix(args, prompt_size):
       - trtllm-prompt100-maxtokens256
       - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
     """
-    postfix = f"{args.model}-prompt{prompt_size}-"
+    stream_type = "online" if args.stream else "offline"
+    postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
@@ -88,14 +97,20 @@ def get_plot_filename(args, prompt_size):
 
 
 def print_benchmark_summary(profile_results):
-    output = [TITLE]
+    # output = [TITLE]
+    # for pr in profile_results:
+    #    line = [PROMPT_SIZE.format(pr.prompt_size)]
+    #    line += [FIRST_TOKEN_LATENCY.format(pr.avg_first_token_latency)]
+    #    if pr.avg_total_t2t_latency:
+    #        line += [T2T_LATENCY.format(pr.avg_total_t2t_latency)]
+    #    output += [", ".join(line) + "\n"]
+    # print("".join(output))
+
+    # TODO: create proper output
     for pr in profile_results:
-        line = [PROMPT_SIZE.format(pr.prompt_size)]
-        line += [FIRST_TOKEN_LATENCY.format(pr.avg_first_token_latency)]
-        if pr.avg_total_t2t_latency:
-            line += [T2T_LATENCY.format(pr.avg_total_t2t_latency)]
-        output += [", ".join(line) + "\n"]
-    print("".join(output))
+        for k, v in asdict(pr).items():
+            print(f"{k} : {v}")
+        print("")
 
 
 def plot_results(latencies, filename="inflight_batching_benchmark.png"):
@@ -175,14 +190,15 @@ def collect_periodic_latencies(args, filename):
     return bins
 
 
-def calculate_avg_periodic_latencies(args, filename):
+def calculate_avg_periodic_latencies(args, profile_result, filename):
     """Calculate average token-to-token latency for each request period."""
     bins = collect_periodic_latencies(args, filename)
 
     latencies = []
     for bin in bins:
         latencies.append(np.mean(bin) / 1_000_000_000)
-    return latencies
+
+    profile_result.avg_periodic_t2t_latencies = latencies
 
 
 def collect_latencies(requests):
@@ -201,8 +217,11 @@ def collect_latencies(requests):
     return first_token_latencies, token_to_token_latencies
 
 
-def calculate_avg_latencies(filename):
+def calculate_online_latencies(args, profile_result, filename):
     """Calculate avg first-token and avg total token-to-token latencies."""
+    if not args.stream:
+        return  # skip if offline
+
     requests = load_json_data(filename)
     first_token_latencies, token_to_token_latencies = collect_latencies(requests)
 
@@ -212,7 +231,31 @@ def calculate_avg_latencies(filename):
         avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000_000
     else:
         avg_token_to_token_latency = None
-    return avg_first_token_latency, avg_token_to_token_latency
+
+    profile_result.avg_first_token_latency = avg_first_token_latency
+    profile_result.avg_total_t2t_latency = avg_token_to_token_latency
+
+
+def calculate_throughput(args, profile_result, filename):
+    requests = load_json_data(filename)
+
+    end_to_end_latencies = []
+    throughputs = []
+    total_tokens = profile_result.prompt_size + args.max_tokens
+    requests = requests["experiments"][0]["requests"]
+
+    for request in requests:
+        total_time = request["response_timestamps"][-1] - request["timestamp"]
+        total_time /= 1_000_000_000  # sec
+        end_to_end_latencies.append(total_time)
+        throughputs.append(total_tokens / total_time)
+
+    profile_result.avg_e2e_latency = np.mean(end_to_end_latencies)
+    profile_result.avg_throughput = np.mean(throughputs)
+    profile_result.p50_throughput = np.percentile(throughputs, 50, method="lower")
+    profile_result.p90_throughput = np.percentile(throughputs, 90, method="lower")
+    profile_result.p95_throughput = np.percentile(throughputs, 95, method="lower")
+    profile_result.p99_throughput = np.percentile(throughputs, 99, method="lower")
 
 
 def summarize_profile_results(args, prompts):
@@ -220,28 +263,20 @@ def summarize_profile_results(args, prompts):
     for prompt in prompts:
         prompt_size = len(prompt.split())
         export_file = get_export_filename(args, prompt_size)
-        avg_first_token_latency, avg_total_t2t_latency = calculate_avg_latencies(
-            filename=export_file
-        )
 
-        profile_result = ProfileResults(
-            prompt_size=prompt_size,
-            avg_first_token_latency=avg_first_token_latency,
-            avg_total_t2t_latency=avg_total_t2t_latency,
-        )
+        profile_result = ProfileResults(prompt_size=prompt_size)
+        calculate_throughput(args, profile_result, export_file)
+        calculate_online_latencies(args, profile_result, export_file)
 
         if args.periodic_concurrency_range:
-            periodic_latencies = calculate_avg_periodic_latencies(args, export_file)
-            profile_result.avg_periodic_t2t_latencies = periodic_latencies
+            calculate_avg_periodic_latencies(args, profile_result, export_file)
             plot_results(
-                latencies=periodic_latencies,
+                latencies=profile_result.avg_periodic_t2t_latencies,
                 filename=get_plot_filename(args, prompt_size),
             )
-
         results.append(profile_result)
 
     print_benchmark_summary(results)
-
     if args.periodic_concurrency_range:
         print(
             "Saved in-flight batching benchmark plots "
@@ -307,7 +342,7 @@ def construct_input_data(args):
     parameters set by input JSON file.
     """
     prompt = ""
-    stream = True
+    stream = False
     sampling_params = {}
 
     if args.input_data:
@@ -317,13 +352,20 @@ def construct_input_data(args):
         if "SAMPLING_PARAMETERS" in data:
             sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
 
-    # If specified, overwrite max_tokens
+    # If command line option is specified, overwrite
+    if args.stream:
+        stream = args.stream
+    else:
+        args.stream = stream
+
     if args.max_tokens:
         sampling_params["max_tokens"] = args.max_tokens
-    else:
+    elif "max_tokens" in sampling_params:
         args.max_tokens = sampling_params["max_tokens"]
+    else:
+        args.max_tokens = 256  # default
+        sampling_params["max_tokens"] = args.max_tokens
 
-    # If specified, overwrite ignore_eos
     if "ignore_eos" not in sampling_params:
         sampling_params["ignore_eos"] = args.ignore_eos
     elif args.ignore_eos:
@@ -393,6 +435,11 @@ if __name__ == "__main__":
         "--input-data",
         type=str,
         help="The input data file to be used for inference request.",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Whether to stream the model outputs.",
     )
     args = parser.parse_args()
     main(args)
