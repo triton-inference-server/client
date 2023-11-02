@@ -28,7 +28,6 @@
 
 import base64
 import struct
-import sys
 
 import grpc
 import rapidjson as json
