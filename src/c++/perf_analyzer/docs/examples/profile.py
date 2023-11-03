@@ -108,17 +108,15 @@ def save_json_data(data, filename):
         json.dump(data, f)
 
 
-def get_postfix(args, prompt_size=None):
+def get_postfix(args, prompt_size):
     """Generate postfix for profile export filename and plot.
 
     e.g.
-      - trtllm-maxtokens256
       - trtllm-prompt100-maxtokens256
       - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
     """
     stream_type = "online" if args.stream else "offline"
-    postfix = f"{args.model}-{stream_type}-"
-    postfix += f"prompt{prompt_size}-" if prompt_size else ""
+    postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
@@ -139,15 +137,15 @@ def get_plot_filename(args, prompt_size):
 
 
 def save_benchmark_results(args, profile_results):
-    postfix = get_postfix(args)
-    results_csv = f"results-{postfix}.csv"
-    with open(results_csv, "w") as f:
-        fieldnames = [f.name for f in fields(profile_results[0])]
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for pr in profile_results:
+    for pr in profile_results:
+        postfix = get_postfix(args, pr.prompt_size)
+        results_csv = f"results-{postfix}.csv"
+        with open(results_csv, "w") as f:
+            fieldnames = [f.name for f in fields(pr)]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
             writer.writerow(asdict(pr))
-    print(f"Saved benchmark results @ '{results_csv}'")
+        print(f"Saved benchmark results @ '{results_csv}'")
 
 
 def print_benchmark_summary(profile_results):

@@ -77,7 +77,9 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 
 #   * Min first token latency: 11.0879 ms
 #   * Avg first token latency: 18.3775 ms
 #   ...
-# Saved benchmark results @ 'results-vllm-online-maxtokens1.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt100-maxtokens1.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt200-maxtokens1.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt300-maxtokens1.csv'
 ```
 
 > **Note**
@@ -131,7 +133,9 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 
 #   * Min first token latency: 11.0127 ms
 #   * Avg first token latency: 16.0468 ms
 #  ...
-# Saved benchmark results @ 'results-vllm-online-maxtokens256.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt100-maxtokens256.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt200-maxtokens256.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt300-maxtokens256.csv'
 ```
 
 ## Benchmark 3: Profiling In-Flight Batching
@@ -167,7 +171,7 @@ python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-ran
 #   * Min first token latency: 18.4281 ms
 #   * Avg first token latency: 61.8372 ms
 #   ...
-# Saved benchmark results @ 'results-vllm-online-periodic1_100_1-period32-maxtokens1024.csv'
+# Saved benchmark results @ 'results-vllm-online-prompt10-periodic1_100_1-period32-maxtokens1024.csv'
 # Saved in-flight batching benchmark plots @ 'inflight_batching_benchmark-*.png'.
 ```
 
