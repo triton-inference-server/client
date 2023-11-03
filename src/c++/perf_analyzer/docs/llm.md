@@ -53,7 +53,7 @@ Next run the following command to start the Triton SDK container:
 ```bash
 git clone https://github.com/triton-inference-server/client.git
 cd client/src/c++/perf_analyzer/docs/examples
-docker run --gpus all -it --rm --net host -v ${PWD}:/work -w /work nvcr.io/nvidia/tritonserver:23.09-py3-sdk
+docker run --gpus all -it --rm --net host -v ${PWD}:/work -w /work nvcr.io/nvidia/tritonserver:23.10-py3-sdk
 ```
 
 ## Benchmark 1: Profiling the Prefill Phase
@@ -71,11 +71,13 @@ of size 100, 300, and 500 and receive single token from the model for each promp
 ```bash
 python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 1
 
-# Sample output
 # [ BENCHMARK SUMMARY ]
-#   Prompt size: 100, Average first-token latency: 0.0441 sec
-#   Prompt size: 300, Average first-token latency: 0.0427 sec
-#   Prompt size: 500, Average first-token latency: 0.0555 sec
+# Prompt size: 100
+#   * Max first token latency: 35.2451 ms
+#   * Min first token latency: 11.0879 ms
+#   * Avg first token latency: 18.3775 ms
+#   ...
+# Saved benchmark results @ 'results-vllm-online-maxtokens1.csv'
 ```
 
 > **Note**
@@ -123,21 +125,16 @@ prompts.
 ```bash
 python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 256 --ignore-eos
 
-# Sample output
 # [ BENCHMARK SUMMARY ]
-#   Prompt size: 100, Average first-token latency: 0.0388 sec, Average total token-to-token latency: 0.0066 sec
-#   Prompt size: 300, Average first-token latency: 0.0431 sec, Average total token-to-token latency: 0.0071 sec
-#   Prompt size: 500, Average first-token latency: 0.0400 sec, Average total token-to-token latency: 0.0070 sec
+# Prompt size: 100
+#   * Max first token latency: 23.2899 ms
+#   * Min first token latency: 11.0127 ms
+#   * Avg first token latency: 16.0468 ms
+#  ...
+# Saved benchmark results @ 'results-vllm-online-maxtokens256.csv'
 ```
 
 ## Benchmark 3: Profiling In-Flight Batching
-
-> **Note**
->
-> This benchmark relies on the feature that will be available from `23.10`
-> release which is on its way soon. You can either wait until the `23.10`
-> container is ready or build Perf Analyzer from the latest `main` branch
-> (see [build from source instructions](install.md#build-from-source)).
 
 In this benchmarking scenario, we want to measure the effect of in-flight
 batch size on token-to-token (T2T) latency. We systematically issue requests to
@@ -164,10 +161,13 @@ pip install matplotlib
 # Run Perf Analyzer
 python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --stream --max-tokens 1024 --ignore-eos
 
-# Sample output
 # [ BENCHMARK SUMMARY ]
-#   Prompt size: 10, Average first-token latency: 0.0799 sec, Average total token-to-token latency: 0.0324 sec
-#
+# Prompt size: 10
+#   * Max first token latency: 125.7212 ms
+#   * Min first token latency: 18.4281 ms
+#   * Avg first token latency: 61.8372 ms
+#   ...
+# Saved benchmark results @ 'results-vllm-online-periodic1_100_1-period32-maxtokens1024.csv'
 # Saved in-flight batching benchmark plots @ 'inflight_batching_benchmark-*.png'.
 ```
 
@@ -206,22 +206,4 @@ Then for each segment, we compute the mean of T2T latencies of the responses.
 This will allow us to visualize the change in T2T latency as the number of
 requests increase, filling up the inflight batch slots, and as they terminate.
 See [profile.py](examples/profile.py) for more details.
-
-## Benchmark 4: Offline Case
-
-The first three benchmarks were online scenarios where the LLM model streamed
-each output tokens as response.
-This allows us to measure the performance of the model at a granular level.
-In this benchmark, we are interested in an end-to-end performance of the model.
-
-```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256
-
-# Sample output
-# [ BENCHMARK SUMMARY ]
-#   Prompt size: 100, Average first-token latency: 0.0441 sec
-#   Prompt size: 300, Average first-token latency: 0.0427 sec
-#   Prompt size: 500, Average first-token latency: 0.0555 sec
-```
-
 
