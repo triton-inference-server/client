@@ -136,18 +136,6 @@ def get_plot_filename(args, prompt_size):
     return filename
 
 
-def save_benchmark_results(args, profile_results):
-    for pr in profile_results:
-        postfix = get_postfix(args, pr.prompt_size)
-        results_csv = f"results-{postfix}.csv"
-        with open(results_csv, "w") as f:
-            fieldnames = [f.name for f in fields(pr)]
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow(asdict(pr))
-        print(f"Saved benchmark results @ '{results_csv}'")
-
-
 def print_benchmark_summary(profile_results):
     print("[ BENCHMARK SUMMARY ]")
     for pr in profile_results:
@@ -363,8 +351,6 @@ def summarize_profile_results(args, prompts):
         results.append(profile_result)
 
     print_benchmark_summary(results)
-    save_benchmark_results(args, results)
-
     if args.periodic_concurrency_range:
         print(
             "Saved in-flight batching benchmark plots "
