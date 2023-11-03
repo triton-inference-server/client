@@ -382,13 +382,6 @@ def profile(args, export_file):
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
-    if args.model == "ensemble":  # TRT-LLM
-        command += (
-            "--shape=text_input:1 "
-            "--shape=max_tokens:1 "
-            "--shape=bad_words:1 "
-            "--shape=stop_words:1 "
-        )
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         command += (
@@ -418,21 +411,13 @@ def prepare_export_file(args, prompt):
 
 def prepare_input_data(input_data, prompt):
     """Insert the prompt to send into input JSON data."""
-    if args.model == "ensemble":
-        input_data["data"][0]["text_input"] = [prompt]
-    elif args.model == "vllm":
-        # TODO (hwoo): use text_input
-        input_data["data"][0]["PROMPT"] = [prompt]
+    input_data["data"][0]["PROMPT"] = [prompt]
     save_json_data(input_data, INPUT_FILENAME)
 
 
 def generate_prompts(args, input_data):
     """Generate dummy prompts if not specified by input JSON file."""
-    if args.model == "ensemble":
-        prompt = input_data["data"][0]["text_input"][0]
-    elif args.model == "vllm":
-        # TODO (hwoo): use text_input
-        prompt = input_data["data"][0]["PROMPT"][0]
+    prompt = input_data["data"][0]["PROMPT"][0]
 
     if not prompt:  # Generate dummy prompt
         assert args.prompt_size_range, "Must specify --prompt-size-range."
@@ -485,50 +470,8 @@ def construct_input_data(args):
     return input_data
 
 
-# TODO (hwoo): merge with construct_input_data
-def construct_trtllm_input_data(args):
-    """Construct input data that contains input tensors and parameters.
-
-    Parse the input JSON file (if exists) to construct the input data.
-    When user sets parameters through command line, overwrite the
-    parameters set by input JSON file.
-    """
-    prompt = ""
-    stream = False
-    max_tokens = 256
-
-    if args.input_data:
-        data = load_json_data(filename=args.input_data)["data"][0]
-        prompt = data["text_input"][0] if "text_input" in data else prompt
-        stream = data["stream"][0] if "stream" in data else stream
-        max_tokens = data["max_tokens"][0] if "max_tokens" in data else max_tokens
-
-    # If command line option is specified, overwrite
-    if args.stream:
-        stream = args.stream
-    else:
-        args.stream = stream
-
-    if args.max_tokens:
-        max_tokens = args.max_tokens
-    else:
-        args.max_tokens = max_tokens
-
-    input_data = {"data": [{}]}
-    input_data["data"][0]["text_input"] = [prompt]
-    input_data["data"][0]["stream"] = [stream]
-    input_data["data"][0]["max_tokens"] = [max_tokens]
-    input_data["data"][0]["bad_words"] = [""]
-    input_data["data"][0]["stop_words"] = [""]
-    return input_data
-
-
 def main(args):
-    # TODO (hwoo): merge the conditional cases
-    if args.model == "ensemble":
-        input_data = construct_trtllm_input_data(args)
-    elif args.model == "vllm":
-        input_data = construct_input_data(args)
+    input_data = construct_input_data(args)
     prompts = generate_prompts(args, input_data)
 
     for prompt in prompts:
