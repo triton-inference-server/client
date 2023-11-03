@@ -37,32 +37,32 @@ import numpy as np
 
 INPUT_FILENAME = "generated_input_data.json"
 METRIC_FIELDS = {
-    "max_first_token_latency": "Max first token latency",
-    "min_first_token_latency": "Min first token latency",
-    "avg_first_token_latency": "Avg first token latency",
-    "p50_first_token_latency": "p50 first token latency",
-    "p90_first_token_latency": "p90 first token latency",
-    "p95_first_token_latency": "p95 first token latency",
-    "p99_first_token_latency": "p99 first token latency",
-    "max_gen_latency": "Max generation latency",
-    "min_gen_latency": "Min generation latency",
-    "avg_gen_latency": "Avg generation latency",
-    "p50_gen_latency": "p50 generation latency",
-    "p90_gen_latency": "p90 generation latency",
-    "p95_gen_latency": "p95 generation latency",
-    "p99_gen_latency": "p99 generation latency",
-    "avg_token_latency": "Avg token latency",
-    "avg_total_t2t_latency": "Avg total token-to-token latency",
-    "max_e2e_latency": "Max end-to-end latency",
-    "min_e2e_latency": "Min end-to-end latency",
-    "avg_e2e_latency": "Avg end-to-end latency",
-    "max_token_throughput": "Max token throughput",
-    "min_token_throughput": "Min token throughput",
-    "avg_token_throughput": "Avg token throughput",
-    "p50_token_throughput": "p50 token throughput",
-    "p90_token_throughput": "p90 token throughput",
-    "p95_token_throughput": "p95 token throughput",
-    "p99_token_throughput": "p99 token throughput",
+    "max_first_token_latency": ("Max first token latency", "ms"),
+    "min_first_token_latency": ("Min first token latency", "ms"),
+    "avg_first_token_latency": ("Avg first token latency", "ms"),
+    "p50_first_token_latency": ("p50 first token latency", "ms"),
+    "p90_first_token_latency": ("p90 first token latency", "ms"),
+    "p95_first_token_latency": ("p95 first token latency", "ms"),
+    "p99_first_token_latency": ("p99 first token latency", "ms"),
+    "max_gen_latency": ("Max generation latency", "ms"),
+    "min_gen_latency": ("Min generation latency", "ms"),
+    "avg_gen_latency": ("Avg generation latency", "ms"),
+    "p50_gen_latency": ("p50 generation latency", "ms"),
+    "p90_gen_latency": ("p90 generation latency", "ms"),
+    "p95_gen_latency": ("p95 generation latency", "ms"),
+    "p99_gen_latency": ("p99 generation latency", "ms"),
+    "avg_token_latency": ("Avg token latency", "ms/token"),
+    "avg_total_t2t_latency": ("Avg total token-to-token latency", "ms"),
+    "max_e2e_latency": ("Max end-to-end latency", "ms"),
+    "min_e2e_latency": ("Min end-to-end latency", "ms"),
+    "avg_e2e_latency": ("Avg end-to-end latency", "ms"),
+    "max_token_throughput": ("Max token throughput", "tokens/s"),
+    "min_token_throughput": ("Min token throughput", "tokens/s"),
+    "avg_token_throughput": ("Avg token throughput", "tokens/s"),
+    "p50_token_throughput": ("p50 token throughput", "tokens/s"),
+    "p90_token_throughput": ("p90 token throughput", "tokens/s"),
+    "p95_token_throughput": ("p95 token throughput", "tokens/s"),
+    "p99_token_throughput": ("p99 token throughput", "tokens/s"),
 }
 
 
@@ -150,15 +150,13 @@ def save_benchmark_results(args, profile_results):
     print(f"Saved benchmark results @ '{results_csv}'")
 
 
-def print_benchmark_summary(args, profile_results):
+def print_benchmark_summary(profile_results):
     print("[ BENCHMARK SUMMARY ]")
     for pr in profile_results:
         print(f"Prompt size: {pr.prompt_size}")
-        for metric, name in METRIC_FIELDS.items():
+        for metric, (name, unit) in METRIC_FIELDS.items():
             if getattr(pr, metric):
-                line = f"  * {name}: {getattr(pr, metric):.4f} "
-                line += "ms" if "latency" in metric else "tokens/s"
-                print(line)
+                print(f"  * {name}: {getattr(pr, metric):.4f} {unit}")
         print("")
 
 
@@ -366,7 +364,7 @@ def summarize_profile_results(args, prompts):
             )
         results.append(profile_result)
 
-    print_benchmark_summary(args, results)
+    print_benchmark_summary(results)
     save_benchmark_results(args, results)
 
     if args.periodic_concurrency_range:
