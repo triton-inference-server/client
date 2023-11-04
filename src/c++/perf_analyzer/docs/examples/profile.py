@@ -25,10 +25,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import csv
 import json
 import subprocess
-from dataclasses import asdict, dataclass, fields
+from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 from typing import Optional
@@ -51,7 +50,7 @@ METRIC_FIELDS = {
     "p90_gen_latency": ("p90 generation latency", "ms"),
     "p95_gen_latency": ("p95 generation latency", "ms"),
     "p99_gen_latency": ("p99 generation latency", "ms"),
-    "avg_token_latency": ("Avg token latency", "ms/token"),
+    "avg_latency_per_output_token": ("Avg latency per output token", "ms/token"),
     "avg_total_t2t_latency": ("Avg total token-to-token latency", "ms"),
     "max_e2e_latency": ("Max end-to-end latency", "ms"),
     "min_e2e_latency": ("Min end-to-end latency", "ms"),
@@ -83,7 +82,7 @@ class ProfileResults:
     p90_gen_latency: Optional[float] = None
     p95_gen_latency: Optional[float] = None
     p99_gen_latency: Optional[float] = None
-    avg_token_latency: Optional[float] = None
+    avg_latency_per_output_token: Optional[float] = None
     avg_total_t2t_latency: Optional[float] = None
     avg_periodic_t2t_latencies: Optional[list[float]] = None
     max_e2e_latency: Optional[float] = None
@@ -115,7 +114,7 @@ def get_postfix(args, prompt_size):
       - trtllm-prompt100-maxtokens256
       - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
     """
-    stream_type = "online" if args.stream else "offline"
+    stream_type = "offline" if args.offline else "online"
     postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
@@ -253,14 +252,13 @@ def collect_latencies(requests):
 
 def calculate_online_metrics(args, profile_result, filename):
     """Calculate online metrics for more fine-grained performance information."""
-    if not args.stream:
+    if args.offline:
         return  # skip if offline
 
     requests = load_json_data(filename)
     latencies = collect_latencies(requests)
     first_token_latencies, generation_latencies, token_to_token_latencies = latencies
 
-    profile_result.avg_first_token_latency = np.mean(first_token_latencies)
     profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
 
     profile_result.max_first_token_latency = max(first_token_latencies)
@@ -296,7 +294,7 @@ def calculate_online_metrics(args, profile_result, filename):
     )
 
     token_latencies = [t / args.max_tokens for t in generation_latencies]
-    profile_result.avg_token_latency = np.mean(token_latencies)
+    profile_result.avg_latency_per_output_token = np.mean(token_latencies)
 
 
 def collect_offline_metrics(requests, sequence_len):
@@ -416,7 +414,7 @@ def construct_input_data(args):
     parameters set by input JSON file.
     """
     prompt = ""
-    stream = False
+    stream = True
     sampling_params = {}
 
     if args.input_data:
@@ -427,10 +425,10 @@ def construct_input_data(args):
             sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
 
     # If command line option is specified, overwrite
-    if args.stream:
-        stream = args.stream
-    else:
-        args.stream = stream
+    if args.offline:
+        stream = False
+    elif not stream:
+        args.offline = True
 
     if args.max_tokens:
         sampling_params["max_tokens"] = args.max_tokens
@@ -511,9 +509,9 @@ if __name__ == "__main__":
         help="The input data file to be used for inference request.",
     )
     parser.add_argument(
-        "--stream",
+        "--offline",
         action="store_true",
-        help="Whether to stream the model outputs.",
+        help="Whether to stop streaming the model outputs.",
     )
     args = parser.parse_args()
     main(args)
