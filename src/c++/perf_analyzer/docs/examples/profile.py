@@ -212,7 +212,7 @@ def update_start_position(request_id, start_pos, initial_requests, step):
     return start_pos
 
 
-def collect_periodic_latencies(args, filename):
+def collect_periodic_latencies(args, export_data):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
     """
@@ -224,9 +224,7 @@ def collect_periodic_latencies(args, filename):
 
     bins = [[] for _ in range(num_bins)]
     bin_start_position = 0
-
-    data = load_json_data(filename)
-    requests = data["experiments"][0]["requests"]
+    requests = export_data["experiments"][0]["requests"]
 
     for i, r in enumerate(requests):
         add_latencies_to_bins(
@@ -244,9 +242,9 @@ def collect_periodic_latencies(args, filename):
     return bins
 
 
-def calculate_avg_periodic_latencies(args, profile_result, filename):
+def calculate_avg_periodic_latencies(args, profile_result, export_data):
     """Calculate average token-to-token latency for each request period."""
-    bins = collect_periodic_latencies(args, filename)
+    bins = collect_periodic_latencies(args, export_data)
 
     latencies = []
     for bin in bins:
@@ -255,14 +253,15 @@ def calculate_avg_periodic_latencies(args, profile_result, filename):
     profile_result.avg_periodic_t2t_latencies = latencies
 
 
-def collect_online_metrics(requests, output_tokens):
+def collect_online_metrics(export_data, output_tokens):
     # Example json demonstrating format:
     #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
     first_token_latencies = []
     generation_latencies = []
     token_to_token_latencies = []
     generation_throughputs = []
-    requests = requests["experiments"][0]["requests"]
+    requests = export_data["experiments"][0]["requests"]
+
     for r in requests:
         init_request, responses = r["timestamp"], r["response_timestamps"]
         first_token_latency = (responses[0] - init_request) / 1_000_000
@@ -282,10 +281,9 @@ def collect_online_metrics(requests, output_tokens):
     )
 
 
-def calculate_online_metrics(args, profile_result, filename):
+def calculate_online_metrics(args, profile_result, export_data):
     """Calculate online metrics for more fine-grained performance information."""
-    requests = load_json_data(filename)
-    latencies = collect_online_metrics(requests, args.max_tokens)
+    latencies = collect_online_metrics(export_data, args.max_tokens)
     (
         first_token_latencies,
         generation_latencies,
@@ -347,10 +345,10 @@ def calculate_online_metrics(args, profile_result, filename):
     )
 
 
-def collect_offline_metrics(requests, sequence_len):
+def collect_offline_metrics(export_data, sequence_len):
     latencies = []
     throughputs = []
-    requests = requests["experiments"][0]["requests"]
+    requests = export_data["experiments"][0]["requests"]
 
     for request in requests:
         total_time = request["response_timestamps"][-1] - request["timestamp"]
@@ -361,11 +359,10 @@ def collect_offline_metrics(requests, sequence_len):
     return throughputs, latencies
 
 
-def calculate_offline_metrics(args, profile_result, filename):
+def calculate_offline_metrics(args, profile_result, export_data):
     """Calculate offline metrics that show end-to-end performance."""
-    requests = load_json_data(filename)
     throughputs, latencies = collect_offline_metrics(
-        requests, sequence_len=profile_result.prompt_size + args.max_tokens
+        export_data, sequence_len=profile_result.prompt_size + args.max_tokens
     )
 
     profile_result.max_e2e_latency = max(latencies)
@@ -385,13 +382,13 @@ def calculate_offline_metrics(args, profile_result, filename):
     profile_result.p99_e2e_throughput = np.percentile(throughputs, 99, method="lower")
 
 
-def calculate_metrics(args, profile_result, export_file):
-    calculate_offline_metrics(args, profile_result, export_file)
+def calculate_metrics(args, profile_result, export_data):
+    calculate_offline_metrics(args, profile_result, export_data)
     if not args.offline:
-        calculate_online_metrics(args, profile_result, export_file)
+        calculate_online_metrics(args, profile_result, export_data)
 
     if args.periodic_concurrency_range:
-        calculate_avg_periodic_latencies(args, profile_result, export_file)
+        calculate_avg_periodic_latencies(args, profile_result, export_data)
         plot_results(
             latencies=profile_result.avg_periodic_t2t_latencies,
             filename=get_plot_filename(args, profile_result.prompt_size),
@@ -403,9 +400,10 @@ def summarize_profile_results(args, prompts):
     for prompt in prompts:
         prompt_size = len(prompt.split())
         export_file = get_export_filename(args, prompt_size)
+        export_data = load_json_data(export_file)
 
         profile_result = ProfileResults(prompt_size=prompt_size)
-        calculate_metrics(args, profile_result, export_file)
+        calculate_metrics(args, profile_result, export_data)
         results.append(profile_result)
 
     print_benchmark_summary(results)
