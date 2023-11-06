@@ -69,7 +69,7 @@ Inside the client container, run the following command to generate dummy prompts
 of size 100, 300, and 500 and receive single token from the model for each prompt.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 1
+python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -122,7 +122,7 @@ of size 100, 300, and 500 and receive total 256 tokens from the model for each
 prompts.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --stream --max-tokens 256 --ignore-eos
+python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -157,7 +157,7 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --stream --max-tokens 1024 --ignore-eos
+python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 10
@@ -179,7 +179,7 @@ split them into multiple segments of responses.
 For instance, assume we ran the following benchmark command:
 
 ```bash
-python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --stream --max-tokens 1024 --ignore-eos
+python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
 ```
 
 We start from a single request and increment up to 4 requests one by one for
