@@ -457,21 +457,13 @@ def prepare_export_file(args, prompt):
 
 def prepare_input_data(input_data, prompt):
     """Insert the prompt to send into input JSON data."""
-    if args.model == "ensemble":
-        input_data["data"][0]["text_input"] = [prompt]
-    elif args.model == "vllm":
-        # TODO (hwoo): use text_input
-        input_data["data"][0]["PROMPT"] = [prompt]
+    input_data["data"][0]["text_input"] = [prompt]
     save_json_data(input_data, INPUT_FILENAME)
 
 
 def generate_prompts(args, input_data):
     """Generate dummy prompts if not specified by input JSON file."""
-    if args.model == "ensemble":
-        prompt = input_data["data"][0]["text_input"][0]
-    elif args.model == "vllm":
-        # TODO (hwoo): use text_input
-        prompt = input_data["data"][0]["PROMPT"][0]
+    prompt = input_data["data"][0]["text_input"][0]
 
     if not prompt:  # Generate dummy prompt
         assert args.prompt_size_range, "Must specify --prompt-size-range."
@@ -493,10 +485,10 @@ def construct_input_data(args):
 
     if args.input_data:
         data = load_json_data(filename=args.input_data)["data"][0]
-        stream = data["STREAM"][0] if "STREAM" in data else stream
-        prompt = data["PROMPT"][0] if "PROMPT" in data else prompt
-        if "SAMPLING_PARAMETERS" in data:
-            sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
+        stream = data["stream"][0] if "stream" in data else stream
+        prompt = data["text_input"][0] if "text_input" in data else prompt
+        if "sampling_parameters" in data:
+            sampling_params = json.loads(data["sampling_parameters"][0])
 
     # If command line option is specified, overwrite
     if args.offline:
@@ -518,9 +510,9 @@ def construct_input_data(args):
         sampling_params["ignore_eos"] = True
 
     input_data = {"data": [{}]}
-    input_data["data"][0]["PROMPT"] = [prompt]
-    input_data["data"][0]["STREAM"] = [stream]
-    input_data["data"][0]["SAMPLING_PARAMETERS"] = [json.dumps(sampling_params)]
+    input_data["data"][0]["text_input"] = [prompt]
+    input_data["data"][0]["stream"] = [stream]
+    input_data["data"][0]["sampling_parameters"] = [json.dumps(sampling_params)]
     return input_data
 
 
@@ -566,15 +558,13 @@ def main(args):
     # TODO (hwoo): merge the conditional cases
     if args.model == "ensemble":
         input_data = construct_trtllm_input_data(args)
-    elif args.model == "vllm":
+    elif args.model in "vllm_model":
         input_data = construct_input_data(args)
     prompts = generate_prompts(args, input_data)
 
     for prompt in prompts:
         prepare_input_data(input_data, prompt)
         export_file = prepare_export_file(args, prompt)
-
-        print(input_data)
 
         # Run Perf Analyzer
         profile(args, export_file)
@@ -588,7 +578,7 @@ if __name__ == "__main__":
         "-m",
         "--model",
         type=str,
-        default="vllm",
+        default="vllm_model",
         help="The name of the model to profile.",
     )
     parser.add_argument(
