@@ -159,14 +159,25 @@ def get_plot_filename(args, prompt_size):
 
 # TODO: remove
 def save_results(args, profile_results):
-    from dataclasses import asdict
+    import csv
+    from dataclasses import asdict, fields
 
     for pr in profile_results:
         postfix = get_postfix(args, pr.prompt_size)
         with open(f"results-{postfix}.log", "w") as f:
-            for k, v in asdict(pr).items():
-                print(f"{k} : {v}", file=f)
+            print(f"Prompt size: {pr.prompt_size}", file=f)
+            for metric, (name, unit) in METRIC_FIELDS.items():
+                if getattr(pr, metric):
+                    print(f"  * {name}: {getattr(pr, metric):.4f} {unit}", file=f)
             print("", file=f)
+
+        results_csv = f"results-{postfix}.csv"
+        with open(results_csv, "w") as f:
+            fieldnames = [f.name for f in fields(pr)]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow(asdict(pr))
+        print(f"Saved benchmark results @ '{results_csv}'")
 
 
 def print_benchmark_summary(profile_results):
