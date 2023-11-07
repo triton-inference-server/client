@@ -35,19 +35,88 @@ from typing import Optional
 import numpy as np
 
 INPUT_FILENAME = "generated_input_data.json"
-
-TITLE = "\n[ BENCHMARK SUMMARY ]\n"
-PROMPT_SIZE = "  Prompt size: {}"
-FIRST_TOKEN_LATENCY = "Average first-token latency: {:.4f} sec"
-T2T_LATENCY = "Average total token-to-token latency: {:.4f} sec"
+METRIC_FIELDS = {
+    "max_first_token_latency": ("Max first token latency", "ms"),
+    "min_first_token_latency": ("Min first token latency", "ms"),
+    "avg_first_token_latency": ("Avg first token latency", "ms"),
+    "p50_first_token_latency": ("p50 first token latency", "ms"),
+    "p90_first_token_latency": ("p90 first token latency", "ms"),
+    "p95_first_token_latency": ("p95 first token latency", "ms"),
+    "p99_first_token_latency": ("p99 first token latency", "ms"),
+    "max_gen_latency": ("Max generation latency", "ms"),
+    "min_gen_latency": ("Min generation latency", "ms"),
+    "avg_gen_latency": ("Avg generation latency", "ms"),
+    "p50_gen_latency": ("p50 generation latency", "ms"),
+    "p90_gen_latency": ("p90 generation latency", "ms"),
+    "p95_gen_latency": ("p95 generation latency", "ms"),
+    "p99_gen_latency": ("p99 generation latency", "ms"),
+    "avg_output_token_latency": ("Avg output token latency", "ms/output token"),
+    "avg_total_t2t_latency": ("Avg total token-to-token latency", "ms"),
+    "max_e2e_latency": ("Max end-to-end latency", "ms"),
+    "min_e2e_latency": ("Min end-to-end latency", "ms"),
+    "avg_e2e_latency": ("Avg end-to-end latency", "ms"),
+    "p50_e2e_latency": ("p50 end-to-end latency", "ms"),
+    "p90_e2e_latency": ("p90 end-to-end latency", "ms"),
+    "p95_e2e_latency": ("p95 end-to-end latency", "ms"),
+    "p99_e2e_latency": ("p99 end-to-end latency", "ms"),
+    "max_e2e_throughput": ("Max end-to-end throughput", "tokens/s"),
+    "min_e2e_throughput": ("Min end-to-end throughput", "tokens/s"),
+    "avg_e2e_throughput": ("Avg end-to-end throughput", "tokens/s"),
+    "p50_e2e_throughput": ("p50 end-to-end throughput", "tokens/s"),
+    "p90_e2e_throughput": ("p90 end-to-end throughput", "tokens/s"),
+    "p95_e2e_throughput": ("p95 end-to-end throughput", "tokens/s"),
+    "p99_e2e_throughput": ("p99 end-to-end throughput", "tokens/s"),
+    "max_gen_throughput": ("Max generation throughput", "output tokens/s"),
+    "min_gen_throughput": ("Min generation throughput", "output tokens/s"),
+    "avg_gen_throughput": ("Avg generation throughput", "output tokens/s"),
+    "p50_gen_throughput": ("p50 generation throughput", "output tokens/s"),
+    "p90_gen_throughput": ("p90 generation throughput", "output tokens/s"),
+    "p95_gen_throughput": ("p95 generation throughput", "output tokens/s"),
+    "p99_gen_throughput": ("p99 generation throughput", "output tokens/s"),
+}
 
 
 @dataclass
 class ProfileResults:
     prompt_size: int
-    avg_first_token_latency: int
-    avg_total_t2t_latency: int
-    avg_periodic_t2t_latencies: Optional[list[int]] = None
+    max_first_token_latency: Optional[float] = None
+    min_first_token_latency: Optional[float] = None
+    avg_first_token_latency: Optional[float] = None
+    p50_first_token_latency: Optional[float] = None
+    p90_first_token_latency: Optional[float] = None
+    p95_first_token_latency: Optional[float] = None
+    p99_first_token_latency: Optional[float] = None
+    max_gen_latency: Optional[float] = None
+    min_gen_latency: Optional[float] = None
+    avg_gen_latency: Optional[float] = None
+    p50_gen_latency: Optional[float] = None
+    p90_gen_latency: Optional[float] = None
+    p95_gen_latency: Optional[float] = None
+    p99_gen_latency: Optional[float] = None
+    avg_output_token_latency: Optional[float] = None
+    avg_total_t2t_latency: Optional[float] = None
+    avg_periodic_t2t_latencies: Optional[list[float]] = None
+    max_e2e_latency: Optional[float] = None
+    min_e2e_latency: Optional[float] = None
+    avg_e2e_latency: Optional[float] = None
+    p50_e2e_latency: Optional[float] = None
+    p90_e2e_latency: Optional[float] = None
+    p95_e2e_latency: Optional[float] = None
+    p99_e2e_latency: Optional[float] = None
+    max_e2e_throughput: Optional[float] = None
+    min_e2e_throughput: Optional[float] = None
+    avg_e2e_throughput: Optional[float] = None
+    p50_e2e_throughput: Optional[float] = None
+    p90_e2e_throughput: Optional[float] = None
+    p95_e2e_throughput: Optional[float] = None
+    p99_e2e_throughput: Optional[float] = None
+    max_gen_throughput: Optional[float] = None
+    min_gen_throughput: Optional[float] = None
+    avg_gen_throughput: Optional[float] = None
+    p50_gen_throughput: Optional[float] = None
+    p90_gen_throughput: Optional[float] = None
+    p95_gen_throughput: Optional[float] = None
+    p99_gen_throughput: Optional[float] = None
 
 
 def load_json_data(filename):
@@ -67,7 +136,8 @@ def get_postfix(args, prompt_size):
       - trtllm-prompt100-maxtokens256
       - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
     """
-    postfix = f"{args.model}-prompt{prompt_size}-"
+    stream_type = "offline" if args.offline else "online"
+    postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
@@ -88,14 +158,13 @@ def get_plot_filename(args, prompt_size):
 
 
 def print_benchmark_summary(profile_results):
-    output = [TITLE]
+    print("[ BENCHMARK SUMMARY ]")
     for pr in profile_results:
-        line = [PROMPT_SIZE.format(pr.prompt_size)]
-        line += [FIRST_TOKEN_LATENCY.format(pr.avg_first_token_latency)]
-        if pr.avg_total_t2t_latency:
-            line += [T2T_LATENCY.format(pr.avg_total_t2t_latency)]
-        output += [", ".join(line) + "\n"]
-    print("".join(output))
+        print(f"Prompt size: {pr.prompt_size}")
+        for metric, (name, unit) in METRIC_FIELDS.items():
+            if getattr(pr, metric):
+                print(f"  * {name}: {getattr(pr, metric):.4f} {unit}")
+        print("")
 
 
 def plot_results(latencies, filename="inflight_batching_benchmark.png"):
@@ -109,7 +178,7 @@ def plot_results(latencies, filename="inflight_batching_benchmark.png"):
     # Set pyplot parameters
     ax.grid(linestyle="--")
     ax.set_xlabel("i-th Request Period", fontsize=12)
-    ax.set_ylabel("Avg Token-to-Token Latency (sec)", fontsize=12)
+    ax.set_ylabel("Avg Token-to-Token Latency (ms)", fontsize=12)
     ax.set_title("In-Flight Batching Benchmark Summary", fontsize=14)
     ax.set_ylim(bottom=0.0)
 
@@ -143,7 +212,7 @@ def update_start_position(request_id, start_pos, initial_requests, step):
     return start_pos
 
 
-def collect_periodic_latencies(args, filename):
+def collect_periodic_latencies(args, export_data):
     """Split the entire benchmark results into segments with size
     of request period and collect latencies for each segment.
     """
@@ -155,9 +224,7 @@ def collect_periodic_latencies(args, filename):
 
     bins = [[] for _ in range(num_bins)]
     bin_start_position = 0
-
-    data = load_json_data(filename)
-    requests = data["experiments"][0]["requests"]
+    requests = export_data["experiments"][0]["requests"]
 
     for i, r in enumerate(requests):
         add_latencies_to_bins(
@@ -175,44 +242,158 @@ def collect_periodic_latencies(args, filename):
     return bins
 
 
-def calculate_avg_periodic_latencies(args, filename):
+def calculate_avg_periodic_latencies(args, profile_result, export_data):
     """Calculate average token-to-token latency for each request period."""
-    bins = collect_periodic_latencies(args, filename)
+    bins = collect_periodic_latencies(args, export_data)
 
     latencies = []
     for bin in bins:
-        latencies.append(np.mean(bin) / 1_000_000_000)
-    return latencies
+        latencies.append(np.mean(bin) / 1_000_000)
+
+    profile_result.avg_periodic_t2t_latencies = latencies
 
 
-def collect_latencies(requests):
+def collect_online_metrics(export_data, output_tokens):
     # Example json demonstrating format:
     #   see client/src/c++/perf_analyzer/docs/examples/decoupled_output_file.json
     first_token_latencies = []
+    generation_latencies = []
     token_to_token_latencies = []
-    requests = requests["experiments"][0]["requests"]
+    generation_throughputs = []
+    requests = export_data["experiments"][0]["requests"]
+
+    for r in requests:
+        init_request, responses = r["timestamp"], r["response_timestamps"]
+        first_token_latency = (responses[0] - init_request) / 1_000_000
+        generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
+        generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
+        first_token_latencies.append(first_token_latency)
+        generation_latencies.append(generation_latency_ms)
+        generation_throughputs.append(output_tokens / generation_latency_s)
+        token_to_token_latencies = []
+        for prev_res, res in pairwise(responses):
+            token_to_token_latencies.append((res - prev_res) / 1_000_000)
+    return (
+        first_token_latencies,
+        generation_latencies,
+        token_to_token_latencies,
+        generation_throughputs,
+    )
+
+
+def calculate_online_metrics(args, profile_result, export_data):
+    """Calculate online metrics for more fine-grained performance information."""
+    latencies = collect_online_metrics(export_data, args.max_tokens)
+    (
+        first_token_latencies,
+        generation_latencies,
+        token_to_token_latencies,
+        generation_throughputs,
+    ) = latencies
+
+    profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
+
+    profile_result.max_first_token_latency = max(first_token_latencies)
+    profile_result.min_first_token_latency = min(first_token_latencies)
+    profile_result.avg_first_token_latency = np.mean(first_token_latencies)
+    profile_result.p50_first_token_latency = np.percentile(
+        first_token_latencies, 50, method="lower"
+    )
+    profile_result.p90_first_token_latency = np.percentile(
+        first_token_latencies, 90, method="lower"
+    )
+    profile_result.p95_first_token_latency = np.percentile(
+        first_token_latencies, 95, method="lower"
+    )
+    profile_result.p99_first_token_latency = np.percentile(
+        first_token_latencies, 99, method="lower"
+    )
+
+    if args.max_tokens > 1:
+        profile_result.max_gen_latency = max(generation_latencies)
+        profile_result.min_gen_latency = min(generation_latencies)
+        profile_result.avg_gen_latency = np.mean(generation_latencies)
+        profile_result.p50_gen_latency = np.percentile(
+            generation_latencies, 50, method="lower"
+        )
+        profile_result.p90_gen_latency = np.percentile(
+            generation_latencies, 90, method="lower"
+        )
+        profile_result.p95_gen_latency = np.percentile(
+            generation_latencies, 95, method="lower"
+        )
+        profile_result.p99_gen_latency = np.percentile(
+            generation_latencies, 99, method="lower"
+        )
+
+        token_latencies = [t / args.max_tokens for t in generation_latencies]
+        profile_result.avg_output_token_latency = np.mean(token_latencies)
+
+        profile_result.max_gen_throughput = max(generation_throughputs)
+        profile_result.min_gen_throughput = min(generation_throughputs)
+        profile_result.avg_gen_throughput = np.mean(generation_throughputs)
+        profile_result.p50_gen_throughput = np.percentile(
+            generation_throughputs, 50, method="lower"
+        )
+        profile_result.p90_gen_throughput = np.percentile(
+            generation_throughputs, 90, method="lower"
+        )
+        profile_result.p95_gen_throughput = np.percentile(
+            generation_throughputs, 95, method="lower"
+        )
+        profile_result.p99_gen_throughput = np.percentile(
+            generation_throughputs, 99, method="lower"
+        )
+
+
+def collect_offline_metrics(export_data, sequence_len):
+    latencies = []
+    throughputs = []
+    requests = export_data["experiments"][0]["requests"]
+
     for request in requests:
-        first_response, *remaining_responses, _ = request["response_timestamps"]
-        first_token_latencies.append(first_response - request["timestamp"])
-        prev_response = first_response
-        for response in remaining_responses:
-            token_to_token_latencies.append(response - prev_response)
-            prev_response = response
-    return first_token_latencies, token_to_token_latencies
+        total_time = request["response_timestamps"][-1] - request["timestamp"]
+        time_s = total_time / 1_000_000_000  # sec
+        time_ms = total_time / 1_000_000  # msec
+        latencies.append(time_ms)
+        throughputs.append(sequence_len / time_s)
+    return throughputs, latencies
 
 
-def calculate_avg_latencies(filename):
-    """Calculate avg first-token and avg total token-to-token latencies."""
-    requests = load_json_data(filename)
-    first_token_latencies, token_to_token_latencies = collect_latencies(requests)
+def calculate_offline_metrics(args, profile_result, export_data):
+    """Calculate offline metrics that show end-to-end performance."""
+    throughputs, latencies = collect_offline_metrics(
+        export_data, sequence_len=profile_result.prompt_size + args.max_tokens
+    )
 
-    # Compute mean and convert from nanosec to sec
-    avg_first_token_latency = np.mean(first_token_latencies) / 1_000_000_000
-    if token_to_token_latencies:
-        avg_token_to_token_latency = np.mean(token_to_token_latencies) / 1_000_000_000
-    else:
-        avg_token_to_token_latency = None
-    return avg_first_token_latency, avg_token_to_token_latency
+    profile_result.max_e2e_latency = max(latencies)
+    profile_result.min_e2e_latency = min(latencies)
+    profile_result.avg_e2e_latency = np.mean(latencies)
+    profile_result.p50_e2e_latency = np.percentile(latencies, 50, method="lower")
+    profile_result.p90_e2e_latency = np.percentile(latencies, 90, method="lower")
+    profile_result.p95_e2e_latency = np.percentile(latencies, 95, method="lower")
+    profile_result.p99_e2e_latency = np.percentile(latencies, 99, method="lower")
+
+    profile_result.max_e2e_throughput = max(throughputs)
+    profile_result.min_e2e_throughput = min(throughputs)
+    profile_result.avg_e2e_throughput = np.mean(throughputs)
+    profile_result.p50_e2e_throughput = np.percentile(throughputs, 50, method="lower")
+    profile_result.p90_e2e_throughput = np.percentile(throughputs, 90, method="lower")
+    profile_result.p95_e2e_throughput = np.percentile(throughputs, 95, method="lower")
+    profile_result.p99_e2e_throughput = np.percentile(throughputs, 99, method="lower")
+
+
+def calculate_metrics(args, profile_result, export_data):
+    calculate_offline_metrics(args, profile_result, export_data)
+    if not args.offline:
+        calculate_online_metrics(args, profile_result, export_data)
+
+    if args.periodic_concurrency_range:
+        calculate_avg_periodic_latencies(args, profile_result, export_data)
+        plot_results(
+            latencies=profile_result.avg_periodic_t2t_latencies,
+            filename=get_plot_filename(args, profile_result.prompt_size),
+        )
 
 
 def summarize_profile_results(args, prompts):
@@ -220,28 +401,13 @@ def summarize_profile_results(args, prompts):
     for prompt in prompts:
         prompt_size = len(prompt.split())
         export_file = get_export_filename(args, prompt_size)
-        avg_first_token_latency, avg_total_t2t_latency = calculate_avg_latencies(
-            filename=export_file
-        )
+        export_data = load_json_data(export_file)
 
-        profile_result = ProfileResults(
-            prompt_size=prompt_size,
-            avg_first_token_latency=avg_first_token_latency,
-            avg_total_t2t_latency=avg_total_t2t_latency,
-        )
-
-        if args.periodic_concurrency_range:
-            periodic_latencies = calculate_avg_periodic_latencies(args, export_file)
-            profile_result.avg_periodic_t2t_latencies = periodic_latencies
-            plot_results(
-                latencies=periodic_latencies,
-                filename=get_plot_filename(args, prompt_size),
-            )
-
+        profile_result = ProfileResults(prompt_size=prompt_size)
+        calculate_metrics(args, profile_result, export_data)
         results.append(profile_result)
 
     print_benchmark_summary(results)
-
     if args.periodic_concurrency_range:
         print(
             "Saved in-flight batching benchmark plots "
@@ -317,13 +483,20 @@ def construct_input_data(args):
         if "SAMPLING_PARAMETERS" in data:
             sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
 
-    # If specified, overwrite max_tokens
+    # If command line option is specified, overwrite
+    if args.offline:
+        stream = False
+    elif not stream:
+        args.offline = True
+
     if args.max_tokens:
         sampling_params["max_tokens"] = args.max_tokens
-    else:
+    elif "max_tokens" in sampling_params:
         args.max_tokens = sampling_params["max_tokens"]
+    else:
+        args.max_tokens = 256  # default
+        sampling_params["max_tokens"] = args.max_tokens
 
-    # If specified, overwrite ignore_eos
     if "ignore_eos" not in sampling_params:
         sampling_params["ignore_eos"] = args.ignore_eos
     elif args.ignore_eos:
@@ -393,6 +566,11 @@ if __name__ == "__main__":
         "--input-data",
         type=str,
         help="The input data file to be used for inference request.",
+    )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Whether to stop streaming the model outputs.",
     )
     args = parser.parse_args()
     main(args)
