@@ -309,40 +309,41 @@ def calculate_online_metrics(args, profile_result, export_data):
         first_token_latencies, 99, method="lower"
     )
 
-    profile_result.max_gen_latency = max(generation_latencies)
-    profile_result.min_gen_latency = min(generation_latencies)
-    profile_result.avg_gen_latency = np.mean(generation_latencies)
-    profile_result.p50_gen_latency = np.percentile(
-        generation_latencies, 50, method="lower"
-    )
-    profile_result.p90_gen_latency = np.percentile(
-        generation_latencies, 90, method="lower"
-    )
-    profile_result.p95_gen_latency = np.percentile(
-        generation_latencies, 95, method="lower"
-    )
-    profile_result.p99_gen_latency = np.percentile(
-        generation_latencies, 99, method="lower"
-    )
+    if args.max_tokens > 1:
+        profile_result.max_gen_latency = max(generation_latencies)
+        profile_result.min_gen_latency = min(generation_latencies)
+        profile_result.avg_gen_latency = np.mean(generation_latencies)
+        profile_result.p50_gen_latency = np.percentile(
+            generation_latencies, 50, method="lower"
+        )
+        profile_result.p90_gen_latency = np.percentile(
+            generation_latencies, 90, method="lower"
+        )
+        profile_result.p95_gen_latency = np.percentile(
+            generation_latencies, 95, method="lower"
+        )
+        profile_result.p99_gen_latency = np.percentile(
+            generation_latencies, 99, method="lower"
+        )
 
-    token_latencies = [t / args.max_tokens for t in generation_latencies]
-    profile_result.avg_output_token_latency = np.mean(token_latencies)
+        token_latencies = [t / args.max_tokens for t in generation_latencies]
+        profile_result.avg_output_token_latency = np.mean(token_latencies)
 
-    profile_result.max_gen_throughput = max(generation_throughputs)
-    profile_result.min_gen_throughput = min(generation_throughputs)
-    profile_result.avg_gen_throughput = np.mean(generation_throughputs)
-    profile_result.p50_gen_throughput = np.percentile(
-        generation_throughputs, 50, method="lower"
-    )
-    profile_result.p90_gen_throughput = np.percentile(
-        generation_throughputs, 90, method="lower"
-    )
-    profile_result.p95_gen_throughput = np.percentile(
-        generation_throughputs, 95, method="lower"
-    )
-    profile_result.p99_gen_throughput = np.percentile(
-        generation_throughputs, 99, method="lower"
-    )
+        profile_result.max_gen_throughput = max(generation_throughputs)
+        profile_result.min_gen_throughput = min(generation_throughputs)
+        profile_result.avg_gen_throughput = np.mean(generation_throughputs)
+        profile_result.p50_gen_throughput = np.percentile(
+            generation_throughputs, 50, method="lower"
+        )
+        profile_result.p90_gen_throughput = np.percentile(
+            generation_throughputs, 90, method="lower"
+        )
+        profile_result.p95_gen_throughput = np.percentile(
+            generation_throughputs, 95, method="lower"
+        )
+        profile_result.p99_gen_throughput = np.percentile(
+            generation_throughputs, 99, method="lower"
+        )
 
 
 def collect_offline_metrics(export_data, sequence_len):
