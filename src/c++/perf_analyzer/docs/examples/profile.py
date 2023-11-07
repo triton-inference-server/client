@@ -157,6 +157,18 @@ def get_plot_filename(args, prompt_size):
     return filename
 
 
+# TODO: remove
+def save_results(args, profile_results):
+    from dataclasses import asdict
+
+    for pr in profile_results:
+        postfix = get_postfix(args, pr.prompt_size)
+        with open(f"results-{postfix}.log", "w") as f:
+            for k, v in asdict(pr).items():
+                print(f"{k} : {v}", file=f)
+            print("", file=f)
+
+
 def print_benchmark_summary(profile_results):
     print("[ BENCHMARK SUMMARY ]")
     for pr in profile_results:
@@ -408,6 +420,7 @@ def summarize_profile_results(args, prompts):
         results.append(profile_result)
 
     print_benchmark_summary(results)
+    save_results(args, results)  # TODO: remove
     if args.periodic_concurrency_range:
         print(
             "Saved in-flight batching benchmark plots "
