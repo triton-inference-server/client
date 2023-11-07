@@ -549,7 +549,7 @@ def construct_trtllm_input_data(args):
     parameters set by input JSON file.
     """
     prompt = ""
-    stream = False
+    stream = True
     max_tokens = 256
 
     if args.input_data:
@@ -559,10 +559,10 @@ def construct_trtllm_input_data(args):
         max_tokens = data["max_tokens"][0] if "max_tokens" in data else max_tokens
 
     # If command line option is specified, overwrite
-    if args.stream:
-        stream = args.stream
-    else:
-        args.stream = stream
+    if args.offline:
+        stream = False
+    elif not stream:
+        args.offline = True
 
     if args.max_tokens:
         max_tokens = args.max_tokens
