@@ -288,12 +288,12 @@ def collect_online_metrics(export_data, output_tokens):
     for r in requests:
         init_request, responses = r["timestamp"], r["response_timestamps"]
         first_token_latency = (responses[0] - init_request) / 1_000_000
-        generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
-        generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
         first_token_latencies.append(first_token_latency)
-        generation_latencies.append(generation_latency_ms)
-        generation_throughputs.append(output_tokens / generation_latency_s)
-        token_to_token_latencies = []
+        if output_tokens > 1:
+            generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
+            generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
+            generation_latencies.append(generation_latency_ms)
+            generation_throughputs.append(output_tokens / generation_latency_s)
         for prev_res, res in pairwise(responses):
             token_to_token_latencies.append((res - prev_res) / 1_000_000)
     return (
