@@ -270,7 +270,6 @@ def collect_online_metrics(export_data, output_tokens):
         first_token_latencies.append(first_token_latency)
         generation_latencies.append(generation_latency_ms)
         generation_throughputs.append(output_tokens / generation_latency_s)
-        token_to_token_latencies = []
         for prev_res, res in pairwise(responses):
             token_to_token_latencies.append((res - prev_res) / 1_000_000)
     return (
