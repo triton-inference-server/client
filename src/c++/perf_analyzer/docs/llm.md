@@ -31,9 +31,33 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
-(LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
+(LLMs) using Triton with [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM) and [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup: Download and configure Triton vLLM Backend
+## Setup: Download and configure Triton Server environment
+
+### Using TensorRT-LLM
+
+Follow [step 1](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#installation).
+
+Next launch the Triton docker container with the TensorRT-LLM backend.
+This will require mounting the repo from step 1 into the docker container and any models you plan to serve.
+
+```
+docker run --rm -it --net host --shm-size=2g \
+    --ulimit memlock=-1 --ulimit stack=67108864 --gpus all \
+    -v /path/to/tensorrtllm_backend:/tensorrtllm_backend \
+    -v /path/to/model/repo:/repo \
+    -v /path/to/engines:/engines \
+    nvcr.io/nvidia/tritonserver:23.10-trtllm-python-py3 \
+    bash
+```
+
+Create the [engines](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
+
+Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
+
+
+### Using vLLM
 
 Download the pre-built Triton Server Container with vLLM backend from
 [NGC](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver)
