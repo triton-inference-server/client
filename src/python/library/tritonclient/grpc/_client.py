@@ -1644,6 +1644,12 @@ class InferenceServerClient(InferenceServerClientBase):
             error with message "Deadline Exceeded" in the callback when the
             specified time elapses. The default value is None which means
             client will wait for the response from the server.
+        client_timeout: float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
         headers: dict
             Optional dictionary specifying additional HTTP
             headers to include in the request.

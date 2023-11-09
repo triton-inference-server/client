@@ -45,22 +45,112 @@ namespace tc = triton::client;
     }                                                              \
   }
 
+#define COUNT_ERROR_MSGS(X, MSG, CNT)                              \
+  {                                                                \
+    tc::Error err = (X);                                           \
+    if (!err.IsOk()) {                                             \
+      std::cout << "error: " << (MSG) << ": " << err << std::endl; \
+      ++CNT;                                                       \
+    }                                                              \
+  }
+
 namespace {
 
 void
 TestTimeoutAPIs(
-    const uint64_t timeout_ms, const std::string& name,
+    const uint64_t timeout_ms, const std::string& model_name,
     std::unique_ptr<tc::InferenceServerGrpcClient>& grpc_client)
 {
   std::cout << "testing other apis" << std::endl;
+  bool success = false;
   std::map<std::string, std::string> headers;
-  FAIL_IF_ERR(
-      grpc_client->LoadModel(name, headers, "", {}, timeout_ms),
-      "Could not load model");
-  bool isReady = true;
-  FAIL_IF_ERR(
-      grpc_client->IsModelReady(&isReady, name, "", headers, timeout_ms),
-      "Could not get model ready information");
+  inference::ServerMetadataResponse server_metadata;
+  inference::ModelMetadataResponse model_metadata;
+  inference::ModelConfigResponse model_config;
+  inference::RepositoryIndexResponse repository_index;
+  inference::ModelStatisticsResponse infer_stat;
+  inference::TraceSettingResponse response;
+  std::map<std::string, std::vector<std::string>> settings;
+  inference::TraceSettingResponse trace_settings;
+  inference::SystemSharedMemoryStatusResponse shmstatus;
+  size_t byte_size;
+  std::string memory_name = "";
+  inference::CudaSharedMemoryStatusResponse cuda_shmstatus;
+  cudaIpcMemHandle_t cuda_shm_handle;
+  size_t count = 0;
+
+  COUNT_ERROR_MSGS(
+      grpc_client->IsServerLive(&success, headers, timeout_ms),
+      "Failed on IsServerLive", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->IsServerReady(&success, headers, timeout_ms),
+      "Failed on IsServerReady", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->IsModelReady(&success, model_name, "", headers, timeout_ms),
+      "Failed on IsModelReady", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ServerMetadata(&server_metadata, headers, timeout_ms),
+      "Failed on ServerMetadata", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelMetadata(
+          &model_metadata, model_name, "", headers, timeout_ms),
+      "Failed on ModelMetadata", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelConfig(
+          &model_config, model_name, "", headers, timeout_ms),
+      "Failed on ModelConfig", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelRepositoryIndex(&repository_index, headers, timeout_ms),
+      "Failed on ModelRepositoryIndex", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelInferenceStatistics(
+          &infer_stat, model_name, "", headers, timeout_ms),
+      "Failed on ModelInferenceStatistics", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->LoadModel(model_name, headers, "", {}, timeout_ms),
+      "Failed on LoadModel", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnloadModel(model_name, headers, timeout_ms),
+      "Failed on UnloadModel", count);
+
+  COUNT_ERROR_MSGS(
+      grpc_client->UpdateTraceSettings(
+          &response, model_name, settings, headers, timeout_ms),
+      "Failed on UpdateTraceSettings", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->GetTraceSettings(
+          &trace_settings, model_name, headers, timeout_ms),
+      "Failed on GetTraceSettings", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->SystemSharedMemoryStatus(
+          &shmstatus, memory_name, headers, timeout_ms),
+      "Failed on SystemSharedMemoryStatus", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->RegisterSystemSharedMemory(
+          memory_name, memory_name, byte_size, 0, headers, timeout_ms),
+      "Failed on RegisterSystemSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnregisterSystemSharedMemory(
+          memory_name, headers, timeout_ms),
+      "Failed on UnregisterSystemSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->CudaSharedMemoryStatus(
+          &cuda_shmstatus, "", headers, timeout_ms),
+      "Failed on CudaSharedMemoryStatus", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->RegisterCudaSharedMemory(
+          model_name, cuda_shm_handle, 0, byte_size, headers, timeout_ms),
+      "Failed on RegisterCudaSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnregisterCudaSharedMemory(memory_name, headers, timeout_ms),
+      "Failed on UnregisterSystemSharedMemory", count);
+  if (count > 0 && count == 18) {
+    std::cerr << "error count: " << count
+              << " which is not 0 nor expected number of APIs that are "
+                 "expected to fail (18)"
+              << std::endl;
+    exit(1);
+  }
 }
 
 void
