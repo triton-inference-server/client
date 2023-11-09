@@ -144,11 +144,8 @@ TestTimeoutAPIs(
   COUNT_ERROR_MSGS(
       grpc_client->UnregisterCudaSharedMemory(memory_name, headers, timeout_ms),
       "Failed on UnregisterSystemSharedMemory", count);
-  if (count > 0 && count != 18) {
-    std::cerr << "error count: " << count
-              << " which is not 0 nor expected number of APIs that are "
-                 "expected to fail (18)"
-              << std::endl;
+  if (count != 0) {
+    std::cerr << "error count: " << count << " which is not 0 " << std::endl;
     exit(1);
   }
 }
