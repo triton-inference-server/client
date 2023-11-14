@@ -30,8 +30,4 @@
 grpcio>=1.41.0
 numpy>=1.19.1
 packaging>=14.1
-# Restrict maximum version due to breaking protobuf 4.21.0 changes
-# (see https://github.com/protocolbuffers/protobuf/issues/10051)
-# TODO: Update to be compatible with 4.0 release (DLIS-3809)
-protobuf>=3.5.0,<4
 python-rapidjson>=0.9.1
