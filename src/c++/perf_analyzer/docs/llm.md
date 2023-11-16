@@ -31,16 +31,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
-(LLMs) using Triton with [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM) and [vLLM](https://github.com/vllm-project/vllm).
+(LLMs) using Triton with [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM)
+and [vLLM](https://github.com/vllm-project/vllm).
 
-## Setup: Download and configure Triton Server environment
+## Setup: Download and configure Triton Server and Client environment
 
 ### Using TensorRT-LLM
 
-Follow [step 1](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#installation).
+1. Follow [step 1](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#installation)
+of the Installation section.
 
-Next launch the Triton docker container with the TensorRT-LLM backend.
-This will require mounting the repo from step 1 into the docker container and any models you plan to serve.
+    This guide will replace the llama model for gpt since it is already
+    included in the tensorrtllm_backend repository release.
+
+    Currently, the most recent release is 0.6.1.
+
+2. Launch the Triton docker container with the TensorRT-LLM backend.
+This will require mounting the repo from step 1 into the docker container
+and any models you plan to serve.
+
+    For the tensorrtllm_backend repository, you need the following two directories mounted:
+- backend: .../tensorrtllm_backend/:/tensorrtllm_backend
+- engine: .../tensorrtllm_backend/tensorrt_llm/examples/gpt/gpt_outputs:/engines
 
 ```
 docker run --rm -it --net host --shm-size=2g \
@@ -52,9 +64,28 @@ docker run --rm -it --net host --shm-size=2g \
     bash
 ```
 
-Create the [engines](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
+3. Create the [engine](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
 
-Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
+    Building the engine in the container with the `--output_dir /engines`
+    flag will place the compiled `.engine` file under the expected directory.
+
+4. Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#serving-with-triton).
+
+    After copying the model repository, use the following sed commands to set
+    some required values in the config.pbtxt files.
+
+```
+sed -i 's#${tokenizer_dir}#/tensorrtllm_backend\/tensorrt_llm\/examples\/gpt\/gpt2\/#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
+sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
+sed -i 's#${tokenizer_dir}#/tensorrtllm_backend\/tensorrt_llm\/examples\/gpt\/gpt2\/#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
+sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
+
+sed -i 's#${decoupled_mode}#true#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+sed -i 's#${engine_dir}#/engines/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+```
+
+  Additionally, copy over the .engine file in the /engines directory to the
+  model repository /opt/tritonserver/inflight_batcher_llm
 
 
 ### Using vLLM
@@ -80,6 +111,8 @@ docker run --gpus all --rm -it --net host \
     nvcr.io/nvidia/tritonserver:23.10-vllm-python-py3 \
     tritonserver --model-repository /model_repository
 ```
+
+### Run Triton Client SDK Container
 
 Next run the following command to start the Triton SDK container:
 ```bash
