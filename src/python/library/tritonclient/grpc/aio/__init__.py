@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import base64
+import sys
 
 import rapidjson as json
 from google.protobuf.json_format import MessageToJson
@@ -140,7 +141,7 @@ class InferenceServerClient(InferenceServerClientBase):
         )
         return request_metadata
 
-    async def is_server_live(self, headers=None):
+    async def is_server_live(self, headers=None, client_timeout=None):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -148,7 +149,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("is_server_live, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ServerLive(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -156,7 +157,7 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def is_server_ready(self, headers=None):
+    async def is_server_ready(self, headers=None, client_timeout=None):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -164,7 +165,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("is_server_ready, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ServerReady(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -172,7 +173,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def is_model_ready(self, model_name, model_version="", headers=None):
+    async def is_model_ready(
+        self, model_name, model_version="", headers=None, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -184,7 +187,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("is_model_ready, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ModelReady(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -192,7 +195,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_server_metadata(self, headers=None, as_json=False):
+    async def get_server_metadata(
+        self, headers=None, as_json=False, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -200,7 +205,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_server_metadata, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ServerMetadata(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -209,7 +214,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_model_metadata(
-        self, model_name, model_version="", headers=None, as_json=False
+        self,
+        model_name,
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=None,
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -222,7 +232,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_model_metadata, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ModelMetadata(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -231,7 +241,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_model_config(
-        self, model_name, model_version="", headers=None, as_json=False
+        self,
+        model_name,
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=None,
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -244,7 +259,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_model_config, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.ModelConfig(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -252,7 +267,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_model_repository_index(self, headers=None, as_json=False):
+    async def get_model_repository_index(
+        self, headers=None, as_json=False, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -264,7 +281,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = await self._client_stub.RepositoryIndex(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -272,7 +289,14 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def load_model(self, model_name, headers=None, config=None, files=None):
+    async def load_model(
+        self,
+        model_name,
+        headers=None,
+        config=None,
+        files=None,
+        client_timeout=None,
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -290,14 +314,20 @@ class InferenceServerClient(InferenceServerClientBase):
                 for path, content in files.items():
                     request.parameters[path].bytes_param = content
             await self._client_stub.RepositoryModelLoad(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Loaded model '{}'".format(model_name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def unload_model(self, model_name, headers=None, unload_dependents=False):
+    async def unload_model(
+        self,
+        model_name,
+        headers=None,
+        unload_dependents=False,
+        client_timeout=None,
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -306,7 +336,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("unload_model, metadata {}\n{}".format(metadata, request))
             await self._client_stub.RepositoryModelUnload(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Unloaded model '{}'".format(model_name))
@@ -314,7 +344,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_inference_statistics(
-        self, model_name="", model_version="", headers=None, as_json=False
+        self,
+        model_name="",
+        model_version="",
+        headers=None,
+        as_json=False,
+        client_timeout=None,
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -322,7 +357,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if type(model_version) != str:
                 raise_error("model version must be a string")
             request = service_pb2.ModelStatisticsRequest(
-                name=model_name, version=model_version
+                name=model_name, version=model_version, timeout=client_timeout
             )
             if self._verbose:
                 print(
@@ -340,7 +375,12 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def update_trace_settings(
-        self, model_name=None, settings={}, headers=None, as_json=False
+        self,
+        model_name=None,
+        settings={},
+        headers=None,
+        as_json=False,
+        client_timeout=None,
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -361,7 +401,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     "update_trace_settings, metadata {}\n{}".format(metadata, request)
                 )
             response = await self._client_stub.TraceSetting(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -369,7 +409,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_trace_settings(self, model_name=None, headers=None, as_json=False):
+    async def get_trace_settings(
+        self, model_name=None, headers=None, as_json=False, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -379,7 +421,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_trace_settings, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.TraceSetting(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -387,7 +429,9 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def update_log_settings(self, settings, headers=None, as_json=False):
+    async def update_log_settings(
+        self, settings, headers=None, as_json=False, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -406,7 +450,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("update_log_settings, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.LogSettings(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -414,7 +458,7 @@ class InferenceServerClient(InferenceServerClientBase):
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def get_log_settings(self, headers=None, as_json=False):
+    async def get_log_settings(self, headers=None, as_json=False, client_timeout=None):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -422,7 +466,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if self._verbose:
                 print("get_log_settings, metadata {}\n{}".format(metadata, request))
             response = await self._client_stub.LogSettings(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -431,7 +475,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_system_shared_memory_status(
-        self, region_name="", headers=None, as_json=False
+        self, region_name="", headers=None, as_json=False, client_timeout=None
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -444,7 +488,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = await self._client_stub.SystemSharedMemoryStatus(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -453,7 +497,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def register_system_shared_memory(
-        self, name, key, byte_size, offset=0, headers=None
+        self, name, key, byte_size, offset=0, headers=None, client_timeout=None
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -468,14 +512,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             await self._client_stub.SystemSharedMemoryRegister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Registered system shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def unregister_system_shared_memory(self, name="", headers=None):
+    async def unregister_system_shared_memory(
+        self, name="", headers=None, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -487,7 +533,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             await self._client_stub.SystemSharedMemoryUnregister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 if name != "":
@@ -500,7 +546,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_cuda_shared_memory_status(
-        self, region_name="", headers=None, as_json=False
+        self, region_name="", headers=None, as_json=False, client_timeout=None
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
 
@@ -514,7 +560,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = await self._client_stub.CudaSharedMemoryStatus(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
@@ -523,7 +569,13 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def register_cuda_shared_memory(
-        self, name, raw_handle, device_id, byte_size, headers=None
+        self,
+        name,
+        raw_handle,
+        device_id,
+        byte_size,
+        headers=None,
+        client_timeout=None,
     ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
@@ -541,14 +593,16 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             await self._client_stub.CudaSharedMemoryRegister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print("Registered cuda shared memory with name '{}'".format(name))
         except grpc.RpcError as rpc_error:
             raise_error_grpc(rpc_error)
 
-    async def unregister_cuda_shared_memory(self, name="", headers=None):
+    async def unregister_cuda_shared_memory(
+        self, name="", headers=None, client_timeout=None
+    ):
         """Refer to tritonclient.grpc.InferenceServerClient"""
         metadata = self._get_metadata(headers)
         try:
@@ -560,7 +614,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             await self._client_stub.CudaSharedMemoryUnregister(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 if name != "":

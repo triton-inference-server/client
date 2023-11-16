@@ -45,7 +45,110 @@ namespace tc = triton::client;
     }                                                              \
   }
 
+#define COUNT_ERROR_MSGS(X, MSG, CNT)                              \
+  {                                                                \
+    tc::Error err = (X);                                           \
+    if (!err.IsOk()) {                                             \
+      std::cout << "error: " << (MSG) << ": " << err << std::endl; \
+      ++CNT;                                                       \
+    }                                                              \
+  }
+
 namespace {
+
+void
+TestTimeoutAPIs(
+    const uint64_t timeout_ms, const std::string& model_name,
+    std::unique_ptr<tc::InferenceServerGrpcClient>& grpc_client)
+{
+  std::cout << "testing other apis" << std::endl;
+  bool success = false;
+  std::map<std::string, std::string> headers;
+  inference::ServerMetadataResponse server_metadata;
+  inference::ModelMetadataResponse model_metadata;
+  inference::ModelConfigResponse model_config;
+  inference::RepositoryIndexResponse repository_index;
+  inference::ModelStatisticsResponse infer_stat;
+  inference::TraceSettingResponse response;
+  std::map<std::string, std::vector<std::string>> settings;
+  inference::TraceSettingResponse trace_settings;
+  inference::SystemSharedMemoryStatusResponse shmstatus;
+  size_t byte_size;
+  std::string memory_name = "";
+  inference::CudaSharedMemoryStatusResponse cuda_shmstatus;
+  cudaIpcMemHandle_t cuda_shm_handle;
+  size_t count = 0;
+
+  COUNT_ERROR_MSGS(
+      grpc_client->IsServerLive(&success, headers, timeout_ms),
+      "Failed on IsServerLive", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->IsServerReady(&success, headers, timeout_ms),
+      "Failed on IsServerReady", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->IsModelReady(&success, model_name, "", headers, timeout_ms),
+      "Failed on IsModelReady", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ServerMetadata(&server_metadata, headers, timeout_ms),
+      "Failed on ServerMetadata", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelMetadata(
+          &model_metadata, model_name, "", headers, timeout_ms),
+      "Failed on ModelMetadata", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelConfig(
+          &model_config, model_name, "", headers, timeout_ms),
+      "Failed on ModelConfig", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelRepositoryIndex(&repository_index, headers, timeout_ms),
+      "Failed on ModelRepositoryIndex", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->ModelInferenceStatistics(
+          &infer_stat, model_name, "", headers, timeout_ms),
+      "Failed on ModelInferenceStatistics", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->LoadModel(model_name, headers, "", {}, timeout_ms),
+      "Failed on LoadModel", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnloadModel(model_name, headers, timeout_ms),
+      "Failed on UnloadModel", count);
+
+  COUNT_ERROR_MSGS(
+      grpc_client->UpdateTraceSettings(
+          &response, model_name, settings, headers, timeout_ms),
+      "Failed on UpdateTraceSettings", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->GetTraceSettings(
+          &trace_settings, model_name, headers, timeout_ms),
+      "Failed on GetTraceSettings", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->SystemSharedMemoryStatus(
+          &shmstatus, memory_name, headers, timeout_ms),
+      "Failed on SystemSharedMemoryStatus", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->RegisterSystemSharedMemory(
+          memory_name, memory_name, byte_size, 0, headers, timeout_ms),
+      "Failed on RegisterSystemSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnregisterSystemSharedMemory(
+          memory_name, headers, timeout_ms),
+      "Failed on UnregisterSystemSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->CudaSharedMemoryStatus(
+          &cuda_shmstatus, "", headers, timeout_ms),
+      "Failed on CudaSharedMemoryStatus", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->RegisterCudaSharedMemory(
+          model_name, cuda_shm_handle, 0, byte_size, headers, timeout_ms),
+      "Failed on RegisterCudaSharedMemory", count);
+  COUNT_ERROR_MSGS(
+      grpc_client->UnregisterCudaSharedMemory(memory_name, headers, timeout_ms),
+      "Failed on UnregisterSystemSharedMemory", count);
+  if (count != 0) {
+    std::cerr << "error count: " << count << " which is not 0 " << std::endl;
+    exit(1);
+  }
+}
 
 void
 ValidateShapeAndDatatype(
@@ -109,11 +212,11 @@ void
 RunSynchronousInference(
     std::unique_ptr<tc::InferenceServerGrpcClient>& grpc_client,
     std::unique_ptr<tc::InferenceServerHttpClient>& http_client,
-    uint32_t client_timeout, std::vector<tc::InferInput*>& inputs,
+    uint32_t client_timeout_ms, std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs,
     tc::InferOptions& options, std::vector<int32_t>& input0_data)
 {
-  options.client_timeout_ = client_timeout;
+  options.client_timeout_ = client_timeout_ms;
   tc::InferResult* results;
   if (grpc_client.get() != nullptr) {
     FAIL_IF_ERR(
@@ -141,7 +244,7 @@ void
 RunAsynchronousInference(
     std::unique_ptr<tc::InferenceServerGrpcClient>& grpc_client,
     std::unique_ptr<tc::InferenceServerHttpClient>& http_client,
-    uint32_t client_timeout, std::vector<tc::InferInput*>& inputs,
+    uint32_t client_timeout_ms, std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs,
     tc::InferOptions& options, std::vector<int32_t>& input0_data)
 {
@@ -167,7 +270,7 @@ RunAsynchronousInference(
     cv.notify_all();
   };
 
-  options.client_timeout_ = client_timeout;
+  options.client_timeout_ = client_timeout_ms;
   if (grpc_client.get() != nullptr) {
     FAIL_IF_ERR(
         grpc_client->AsyncInfer(callback, options, inputs, outputs),
@@ -188,7 +291,7 @@ RunAsynchronousInference(
 void
 RunStreamingInference(
     std::unique_ptr<tc::InferenceServerGrpcClient>& grpc_client,
-    uint32_t client_timeout, std::vector<tc::InferInput*>& inputs,
+    uint32_t client_timeout_ms, std::vector<tc::InferInput*>& inputs,
     std::vector<const tc::InferRequestedOutput*>& outputs,
     tc::InferOptions& options, std::vector<int32_t>& input0_data)
 {
@@ -206,13 +309,13 @@ RunStreamingInference(
             }
             cv.notify_all();
           },
-          false /*ship_stats*/, client_timeout),
+          false /*ship_stats*/, client_timeout_ms),
       "Failed to start the stream");
 
   FAIL_IF_ERR(
       grpc_client->AsyncStreamInfer(options, inputs), "unable to run model");
 
-  auto timeout = std::chrono::microseconds(client_timeout);
+  auto timeout = std::chrono::microseconds(client_timeout_ms);
   // Wait until all callbacks are invoked or the timeout expires
   {
     std::unique_lock<std::mutex> lk(mtx);
@@ -263,11 +366,12 @@ main(int argc, char** argv)
   std::string url;
   bool async = false;
   bool streaming = false;
-  uint32_t client_timeout = 0;
+  uint32_t client_timeout_ms = 0;
+  bool test_client_apis = false;
 
   // Parse commandline...
   int opt;
-  while ((opt = getopt(argc, argv, "vi:u:ast:")) != -1) {
+  while ((opt = getopt(argc, argv, "vi:u:ast:p")) != -1) {
     switch (opt) {
       case 'v':
         verbose = true;
@@ -292,7 +396,10 @@ main(int argc, char** argv)
         streaming = true;
         break;
       case 't':
-        client_timeout = std::stoi(optarg);
+        client_timeout_ms = std::stoi(optarg);
+        break;
+      case 'p':
+        test_client_apis = true;
         break;
       case '?':
         Usage(argv);
@@ -335,6 +442,12 @@ main(int argc, char** argv)
         "unable to create grpc client");
   }
 
+  // Test server timeouts for grpc client
+  if (protocol == "grpc" && test_client_apis) {
+    TestTimeoutAPIs(client_timeout_ms, model_name, grpc_client);
+    return 0;
+  }
+
   // Initialize the tensor data
   std::vector<int32_t> input0_data(16);
   for (size_t i = 0; i < 16; ++i) {
@@ -370,7 +483,7 @@ main(int argc, char** argv)
   // The inference settings. Will be using default for now.
   tc::InferOptions options(model_name);
   options.model_version_ = model_version;
-  options.client_timeout_ = client_timeout;
+  options.client_timeout_ = client_timeout_ms;
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get()};
   std::vector<const tc::InferRequestedOutput*> outputs = {output0_ptr.get()};
@@ -378,14 +491,14 @@ main(int argc, char** argv)
   // Send inference request to the inference server.
   if (streaming) {
     RunStreamingInference(
-        grpc_client, client_timeout, inputs, outputs, options, input0_data);
+        grpc_client, client_timeout_ms, inputs, outputs, options, input0_data);
   } else if (async) {
     RunAsynchronousInference(
-        grpc_client, http_client, client_timeout, inputs, outputs, options,
+        grpc_client, http_client, client_timeout_ms, inputs, outputs, options,
         input0_data);
   } else {
     RunSynchronousInference(
-        grpc_client, http_client, client_timeout, inputs, outputs, options,
+        grpc_client, http_client, client_timeout_ms, inputs, outputs, options,
         input0_data);
   }
 
