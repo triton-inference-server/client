@@ -357,7 +357,7 @@ class InferenceServerClient(InferenceServerClientBase):
             if type(model_version) != str:
                 raise_error("model version must be a string")
             request = service_pb2.ModelStatisticsRequest(
-                name=model_name, version=model_version, timeout=client_timeout
+                name=model_name, version=model_version
             )
             if self._verbose:
                 print(
@@ -366,7 +366,7 @@ class InferenceServerClient(InferenceServerClientBase):
                     )
                 )
             response = await self._client_stub.ModelStatistics(
-                request=request, metadata=metadata
+                request=request, metadata=metadata, timeout=client_timeout
             )
             if self._verbose:
                 print(response)
