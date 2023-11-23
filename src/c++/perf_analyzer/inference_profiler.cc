@@ -1517,8 +1517,8 @@ InferenceProfiler::DetermineStatsModelVersion(
   }
 
   if (*status_model_version == -1) {
-    return cb::Error(
-        "failed to find the requested model version", pa::GENERIC_ERROR);
+    std::cerr << "WARNING: Failed to find the requested model version."
+              << std::endl;
   }
 
   if (multiple_found) {
