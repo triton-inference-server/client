@@ -61,10 +61,11 @@ changes in performance as you experiment with different optimization strategies.
 
 ### Other Features
 
-- [Sequence Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#stateful-models)
+- [Sequence Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#stateful-models),
+  [Ensemble Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#ensemble-models),
   and
-  [Ensemble Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/architecture.md#ensemble-models)
-  can be profiled in addition to standard/stateless models
+  [Decoupled Models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md)
+  can be profiled in addition to standard/stateless/coupled models
 
 - [Input Data](docs/input_data.md) to model inferences can be auto-generated or
   specified as well as verifying output
