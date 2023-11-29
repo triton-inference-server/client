@@ -64,6 +64,7 @@ class InferAsyncRequest:
 
     def get_result(self, block=True, timeout=None):
         """Get the results of the associated asynchronous inference.
+
         Parameters
         ----------
         block : bool
@@ -86,6 +87,7 @@ class InferAsyncRequest:
         InferenceServerException
             If server fails to perform inference or failed to respond
             within specified timeout.
+
         """
 
         try:
@@ -152,9 +154,9 @@ class InferenceServerClient(InferenceServerClientBase):
         specified False.
 
     Raises
-        ------
-        Exception
-            If unable to create a client.
+    ------
+    Exception
+        If unable to create a client.
 
     """
 
@@ -209,7 +211,7 @@ class InferenceServerClient(InferenceServerClientBase):
     def _get(self, request_uri, headers, query_params):
         """Issues the GET request to the server
 
-         Parameters
+        Parameters
         ----------
         request_uri: str
             The request URI to be used in GET request.
@@ -223,6 +225,7 @@ class InferenceServerClient(InferenceServerClientBase):
         -------
         geventhttpclient.response.HTTPSocketPoolResponse
             The response from server.
+
         """
         request = Request(headers)
         self._call_plugin(request)
@@ -860,6 +863,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
     def update_log_settings(self, settings, headers=None, query_params=None):
         """Update the global log settings of the Triton server.
+
         Parameters
         ----------
         settings: dict
@@ -871,14 +875,17 @@ class InferenceServerClient(InferenceServerClientBase):
         query_params: dict
             Optional url query parameters to use in network
             transaction
+
         Returns
         -------
         dict
             The JSON dict holding the updated log settings.
+
         Raises
         ------
         InferenceServerException
             If unable to update the log settings.
+
         """
         request_uri = "v2/logging"
         response = self._post(
@@ -897,6 +904,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
     def get_log_settings(self, headers=None, query_params=None):
         """Get the global log settings for the Triton server
+
         Parameters
         ----------
         headers: dict
@@ -905,14 +913,17 @@ class InferenceServerClient(InferenceServerClientBase):
         query_params: dict
             Optional url query parameters to use in network
             transaction
+
         Returns
         -------
         dict
             The JSON dict holding the log settings.
+
         Raises
         ------
         InferenceServerException
             If unable to get the log settings.
+
         """
 
         request_uri = "v2/logging"
@@ -1219,10 +1230,10 @@ class InferenceServerClient(InferenceServerClientBase):
         Parameters
         ----------
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id: str
@@ -1290,7 +1301,7 @@ class InferenceServerClient(InferenceServerClientBase):
     def parse_response_body(
         response_body, verbose=False, header_length=None, content_encoding=None
     ):
-        """Generate a InferResult object from the given 'response_body'
+        """Generate a :py:class:`InferResult` object from the given 'response_body'
 
         Parameters
         ----------
@@ -1340,14 +1351,14 @@ class InferenceServerClient(InferenceServerClientBase):
         model_name: str
             The name of the model to run inference.
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
             a version based on the model and internal policy.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id: str
@@ -1501,14 +1512,14 @@ class InferenceServerClient(InferenceServerClientBase):
         model_name: str
             The name of the model to run inference.
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
             a version based on the model and internal policy.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id: str
@@ -1564,7 +1575,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
         Returns
         -------
-        InferAsyncRequest object
+        InferAsyncRequest
             The handle to the asynchronous inference request.
 
         Raises

@@ -27,3 +27,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from ..._auth import BasicAuth
+
+__all__ = ["BasicAuth"]

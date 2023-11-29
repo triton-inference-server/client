@@ -39,7 +39,7 @@ from tritonclient.utils import (
 
 
 class InferResult:
-    """An object of InferResult class holds the response of
+    """An object of :py:class:`InferResult` class holds the response of
     an inference request and provide methods to retrieve
     inference results.
 
@@ -109,7 +109,7 @@ class InferResult:
     def from_response_body(
         cls, response_body, verbose=False, header_length=None, content_encoding=None
     ):
-        """A class method to construct InferResult object
+        """A class method to construct :py:class:`InferResult` object
         from a given 'response_body'.
 
         Parameters

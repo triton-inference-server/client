@@ -29,7 +29,7 @@
 class Request:
     """A request object.
 
-    Attributes
+    Parameters
     ----------
     headers : dict
         A dictionary containing the request headers.

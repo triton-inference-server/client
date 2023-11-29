@@ -50,7 +50,7 @@ from .._utils import _get_inference_request, _get_query_string
 
 async def _get_error(response):
     """
-    Returns the InferenceServerException object if response
+    Returns the :py:class:`InferenceServerException` object if response
     indicates the error. If no error then return None
     """
     if response.status != 200:
@@ -78,7 +78,7 @@ async def _get_error(response):
 
 async def _raise_if_error(response):
     """
-    Raise InferenceServerException if received non-Success
+    Raise :py:class:`InferenceServerException` if received non-Success
     response from the server
     """
     error = await _get_error(response)
@@ -89,7 +89,7 @@ async def _raise_if_error(response):
 class InferenceServerClient(InferenceServerClientBase):
     """This feature is currently in beta and may be subject to change.
 
-    An analogy of the tritonclient.http.InferenceServerClient to enable
+    An analogy of the :py:class:`tritonclient.http.InferenceServerClient` to enable
     calling via asyncio syntax. The object is intended to be used by a single
     thread and simultaneously calling methods with different threads is not
     supported and can cause undefined behavior.
@@ -135,7 +135,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def _get(self, request_uri, headers, query_params):
         """Issues the GET request to the server
 
-         Parameters
+        Parameters
         ----------
         request_uri: str
             The request URI to be used in GET request.
@@ -149,6 +149,7 @@ class InferenceServerClient(InferenceServerClientBase):
         -------
         aiohttp.ClientResponse
             The response from server.
+
         """
         request = Request(headers)
         self._call_plugin(request)
@@ -264,7 +265,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return fix_header
 
     async def is_server_live(self, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.is_server_live`"""
         request_uri = "v2/health/live"
         response = await self._get(
             request_uri=request_uri, headers=headers, query_params=query_params
@@ -273,7 +274,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return response.status == 200
 
     async def is_server_ready(self, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.is_server_ready`"""
         request_uri = "v2/health/ready"
         response = await self._get(
             request_uri=request_uri, headers=headers, query_params=query_params
@@ -284,7 +285,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def is_model_ready(
         self, model_name, model_version="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.is_model_ready`"""
         if type(model_version) != str:
             raise_error("model version must be a string")
         if model_version != "":
@@ -301,7 +302,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return response.status == 200
 
     async def get_server_metadata(self, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_server_metadata`"""
         request_uri = "v2"
         response = await self._get(
             request_uri=request_uri, headers=headers, query_params=query_params
@@ -317,7 +318,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_model_metadata(
         self, model_name, model_version="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_model_metadata`"""
         if type(model_version) != str:
             raise_error("model version must be a string")
         if model_version != "":
@@ -341,7 +342,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_model_config(
         self, model_name, model_version="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_model_config`"""
         if model_version != "":
             request_uri = "v2/models/{}/versions/{}/config".format(
                 quote(model_name), model_version
@@ -361,7 +362,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return json.loads(content)
 
     async def get_model_repository_index(self, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_model_repository_index`"""
         request_uri = "v2/repository/index"
         response = await self._post(
             request_uri=request_uri,
@@ -380,7 +381,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def load_model(
         self, model_name, headers=None, query_params=None, config=None, files=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.load_model`"""
         request_uri = "v2/repository/models/{}/load".format(quote(model_name))
         load_request = {}
         if config is not None:
@@ -405,7 +406,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def unload_model(
         self, model_name, headers=None, query_params=None, unload_dependents=False
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.unload_model`"""
         request_uri = "v2/repository/models/{}/unload".format(quote(model_name))
         unload_request = {"parameters": {"unload_dependents": unload_dependents}}
         response = await self._post(
@@ -421,7 +422,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_inference_statistics(
         self, model_name="", model_version="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_inference_statistics`"""
         if model_name != "":
             if type(model_version) != str:
                 raise_error("model version must be a string")
@@ -448,7 +449,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def update_trace_settings(
         self, model_name=None, settings={}, headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.update_trace_settings`"""
         if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
@@ -471,7 +472,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_trace_settings(
         self, model_name=None, headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_trace_settings`"""
         if (model_name is not None) and (model_name != ""):
             request_uri = "v2/models/{}/trace/setting".format(quote(model_name))
         else:
@@ -489,7 +490,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return json.loads(content)
 
     async def update_log_settings(self, settings, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.update_log_settings`"""
         request_uri = "v2/logging"
 
         response = await self._post(
@@ -507,7 +508,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return json.loads(content)
 
     async def get_log_settings(self, headers=None, query_params=None):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_log_settings`"""
         request_uri = "v2/logging"
 
         response = await self._get(
@@ -524,7 +525,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_system_shared_memory_status(
         self, region_name="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_system_shared_memory_status`"""
         if region_name != "":
             request_uri = "v2/systemsharedmemory/region/{}/status".format(
                 quote(region_name)
@@ -546,7 +547,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def register_system_shared_memory(
         self, name, key, byte_size, offset=0, headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.register_system_shared_memory`"""
         request_uri = "v2/systemsharedmemory/region/{}/register".format(quote(name))
 
         register_request = {"key": key, "offset": offset, "byte_size": byte_size}
@@ -565,7 +566,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def unregister_system_shared_memory(
         self, name="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.unregister_system_shared_memory`"""
         if name != "":
             request_uri = "v2/systemsharedmemory/region/{}/unregister".format(
                 quote(name)
@@ -589,7 +590,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_cuda_shared_memory_status(
         self, region_name="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.get_cuda_shared_memory_status`"""
         if region_name != "":
             request_uri = "v2/cudasharedmemory/region/{}/status".format(
                 quote(region_name)
@@ -611,7 +612,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def register_cuda_shared_memory(
         self, name, raw_handle, device_id, byte_size, headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.register_cuda_shared_memory`"""
         request_uri = "v2/cudasharedmemory/region/{}/register".format(quote(name))
 
         register_request = {
@@ -634,7 +635,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def unregister_cuda_shared_memory(
         self, name="", headers=None, query_params=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.unregister_cuda_shared_memory`"""
         if name != "":
             request_uri = "v2/cudasharedmemory/region/{}/unregister".format(quote(name))
         else:
@@ -665,7 +666,7 @@ class InferenceServerClient(InferenceServerClientBase):
         timeout=None,
         parameters=None,
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.generate_request_body`"""
         return _get_inference_request(
             inputs=inputs,
             request_id=request_id,
@@ -682,7 +683,7 @@ class InferenceServerClient(InferenceServerClientBase):
     def parse_response_body(
         response_body, verbose=False, header_length=None, content_encoding=None
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.parse_response_body`"""
         return InferResult.from_response_body(
             response_body, verbose, header_length, content_encoding
         )
@@ -705,7 +706,7 @@ class InferenceServerClient(InferenceServerClientBase):
         response_compression_algorithm=None,
         parameters=None,
     ):
-        """Refer to tritonclient.http.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.http.InferenceServerClient.infer`"""
         request_body, json_size = _get_inference_request(
             inputs=inputs,
             request_id=request_id,

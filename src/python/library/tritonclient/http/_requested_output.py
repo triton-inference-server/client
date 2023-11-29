@@ -29,7 +29,7 @@ from tritonclient.utils import raise_error
 
 
 class InferRequestedOutput:
-    """An object of InferRequestedOutput class is used to describe a
+    """An object of :py:class:`InferRequestedOutput` class is used to describe a
     requested output tensor for an inference request.
 
     Parameters
@@ -93,7 +93,7 @@ class InferRequestedOutput:
 
     def unset_shared_memory(self):
         """Clears the shared memory option set by the last call to
-        InferRequestedOutput.set_shared_memory(). After call to this
+        :py:meth:`InferRequestedOutput.set_shared_memory()`. After call to this
         function requested output will no longer be returned in a
         shared memory region.
         """

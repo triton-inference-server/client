@@ -30,6 +30,7 @@ try:
     from tritonclient.utils import *
 
     from .._plugin import InferenceServerClientPlugin
+    from .._request import Request
     from ._client import InferAsyncRequest, InferenceServerClient
     from ._infer_input import InferInput
     from ._infer_result import InferResult
@@ -39,3 +40,14 @@ except ModuleNotFoundError as error:
     raise RuntimeError(
         "The installation does not include http support. Specify 'http' or 'all' while installing the tritonclient package to include the support"
     ) from error
+
+__all__ = [
+    "InferenceServerClientPlugin",
+    "Request",
+    "InferenceServerClient",
+    "InferInput",
+    "InferRequestedOutput",
+    "InferResult",
+    "InferAsyncRequest",
+    "InferenceServerException",
+]

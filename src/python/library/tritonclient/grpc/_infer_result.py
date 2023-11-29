@@ -32,7 +32,7 @@ from tritonclient.utils import *
 
 
 class InferResult:
-    """An object of InferResult class holds the response of
+    """An object of :py:class:`InferResult` class holds the response of
     an inference request and provide methods to retrieve
     inference results.
 

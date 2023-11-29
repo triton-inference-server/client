@@ -32,6 +32,7 @@ try:
     from tritonclient.utils import *
 
     from .._plugin import InferenceServerClientPlugin
+    from .._request import Request
     from ._client import MAX_GRPC_MESSAGE_SIZE, InferenceServerClient, KeepAliveOptions
     from ._infer_input import InferInput
     from ._infer_result import InferResult
@@ -59,3 +60,14 @@ if version.parse(grpc.__version__) >= version.parse("1.43.0") and version.parse(
         "use versions <1.43.0 or >=1.51.1 to avoid leaks "
         "(see https://github.com/grpc/grpc/issues/28513)."
     )
+
+__all__ = [
+    "InferenceServerClientPlugin",
+    "Request",
+    "InferenceServerClient",
+    "InferInput",
+    "InferRequestedOutput",
+    "InferResult",
+    "KeepAliveOptions",
+    "InferenceServerException"
+]
