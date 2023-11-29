@@ -33,20 +33,28 @@ The following guide shows the reader how to use Triton
 to measure and characterize the performance behaviors of Large Language Models
 (LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup: Download and configure Triton Server environment
+### Setup: Download and configure Triton vLLM Backend
 
-From [Step 1 of the Triton vLLM tutorial](https://github.com/triton-inference-server/tutorials/blob/main/Quick_Deploy/vLLM/README.md#step-1-build-a-triton-container-image-with-vllm).
+Download the pre-built Triton Server Container with vLLM backend from
+[NGC](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver)
+registry.
 
 ```bash
-git clone https://github.com/triton-inference-server/tutorials
-cd tutorials/Quick_Deploy/vLLM
-docker build -t tritonserver_vllm .
-# wait for command to finish, might take several minutes
+docker pull nvcr.io/nvidia/tritonserver:23.10-vllm-python-py3
 ```
 
-Upon successful build, run the following command to start the Triton Server container:
+Run the Triton Server container with
+[vLLM backend](https://github.com/triton-inference-server/vllm_backend) and
+launch the server.
 ```bash
-docker run --gpus all -it --rm -p 8001:8001 --shm-size=1G --ulimit memlock=-1 --ulimit stack=67108864 -v ${PWD}:/work -w /work tritonserver_vllm tritonserver --model-store ./model_repository
+git clone -b r23.10 https://github.com/triton-inference-server/vllm_backend.git
+cd vllm_backend
+
+docker run --gpus all --rm -it --net host \
+	--shm-size=2G --ulimit memlock=-1 --ulimit stack=67108864 \
+	-v $(pwd)/samples/model_repository:/model_repository \
+	nvcr.io/nvidia/tritonserver:23.10-vllm-python-py3 \
+    tritonserver --model-repository /model_repository
 ```
 
 Next run the following command to start the Triton SDK container:
@@ -69,7 +77,7 @@ Inside the client container, run the following command to generate dummy prompts
 of size 100, 300, and 500 and receive single token from the model for each prompt.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
+python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -105,7 +113,7 @@ python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 1
 > }
 > ' > input_data.json
 >
-> $ python profile.py -m vllm --input-data input_data.json
+> $ python profile.py -m vllm_model --input-data input_data.json
 > ```
 
 
@@ -122,7 +130,7 @@ of size 100, 300, and 500 and receive total 256 tokens from the model for each
 prompts.
 
 ```bash
-python profile.py -m vllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
+python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -157,7 +165,7 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
+python profile.py -m vllm_model --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 10
@@ -179,7 +187,7 @@ split them into multiple segments of responses.
 For instance, assume we ran the following benchmark command:
 
 ```bash
-python profile.py -m vllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
+python profile.py -m vllm_model --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
 ```
 
 We start from a single request and increment up to 4 requests one by one for

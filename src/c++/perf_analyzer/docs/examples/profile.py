@@ -449,13 +449,13 @@ def prepare_export_file(args, prompt):
 
 def prepare_input_data(input_data, prompt):
     """Insert the prompt to send into input JSON data."""
-    input_data["data"][0]["PROMPT"] = [prompt]
+    input_data["data"][0]["text_input"] = [prompt]
     save_json_data(input_data, INPUT_FILENAME)
 
 
 def generate_prompts(args, input_data):
     """Generate dummy prompts if not specified by input JSON file."""
-    prompt = input_data["data"][0]["PROMPT"][0]
+    prompt = input_data["data"][0]["text_input"][0]
 
     if not prompt:  # Generate dummy prompt
         assert args.prompt_size_range, "Must specify --prompt-size-range."
@@ -464,28 +464,42 @@ def generate_prompts(args, input_data):
     return [prompt]
 
 
-def construct_input_data(args):
-    """Construct input data that contains input tensors and parameters.
+def construct_vllm_input_data(args):
+    """Construct input data that contains input tensors and parameters for vLLM.
 
     Parse the input JSON file (if exists) to construct the input data.
     When user sets parameters through command line, overwrite the
     parameters set by input JSON file.
     """
-    prompt = ""
-    stream = True
-    sampling_params = {}
+    # Default sampling parameters
+    sampling_params = {
+        "max_tokens": 256,
+        "ignore_eos": False,
+    }
 
     if args.input_data:
-        data = load_json_data(filename=args.input_data)["data"][0]
-        stream = data["STREAM"][0] if "STREAM" in data else stream
-        prompt = data["PROMPT"][0] if "PROMPT" in data else prompt
-        if "SAMPLING_PARAMETERS" in data:
-            sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
+        input_data = load_json_data(filename=args.input_data)
+        if "sampling_parameters" in input_data["data"][0]:
+            loaded_params = input_data["data"][0]["sampling_parameters"][0]
+            loaded_params = json.loads(loaded_params or "null")
+            sampling_params = loaded_params if loaded_params else sampling_params
+    else:
+        # Default input JSON
+        input_data = {
+            "data": [
+                {
+                    "text_input": [""],
+                    "stream": [True],
+                    "sampling_parameters": [""],
+                }
+            ]
+        }
+        
 
     # If command line option is specified, overwrite
     if args.offline:
-        stream = False
-    elif not stream:
+        input_data["data"][0]["stream"] = [False]
+    elif not input_data["data"][0]["stream"]:
         args.offline = True
 
     if args.max_tokens:
@@ -496,20 +510,61 @@ def construct_input_data(args):
         args.max_tokens = 256  # default
         sampling_params["max_tokens"] = args.max_tokens
 
-    if "ignore_eos" not in sampling_params:
+    if args.ignore_eos:
         sampling_params["ignore_eos"] = args.ignore_eos
-    elif args.ignore_eos:
-        sampling_params["ignore_eos"] = True
+    elif "ignore_eos" in sampling_params:
+        args.ignore_eos = sampling_params["ignore_eos"]
+    else:
+        args.ignore_eos = False  # default
+        sampling_params["ignore_eos"] = args.ignore_eos
 
-    input_data = {"data": [{}]}
-    input_data["data"][0]["PROMPT"] = [prompt]
-    input_data["data"][0]["STREAM"] = [stream]
-    input_data["data"][0]["SAMPLING_PARAMETERS"] = [json.dumps(sampling_params)]
+    input_data["data"][0]["sampling_parameters"] = [json.dumps(sampling_params)]
+    return input_data
+
+
+def construct_trtllm_input_data(args):
+    """Construct input data that contains input tensors and parameters for TRT-LLM.
+
+    Parse the input JSON file (if exists) to construct the input data.
+    When user sets parameters through command line, overwrite the
+    parameters set by input JSON file.
+    """
+    # Default input JSON
+    if args.input_data:
+        input_data = load_json_data(filename=args.input_data)
+    else:
+        input_data = {
+            "data": [
+                {
+                    "text_input": [""],
+                    "stream": [True],
+                    "max_tokens": [256],
+                    "bad_words": [""],
+                    "stop_words": [""],
+                }
+            ]
+        }
+
+    # If command line option is specified, overwrite
+    if args.offline:
+        input_data["data"][0]["stream"] = [False]
+    elif not input_data["data"][0]["stream"]:
+        args.offline = True
+
+    if args.max_tokens:
+        input_data["data"][0]["max_tokens"] = [args.max_tokens]
+    else:
+        args.max_tokens = input_data["data"][0]["max_tokens"]
+
     return input_data
 
 
 def main(args):
-    input_data = construct_input_data(args)
+    if args.model == "ensemble":
+        input_data = construct_trtllm_input_data(args)
+    elif args.model in "vllm_model":
+        input_data = construct_vllm_input_data(args)
+
     prompts = generate_prompts(args, input_data)
 
     for prompt in prompts:
