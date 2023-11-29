@@ -529,10 +529,10 @@ def construct_trtllm_input_data(args):
     When user sets parameters through command line, overwrite the
     parameters set by input JSON file.
     """
-    # Default input JSON
     if args.input_data:
         input_data = load_json_data(filename=args.input_data)
     else:
+        # Default input JSON
         input_data = {
             "data": [
                 {
