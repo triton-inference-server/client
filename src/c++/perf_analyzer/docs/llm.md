@@ -51,9 +51,9 @@ git clone -b r23.10 https://github.com/triton-inference-server/vllm_backend.git
 cd vllm_backend
 
 docker run --gpus all --rm -it --net host \
-	--shm-size=2G --ulimit memlock=-1 --ulimit stack=67108864 \
-	-v $(pwd)/samples/model_repository:/model_repository \
-	nvcr.io/nvidia/tritonserver:23.10-vllm-python-py3 \
+    --shm-size=2G --ulimit memlock=-1 --ulimit stack=67108864 \
+    -v $(pwd)/samples/model_repository:/model_repository \
+    nvcr.io/nvidia/tritonserver:23.10-vllm-python-py3 \
     tritonserver --model-repository /model_repository
 ```
 
