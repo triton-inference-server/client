@@ -69,5 +69,5 @@ __all__ = [
     "InferRequestedOutput",
     "InferResult",
     "KeepAliveOptions",
-    "InferenceServerException"
+    "InferenceServerException",
 ]
