@@ -421,12 +421,12 @@ def profile(args, export_file):
         f"--profile-export-file={export_file} "
     )
     if args.model == "ensemble":  # TRT-LLM
-       command += (
-           "--shape=text_input:1 "
-           "--shape=max_tokens:1 "
-           "--shape=bad_words:1 "
-           "--shape=stop_words:1 "
-       )
+        command += (
+            "--shape=text_input:1 "
+            "--shape=max_tokens:1 "
+            "--shape=bad_words:1 "
+            "--shape=stop_words:1 "
+        )
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         command += (
@@ -501,7 +501,6 @@ def construct_vllm_input_data(args):
                 }
             ]
         }
-        
 
     # If command line option is specified, overwrite
     if args.offline:
