@@ -420,6 +420,13 @@ def profile(args, export_file):
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
+    if args.model == "ensemble":  # TRT-LLM
+       command += (
+           "--shape=text_input:1 "
+           "--shape=max_tokens:1 "
+           "--shape=bad_words:1 "
+           "--shape=stop_words:1 "
+       )
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         command += (
@@ -554,7 +561,7 @@ def construct_trtllm_input_data(args):
     if args.max_tokens:
         input_data["data"][0]["max_tokens"] = [args.max_tokens]
     else:
-        args.max_tokens = input_data["data"][0]["max_tokens"]
+        args.max_tokens = input_data["data"][0]["max_tokens"][0]
 
     return input_data
 
