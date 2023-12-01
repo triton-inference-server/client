@@ -569,7 +569,7 @@ def construct_trtllm_input_data(args):
 def main(args):
     if args.backend == "trtllm":
         input_data = construct_trtllm_input_data(args)
-    elif args.backend in "vllm":
+    elif args.backend == "vllm":
         input_data = construct_vllm_input_data(args)
     else:
         raise ValueError(
