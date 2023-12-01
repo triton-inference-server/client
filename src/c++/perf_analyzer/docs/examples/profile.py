@@ -133,11 +133,11 @@ def get_postfix(args, prompt_size):
     """Generate postfix for profile export filename and plot.
 
     e.g.
-      - trtllm-prompt100-maxtokens256
-      - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
+      - trtllm-ensemble-prompt100-maxtokens256
+      - trtllm-ensemble-prompt100-periodic1_100_1-period32-maxtokens1024
     """
     stream_type = "offline" if args.offline else "online"
-    postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
+    postfix = f"{args.backend}-{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
@@ -421,7 +421,7 @@ def profile(args, export_file):
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
-    if args.model == "ensemble":  # TRT-LLM
+    if args.backend == "trtllm":
         command += (
             "--shape=text_input:1 "
             "--shape=max_tokens:1 "
@@ -567,9 +567,9 @@ def construct_trtllm_input_data(args):
 
 
 def main(args):
-    if args.model == "ensemble":
+    if args.backend == "trtllm":
         input_data = construct_trtllm_input_data(args)
-    elif args.model in "vllm_model":
+    elif args.backend in "vllm":
         input_data = construct_vllm_input_data(args)
 
     prompts = generate_prompts(args, input_data)
@@ -592,6 +592,13 @@ if __name__ == "__main__":
         type=str,
         default="vllm",
         help="The name of the model to profile.",
+    )
+    parser.add_argument(
+        "-b",
+        "--backend",
+        type=str,
+        default="vllm",
+        help="The name of the backend.",
     )
     parser.add_argument(
         "--prompt-size-range",

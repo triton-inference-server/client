@@ -99,13 +99,13 @@ python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
 > {
 >     "data": [
 >         {
->             "PROMPT": [
+>             "text_input": [
 >                 "Hello, my name is"  // user-provided prompt
 >             ],
->             "STREAM": [
+>             "stream": [
 >                 true
 >             ],
->             "SAMPLING_PARAMETERS": [
+>             "sampling_parameters": [
 >                 "{ \"max_tokens\": 1 }"
 >             ]
 >         }
