@@ -571,6 +571,11 @@ def main(args):
         input_data = construct_trtllm_input_data(args)
     elif args.backend in "vllm":
         input_data = construct_vllm_input_data(args)
+    else:
+        raise ValueError(
+            "Unknown backend specified. Supported backend types are: 'trtllm' "
+            "and 'vllm'."
+        )
 
     prompts = generate_prompts(args, input_data)
 
