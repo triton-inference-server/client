@@ -265,11 +265,12 @@ def collect_online_metrics(export_data, output_tokens):
     for r in requests:
         init_request, responses = r["timestamp"], r["response_timestamps"]
         first_token_latency = (responses[0] - init_request) / 1_000_000
-        generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
-        generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
         first_token_latencies.append(first_token_latency)
-        generation_latencies.append(generation_latency_ms)
-        generation_throughputs.append(output_tokens / generation_latency_s)
+        if args.max_tokens > 1:
+            generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
+            generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
+            generation_latencies.append(generation_latency_ms)
+            generation_throughputs.append(output_tokens / generation_latency_s)
         for prev_res, res in pairwise(responses):
             token_to_token_latencies.append((res - prev_res) / 1_000_000)
     return (
@@ -290,8 +291,6 @@ def calculate_online_metrics(args, profile_result, export_data):
         generation_throughputs,
     ) = latencies
 
-    profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
-
     profile_result.max_first_token_latency = max(first_token_latencies)
     profile_result.min_first_token_latency = min(first_token_latencies)
     profile_result.avg_first_token_latency = np.mean(first_token_latencies)
@@ -309,6 +308,8 @@ def calculate_online_metrics(args, profile_result, export_data):
     )
 
     if args.max_tokens > 1:
+        profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
+
         profile_result.max_gen_latency = max(generation_latencies)
         profile_result.min_gen_latency = min(generation_latencies)
         profile_result.avg_gen_latency = np.mean(generation_latencies)
