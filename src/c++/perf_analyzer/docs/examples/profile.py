@@ -133,11 +133,11 @@ def get_postfix(args, prompt_size):
     """Generate postfix for profile export filename and plot.
 
     e.g.
-      - trtllm-prompt100-maxtokens256
-      - trtllm-prompt100-periodic1_100_1-period32-maxtokens1024
+      - trtllm-ensemble-prompt100-maxtokens256
+      - trtllm-ensemble-prompt100-periodic1_100_1-period32-maxtokens1024
     """
     stream_type = "offline" if args.offline else "online"
-    postfix = f"{args.model}-{stream_type}-prompt{prompt_size}-"
+    postfix = f"{args.backend}-{args.model}-{stream_type}-prompt{prompt_size}-"
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         postfix += f"periodic{start}_{end}_{step}-period{args.request_period}-"
@@ -265,11 +265,12 @@ def collect_online_metrics(export_data, output_tokens):
     for r in requests:
         init_request, responses = r["timestamp"], r["response_timestamps"]
         first_token_latency = (responses[0] - init_request) / 1_000_000
-        generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
-        generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
         first_token_latencies.append(first_token_latency)
-        generation_latencies.append(generation_latency_ms)
-        generation_throughputs.append(output_tokens / generation_latency_s)
+        if args.max_tokens > 1:
+            generation_latency_ms = (responses[-1] - responses[0]) / 1_000_000  # msec
+            generation_latency_s = (responses[-1] - responses[0]) / 1_000_000_000  # sec
+            generation_latencies.append(generation_latency_ms)
+            generation_throughputs.append(output_tokens / generation_latency_s)
         for prev_res, res in pairwise(responses):
             token_to_token_latencies.append((res - prev_res) / 1_000_000)
     return (
@@ -290,8 +291,6 @@ def calculate_online_metrics(args, profile_result, export_data):
         generation_throughputs,
     ) = latencies
 
-    profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
-
     profile_result.max_first_token_latency = max(first_token_latencies)
     profile_result.min_first_token_latency = min(first_token_latencies)
     profile_result.avg_first_token_latency = np.mean(first_token_latencies)
@@ -309,6 +308,8 @@ def calculate_online_metrics(args, profile_result, export_data):
     )
 
     if args.max_tokens > 1:
+        profile_result.avg_total_t2t_latency = np.mean(token_to_token_latencies)
+
         profile_result.max_gen_latency = max(generation_latencies)
         profile_result.min_gen_latency = min(generation_latencies)
         profile_result.avg_gen_latency = np.mean(generation_latencies)
@@ -420,6 +421,13 @@ def profile(args, export_file):
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
+    if args.backend == "trtllm":
+        command += (
+            "--shape=text_input:1 "
+            "--shape=max_tokens:1 "
+            "--shape=bad_words:1 "
+            "--shape=stop_words:1 "
+        )
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         command += (
@@ -449,13 +457,13 @@ def prepare_export_file(args, prompt):
 
 def prepare_input_data(input_data, prompt):
     """Insert the prompt to send into input JSON data."""
-    input_data["data"][0]["PROMPT"] = [prompt]
+    input_data["data"][0]["text_input"] = [prompt]
     save_json_data(input_data, INPUT_FILENAME)
 
 
 def generate_prompts(args, input_data):
     """Generate dummy prompts if not specified by input JSON file."""
-    prompt = input_data["data"][0]["PROMPT"][0]
+    prompt = input_data["data"][0]["text_input"][0]
 
     if not prompt:  # Generate dummy prompt
         assert args.prompt_size_range, "Must specify --prompt-size-range."
@@ -464,28 +472,41 @@ def generate_prompts(args, input_data):
     return [prompt]
 
 
-def construct_input_data(args):
-    """Construct input data that contains input tensors and parameters.
+def construct_vllm_input_data(args):
+    """Construct input data that contains input tensors and parameters for vLLM.
 
     Parse the input JSON file (if exists) to construct the input data.
     When user sets parameters through command line, overwrite the
     parameters set by input JSON file.
     """
-    prompt = ""
-    stream = True
-    sampling_params = {}
+    # Default sampling parameters
+    sampling_params = {
+        "max_tokens": 256,
+        "ignore_eos": False,
+    }
 
     if args.input_data:
-        data = load_json_data(filename=args.input_data)["data"][0]
-        stream = data["STREAM"][0] if "STREAM" in data else stream
-        prompt = data["PROMPT"][0] if "PROMPT" in data else prompt
-        if "SAMPLING_PARAMETERS" in data:
-            sampling_params = json.loads(data["SAMPLING_PARAMETERS"][0])
+        input_data = load_json_data(filename=args.input_data)
+        if "sampling_parameters" in input_data["data"][0]:
+            loaded_params = input_data["data"][0]["sampling_parameters"][0]
+            loaded_params = json.loads(loaded_params or "null")
+            sampling_params = loaded_params if loaded_params else sampling_params
+    else:
+        # Default input JSON
+        input_data = {
+            "data": [
+                {
+                    "text_input": [""],
+                    "stream": [True],
+                    "sampling_parameters": [""],
+                }
+            ]
+        }
 
     # If command line option is specified, overwrite
     if args.offline:
-        stream = False
-    elif not stream:
+        input_data["data"][0]["stream"] = [False]
+    elif not input_data["data"][0]["stream"]:
         args.offline = True
 
     if args.max_tokens:
@@ -496,20 +517,66 @@ def construct_input_data(args):
         args.max_tokens = 256  # default
         sampling_params["max_tokens"] = args.max_tokens
 
-    if "ignore_eos" not in sampling_params:
+    if args.ignore_eos:
         sampling_params["ignore_eos"] = args.ignore_eos
-    elif args.ignore_eos:
-        sampling_params["ignore_eos"] = True
+    elif "ignore_eos" in sampling_params:
+        args.ignore_eos = sampling_params["ignore_eos"]
+    else:
+        args.ignore_eos = False  # default
+        sampling_params["ignore_eos"] = args.ignore_eos
 
-    input_data = {"data": [{}]}
-    input_data["data"][0]["PROMPT"] = [prompt]
-    input_data["data"][0]["STREAM"] = [stream]
-    input_data["data"][0]["SAMPLING_PARAMETERS"] = [json.dumps(sampling_params)]
+    input_data["data"][0]["sampling_parameters"] = [json.dumps(sampling_params)]
+    return input_data
+
+
+def construct_trtllm_input_data(args):
+    """Construct input data that contains input tensors and parameters for TRT-LLM.
+
+    Parse the input JSON file (if exists) to construct the input data.
+    When user sets parameters through command line, overwrite the
+    parameters set by input JSON file.
+    """
+    if args.input_data:
+        input_data = load_json_data(filename=args.input_data)
+    else:
+        # Default input JSON
+        input_data = {
+            "data": [
+                {
+                    "text_input": [""],
+                    "stream": [True],
+                    "max_tokens": [256],
+                    "bad_words": [""],
+                    "stop_words": [""],
+                }
+            ]
+        }
+
+    # If command line option is specified, overwrite
+    if args.offline:
+        input_data["data"][0]["stream"] = [False]
+    elif not input_data["data"][0]["stream"]:
+        args.offline = True
+
+    if args.max_tokens:
+        input_data["data"][0]["max_tokens"] = [args.max_tokens]
+    else:
+        args.max_tokens = input_data["data"][0]["max_tokens"][0]
+
     return input_data
 
 
 def main(args):
-    input_data = construct_input_data(args)
+    if args.backend == "trtllm":
+        input_data = construct_trtllm_input_data(args)
+    elif args.backend == "vllm":
+        input_data = construct_vllm_input_data(args)
+    else:
+        raise ValueError(
+            "Unknown backend specified. Supported backend types are: 'trtllm' "
+            "and 'vllm'."
+        )
+
     prompts = generate_prompts(args, input_data)
 
     for prompt in prompts:
@@ -530,6 +597,13 @@ if __name__ == "__main__":
         type=str,
         default="vllm",
         help="The name of the model to profile.",
+    )
+    parser.add_argument(
+        "-b",
+        "--backend",
+        type=str,
+        default="vllm",
+        help="The name of the backend.",
     )
     parser.add_argument(
         "--prompt-size-range",
