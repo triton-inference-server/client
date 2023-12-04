@@ -113,7 +113,8 @@ InferContext::SendRequest(
 
   thread_stat_->num_sent_requests_++;
   if (async_) {
-    infer_data_.options_->request_id_ = std::to_string(request_id);
+    uint64_t unique_request_id{(thread_id_ << 48) | ((request_id << 16) >> 16)};
+    infer_data_.options_->request_id_ = std::to_string(unique_request_id);
     {
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto it = async_req_map_
