@@ -35,17 +35,12 @@ add_subdirectory(client_backend)
 
 find_package(Git REQUIRED)
 
-if(PA_SHA STREQUAL "")
-  execute_process(COMMAND
-    "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
-    RESULT_VARIABLE RETURN_CODE
-    OUTPUT_VARIABLE GIT_SHA)
-
-  if(NOT RETURN_CODE EQUAL "0")
-    set(GIT_SHA "unknown")
-  endif()
-else()
-  set(GIT_SHA PA_SHA)
+execute_process(WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  COMMAND "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
+  RESULT_VARIABLE RETURN_CODE
+  OUTPUT_VARIABLE GIT_SHA)
+if(NOT RETURN_CODE EQUAL "0")
+  set(GIT_SHA "unknown")
 endif()
 
 
