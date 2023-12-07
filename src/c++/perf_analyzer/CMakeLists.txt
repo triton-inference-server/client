@@ -35,14 +35,19 @@ add_subdirectory(client_backend)
 
 find_package(Git REQUIRED)
 
-execute_process(COMMAND
-  "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
-  RESULT_VARIABLE RETURN_CODE
-  OUTPUT_VARIABLE GIT_SHA)
+if(PA_SHA STREQUAL "")
+  execute_process(COMMAND
+    "${GIT_EXECUTABLE}" log -n 1 --abbrev-commit --format=format:%h
+    RESULT_VARIABLE RETURN_CODE
+    OUTPUT_VARIABLE GIT_SHA)
 
-if(NOT RETURN_CODE EQUAL "0")
-  set(GIT_SHA "unknown")
+  if(NOT RETURN_CODE EQUAL "0")
+    set(GIT_SHA "unknown")
+  endif()
+else()
+  set(GIT_SHA PA_SHA)
 endif()
+
 
 set(
   PERF_ANALYZER_SRCS
