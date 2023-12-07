@@ -43,7 +43,6 @@ if(NOT RETURN_CODE EQUAL "0")
   set(GIT_SHA "unknown")
 endif()
 
-
 set(
   PERF_ANALYZER_SRCS
   command_line_parser.cc

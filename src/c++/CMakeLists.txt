@@ -43,7 +43,6 @@ option(TRITON_ENABLE_ZLIB "Include ZLIB library in build" ON)
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
-set(PA_SHA "unknown" CACHE STRING "SHA for PA release")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
