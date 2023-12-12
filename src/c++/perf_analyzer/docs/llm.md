@@ -39,54 +39,72 @@ and [vLLM](https://github.com/vllm-project/vllm).
 ### Using TensorRT-LLM
 
 1. Follow [step 1](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#installation)
-of the Installation section.
+of the Installation section. It includes instructions for cloning llama if you
+do not already have it downloaded.
 
-    This guide will replace the llama model for gpt since it is already
-    included in the tensorrtllm_backend repository release.
-
-    Currently, the most recent release is 0.6.1.
+  ```
+  git clone https://github.com/triton-inference-server/tensorrtllm_backend.git  --branch release/0.5.0
+  # Update the submodules
+  cd tensorrtllm_backend
+  # Install git-lfs if needed
+  sudo apt-get update && sudo apt-get install git-lfs -y --no-install-recommends
+  git lfs install
+  git submodule update --init --recursive
+  ```
 
 2. Launch the Triton docker container with the TensorRT-LLM backend.
 This will require mounting the repo from step 1 into the docker container
 and any models you plan to serve.
 
-    For the tensorrtllm_backend repository, you need the following two directories mounted:
+    For the tensorrtllm_backend repository, you need the following directories mounted:
 - backend: .../tensorrtllm_backend/:/tensorrtllm_backend
-- engine: .../tensorrtllm_backend/tensorrt_llm/examples/gpt/gpt_outputs:/engines
+- llama repo: .../llama/repo:/Llama-2-7b-hf
+- engine: .../tensorrtllm_backend/tensorrt_llm/examples/llama/engine:/engines
 
 ```
 docker run --rm -it --net host --shm-size=2g \
     --ulimit memlock=-1 --ulimit stack=67108864 --gpus all \
-    -v /path/to/tensorrtllm_backend:/tensorrtllm_backend \
-    -v /path/to/model/repo:/repo \
-    -v /path/to/engines:/engines \
+    -v $(pwd):/tensorrtllm_backend \
+    -v /path/to/llama/repo:/Llama-2-7b-hf \
+    -v $(pwd)/tensorrt_llm/examples/llama/engines:/engines \
     nvcr.io/nvidia/tritonserver:23.10-trtllm-python-py3 \
     bash
 ```
 
-3. Create the [engine](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine).
+3. Follow the steps [here](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine)
+to create the engine.
 
     Building the engine in the container with the `--output_dir /engines`
-    flag will place the compiled `.engine` file under the expected directory.
+    flag will place the compiled `.engine` file under the expected directory set in step 1.
+
+    Note:
+    - Compiling the wheel and engine can take more than 1 hour.
+    - If you get an error compiling bfloat16, you can remove it for the default
+    option.
+
 
 4. Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#serving-with-triton).
 
-    After copying the model repository, use the following sed commands to set
-    some required values in the config.pbtxt files.
+```
+cp -R /tensorrtllm_backend/all_models/inflight_batcher_llm /opt/tritonserver/.
+```
+
+  After copying the model repository, use the following sed commands to set
+  some required values in the config.pbtxt files.
 
 ```
-sed -i 's#${tokenizer_dir}#/tensorrtllm_backend\/tensorrt_llm\/examples\/gpt\/gpt2\/#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
+sed -i 's#${tokenizer_dir}#/Llama-2-7b-hf/#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
 sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
-sed -i 's#${tokenizer_dir}#/tensorrtllm_backend\/tensorrt_llm\/examples\/gpt\/gpt2\/#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
+sed -i 's#${tokenizer_dir}#/Llama-2-7b-hf/#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
 sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
 
-sed -i 's#${decoupled_mode}#true#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
-sed -i 's#${engine_dir}#/engines/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+sed -i 's#${decoupled_mode}#false#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+sed -i 's#${engine_dir}#/engines/1-gpu/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
 ```
 
-  Additionally, copy over the .engine file in the /engines directory to the
-  model repository /opt/tritonserver/inflight_batcher_llm
-
+```
+python3 /tensorrtllm_backend/scripts/launch_triton_server.py --world_size=<world size of the engine> --model_repo=/opt/tritonserver/inflight_batcher_llm
+```
 
 ### Using vLLM
 
