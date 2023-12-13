@@ -82,6 +82,8 @@ to create the engine.
     - If you get an error compiling bfloat16, you can remove it for the default
     option.
 
+    Once the engine is created, copy the directory containing the engine
+    file and config.json over to following directory: <model-repo>/tensorrt_llm/1
 
 4. Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#serving-with-triton).
 
@@ -98,7 +100,7 @@ sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/prepro
 sed -i 's#${tokenizer_dir}#/Llama-2-7b-hf/#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
 sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
 
-sed -i 's#${decoupled_mode}#false#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+sed -i 's#${decoupled_mode}#true#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
 sed -i 's#${engine_dir}#/engines/1-gpu/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
 ```
 
@@ -152,7 +154,9 @@ Inside the client container, run the following command to generate dummy prompts
 of size 100, 300, and 500 and receive single token from the model for each prompt.
 
 ```bash
-python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 100 500 200 --max-tokens 1
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -188,7 +192,7 @@ python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
 > }
 > ' > input_data.json
 >
-> $ python profile.py -m vllm_model --input-data input_data.json
+> $ python profile.py -m ensemble -b trtllm --input-data input_data.json
 > ```
 
 
@@ -205,7 +209,9 @@ of size 100, 300, and 500 and receive total 256 tokens from the model for each
 prompts.
 
 ```bash
-python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -240,7 +246,9 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm_model --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 10
@@ -262,7 +270,9 @@ split them into multiple segments of responses.
 For instance, assume we ran the following benchmark command:
 
 ```bash
-python profile.py -m vllm_model --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
 ```
 
 We start from a single request and increment up to 4 requests one by one for
