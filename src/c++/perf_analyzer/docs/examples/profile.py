@@ -421,13 +421,6 @@ def profile(args, export_file):
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
-    if args.backend == "trtllm":
-        command += (
-            "--shape=text_input:1 "
-            "--shape=max_tokens:1 "
-            "--shape=bad_words:1 "
-            "--shape=stop_words:1 "
-        )
     if args.periodic_concurrency_range:
         start, end, step = args.periodic_concurrency_range
         command += (
@@ -457,13 +450,13 @@ def prepare_export_file(args, prompt):
 
 def prepare_input_data(input_data, prompt):
     """Insert the prompt to send into input JSON data."""
-    input_data["data"][0]["text_input"] = [prompt]
+    input_data["data"][0]["prompt"] = [prompt]
     save_json_data(input_data, INPUT_FILENAME)
 
 
 def generate_prompts(args, input_data):
     """Generate dummy prompts if not specified by input JSON file."""
-    prompt = input_data["data"][0]["text_input"][0]
+    prompt = input_data["data"][0]["prompt"][0]
 
     if not prompt:  # Generate dummy prompt
         assert args.prompt_size_range, "Must specify --prompt-size-range."
@@ -543,20 +536,16 @@ def construct_trtllm_input_data(args):
         input_data = {
             "data": [
                 {
-                    "text_input": [""],
-                    "stream": [True],
+                    "prompt": [""],
                     "max_tokens": [256],
-                    "bad_words": [""],
-                    "stop_words": [""],
+                    "temperature": [0.2],
+                    "top_p": [0.7],
                 }
             ]
         }
 
     # If command line option is specified, overwrite
-    if args.offline:
-        input_data["data"][0]["stream"] = [False]
-    elif not input_data["data"][0]["stream"]:
-        args.offline = True
+    args.offline = False  # always streaming
 
     if args.max_tokens:
         input_data["data"][0]["max_tokens"] = [args.max_tokens]
