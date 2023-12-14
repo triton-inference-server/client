@@ -104,6 +104,10 @@ sed -i 's#${decoupled_mode}#true#' /opt/tritonserver/inflight_batcher_llm/tensor
 sed -i 's#${engine_dir}#/engines/1-gpu/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
 ```
 
+Note: Due to a known bug, all model_version values in
+`/opt/tritonserver/inflight_batcher_llm/ensemble/config.pbtxt` must be manually set to `1`.
+
+
 ```
 python3 /tensorrtllm_backend/scripts/launch_triton_server.py --world_size=<world size of the engine> --model_repo=/opt/tritonserver/inflight_batcher_llm
 ```
