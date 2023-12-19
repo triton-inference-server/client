@@ -31,9 +31,88 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The following guide shows the reader how to use Triton
 [Perf Analyzer](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer)
 to measure and characterize the performance behaviors of Large Language Models
-(LLMs) using Triton with [vLLM](https://github.com/vllm-project/vllm).
+(LLMs) using Triton with [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM)
+and [vLLM](https://github.com/vllm-project/vllm).
 
-### Setup: Download and configure Triton vLLM Backend
+## Setup: Download and configure Triton Server and Client environment
+
+### Using TensorRT-LLM
+
+1. Follow [step 1](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#installation)
+of the Installation section. It includes instructions for cloning llama if you
+do not already have it downloaded.
+
+  ```
+  git clone https://github.com/triton-inference-server/tensorrtllm_backend.git  --branch release/0.5.0
+  # Update the submodules
+  cd tensorrtllm_backend
+  # Install git-lfs if needed
+  sudo apt-get update && sudo apt-get install git-lfs -y --no-install-recommends
+  git lfs install
+  git submodule update --init --recursive
+  ```
+
+2. Launch the Triton docker container with the TensorRT-LLM backend.
+This will require mounting the repo from step 1 into the docker container
+and any models you plan to serve.
+
+    For the tensorrtllm_backend repository, you need the following directories mounted:
+- backend: .../tensorrtllm_backend/:/tensorrtllm_backend
+- llama repo: .../llama/repo:/Llama-2-7b-hf
+- engine: .../tensorrtllm_backend/tensorrt_llm/examples/llama/engine:/engines
+
+```
+docker run --rm -it --net host --shm-size=2g \
+    --ulimit memlock=-1 --ulimit stack=67108864 --gpus all \
+    -v $(pwd):/tensorrtllm_backend \
+    -v /path/to/llama/repo:/Llama-2-7b-hf \
+    -v $(pwd)/tensorrt_llm/examples/llama/engines:/engines \
+    nvcr.io/nvidia/tritonserver:23.10-trtllm-python-py3 \
+    bash
+```
+
+3. Follow the steps [here](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#create-engines-for-each-model-skip-this-step-if-you-already-have-an-engine)
+to create the engine.
+
+    Building the engine in the container with the `--output_dir /engines`
+    flag will place the compiled `.engine` file under the expected directory set in step 1.
+
+    Note:
+    - Compiling the wheel and engine can take more than 1 hour.
+    - If you get an error compiling bfloat16, you can remove it for the default
+    option.
+
+    Once the engine is created, copy the directory containing the engine
+    file and config.json over to following directory: <model-repo>/tensorrt_llm/1
+
+4. Serve the model with [Triton](https://github.com/triton-inference-server/tutorials/blob/main/Popular_Models_Guide/Llama2/trtllm_guide.md#serving-with-triton).
+
+```
+cp -R /tensorrtllm_backend/all_models/inflight_batcher_llm /opt/tritonserver/.
+```
+
+  After copying the model repository, use the following sed commands to set
+  some required values in the config.pbtxt files.
+
+```
+sed -i 's#${tokenizer_dir}#/Llama-2-7b-hf/#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
+sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/preprocessing/config.pbtxt
+sed -i 's#${tokenizer_dir}#/Llama-2-7b-hf/#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
+sed -i 's#${tokenizer_type}#auto#' /opt/tritonserver/inflight_batcher_llm/postprocessing/config.pbtxt
+
+sed -i 's#${decoupled_mode}#true#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+sed -i 's#${engine_dir}#/engines/1-gpu/#' /opt/tritonserver/inflight_batcher_llm/tensorrt_llm/config.pbtxt
+```
+
+Note: Due to a known bug, all model_version values in
+`/opt/tritonserver/inflight_batcher_llm/ensemble/config.pbtxt` must be manually set to `1`.
+
+
+```
+python3 /tensorrtllm_backend/scripts/launch_triton_server.py --world_size=<world size of the engine> --model_repo=/opt/tritonserver/inflight_batcher_llm
+```
+
+### Using vLLM
 
 Download the pre-built Triton Server Container with vLLM backend from
 [NGC](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver)
@@ -57,6 +136,8 @@ docker run --gpus all --rm -it --net host \
     tritonserver --model-repository /model_repository
 ```
 
+### Run Triton Client SDK Container
+
 Next run the following command to start the Triton SDK container:
 ```bash
 git clone https://github.com/triton-inference-server/client.git
@@ -77,7 +158,9 @@ Inside the client container, run the following command to generate dummy prompts
 of size 100, 300, and 500 and receive single token from the model for each prompt.
 
 ```bash
-python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 100 500 200 --max-tokens 1
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -113,7 +196,7 @@ python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 1
 > }
 > ' > input_data.json
 >
-> $ python profile.py -m vllm_model --input-data input_data.json
+> $ python profile.py -m ensemble -b trtllm --input-data input_data.json
 > ```
 
 
@@ -130,7 +213,9 @@ of size 100, 300, and 500 and receive total 256 tokens from the model for each
 prompts.
 
 ```bash
-python profile.py -m vllm_model --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 100 500 200 --max-tokens 256 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 100
@@ -165,7 +250,9 @@ Run the following command inside the client container.
 pip install matplotlib
 
 # Run Perf Analyzer
-python profile.py -m vllm_model --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --prompt-size-range 10 10 1 --periodic-concurrency-range 1 100 1 --request-period 32 --max-tokens 1024 --ignore-eos
 
 # [ BENCHMARK SUMMARY ]
 # Prompt size: 10
@@ -187,7 +274,9 @@ split them into multiple segments of responses.
 For instance, assume we ran the following benchmark command:
 
 ```bash
-python profile.py -m vllm_model --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
+# trtllm: -m ensemble -b trtllm
+# vllm: -m vllm_model -b vllm
+python profile.py -m ensemble -b trtllm --periodic-concurrency-range 1 4 1 --request-period 32 --max-tokens 1024 --ignore-eos
 ```
 
 We start from a single request and increment up to 4 requests one by one for
