@@ -28,6 +28,9 @@ cmake_minimum_required(VERSION 3.17)
 
 project(tritonclient LANGUAGES C CXX)
 
+# Use C++17 standard as Triton's minimum required.
+set(TRITON_MIN_CXX_STANDARD 17 CACHE STRING "The minimum C++ standard which features are requested to build this target.")
+
 #
 # Options
 #
@@ -168,6 +171,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
       -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
       -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
       -DTRITON_ENABLE_ZLIB:BOOL=${TRITON_ENABLE_ZLIB}
+      -DTRITON_MIN_CXX_STANDARD:STRING=${TRITON_MIN_CXX_STANDARD}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
     DEPENDS ${_cc_client_depends}
