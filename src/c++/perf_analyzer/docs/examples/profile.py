@@ -417,7 +417,7 @@ def summarize_profile_results(args, prompts):
 
 def profile(args, export_file):
     command = (
-        f"perf_analyzer -m {args.model} -i grpc --async --streaming "
+        f"perf_analyzer -m {args.model} -u {args.url} -i grpc --async --streaming "
         f"--input-data={INPUT_FILENAME} "
         f"--profile-export-file={export_file} "
     )
@@ -644,6 +644,13 @@ if __name__ == "__main__":
         "--offline",
         action="store_true",
         help="Whether to stop streaming the model outputs.",
+    )
+    parser.add_argument(
+        "-u",
+        "--url",
+        type=str,
+        default="localhost:8001",
+        help="gRPC end point URL",
     )
     args = parser.parse_args()
     main(args)
