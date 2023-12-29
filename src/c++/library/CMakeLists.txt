@@ -203,6 +203,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib/
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib/
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/absl/lib/
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FILES_MATCHING
           PATTERN "*\.a"
@@ -219,6 +220,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib/
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib/
           ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/absl/lib/
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FILES_MATCHING
           PATTERN "*\.lib"
@@ -233,6 +235,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
     install(
       DIRECTORY
         ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/include/
+        ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/absl/include/
         ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/include/
         DESTINATION include
     )
