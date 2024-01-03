@@ -133,6 +133,8 @@ def _get_inference_request(
                     request.parameters[key].bool_param = value
                 elif isinstance(value, int):
                     request.parameters[key].int64_param = value
+                elif isinstance(value, float):
+                    request.parameters[key].double_param = value
                 else:
                     raise_error(
                         f'The parameter datatype "{type(value)}" for key "{key}" is not supported.'
