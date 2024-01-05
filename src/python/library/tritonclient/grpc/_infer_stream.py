@@ -45,11 +45,13 @@ class _InferStream:
     callback : function
         Python function that is invoked upon receiving response from
         the underlying stream. The function must reserve the last two
-        arguments (result, error) to hold InferResult and
-        InferenceServerException objects respectively which will be
+        arguments (result, error) to hold :py:class:`InferResult` and
+        :py:class:`InferenceServerException` objects respectively which will be
         provided to the function when executing the callback. The
         ownership of these objects will be given to the user. The
         'error' would be None for a successful inference.
+    verbose : bool
+        Enables verbose mode if set True.
     """
 
     def __init__(self, callback, verbose):

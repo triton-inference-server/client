@@ -193,7 +193,7 @@ def triton_to_np_dtype(dtype):
 def serialize_byte_tensor(input_tensor):
     """
     Serializes a bytes tensor into a flat numpy array of length prepended
-    bytes. The numpy array should use dtype of np.object_. For np.bytes_,
+    bytes. The numpy array should use dtype of np.object. For np.bytes,
     numpy will remove trailing zeros at the end of byte sequence and because
     of this it should be avoided.
 

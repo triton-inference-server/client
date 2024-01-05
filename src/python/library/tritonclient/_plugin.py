@@ -30,7 +30,8 @@ from abc import ABC, abstractmethod
 
 class InferenceServerClientPlugin(ABC):
     """Every Triton Client Plugin should extend this class.
-    Each plugin needs to implement the `__call__` method.
+    Each plugin needs to implement the :py:meth:`__call__` method.
+
     """
 
     @abstractmethod
@@ -42,5 +43,6 @@ class InferenceServerClientPlugin(ABC):
         ----------
         request : Request
             The request object.
+
         """
         pass

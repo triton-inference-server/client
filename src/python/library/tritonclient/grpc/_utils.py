@@ -32,7 +32,7 @@ from tritonclient.utils import *
 
 
 def get_error_grpc(rpc_error):
-    """Convert a gRPC error to an InferenceServerException.
+    """Convert a gRPC error to an :py:class:`InferenceServerException`.
 
     Parameters
     ----------
@@ -51,7 +51,7 @@ def get_error_grpc(rpc_error):
 
 
 def get_cancelled_error(msg=None):
-    """Get InferenceServerException object for a cancelled RPC.
+    """Get :py:class:`InferenceServerException` object for a cancelled RPC.
 
     Returns
     -------
@@ -63,7 +63,7 @@ def get_cancelled_error(msg=None):
 
 
 def raise_error_grpc(rpc_error):
-    """Raise an InferenceServerException from a gRPC error.
+    """Raise an :py:class:`InferenceServerException` from a gRPC error.
 
     Parameters
     ----------

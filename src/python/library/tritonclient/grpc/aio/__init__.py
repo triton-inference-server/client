@@ -43,7 +43,7 @@ from .._utils import _get_inference_request, _grpc_compression_type
 class InferenceServerClient(InferenceServerClientBase):
     """This feature is currently in beta and may be subject to change.
 
-    An analogy of the tritonclient.grpc.InferenceServerClient to enable
+    An analogy of the :py:class:`tritonclient.grpc.InferenceServerClient` to enable
     calling via asyncio syntax. The object is intended to be used by a single
     thread and simultaneously calling methods with different threads is not
     supported and can cause undefined behavior.
@@ -142,7 +142,7 @@ class InferenceServerClient(InferenceServerClientBase):
         return request_metadata
 
     async def is_server_live(self, headers=None, client_timeout=None):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.is_server_live`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerLiveRequest()
@@ -158,7 +158,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def is_server_ready(self, headers=None, client_timeout=None):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.is_server_ready`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerReadyRequest()
@@ -176,7 +176,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def is_model_ready(
         self, model_name, model_version="", headers=None, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.is_model_ready`"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
@@ -198,7 +198,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_server_metadata(
         self, headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to  :py:meth:`tritonclient.grpc.InferenceServerClient.get_server_metadata`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.ServerMetadataRequest()
@@ -221,7 +221,7 @@ class InferenceServerClient(InferenceServerClientBase):
         as_json=False,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_model_metadata`"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
@@ -248,7 +248,7 @@ class InferenceServerClient(InferenceServerClientBase):
         as_json=False,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_model_config`"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
@@ -270,7 +270,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_model_repository_index(
         self, headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_model_repository_index`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryIndexRequest()
@@ -297,7 +297,7 @@ class InferenceServerClient(InferenceServerClientBase):
         files=None,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.load_model`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelLoadRequest(model_name=model_name)
@@ -328,7 +328,7 @@ class InferenceServerClient(InferenceServerClientBase):
         unload_dependents=False,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.unload_model`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.RepositoryModelUnloadRequest(model_name=model_name)
@@ -351,7 +351,7 @@ class InferenceServerClient(InferenceServerClientBase):
         as_json=False,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to ::py:meth:`tritonclient.grpc.InferenceServerClient.get_inference_statistics`"""
         metadata = self._get_metadata(headers)
         try:
             if type(model_version) != str:
@@ -382,7 +382,7 @@ class InferenceServerClient(InferenceServerClientBase):
         as_json=False,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.update_trace_settings`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
@@ -412,7 +412,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_trace_settings(
         self, model_name=None, headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_trace_settings`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.TraceSettingRequest()
@@ -432,7 +432,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def update_log_settings(
         self, settings, headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.update_log_settings`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
@@ -459,7 +459,7 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     async def get_log_settings(self, headers=None, as_json=False, client_timeout=None):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_log_settings`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.LogSettingsRequest()
@@ -477,7 +477,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_system_shared_memory_status(
         self, region_name="", headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.get_system_shared_memory_status`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryStatusRequest(name=region_name)
@@ -499,7 +499,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def register_system_shared_memory(
         self, name, key, byte_size, offset=0, headers=None, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.register_system_shared_memory`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryRegisterRequest(
@@ -522,7 +522,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def unregister_system_shared_memory(
         self, name="", headers=None, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to  :py:meth:`tritonclient.grpc.InferenceServerClient.unregister_system_shared_memory`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.SystemSharedMemoryUnregisterRequest(name=name)
@@ -548,7 +548,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def get_cuda_shared_memory_status(
         self, region_name="", headers=None, as_json=False, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to  :py:meth:`tritonclient.grpc.InferenceServerClient.get_cuda_shared_memory_status`"""
 
         metadata = self._get_metadata(headers)
         try:
@@ -577,7 +577,7 @@ class InferenceServerClient(InferenceServerClientBase):
         headers=None,
         client_timeout=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to  :py:meth:`tritonclient.grpc.InferenceServerClient.register_cuda_shared_memory`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryRegisterRequest(
@@ -603,7 +603,7 @@ class InferenceServerClient(InferenceServerClientBase):
     async def unregister_cuda_shared_memory(
         self, name="", headers=None, client_timeout=None
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to  :py:meth:`tritonclient.grpc.InferenceServerClient.unregister_cuda_shared_memory`"""
         metadata = self._get_metadata(headers)
         try:
             request = service_pb2.CudaSharedMemoryUnregisterRequest(name=name)
@@ -641,7 +641,7 @@ class InferenceServerClient(InferenceServerClientBase):
         compression_algorithm=None,
         parameters=None,
     ):
-        """Refer to tritonclient.grpc.InferenceServerClient"""
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.infer`"""
 
         metadata = self._get_metadata(headers)
 
@@ -692,8 +692,8 @@ class InferenceServerClient(InferenceServerClientBase):
         ----------
         inputs_iterator : asynchronous iterator
             Async iterator that yields a dict(s) consists of the input
-            parameters to the async_stream_infer function defined in
-            tritonclient.grpc.InferenceServerClient.
+            parameters to the :py:meth:`tritonclient.grpc.InferenceServerClient.async_stream_infer` function defined in
+            :py:class:`tritonclient.grpc.InferenceServerClient`.
         stream_timeout : float
             Optional stream timeout. The stream will be closed once the
             specified timeout expires.
@@ -708,17 +708,18 @@ class InferenceServerClient(InferenceServerClientBase):
         Returns
         -------
         asynchronous iterator
-            Yield tuple holding (InferResult, InferenceServerException) objects.
+            Yield tuple holding (:py:class:`tritonclient.grpc.InferResult`, :py:class:`tritonclient.grpc.InferenceServerException`) objects.
 
+            Note
+            ----
             This object can be used to cancel the inference request like below:
-            ----------
-            it = stream_infer(...)
-            ret = it.cancel()
-            ----------
+
+            >>> it = stream_infer(...)
+            >>> ret = it.cancel()
 
         Raises
         ------
-        InferenceServerException
+        :py:class:`tritonclient.grpc.InferenceServerException`
             If inputs_iterator does not yield the correct input.
 
         """

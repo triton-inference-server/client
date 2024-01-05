@@ -34,7 +34,7 @@ from tritonclient.utils import InferenceServerException, raise_error
 
 def _get_error(response):
     """
-    Returns the InferenceServerException object if response
+    Returns the :py:class:`InferenceServerException` object if response
     indicates the error. If no error then return None
     """
     if response.status_code != 200:
@@ -61,7 +61,7 @@ def _get_error(response):
 
 def _raise_if_error(response):
     """
-    Raise InferenceServerException if received non-Success
+    Raise :py:class:`InferenceServerException` if received non-Success
     response from the server
     """
     error = _get_error(response)

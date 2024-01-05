@@ -982,6 +982,7 @@ class InferenceServerClient(InferenceServerClientBase):
     ):
         """Update the global log settings.
         Returns the log settings after the update.
+
         Parameters
         ----------
         settings: dict
@@ -1005,11 +1006,13 @@ class InferenceServerClient(InferenceServerClientBase):
             InferenceServerExeption with message "Deadline Exceeded" when the
             specified time elapses. The default value is None which means
             client will wait for the response from the server.
+
         Returns
         -------
         dict or protobuf message
             The JSON dict or LogSettingsResponse message holding
             the updated log settings.
+
         Raises
         ------
         InferenceServerException
@@ -1047,6 +1050,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
     def get_log_settings(self, headers=None, as_json=False, client_timeout=None):
         """Get the global log settings.
+
         Parameters
         ----------
         headers: dict
@@ -1067,15 +1071,18 @@ class InferenceServerClient(InferenceServerClientBase):
             InferenceServerExeption with message "Deadline Exceeded" when the
             specified time elapses. The default value is None which means
             client will wait for the response from the server.
+
         Returns
         -------
         dict or protobuf message
             The JSON dict or LogSettingsResponse message holding
             the log settings.
+
         Raises
         ------
         InferenceServerException
             If unable to get the log settings or has timed out.
+
         """
         metadata = self._get_metadata(headers)
         try:
@@ -1460,14 +1467,14 @@ class InferenceServerClient(InferenceServerClientBase):
         model_name: str
             The name of the model to run inference.
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         model_version : str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
             a version based on the model and internal policy.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id : str
@@ -1590,12 +1597,12 @@ class InferenceServerClient(InferenceServerClientBase):
         model_name: str
             The name of the model to run inference.
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         callback : function
             Python function that is invoked once the request is completed.
             The function must reserve the last two arguments (result, error)
-            to hold InferResult and InferenceServerException
+            to hold :py:class:`InferResult` and :py:class:`InferenceServerException`
             objects respectively which will be provided to the function when
             executing the callback. The ownership of these objects will be given
             to the user. The 'error' would be None for a successful inference.
@@ -1604,7 +1611,7 @@ class InferenceServerClient(InferenceServerClientBase):
             is an empty string which means then the server will choose
             a version based on the model and internal policy.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id : str
@@ -1668,13 +1675,13 @@ class InferenceServerClient(InferenceServerClientBase):
             Computations represented by a Future may be yet to be begun,
             ongoing, or have already completed.
 
+            Note
+            ----
             This object can be used to cancel the inference request like
             below:
-            ----------
-            future = async_infer(...)
-            ret = future.cancel()
-            ----------
 
+            >>> future = async_infer(...)
+            >>> ret = future.cancel()
 
         Raises
         ------
@@ -1745,8 +1752,8 @@ class InferenceServerClient(InferenceServerClientBase):
         callback : function
             Python function that is invoked upon receiving response from
             the underlying stream. The function must reserve the last two
-            arguments (result, error) to hold InferResult and
-            InferenceServerException objects respectively
+            arguments (result, error) to hold :py:class:`InferResult` and
+            :py:class:`InferenceServerException` objects respectively
             which will be provided to the function when executing the callback.
             The ownership of these objects will be given to the user. The 'error'
             would be None for a successful inference.
@@ -1830,14 +1837,14 @@ class InferenceServerClient(InferenceServerClientBase):
         model_name: str
             The name of the model to run inference.
         inputs : list
-            A list of InferInput objects, each describing data for a input
+            A list of :py:class:`InferInput` objects, each describing data for a input
             tensor required by the model.
         model_version: str
             The version of the model to run inference. The default value
             is an empty string which means then the server will choose
             a version based on the model and internal policy.
         outputs : list
-            A list of InferRequestedOutput objects, each describing how the output
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
             data must be returned. If not specified all outputs produced
             by the model will be returned using default settings.
         request_id : str
