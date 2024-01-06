@@ -26,8 +26,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = version("tritonclient")
+__version__ = "UNKNOWN"
+
+try:
+    __version__ = version("tritonclient")
+except PackageNotFoundError:
+    pass
 
 del version
