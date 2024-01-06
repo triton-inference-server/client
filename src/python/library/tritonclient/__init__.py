@@ -33,6 +33,7 @@ __version__ = "UNKNOWN"
 try:
     __version__ = version("tritonclient")
 except PackageNotFoundError:
+    # ignore if not an installed package
     pass
 
 del version
