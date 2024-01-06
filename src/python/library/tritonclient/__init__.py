@@ -36,3 +36,4 @@ except PackageNotFoundError:
     pass
 
 del version
+del PackageNotFoundError
