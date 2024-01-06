@@ -30,10 +30,10 @@ from importlib.metadata import PackageNotFoundError, version
 
 __version__ = "UNKNOWN"
 
+# unknown version if package is not installed
 try:
     __version__ = version("tritonclient")
 except PackageNotFoundError:
-    # ignore if not an installed package
     pass
 
 del version
