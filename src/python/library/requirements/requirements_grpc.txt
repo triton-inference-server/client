@@ -30,4 +30,5 @@
 grpcio>=1.41.0
 numpy>=1.19.1
 packaging>=14.1
+protobuf>=3.5.0,<5
 python-rapidjson>=0.9.1
