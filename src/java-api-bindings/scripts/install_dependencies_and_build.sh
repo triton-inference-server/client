@@ -111,7 +111,7 @@ for OPTS; do
 done
 set -x
 
-if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0]; then
+if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0 ]; then
     # install cmake and rapidjson
     apt-get update && apt-get install -y gpg wget && \
         wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
