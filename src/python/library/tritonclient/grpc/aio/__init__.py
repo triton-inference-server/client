@@ -29,15 +29,22 @@
 import base64
 import sys
 
+import grpc
 import rapidjson as json
 from google.protobuf.json_format import MessageToJson
 from tritonclient.grpc import *
+from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
 from ... import _auth as auth
-from ..._client import InferenceServerClientBase
 from ..._plugin import InferenceServerClientPlugin
 from ..._request import Request
-from .._utils import _get_inference_request, _grpc_compression_type
+from .._client import MAX_GRPC_MESSAGE_SIZE, InferenceServerClientBase, KeepAliveOptions
+from .._utils import (
+    _get_inference_request,
+    _grpc_compression_type,
+    raise_error,
+    raise_error_grpc,
+)
 
 
 class InferenceServerClient(InferenceServerClientBase):
