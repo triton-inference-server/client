@@ -33,6 +33,9 @@ except ModuleNotFoundError as error:
         "The installation does not include http support. Specify 'http' or 'all' while installing the tritonclient package to include the support"
     ) from error
 
+import base64
+import gzip
+import zlib
 from urllib.parse import quote
 
 import rapidjson as json
