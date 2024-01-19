@@ -41,11 +41,14 @@ ReportWriter::Create(
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
-    std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics)
+    std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
+    const std::vector<Experiment>& experiments,
+    const bool should_output_llm_metrics)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
       filename, target_concurrency, summary, verbose_csv, include_server_stats,
-      percentile, parser, should_output_metrics));
+      percentile, parser, should_output_metrics, experiments,
+      should_output_llm_metrics));
 
   *writer = std::move(local_writer);
 
@@ -57,11 +60,15 @@ ReportWriter::ReportWriter(
     const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
-    const bool should_output_metrics)
+    const bool should_output_metrics,
+    const std::vector<Experiment>& experiments,
+    const bool should_output_llm_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
       include_server_stats_(include_server_stats), percentile_(percentile),
-      parser_(parser), should_output_metrics_(should_output_metrics)
+      parser_(parser), should_output_metrics_(should_output_metrics),
+      experiments_(experiments),
+      should_output_llm_metrics_(should_output_llm_metrics)
 {
 }
 
@@ -109,6 +116,10 @@ ReportWriter::GenerateReport()
         ofs << ",Max GPU Memory Usage";
         ofs << ",Total GPU Memory";
       }
+    }
+    if (should_output_llm_metrics_) {
+      ofs << ",Avg First Token Latency";
+      ofs << ",Avg Token-to-Token Latency";
     }
     ofs << std::endl;
 
@@ -234,6 +245,14 @@ ReportWriter::GenerateReport()
                 GENERIC_ERROR);
           }
         }
+      }
+      if (should_output_llm_metrics_) {
+        if (experiments_.empty()) {
+          throw PerfAnalyzerException(
+              "Attempted to write LLM metrics when profile data is empty.",
+              GENERIC_ERROR);
+        }
+        WriteLlmMetrics(ofs);
       }
       ofs << std::endl;
     }
@@ -386,6 +405,42 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
   for (auto& entry : gpu_total_mem_map) {
     ofs << entry.first << ":" << entry.second << ";";
   }
+}
+
+void
+ReportWriter::WriteLlmMetrics(std::ostream& ofs)
+{
+  namespace chrono = std::chrono;
+  using chrono::duration_cast;
+
+  std::vector<uint64_t> first_token_latencies;
+  std::vector<uint64_t> t2t_latencies;
+
+  for (const auto& exp : experiments_) {
+    for (const auto& req : exp.requests) {
+      for (auto i = 0; i < req.response_times_.size(); i++) {
+        if (i <= 0) {
+          const auto ttft{duration_cast<chrono::milliseconds>(
+              req.response_times_[i] - req.start_time_)};
+          first_token_latencies.push_back(static_cast<uint64_t>(ttft.count()));
+        } else {
+          const auto t2t{duration_cast<chrono::milliseconds>(
+              req.response_times_[i] - req.response_times_[i - 1])};
+          t2t_latencies.push_back(static_cast<uint64_t>(t2t.count()));
+        }
+      }
+    }
+  }
+
+  uint64_t avg_first_token_latency =
+      std::reduce(first_token_latencies.begin(), first_token_latencies.end()) /
+      first_token_latencies.size();
+  uint64_t avg_t2t_latency =
+      std::reduce(t2t_latencies.begin(), t2t_latencies.end()) /
+      t2t_latencies.size();
+
+  ofs << "," << avg_first_token_latency;
+  ofs << "," << avg_t2t_latency;
 }
 
 }}  // namespace triton::perfanalyzer

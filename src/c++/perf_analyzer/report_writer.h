@@ -69,7 +69,9 @@ class ReportWriter {
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
-      std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics);
+      std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
+      const std::vector<Experiment>& experiments,
+      const bool should_output_llm_metrics);
 
   void GenerateReport();
 
@@ -79,13 +81,17 @@ class ReportWriter {
   /// rate
   void WriteGpuMetrics(std::ostream& ofs, const Metrics& metric);
 
+  void WriteLlmMetrics(std::ostream& ofs);
+
  private:
   ReportWriter(
       const std::string& filename, const bool target_concurrency,
       const std::vector<pa::PerfStatus>& summary, const bool verbose_csv,
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
-      const bool should_output_metrics);
+      const bool should_output_metrics,
+      const std::vector<Experiment>& experiments,
+      const bool should_output_llm_metrics);
 
 
   const std::string& filename_{""};
@@ -96,6 +102,8 @@ class ReportWriter {
   std::vector<pa::PerfStatus> summary_{};
   const std::shared_ptr<ModelParser>& parser_{nullptr};
   const bool should_output_metrics_{false};
+  const std::vector<Experiment> experiments_{};
+  const bool should_output_llm_metrics_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestReportWriter;

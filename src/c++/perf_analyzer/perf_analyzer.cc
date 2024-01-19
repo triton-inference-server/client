@@ -428,13 +428,19 @@ PerfAnalyzer::WriteReport()
   bool should_output_metrics{
       params_->should_collect_metrics && params_->verbose_csv};
 
+  // (TMA-1526) Detect if the model is LLM and report LLM metrics based on that
+  // signal. Currently, we only check the backend type.
+  // TODO: check backend type to determine if we should report LLM metrics.
+  bool should_output_llm_metrics{true};
+
   std::unique_ptr<pa::ReportWriter> writer;
 
   FAIL_IF_ERR(
       pa::ReportWriter::Create(
           params_->filename, params_->targeting_concurrency(), perf_statuses_,
           params_->verbose_csv, profiler_->IncludeServerStats(),
-          params_->percentile, parser_, &writer, should_output_metrics),
+          params_->percentile, parser_, &writer, should_output_metrics,
+          collector_->GetData(), should_output_llm_metrics),
       "failed to create report writer");
 
   writer->GenerateReport();
