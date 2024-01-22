@@ -418,13 +418,13 @@ ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 
   for (const auto& exp : experiments_) {
     for (const auto& req : exp.requests) {
-      for (auto i = 0; i < req.response_times_.size(); i++) {
+      for (size_t i = 0; i < req.response_times_.size(); i++) {
         if (i <= 0) {
-          const auto ttft{duration_cast<chrono::milliseconds>(
+          const auto ttft{duration_cast<chrono::microseconds>(
               req.response_times_[i] - req.start_time_)};
           first_token_latencies.push_back(static_cast<uint64_t>(ttft.count()));
         } else {
-          const auto t2t{duration_cast<chrono::milliseconds>(
+          const auto t2t{duration_cast<chrono::microseconds>(
               req.response_times_[i] - req.response_times_[i - 1])};
           t2t_latencies.push_back(static_cast<uint64_t>(t2t.count()));
         }

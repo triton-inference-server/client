@@ -130,6 +130,10 @@ class ModelParser {
     return model_signature_name_;
   }
 
+  /// Get the name of the target backend
+  /// \return Backend name as string
+  const std::string& BackendName() const { return backend_name_; }
+
   /// Get the scheduler type for the model
   ModelSchedulerType SchedulerType() const { return scheduler_type_; }
 
@@ -214,6 +218,7 @@ class ModelParser {
   std::string model_name_;
   std::string model_version_;
   std::string model_signature_name_;
+  std::string backend_name_;
   size_t max_batch_size_;
   bool response_cache_enabled_;
 
