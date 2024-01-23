@@ -410,8 +410,6 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
 void
 ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 {
-  namespace chrono = std::chrono;
-
   std::vector<double> first_token_latencies;
   std::vector<double> t2t_latencies;
 
@@ -419,11 +417,11 @@ ReportWriter::WriteLlmMetrics(std::ostream& ofs)
     for (const auto& req : exp.requests) {
       for (size_t i = 0; i < req.response_times_.size(); i++) {
         if (i <= 0) {
-          const chrono::duration<double, std::micro> ttft{
+          const std::chrono::duration<double, std::micro> ttft{
               req.response_times_[i] - req.start_time_};
           first_token_latencies.push_back(ttft.count());
         } else {
-          const chrono::duration<double, std::micro> t2t{
+          const std::chrono::duration<double, std::micro> t2t{
               req.response_times_[i] - req.response_times_[i - 1]};
           t2t_latencies.push_back(t2t.count());
         }
