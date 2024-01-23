@@ -411,31 +411,30 @@ void
 ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 {
   namespace chrono = std::chrono;
-  using chrono::duration_cast;
 
-  std::vector<uint64_t> first_token_latencies;
-  std::vector<uint64_t> t2t_latencies;
+  std::vector<double> first_token_latencies;
+  std::vector<double> t2t_latencies;
 
   for (const auto& exp : experiments_) {
     for (const auto& req : exp.requests) {
       for (size_t i = 0; i < req.response_times_.size(); i++) {
         if (i <= 0) {
-          const auto ttft{duration_cast<chrono::microseconds>(
-              req.response_times_[i] - req.start_time_)};
-          first_token_latencies.push_back(static_cast<uint64_t>(ttft.count()));
+          const chrono::duration<double, std::micro> ttft{
+              req.response_times_[i] - req.start_time_};
+          first_token_latencies.push_back(ttft.count());
         } else {
-          const auto t2t{duration_cast<chrono::microseconds>(
-              req.response_times_[i] - req.response_times_[i - 1])};
-          t2t_latencies.push_back(static_cast<uint64_t>(t2t.count()));
+          const chrono::duration<double, std::micro> t2t{
+              req.response_times_[i] - req.response_times_[i - 1]};
+          t2t_latencies.push_back(t2t.count());
         }
       }
     }
   }
 
-  uint64_t avg_first_token_latency =
+  auto avg_first_token_latency =
       std::reduce(first_token_latencies.begin(), first_token_latencies.end()) /
       first_token_latencies.size();
-  uint64_t avg_t2t_latency =
+  auto avg_t2t_latency =
       std::reduce(t2t_latencies.begin(), t2t_latencies.end()) /
       t2t_latencies.size();
 

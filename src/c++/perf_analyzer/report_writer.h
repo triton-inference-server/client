@@ -81,6 +81,8 @@ class ReportWriter {
   /// rate
   void WriteGpuMetrics(std::ostream& ofs, const Metrics& metric);
 
+  /// Output LLM metrics (e.g. average first token latency) to a stream.
+  /// \param ofs A stream to output the csv data
   void WriteLlmMetrics(std::ostream& ofs);
 
  private:
