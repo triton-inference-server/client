@@ -137,7 +137,7 @@ TEST_CASE("report_writer: WriteLlmMetrics")
   std::vector<Experiment> experiments{experiment};
 
   // Avg first token latency
-  // = ((request1 - response1) + (request2 - response3)) / 2
+  // = ((response1 - request1) + (response3 - request2)) / 2
   // = (3 + 1) / 2 = 2 us
   // Avg token-to-token latency
   // = ((response2 - response1) + (response4 - response3)) / 2
