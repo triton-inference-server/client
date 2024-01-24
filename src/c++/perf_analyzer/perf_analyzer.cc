@@ -429,13 +429,9 @@ PerfAnalyzer::WriteReport()
       params_->should_collect_metrics && params_->verbose_csv};
 
   // (TMA-1526) Detect if the model is LLM and report LLM metrics based on that
-  // signal. Currently we just check the backend name (either tensorrt_llm or
-  // vllm). Therefore, the model config must specify backend name in order for
-  // Perf Analyzer to include LLM metrics in the csv report.
+  // signal. Currently we just check if it's decoupled model.
   bool should_output_llm_metrics{
-      !params_->profile_export_file.empty() &&
-      (parser_->BackendName() == "vllm" ||
-       parser_->BackendName() == "tensorrt_llm")};
+      parser_->IsDecoupled() && !params_->profile_export_file.empty()};
 
   std::unique_ptr<pa::ReportWriter> writer;
 
