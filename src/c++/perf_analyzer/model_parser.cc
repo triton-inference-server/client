@@ -59,10 +59,6 @@ ModelParser::InitTriton(
     is_decoupled_ = txn_itr->value["decoupled"].GetBool();
   }
 
-  if (config.HasMember("backend")) {
-    backend_name_ = config["backend"].GetString();
-  }
-
   // Get the information about inputs from metadata
   const auto inputs_itr = metadata.FindMember("inputs");
   if (inputs_itr != metadata.MemberEnd()) {
