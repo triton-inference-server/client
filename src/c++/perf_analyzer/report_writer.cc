@@ -410,6 +410,14 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
 void
 ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 {
+  auto [avg_first_token_latency, avg_t2t_latency] = CalculateLlmMetrics();
+  ofs << "," << avg_first_token_latency;
+  ofs << "," << avg_t2t_latency;
+}
+
+std::tuple<double, double>
+ReportWriter::CalculateLlmMetrics()
+{
   const std::vector<Experiment>& experiments{collector_->GetData()};
   std::vector<double> first_token_latencies;
   std::vector<double> t2t_latencies;
@@ -437,8 +445,7 @@ ReportWriter::WriteLlmMetrics(std::ostream& ofs)
       std::reduce(t2t_latencies.begin(), t2t_latencies.end()) /
       t2t_latencies.size();
 
-  ofs << "," << avg_first_token_latency;
-  ofs << "," << avg_t2t_latency;
+  return std::make_tuple(avg_first_token_latency, avg_t2t_latency);
 }
 
 }}  // namespace triton::perfanalyzer

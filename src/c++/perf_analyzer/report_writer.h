@@ -95,6 +95,10 @@ class ReportWriter {
       const std::shared_ptr<ProfileDataCollector>& collector,
       const bool should_output_llm_metrics);
 
+  /// Calculate LLM metrics (e.g., average first token latency) using the
+  /// profile data collected for decoupled model.
+  std::tuple<double, double> CalculateLlmMetrics();
+
 
   const std::string& filename_{""};
   const bool target_concurrency_{true};
