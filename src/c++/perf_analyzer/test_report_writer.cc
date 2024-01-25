@@ -1,4 +1,4 @@
-// Copyright 2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -35,10 +35,10 @@ namespace triton { namespace perfanalyzer {
 class TestReportWriter : ReportWriter {
  public:
   TestReportWriter() = default;
-  TestReportWriter(std::vector<Experiment>& experiments)
+  TestReportWriter(const std::shared_ptr<ProfileDataCollector>& collector)
       : ReportWriter(
             "", false, std::vector<pa::PerfStatus>{}, false, false, 0, nullptr,
-            false, experiments, true)
+            false, collector, true)
   {
   }
   void WriteGpuMetrics(std::ostream& ofs, const Metrics& metrics)
@@ -105,11 +105,16 @@ TEST_CASE("testing WriteGpuMetrics")
 
 TEST_CASE("report_writer: WriteLlmMetrics")
 {
+  std::shared_ptr<ProfileDataCollector> collector;
+  CHECK_NOTHROW_MESSAGE(
+      pa::ProfileDataCollector::Create(&collector),
+      "failed to create profile data collector");
+
+  InferenceLoadMode infer_mode{10, 20.0};  // dummy values
+
   // Create a dummy request records
   using std::chrono::system_clock;
   using std::chrono::time_point;
-
-  Experiment experiment;
   auto clock_epoch{time_point<system_clock>()};
 
   uint64_t seq_id1{123};
@@ -133,8 +138,7 @@ TEST_CASE("report_writer: WriteLlmMetrics")
       seq_id2,  false};
 
   std::vector<RequestRecord> request_records{rr1, rr2};
-  experiment.requests = std::move(request_records);
-  std::vector<Experiment> experiments{experiment};
+  collector->AddData(infer_mode, std::move(request_records));
 
   // Avg first token latency
   // = ((response1 - request1) + (response3 - request2)) / 2
@@ -142,7 +146,7 @@ TEST_CASE("report_writer: WriteLlmMetrics")
   // Avg token-to-token latency
   // = ((response2 - response1) + (response4 - response3)) / 2
   // = (1 + 2) / 2 = 1.5 us
-  TestReportWriter trw(experiments);
+  TestReportWriter trw(collector);
   std::ostringstream actual_output{};
   trw.WriteLlmMetrics(actual_output);
   const std::string expected_output{",2,1.5"};

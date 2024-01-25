@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -42,12 +42,12 @@ ReportWriter::Create(
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
-    const std::vector<Experiment>& experiments,
+    const std::shared_ptr<ProfileDataCollector>& collector,
     const bool should_output_llm_metrics)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
       filename, target_concurrency, summary, verbose_csv, include_server_stats,
-      percentile, parser, should_output_metrics, experiments,
+      percentile, parser, should_output_metrics, collector,
       should_output_llm_metrics));
 
   *writer = std::move(local_writer);
@@ -61,13 +61,13 @@ ReportWriter::ReportWriter(
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
     const bool should_output_metrics,
-    const std::vector<Experiment>& experiments,
+    const std::shared_ptr<ProfileDataCollector>& collector,
     const bool should_output_llm_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
       include_server_stats_(include_server_stats), percentile_(percentile),
       parser_(parser), should_output_metrics_(should_output_metrics),
-      experiments_(experiments),
+      collector_(collector),
       should_output_llm_metrics_(should_output_llm_metrics)
 {
 }
@@ -247,7 +247,7 @@ ReportWriter::GenerateReport()
         }
       }
       if (should_output_llm_metrics_) {
-        if (experiments_.empty()) {
+        if (collector_->IsEmpty()) {
           throw PerfAnalyzerException(
               "Attempted to write LLM metrics when profile data is empty.",
               GENERIC_ERROR);
@@ -410,10 +410,11 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
 void
 ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 {
+  const std::vector<Experiment>& experiments{collector_->GetData()};
   std::vector<double> first_token_latencies;
   std::vector<double> t2t_latencies;
 
-  for (const auto& exp : experiments_) {
+  for (const auto& exp : experiments) {
     for (const auto& req : exp.requests) {
       for (size_t i = 0; i < req.response_times_.size(); i++) {
         if (i <= 0) {

@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -70,7 +70,7 @@ class ReportWriter {
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
-      const std::vector<Experiment>& experiments,
+      const std::shared_ptr<ProfileDataCollector>& collector,
       const bool should_output_llm_metrics);
 
   void GenerateReport();
@@ -92,7 +92,7 @@ class ReportWriter {
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
       const bool should_output_metrics,
-      const std::vector<Experiment>& experiments,
+      const std::shared_ptr<ProfileDataCollector>& collector,
       const bool should_output_llm_metrics);
 
 
@@ -104,7 +104,7 @@ class ReportWriter {
   std::vector<pa::PerfStatus> summary_{};
   const std::shared_ptr<ModelParser>& parser_{nullptr};
   const bool should_output_metrics_{false};
-  const std::vector<Experiment> experiments_{};
+  const std::shared_ptr<ProfileDataCollector>& collector_{nullptr};
   const bool should_output_llm_metrics_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE

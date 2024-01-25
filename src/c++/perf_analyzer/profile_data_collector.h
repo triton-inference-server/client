@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -100,6 +100,8 @@ class ProfileDataCollector {
   std::vector<Experiment>& GetData() { return experiments_; }
 
   std::string& GetVersion() { return version_; }
+
+  bool IsEmpty() { return experiments_.empty(); }
 
  private:
   ProfileDataCollector() = default;

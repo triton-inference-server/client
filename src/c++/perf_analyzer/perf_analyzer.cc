@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -428,8 +428,8 @@ PerfAnalyzer::WriteReport()
   bool should_output_metrics{
       params_->should_collect_metrics && params_->verbose_csv};
 
-  // (TMA-1526) Detect if the model is LLM and report LLM metrics based on that
-  // signal. Currently we just check if it's decoupled model.
+  // TODO (TMA-1557): Detect if the model is LLM and report LLM metrics based
+  // on that signal. Currently we simply check if it's a decoupled model.
   bool should_output_llm_metrics{
       parser_->IsDecoupled() && !params_->profile_export_file.empty()};
 
@@ -440,7 +440,7 @@ PerfAnalyzer::WriteReport()
           params_->filename, params_->targeting_concurrency(), perf_statuses_,
           params_->verbose_csv, profiler_->IncludeServerStats(),
           params_->percentile, parser_, &writer, should_output_metrics,
-          collector_->GetData(), should_output_llm_metrics),
+          collector_, should_output_llm_metrics),
       "failed to create report writer");
 
   writer->GenerateReport();
