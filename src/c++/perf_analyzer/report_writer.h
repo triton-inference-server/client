@@ -70,7 +70,7 @@ class ReportWriter {
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
       std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
-      const std::shared_ptr<ProfileDataCollector>& collector,
+      std::shared_ptr<ProfileDataCollector> collector,
       const bool should_output_llm_metrics);
 
   void GenerateReport();
@@ -92,7 +92,7 @@ class ReportWriter {
       const bool include_server_stats, const int32_t percentile,
       const std::shared_ptr<ModelParser>& parser,
       const bool should_output_metrics,
-      const std::shared_ptr<ProfileDataCollector>& collector,
+      std::shared_ptr<ProfileDataCollector> collector,
       const bool should_output_llm_metrics);
 
   /// Calculate LLM metrics (e.g., average first token latency) using the
@@ -108,7 +108,7 @@ class ReportWriter {
   std::vector<pa::PerfStatus> summary_{};
   const std::shared_ptr<ModelParser>& parser_{nullptr};
   const bool should_output_metrics_{false};
-  const std::shared_ptr<ProfileDataCollector>& collector_{nullptr};
+  std::shared_ptr<ProfileDataCollector> collector_{nullptr};
   const bool should_output_llm_metrics_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE

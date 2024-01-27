@@ -42,7 +42,7 @@ ReportWriter::Create(
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
     std::unique_ptr<ReportWriter>* writer, const bool should_output_metrics,
-    const std::shared_ptr<ProfileDataCollector>& collector,
+    std::shared_ptr<ProfileDataCollector> collector,
     const bool should_output_llm_metrics)
 {
   std::unique_ptr<ReportWriter> local_writer(new ReportWriter(
@@ -61,7 +61,7 @@ ReportWriter::ReportWriter(
     const bool include_server_stats, const int32_t percentile,
     const std::shared_ptr<ModelParser>& parser,
     const bool should_output_metrics,
-    const std::shared_ptr<ProfileDataCollector>& collector,
+    std::shared_ptr<ProfileDataCollector> collector,
     const bool should_output_llm_metrics)
     : filename_(filename), target_concurrency_(target_concurrency),
       summary_(summary), verbose_csv_(verbose_csv),
@@ -247,11 +247,6 @@ ReportWriter::GenerateReport()
         }
       }
       if (should_output_llm_metrics_) {
-        if (collector_->IsEmpty()) {
-          throw PerfAnalyzerException(
-              "Attempted to write LLM metrics when profile data is empty.",
-              GENERIC_ERROR);
-        }
         WriteLlmMetrics(ofs);
       }
       ofs << std::endl;
@@ -418,6 +413,12 @@ ReportWriter::WriteLlmMetrics(std::ostream& ofs)
 std::tuple<double, double>
 ReportWriter::CalculateLlmMetrics()
 {
+  if (collector_->IsEmpty()) {
+    throw PerfAnalyzerException(
+        "Attempted to write LLM metrics when profile data is empty.",
+        GENERIC_ERROR);
+  }
+
   const std::vector<Experiment>& experiments{collector_->GetData()};
   std::vector<double> first_token_latencies;
   std::vector<double> t2t_latencies;
@@ -425,7 +426,7 @@ ReportWriter::CalculateLlmMetrics()
   for (const auto& exp : experiments) {
     for (const auto& req : exp.requests) {
       for (size_t i = 0; i < req.response_times_.size(); i++) {
-        if (i <= 0) {
+        if (i == 0) {
           const std::chrono::duration<double, std::micro> ttft{
               req.response_times_[i] - req.start_time_};
           first_token_latencies.push_back(ttft.count());
