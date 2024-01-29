@@ -79,11 +79,11 @@ class ReportWriter {
   /// \param ofs A stream to output the csv data
   /// \param metric The metric container for a particular concurrency or request
   /// rate
-  void WriteGpuMetrics(std::ostream& ofs, const Metrics& metric);
+  void WriteGPUMetrics(std::ostream& ofs, const Metrics& metric);
 
   /// Output LLM metrics (e.g. average first token latency) to a stream.
   /// \param ofs A stream to output the csv data
-  void WriteLlmMetrics(std::ostream& ofs);
+  void WriteLLMMetrics(std::ostream& ofs);
 
  private:
   ReportWriter(
@@ -97,7 +97,7 @@ class ReportWriter {
 
   /// Calculate LLM metrics (e.g., average first token latency) using the
   /// profile data collected for decoupled model.
-  std::tuple<double, double> CalculateLlmMetrics();
+  std::tuple<double, double> CalculateLLMMetrics();
 
 
   const std::string& filename_{""};

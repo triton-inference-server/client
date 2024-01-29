@@ -29,6 +29,7 @@
 #include "doctest.h"
 #include "profile_data_collector.h"
 #include "report_writer.h"
+#include "request_record.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -41,18 +42,18 @@ class TestReportWriter : ReportWriter {
             false, collector, true)
   {
   }
-  void WriteGpuMetrics(std::ostream& ofs, const Metrics& metrics)
+  void WriteGPUMetrics(std::ostream& ofs, const Metrics& metrics)
   {
-    ReportWriter::WriteGpuMetrics(ofs, metrics);
+    ReportWriter::WriteGPUMetrics(ofs, metrics);
   }
 
-  void WriteLlmMetrics(std::ostream& ofs)
+  void WriteLLMMetrics(std::ostream& ofs)
   {
-    ReportWriter::WriteLlmMetrics(ofs);
+    ReportWriter::WriteLLMMetrics(ofs);
   }
 };
 
-TEST_CASE("testing WriteGpuMetrics")
+TEST_CASE("testing WriteGPUMetrics")
 {
   TestReportWriter trw{};
   Metrics m{};
@@ -64,7 +65,7 @@ TEST_CASE("testing WriteGpuMetrics")
 
   SUBCASE("single gpu complete output")
   {
-    trw.WriteGpuMetrics(actual_output, m);
+    trw.WriteGPUMetrics(actual_output, m);
     const std::string expected_output{",a:1;,a:2.2;,a:3;,a:4;"};
     CHECK(actual_output.str() == expected_output);
   }
@@ -72,7 +73,7 @@ TEST_CASE("testing WriteGpuMetrics")
   SUBCASE("single gpu missing data")
   {
     m.gpu_power_usage_per_gpu.erase("a");
-    trw.WriteGpuMetrics(actual_output, m);
+    trw.WriteGPUMetrics(actual_output, m);
     const std::string expected_output{",a:1;,,a:3;,a:4;"};
     CHECK(actual_output.str() == expected_output);
   }
@@ -86,7 +87,7 @@ TEST_CASE("testing WriteGpuMetrics")
 
     SUBCASE("multi gpu complete output")
     {
-      trw.WriteGpuMetrics(actual_output, m);
+      trw.WriteGPUMetrics(actual_output, m);
       const std::string expected_output{
           ",a:1;z:100;,a:2.2;z:222.2;,a:3;z:45;,a:4;z:89;"};
       CHECK(actual_output.str() == expected_output);
@@ -96,14 +97,35 @@ TEST_CASE("testing WriteGpuMetrics")
     {
       m.gpu_utilization_per_gpu.erase("z");
       m.gpu_power_usage_per_gpu.erase("a");
-      trw.WriteGpuMetrics(actual_output, m);
+      trw.WriteGPUMetrics(actual_output, m);
       const std::string expected_output{",a:1;,z:222.2;,a:3;z:45;,a:4;z:89;"};
       CHECK(actual_output.str() == expected_output);
     }
   }
 }
 
-TEST_CASE("report_writer: WriteLlmMetrics")
+RequestRecord
+GenerateRequestRecord(
+    uint64_t sequence_id, uint64_t request_timestamp,
+    const std::vector<uint64_t>& response_timestamps)
+{
+  using std::chrono::system_clock;
+  using std::chrono::time_point;
+
+  auto clock_epoch{time_point<system_clock>()};
+  auto request{clock_epoch + std::chrono::microseconds(request_timestamp)};
+
+  std::vector<time_point<system_clock>> responses;
+  for (const auto& t : response_timestamps) {
+    responses.push_back(clock_epoch + std::chrono::microseconds(t));
+  }
+
+  RequestRecord request_record{request, responses,   0,
+                               false,   sequence_id, false};
+  return request_record;
+}
+
+TEST_CASE("report_writer: WriteLLMMetrics")
 {
   std::shared_ptr<ProfileDataCollector> collector;
   CHECK_NOTHROW_MESSAGE(
@@ -112,45 +134,48 @@ TEST_CASE("report_writer: WriteLlmMetrics")
 
   InferenceLoadMode infer_mode{10, 20.0};  // dummy values
 
-  // Create a dummy request records
-  using std::chrono::system_clock;
-  using std::chrono::time_point;
-  auto clock_epoch{time_point<system_clock>()};
+  SUBCASE("request with zero response")
+  {
+    // TODO
+    CHECK(false);
+  }
 
-  uint64_t seq_id1{123};
-  auto request1{clock_epoch + std::chrono::microseconds(1)};
-  auto response1{clock_epoch + std::chrono::microseconds(4)};
-  auto response2{clock_epoch + std::chrono::microseconds(5)};
+  SUBCASE("request with single response")
+  {
+    // TODO
+    CHECK(false);
+  }
 
-  RequestRecord rr1{
-      request1, std::vector<time_point<system_clock>>{response1, response2},
-      0,        false,
-      seq_id1,  false};
+  SUBCASE("requests with multiple responses")
+  {
+    uint64_t sequence_id1{123};
+    uint64_t request_timestamp1{1};
+    std::vector<uint64_t> response_timestamps1{4, 5, 8, 10};
+    RequestRecord rr1 = GenerateRequestRecord(
+        sequence_id1, request_timestamp1, response_timestamps1);
 
-  uint64_t seq_id2{456};
-  auto request2{clock_epoch + std::chrono::microseconds(4)};
-  auto response3{clock_epoch + std::chrono::microseconds(5)};
-  auto response4{clock_epoch + std::chrono::microseconds(7)};
+    uint64_t sequence_id2{456};
+    uint64_t request_timestamp2{2};
+    std::vector<uint64_t> response_timestamps2{6, 7, 10, 12};
+    RequestRecord rr2 = GenerateRequestRecord(
+        sequence_id2, request_timestamp2, response_timestamps2);
 
-  RequestRecord rr2{
-      request2, std::vector<time_point<system_clock>>{response3, response4},
-      0,        false,
-      seq_id2,  false};
+    std::vector<RequestRecord> request_records{rr1, rr2};
+    collector->AddData(infer_mode, std::move(request_records));
 
-  std::vector<RequestRecord> request_records{rr1, rr2};
-  collector->AddData(infer_mode, std::move(request_records));
-
-  // Avg first token latency
-  // = ((response1 - request1) + (response3 - request2)) / 2
-  // = (3 + 1) / 2 = 2 us
-  // Avg token-to-token latency
-  // = ((response2 - response1) + (response4 - response3)) / 2
-  // = (1 + 2) / 2 = 1.5 us
-  TestReportWriter trw(collector);
-  std::ostringstream actual_output{};
-  trw.WriteLlmMetrics(actual_output);
-  const std::string expected_output{",2,1.5"};
-  CHECK(actual_output.str() == expected_output);
+    // Avg first token latency
+    // = ((response1[0] - request1) + (response2[0] - request2) + ...) / 3
+    // = ((4 - 1) + (6 - 2)) / 2 = 3.5 us
+    //
+    // Avg token-to-token latency
+    // = ((res1[i] - res1[i - 1]) + ... + (res2[i]] - res2[i - 1]) + ...) / 6
+    // = ((5-4) + (8-5) + (10-8) + (7-6) + (10-7) + (12-10)) / 6 = 2 us
+    TestReportWriter trw(collector);
+    std::ostringstream actual_output{};
+    trw.WriteLLMMetrics(actual_output);
+    const std::string expected_output{",3.5,2"};
+    CHECK(actual_output.str() == expected_output);
+  }
 }
 
 }}  // namespace triton::perfanalyzer

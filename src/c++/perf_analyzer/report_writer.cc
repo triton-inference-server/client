@@ -238,7 +238,7 @@ ReportWriter::GenerateReport()
         ofs << "," << std::to_string(avg_response_wait_time_us);
         if (should_output_metrics_) {
           if (status.metrics.size() == 1) {
-            WriteGpuMetrics(ofs, status.metrics[0]);
+            WriteGPUMetrics(ofs, status.metrics[0]);
           } else {
             throw PerfAnalyzerException(
                 "There should only be one entry in the metrics vector.",
@@ -247,7 +247,7 @@ ReportWriter::GenerateReport()
         }
       }
       if (should_output_llm_metrics_) {
-        WriteLlmMetrics(ofs);
+        WriteLLMMetrics(ofs);
       }
       ofs << std::endl;
     }
@@ -377,7 +377,7 @@ ReportWriter::GenerateReport()
 }
 
 void
-ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
+ReportWriter::WriteGPUMetrics(std::ostream& ofs, const Metrics& metric)
 {
   auto& gpu_util_map = metric.gpu_utilization_per_gpu;
   auto& gpu_power_usage_map = metric.gpu_power_usage_per_gpu;
@@ -403,15 +403,15 @@ ReportWriter::WriteGpuMetrics(std::ostream& ofs, const Metrics& metric)
 }
 
 void
-ReportWriter::WriteLlmMetrics(std::ostream& ofs)
+ReportWriter::WriteLLMMetrics(std::ostream& ofs)
 {
-  auto [avg_first_token_latency, avg_t2t_latency] = CalculateLlmMetrics();
+  auto [avg_first_token_latency, avg_t2t_latency] = CalculateLLMMetrics();
   ofs << "," << avg_first_token_latency;
   ofs << "," << avg_t2t_latency;
 }
 
 std::tuple<double, double>
-ReportWriter::CalculateLlmMetrics()
+ReportWriter::CalculateLLMMetrics()
 {
   if (collector_->IsEmpty()) {
     throw PerfAnalyzerException(
