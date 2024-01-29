@@ -425,16 +425,17 @@ ReportWriter::CalculateLLMMetrics()
 
   for (const auto& exp : experiments) {
     for (const auto& req : exp.requests) {
-      for (size_t i = 0; i < req.response_times_.size(); i++) {
-        if (i == 0) {
-          const std::chrono::duration<double, std::micro> ttft{
-              req.response_times_[i] - req.start_time_};
-          first_token_latencies.push_back(ttft.count());
-        } else {
-          const std::chrono::duration<double, std::micro> t2t{
-              req.response_times_[i] - req.response_times_[i - 1]};
-          t2t_latencies.push_back(t2t.count());
-        }
+      // Collect first token latencies
+      if (!req.response_times_.empty()) {
+        const std::chrono::duration<double, std::micro> ttft{
+            req.response_times_.front() - req.start_time_};
+        first_token_latencies.push_back(ttft.count());
+      }
+      // Collect token-to-token (T2T) latencies
+      for (size_t i = 1; i < req.response_times_.size(); i++) {
+        const std::chrono::duration<double, std::micro> t2t{
+            req.response_times_[i] - req.response_times_[i - 1]};
+        t2t_latencies.push_back(t2t.count());
       }
     }
   }
