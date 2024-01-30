@@ -134,7 +134,7 @@ TEST_CASE("report_writer: WriteLLMMetrics")
 
   InferenceLoadMode infer_mode{};
 
-  SUBCASE("request with zero response")
+  SUBCASE("requests with zero response")
   {
     uint64_t sequence_id1{123};
     uint64_t request_timestamp1{1};
