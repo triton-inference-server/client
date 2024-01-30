@@ -132,18 +132,61 @@ TEST_CASE("report_writer: WriteLLMMetrics")
       pa::ProfileDataCollector::Create(&collector),
       "failed to create profile data collector");
 
-  InferenceLoadMode infer_mode{10, 20.0};  // dummy values
+  InferenceLoadMode infer_mode{};
 
   SUBCASE("request with zero response")
   {
-    // TODO
-    CHECK(false);
+    uint64_t sequence_id1{123};
+    uint64_t request_timestamp1{1};
+    std::vector<uint64_t> response_timestamps1{};
+    RequestRecord rr1 = GenerateRequestRecord(
+        sequence_id1, request_timestamp1, response_timestamps1);
+
+    uint64_t sequence_id2{456};
+    uint64_t request_timestamp2{2};
+    std::vector<uint64_t> response_timestamps2{};
+    RequestRecord rr2 = GenerateRequestRecord(
+        sequence_id2, request_timestamp2, response_timestamps2);
+
+    std::vector<RequestRecord> request_records{rr1, rr2};
+    collector->AddData(infer_mode, std::move(request_records));
+
+    // Avg first token latency = n/a
+    // Avg token-to-token latency = n/a
+    TestReportWriter trw(collector);
+    std::ostringstream actual_output{};
+    trw.WriteLLMMetrics(actual_output);
+    const std::string expected_output{",n/a,n/a"};
+    CHECK(actual_output.str() == expected_output);
   }
 
-  SUBCASE("request with single response")
+  SUBCASE("requests with single response")
   {
-    // TODO
-    CHECK(false);
+    uint64_t sequence_id1{123};
+    uint64_t request_timestamp1{1};
+    std::vector<uint64_t> response_timestamps1{2};
+    RequestRecord rr1 = GenerateRequestRecord(
+        sequence_id1, request_timestamp1, response_timestamps1);
+
+    uint64_t sequence_id2{456};
+    uint64_t request_timestamp2{2};
+    std::vector<uint64_t> response_timestamps2{9};
+    RequestRecord rr2 = GenerateRequestRecord(
+        sequence_id2, request_timestamp2, response_timestamps2);
+
+    std::vector<RequestRecord> request_records{rr1, rr2};
+    collector->AddData(infer_mode, std::move(request_records));
+
+    // Avg first token latency
+    // = ((response1[0] - request1) + (response2[0] - request2)) / 2
+    // = ((2 - 1) + (9 - 2)) / 2 = 4 us
+    //
+    // Avg token-to-token latency = n/a
+    TestReportWriter trw(collector);
+    std::ostringstream actual_output{};
+    trw.WriteLLMMetrics(actual_output);
+    const std::string expected_output{",4,n/a"};
+    CHECK(actual_output.str() == expected_output);
   }
 
   SUBCASE("requests with multiple responses")
@@ -164,7 +207,7 @@ TEST_CASE("report_writer: WriteLLMMetrics")
     collector->AddData(infer_mode, std::move(request_records));
 
     // Avg first token latency
-    // = ((response1[0] - request1) + (response2[0] - request2) + ...) / 3
+    // = ((response1[0] - request1) + (response2[0] - request2)) / 2
     // = ((4 - 1) + (6 - 2)) / 2 = 3.5 us
     //
     // Avg token-to-token latency

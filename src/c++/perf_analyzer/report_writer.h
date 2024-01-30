@@ -97,7 +97,8 @@ class ReportWriter {
 
   /// Calculate LLM metrics (e.g., average first token latency) using the
   /// profile data collected for decoupled model.
-  std::tuple<double, double> CalculateLLMMetrics();
+  std::tuple<std::optional<double>, std::optional<double>>
+  CalculateLLMMetrics();
 
 
   const std::string& filename_{""};

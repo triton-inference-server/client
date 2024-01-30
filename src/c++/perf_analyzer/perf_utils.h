@@ -36,6 +36,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <random>
 
 #include "client_backend/client_backend.h"
@@ -82,6 +83,17 @@ class Range {
   T end;
   T step;
 };
+
+template <typename T>
+std::optional<T>
+CalculateAverage(const std::vector<T>& data)
+{
+  if (data.empty()) {
+    return std::nullopt;
+  }
+  T sum = std::reduce(data.begin(), data.end());
+  return sum / data.size();
+}
 
 // Converts the datatype from tensorflow to perf analyzer space
 // \param tf_dtype The data type string returned from the model metadata.

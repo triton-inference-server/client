@@ -406,11 +406,20 @@ void
 ReportWriter::WriteLLMMetrics(std::ostream& ofs)
 {
   auto [avg_first_token_latency, avg_t2t_latency] = CalculateLLMMetrics();
-  ofs << "," << avg_first_token_latency;
-  ofs << "," << avg_t2t_latency;
+
+  if (avg_first_token_latency.has_value()) {
+    ofs << "," << avg_first_token_latency.value();
+  } else {
+    ofs << ",n/a";
+  }
+  if (avg_t2t_latency.has_value()) {
+    ofs << "," << avg_t2t_latency.value();
+  } else {
+    ofs << ",n/a";
+  }
 }
 
-std::tuple<double, double>
+std::tuple<std::optional<double>, std::optional<double>>
 ReportWriter::CalculateLLMMetrics()
 {
   if (collector_->IsEmpty()) {
@@ -440,13 +449,8 @@ ReportWriter::CalculateLLMMetrics()
     }
   }
 
-  auto avg_first_token_latency =
-      std::reduce(first_token_latencies.begin(), first_token_latencies.end()) /
-      first_token_latencies.size();
-  auto avg_t2t_latency =
-      std::reduce(t2t_latencies.begin(), t2t_latencies.end()) /
-      t2t_latencies.size();
-
+  auto avg_first_token_latency = CalculateAverage(first_token_latencies);
+  auto avg_t2t_latency = CalculateAverage(t2t_latencies);
   return std::make_tuple(avg_first_token_latency, avg_t2t_latency);
 }
 
