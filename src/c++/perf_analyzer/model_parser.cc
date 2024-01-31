@@ -169,6 +169,16 @@ ModelParser::InitTriton(
     response_cache_enabled_ = cache_itr->value["enable"].GetBool();
   }
 
+  // Check what the backend is:
+  const auto backend_config_itr = config.FindMember("backend");
+  if (backend_config_itr != config.MemberEnd()) {
+    std::string backend_str;
+    RETURN_IF_ERROR(GetString(backend_itr->value, &backend_str));
+    if (backend_str == "vllm") {
+      backend_type_ = TritonBackendType::VLLM;
+    }
+  }
+
   return cb::Error::Success;
 }
 
@@ -432,6 +442,17 @@ ModelParser::GetInt(const rapidjson::Value& value, int64_t* integer_value)
   }
 
   return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::GetString(const rapidjson::Value& value, std::string* string_value)
+{
+  if (value.IsString()) {
+    std::string str(value.GetString(), value.GetStringLength());
+    string_value = &str;
+    return cb::Error::Success;
+  }
+  return cb::Error("Value is not a string", pa::GENERIC_ERROR);
 }
 
 }}  // namespace triton::perfanalyzer

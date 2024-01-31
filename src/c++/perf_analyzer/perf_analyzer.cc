@@ -52,6 +52,44 @@ SignalHandler(int signum)
     exit(0);
   }
 }
+
+bool
+IsLLMModel(
+    const std::shared_ptr<pa::ModelParser>& parser,
+    const pa::PAParamsPTR& params)
+{
+  bool is_llm_from_user = params->is_llm if (is_llm_from_user)
+  {
+    return true;
+  }
+
+  bool is_llm = false;
+  // check if its decoupled
+  is_llm =
+      is_llm || (parser->IsDecoupled() && !params->profile_export_file.empty());
+
+  // check if is ensemble model, and if model has a tensorrt_llm portion to it
+  // then it is for sure the tensorrt-llm backend
+  if (!parser->composing_models_map_.empty()) {
+    auto composing_models_map = parser->composing_models_map_;
+    for (auto& [_, model_version_pair] : *composing_models_map) {
+      std::string model_version = model_version_pair.first;
+      if (model_version == "tensorrt_llm") {
+        parser->backend_type == ModelParser::TritonBackendType::TENSORRT_LLM;
+        break;
+      }
+    }
+  }
+
+  // check if backend used is vLLM or TensorRT-LLM backend
+  is_llm = is_llm ||
+           (parser->backend_type_ == ModelParser::TritonBackendType::VLLM ||
+                parser->backend_type_ =
+                ModelParser::TritonBackendType::TENSORRT_LLM);
+
+  return is_llm;
+}
+
 }}  // namespace triton::perfanalyzer
 
 PerfAnalyzer::PerfAnalyzer(pa::PAParamsPtr params) : params_(params)
@@ -427,6 +465,10 @@ PerfAnalyzer::WriteReport()
 
   bool should_output_metrics{
       params_->should_collect_metrics && params_->verbose_csv};
+
+  // TODO (TMA-1526): Detect if the model is LLM and report LLM metrics based
+  // on that signal. Currently we simply check if it's a decoupled model.
+  bool should_output_llm_metrics{IsLLMModel(parser_, params_)};
 
   std::unique_ptr<pa::ReportWriter> writer;
 

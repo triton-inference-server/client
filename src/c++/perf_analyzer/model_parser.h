@@ -67,6 +67,8 @@ class ModelParser {
     ENSEMBLE_SEQUENCE
   };
 
+  enum TritonBackendType { TENSORRT_LLM, VLLM, OTHER };
+
   explicit ModelParser(cb::BackendKind backend_kind)
       : backend_kind_(backend_kind),
         inputs_(std::make_shared<ModelTensorMap>()),
@@ -214,6 +216,7 @@ class ModelParser {
   std::string model_name_;
   std::string model_version_;
   std::string model_signature_name_;
+  TritonBackendType backend_type_ = TritonBackendType::OTHER;
   size_t max_batch_size_;
   bool response_cache_enabled_;
 

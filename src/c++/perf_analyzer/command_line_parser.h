@@ -125,6 +125,9 @@ struct PerfAnalyzerParameters {
   uint64_t metrics_interval_ms{1000};
   bool metrics_interval_ms_specified{false};
 
+  // Model is LLM. Will determine if PA outputs LLM related metrics
+  bool is_llm{false};
+
   // Return true if targeting concurrency
   //
   bool targeting_concurrency() const

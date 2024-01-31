@@ -188,6 +188,9 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--collect-metrics" << std::endl;
   std::cerr << "\t--metrics-url" << std::endl;
   std::cerr << "\t--metrics-interval" << std::endl;
+  std::cerr << "\t--is-llm-model enforces llm style dummy inputs and generate "
+               "LLM specific metrics"
+            << std::endl;
   std::cerr << std::endl;
   std::cerr << "==== OPTIONS ==== \n \n";
 
@@ -875,6 +878,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"periodic-concurrency-range", required_argument, 0, 59},
       {"request-period", required_argument, 0, 60},
       {"request-parameter", required_argument, 0, 61},
+      {"is-llm-model", no_argument, 0, 62},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1606,6 +1610,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
           param.value = value;
           param.type = type;
           params_->request_parameters[name] = param;
+          break;
+        }
+        case 62: {
+          params_->is_llm = true;
           break;
         }
         case 'v':
