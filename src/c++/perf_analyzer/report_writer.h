@@ -83,6 +83,7 @@ class ReportWriter {
 
   /// Output LLM metrics (e.g. average first token latency) to a stream.
   /// \param ofs A stream to output the csv data
+  /// \param status Profile summary and statistics of a single experiment
   void WriteLLMMetrics(std::ostream& ofs, const PerfStatus& status);
 
  private:
