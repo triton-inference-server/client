@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -131,8 +131,7 @@ struct PerfAnalyzerParameters {
   {
     return (
         using_concurrency_range || using_old_options ||
-        !(using_request_rate_range || using_custom_intervals ||
-          is_using_periodic_concurrency_mode));
+        !(using_request_rate_range || using_custom_intervals));
   }
 
   // Sets the threshold for PA client overhead.
@@ -150,10 +149,6 @@ struct PerfAnalyzerParameters {
 
   // The profile export file path.
   std::string profile_export_file{""};
-
-  bool is_using_periodic_concurrency_mode{false};
-  Range<uint64_t> periodic_concurrency_range{1, 1, 1};
-  uint64_t request_period{10};
 };
 
 using PAParamsPtr = std::shared_ptr<PerfAnalyzerParameters>;

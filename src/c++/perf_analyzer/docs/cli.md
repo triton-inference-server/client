@@ -1,5 +1,5 @@
 <!--
-Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -179,30 +179,6 @@ Perf Analyzer will run for a single concurrency level determined by 'start'. If
 until the latency threshold is met. 'end' and `--latency-threshold` cannot
 both be `0`. 'end' cannot be `0` for sequence models while using asynchronous
 mode.
-
-#### `--periodic-concurrency-range=<start:end:step>`
-
-Specifies the range of concurrency levels in the similar but slightly different
-manner as the `--concurrency-range`. Perf Analyzer will start from the
-concurrency level of 'start' and increase by 'step' each time. Unlike
-`--concurrency-range`, the 'end' indicates the *total* number of concurrency
-since the 'start' (including) and will stop increasing once the cumulative
-number of concurrent requests has reached the 'end'. The user can specify
-*when* to periodically increase the concurrency level using the
-`--request-period` option. The concurrency level will periodically increase for
-every `n`-th response specified by `--request-period`. Since this disables
-stability check in Perf Analyzer and reports response timestamps only, the user
-must provide `--profile-export-file` to specify where to dump all the measured
-timestamps.
-
-The default values of 'start', 'end', and 'step' are `1`.
-
-#### `--request-period=<n>`
-
-Specifies the number of responses that each request must receive before new,
-concurrent requests are sent when `--periodic-concurrency-range` is specified.
-
-Default value is `10`.
 
 #### `--request-parameter=<name:value:type>`
 

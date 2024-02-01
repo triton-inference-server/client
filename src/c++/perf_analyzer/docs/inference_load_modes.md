@@ -1,5 +1,5 @@
 <!--
-Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -39,40 +39,6 @@ example, when using
 [`--concurrency-range=4`](cli.md#--concurrency-rangestartendstep), Perf Analyzer
 will to attempt to have 4 outgoing inference requests at all times during
 profiling.
-
-## Periodic Concurrency Mode
-
-In periodic concurrency mode, Perf Analyzer will periodically launch a new set
-of inference requests until the total number of inference requests that has been
-launched since the beginning reaches N requests.
-
-For example, when using `--periodic-concurrency-range 10:100:30`, Perf Analyzer
-will start with 10 concurrent requests and for every step, it will launch 30 new
-inference requests until the total number of requests launched since the
-beginning reaches 100. Additionally, the user can also specify *when* to launch
-the new requests by specifying `--request-period M`. This will set Perf Analyzer
-to launch a new set of requests whenever *all* of the latest set of launched
-concurrent requests received M number of responses back from the server.
-
-The user can also specify custom parameters to the model using
-`--request-parameter <name:value:type>` option.
-For instance, passing `--request-parameter max_tokens:256:uint` will set an
-additional parameter `max_tokens` of type `int` to 256 as part of the request.
-
-```bash
-perf_analyzer -m <model_name> -i grpc --async --streaming \
-    --profile-export-file profile.json \
-    --periodic-concurrency-range 10:100:30 \
-    --request-period 10 \
-    --request-parameter max_tokens:256:int
-```
-
-> **Note**
->
-> The periodic concurrency mode is currently supported only by gRPC protocol and
-> with [decoupled models](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/decoupled_models.md).
-> Additionally, the user must also specify a file where Perf Analyzer could dump all the
-> profiled data using `--profile-export-file`.
 
 ## Request Rate Mode
 
