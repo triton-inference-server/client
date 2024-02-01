@@ -82,4 +82,16 @@ ProfileDataCollector::AddData(
   }
 }
 
+std::optional<std::reference_wrapper<Experiment>>
+ProfileDataCollector::GetExperiment(InferenceLoadMode& id)
+{
+  auto it = FindExperiment(id);
+  if (it == experiments_.end()) {
+    std::cerr << "No experiment with concurrency: " << id.concurrency
+              << "and request rate: " << id.request_rate << "found."
+              << std::endl;
+    return std::nullopt;
+  }
+  return *it;
+}
 }}  // namespace triton::perfanalyzer

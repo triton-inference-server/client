@@ -247,7 +247,7 @@ ReportWriter::GenerateReport()
         }
       }
       if (should_output_llm_metrics_) {
-        WriteLLMMetrics(ofs);
+        WriteLLMMetrics(ofs, status);
       }
       ofs << std::endl;
     }
@@ -403,49 +403,49 @@ ReportWriter::WriteGPUMetrics(std::ostream& ofs, const Metrics& metric)
 }
 
 void
-ReportWriter::WriteLLMMetrics(std::ostream& ofs)
+ReportWriter::WriteLLMMetrics(std::ostream& ofs, const PerfStatus& status)
 {
-  auto [avg_first_token_latency, avg_t2t_latency] = CalculateLLMMetrics();
+  InferenceLoadMode id{status.concurrency, status.request_rate};
+  auto experiment = collector_->GetExperiment(id);
+
+  if (!experiment.has_value()) {
+    ofs << ",N/A,N/A";
+    return;
+  }
+
+  auto [avg_first_token_latency, avg_t2t_latency] =
+      CalculateLLMMetrics(*experiment);
 
   if (avg_first_token_latency.has_value()) {
-    ofs << "," << avg_first_token_latency.value();
+    ofs << "," << *avg_first_token_latency;
   } else {
-    ofs << ",n/a";
+    ofs << ",N/A";
   }
   if (avg_t2t_latency.has_value()) {
-    ofs << "," << avg_t2t_latency.value();
+    ofs << "," << *avg_t2t_latency;
   } else {
-    ofs << ",n/a";
+    ofs << ",N/A";
   }
 }
 
 std::tuple<std::optional<double>, std::optional<double>>
-ReportWriter::CalculateLLMMetrics()
+ReportWriter::CalculateLLMMetrics(const Experiment& experiment)
 {
-  if (collector_->IsEmpty()) {
-    throw PerfAnalyzerException(
-        "Attempted to write LLM metrics when profile data is empty.",
-        GENERIC_ERROR);
-  }
-
-  const std::vector<Experiment>& experiments{collector_->GetData()};
   std::vector<double> first_token_latencies;
   std::vector<double> t2t_latencies;
 
-  for (const auto& exp : experiments) {
-    for (const auto& req : exp.requests) {
-      // Collect first token latencies
-      if (!req.response_times_.empty()) {
-        const std::chrono::duration<double, std::micro> ttft{
-            req.response_times_.front() - req.start_time_};
-        first_token_latencies.push_back(ttft.count());
-      }
-      // Collect token-to-token (T2T) latencies
-      for (size_t i = 1; i < req.response_times_.size(); i++) {
-        const std::chrono::duration<double, std::micro> t2t{
-            req.response_times_[i] - req.response_times_[i - 1]};
-        t2t_latencies.push_back(t2t.count());
-      }
+  for (const auto& req : experiment.requests) {
+    // Collect first token latencies
+    if (!req.response_times_.empty()) {
+      const std::chrono::duration<double, std::micro> ttft{
+          req.response_times_.front() - req.start_time_};
+      first_token_latencies.push_back(ttft.count());
+    }
+    // Collect token-to-token (T2T) latencies
+    for (size_t i = 1; i < req.response_times_.size(); i++) {
+      const std::chrono::duration<double, std::micro> t2t{
+          req.response_times_[i] - req.response_times_[i - 1]};
+      t2t_latencies.push_back(t2t.count());
     }
   }
 

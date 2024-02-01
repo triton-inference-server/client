@@ -27,6 +27,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <tuple>
 
@@ -95,7 +96,13 @@ class ProfileDataCollector {
   void AddData(
       InferenceLoadMode& id, std::vector<RequestRecord>&& request_records);
 
-  /// Get the experiment data for the profile
+  /// Get the experiment data that corresponds to the given inference load mode
+  /// @param id Identifier for the experiment
+  /// @return The experiment data or the null-typed object if not found
+  std::optional<std::reference_wrapper<Experiment>> GetExperiment(
+      InferenceLoadMode& id);
+
+  /// Get the entire experiment data for the profile
   /// @return Experiment data
   std::vector<Experiment>& GetData() { return experiments_; }
 

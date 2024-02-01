@@ -83,7 +83,7 @@ class ReportWriter {
 
   /// Output LLM metrics (e.g. average first token latency) to a stream.
   /// \param ofs A stream to output the csv data
-  void WriteLLMMetrics(std::ostream& ofs);
+  void WriteLLMMetrics(std::ostream& ofs, const PerfStatus& status);
 
  private:
   ReportWriter(
@@ -96,9 +96,11 @@ class ReportWriter {
       const bool should_output_llm_metrics);
 
   /// Calculate LLM metrics (e.g., average first token latency) using the
-  /// profile data collected for decoupled model.
-  std::tuple<std::optional<double>, std::optional<double>>
-  CalculateLLMMetrics();
+  /// profile data collected during a single inference experiment.
+  /// \param experiment A profile data that contains request and response
+  /// timestamps of a single inference experiment.
+  std::tuple<std::optional<double>, std::optional<double>> CalculateLLMMetrics(
+      const Experiment& experiment);
 
 
   const std::string& filename_{""};

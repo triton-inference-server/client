@@ -47,9 +47,9 @@ class TestReportWriter : ReportWriter {
     ReportWriter::WriteGPUMetrics(ofs, metrics);
   }
 
-  void WriteLLMMetrics(std::ostream& ofs)
+  void WriteLLMMetrics(std::ostream& ofs, PerfStatus& status)
   {
-    ReportWriter::WriteLLMMetrics(ofs);
+    ReportWriter::WriteLLMMetrics(ofs, status);
   }
 };
 
@@ -132,7 +132,9 @@ TEST_CASE("report_writer: WriteLLMMetrics")
       pa::ProfileDataCollector::Create(&collector),
       "failed to create profile data collector");
 
-  InferenceLoadMode infer_mode{};
+  InferenceLoadMode infer_mode;
+  std::ostringstream actual_output;
+  std::string expected_output;
 
   SUBCASE("requests with zero response")
   {
@@ -151,13 +153,9 @@ TEST_CASE("report_writer: WriteLLMMetrics")
     std::vector<RequestRecord> request_records{rr1, rr2};
     collector->AddData(infer_mode, std::move(request_records));
 
-    // Avg first token latency = n/a
-    // Avg token-to-token latency = n/a
-    TestReportWriter trw(collector);
-    std::ostringstream actual_output{};
-    trw.WriteLLMMetrics(actual_output);
-    const std::string expected_output{",n/a,n/a"};
-    CHECK(actual_output.str() == expected_output);
+    // Avg first token latency = N/A
+    // Avg token-to-token latency = N/A
+    expected_output = ",N/A,N/A";
   }
 
   SUBCASE("requests with single response")
@@ -181,15 +179,11 @@ TEST_CASE("report_writer: WriteLLMMetrics")
     // = ((response1[0] - request1) + (response2[0] - request2)) / 2
     // = ((2 - 1) + (9 - 2)) / 2 = 4 us
     //
-    // Avg token-to-token latency = n/a
-    TestReportWriter trw(collector);
-    std::ostringstream actual_output{};
-    trw.WriteLLMMetrics(actual_output);
-    const std::string expected_output{",4,n/a"};
-    CHECK(actual_output.str() == expected_output);
+    // Avg token-to-token latency = N/A
+    expected_output = ",4,N/A";
   }
 
-  SUBCASE("requests with multiple responses")
+  SUBCASE("requests with many responses")
   {
     uint64_t sequence_id1{123};
     uint64_t request_timestamp1{1};
@@ -213,12 +207,52 @@ TEST_CASE("report_writer: WriteLLMMetrics")
     // Avg token-to-token latency
     // = ((res1[i] - res1[i - 1]) + ... + (res2[i]] - res2[i - 1]) + ...) / 6
     // = ((5-4) + (8-5) + (10-8) + (7-6) + (10-7) + (12-10)) / 6 = 2 us
-    TestReportWriter trw(collector);
-    std::ostringstream actual_output{};
-    trw.WriteLLMMetrics(actual_output);
-    const std::string expected_output{",3.5,2"};
-    CHECK(actual_output.str() == expected_output);
+    expected_output = ",3.5,2";
   }
+
+  SUBCASE("requests with mixture of responses")
+  {
+    // zero response
+    uint64_t sequence_id1{123};
+    uint64_t request_timestamp1{1};
+    std::vector<uint64_t> response_timestamps1{};
+    RequestRecord rr1 = GenerateRequestRecord(
+        sequence_id1, request_timestamp1, response_timestamps1);
+
+    // single response
+    uint64_t sequence_id2{456};
+    uint64_t request_timestamp2{2};
+    std::vector<uint64_t> response_timestamps2{8};
+    RequestRecord rr2 = GenerateRequestRecord(
+        sequence_id2, request_timestamp2, response_timestamps2);
+
+    // many responses
+    uint64_t sequence_id3{456};
+    uint64_t request_timestamp3{4};
+    std::vector<uint64_t> response_timestamps3{6, 7, 10, 12};
+    RequestRecord rr3 = GenerateRequestRecord(
+        sequence_id3, request_timestamp3, response_timestamps3);
+
+    std::vector<RequestRecord> request_records{rr1, rr2, rr3};
+    collector->AddData(infer_mode, std::move(request_records));
+
+    // Avg first token latency
+    // = ((response2[0] - request2) + (response3[0] - request3)) / 2
+    // = ((8 - 2) + (6 - 4)) / 2 = 4 us
+    //
+    // Avg token-to-token latency
+    // = (... + (response3[i] - response3[i - 1]) + ...) / 3
+    // = ((7 - 6) + (10 - 7) + (12 - 10)) / 3 = 2 us
+    expected_output = ",4,2";
+  }
+
+  PerfStatus status;
+  status.concurrency = infer_mode.concurrency;
+  status.request_rate = infer_mode.request_rate;
+
+  TestReportWriter trw(collector);
+  trw.WriteLLMMetrics(actual_output, status);
+  CHECK(actual_output.str() == expected_output);
 }
 
 }}  // namespace triton::perfanalyzer
