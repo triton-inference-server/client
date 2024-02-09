@@ -36,7 +36,7 @@
 namespace triton { namespace perfanalyzer {
 
 #ifndef DOCTEST_CONFIG_DISABLE
-class TestReportWriter;
+class NaggyMockReportWriter;
 #endif
 
 //==============================================================================
@@ -116,7 +116,7 @@ class ReportWriter {
   const bool should_output_llm_metrics_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
-  friend TestReportWriter;
+  friend NaggyMockReportWriter;
 
  public:
   ReportWriter() = default;

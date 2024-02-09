@@ -204,6 +204,7 @@ add_executable(
   mock_sequence_manager.h
   mock_profile_data_collector.h
   mock_profile_data_exporter.h
+  mock_report_writer.h
   test_dataloader.cc
   test_inference_profiler.cc
   test_command_line_parser.cc
