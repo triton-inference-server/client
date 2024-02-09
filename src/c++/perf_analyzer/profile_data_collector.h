@@ -108,8 +108,6 @@ class ProfileDataCollector {
 
   std::string& GetVersion() { return version_; }
 
-  bool IsEmpty() { return experiments_.empty(); }
-
  private:
   ProfileDataCollector() = default;
 
