@@ -190,6 +190,7 @@ class InferenceServerClient(InferenceServerClientBase):
         )
         self._pool = gevent.pool.Pool(max_greenlets)
         self._verbose = verbose
+        self._closed = False
 
     def __enter__(self):
         return self
@@ -205,8 +206,10 @@ class InferenceServerClient(InferenceServerClientBase):
         will result in an Error.
 
         """
-        self._pool.join()
-        self._client_stub.close()
+        if not self._closed:
+            self._pool.join()
+            self._client_stub.close()
+            self._closed = True
 
     def _get(self, request_uri, headers, query_params):
         """Issues the GET request to the server
