@@ -42,7 +42,7 @@ template <typename ClientType>
 class ClientTest : public ::testing::Test {
  public:
   ClientTest()
-      : model_name_("onnx_int32_int32_int32"), shape_{1, 16}, dtype_("INT32")
+      : model_name_("client_test_simple"), shape_{1, 16}, dtype_("INT32")
   {
   }
 
@@ -1204,7 +1204,7 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
 {
   std::vector<char> content;
   {
-    std::string path("unit_test_models/onnx_int32_int32_int32/3/model.onnx");
+    std::string path("unit_test_models/client_test_simple/3/model.plan");
     std::ifstream in(path, std::ios::in | std::ios::binary);
     if (!in) {
       ASSERT_TRUE(false) << "failed to open file for testing";
@@ -1217,8 +1217,8 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
     in.close();
   }
 
-  std::string config("{\"backend\":\"onnxruntime\"}");
-  std::string model_name("onnx_int32_int32_int32");
+  std::string config("{\"backend\":\"tensorrt\"}");
+  std::string model_name("client_test_simple");
   std::string override_name("override_model");
   std::vector<std::pair<std::string, bool>> expected_version_ready{
       {"1", false}, {"3", true}};
@@ -1240,7 +1240,7 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
   // serves as an reminder that the existing model directory will
   // not be used.
   err = this->LoadModel(
-      model_name, std::string(), {{"file:1/model.onnx", content}});
+      model_name, std::string(), {{"file:1/model.plan", content}});
   ASSERT_FALSE(err.IsOk()) << "Expect LoadModel() to fail";
   // Sanity check that the model is unchanged
   for (const auto& vr : expected_version_ready) {
@@ -1255,7 +1255,7 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
   // Request to load the model with override file and config in
   // a different name
   err =
-      this->LoadModel(override_name, config, {{"file:1/model.onnx", content}});
+      this->LoadModel(override_name, config, {{"file:1/model.plan", content}});
   ASSERT_TRUE(err.IsOk()) << "Expect LoadModel() succeed: " << err.Message();
   // Sanity check that the model with original name is unchanged
   for (const auto& vr : expected_version_ready) {
@@ -1280,7 +1280,7 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
 
   // Request to load the model with override file and config in
   // original name
-  err = this->LoadModel(model_name, config, {{"file:1/model.onnx", content}});
+  err = this->LoadModel(model_name, config, {{"file:1/model.plan", content}});
   ASSERT_TRUE(err.IsOk()) << "Expect LoadModel() succeed: " << err.Message();
   // check that the model with original name is changed
   for (const auto& vr : expected_override_version_ready) {
@@ -1307,7 +1307,7 @@ TYPED_TEST_P(ClientTest, LoadWithFileOverride)
 TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
 {
   // Request to load the model with override config
-  std::string model_name("onnx_int32_int32_int32");
+  std::string model_name("client_test_simple");
   std::vector<std::pair<std::string, bool>> original_version_ready{
       {"2", true}, {"3", true}};
   std::vector<std::pair<std::string, bool>> expected_version_ready{
@@ -1316,7 +1316,7 @@ TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
 
   // Send the config with wrong format
   std::string config(
-      "\"parameters\": {\"config\": {{\"backend\":\"onnxruntime\", "
+      "\"parameters\": {\"config\": {{\"backend\":\"tensorrt\", "
       "\"version_policy\":{\"specific\":{\"versions\":[2]}}}}}");
 
   err = this->LoadModel(model_name, config);
@@ -1334,7 +1334,7 @@ TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
 
   // Send the config with correct format
   config =
-      "{\"backend\":\"onnxruntime\", "
+      "{\"backend\":\"tensorrt\", "
       "\"version_policy\":{\"specific\":{\"versions\":[2]}}}";
   err = this->LoadModel(model_name, config);
 
