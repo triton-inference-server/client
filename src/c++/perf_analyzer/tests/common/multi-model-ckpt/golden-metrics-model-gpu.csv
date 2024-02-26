@@ -1,0 +1,14 @@
+Model,GPU UUID,Batch,Concurrency,Model Config Path,Instance Group,Satisfies Constraints,GPU Memory Usage (MB),GPU Utilization (%),GPU Power Usage (W)
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","4,4","resnet50_libtorch_config_5,vgg19_libtorch_config_4","2:GPU,1:GPU",Yes,2602.6,100.0,276.1
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","1,1","resnet50_libtorch_config_5,vgg19_libtorch_config_4","2:GPU,1:GPU",Yes,2575.3,98.5,276.8
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","4,8","resnet50_libtorch_config_5,vgg19_libtorch_config_7","2:GPU,1:GPU",Yes,2680.2,100.0,274.2
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","1,1","resnet50_libtorch_config_5,vgg19_libtorch_config_7","2:GPU,1:GPU",Yes,2575.3,93.7,277.0
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","1,1","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU",Yes,2296.4,99.7,273.8
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","4,4","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU",Yes,2296.4,50.5,178.0
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","2,2","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU",Yes,2296.4,99.5,277.9
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","8,8","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU",Yes,2296.4,60.3,216.1
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","2,4","resnet50_libtorch_config_0,vgg19_libtorch_config_4","1:GPU,1:GPU",Yes,2323.6,99.3,275.4
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","2,2","resnet50_libtorch_config_0,vgg19_libtorch_config_0","1:GPU,1:GPU",Yes,2296.4,97.7,269.3
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","4,4","resnet50_libtorch_config_7,vgg19_libtorch_config_1","1:GPU,2:GPU",Yes,3089.1,79.7,280.6
+"resnet50_libtorch,vgg19_libtorch",GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,"1,1","2,8","resnet50_libtorch_config_0,vgg19_libtorch_config_7","1:GPU,1:GPU",Yes,2401.2,78.2,280.0
+

@@ -1,0 +1,14 @@
+Model,Batch,Concurrency,Model Config Path,Instance Group,Max Batch Size,Satisfies Constraints,Throughput (infer/sec),p99 Latency (ms)
+"resnet50_libtorch,vgg19_libtorch","1,1","4,4","resnet50_libtorch_config_5,vgg19_libtorch_config_4","2:GPU,1:GPU","1,2",Yes,"421.0, [184.5,236.5]","20.7, [23.9,17.4]"
+"resnet50_libtorch,vgg19_libtorch","1,1","1,1","resnet50_libtorch_config_5,vgg19_libtorch_config_4","2:GPU,1:GPU","1,2",Yes,"340.1, [168.9,171.2]","6.5, [7.0,6.0]"
+"resnet50_libtorch,vgg19_libtorch","1,1","4,8","resnet50_libtorch_config_5,vgg19_libtorch_config_7","2:GPU,1:GPU","1,4",Yes,"419.6, [139.9,279.7]","30.1, [31.2,29.0]"
+"resnet50_libtorch,vgg19_libtorch","1,1","1,1","resnet50_libtorch_config_5,vgg19_libtorch_config_7","2:GPU,1:GPU","1,4",Yes,"299.7, [123.6,176.2]","8.0, [10.0,6.0]"
+"resnet50_libtorch,vgg19_libtorch","1,1","1,1","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU","128,128",Yes,"344.1, [167.9,176.2]","6.8, [7.7,5.9]"
+"resnet50_libtorch,vgg19_libtorch","1,1","4,4","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU","128,128",Yes,"338.8, [139.2,199.5]","25.6, [30.4,20.7]"
+"resnet50_libtorch,vgg19_libtorch","1,1","2,2","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU","128,128",Yes,"339.1, [138.6,200.5]","13.0, [15.6,10.3]"
+"resnet50_libtorch,vgg19_libtorch","1,1","8,8","resnet50_libtorch_config_default,vgg19_libtorch_config_default","1:GPU,1:GPU","128,128",Yes,"338.1, [138.5,199.5]","50.7, [60.7,40.7]"
+"resnet50_libtorch,vgg19_libtorch","1,1","2,4","resnet50_libtorch_config_0,vgg19_libtorch_config_4","1:GPU,1:GPU","1,2",Yes,"368.4, [108.6,259.8]","17.9, [19.9,15.8]"
+"resnet50_libtorch,vgg19_libtorch","1,1","2,2","resnet50_libtorch_config_0,vgg19_libtorch_config_0","1:GPU,1:GPU","1,1",Yes,"341.4, [139.6,201.8]","12.9, [15.5,10.3]"
+"resnet50_libtorch,vgg19_libtorch","1,1","4,4","resnet50_libtorch_config_7,vgg19_libtorch_config_1","1:GPU,2:GPU","2,1",Yes,"345.4, [108.6,236.8]","28.4, [39.2,17.5]"
+"resnet50_libtorch,vgg19_libtorch","1,1","2,8","resnet50_libtorch_config_0,vgg19_libtorch_config_7","1:GPU,1:GPU","1,4",Yes,"374.7, [74.9,299.8]","27.1, [27.1,27.1]"
+

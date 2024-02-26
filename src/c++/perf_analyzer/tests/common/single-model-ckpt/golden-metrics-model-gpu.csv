@@ -1,0 +1,18 @@
+Model,GPU UUID,Batch,Concurrency,Model Config Path,Instance Group,Satisfies Constraints,GPU Memory Usage (MB),GPU Utilization (%),GPU Power Usage (W)
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,2,add_sub_config_default,1:GPU,Yes,872.4,5.5,56.4
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,2,add_sub_config_default,1:GPU,Yes,872.4,4.2,56.3
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,1,add_sub_config_default,1:GPU,Yes,872.4,3.0,56.2
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,1,add_sub_config_default,1:GPU,Yes,872.4,2.0,56.2
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,2,add_sub_config_1,1:GPU,Yes,872.4,6.0,56.6
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,2,add_sub_config_1,1:GPU,Yes,872.4,4.8,56.6
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,1,add_sub_config_1,1:GPU,Yes,872.4,3.5,56.5
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,1,add_sub_config_1,1:GPU,Yes,872.4,1.8,56.4
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,2,add_sub_config_3,2:GPU,Yes,874.5,2.8,56.8
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,2,1,add_sub_config_3,2:GPU,Yes,874.5,3.0,56.8
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,2,add_sub_config_3,2:GPU,Yes,874.5,3.0,56.6
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,1,add_sub_config_3,2:GPU,Yes,874.5,1.7,56.7
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,2,add_sub_config_0,1:GPU,Yes,872.4,4.0,56.5
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,1,add_sub_config_0,1:GPU,Yes,872.4,2.0,56.4
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,2,add_sub_config_2,2:GPU,Yes,874.5,2.0,56.7
+add_sub,GPU-8557549f-9c89-4384-8bd6-1fd823c342e0,1,1,add_sub_config_2,2:GPU,Yes,874.5,3.0,56.6
+

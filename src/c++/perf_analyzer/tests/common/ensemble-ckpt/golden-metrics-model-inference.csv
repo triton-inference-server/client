@@ -1,0 +1,23 @@
+Model,Batch,Concurrency,Model Config Path,Instance Group,Max Batch Size,Satisfies Constraints,Throughput (infer/sec),p99 Latency (ms)
+ensemble_add_sub,1,8,"ensemble_add_sub_config_1: add_config_0, sub_config_1","1:GPU,2:GPU","0,0",Yes,2865.9,3.7
+ensemble_add_sub,1,2,"ensemble_add_sub_config_1: add_config_0, sub_config_1","1:GPU,2:GPU","0,0",Yes,2837.6,0.9
+ensemble_add_sub,1,16,"ensemble_add_sub_config_1: add_config_0, sub_config_1","1:GPU,2:GPU","0,0",Yes,2801.7,7.3
+ensemble_add_sub,1,4,"ensemble_add_sub_config_1: add_config_0, sub_config_1","1:GPU,2:GPU","0,0",Yes,2561.8,2.1
+ensemble_add_sub,1,1,"ensemble_add_sub_config_1: add_config_0, sub_config_1","1:GPU,2:GPU","0,0",Yes,1785.0,0.8
+ensemble_add_sub,1,4,"ensemble_add_sub_config_0: add_config_0, sub_config_0","1:GPU,1:GPU","0,0",Yes,2852.4,1.9
+ensemble_add_sub,1,16,"ensemble_add_sub_config_0: add_config_0, sub_config_0","1:GPU,1:GPU","0,0",Yes,2773.7,7.2
+ensemble_add_sub,1,2,"ensemble_add_sub_config_0: add_config_0, sub_config_0","1:GPU,1:GPU","0,0",Yes,2773.0,1.0
+ensemble_add_sub,1,8,"ensemble_add_sub_config_0: add_config_0, sub_config_0","1:GPU,1:GPU","0,0",Yes,2697.8,3.9
+ensemble_add_sub,1,1,"ensemble_add_sub_config_0: add_config_0, sub_config_0","1:GPU,1:GPU","0,0",Yes,1775.3,0.8
+ensemble_add_sub,1,4,"ensemble_add_sub_config_default: add_config_default, sub_config_default","1:CPU,1:CPU","0,0",Yes,2851.6,1.9
+ensemble_add_sub,1,2,"ensemble_add_sub_config_default: add_config_default, sub_config_default","1:CPU,1:CPU","0,0",Yes,2825.4,0.9
+ensemble_add_sub,1,16,"ensemble_add_sub_config_default: add_config_default, sub_config_default","1:CPU,1:CPU","0,0",Yes,2786.8,7.2
+ensemble_add_sub,1,8,"ensemble_add_sub_config_default: add_config_default, sub_config_default","1:CPU,1:CPU","0,0",Yes,2763.4,3.8
+ensemble_add_sub,1,1,"ensemble_add_sub_config_default: add_config_default, sub_config_default","1:CPU,1:CPU","0,0",Yes,1764.3,0.9
+ensemble_add_sub,1,2,"ensemble_add_sub_config_2: add_config_1, sub_config_0","2:GPU,1:GPU","0,0",Yes,2847.2,0.9
+ensemble_add_sub,1,8,"ensemble_add_sub_config_2: add_config_1, sub_config_0","2:GPU,1:GPU","0,0",Yes,2766.5,3.7
+ensemble_add_sub,1,4,"ensemble_add_sub_config_2: add_config_1, sub_config_0","2:GPU,1:GPU","0,0",Yes,2729.6,2.0
+ensemble_add_sub,1,16,"ensemble_add_sub_config_2: add_config_1, sub_config_0","2:GPU,1:GPU","0,0",Yes,2702.6,7.7
+ensemble_add_sub,1,1,"ensemble_add_sub_config_2: add_config_1, sub_config_0","2:GPU,1:GPU","0,0",Yes,1770.9,0.8
+ensemble_add_sub,1,6,"ensemble_add_sub_config_3: add_config_2, sub_config_2","3:GPU,3:GPU","0,0",Yes,2709.2,2.8
+

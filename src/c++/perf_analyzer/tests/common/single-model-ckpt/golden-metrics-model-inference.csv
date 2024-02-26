@@ -1,0 +1,18 @@
+Model,Batch,Concurrency,Model Config Path,Instance Group,Max Batch Size,Satisfies Constraints,Throughput (infer/sec),p99 Latency (ms)
+add_sub,2,2,add_sub_config_default,1:GPU,8,Yes,13205.0,0.5
+add_sub,1,2,add_sub_config_default,1:GPU,8,Yes,6176.0,0.6
+add_sub,2,1,add_sub_config_default,1:GPU,8,Yes,4876.1,0.7
+add_sub,1,1,add_sub_config_default,1:GPU,8,Yes,2508.0,0.5
+add_sub,2,2,add_sub_config_1,1:GPU,2,Yes,12528.9,0.6
+add_sub,1,2,add_sub_config_1,1:GPU,2,Yes,6109.9,0.6
+add_sub,2,1,add_sub_config_1,1:GPU,2,Yes,4804.5,0.6
+add_sub,1,1,add_sub_config_1,1:GPU,2,Yes,2186.0,0.6
+add_sub,2,2,add_sub_config_3,2:GPU,2,Yes,6967.9,0.8
+add_sub,2,1,add_sub_config_3,2:GPU,2,Yes,3988.7,0.8
+add_sub,1,2,add_sub_config_3,2:GPU,2,Yes,3270.7,0.8
+add_sub,1,1,add_sub_config_3,2:GPU,2,Yes,1752.1,0.8
+add_sub,1,2,add_sub_config_0,1:GPU,1,Yes,6114.9,0.6
+add_sub,1,1,add_sub_config_0,1:GPU,1,Yes,2334.7,0.6
+add_sub,1,2,add_sub_config_2,2:GPU,1,Yes,3363.1,0.9
+add_sub,1,1,add_sub_config_2,2:GPU,1,Yes,1915.6,0.8
+
