@@ -29,7 +29,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import psutil
-
 from model_analyzer.cli.cli import CLI
 from model_analyzer.config.input.config_command_profile import ConfigCommandProfile
 from model_analyzer.config.input.config_command_report import ConfigCommandReport

@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import yaml
-
 from model_analyzer.config.input.yaml_config_validator import YamlConfigValidator
 from model_analyzer.model_analyzer_exceptions import TritonModelAnalyzerException
 
