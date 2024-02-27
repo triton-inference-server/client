@@ -25,10 +25,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-import argparse
-import sys
-
-args = parser.parse_args()
-if __name__ == "__main__":
-    sys.exit(0)
+LOGGER_NAME: str = "genai-pa"
