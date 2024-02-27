@@ -162,22 +162,13 @@ def add_profile_args(parser):
 
 
 def add_endpoint_args(parser):
-    pass
-    # TODO: Do we need URL and provider?
-    # parser.add_argument(
-    #     "--url",
-    #     type=str,
-    #     default="localhost:8001",
-    #     required=False,
-    #     help="URL of the endpoint to target for benchmarking.",
-    # )
-    # parser.add_argument(
-    #     "--provider",
-    #     type=str,
-    #     choices=["triton", "openai"],
-    #     required=False,
-    #     help="Provider format/schema to use for benchmarking.",
-    # )
+    parser.add_argument(
+        "--u",
+        type=str,
+        default="localhost:8001",
+        required=False,
+        help="URL of the endpoint to target for benchmarking.",
+    )
 
 
 def add_dataset_args(parser):

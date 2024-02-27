@@ -50,4 +50,4 @@ class Profiler:
                 cmd += f"--{arg} {value} "
 
         logger.info(f"Running Perf Analyzer : '{cmd}'")
-        subprocess.run(cmd)
+        subprocess.run(cmd, shell=True)
