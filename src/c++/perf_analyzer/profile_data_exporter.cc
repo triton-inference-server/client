@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -122,25 +122,43 @@ ProfileDataExporter::AddRequests(
       request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     }
 
-    rapidjson::Value responses(rapidjson::kArrayType);
-    AddResponses(responses, raw_request.response_times_);
+    rapidjson::Value response_timestamps(rapidjson::kArrayType);
+    AddResponseTimestamps(
+        response_timestamps, raw_request.response_timestamps_);
     request.AddMember(
-        "response_timestamps", responses, document_.GetAllocator());
+        "response_timestamps", response_timestamps, document_.GetAllocator());
+
+    rapidjson::Value response_outputs(rapidjson::kArrayType);
+    AddResponseOutputs(response_outputs, raw_request.response_outputs_);
+    request.AddMember(
+        "response_outputs", response_outputs, document_.GetAllocator());
+
     requests.PushBack(request, document_.GetAllocator());
   }
   entry.AddMember("requests", requests, document_.GetAllocator());
 }
 
 void
-ProfileDataExporter::AddResponses(
-    rapidjson::Value& responses,
+ProfileDataExporter::AddResponseTimestamps(
+    rapidjson::Value& timestamps_json,
     const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
-        response_times)
+        timestamps)
 {
-  for (auto& response : response_times) {
-    rapidjson::Value time;
-    time.SetUint64(response.time_since_epoch().count());
-    responses.PushBack(time, document_.GetAllocator());
+  for (auto& timestamp : timestamps) {
+    rapidjson::Value timestamp_json;
+    timestamp_json.SetUint64(timestamp.time_since_epoch().count());
+    timestamps_json.PushBack(timestamp_json, document_.GetAllocator());
+  }
+}
+
+void
+ProfileDataExporter::AddResponseOutputs(
+    rapidjson::Value& outputs_json, const std::vector<std::string>& outputs)
+{
+  for (auto& output : outputs) {
+    rapidjson::Value output_json;
+    output_json.SetString(output.c_str(), output.size());
+    outputs_json.PushBack(output_json, document_.GetAllocator());
   }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -41,11 +41,14 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   auto request_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
   auto response_timestamp1{clock_epoch + std::chrono::nanoseconds(2)};
   auto response_timestamp2{clock_epoch + std::chrono::nanoseconds(3)};
+  auto response_output1{"response_output1"};
+  auto response_output2{"response_output2"};
 
   RequestRecord request_record{
       request_timestamp,
       std::vector<std::chrono::time_point<std::chrono::system_clock>>{
           response_timestamp1, response_timestamp2},
+      {response_output1, response_output2},
       0,
       false,
       sequence_id,
@@ -75,7 +78,8 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
               {
                 "timestamp" : 1,
                 "sequence_id" : 1,
-                "response_timestamps" : [ 2, 3 ]
+                "response_timestamps" : [ 2, 3 ],
+                "response_outputs" : [ "response_output1", "response_output2" ]
               }
             ],
             "window_boundaries" : [ 1, 5, 6 ]
@@ -116,6 +120,12 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   CHECK(
       actual_request["response_timestamps"][1] ==
       expected_request["response_timestamps"][1]);
+  CHECK(
+      actual_request["response_outputs"][0] ==
+      expected_request["response_outputs"][0]);
+  CHECK(
+      actual_request["response_outputs"][1] ==
+      expected_request["response_outputs"][1]);
 
   CHECK(actual_windows[0] == expected_windows[0]);
   CHECK(actual_windows[1] == expected_windows[1]);
