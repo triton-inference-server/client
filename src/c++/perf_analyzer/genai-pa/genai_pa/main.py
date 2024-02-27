@@ -49,6 +49,9 @@ def main():
         run()
     except Exception as e:
         logger.error(f"{e}")
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
