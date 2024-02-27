@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -206,6 +206,7 @@ class InferResultGrpc : public InferResult {
       size_t* byte_size) const override;
   Error IsFinalResponse(bool* is_final_response) const override;
   Error IsNullResponse(bool* is_null_response) const override;
+  Error Output(std::string& output) const override;
   Error StringData(
       const std::string& output_name,
       std::vector<std::string>* string_result) const override;
@@ -346,6 +347,25 @@ InferResultGrpc::IsNullResponse(bool* is_null_response) const
     return Error("is_null_response cannot be nullptr");
   }
   *is_null_response = is_null_response_;
+  return Error::Success;
+}
+
+Error
+InferResultGrpc::Output(std::string& output) const
+{
+  // Only supports LLM outputs with name 'text_output' currently
+  if (output_name_to_buffer_map_.find("text_output") ==
+      output_name_to_buffer_map_.end()) {
+    return Error::Success;
+  }
+
+  const uint8_t* buf{nullptr};
+  size_t byte_size{0};
+  Error e{RawData("text_output", &buf, &byte_size)};
+  if (e.IsOk() == false) {
+    return e;
+  }
+  output.assign(reinterpret_cast<const char*>(buf), byte_size);
   return Error::Success;
 }
 
