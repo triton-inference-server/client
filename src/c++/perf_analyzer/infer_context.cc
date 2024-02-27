@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -149,8 +149,10 @@ InferContext::SendRequest(
         &results, *(infer_data_.options_), infer_data_.valid_inputs_,
         infer_data_.outputs_);
     thread_stat_->idle_timer.Stop();
+    std::string output{""};
     if (results != nullptr) {
       if (thread_stat_->status_.IsOk()) {
+        results->Output(output);
         thread_stat_->status_ = ValidateOutputs(results);
       }
       delete results;
@@ -167,7 +169,7 @@ InferContext::SendRequest(
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_records_.emplace_back(RequestRecord(
-          start_time_sync, std::move(end_time_syncs),
+          start_time_sync, std::move(end_time_syncs), {output},
           infer_data_.options_->sequence_end_, delayed, sequence_id, false));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
@@ -258,7 +260,11 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         if (thread_stat_->cb_status_.IsOk() == false) {
           return;
         }
-        it->second.response_times_.push_back(std::chrono::system_clock::now());
+        it->second.response_timestamps_.push_back(
+            std::chrono::system_clock::now());
+        std::string response_output{""};
+        result->Output(response_output);
+        it->second.response_outputs_.push_back(response_output);
         num_responses_++;
         if (is_null_response == true) {
           it->second.has_null_last_response_ = true;
@@ -271,9 +277,10 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         if (is_final_response) {
           has_received_final_response_ = is_final_response;
           thread_stat_->request_records_.emplace_back(
-              it->second.start_time_, it->second.response_times_,
-              it->second.sequence_end_, it->second.delayed_,
-              it->second.sequence_id_, it->second.has_null_last_response_);
+              it->second.start_time_, it->second.response_timestamps_,
+              it->second.response_outputs_, it->second.sequence_end_,
+              it->second.delayed_, it->second.sequence_id_,
+              it->second.has_null_last_response_);
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
           thread_stat_->cb_status_ = ValidateOutputs(result);
           async_req_map_.erase(request_id);
