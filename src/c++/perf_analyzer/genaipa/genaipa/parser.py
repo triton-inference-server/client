@@ -32,6 +32,27 @@ from genaipa.constants import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
 
+### Handlers ###
+
+
+def handle_profile(args):
+    from genaipa.profiler import Profiler
+
+    # TODO: "backend" arg may not translate well to final product
+    Profiler.profile(
+        model=args.model,
+        backend="vllm",
+        batch_size=args.batch_size,
+        url=args.url,
+        input_length=args.input_length,
+        output_length=args.output_length,
+        offline=False,
+        verbose=False,
+    )
+
+
+### Parsers ###
+
 
 def add_model_args(parser):
     parser.add_argument(
@@ -68,15 +89,43 @@ def add_profile_args(parser):
     )
 
 
-def add_tokenization_args(parser):
+def add_endpoint_args(parser):
+    parser.add_argument(
+        "--url",
+        type=str,
+        default="localhost:8001",
+        required=False,
+        help="URL of the endpoint to target for benchmarking.",
+    )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        choices=["triton", "openai"],
+        required=False,
+        help="Provider format/schema to use for benchmarking.",
+    )
+
+
+def add_dataset_args(parser):
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="OpenOrca",
+        choices=["OpenOrca", "cnn_dailymail"],
+        required=False,
+        help="HuggingFace dataset to use for the benchmark.",
+    )
     parser.add_argument(
         "--tokenizer",
         type=str,
         default="auto",
         choices=["auto"],
         required=False,
-        help="The huggingface tokenizer to use to interpret token metrics from text results",
+        help="The HuggingFace tokenizer to use to interpret token metrics from final text results",
     )
+
+
+### Entrypoint ###
 
 
 # Optional argv used for testing - will default to sys.argv if None.
@@ -85,15 +134,21 @@ def parse_args(argv=None):
         prog="genaipa",
         description="CLI to profile LLMs and Generative AI models with PA",
     )
+    # TODO: Restructure as needed based on desired user interface
+    parser.set_defaults(func=handle_profile)
+
     # Conceptually group args for easier visualization
-    model_group = bench_run.add_argument_group("Model")
+    model_group = parser.add_argument_group("Model")
     add_model_args(model_group)
 
     profile_group = parser.add_argument_group("Profiling")
     add_profile_args(profile_group)
 
-    token_group = bench_run.add_argument_group("Tokenization")
-    add_tokenization_args(token_group)
+    endpoint_group = parser.add_argument_group("Endpoint")
+    add_endpoint_args(endpoint_group)
+
+    dataset_group = parser.add_argument_group("Dataset")
+    add_dataset_args(dataset_group)
 
     args = parser.parse_args(argv)
     return args

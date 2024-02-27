@@ -52,7 +52,7 @@ dependencies = [
 
 # CLI Entrypoint
 [project.scripts]
-triton = "genaipa.main:main"
+genaipa = "genaipa.main:main"
 
 [project.urls]
 "Homepage" = "https://github.com/triton-inference-server/genaipa"
