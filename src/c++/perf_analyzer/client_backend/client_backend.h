@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -642,6 +642,13 @@ class InferResult {
   {
     return Error("InferResult::IsNullResponse() not implemented");
   };
+
+  /// Get output for this response.
+  /// \return Error object indicating the success or failure.
+  virtual Error Output(std::string& output) const
+  {
+    return Error("InferResult::Output() not implemented");
+  }
 };
 
 }}}  // namespace triton::perfanalyzer::clientbackend

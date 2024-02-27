@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -34,24 +34,27 @@ namespace triton { namespace perfanalyzer {
 
 /// A record of an individual request
 struct RequestRecord {
-  RequestRecord() = default;
   RequestRecord(
-      std::chrono::time_point<std::chrono::system_clock> start_time,
+      std::chrono::time_point<std::chrono::system_clock> start_time =
+          std::chrono::time_point<std::chrono::system_clock>(),
       std::vector<std::chrono::time_point<std::chrono::system_clock>>
-          response_times,
-      bool sequence_end, bool delayed, uint64_t sequence_id,
-      bool has_null_last_response)
-      : start_time_(start_time), response_times_(response_times),
-        sequence_end_(sequence_end), delayed_(delayed),
-        sequence_id_(sequence_id),
+          response_timestamps = {},
+      std::vector<std::string> response_outputs = {}, bool sequence_end = true,
+      bool delayed = false, uint64_t sequence_id = 0,
+      bool has_null_last_response = false)
+      : start_time_(start_time), response_timestamps_(response_timestamps),
+        response_outputs_(response_outputs), sequence_end_(sequence_end),
+        delayed_(delayed), sequence_id_(sequence_id),
         has_null_last_response_(has_null_last_response)
   {
   }
   // The timestamp of when the request was started.
   std::chrono::time_point<std::chrono::system_clock> start_time_;
-  // Collection of response times
+  // Collection of response timestamps
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
-      response_times_;
+      response_timestamps_;
+  // Collection of response outputs
+  std::vector<std::string> response_outputs_;
   // Whether or not the request is at the end of a sequence.
   bool sequence_end_;
   // Whether or not the request is delayed as per schedule.

@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -839,6 +839,13 @@ Error
 TritonInferResult::IsNullResponse(bool* is_null_response) const
 {
   RETURN_IF_TRITON_ERROR(result_->IsNullResponse(is_null_response));
+  return Error::Success;
+}
+
+Error
+TritonInferResult::Output(std::string& output) const
+{
+  RETURN_IF_TRITON_ERROR(result_->Output(output));
   return Error::Success;
 }
 
