@@ -35,22 +35,19 @@ logger = logging.getLogger(LOGGER_NAME)
 
 class Profiler:
     @staticmethod
-    def run(model):
-        # TODO: Replace with other plumbing
-        input_file = "/tmp/input_data.json"
-        with open(input_file, "w") as f:
-            data = {"data": [{"text_input": ["hi"]}]}
-            json.dump(data, f)
+    def run(model, args):
+        skip_args = ["model", "func"]
 
-        cmd = [
-            "perf_analyzer",
-            "-i",
-            "grpc",
-            "--streaming",
-            "-m",
-            model,
-            "--input-data",
-            input_file,
-        ]
+        cmd = f"perf_analyzer -m {model} "
+        for arg, value in vars(args).items():
+            if value is True:
+                cmd += f"--{arg} "
+            elif value is False:
+                pass
+            elif arg in skip_args:
+                pass
+            else:
+                cmd += f"--{arg} {value} "
+
         logger.info(f"Running Perf Analyzer : '{cmd}'")
         subprocess.run(cmd)
