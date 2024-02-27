@@ -82,14 +82,6 @@ def add_profile_args(parser):
         required=False,
         help="Sets the concurrency value to benchmark.",
     )
-    # TODO: Do we need input length
-    # parser.add_argument(
-    #     "--input-length",
-    #     type=int,
-    #     default=128,
-    #     required=False,
-    #     help="The input length (tokens) to use for benchmarking LLMs. (Default: 128)",
-    # )
     parser.add_argument(
         "--max-threads",
         type=int,
