@@ -24,14 +24,81 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import io
+import sys
+
 import pytest
 from genai_pa.main import run
 
 
-# NOTE: Placeholder
-class TestHelp:
-    @pytest.mark.parametrize("arg", ["-h", "--help"])
-    def test_help(self, arg):
-        args = [arg]
-        with pytest.raises(SystemExit):
-            run(args)
+class TestCLIArguments:
+    @pytest.mark.parametrize(
+        "arg, expected_output",
+        [
+            (["-h"], "CLI to profile LLMs and Generative AI models with Perf Analyzer"),
+            (
+                ["--help"],
+                "CLI to profile LLMs and Generative AI models with Perf Analyzer",
+            ),
+        ],
+    )
+    def test_help_arguments_output_and_exit(self, arg, expected_output, capsys):
+        combined_args = ["-m", "test_model"] + arg
+
+        with pytest.raises(SystemExit) as exc_info:
+            run(combined_args)
+
+        # Confirm the exit was successful
+        assert exc_info.value.code == 0
+
+        # Confirm the message is correct
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
+
+    @pytest.mark.parametrize(
+        "arg, expected_output",
+        [
+            (["-b", "2"], "batch_size=2"),
+            (["--batch-size", "2"], "batch_size=2"),
+            (["--concurrency", "3"], "concurrency_range='3'"),
+            (["--max-threads", "4"], "max_threads=4"),
+            (
+                ["--profile-export-file", "text.txt"],
+                "profile_export_file=PosixPath('text.txt')",
+            ),
+            (["--request-rate", "1.5"], "request_rate_range='1.5'"),
+            (["--service-kind", "triton"], "service_kind='triton'"),
+            (["--service-kind", "openai"], "service_kind='openai'"),
+            # TODO: Remove streaming from implementation. It is invalid with HTTP.
+            # (["--streaming"], "Streaming=True"),
+            (["--version"], "version=True"),
+            (["-u", "test_url"], "u='test_url'"),
+            (["--url", "test_url"], "u='test_url'"),
+        ],
+    )
+    def test_arguments_output(self, arg, expected_output, capsys):
+        combined_args = ["-m", "test_model"] + arg
+        # Redirect stdout and stderr to capture output
+        original_stdout, original_stderr = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
+
+        try:
+            # Call the run function
+            # TODO: Un-comment the below when the perf analyzer call works.
+            # with pytest.raises(SystemExit):
+            run(combined_args)
+        finally:
+            # Restore stdout and stderr
+            captured_stdout, captured_stderr = (
+                sys.stdout.getvalue(),
+                sys.stderr.getvalue(),
+            )
+            sys.stdout, sys.stderr = original_stdout, original_stderr
+
+        assert expected_output in captured_stdout
+        assert "" == captured_stderr  # Assuming no error, adjust if needed
+
+    def test_arguments_model_not_provided(self):
+        with pytest.raises(SystemExit) as exc_info:
+            run()
+        assert exc_info.value.code != 0
