@@ -24,37 +24,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
-import subprocess
-
-import genai_pa.utils as utils
-from genai_pa.constants import LOGGER_NAME
-
-logger = logging.getLogger(LOGGER_NAME)
+from pathlib import Path
 
 
-class Profiler:
-    @staticmethod
-    def run(model, args=None):
-        skip_args = ["model", "func"]
-        if hasattr(args, "version"):
-            cmd = f"perf_analyzer --version"
-        else:
-            utils.remove_file(args.profile_export_file)
+def remove_file(file: Path):
+    if file.is_file():
+        file.unlink()
 
-            cmd = f"perf_analyzer -m {model} --async "
-            for arg, value in vars(args).items():
-                if arg in skip_args:
-                    pass
-                elif value is True:
-                    cmd += f"--{arg} "
-                elif arg == "batch_size":
-                    cmd += f"-b {value} "
-                else:
-                    if len(arg) == 1:
-                        cmd += f"-{arg} {value}"
-                    else:
-                        arg = utils.convert_option_name(arg)
-                        cmd += f"--{arg} {value} "
-        logger.info(f"Running Perf Analyzer : '{cmd}'")
-        subprocess.run(cmd, shell=True)
+
+def convert_option_name(name: str) -> str:
+    return name.replace("_", "-")
