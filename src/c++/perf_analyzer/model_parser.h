@@ -111,6 +111,10 @@ class ModelParser {
       const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
       std::unique_ptr<cb::ClientBackend>& backend);
 
+  cb::Error InitOpenAI(
+      const std::string& model_name, const std::string& model_version,
+      const int32_t batch_size);
+
   cb::Error InitTorchServe(
       const std::string& model_name, const std::string& model_version,
       const int32_t batch_size);
