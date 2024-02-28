@@ -153,7 +153,7 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
 
     offset_current = offset
     for input_value in input_values:
-        input_value = np.ascontiguousarray(input_value).flatten()
+        input_value = np.ascontiguousarray(input_value).ravel()
         if input_value.dtype == np.object_:
             input_value = input_value.item()
             byte_size = np.dtype(np.byte).itemsize * len(input_value)
