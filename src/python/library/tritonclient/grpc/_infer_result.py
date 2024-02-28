@@ -124,7 +124,7 @@ class InferResult:
         for output in self._result.outputs:
             if output.name == name:
                 if as_json:
-                    MessageToJson(output, preserving_proto_field_name=True)
+                    return json.loads(MessageToJson(output, preserving_proto_field_name=True))
                 else:
                     return output
 
