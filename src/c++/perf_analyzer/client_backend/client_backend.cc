@@ -32,6 +32,10 @@
 #include "triton_c_api/triton_c_api_backend.h"
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
 
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+#include "openai/openai_client_backend.h"
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
+
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
 #include "tensorflow_serving/tfserve_client_backend.h"
 #endif  // TRITON_ENABLE_PERF_ANALYZER_TFS
@@ -172,6 +176,13 @@ ClientBackend::Create(
         metrics_url, input_tensor_format, output_tensor_format,
         &local_backend));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  // TODO -- I think this needs endpoint to be passed in?
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(openai::OpenAiClientBackend::Create(
+        url, protocol, http_headers, verbose, &local_backend));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeClientBackend::Create(
@@ -421,6 +432,15 @@ InferInput::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonInferInput::Create(
         infer_input, name, dims, datatype));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(
+        // FIXME TODO TKG
+        // openai::OpenAiInferInput::Create(infer_input, name, dims, datatype));
+        tritonremote::TritonInferInput::Create(
+            infer_input, name, dims, datatype));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeInferInput::Create(
