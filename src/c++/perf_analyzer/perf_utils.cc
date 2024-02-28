@@ -27,6 +27,8 @@
 #include "perf_utils.h"
 
 #include <fcntl.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -200,6 +202,25 @@ SerializeExplicitTensor(
     std::copy(
         serialized.begin(), serialized.end(),
         std::back_inserter(*decoded_data));
+  } else if (dt.compare("JSON") == 0) {
+    std::string serialized = "";
+
+    for (const auto& value : tensor.GetArray()) {
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+      value.Accept(writer);
+
+      std::string element = buffer.GetString();
+      uint32_t len = element.size();
+      // FIXME TODO - for BYTES we add the length. Is there any reason that
+      // would be needed here?
+      // serialized.append(reinterpret_cast<const char*>(&len),
+      // sizeof(uint32_t));
+      serialized.append(element);
+    }
+    std::copy(
+        serialized.begin(), serialized.end(),
+        std::back_inserter(*decoded_data));
   } else {
     for (const auto& value : tensor.GetArray()) {
       if (dt.compare("BOOL") == 0) {
@@ -298,6 +319,8 @@ SerializeExplicitTensor(
         double element(value.GetDouble());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(double));
+      } else {
+        return cb::Error("Unexpected type " + dt);
       }
     }
   }

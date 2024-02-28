@@ -30,12 +30,14 @@ set(
     OPENAI_CLIENT_BACKEND_SRCS
     openai_client_backend.cc
     openai_http_client.cc
+    openai_infer_input.cc
 )
 
 set(
     OPENAI_CLIENT_BACKEND_HDRS
     openai_client_backend.h
     openai_http_client.h
+    openai_infer_input.h
 )
 
 add_library(

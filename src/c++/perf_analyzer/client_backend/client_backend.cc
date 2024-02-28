@@ -435,10 +435,7 @@ InferInput::Create(
 #ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
   else if (kind == OPENAI) {
     RETURN_IF_CB_ERROR(
-        // FIXME TODO TKG
-        // openai::OpenAiInferInput::Create(infer_input, name, dims, datatype));
-        tritonremote::TritonInferInput::Create(
-            infer_input, name, dims, datatype));
+        openai::OpenAiInferInput::Create(infer_input, name, dims, datatype));
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS

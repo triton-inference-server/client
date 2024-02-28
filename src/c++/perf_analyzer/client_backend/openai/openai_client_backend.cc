@@ -42,11 +42,10 @@ OpenAiClientBackend::Create(
         "perf_analyzer does not support gRPC protocol with OpenAI endpoints");
   }
   std::unique_ptr<OpenAiClientBackend> openai_client_backend(
-    new OpenAiClientBackend(http_headers));
+      new OpenAiClientBackend(http_headers));
 
-  // TODO: Adjust as needed
-  RETURN_IF_CB_ERROR(HttpClient::Create(
-      &(openai_client_backend->http_client_), url, verbose));
+  RETURN_IF_CB_ERROR(
+      HttpClient::Create(&(openai_client_backend->http_client_), url, verbose));
 
   *client_backend = std::move(openai_client_backend);
 
@@ -64,8 +63,8 @@ OpenAiClientBackend::AsyncInfer(
     callback(result);
   };
 
-  // TODO: make an async infer call
-  //RETURN_IF_CB_ERROR(http_client_->AsyncInfer(...));
+  RETURN_IF_CB_ERROR(http_client_->AsyncInfer(
+      wrapped_callback, options, inputs, outputs, *http_headers_));
 
   return Error::Success;
 }
@@ -112,8 +111,7 @@ OpenAiInferRequestedOutput::Create(
   return Error::Success;
 }
 
-OpenAiInferRequestedOutput::OpenAiInferRequestedOutput(
-    const std::string& name)
+OpenAiInferRequestedOutput::OpenAiInferRequestedOutput(const std::string& name)
     : InferRequestedOutput(BackendKind::OPENAI, name)
 {
 }
