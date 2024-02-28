@@ -1,4 +1,4 @@
-// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -65,7 +65,7 @@ class HttpClient : public tc::InferenceServerClient {
 
  private:
   HttpClient(const std::string& url, bool verbose);
-  
+
   // The server url
   const std::string url_;
 };
@@ -77,8 +77,8 @@ class InferResult {
   static Error Create(
       InferResult** infer_result,
       std::shared_ptr<HttpInferRequest> infer_request);
-  Error RequestStatus() const;
-  Error Id(std::string* id) const;
+  Error RequestStatus() const { return Error::Success; }      // TODO FIXME TKG
+  Error Id(std::string* id) const { return Error::Success; }  // TODO FIXME TKG
 
  private:
   InferResult(std::shared_ptr<HttpInferRequest> infer_request);
