@@ -27,12 +27,6 @@
 from pathlib import Path
 
 
-def file_exists(file: Path) -> bool:
-    if file.is_file() and file.exists():
-        return True
-    return False
-
-
 def remove_file(file: Path):
-    if file_exists(file):
+    if file.is_file():
         file.unlink()

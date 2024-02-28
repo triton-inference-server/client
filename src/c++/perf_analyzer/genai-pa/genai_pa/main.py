@@ -28,7 +28,6 @@
 import logging
 import sys
 
-import genai_pa.utils as utils
 from genai_pa import parser
 from genai_pa.constants import LOGGER_NAME
 
@@ -41,7 +40,6 @@ logger = logging.getLogger(LOGGER_NAME)
 # Optional argv used for testing - will default to sys.argv if None.
 def run(argv=None):
     args = parser.parse_args(argv)
-    utils.remove_file(args.profile_export_file)
     args.func(args)
 
 

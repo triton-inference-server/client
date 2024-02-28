@@ -27,6 +27,7 @@
 import logging
 import subprocess
 
+import genai_pa.utils as utils
 from genai_pa.constants import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -39,6 +40,8 @@ class Profiler:
         if hasattr(args, "version"):
             cmd = f"perf_analyzer --version"
         else:
+            utils.remove_file(args.profile_export_file)
+
             cmd = f"perf_analyzer -m {model} --async "
             for arg, value in vars(args).items():
                 if arg in skip_args:
@@ -47,8 +50,10 @@ class Profiler:
                     cmd += f"--{arg} "
                 elif arg == "url":
                     cmd += f"-u {value} "
+                elif arg == "batch-size":
+                    cmd += f"-b {value} "
                 else:
                     cmd += f"--{arg} {value} "
-
+                cmd += f"\n"
         logger.info(f"Running Perf Analyzer : '{cmd}'")
         subprocess.run(cmd, shell=True)
