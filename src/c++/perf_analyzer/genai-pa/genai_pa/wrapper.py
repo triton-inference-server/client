@@ -48,12 +48,13 @@ class Profiler:
                     pass
                 elif value is True:
                     cmd += f"--{arg} "
-                elif arg == "url":
-                    cmd += f"-u {value} "
-                elif arg == "batch-size":
+                elif arg == "batch_size":
                     cmd += f"-b {value} "
                 else:
-                    cmd += f"--{arg} {value} "
-                cmd += f"\n"
+                    if len(arg) == 1:
+                        cmd += f"-{arg} {value}"
+                    else:
+                        arg = utils.convert_option_name(arg)
+                        cmd += f"--{arg} {value} "
         logger.info(f"Running Perf Analyzer : '{cmd}'")
         subprocess.run(cmd, shell=True)

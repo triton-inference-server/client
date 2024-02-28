@@ -162,6 +162,8 @@ def add_endpoint_args(parser):
         type=str,
         default="localhost:8001",
         required=False,
+        dest="u",
+        metavar="URL",
         help="URL of the endpoint to target for benchmarking.",
     )
 

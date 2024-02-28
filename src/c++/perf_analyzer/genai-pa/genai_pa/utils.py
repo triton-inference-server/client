@@ -30,3 +30,7 @@ from pathlib import Path
 def remove_file(file: Path):
     if file.is_file():
         file.unlink()
+
+
+def convert_option_name(name: str) -> str:
+    return name.replace("_", "-")
