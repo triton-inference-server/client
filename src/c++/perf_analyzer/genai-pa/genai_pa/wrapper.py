@@ -24,7 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
 import logging
 import subprocess
 
@@ -35,19 +34,21 @@ logger = logging.getLogger(LOGGER_NAME)
 
 class Profiler:
     @staticmethod
-    def run(model, args):
+    def run(model, args=None):
         skip_args = ["model", "func"]
-
-        cmd = f"perf_analyzer -m {model} "
-        for arg, value in vars(args).items():
-            if value is True:
-                cmd += f"--{arg} "
-            elif value is False:
-                pass
-            elif arg in skip_args:
-                pass
-            else:
-                cmd += f"--{arg} {value} "
+        if hasattr(args, "version"):
+            cmd = f"perf_analyzer --version"
+        else:
+            cmd = f"perf_analyzer -m {model} --async "
+            for arg, value in vars(args).items():
+                if arg in skip_args:
+                    pass
+                elif value is True:
+                    cmd += f"--{arg} "
+                elif arg == "url":
+                    cmd += f"-u {value} "
+                else:
+                    cmd += f"--{arg} {value} "
 
         logger.info(f"Running Perf Analyzer : '{cmd}'")
         subprocess.run(cmd, shell=True)

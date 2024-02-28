@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,36 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
-import sys
-
-import genai_pa.utils as utils
-from genai_pa import parser
-from genai_pa.constants import LOGGER_NAME
-
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(LOGGER_NAME)
+from pathlib import Path
 
 
-# Separate function that can raise exceptions used for testing
-# to assert correct errors and messages.
-# Optional argv used for testing - will default to sys.argv if None.
-def run(argv=None):
-    args = parser.parse_args(argv)
-    utils.remove_file(args.profile_export_file)
-    args.func(args)
+def file_exists(file: Path) -> bool:
+    if file.is_file() and file.exists():
+        return True
+    return False
 
 
-def main():
-    # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
-    try:
-        run()
-    except Exception as e:
-        logger.error(f"{e}")
-        return 1
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+def remove_file(file: Path):
+    if file_exists(file):
+        file.unlink()
