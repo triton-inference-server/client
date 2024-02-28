@@ -135,7 +135,8 @@ enum BackendKind {
   TRITON = 0,
   TENSORFLOW_SERVING = 1,
   TORCHSERVE = 2,
-  TRITON_C_API = 3
+  TRITON_C_API = 3,
+  OPENAI = 4
 };
 enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {

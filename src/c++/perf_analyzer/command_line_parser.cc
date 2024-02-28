@@ -875,6 +875,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"periodic-concurrency-range", required_argument, 0, 59},
       {"request-period", required_argument, 0, 60},
       {"request-parameter", required_argument, 0, 61},
+      {"endpoint", required_argument, 0, 62},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1169,6 +1170,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
             params_->kind = cb::TORCHSERVE;
           } else if (arg.compare("triton_c_api") == 0) {
             params_->kind = cb::TRITON_C_API;
+          } else if (arg.compare("openai") == 0) {
+            params_->kind = cb::OPENAI;
           } else {
             Usage(
                 "Failed to parse --service-kind. Unsupported type provided: '" +
@@ -1608,6 +1611,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->request_parameters[name] = param;
           break;
         }
+        case 62: {
+          params_->endpoint = optarg;
+        }
         case 'v':
           params_->extra_verbose = params_->verbose;
           params_->verbose = true;
@@ -1907,6 +1913,17 @@ CLParser::VerifyOptions()
     }
 
     params_->protocol = cb::ProtocolType::UNKNOWN;
+  }
+
+  if (params_->kind == cb::BackendKind::OPENAI) {
+    if (params_->user_data.empty()) {
+      Usage("Must supply --input-data for OpenAI service kind.");
+    }
+    if (params_->endpoint.empty()) {
+      Usage(
+          "Must supply --endpoint for OpenAI service kind. For example, "
+          "\"v1/chat/completions\"");
+    }
   }
 
   if (params_->should_collect_metrics &&

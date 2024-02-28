@@ -100,6 +100,7 @@ struct PerfAnalyzerParameters {
   bool dynamic_concurrency_mode = false;
   bool url_specified = false;
   std::string url{"localhost:8000"};
+  std::string endpoint{""};
   std::string model_name;
   std::string model_version;
   uint64_t batch_size = 1;

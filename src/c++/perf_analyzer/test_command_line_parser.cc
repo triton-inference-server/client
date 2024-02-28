@@ -263,6 +263,7 @@ TEST_CASE("Testing PerfAnalyzerParameters")
   CHECK(params->sequence_length == 20);
   CHECK(params->percentile == -1);
   CHECK(params->user_data.size() == 0);
+  CHECK_STRING("endpoint", params->endpoint, "");
   CHECK(params->input_shapes.size() == 0);
   CHECK(params->measurement_window_ms == 5000);
   CHECK(params->using_concurrency_range == false);
