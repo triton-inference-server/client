@@ -27,6 +27,7 @@
 
 #include "../client_backend.h"
 #include "common.h"
+#include "openai_infer_input.h"
 
 
 namespace tc = triton::client;
@@ -36,6 +37,8 @@ namespace openai {
 
 class InferResult;
 class HttpInferRequest;
+
+using OpenAiOnCompleteFn = std::function<void(InferResult*)>;
 
 //==============================================================================
 /// An HttpClient object is used to perform any kind of communication with the
@@ -62,6 +65,15 @@ class HttpClient : public tc::InferenceServerClient {
   static Error Create(
       std::unique_ptr<HttpClient>* client, const std::string& server_url,
       const bool verbose);
+
+  /// TODO FIXME: Update
+  /// Run asynchronous inference on server.
+  Error AsyncInfer(
+      OpenAiOnCompleteFn callback, const InferOptions& options,
+      const std::vector<InferInput*>& inputs,
+      const std::vector<const InferRequestedOutput*>& outputs =
+          std::vector<const InferRequestedOutput*>(),
+      const Headers& headers = Headers());
 
  private:
   HttpClient(const std::string& url, bool verbose);
