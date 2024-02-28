@@ -266,6 +266,26 @@ ModelParser::InitTFServe(
 }
 
 cb::Error
+ModelParser::InitOpenAI(
+    const std::string& model_name, const std::string& model_version,
+    const int32_t batch_size)
+{
+  // OpenAI does not return model metadata hence we can not obtain any
+  // parameters.
+  model_name_ = model_name;
+  model_version_ = model_version;
+  max_batch_size_ = batch_size;
+
+  // OpenAI will take a single json input with a fully formed payload
+  auto it = inputs_->emplace("payload", ModelTensor()).first;
+  it->second.name_ = "payload";
+  it->second.datatype_ = "JSON";
+  it->second.shape_.push_back(1);
+
+  return cb::Error::Success;
+}
+
+cb::Error
 ModelParser::InitTorchServe(
     const std::string& model_name, const std::string& model_version,
     const int32_t batch_size)
