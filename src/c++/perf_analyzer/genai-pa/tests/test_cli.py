@@ -84,7 +84,7 @@ class TestCLIArguments:
 
         try:
             # Call the run function
-            # TODO: Un-comment the below when the perf analyzer call works.
+            # TODO: Un-comment the below when the perf analyzer call works for all the tests.
             # with pytest.raises(SystemExit):
             run(combined_args)
         finally:
