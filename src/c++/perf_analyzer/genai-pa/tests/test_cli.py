@@ -85,7 +85,7 @@ class TestCLIArguments:
 
     def test_arguments_model_not_provided(self):
         with pytest.raises(SystemExit) as exc_info:
-            parser.parse_args()
+            _ = parser.parse_args()
 
         # Check that the exit was unsuccessful
         assert exc_info.value.code != 0
