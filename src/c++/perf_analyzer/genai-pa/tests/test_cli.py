@@ -43,10 +43,8 @@ class TestCLIArguments:
         ],
     )
     def test_help_arguments_output_and_exit(self, arg, expected_output, capsys):
-        combined_args = ["-m", "test_model"] + arg
-
         with pytest.raises(SystemExit) as exc_info:
-            run(combined_args)
+            run(arg)
 
         # Confirm the exit was successful
         assert exc_info.value.code == 0
