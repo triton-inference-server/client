@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import json
+import os
 import pytest
 
 from genai_pa import parser
@@ -155,6 +156,8 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_openai_llm_inputs(LlmInputs.CNN_DAILYMAIL_URL)
 
+        os.remove(LlmInputs.OUTPUT_FILENAME)
+        
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
 
@@ -168,5 +171,6 @@ class TestLlmInputs:
         f = open(LlmInputs.OUTPUT_FILENAME, "r")
         json_str = f.read()
         f.close()
-
+        os.remove(LlmInputs.OUTPUT_FILENAME)
+        
         assert pa_json == json.loads(json_str)
