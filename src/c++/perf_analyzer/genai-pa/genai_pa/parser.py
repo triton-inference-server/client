@@ -37,7 +37,6 @@ def prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Prune the parsed arguments to remove args with None or False values.
     """
-    print(args)
     return argparse.Namespace(
         **{k: v for k, v in vars(args).items() if v is not None if v is not False}
     )
@@ -199,6 +198,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog="genai-pa",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.set_defaults(func=handler)
 
