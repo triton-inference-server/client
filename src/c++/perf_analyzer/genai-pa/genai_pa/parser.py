@@ -37,7 +37,6 @@ def prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Prune the parsed arguments to remove args with None or False values.
     """
-    print(args)
     return argparse.Namespace(
         **{k: v for k, v in vars(args).items() if v is not None if v is not False}
     )
