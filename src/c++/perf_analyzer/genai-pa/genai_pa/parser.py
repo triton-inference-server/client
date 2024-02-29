@@ -198,7 +198,6 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog="genai-pa",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.set_defaults(func=handler)
 
