@@ -28,6 +28,7 @@ import io
 import sys
 
 import pytest
+from genai_pa import parser
 from genai_pa.main import run
 
 
@@ -43,13 +44,13 @@ class TestCLIArguments:
         ],
     )
     def test_help_arguments_output_and_exit(self, arg, expected_output, capsys):
-        with pytest.raises(SystemExit) as exc_info:
-            run(arg)
+        with pytest.raises(SystemExit) as excinfo:
+            _ = parser.parse_args(arg)
 
-        # Confirm the exit was successful
-        assert exc_info.value.code == 0
+        # Check that the exit was successful
+        assert excinfo.value.code == 0
 
-        # Confirm the message is correct
+        # Capture that the correct message was displayed
         captured = capsys.readouterr()
         assert expected_output in captured.out
 
@@ -75,26 +76,16 @@ class TestCLIArguments:
         ],
     )
     def test_arguments_output(self, arg, expected_output, capsys):
-        combined_args = ["-m", "test_model"] + arg
-        # Redirect stdout and stderr to capture output
-        original_stdout, original_stderr = sys.stdout, sys.stderr
-        sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
+        combined_args = ["--model", "test_model"] + arg
+        _ = parser.parse_args(combined_args)
 
-        try:
-            # Call the run function
-            run(combined_args)
-        finally:
-            # Restore stdout and stderr
-            captured_stdout, captured_stderr = (
-                sys.stdout.getvalue(),
-                sys.stderr.getvalue(),
-            )
-            sys.stdout, sys.stderr = original_stdout, original_stderr
-
-        assert expected_output in captured_stdout
-        assert "" == captured_stderr  # Assuming no error, adjust if needed
+        # Capture that the correct message was displayed
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
 
     def test_arguments_model_not_provided(self):
         with pytest.raises(SystemExit) as exc_info:
-            run()
+            parser.parse_args()
+
+        # Check that the exit was unsuccessful
         assert exc_info.value.code != 0

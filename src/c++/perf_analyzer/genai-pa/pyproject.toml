@@ -47,6 +47,7 @@ keywords = []
 requires-python = ">=3.8,<4"
 dependencies = [
   "numpy",
+  "pytest",
   "rich"
 ]
 
