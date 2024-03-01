@@ -16,7 +16,6 @@
 
 import json
 import requests
-import urllib3
 
 from copy import deepcopy
 
