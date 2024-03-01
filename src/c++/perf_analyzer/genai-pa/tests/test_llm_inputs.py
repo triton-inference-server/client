@@ -16,8 +16,8 @@ import json
 import os
 
 import pytest
-from genaipa_exceptions import GenAiPAException
-from llm_inputs.llm_inputs import LlmInputs
+from genai_pa.exceptions import GenAiPAException
+from genai_pa.llm_inputs.llm_inputs import LlmInputs
 
 
 class TestLlmInputs:
