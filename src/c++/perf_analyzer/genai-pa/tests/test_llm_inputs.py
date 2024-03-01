@@ -165,9 +165,11 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_openai_llm_inputs(
             model_name="OpenOrca", add_streaming=True
         )
-        f = open(LlmInputs.OUTPUT_FILENAME, "r")
-        json_str = f.read()
-        f.close()
-        os.remove(LlmInputs.OUTPUT_FILENAME)
+        try:
+            f = open(LlmInputs.OUTPUT_FILENAME, "r")
+            json_str = f.read()
+        finally:
+            f.close()
+            os.remove(LlmInputs.OUTPUT_FILENAME)
 
         assert pa_json == json.loads(json_str)
