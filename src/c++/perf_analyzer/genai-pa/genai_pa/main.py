@@ -48,10 +48,11 @@ def run(argv=None):
 
 
 def main():
+    # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
     try:
         run()
     except Exception as e:
-        logger.error(f"Unhandled exception: {e}")
+        logger.error(f"{e}")
         return 1
 
     return 0
