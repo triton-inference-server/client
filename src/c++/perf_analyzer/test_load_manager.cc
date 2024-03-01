@@ -136,14 +136,14 @@ class TestLoadManager : public TestLoadManagerBase, public LoadManager {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using ns = std::chrono::nanoseconds;
     auto request_record1 = RequestRecord(
-        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))},
-        {"my_output"}, 0, false, 0, false);
+        time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, {}, 0,
+        false, 0, false);
     auto request_record2 = RequestRecord(
-        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))},
-        {"my_output"}, 0, false, 0, false);
+        time_point(ns(3)), std::vector<time_point>{time_point(ns(4))}, {}, 0,
+        false, 0, false);
     auto request_record3 = RequestRecord(
-        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))},
-        {"my_output"}, 0, false, 0, false);
+        time_point(ns(5)), std::vector<time_point>{time_point(ns(6))}, {}, 0,
+        false, 0, false);
 
     std::vector<RequestRecord> source_request_records;
 
