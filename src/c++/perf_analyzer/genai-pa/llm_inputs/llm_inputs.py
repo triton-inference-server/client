@@ -67,8 +67,10 @@ class LlmInputs:
             Offset from within the list to start gathering inputs
         length:
             Number of entries to gather
-        model_name:
-        add_streaming:
+        model_name: 
+            If included adds this model name field to each payload
+        add_streaming: 
+            If true adds a streaming field to each payload
         """
 
         LlmInputs._check_for_valid_args(starting_index, length)
