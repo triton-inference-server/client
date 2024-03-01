@@ -46,7 +46,6 @@ maintainers = []
 keywords = []
 requires-python = ">=3.8,<4"
 dependencies = [
-  "datasets",
   "numpy",
   "pytest",
   "rich"
