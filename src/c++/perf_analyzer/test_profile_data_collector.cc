@@ -63,8 +63,10 @@ TEST_CASE("profile_data_collector: AddData")
   auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
   auto request1_response1_timestamp{clock_epoch + std::chrono::nanoseconds(2)};
   auto request1_response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
-  auto request1_response1_output{"request1_response1_output"};
-  auto request1_response2_output{"request1_response2_output"};
+  RequestRecord::ResponseOutput request1_response1_output{
+      {"key1", {nullptr, 1}}, {"key2", {nullptr, 2}}};
+  RequestRecord::ResponseOutput request1_response2_output{
+      {"key3", {nullptr, 3}}, {"key4", {nullptr, 4}}};
 
   RequestRecord request_record1{
       request1_timestamp,
@@ -80,8 +82,10 @@ TEST_CASE("profile_data_collector: AddData")
   auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
   auto request2_response1_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
   auto request2_response2_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
-  auto request2_response1_output{"request2_response1_output"};
-  auto request2_response2_output{"request2_response2_output"};
+  RequestRecord::ResponseOutput request2_response1_output{
+      {"key5", {nullptr, 5}}, {"key6", {nullptr, 6}}};
+  RequestRecord::ResponseOutput request2_response2_output{
+      {"key7", {nullptr, 7}}, {"key8", {nullptr, 8}}};
 
   RequestRecord request_record2{
       request2_timestamp,

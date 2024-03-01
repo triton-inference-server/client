@@ -153,12 +153,24 @@ ProfileDataExporter::AddResponseTimestamps(
 
 void
 ProfileDataExporter::AddResponseOutputs(
-    rapidjson::Value& outputs_json, const std::vector<std::string>& outputs)
+    rapidjson::Value& outputs_json,
+    const std::vector<RequestRecord::ResponseOutput>& response_outputs)
 {
-  for (auto& output : outputs) {
-    rapidjson::Value output_json;
-    output_json.SetString(output.c_str(), output.size());
-    outputs_json.PushBack(output_json, document_.GetAllocator());
+  for (const auto& response_output : response_outputs) {
+    rapidjson::Value response_output_json(rapidjson::kObjectType);
+    for (const auto& output : response_output) {
+      const auto& name{output.first};
+      const auto& buf{output.second.first};
+      const auto& byte_size{output.second.second};
+      rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
+      rapidjson::Value output_json{};
+      output_json.SetString(
+          reinterpret_cast<const char*>(buf), byte_size,
+          document_.GetAllocator());
+      response_output_json.AddMember(
+          name_json, output_json, document_.GetAllocator());
+    }
+    outputs_json.PushBack(response_output_json, document_.GetAllocator());
   }
 }
 
