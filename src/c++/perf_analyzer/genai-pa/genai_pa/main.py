@@ -31,9 +31,20 @@ import sys
 from genai_pa import parser
 from genai_pa.constants import LOGGER_NAME
 from genai_pa.exceptions import GenAiPAException
+from genai_pa.llm_inputs.llm_inputs import LlmInputs
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def generate_inputs(args):
+    LlmInputs.create_openai_llm_inputs(
+        args.dataset,
+        LlmInputs.DEFAULT_STARTING_INDEX,
+        LlmInputs.DEFAULT_LENGTH,
+        args.model,
+        args.streaming,
+    )
 
 
 # Separate function that can raise exceptions used for testing
@@ -42,6 +53,7 @@ logger = logging.getLogger(LOGGER_NAME)
 def run(argv=None):
     try:
         args = parser.parse_args(argv)
+        generate_inputs(args)
         args.func(args)
     except Exception as e:
         raise GenAiPAException(e)

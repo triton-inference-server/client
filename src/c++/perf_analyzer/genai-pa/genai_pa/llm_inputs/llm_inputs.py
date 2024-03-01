@@ -46,6 +46,11 @@ class LlmInputs:
     A library of methods that control the generation of LLM Inputs
     """
 
+<<<<<<< HEAD
+=======
+    OUTPUT_FILENAME = DEFAULT_INPUT_DATA_JSON
+
+>>>>>>> cd9e588 (Clean up and link up llm_inputs)
     OPEN_ORCA_URL = "https://datasets-server.huggingface.co/rows?dataset=Open-Orca%2FOpenOrca&config=default&split=train"
     CNN_DAILYMAIL_URL = "https://datasets-server.huggingface.co/rows?dataset=cnn_dailymail&config=1.0.0&split=train"
 
@@ -64,11 +69,15 @@ class LlmInputs:
     @classmethod
     def create_llm_inputs(
         cls,
+<<<<<<< HEAD
         input_type: InputType,
         input_format: InputFormat,
         output_format: OutputFormat,
         model_name: str = "",
         input_filename: str = "",
+=======
+        url: str = OPEN_ORCA,
+>>>>>>> cd9e588 (Clean up and link up llm_inputs)
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
         add_model_name: bool = False,
@@ -101,6 +110,7 @@ class LlmInputs:
             If true adds a steam field to each payload
         """
 
+<<<<<<< HEAD
         LlmInputs._check_for_valid_args(input_type, model_name, starting_index, length)
 
         dataset = None
@@ -119,15 +129,37 @@ class LlmInputs:
 
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
             output_format, generic_dataset_json, add_model_name, add_stream, model_name
+=======
+        url = LlmInputs._resolve_url(url)
+        LlmInputs._check_for_valid_args(starting_index, length)
+        configured_url = LlmInputs._create_configured_url(url, starting_index, length)
+        dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
+        dataset_json = LlmInputs._convert_dataset_to_json(dataset)
+        json_in_pa_format = LlmInputs._convert_json_to_pa_format(
+            dataset_json, model_name, add_stream
+>>>>>>> cd9e588 (Clean up and link up llm_inputs)
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
         return json_in_pa_format
 
     @classmethod
+<<<<<<< HEAD
     def _check_for_valid_args(
         cls, input_type: InputType, model_name: str, starting_index: int, length: int
     ) -> None:
+=======
+    def _resolve_url(cls, url: str) -> str:
+        """
+        Resolve the dataset to a url if its known, otherwise use the dataset url passed in.
+        """
+        if url in LlmInputs.dataset_url_map:
+            return LlmInputs.dataset_url_map[url]
+        return url
+
+    @classmethod
+    def _check_for_valid_args(cls, starting_index: int, length: int) -> None:
+>>>>>>> cd9e588 (Clean up and link up llm_inputs)
         try:
             LlmInputs._check_for_model_name_if_input_type_is_url(input_type, model_name)
             LlmInputs._check_for_valid_starting_index(starting_index)
