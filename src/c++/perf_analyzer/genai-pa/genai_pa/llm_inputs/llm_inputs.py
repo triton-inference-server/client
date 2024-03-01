@@ -17,7 +17,7 @@ from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 
 import requests
-from genaipa_exceptions import GenAiPAException
+from genai_pa.exceptions import GenAiPAException
 from requests import Response
 
 
