@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include <mutex>
 #include <vector>
 
+#include "client_backend/client_backend.h"
 #include "data_loader.h"
 #include "idle_timer.h"
 #include "iinfer_data_manager.h"
@@ -184,6 +185,9 @@ class InferContext {
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
  private:
+  const RequestRecord::ResponseOutput GetOutput(
+      const cb::InferResult& infer_result);
+
   const uint32_t id_{0};
   const size_t thread_id_{0};
 

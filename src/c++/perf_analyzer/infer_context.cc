@@ -149,10 +149,10 @@ InferContext::SendRequest(
         &results, *(infer_data_.options_), infer_data_.valid_inputs_,
         infer_data_.outputs_);
     thread_stat_->idle_timer.Stop();
-    std::string output{""};
+    RequestRecord::ResponseOutput response_output{};
     if (results != nullptr) {
       if (thread_stat_->status_.IsOk()) {
-        results->Output(output);
+        response_output = GetOutput(*results);
         thread_stat_->status_ = ValidateOutputs(results);
       }
       delete results;
@@ -169,7 +169,7 @@ InferContext::SendRequest(
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_records_.emplace_back(RequestRecord(
-          start_time_sync, std::move(end_time_syncs), {output},
+          start_time_sync, std::move(end_time_syncs), {response_output},
           infer_data_.options_->sequence_end_, delayed, sequence_id, false));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
@@ -180,6 +180,18 @@ InferContext::SendRequest(
   }
 }
 
+const RequestRecord::ResponseOutput
+InferContext::GetOutput(const cb::InferResult& infer_result)
+{
+  RequestRecord::ResponseOutput output{};
+  for (const auto& requested_output : infer_data_.outputs_) {
+    const uint8_t* buf{nullptr};
+    size_t byte_size{0};
+    infer_result.RawData(requested_output->Name(), &buf, &byte_size);
+    output[requested_output->Name()] = {buf, byte_size};
+  }
+  return output;
+}
 
 void
 InferContext::UpdateJsonData()
@@ -262,9 +274,7 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         }
         it->second.response_timestamps_.push_back(
             std::chrono::system_clock::now());
-        std::string response_output{""};
-        result->Output(response_output);
-        it->second.response_outputs_.push_back(response_output);
+        it->second.response_outputs_.push_back(GetOutput(*result));
         num_responses_++;
         if (is_null_response == true) {
           it->second.has_null_last_response_ = true;
