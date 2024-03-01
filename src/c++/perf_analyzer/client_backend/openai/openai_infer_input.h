@@ -51,14 +51,10 @@ class OpenAiInferInput : public InferInput {
   Error Reset() override;
   /// See InferInput::AppendRaw()
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override;
-  /// Gets the size of data added into this input in bytes.
-  /// \param byte_size The size of data added in bytes.
-  /// \return Error object indicating success or failure.
-  Error ByteSize(size_t* byte_size) const;
   /// Resets the heads to start providing data from the beginning.
   Error PrepareForRequest();
   /// Get the next chunk of data if available.
-  Error GetNext(const uint8_t** buf, size_t* input_bytes, bool* end_of_input);
+  std::string& DataString() { return data_str_; }
 
  private:
   explicit OpenAiInferInput(
@@ -68,9 +64,9 @@ class OpenAiInferInput : public InferInput {
   std::vector<int64_t> shape_;
   size_t byte_size_{0};
 
-  size_t bufs_idx_, buf_pos_;
   std::vector<const uint8_t*> bufs_;
   std::vector<size_t> buf_byte_sizes_;
+  std::string data_str_;
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::openai

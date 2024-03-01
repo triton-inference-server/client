@@ -26,6 +26,8 @@
 
 #include "openai_client_backend.h"
 
+#include "openai_infer_input.h"
+
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace openai {
 
@@ -44,8 +46,8 @@ OpenAiClientBackend::Create(
   std::unique_ptr<OpenAiClientBackend> openai_client_backend(
       new OpenAiClientBackend(http_headers));
 
-  RETURN_IF_CB_ERROR(
-      HttpClient::Create(&(openai_client_backend->http_client_), url, verbose));
+  openai_client_backend->http_client_.reset(
+      new ChatCompletionClient(url, verbose));
 
   *client_backend = std::move(openai_client_backend);
 
@@ -58,14 +60,14 @@ OpenAiClientBackend::AsyncInfer(
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs)
 {
-  auto wrapped_callback = [callback](cb::openai::InferResult* client_result) {
-    cb::InferResult* result = new OpenAiInferResult(client_result);
-    callback(result);
-  };
+  if (inputs.size() != 1) {
+    return Error("Only expecting one input");
+  }
 
-  RETURN_IF_CB_ERROR(http_client_->AsyncInfer(
-      wrapped_callback, options, inputs, outputs, *http_headers_));
-
+  auto raw_input = dynamic_cast<OpenAiInferInput*>(inputs[0]);
+  raw_input->PrepareForRequest();
+  RETURN_IF_CB_ERROR(
+      http_client_->AsyncInfer(callback, raw_input->DataString(), options.request_id_));
   return Error::Success;
 }
 
@@ -73,23 +75,8 @@ OpenAiClientBackend::AsyncInfer(
 Error
 OpenAiClientBackend::ClientInferStat(InferStat* infer_stat)
 {
-  // Reusing the common library utilities to collect and report the
-  // client side statistics.
-  tc::InferStat client_infer_stat;
-
-  RETURN_IF_TRITON_ERROR(http_client_->ClientInferStat(&client_infer_stat));
-
-  ParseInferStat(client_infer_stat, infer_stat);
-
+  *infer_stat = http_client_->ClientInferStat();
   return Error::Success;
-}
-
-void
-OpenAiClientBackend::ParseInferStat(
-    const tc::InferStat& tfserve_infer_stat, InferStat* infer_stat)
-{
-  // TODO: Implement
-  return;
 }
 
 //==============================================================================
@@ -114,36 +101,6 @@ OpenAiInferRequestedOutput::Create(
 OpenAiInferRequestedOutput::OpenAiInferRequestedOutput(const std::string& name)
     : InferRequestedOutput(BackendKind::OPENAI, name)
 {
-}
-
-//==============================================================================
-
-OpenAiInferResult::OpenAiInferResult(cb::openai::InferResult* result)
-{
-  result_.reset(result);
-}
-
-Error
-OpenAiInferResult::Id(std::string* id) const
-{
-  id->clear();
-  return Error::Success;
-}
-
-Error
-OpenAiInferResult::RequestStatus() const
-{
-  RETURN_IF_CB_ERROR(result_->RequestStatus());
-  return Error::Success;
-}
-
-Error
-OpenAiInferResult::RawData(
-    const std::string& output_name, const uint8_t** buf,
-    size_t* byte_size) const
-{
-  return Error(
-      "Output retrieval is not currently supported for OpenAi client backend");
 }
 
 //==============================================================================

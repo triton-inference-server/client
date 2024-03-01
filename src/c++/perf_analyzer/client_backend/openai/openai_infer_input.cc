@@ -51,9 +51,10 @@ OpenAiInferInput::SetShape(const std::vector<int64_t>& shape)
 Error
 OpenAiInferInput::Reset()
 {
+  data_str_.clear();
+
   bufs_.clear();
   buf_byte_sizes_.clear();
-  bufs_idx_ = 0;
   byte_size_ = 0;
   return Error::Success;
 }
@@ -61,18 +62,12 @@ OpenAiInferInput::Reset()
 Error
 OpenAiInferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
 {
+  data_str_.clear();
+
   byte_size_ += input_byte_size;
 
   bufs_.push_back(input);
   buf_byte_sizes_.push_back(input_byte_size);
-
-  return Error::Success;
-}
-
-Error
-OpenAiInferInput::ByteSize(size_t* byte_size) const
-{
-  *byte_size = byte_size_;
   return Error::Success;
 }
 
@@ -80,32 +75,19 @@ Error
 OpenAiInferInput::PrepareForRequest()
 {
   // Reset position so request sends entire input.
-  bufs_idx_ = 0;
-  buf_pos_ = 0;
-  return Error::Success;
-}
-
-Error
-OpenAiInferInput::GetNext(
-    const uint8_t** buf, size_t* input_bytes, bool* end_of_input)
-{
-  if (bufs_idx_ < bufs_.size()) {
-    *buf = bufs_[bufs_idx_];
-    *input_bytes = buf_byte_sizes_[bufs_idx_];
-    bufs_idx_++;
-  } else {
-    *buf = nullptr;
-    *input_bytes = 0;
+  if (data_str_.empty() && (byte_size_ != 0)) {
+    for (size_t i = 0; i < bufs_.size(); ++i) {
+      data_str_.append(
+          reinterpret_cast<const char*>(bufs_[i]), buf_byte_sizes_[i]);
+    }
   }
-  *end_of_input = (bufs_idx_ >= bufs_.size());
-
   return Error::Success;
 }
 
 OpenAiInferInput::OpenAiInferInput(
     const std::string& name, const std::vector<int64_t>& dims,
     const std::string& datatype)
-    : InferInput(BackendKind::TENSORFLOW_SERVING, name, datatype), shape_(dims)
+    : InferInput(BackendKind::OPENAI, name, datatype), shape_(dims)
 {
 }
 
