@@ -41,8 +41,17 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   auto request_timestamp{clock_epoch + std::chrono::nanoseconds(1)};
   auto response_timestamp1{clock_epoch + std::chrono::nanoseconds(2)};
   auto response_timestamp2{clock_epoch + std::chrono::nanoseconds(3)};
-  auto response_output1{"response_output1"};
-  auto response_output2{"response_output2"};
+  std::vector<std::string> bufs{"abc", "def", "ghi", "jkl"};
+  RequestRecord::ResponseOutput response_output1{
+      {"key1",
+       {reinterpret_cast<const uint8_t*>(bufs[0].data()), bufs[0].size()}},
+      {"key2",
+       {reinterpret_cast<const uint8_t*>(bufs[1].data()), bufs[1].size()}}};
+  RequestRecord::ResponseOutput response_output2{
+      {"key3",
+       {reinterpret_cast<const uint8_t*>(bufs[2].data()), bufs[2].size()}},
+      {"key4",
+       {reinterpret_cast<const uint8_t*>(bufs[3].data()), bufs[3].size()}}};
 
   RequestRecord request_record{
       request_timestamp,
@@ -79,7 +88,7 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
                 "timestamp" : 1,
                 "sequence_id" : 1,
                 "response_timestamps" : [ 2, 3 ],
-                "response_outputs" : [ "response_output1", "response_output2" ]
+                "response_outputs" : [ {"key1":"abc","key2":"def"}, {"key3":"ghi","key4":"jkl"} ]
               }
             ],
             "window_boundaries" : [ 1, 5, 6 ]

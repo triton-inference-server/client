@@ -74,7 +74,8 @@ class ProfileDataExporter {
       const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
           timestamps);
   void AddResponseOutputs(
-      rapidjson::Value& outputs_json, const std::vector<std::string>& outputs);
+      rapidjson::Value& outputs_json,
+      const std::vector<RequestRecord::ResponseOutput>& outputs);
   void AddWindowBoundaries(
       rapidjson::Value& entry, rapidjson::Value& window_boundaries,
       const Experiment& raw_experiment);

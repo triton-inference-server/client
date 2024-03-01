@@ -1,4 +1,4 @@
-// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -529,10 +529,6 @@ class InferResult {
   /// Get null response bool for this response.
   /// \return Error object indicating the success or failure.
   virtual Error IsNullResponse(bool* is_null_response) const = 0;
-
-  /// Get output for this response.
-  /// \return Error object indicating the success or failure.
-  virtual Error Output(std::string& output) const = 0;
 
   /// Get the result data as a vector of strings. The vector will
   /// receive a copy of result data. An error will be generated if
