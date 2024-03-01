@@ -277,10 +277,16 @@ ModelParser::InitOpenAI(
   max_batch_size_ = batch_size;
 
   // OpenAI will take a single json input with a fully formed payload
-  auto it = inputs_->emplace("payload", ModelTensor()).first;
-  it->second.name_ = "payload";
-  it->second.datatype_ = "JSON";
-  it->second.shape_.push_back(1);
+  auto in_it = inputs_->emplace("payload", ModelTensor()).first;
+  in_it->second.name_ = "payload";
+  in_it->second.datatype_ = "JSON";
+  in_it->second.shape_.push_back(1);
+
+  // OpenAI will reply with a single json output
+  auto out_it = outputs_->emplace("response", ModelTensor()).first;
+  out_it->second.name_ = "response";
+  out_it->second.datatype_ = "JSON";
+  out_it->second.shape_.push_back(1);
 
   return cb::Error::Success;
 }

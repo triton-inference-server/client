@@ -522,6 +522,12 @@ InferRequestedOutput::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
         infer_output, name, class_count));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(
+        openai::OpenAiInferRequestedOutput::Create(infer_output, name));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(
