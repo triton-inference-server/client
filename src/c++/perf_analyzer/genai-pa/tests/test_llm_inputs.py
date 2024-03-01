@@ -16,7 +16,6 @@ import json
 import os
 
 import pytest
-from genai_pa import parser
 from genaipa_exceptions import GenAiPAExceptions
 from llm_inputs.llm_inputs import LlmInputs
 
@@ -93,7 +92,7 @@ class TestLlmInputs:
         Test for exception when length is out of range
         """
         with pytest.raises(GenAiPAExceptions):
-            llm_inputs = LlmInputs.create_openai_llm_inputs(
+            _ = LlmInputs.create_openai_llm_inputs(
                 LlmInputs.OPEN_ORCA_URL,
                 LlmInputs.DEFAULT_STARTING_INDEX,
                 int(LlmInputs.DEFAULT_LENGTH * 100),

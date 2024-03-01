@@ -17,7 +17,6 @@ from copy import deepcopy
 from typing import Dict, List, Tuple
 
 import requests
-from datasets import load_dataset
 from genaipa_exceptions import GenAiPAExceptions
 from requests import Response
 
@@ -80,9 +79,11 @@ class LlmInputs:
 
     @classmethod
     def _write_json_to_file(cls, json_in_pa_format: Dict):
-        f = open(LlmInputs.OUTPUT_FILENAME, "w")
-        f.write(json.dumps(json_in_pa_format, indent=2))
-        f.close()
+        try:
+            f = open(LlmInputs.OUTPUT_FILENAME, "w")
+            f.write(json.dumps(json_in_pa_format, indent=2))
+        finally:
+            f.close()
 
     @classmethod
     def _check_for_valid_args(cls, starting_index: int, length: int) -> None:
