@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class GenAiPAExceptions(Exception):
+class GenAiPAException(Exception):
     """
     A custom exception specific to the GenAI-PA
     """

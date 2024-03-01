@@ -16,7 +16,7 @@ import json
 import os
 
 import pytest
-from genaipa_exceptions import GenAiPAExceptions
+from genaipa_exceptions import GenAiPAException
 from llm_inputs.llm_inputs import LlmInputs
 
 
@@ -35,12 +35,12 @@ class TestLlmInputs:
         """
         Test for exceptions when illegal values are given for starting index
         """
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs._check_for_valid_args(
                 starting_index="foo", length=LlmInputs.DEFAULT_LENGTH
             )
 
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs._check_for_valid_args(
                 starting_index=-1, length=LlmInputs.DEFAULT_LENGTH
             )
@@ -49,12 +49,12 @@ class TestLlmInputs:
         """
         Test for exceptions when illegal values are given for length
         """
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs._check_for_valid_args(
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX, length="foo"
             )
 
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs._check_for_valid_args(
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX, length=0
             )
@@ -80,7 +80,7 @@ class TestLlmInputs:
         """
         Test for exception when URL is bad
         """
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs._download_dataset(
                 "https://bad-url.zzz",
                 LlmInputs.DEFAULT_STARTING_INDEX,
@@ -91,7 +91,7 @@ class TestLlmInputs:
         """
         Test for exception when length is out of range
         """
-        with pytest.raises(GenAiPAExceptions):
+        with pytest.raises(GenAiPAException):
             _ = LlmInputs.create_openai_llm_inputs(
                 LlmInputs.OPEN_ORCA_URL,
                 LlmInputs.DEFAULT_STARTING_INDEX,
@@ -162,7 +162,7 @@ class TestLlmInputs:
         Test that write to file is working correctly
         """
         pa_json = LlmInputs.create_openai_llm_inputs(
-            model_name="OpenOrca", add_streaming=True
+            model_name="OpenOrca", add_stream=True
         )
         try:
             f = open(LlmInputs.OUTPUT_FILENAME, "r")

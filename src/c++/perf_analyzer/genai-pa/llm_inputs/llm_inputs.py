@@ -14,10 +14,10 @@
 
 import json
 from copy import deepcopy
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import requests
-from genaipa_exceptions import GenAiPAExceptions
+from genaipa_exceptions import GenAiPAException
 from requests import Response
 
 
@@ -46,7 +46,7 @@ class LlmInputs:
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
         model_name: str = None,
-        add_streaming: bool = False,
+        add_stream: bool = False,
     ) -> Dict:
         """
         Given a URL and indexing parameters, it will write a string of LLM Inputs
@@ -62,8 +62,8 @@ class LlmInputs:
             Number of entries to gather
         model_name:
             If included adds this model name field to each payload
-        add_streaming:
-            If true adds a streaming field to each payload
+        add_stream:
+            If true adds a steam field to each payload
         """
 
         LlmInputs._check_for_valid_args(starting_index, length)
@@ -71,19 +71,11 @@ class LlmInputs:
         dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
         dataset_json = LlmInputs._convert_dataset_to_json(dataset)
         json_in_pa_format = LlmInputs._convert_json_to_pa_format(
-            dataset_json, model_name, add_streaming
+            dataset_json, model_name, add_stream
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
         return json_in_pa_format
-
-    @classmethod
-    def _write_json_to_file(cls, json_in_pa_format: Dict):
-        try:
-            f = open(LlmInputs.OUTPUT_FILENAME, "w")
-            f.write(json.dumps(json_in_pa_format, indent=2))
-        finally:
-            f.close()
 
     @classmethod
     def _check_for_valid_args(cls, starting_index: int, length: int) -> None:
@@ -91,13 +83,13 @@ class LlmInputs:
             LlmInputs._check_for_valid_starting_index(starting_index)
             LlmInputs._check_for_valid_length(length)
         except Exception as e:
-            raise GenAiPAExceptions(e)
+            raise GenAiPAException(e)
 
     @classmethod
     def _create_configured_url(cls, url: str, starting_index: int, length: int) -> str:
         starting_index_str = str(starting_index)
         length_str = str(length)
-        configured_url = url + f"&offset={starting_index_str}" + f"&length={length_str}"
+        configured_url = url + f"&offset={starting_index_str}&length={length_str}"
 
         return configured_url
 
@@ -113,13 +105,13 @@ class LlmInputs:
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
-            raise GenAiPAExceptions(e)
+            raise GenAiPAException(e)
 
         return dataset_json
 
     @classmethod
     def _convert_json_to_pa_format(
-        cls, dataset_json: Dict, model_name: str, add_streaming: bool
+        cls, dataset_json: Dict, model_name: str, add_stream: bool
     ) -> Dict:
         system_role_headers, user_role_headers = LlmInputs._determine_json_pa_roles(
             dataset_json
@@ -129,10 +121,18 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             model_name,
-            add_streaming,
+            add_stream,
         )
 
         return pa_json
+
+    @classmethod
+    def _write_json_to_file(cls, json_in_pa_format: Dict):
+        try:
+            f = open(LlmInputs.OUTPUT_FILENAME, "w")
+            f.write(json.dumps(json_in_pa_format, indent=2))
+        finally:
+            f.close()
 
     @classmethod
     def _determine_json_pa_roles(
@@ -160,7 +160,7 @@ class LlmInputs:
         system_role_headers: List[str],
         user_role_headers: List[str],
         model_name: str,
-        add_streaming: bool,
+        add_stream: bool,
     ) -> Dict:
         pa_json = LlmInputs._create_empty_pa_json()
 
@@ -177,7 +177,7 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_json(
-                pa_json, entry["row_idx"], model_name, add_streaming
+                pa_json, entry["row_idx"], model_name, add_stream
             )
 
         return pa_json
@@ -195,7 +195,7 @@ class LlmInputs:
         system_role_headers: List[str],
         user_role_headers: List[str],
         content: str,
-    ) -> Dict:
+    ) -> Optional[Dict]:
         if header in system_role_headers:
             new_message = {
                 "role": "system",
@@ -213,7 +213,7 @@ class LlmInputs:
 
     @classmethod
     def _add_new_message_to_json(
-        cls, pa_json: Dict, index: int, new_message: Dict
+        cls, pa_json: Dict, index: int, new_message: Optional[Dict]
     ) -> Dict:
         if new_message:
             pa_json["data"][0]["payload"][index]["messages"].append(new_message)
@@ -222,34 +222,34 @@ class LlmInputs:
 
     @classmethod
     def _add_optional_tags_to_json(
-        cls, pa_json: Dict, index: int, model_name: str, add_streaming: bool
+        cls, pa_json: Dict, index: int, model_name: str, add_stream: bool
     ) -> Dict:
         if model_name:
             pa_json["data"][0]["payload"][index]["model"] = model_name
-        if add_streaming:
-            pa_json["data"][0]["payload"][index]["streaming"] = "true"
+        if add_stream:
+            pa_json["data"][0]["payload"][index]["steam"] = "true"
 
         return pa_json
 
     @classmethod
     def _check_for_valid_starting_index(cls, starting_index: int) -> None:
         if not isinstance(starting_index, int):
-            raise GenAiPAExceptions(
+            raise GenAiPAException(
                 f"starting_index: {starting_index} must be an integer."
             )
 
         if starting_index < LlmInputs.MINIMUM_STARTING_INDEX:
-            raise GenAiPAExceptions(
+            raise GenAiPAException(
                 f"starting_index: {starting_index} must be larger than {LlmInputs.MINIMUM_STARTING_INDEX}."
             )
 
     @classmethod
     def _check_for_valid_length(cls, length: int) -> None:
         if not isinstance(length, int):
-            raise GenAiPAExceptions(f"length: {length} must be an integer.")
+            raise GenAiPAException(f"length: {length} must be an integer.")
 
         if length < LlmInputs.MINIMUM_LENGTH:
-            raise GenAiPAExceptions(
+            raise GenAiPAException(
                 f"starting_index: {length} must be larger than {LlmInputs.MINIMUM_LENGTH}."
             )
 
@@ -259,7 +259,7 @@ class LlmInputs:
             response = requests.get(configured_url)
         except Exception as e:
             error_message = LlmInputs._create_error_message(e)
-            raise GenAiPAExceptions(error_message)
+            raise GenAiPAException(error_message)
 
         return response
 
@@ -275,8 +275,4 @@ class LlmInputs:
     @classmethod
     def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
         if "error" in json_of_dataset.keys():
-            raise GenAiPAExceptions(json_of_dataset["error"])
-
-
-if __name__ == "__main__":
-    main()
+            raise GenAiPAException(json_of_dataset["error"])
