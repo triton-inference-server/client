@@ -30,6 +30,7 @@ import sys
 
 from genai_pa import parser
 from genai_pa.constants import LOGGER_NAME
+from genai_pa.exceptions import GenAiPAException
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
@@ -39,16 +40,18 @@ logger = logging.getLogger(LOGGER_NAME)
 # to assert correct errors and messages.
 # Optional argv used for testing - will default to sys.argv if None.
 def run(argv=None):
-    args = parser.parse_args(argv)
-    args.func(args)
+    try:
+        args = parser.parse_args(argv)
+        args.func(args)
+    except Exception as e:
+        raise GenAiPAException(e)
 
 
 def main():
-    # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
     try:
         run()
     except Exception as e:
-        logger.error(f"{e}")
+        logger.error(f"Unhandled exception: {e}")
         return 1
 
     return 0
