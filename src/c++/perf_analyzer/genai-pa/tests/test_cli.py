@@ -96,4 +96,4 @@ class TestCLIArguments:
 
     def test_exception_on_nonzero_exit(self):
         with pytest.raises(GenAiPAException) as e:
-            _ = run(["-m", "nonexistent_model"])
+            run(["-m", "nonexistent_model"])
