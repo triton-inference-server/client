@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,16 +13,13 @@
 # limitations under the License.
 
 import json
-import requests
-
 from copy import deepcopy
-
 from typing import Dict, List, Tuple
 
-from genaipa_exceptions import GenAiPAExceptions
-
-from requests import Response
+import requests
 from datasets import load_dataset
+from genaipa_exceptions import GenAiPAExceptions
+from requests import Response
 
 
 class LlmInputs:
@@ -66,9 +61,9 @@ class LlmInputs:
             Offset from within the list to start gathering inputs
         length:
             Number of entries to gather
-        model_name: 
+        model_name:
             If included adds this model name field to each payload
-        add_streaming: 
+        add_streaming:
             If true adds a streaming field to each payload
         """
 
@@ -107,7 +102,6 @@ class LlmInputs:
 
     @classmethod
     def _download_dataset(cls, configured_url, starting_index, length) -> Response:
-
         dataset = LlmInputs._query_server(configured_url)
 
         return dataset

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,15 +14,14 @@
 
 import json
 import os
-import pytest
 
+import pytest
 from genai_pa import parser
 from genaipa_exceptions import GenAiPAExceptions
 from llm_inputs.llm_inputs import LlmInputs
 
 
 class TestLlmInputs:
-
     @pytest.fixture
     def default_configured_url(self):
         default_configured_url = LlmInputs._create_configured_url(
@@ -32,7 +29,7 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        
+
         yield default_configured_url
 
     def test_illegal_starting_index(self):
@@ -157,7 +154,7 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_openai_llm_inputs(LlmInputs.CNN_DAILYMAIL_URL)
 
         os.remove(LlmInputs.OUTPUT_FILENAME)
-        
+
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
 
@@ -172,5 +169,5 @@ class TestLlmInputs:
         json_str = f.read()
         f.close()
         os.remove(LlmInputs.OUTPUT_FILENAME)
-        
+
         assert pa_json == json.loads(json_str)
