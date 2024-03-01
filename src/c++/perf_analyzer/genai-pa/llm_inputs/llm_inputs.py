@@ -37,7 +37,7 @@ class LlmInputs:
     DEFAULT_LENGTH = 100
     MINIMUM_LENGTH = 1
 
-    EMPTY_JSON_IN_PA_FORMAT = {"data": [{"payload": []}]}
+    EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": [{"payload": []}]}
 
     @classmethod
     def create_openai_llm_inputs(
@@ -116,7 +116,7 @@ class LlmInputs:
         system_role_headers, user_role_headers = LlmInputs._determine_json_pa_roles(
             dataset_json
         )
-        pa_json = LlmInputs._populate_pa_json(
+        pa_json = LlmInputs._populate_openai_pa_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -154,7 +154,7 @@ class LlmInputs:
         return system_role_headers, user_role_headers
 
     @classmethod
-    def _populate_pa_json(
+    def _populate_openai_pa_json(
         cls,
         dataset_json: Dict,
         system_role_headers: List[str],
@@ -162,7 +162,7 @@ class LlmInputs:
         model_name: str,
         add_stream: bool,
     ) -> Dict:
-        pa_json = LlmInputs._create_empty_pa_json()
+        pa_json = LlmInputs._create_empty_openai_pa_json()
 
         for entry in dataset_json["rows"]:
             pa_json["data"][0]["payload"].append({"messages": []})
@@ -183,8 +183,8 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _create_empty_pa_json(cls) -> Dict:
-        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_PA_FORMAT)
+    def _create_empty_openai_pa_json(cls) -> Dict:
+        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
 
         return empty_pa_json
 
