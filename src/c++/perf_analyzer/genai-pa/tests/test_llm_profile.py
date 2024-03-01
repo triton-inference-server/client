@@ -4,7 +4,8 @@
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
-# are met: * Redistributions of source code must retain the above copyright
+# are met:
+#  * Redistributions of source code must retain the above copyright
 #    notice, this list of conditions and the following disclaimer.
 #  * Redistributions in binary form must reproduce the above copyright
 #    notice, this list of conditions and the following disclaimer in the
@@ -26,15 +27,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import unittest
 from pathlib import Path
 
 import numpy as np
-from genai_pa.llm_profile import LLMProfileData
+import pytest
+from genai_pa.llm_profile import LLMMetrics, LLMProfileData
+from genai_pa.utils import remove_file
+from transformers import AutoTokenizer
 
 
-class TestLLMProfileData(unittest.TestCase):
-    def setUp(self) -> None:
+class TestLLMProfileData:
+    @pytest.fixture
+    def prepare_profile_data(self) -> None:
         self.path = Path("temp_profile_export.json")
         self.profile_data = {
             "experiments": [
@@ -76,10 +80,16 @@ class TestLLMProfileData(unittest.TestCase):
                 },
             ],
         }
+
         with open(self.path, "w") as f:
             json.dump(self.profile_data, f)
 
-    def test_llm_profile_data(self):
+        yield None
+
+        # clean up
+        remove_file(self.path)
+
+    def test_llm_profile_data(self, prepare_profile_data) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
@@ -90,50 +100,64 @@ class TestLLMProfileData(unittest.TestCase):
             - experiment 1: [5 - 3, 8 - 5, 7 - 4, 10 - 7] = [2, 3, 3, 4]
             - experiment 2: [8 - 7, 13 - 8, 18 - 13, 8 - 6, 11 - 8] = [1, 5, 5, 2, 3]
         * output token throughputs
-            - experiment 1: [3/(8 - 3), 5/(11 - 4)] = [3/5, 5/7]
-            - experiment 2: [4/(18 - 7), 5/(11 - 6)] = [4/11, 1]
+            - experiment 1: [3/(8 - 1), 5/(11 - 2)] = [3/7, 5/9]
+            - experiment 2: [4/(18 - 5), 5/(11 - 3)] = [4/13, 5/8]
         """
-        pd = LLMProfileData("temp_profile_export.json")
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        pd = LLMProfileData("temp_profile_export.json", tokenizer)
 
         # experiment 1 statistics
-        stat = pd.get_statistics(infer_mode="concurrency", level=10)
-        self.assertEqual(stat.avg_time_to_first_token, 2)
-        self.assertEqual(stat.avg_inter_token_latency, 3)
-        self.assertEqual(stat.avg_output_token_throughput, 23 / 35)
-        self.assertEqual(stat.p50_time_to_first_token, 2)
-        self.assertEqual(stat.p50_inter_token_latency, 3)
-        self.assertEqual(stat.p50_output_token_throughput, 23 / 35)
-        self.assertEqual(stat.min_time_to_first_token, 2)
-        self.assertEqual(stat.min_inter_token_latency, 2)
-        self.assertEqual(stat.min_output_token_throughput, 0.6)
-        self.assertEqual(stat.max_time_to_first_token, 2)
-        self.assertEqual(stat.max_inter_token_latency, 4)
-        self.assertEqual(stat.max_output_token_throughput, 5 / 7)
-        self.assertEqual(stat.std_time_to_first_token, np.std([2, 2]))
-        self.assertEqual(stat.std_inter_token_latency, np.std([2, 3, 3, 4]))
-        self.assertEqual(stat.std_output_token_throughput, np.std([3 / 5, 5 / 7]))
+        stat = pd.get_statistics(infer_mode="concurrency", load_level=10)
+        assert stat.avg_time_to_first_token == 2
+        assert stat.avg_inter_token_latency == 3
+        assert stat.avg_output_token_throughput == pytest.approx(31 / 63)
+        assert stat.p50_time_to_first_token == 2
+        assert stat.p50_inter_token_latency == 3
+        assert stat.p50_output_token_throughput == pytest.approx(31 / 63)
+        assert stat.min_time_to_first_token == 2
+        assert stat.min_inter_token_latency == 2
+        assert stat.min_output_token_throughput == pytest.approx(3 / 7)
+        assert stat.max_time_to_first_token == 2
+        assert stat.max_inter_token_latency == 4
+        assert stat.max_output_token_throughput == pytest.approx(5 / 9)
+        assert stat.std_time_to_first_token == np.std([2, 2])
+        assert stat.std_inter_token_latency == np.std([2, 3, 3, 4])
+        assert stat.std_output_token_throughput == np.std([3 / 7, 5 / 9])
 
         # experiment 2 statistics
-        stat = pd.get_statistics(infer_mode="request_rate", level=2.0)
-        self.assertEqual(stat.avg_time_to_first_token, 2.5)
-        self.assertEqual(stat.avg_inter_token_latency, 3.2)
-        self.assertAlmostEqual(stat.avg_output_token_throughput, 15 / 22)
-        self.assertEqual(stat.p50_time_to_first_token, 2.5)
-        self.assertEqual(stat.p50_inter_token_latency, 3)
-        self.assertAlmostEqual(stat.p50_output_token_throughput, 15 / 22)
-        self.assertEqual(stat.min_time_to_first_token, 2)
-        self.assertEqual(stat.min_inter_token_latency, 1)
-        self.assertEqual(stat.min_output_token_throughput, 4 / 11)
-        self.assertEqual(stat.max_time_to_first_token, 3)
-        self.assertEqual(stat.max_inter_token_latency, 5)
-        self.assertEqual(stat.max_output_token_throughput, 1)
-        self.assertEqual(stat.std_time_to_first_token, np.std([2, 3]))
-        self.assertEqual(stat.std_inter_token_latency, np.std([1, 5, 5, 2, 3]))
-        self.assertEqual(stat.std_output_token_throughput, np.std([4 / 11, 1]))
+        stat = pd.get_statistics(infer_mode="request_rate", load_level=2.0)
+        assert stat.avg_time_to_first_token == 2.5
+        assert stat.avg_inter_token_latency == 3.2
+        assert stat.avg_output_token_throughput == pytest.approx(97 / 208)
+        assert stat.p50_time_to_first_token == 2.5
+        assert stat.p50_inter_token_latency == 3
+        assert stat.p50_output_token_throughput == pytest.approx(97 / 208)
+        assert stat.min_time_to_first_token == 2
+        assert stat.min_inter_token_latency == 1
+        assert stat.min_output_token_throughput == pytest.approx(4 / 13)
+        assert stat.max_time_to_first_token == 3
+        assert stat.max_inter_token_latency == 5
+        assert stat.max_output_token_throughput == pytest.approx(5 / 8)
+        assert stat.std_time_to_first_token == np.std([2, 3])
+        assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 3])
+        assert stat.std_output_token_throughput == np.std([4 / 13, 5 / 8])
 
         # check non-existing profile data
-        with self.assertRaises(KeyError):
-            pd.get_statistics(infer_mode="concurrency", level=30)
+        with pytest.raises(KeyError):
+            pd.get_statistics(infer_mode="concurrency", load_level=30)
 
-    def tearDown(self) -> None:
-        self.path.unlink(missing_ok=True)
+    def test_llm_metrics_get_base_name(self) -> None:
+        """Test get_base_name method in LLMMetrics class."""
+        metrics = LLMMetrics(
+            time_to_first_tokens=[1, 2, 3],
+            inter_token_latencies=[4, 5],
+            output_token_throughputs=[7, 8, 9],
+        )
+        assert metrics.get_base_name("time_to_first_tokens") == "time_to_first_token"
+        assert metrics.get_base_name("inter_token_latencies") == "inter_token_latency"
+        assert (
+            metrics.get_base_name("output_token_throughputs")
+            == "output_token_throughput"
+        )
+        with pytest.raises(ValueError):
+            metrics.get_base_name("hello1234")

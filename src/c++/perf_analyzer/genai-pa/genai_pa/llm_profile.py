@@ -65,7 +65,7 @@ class Statistics:
     The Statistics class goes through each metric in the metrics class and
     calculates several statistics such as:
       - average (arithmetic mean)
-      - percentiles (p50, p90, p95, p99)
+      - percentiles (p25, p50, p75, p90, p95, p99)
       - minimum & maximum
       - standard deviation
     The class will store each calculated statistics as part of its attribute.
@@ -92,8 +92,11 @@ class Statistics:
         setattr(self, "avg_" + attr, avg)
 
     def _calculate_percentiles(self, data: list[int], attr: str):
-        p50, p90, p95, p99 = np.percentile(data, [50, 90, 95, 99])
+        p25, p50, p75 = np.percentile(data, [25, 50, 75])
+        p90, p95, p99 = np.percentile(data, [90, 95, 99])
+        setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
+        setattr(self, "p75_" + attr, p75)
         setattr(self, "p90_" + attr, p90)
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
