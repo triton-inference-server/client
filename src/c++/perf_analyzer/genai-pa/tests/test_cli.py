@@ -94,6 +94,6 @@ class TestCLIArguments:
         # Check that the exit was unsuccessful
         assert exc_info.value.code != 0
 
-    def test_execption_on_nonzero_exit(self):
+    def test_exception_on_nonzero_exit(self):
         with pytest.raises(GenAiPAException) as e:
             _ = run(["-m", "nonexistent_model"])
