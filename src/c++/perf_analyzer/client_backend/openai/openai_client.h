@@ -117,8 +117,7 @@ class ChatCompletionRequest : public HttpRequest {
   ChatCompletionRequest(
       std::function<void(HttpRequest*)>&& completion_callback,
       std::function<void(InferResult*)>&& response_callback,
-      const std::string& request_id,
-      const bool verbose = false)
+      const std::string& request_id, const bool verbose = false)
       : HttpRequest(std::move(completion_callback), verbose),
         response_callback_(std::move(response_callback)),
         request_id_(request_id)
@@ -137,7 +136,6 @@ class ChatCompletionClient : public HttpClient {
   virtual ~ChatCompletionClient() = default;
 
   /// Create a client that can be used to communicate with the server.
-  /// \param client Returns a new InferenceServerHttpClient object.
   /// \param server_url The inference server name, port, optional
   /// scheme and optional base path in the following format:
   /// <scheme://>host:port/<base-path>.
@@ -149,7 +147,6 @@ class ChatCompletionClient : public HttpClient {
   /// The use of SSL/TLS depends entirely on the server endpoint.
   /// These options will be ignored if the server_url does not
   /// expose `https://` scheme.
-  /// \return Error object indicating success or failure.
   ChatCompletionClient(
       const std::string& server_url, bool verbose = false,
       const HttpSslOptions& ssl_options = HttpSslOptions());
@@ -159,8 +156,7 @@ class ChatCompletionClient : public HttpClient {
   /// with a OpenAI-compatible server in both streaming and non-streaming case.
   Error AsyncInfer(
       std::function<void(InferResult*)> callback,
-      std::string& serialized_request_body,
-      const std::string& request_id);
+      std::string& serialized_request_body, const std::string& request_id);
 
   const InferStat& ClientInferStat() { return infer_stat_; }
 
@@ -169,8 +165,7 @@ class ChatCompletionClient : public HttpClient {
 
  private:
   // setup curl handle
-  Error PreRunProcessing(
-      CURL* curl, std::string& request_uri, ChatCompletionRequest* request);
+  Error PreRunProcessing(CURL* curl, ChatCompletionRequest* request);
 
   static size_t ResponseHandler(
       void* contents, size_t size, size_t nmemb, void* userp);

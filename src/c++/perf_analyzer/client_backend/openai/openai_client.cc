@@ -69,7 +69,8 @@ ChatCompletionRequest::SendResponse(bool is_final, bool is_null)
 
 ChatCompletionClient::ChatCompletionClient(
     const std::string& url, bool verbose, const HttpSslOptions& ssl_options)
-    : HttpClient(url, verbose, ssl_options)
+    : HttpClient(
+          std::string(url + "/v1/chat/completions"), verbose, ssl_options)
 {
 }
 
@@ -149,8 +150,7 @@ ChatCompletionClient::ResponseHandler(
 Error
 ChatCompletionClient::AsyncInfer(
     std::function<void(InferResult*)> callback,
-    std::string& serialized_request_body,
-    const std::string& request_id)
+    std::string& serialized_request_body, const std::string& request_id)
 {
   if (callback == nullptr) {
     return Error(
@@ -167,17 +167,17 @@ ChatCompletionClient::AsyncInfer(
     UpdateInferStat(request->timer_);
   };
   std::unique_ptr<HttpRequest> request(new ChatCompletionRequest(
-      std::move(completion_callback), std::move(callback), request_id, verbose_));
+      std::move(completion_callback), std::move(callback), request_id,
+      verbose_));
   auto raw_request = static_cast<ChatCompletionRequest*>(request.get());
   raw_request->timer_.CaptureTimestamp(
       triton::client::RequestTimers::Kind::REQUEST_START);
   request->AddInput(
       reinterpret_cast<uint8_t*>(serialized_request_body.data()),
       serialized_request_body.size());
-  std::string request_uri(url_ + "/v1/chat/completions");
 
   CURL* multi_easy_handle = curl_easy_init();
-  Error err = PreRunProcessing(multi_easy_handle, request_uri, raw_request);
+  Error err = PreRunProcessing(multi_easy_handle, raw_request);
   if (!err.IsOk()) {
     curl_easy_cleanup(multi_easy_handle);
     return err;
@@ -191,9 +191,9 @@ ChatCompletionClient::AsyncInfer(
 
 Error
 ChatCompletionClient::PreRunProcessing(
-    CURL* curl, std::string& request_uri, ChatCompletionRequest* request)
+    CURL* curl, ChatCompletionRequest* request)
 {
-  curl_easy_setopt(curl, CURLOPT_URL, request_uri.c_str());
+  curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
   curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);

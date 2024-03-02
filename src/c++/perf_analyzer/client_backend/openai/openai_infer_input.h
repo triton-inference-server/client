@@ -51,9 +51,10 @@ class OpenAiInferInput : public InferInput {
   Error Reset() override;
   /// See InferInput::AppendRaw()
   Error AppendRaw(const uint8_t* input, size_t input_byte_size) override;
-  /// Resets the heads to start providing data from the beginning.
+  /// Prepare the input to be in the form expected by an OpenAI client,
+  /// must call before accessing the data.
   Error PrepareForRequest();
-  /// Get the next chunk of data if available.
+  /// Get the contiguous data in string.
   std::string& DataString() { return data_str_; }
 
  private:

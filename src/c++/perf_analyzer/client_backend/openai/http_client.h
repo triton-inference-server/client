@@ -93,7 +93,7 @@ struct HttpSslOptions {
   std::string key;
 };
 
-// an HttpRequest object represents the context of a HTTP transaction. currently
+// HttpRequest object representing the context of a HTTP transaction. Currently
 // it is also designed to be the placeholder for response data, but how the
 // response is stored can be revisited later.
 // 'completion_callback' doesn't transfer ownership of HttpRequest, caller must
@@ -126,7 +126,7 @@ class HttpRequest {
   size_t total_input_byte_size_{0};
 
   // HTTP response code for the inference request
-  long http_code_{200};
+  uint32_t http_code_{200};
 
   std::function<void(HttpRequest*)> completion_callback_{nullptr};
 
@@ -137,7 +137,7 @@ class HttpRequest {
  protected:
   const bool verbose_{false};
 
-  // The pointers to the input data.
+  // Pointers to the input data.
   std::deque<std::pair<uint8_t*, size_t>> data_buffers_;
 };
 
