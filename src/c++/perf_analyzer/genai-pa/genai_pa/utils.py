@@ -24,7 +24,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
 from pathlib import Path
+
+
+def load_json(filename: str):
+    with open(filename) as f:
+        return json.load(f)
 
 
 def remove_file(file: Path):
