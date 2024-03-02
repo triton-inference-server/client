@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 #include "perf_analyzer.h"
 
 #include "perf_analyzer_exception.h"
-#include "periodic_concurrency_manager.h"
 #include "report_writer.h"
 #include "request_rate_manager.h"
 
@@ -209,13 +208,6 @@ PerfAnalyzer::CreateAnalyzerObjects()
             factory, &manager, params_->request_parameters),
         "failed to create concurrency manager");
 
-  } else if (params_->is_using_periodic_concurrency_mode) {
-    manager = std::make_unique<pa::PeriodicConcurrencyManager>(
-        params_->async, params_->streaming, params_->batch_size,
-        params_->max_threads, params_->max_concurrency,
-        params_->shared_memory_type, params_->output_shm_size, parser_, factory,
-        params_->periodic_concurrency_range, params_->request_period,
-        params_->request_parameters);
   } else if (params_->using_request_rate_range) {
     if ((params_->sequence_id_range != 0) &&
         (params_->sequence_id_range < params_->num_of_sequences)) {
@@ -377,8 +369,6 @@ PerfAnalyzer::Profile()
     err = profiler_->Profile<size_t>(
         params_->concurrency_range.start, params_->concurrency_range.end,
         params_->concurrency_range.step, params_->search_mode, perf_statuses_);
-  } else if (params_->is_using_periodic_concurrency_mode) {
-    err = profiler_->ProfilePeriodicConcurrencyMode();
   } else {
     err = profiler_->Profile<double>(
         params_->request_rate_range[pa::SEARCH_RANGE::kSTART],
@@ -402,7 +392,7 @@ PerfAnalyzer::Profile()
 void
 PerfAnalyzer::WriteReport()
 {
-  if (!perf_statuses_.size() || params_->is_using_periodic_concurrency_mode) {
+  if (!perf_statuses_.size()) {
     return;
   }
 

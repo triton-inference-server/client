@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -176,19 +176,6 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
   CHECK_STRING(act->filename, act->filename);
   CHECK(act->mpi_driver != nullptr);
   CHECK_STRING(act->memory_type, exp->memory_type);
-  CHECK(
-      act->is_using_periodic_concurrency_mode ==
-      exp->is_using_periodic_concurrency_mode);
-  CHECK(
-      act->periodic_concurrency_range.start ==
-      exp->periodic_concurrency_range.start);
-  CHECK(
-      act->periodic_concurrency_range.end ==
-      exp->periodic_concurrency_range.end);
-  CHECK(
-      act->periodic_concurrency_range.step ==
-      exp->periodic_concurrency_range.step);
-  CHECK(act->request_period == exp->request_period);
   CHECK(act->request_parameters.size() == exp->request_parameters.size());
   for (auto act_param : act->request_parameters) {
     auto exp_param = exp->request_parameters.find(act_param.first);
@@ -1167,153 +1154,6 @@ TEST_CASE("Testing Command Line Parser")
           act = parser.Parse(argc, argv),
           "The end of the search range and the latency limit can not be both 0 "
           "(or 0.0) simultaneously",
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-  }
-
-  SUBCASE("Option : --periodic-concurrency-range")
-  {
-    char* option_name = "--periodic-concurrency-range";
-
-    // Add required args that specifies where to dump profiled data
-    args.insert(
-        args.end(), {"-i", "grpc", "--async", "--streaming",
-                     "--profile-export-file", "profile.json"});
-    exp->protocol = cb::ProtocolType::GRPC;
-    exp->async = true;
-    exp->streaming = true;
-    exp->url = "localhost:8001";  // gRPC url
-
-    SUBCASE("start provided")
-    {
-      args.push_back(option_name);
-      args.push_back("100");  // start
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      expected_msg = CreateUsageMessage(
-          option_name, "Both <start> and <end> values must be provided.");
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-
-    exp->max_threads = 400;
-
-    CheckValidRange(
-        args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
-        exp->periodic_concurrency_range);
-
-    CheckInvalidRange(args, option_name, parser, act, check_params);
-
-    SUBCASE("more than one load mode")
-    {
-      args.push_back(option_name);
-      args.push_back("100:400");
-      args.push_back("--concurrency-range");
-      args.push_back("10:40");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      expected_msg =
-          "Cannot specify more then one inference load mode. Please choose "
-          "only one of the following modes: --concurrency-range, "
-          "--periodic-concurrency-range, --request-rate-range, or "
-          "--request-intervals.";
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-
-    SUBCASE("no export file specified")
-    {
-      // Remove the export file args
-      args.pop_back();
-      args.pop_back();
-
-      args.push_back(option_name);
-      args.push_back("100:400");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      expected_msg =
-          "Must provide --profile-export-file when using the "
-          "--periodic-concurrency-range option.";
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-
-    SUBCASE("step is not factor of range size")
-    {
-      args.push_back(option_name);
-      args.push_back("100:400:7");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      expected_msg = CreateUsageMessage(
-          option_name,
-          "The <step> value must be a factor of the range size (<end> - "
-          "<start>).");
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-
-    SUBCASE("step is zero")
-    {
-      args.push_back(option_name);
-      args.push_back("10:400:0");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      expected_msg =
-          CreateUsageMessage(option_name, "The <step> value must be > 0.");
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
-          PerfAnalyzerException);
-
-      check_params = false;
-    }
-  }
-
-  SUBCASE("Option : --request-period")
-  {
-    expected_msg =
-        CreateUsageMessage("--request-period", "The value must be > 0");
-    CHECK_INT_OPTION("--request-period", exp->request_period, expected_msg);
-
-    SUBCASE("set to 0")
-    {
-      args.push_back("--request-period");
-      args.push_back("0");
-
-      int argc = args.size();
-      char* argv[argc];
-      std::copy(args.begin(), args.end(), argv);
-
-      CHECK_THROWS_WITH_AS(
-          act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
 
       check_params = false;
