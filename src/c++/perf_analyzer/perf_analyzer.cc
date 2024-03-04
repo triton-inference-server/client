@@ -77,12 +77,13 @@ PerfAnalyzer::CreateAnalyzerObjects()
   std::shared_ptr<cb::ClientBackendFactory> factory;
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
-          params_->kind, params_->url, params_->protocol, params_->ssl_options,
-          params_->trace_options, params_->compression_algorithm,
-          params_->http_headers, params_->triton_server_path,
-          params_->model_repository_path, params_->extra_verbose,
-          params_->metrics_url, params_->input_tensor_format,
-          params_->output_tensor_format, &factory),
+          params_->kind, params_->url, params_->endpoint, params_->protocol,
+          params_->ssl_options, params_->trace_options,
+          params_->compression_algorithm, params_->http_headers,
+          params_->triton_server_path, params_->model_repository_path,
+          params_->extra_verbose, params_->metrics_url,
+          params_->input_tensor_format, params_->output_tensor_format,
+          &factory),
       "failed to create client factory");
 
   FAIL_IF_ERR(
