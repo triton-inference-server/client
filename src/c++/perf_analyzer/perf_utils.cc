@@ -212,10 +212,6 @@ SerializeExplicitTensor(
 
       std::string element = buffer.GetString();
       uint32_t len = element.size();
-      // FIXME TODO - for BYTES we add the length. Is there any reason that
-      // would be needed here?
-      // serialized.append(reinterpret_cast<const char*>(&len),
-      // sizeof(uint32_t));
       serialized.append(element);
     }
     std::copy(

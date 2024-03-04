@@ -131,7 +131,6 @@ ChatCompletionClient::ResponseHandler(
   // Send response now if streaming, otherwise wait until request has been
   // completed
   if (request->is_stream_) {
-    // [FIXME] assume it is proper chunked of response
     auto done_signal =
         (request->response_buffer_.find("data: [DONE]") != std::string::npos);
     request->SendResponse(

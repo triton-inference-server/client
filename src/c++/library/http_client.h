@@ -49,7 +49,7 @@ struct HttpSslOptions {
   enum KEYTYPE {
     KEY_PEM = 0,
     KEY_DER = 1
-    // TODO: Support loading private key from crypto engine
+    // TODO TMA-1645: Support loading private key from crypto engine
     // KEY_ENG = 2
   };
   explicit HttpSslOptions()
