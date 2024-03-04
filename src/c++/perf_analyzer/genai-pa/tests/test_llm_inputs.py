@@ -16,8 +16,14 @@ import json
 import os
 
 import pytest
+from genai_pa.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
-from genai_pa.llm_inputs.llm_inputs import LlmInputs
+from genai_pa.llm_inputs.llm_inputs import (
+    InputFormat,
+    InputType,
+    LlmInputs,
+    OutputFormat,
+)
 
 
 class TestLlmInputs:
@@ -31,33 +37,34 @@ class TestLlmInputs:
 
         yield default_configured_url
 
+    def test_input_type_url_no_model_name(self):
+        """
+        Test for exception when input type is URL and no model name
+        """
+        with pytest.raises(GenAiPAException):
+            _ = LlmInputs._check_for_model_name_if_input_type_is_url(
+                input_type=InputType.URL, model_name=""
+            )
+
     def test_illegal_starting_index(self):
         """
         Test for exceptions when illegal values are given for starting index
         """
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs._check_for_valid_args(
-                starting_index="foo", length=LlmInputs.DEFAULT_LENGTH
-            )
+            _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")
 
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs._check_for_valid_args(
-                starting_index=-1, length=LlmInputs.DEFAULT_LENGTH
-            )
+            _ = LlmInputs._check_for_valid_starting_index(starting_index=-1)
 
     def test_illegal_length(self):
         """
         Test for exceptions when illegal values are given for length
         """
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs._check_for_valid_args(
-                starting_index=LlmInputs.DEFAULT_STARTING_INDEX, length="foo"
-            )
+            _ = LlmInputs._check_for_valid_length(length="foo")
 
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs._check_for_valid_args(
-                starting_index=LlmInputs.DEFAULT_STARTING_INDEX, length=0
-            )
+            _ = LlmInputs._check_for_valid_length(length=0)
 
     def test_create_configured_url(self):
         """
@@ -92,10 +99,13 @@ class TestLlmInputs:
         Test for exception when length is out of range
         """
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs.create_openai_llm_inputs(
-                LlmInputs.OPEN_ORCA_URL,
-                LlmInputs.DEFAULT_STARTING_INDEX,
-                int(LlmInputs.DEFAULT_LENGTH * 100),
+            _ = LlmInputs.create_llm_inputs(
+                input_type=InputType.URL,
+                input_format=InputFormat.OPENAI,
+                output_format=OutputFormat.OPENAI,
+                model_name=OPEN_ORCA,
+                starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
+                length=int(LlmInputs.DEFAULT_LENGTH * 100),
             )
 
     def test_llm_inputs_with_defaults(self, default_configured_url):
@@ -150,7 +160,12 @@ class TestLlmInputs:
         """
         Test CNN_DAILYMAIL can be accessed
         """
-        pa_json = LlmInputs.create_openai_llm_inputs(LlmInputs.CNN_DAILYMAIL_URL)
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            input_format=InputFormat.OPENAI,
+            output_format=OutputFormat.OPENAI,
+            model_name=CNN_DAILY_MAIL,
+        )
 
         os.remove(LlmInputs.OUTPUT_FILENAME)
 
@@ -161,8 +176,13 @@ class TestLlmInputs:
         """
         Test that write to file is working correctly
         """
-        pa_json = LlmInputs.create_openai_llm_inputs(
-            model_name="OpenOrca", add_stream=True
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            input_format=InputFormat.OPENAI,
+            output_format=OutputFormat.OPENAI,
+            model_name=OPEN_ORCA,
+            add_model_name=True,
+            add_stream=True,
         )
         try:
             f = open(LlmInputs.OUTPUT_FILENAME, "r")

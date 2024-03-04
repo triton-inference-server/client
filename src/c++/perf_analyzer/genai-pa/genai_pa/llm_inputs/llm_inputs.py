@@ -14,11 +14,30 @@
 
 import json
 from copy import deepcopy
+from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
 import requests
+from genai_pa.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
 from requests import Response
+
+
+class InputType(Enum):
+    URL = auto()
+    FILE = auto()
+
+
+class InputFormat(Enum):
+    OPENAI = auto()
+    TRTLLM = auto()
+    VLLM = auto()
+
+
+class OutputFormat(Enum):
+    OPENAI = auto()
+    TRTLLM = auto()
+    VLLM = auto()
 
 
 class LlmInputs:
@@ -39,51 +58,82 @@ class LlmInputs:
 
     EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": [{"payload": []}]}
 
+    dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
+
     @classmethod
-    def create_openai_llm_inputs(
+    def create_llm_inputs(
         cls,
-        url: str = OPEN_ORCA_URL,
+        input_type: InputType,
+        input_format: InputFormat,
+        output_format: OutputFormat,
+        model_name: str = "",
+        input_filename: str = "",
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
-        model_name: str = None,
+        add_model_name: bool = False,
         add_stream: bool = False,
     ) -> Dict:
         """
-        Given a URL and indexing parameters, it will write a string of LLM Inputs
+        Given an input type, input format, and output type. Output a string of LLM Inputs
         (in a JSON dictionary) to a file
 
-        Parameters
-        ----------
-        url:
-            URL to gather LLM Inputs from
+        Required Parameters
+        -------------------
+        input_type:
+            Specify how the input is received (file or URL)
+        input_format:
+            Specify the input format
+        output_format:
+            Specify the output format
+
+        Optional Parameters
+        -------------------
+        model_name:
+            The model name
         starting_index:
             Offset from within the list to start gathering inputs
         length:
             Number of entries to gather
-        model_name:
-            If included adds this model name field to each payload
+        add_model_name:
+            If true adds a model name field to each payload
         add_stream:
             If true adds a steam field to each payload
         """
 
-        LlmInputs._check_for_valid_args(starting_index, length)
+        LlmInputs._check_for_valid_args(input_type, model_name, starting_index, length)
+
+        if input_type == InputType.URL:
+            url = LlmInputs._resolve_url(model_name)
+
         configured_url = LlmInputs._create_configured_url(url, starting_index, length)
         dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
         dataset_json = LlmInputs._convert_dataset_to_json(dataset)
         json_in_pa_format = LlmInputs._convert_json_to_pa_format(
-            dataset_json, model_name, add_stream
+            dataset_json, add_model_name, add_stream, model_name
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
         return json_in_pa_format
 
     @classmethod
-    def _check_for_valid_args(cls, starting_index: int, length: int) -> None:
+    def _check_for_valid_args(
+        cls, input_type: InputType, model_name: str, starting_index: int, length: int
+    ) -> None:
         try:
+            LlmInputs._check_for_model_name_if_input_type_is_url(input_type, model_name)
             LlmInputs._check_for_valid_starting_index(starting_index)
             LlmInputs._check_for_valid_length(length)
         except Exception as e:
             raise GenAiPAException(e)
+
+    @classmethod
+    def _resolve_url(cls, model_name: str) -> str:
+        if model_name in LlmInputs.dataset_url_map:
+            return LlmInputs.dataset_url_map[model_name]
+        else:
+            raise GenAiPAException(
+                f"{model_name} does not have a corresponding URL in the dataset_url_map."
+            )
 
     @classmethod
     def _create_configured_url(cls, url: str, starting_index: int, length: int) -> str:
@@ -111,7 +161,11 @@ class LlmInputs:
 
     @classmethod
     def _convert_json_to_pa_format(
-        cls, dataset_json: Dict, model_name: str, add_stream: bool
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
     ) -> Dict:
         system_role_headers, user_role_headers = LlmInputs._determine_json_pa_roles(
             dataset_json
@@ -121,6 +175,7 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             model_name,
+            add_model_name,
             add_stream,
         )
 
@@ -159,8 +214,9 @@ class LlmInputs:
         dataset_json: Dict,
         system_role_headers: List[str],
         user_role_headers: List[str],
-        model_name: str,
+        add_model_name: bool,
         add_stream: bool,
+        model_name: str = "",
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
@@ -177,7 +233,7 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_json(
-                pa_json, entry["row_idx"], model_name, add_stream
+                pa_json, entry["row_idx"], add_model_name, add_stream, model_name
             )
 
         return pa_json
@@ -222,14 +278,28 @@ class LlmInputs:
 
     @classmethod
     def _add_optional_tags_to_json(
-        cls, pa_json: Dict, index: int, model_name: str, add_stream: bool
+        cls,
+        pa_json: Dict,
+        index: int,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
     ) -> Dict:
-        if model_name:
+        if add_model_name:
             pa_json["data"][0]["payload"][index]["model"] = model_name
         if add_stream:
             pa_json["data"][0]["payload"][index]["steam"] = "true"
 
         return pa_json
+
+    @classmethod
+    def _check_for_model_name_if_input_type_is_url(
+        cls, input_type: InputType, model_name: str
+    ) -> None:
+        if input_type == InputType.URL and not model_name:
+            raise GenAiPAException(
+                "Input type is URL, but model_name is not specified."
+            )
 
     @classmethod
     def _check_for_valid_starting_index(cls, starting_index: int) -> None:
