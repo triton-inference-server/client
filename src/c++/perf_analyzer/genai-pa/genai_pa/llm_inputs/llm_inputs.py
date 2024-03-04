@@ -235,13 +235,41 @@ class LlmInputs:
         add_stream: bool,
         model_name: str = "",
     ) -> Dict:
-        system_role_headers, user_role_headers = LlmInputs._determine_json_openai_roles(
-            dataset_json
-        )
-        pa_json = LlmInputs._populate_openai_pa_json(
+        # OPEN: Don't know how to select a role for `text_input`
+        (
+            system_role_headers,
+            user_role_headers,
+            _,
+        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+        pa_json = LlmInputs._populate_openai_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
+            add_model_name,
+            add_stream,
+            model_name,
+        )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_vllm_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+        pa_json = LlmInputs._populate_vllm_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
             add_model_name,
             add_stream,
             model_name,
@@ -258,26 +286,33 @@ class LlmInputs:
             f.close()
 
     @classmethod
-    def _determine_json_openai_roles(
+    def _determine_json_feature_roles(
         cls, dataset_json: Dict
     ) -> Tuple[List[str], List[str]]:
         SYSTEM_ROLE_LIST = ["system_prompt"]
         USER_ROLE_LIST = ["question", "article"]
+        TEXT_INPUT_LIST = ["text_input"]
 
-        system_role_headers, user_role_headers = [], []
+        system_role_headers, user_role_headers, text_input_headers = [], [], []
         if "features" in dataset_json.keys():
             for index, feature in enumerate(dataset_json["features"]):
                 if feature in SYSTEM_ROLE_LIST:
                     system_role_headers.append(feature)
                 if feature in USER_ROLE_LIST:
                     user_role_headers.append(feature)
+                if feature in TEXT_INPUT_LIST:
+                    user_role_headers.append(feature)
 
-        assert system_role_headers is not None or user_role_headers is not None
+        assert (
+            system_role_headers is not None
+            or user_role_headers is not None
+            or text_input_headers is not None
+        )
 
-        return system_role_headers, user_role_headers
+        return system_role_headers, user_role_headers, text_input_headers
 
     @classmethod
-    def _populate_openai_pa_json(
+    def _populate_openai_output_json(
         cls,
         dataset_json: Dict,
         system_role_headers: List[str],
@@ -291,47 +326,52 @@ class LlmInputs:
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"][0]["payload"].append({"messages": []})
 
-            for header in entry:
+            for header, content in entry.items():
                 new_message = LlmInputs._create_new_message(
-                    header, system_role_headers, user_role_headers, entry[header]
+                    header, system_role_headers, user_role_headers, content
                 )
 
                 pa_json = LlmInputs._add_new_message_to_json(
                     pa_json, index, new_message
                 )
 
-            pa_json = LlmInputs._add_optional_tags_to_json(
+            pa_json = LlmInputs._add_optional_tags_to_openai_json(
                 pa_json, index, add_model_name, add_stream, model_name
             )
 
         return pa_json
 
     @classmethod
-    def _populate_openai_vllm_json(
+    def _populate_vllm_output_json(
         cls,
         dataset_json: Dict,
         system_role_headers: List[str],
         user_role_headers: List[str],
+        text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
     ) -> Dict:
         pa_json = LlmInputs._create_empty_vllm_pa_json()
 
-        for entry in dataset_json["rows"]:
-            pa_json.append({"data": []})
+        for index, entry in enumerate(dataset_json["rows"]):
+            pa_json["data"].append({"text_input": []})
 
-            for header in entry["row"]:
-                new_message = LlmInputs._create_new_message(
-                    header, system_role_headers, user_role_headers, entry["row"][header]
+            for header, content in entry.items():
+                new_text_input = LlmInputs._create_new_text_input(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
                 )
 
-                pa_json = LlmInputs._add_new_message_to_json(
-                    pa_json, entry["row_idx"], new_message
+                pa_json = LlmInputs._add_new_text_input_to_json(
+                    pa_json, index, new_text_input
                 )
 
-            pa_json = LlmInputs._add_optional_tags_to_json(
-                pa_json, entry["row_idx"], add_model_name, add_stream, model_name
+            pa_json = LlmInputs._add_optional_tags_to_vllm_json(
+                pa_json, index, add_model_name, add_stream, model_name
             )
 
         return pa_json
@@ -372,6 +412,26 @@ class LlmInputs:
         return new_message
 
     @classmethod
+    def _create_new_text_input(
+        cls,
+        header: str,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        content: str,
+    ) -> Optional[str]:
+        new_text_input = ""
+
+        if (
+            header in system_role_headers
+            or header in user_role_headers
+            or header in text_input_headers
+        ):
+            new_text_input = content
+
+        return new_text_input
+
+    @classmethod
     def _add_new_message_to_json(
         cls, pa_json: Dict, index: int, new_message: Optional[Dict]
     ) -> Dict:
@@ -381,7 +441,16 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _add_optional_tags_to_json(
+    def _add_new_text_input_to_json(
+        cls, pa_json: Dict, index: int, new_text_input: str
+    ) -> Dict:
+        if new_text_input:
+            pa_json["data"][index]["text_input"].append(new_text_input)
+
+        return pa_json
+
+    @classmethod
+    def _add_optional_tags_to_openai_json(
         cls,
         pa_json: Dict,
         index: int,
@@ -392,7 +461,23 @@ class LlmInputs:
         if add_model_name:
             pa_json["data"][0]["payload"][index]["model"] = model_name
         if add_stream:
-            pa_json["data"][0]["payload"][index]["steam"] = "true"
+            pa_json["data"][0]["payload"][index]["stream"] = [True]
+
+        return pa_json
+
+    @classmethod
+    def _add_optional_tags_to_vllm_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        if add_model_name:
+            pa_json["data"][index]["model"] = model_name
+        if add_stream:
+            pa_json["data"][index]["stream"] = [True]
 
         return pa_json
 

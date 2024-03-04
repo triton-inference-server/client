@@ -203,3 +203,21 @@ class TestLlmInputs:
             os.remove(LlmInputs.OUTPUT_FILENAME)
 
         assert pa_json == json.loads(json_str)
+
+    def test_create_openai_to_vllm(self):
+        """
+        Test conversion of openai to vllm
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            input_format=InputFormat.OPENAI,
+            output_format=OutputFormat.VLLM,
+            model_name=OPEN_ORCA,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(LlmInputs.OUTPUT_FILENAME)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
