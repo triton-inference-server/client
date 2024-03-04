@@ -68,9 +68,9 @@ ChatCompletionRequest::SendResponse(bool is_final, bool is_null)
 }
 
 ChatCompletionClient::ChatCompletionClient(
-    const std::string& url, bool verbose, const HttpSslOptions& ssl_options)
-    : HttpClient(
-          std::string(url + "/v1/chat/completions"), verbose, ssl_options)
+    const std::string& url, const std::string& endpoint, bool verbose,
+    const HttpSslOptions& ssl_options)
+    : HttpClient(std::string(url + "/" + endpoint), verbose, ssl_options)
 {
 }
 

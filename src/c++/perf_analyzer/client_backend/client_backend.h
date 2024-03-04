@@ -268,6 +268,7 @@ class ClientBackendFactory {
   /// Create a factory that can be used to construct Client Backends.
   /// \param kind The kind of client backend to create.
   /// \param url The inference server url and port.
+  /// \param endpoint The endpoint on the inference server to send requests to
   /// \param protocol The protocol type used.
   /// \param ssl_options The SSL options used with client backend.
   /// \param compression_algorithm The compression algorithm to be used
@@ -290,7 +291,8 @@ class ClientBackendFactory {
   /// \return Error object indicating success or failure.
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::string& endpoint, const ProtocolType protocol,
+      const SslOptionsBase& ssl_options,
       const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
@@ -309,7 +311,8 @@ class ClientBackendFactory {
  private:
   ClientBackendFactory(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::string& endpoint, const ProtocolType protocol,
+      const SslOptionsBase& ssl_options,
       const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
@@ -317,8 +320,8 @@ class ClientBackendFactory {
       const std::string& model_repository_path, const bool verbose,
       const std::string& metrics_url, const TensorFormat input_tensor_format,
       const TensorFormat output_tensor_format)
-      : kind_(kind), url_(url), protocol_(protocol), ssl_options_(ssl_options),
-        trace_options_(trace_options),
+      : kind_(kind), url_(url), endpoint_(endpoint), protocol_(protocol),
+        ssl_options_(ssl_options), trace_options_(trace_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path), verbose_(verbose),
@@ -329,6 +332,7 @@ class ClientBackendFactory {
 
   const BackendKind kind_;
   const std::string url_;
+  const std::string endpoint_;
   const ProtocolType protocol_;
   const SslOptionsBase& ssl_options_;
   const std::map<std::string, std::vector<std::string>> trace_options_;
@@ -361,7 +365,8 @@ class ClientBackend {
  public:
   static Error Create(
       const BackendKind kind, const std::string& url,
-      const ProtocolType protocol, const SslOptionsBase& ssl_options,
+      const std::string& endpoint, const ProtocolType protocol,
+      const SslOptionsBase& ssl_options,
       const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,

@@ -35,9 +35,9 @@ namespace openai {
 
 Error
 OpenAiClientBackend::Create(
-    const std::string& url, const ProtocolType protocol,
-    std::shared_ptr<Headers> http_headers, const bool verbose,
-    std::unique_ptr<ClientBackend>* client_backend)
+    const std::string& url, const std::string& endpoint,
+    const ProtocolType protocol, std::shared_ptr<Headers> http_headers,
+    const bool verbose, std::unique_ptr<ClientBackend>* client_backend)
 {
   if (protocol == ProtocolType::GRPC) {
     return Error(
@@ -47,7 +47,7 @@ OpenAiClientBackend::Create(
       new OpenAiClientBackend(http_headers));
 
   openai_client_backend->http_client_.reset(
-      new ChatCompletionClient(url, verbose));
+      new ChatCompletionClient(url, endpoint, verbose));
 
   *client_backend = std::move(openai_client_backend);
 

@@ -56,6 +56,7 @@ class OpenAiClientBackend : public ClientBackend {
   /// Create an OpenAI client backend which can be used to interact with the
   /// server.
   /// \param url The inference server url and port.
+  /// \param endpoint The endpoint on the inference server to send requests to
   /// \param protocol The protocol type used.
   /// \param http_headers Map of HTTP headers. The map key/value indicates
   /// the header name/value.
@@ -64,9 +65,9 @@ class OpenAiClientBackend : public ClientBackend {
   /// object.
   /// \return Error object indicating success or failure.
   static Error Create(
-      const std::string& url, const ProtocolType protocol,
-      std::shared_ptr<Headers> http_headers, const bool verbose,
-      std::unique_ptr<ClientBackend>* client_backend);
+      const std::string& url, const std::string& endpoint,
+      const ProtocolType protocol, std::shared_ptr<Headers> http_headers,
+      const bool verbose, std::unique_ptr<ClientBackend>* client_backend);
 
   /// See ClientBackend::AsyncInfer()
   Error AsyncInfer(

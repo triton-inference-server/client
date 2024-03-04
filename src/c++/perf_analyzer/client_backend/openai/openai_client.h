@@ -67,7 +67,7 @@ class ChatCompletionResult : public InferResult {
   {
     if ((http_code_ >= 400) && (http_code_ <= 599)) {
       return Error(
-          "OpenAI response returns HTTP code" + std::to_string(http_code_));
+          "OpenAI response returns HTTP code " + std::to_string(http_code_));
     }
     return Error::Success;
   }
@@ -139,6 +139,7 @@ class ChatCompletionClient : public HttpClient {
   /// \param server_url The inference server name, port, optional
   /// scheme and optional base path in the following format:
   /// <scheme://>host:port/<base-path>.
+  /// \param endpoint The name of the endpoint to send requests to
   /// \param verbose If true generate verbose output when contacting
   /// the inference server.
   /// \param ssl_options Specifies the settings for configuring
@@ -148,7 +149,8 @@ class ChatCompletionClient : public HttpClient {
   /// These options will be ignored if the server_url does not
   /// expose `https://` scheme.
   ChatCompletionClient(
-      const std::string& server_url, bool verbose = false,
+      const std::string& server_url, const std::string& endpoint,
+      bool verbose = false,
       const HttpSslOptions& ssl_options = HttpSslOptions());
 
   /// Simplified AsyncInfer() where the request body is expected to be
