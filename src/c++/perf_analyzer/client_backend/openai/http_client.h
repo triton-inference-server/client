@@ -35,19 +35,12 @@
 #include <mutex>
 #include <thread>
 
-// [TODO] Below should already be a generic class for any HTTP use,
-// relocate it so that it can be used elsewhere
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace openai {
-
-// [FIXME] add back "parameter" handling
-// [FIXME] add back "compression" handling
 
 /// The key-value map type to be included in the request
 /// as custom headers.
 typedef std::map<std::string, std::string> Headers;
-/// The key-value map type to be included as URL parameters.
-typedef std::map<std::string, std::string> Parameters;
 
 // The options for authorizing and authenticating SSL/TLS connections.
 struct HttpSslOptions {
@@ -55,7 +48,7 @@ struct HttpSslOptions {
   enum KEYTYPE {
     KEY_PEM = 0,
     KEY_DER = 1
-    // TODO: Support loading private key from crypto engine
+    // TODO TMA-1645: Support loading private key from crypto engine
     // KEY_ENG = 2
   };
   explicit HttpSslOptions()
@@ -115,11 +108,6 @@ class HttpRequest {
   // actual amount copied in 'input_bytes'.
   void GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes);
 
-  // [FIXME] define default callback like
-  // CURLOPT_READFUNCTION, CURLOPT_WRITEFUNCTION here?
-  // the specialized HttpRequest can override the callbacks when read / write
-  // schema has changed.
-
   // Buffer that accumulates the response body.
   std::string response_buffer_;
 
@@ -158,8 +146,6 @@ class HttpClient {
   // Note that this function does not block
   void Send(CURL* handle, std::unique_ptr<HttpRequest>&& request);
 
-  // [FIXME] provide more helper functions to encapsulate CURL detail
-
  protected:
   void AsyncTransfer();
 
@@ -184,7 +170,6 @@ class HttpClient {
   bool verbose_;
 
  private:
-  // [FIXME] should belong to SSL option struct as helper function
   const std::string& ParseSslKeyType(HttpSslOptions::KEYTYPE key_type);
   const std::string& ParseSslCertType(HttpSslOptions::CERTTYPE cert_type);
 };

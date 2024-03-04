@@ -79,8 +79,8 @@ class ChatCompletionResult : public InferResult {
       const std::string& output_name, const uint8_t** buf,
       size_t* byte_size) const override
   {
-    // [FIXME] disregard "output_name" which is not compatible to
-    // OpenAI protocol
+    // There is only a single output (and it has no defined name), so we can
+    // disregard output_name
     *buf = reinterpret_cast<const uint8_t*>(serialized_response_.c_str());
     *byte_size = serialized_response_.size();
     return Error::Success;
@@ -161,9 +161,6 @@ class ChatCompletionClient : public HttpClient {
       std::string& serialized_request_body, const std::string& request_id);
 
   const InferStat& ClientInferStat() { return infer_stat_; }
-
-  /// [TODO?] Add AsyncInfer() variant that prepare the request body from
-  /// function arguments. Similar to Triton client library.
 
  private:
   // setup curl handle
