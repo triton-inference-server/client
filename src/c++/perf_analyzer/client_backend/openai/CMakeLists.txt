@@ -28,15 +28,17 @@ cmake_minimum_required (VERSION 3.18)
 
 set(
     OPENAI_CLIENT_BACKEND_SRCS
+    http_client.cc
     openai_client_backend.cc
-    openai_http_client.cc
+    openai_client.cc
     openai_infer_input.cc
 )
 
 set(
     OPENAI_CLIENT_BACKEND_HDRS
+    http_client.h
     openai_client_backend.h
-    openai_http_client.h
+    openai_client.h
     openai_infer_input.h
 )
 
@@ -48,7 +50,7 @@ add_library(
 
 target_link_libraries(
   openai-client-backend-library
-  PUBLIC CURL::libcurl 
+  PUBLIC CURL::libcurl
   PUBLIC httpclient_static
 )
 
