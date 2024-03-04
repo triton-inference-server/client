@@ -29,7 +29,8 @@
 
 #include "../../perf_utils.h"
 #include "../client_backend.h"
-#include "openai_http_client.h"
+#include "openai_client.h"
+#include "openai_infer_input.h"
 
 #define RETURN_IF_TRITON_ERROR(S)       \
   do {                                  \
@@ -85,7 +86,7 @@ class OpenAiClientBackend : public ClientBackend {
   void ParseInferStat(
       const tc::InferStat& openai_infer_stat, InferStat* infer_stat);
 
-  std::unique_ptr<openai::HttpClient> http_client_;
+  std::unique_ptr<openai::ChatCompletionClient> http_client_;
   std::shared_ptr<Headers> http_headers_;
 };
 
@@ -105,26 +106,6 @@ class OpenAiInferRequestedOutput : public InferRequestedOutput {
   explicit OpenAiInferRequestedOutput(const std::string& name);
 
   std::unique_ptr<tc::InferRequestedOutput> output_;
-};
-
-//==============================================================
-/// OpenAiInferResult is a wrapper around InferResult object of
-/// OpenAi InferResult object.
-///
-class OpenAiInferResult : public cb::InferResult {
- public:
-  explicit OpenAiInferResult(cb::openai::InferResult* result);
-  /// See InferResult::Id()
-  Error Id(std::string* id) const override;
-  /// See InferResult::RequestStatus()
-  Error RequestStatus() const override;
-  /// See InferResult::RawData()
-  Error RawData(
-      const std::string& output_name, const uint8_t** buf,
-      size_t* byte_size) const override;
-
- private:
-  std::unique_ptr<cb::openai::InferResult> result_;
 };
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::openai
