@@ -56,6 +56,8 @@ class LlmInputs:
     DEFAULT_LENGTH = 100
     MINIMUM_LENGTH = 1
 
+    EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
+    EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": [{"payload": []}]}
 
     dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
@@ -103,13 +105,20 @@ class LlmInputs:
         LlmInputs._check_for_valid_args(input_type, model_name, starting_index, length)
 
         if input_type == InputType.URL:
-            url = LlmInputs._resolve_url(model_name)
+            dataset = LlmInputs._get_input_dataset_from_url(
+                model_name, starting_index, length
+            )
+        elif input_type == InputType.FILE:
+            raise GenAiPAException(
+                "Using a file to supply LLM Input is not supported at this time"
+            )
 
-        configured_url = LlmInputs._create_configured_url(url, starting_index, length)
-        dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
-        dataset_json = LlmInputs._convert_dataset_to_json(dataset)
-        json_in_pa_format = LlmInputs._convert_json_to_pa_format(
-            dataset_json, add_model_name, add_stream, model_name
+        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
+            input_format, dataset
+        )
+
+        json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
+            output_format, generic_dataset_json, add_model_name, add_stream, model_name
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
@@ -125,6 +134,16 @@ class LlmInputs:
             LlmInputs._check_for_valid_length(length)
         except Exception as e:
             raise GenAiPAException(e)
+
+    @classmethod
+    def _get_input_dataset_from_url(
+        cls, model_name: str, starting_index: int, length: int
+    ) -> Response:
+        url = LlmInputs._resolve_url(model_name)
+        configured_url = LlmInputs._create_configured_url(url, starting_index, length)
+        dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
+
+        return dataset
 
     @classmethod
     def _resolve_url(cls, model_name: str) -> str:
@@ -150,33 +169,82 @@ class LlmInputs:
         return dataset
 
     @classmethod
-    def _convert_dataset_to_json(cls, dataset: Response) -> Dict:
+    def _convert_input_dataset_to_generic_json(
+        cls, input_format: InputFormat, dataset: Response
+    ) -> Dict:
         dataset_json = dataset.json()
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
             raise GenAiPAException(e)
 
-        return dataset_json
+        if input_format == InputFormat.OPENAI:
+            generic_dataset_json = LlmInputs._convert_openai_to_generic_input_json(
+                dataset_json
+            )
+        else:
+            raise GenAiPAException(
+                f"An input format of {input_format} is not supported at this time"
+            )
+
+        return generic_dataset_json
 
     @classmethod
-    def _convert_json_to_pa_format(
+    def _convert_openai_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
+        generic_input_json = {}
+        if "features" in dataset_json.keys():
+            generic_input_json["features"] = []
+            for feature in dataset_json["features"]:
+                generic_input_json["features"].append(feature["name"])
+
+        generic_input_json["rows"] = []
+        for row in dataset_json["rows"]:
+            generic_input_json["rows"].append(row["row"])
+
+        return generic_input_json
+
+    @classmethod
+    def _convert_generic_json_to_output_format(
+        cls,
+        output_format: OutputFormat,
+        generic_dataset: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        if output_format == OutputFormat.OPENAI:
+            output_json = LlmInputs._convert_generic_json_to_openai_format(
+                generic_dataset, add_model_name, add_stream, model_name
+            )
+        elif output_format == OutputFormat.VLLM:
+            output_json = LlmInputs._convert_generic_json_to_vllm_format(
+                generic_dataset, add_model_name, add_stream, model_name
+            )
+        else:
+            raise GenAiPAException(
+                f"Output format {output_format} is not currently supported"
+            )
+
+        return output_json
+
+    @classmethod
+    def _convert_generic_json_to_openai_format(
         cls,
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
     ) -> Dict:
-        system_role_headers, user_role_headers = LlmInputs._determine_json_pa_roles(
+        system_role_headers, user_role_headers = LlmInputs._determine_json_openai_roles(
             dataset_json
         )
         pa_json = LlmInputs._populate_openai_pa_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
-            model_name,
             add_model_name,
             add_stream,
+            model_name,
         )
 
         return pa_json
@@ -190,7 +258,7 @@ class LlmInputs:
             f.close()
 
     @classmethod
-    def _determine_json_pa_roles(
+    def _determine_json_openai_roles(
         cls, dataset_json: Dict
     ) -> Tuple[List[str], List[str]]:
         SYSTEM_ROLE_LIST = ["system_prompt"]
@@ -199,10 +267,10 @@ class LlmInputs:
         system_role_headers, user_role_headers = [], []
         if "features" in dataset_json.keys():
             for index, feature in enumerate(dataset_json["features"]):
-                if feature["name"] in SYSTEM_ROLE_LIST:
-                    system_role_headers.append(feature["name"])
-                if feature["name"] in USER_ROLE_LIST:
-                    user_role_headers.append(feature["name"])
+                if feature in SYSTEM_ROLE_LIST:
+                    system_role_headers.append(feature)
+                if feature in USER_ROLE_LIST:
+                    user_role_headers.append(feature)
 
         assert system_role_headers is not None or user_role_headers is not None
 
@@ -220,8 +288,38 @@ class LlmInputs:
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
-        for entry in dataset_json["rows"]:
+        for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"][0]["payload"].append({"messages": []})
+
+            for header in entry:
+                new_message = LlmInputs._create_new_message(
+                    header, system_role_headers, user_role_headers, entry[header]
+                )
+
+                pa_json = LlmInputs._add_new_message_to_json(
+                    pa_json, index, new_message
+                )
+
+            pa_json = LlmInputs._add_optional_tags_to_json(
+                pa_json, index, add_model_name, add_stream, model_name
+            )
+
+        return pa_json
+
+    @classmethod
+    def _populate_openai_vllm_json(
+        cls,
+        dataset_json: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        pa_json = LlmInputs._create_empty_vllm_pa_json()
+
+        for entry in dataset_json["rows"]:
+            pa_json.append({"data": []})
 
             for header in entry["row"]:
                 new_message = LlmInputs._create_new_message(
@@ -241,6 +339,12 @@ class LlmInputs:
     @classmethod
     def _create_empty_openai_pa_json(cls) -> Dict:
         empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
+
+        return empty_pa_json
+
+    @classmethod
+    def _create_empty_vllm_pa_json(cls) -> Dict:
+        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_VLLM_PA_FORMAT)
 
         return empty_pa_json
 

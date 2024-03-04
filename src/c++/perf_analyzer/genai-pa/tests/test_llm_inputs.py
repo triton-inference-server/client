@@ -117,7 +117,9 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_dataset_to_json(dataset)
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
+            input_format=InputFormat.OPENAI, dataset=dataset
+        )
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH
@@ -136,7 +138,9 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             length=(int(LlmInputs.DEFAULT_LENGTH / 2)),
         )
-        dataset_json = LlmInputs._convert_dataset_to_json(dataset)
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
+            input_format=InputFormat.OPENAI, dataset=dataset
+        )
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH / 2
@@ -150,8 +154,15 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_dataset_to_json(dataset)
-        pa_json = LlmInputs._convert_json_to_pa_format(dataset_json, "", False)
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
+            input_format=InputFormat.OPENAI, dataset=dataset
+        )
+        pa_json = LlmInputs._convert_generic_json_to_output_format(
+            output_format=OutputFormat.OPENAI,
+            generic_dataset=dataset_json,
+            add_model_name=False,
+            add_stream=False,
+        )
 
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
