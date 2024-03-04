@@ -226,7 +226,7 @@ HttpClient::AsyncTransfer()
             continue;
           }
 
-          long http_code = 400;
+          uint32_t http_code = 400;
           if (msg->data.result == CURLE_OK) {
             curl_easy_getinfo(
                 msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
