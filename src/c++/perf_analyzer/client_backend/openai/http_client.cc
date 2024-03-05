@@ -76,19 +76,25 @@ HttpRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
   }
 }
 
+std::mutex HttpClient::curl_init_mtx_{};
 HttpClient::HttpClient(
     const std::string& server_url, bool verbose,
     const HttpSslOptions& ssl_options)
     : url_(server_url), verbose_(verbose), ssl_options_(ssl_options)
 {
-  auto* ver = curl_version_info(CURLVERSION_NOW);
-  if (ver->features & CURL_VERSION_THREADSAFE == 0) {
-    throw std::runtime_error(
-        "HTTP client has dependency on CURL library to have thread-safe "
-        "support (CURL_VERSION_THREADSAFE set)");
-  }
-  if (curl_global_init(CURL_GLOBAL_ALL) != 0) {
-    throw std::runtime_error("CURL global initialization failed");
+  // [FIXME] uncommon below and remove class-wise mutex once confirm
+  // curl >= 7.84.0 will always be used
+  // auto* ver = curl_version_info(CURLVERSION_NOW);
+  // if (ver->features & CURL_VERSION_THREADSAFE == 0) {
+  //   throw std::runtime_error(
+  //       "HTTP client has dependency on CURL library to have thread-safe "
+  //       "support (CURL_VERSION_THREADSAFE set)");
+  // }
+  {
+    std::lock_guard<std::mutex> lk(curl_init_mtx_);
+    if (curl_global_init(CURL_GLOBAL_ALL) != 0) {
+      throw std::runtime_error("CURL global initialization failed");
+    }
   }
 
   multi_handle_ = curl_multi_init();
@@ -114,7 +120,10 @@ HttpClient::~HttpClient()
   }
   curl_multi_cleanup(multi_handle_);
 
-  curl_global_cleanup();
+  {
+    std::lock_guard<std::mutex> lk(curl_init_mtx_);
+    curl_global_cleanup();
+  }
 }
 
 const std::string&

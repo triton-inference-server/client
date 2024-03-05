@@ -172,5 +172,6 @@ class HttpClient {
  private:
   const std::string& ParseSslKeyType(HttpSslOptions::KEYTYPE key_type);
   const std::string& ParseSslCertType(HttpSslOptions::CERTTYPE cert_type);
+  static std::mutex curl_init_mtx_;
 };
 }}}}  // namespace triton::perfanalyzer::clientbackend::openai

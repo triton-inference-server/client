@@ -114,8 +114,22 @@ size_t
 ChatCompletionClient::ResponseHandler(
     void* contents, size_t size, size_t nmemb, void* userp)
 {
-  // [WIP] verify if the SSE responses received are complete, or the response
-  // need to be stitched first
+  // [TODO] verify if the SSE responses received are complete, or the response
+  // need to be stitched first.
+  // To verify, print out the received responses from SendResponse() to make
+  // sure the OpenAI server doesn't chunk the HTTP responses in the way that
+  // misaligns with the SSE responses.
+  // Reason of not stitching responses now is that it is a bit complicated that
+  // to make the write callback bulletproof is to assume the response can be
+  // chunked at arbitrary position, then bake in checking for SSE style
+  // (data:.*\n\n) by iterating all received buffer character by character.
+  size_t result_bytes = size * nmemb;
+  // return early if the response is empty as the response handling is
+  // triggered by the content of the response.
+  if (result_bytes == 0) {
+    return result_bytes;
+  }
+
   auto request = reinterpret_cast<ChatCompletionRequest*>(userp);
   if (request->timer_.Timestamp(
           triton::client::RequestTimers::Kind::RECV_START) == 0) {
@@ -124,7 +138,6 @@ ChatCompletionClient::ResponseHandler(
   }
 
   char* buf = reinterpret_cast<char*>(contents);
-  size_t result_bytes = size * nmemb;
   request->response_buffer_.append(buf, result_bytes);
   // Send response now if streaming, otherwise wait until request has been
   // completed
