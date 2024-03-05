@@ -109,9 +109,10 @@ class LlmInputs:
             dataset = LlmInputs._get_input_dataset_from_url(
                 model_name, starting_index, length
             )
-        elif input_type == InputType.FILE:
+        else:
+            dataset = None
             raise GenAiPAException(
-                "Using a file to supply LLM Input is not supported at this time"
+                "Using file/synthetic to supply LLM Input is not supported at this time"
             )
 
         generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
