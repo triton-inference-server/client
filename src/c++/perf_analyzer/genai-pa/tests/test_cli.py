@@ -97,3 +97,10 @@ class TestCLIArguments:
     def test_exception_on_nonzero_exit(self):
         with pytest.raises(GenAiPAException) as e:
             run(["-m", "nonexistent_model"])
+
+    def test_pass_through_args(self):
+        args = ["-m", "test_model", "--concurrency", "1"]
+        other_args = ["--", "With", "great", "power"]
+        _, pass_through_args = parser.parse_args(args + other_args)
+
+        assert pass_through_args == other_args[1:]

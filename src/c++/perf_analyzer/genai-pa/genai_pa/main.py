@@ -50,21 +50,6 @@ logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(mes
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def handle_pass_through_args(args):
-    if args == None:
-        args = sys.argv
-
-    extra_args = []
-    if "--" in args:
-        index = args.index("--")
-        if index != (len(args) - 1):
-            extra_args = args[index + 1 : -1]
-            args = args[1:index]
-    else:
-        args = args[1:]
-    return args, extra_args
-
-
 def generate_inputs(args):
     LlmInputs.create_openai_llm_inputs(
         args.dataset,
@@ -89,8 +74,7 @@ def report_output(metrics: LLMProfileData):
 # Optional argv used for testing - will default to sys.argv if None.
 def run(argv=None):
     try:
-        argv, extra_args = handle_pass_through_args(argv)
-        args = parser.parse_args(argv)
+        args, extra_args = parser.parse_args(argv)
         generate_inputs(args)
         args.func(args, extra_args)
         metrics = calculate_metrics(args.profile_export_file)

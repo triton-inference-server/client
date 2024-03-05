@@ -57,8 +57,9 @@ class Profiler:
                         arg = utils.convert_option_name(arg)
                         cmd += f"--{arg} {value} "
 
-            for arg in extra_args:
-                cmd += f"{arg} "
+            if extra_args is not None:
+                for arg in extra_args:
+                    cmd += f"{arg} "
         # TODO: Once the OpenAI endpoint support is in place in PA core,
         # update the input-data option arg
         # cmd += f"--input-data {DEFAULT_INPUT_DATA_JSON}  -p 10000 -s 99"

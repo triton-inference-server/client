@@ -230,10 +230,12 @@ def parse_args(argv=None):
     _add_endpoint_args(parser)
     _add_dataset_args(parser)
 
-    args = parser.parse_args(argv)
+    args, extra_args = parser.parse_known_args(argv)
+    # strip off the "--" demarking the pass through arguments
+    extra_args = extra_args[1:]
 
     args = _update_load_manager_args(args)
     args = _verify_valid_arg_combination(args)
     args = _prune_args(args)
 
-    return args
+    return args, extra_args
