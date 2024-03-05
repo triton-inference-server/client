@@ -25,3 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 LOGGER_NAME: str = "genai-pa"
+
+OPEN_ORCA = "openorca"
+CNN_DAILY_MAIL = "cnn_dailymail"
+DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
