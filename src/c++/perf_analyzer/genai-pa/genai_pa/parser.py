@@ -66,7 +66,6 @@ def _verify_valid_arg_combination(
     # Verify protocol and default url match
     if getattr(args, "i") == "grpc" and getattr(args, "u") == DEFAULT_HTTP_URL:
         setattr(args, "u", DEFAULT_GRPC_URL)
-    # print(args)
 
     return args
 
