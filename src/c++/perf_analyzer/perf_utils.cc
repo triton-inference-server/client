@@ -205,7 +205,13 @@ SerializeExplicitTensor(
   } else if (dt.compare("JSON") == 0) {
     std::string serialized = "";
 
-    for (const auto& value : tensor.GetArray()) {
+    auto values = tensor.GetArray();
+    if (values.Size() != 1) {
+      return cb::Error(
+          "JSON format does not yet support multiple json objects in the "
+          "input");
+    }
+    for (const auto& value : values) {
       rapidjson::StringBuffer buffer;
       rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
       value.Accept(writer);
