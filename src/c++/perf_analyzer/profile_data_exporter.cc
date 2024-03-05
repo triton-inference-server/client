@@ -164,9 +164,13 @@ ProfileDataExporter::AddResponseOutputs(
       const auto& byte_size{output.second.second};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value output_json{};
-      output_json.SetString(
-          reinterpret_cast<const char*>(buf), byte_size,
-          document_.GetAllocator());
+      if (buf != nullptr) {
+        output_json.SetString(
+            reinterpret_cast<const char*>(buf), byte_size,
+            document_.GetAllocator());
+      } else {
+        output_json.SetString("", 0, document_.GetAllocator());
+      }
       response_output_json.AddMember(
           name_json, output_json, document_.GetAllocator());
     }
