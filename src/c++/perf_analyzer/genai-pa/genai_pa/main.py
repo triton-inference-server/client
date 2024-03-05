@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import contextlib
+import io
 import logging
 import sys
 
@@ -32,6 +34,17 @@ from genai_pa import parser
 from genai_pa.constants import LOGGER_NAME
 from genai_pa.exceptions import GenAiPAException
 from genai_pa.llm_inputs.llm_inputs import LlmInputs
+
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from genai_pa.metrics import LLMProfileData
+    from transformers import AutoTokenizer as tokenizer
+    from transformers import logging as token_logger
+
+    token_logger.set_verbosity_error()
+
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
@@ -47,6 +60,15 @@ def generate_inputs(args):
     )
 
 
+def calculate_metrics(file: str) -> LLMProfileData:
+    t = tokenizer.from_pretrained("gpt2")
+    return LLMProfileData(file, t)
+
+
+def report_output(metrics: LLMProfileData):
+    print(metrics.get_statistics("concurrency", 1))
+
+
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
 # Optional argv used for testing - will default to sys.argv if None.
@@ -55,6 +77,8 @@ def run(argv=None):
         args = parser.parse_args(argv)
         generate_inputs(args)
         args.func(args)
+        metrics = calculate_metrics(args.profile_export_file)
+        report_output(metrics)
     except Exception as e:
         raise GenAiPAException(e)
 
