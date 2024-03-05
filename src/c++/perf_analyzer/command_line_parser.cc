@@ -1922,7 +1922,7 @@ CLParser::VerifyOptions()
     if (params_->endpoint.empty()) {
       Usage(
           "Must supply --endpoint for OpenAI service kind. For example, "
-          "\"v1/chat/completions\"");
+          "\"v1/chat/completions\".");
     }
   }
 
