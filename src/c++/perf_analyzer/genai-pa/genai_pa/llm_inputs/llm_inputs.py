@@ -26,6 +26,7 @@ from requests import Response
 class InputType(Enum):
     URL = auto()
     FILE = auto()
+    SYNTHETIC = auto()
 
 
 class InputFormat(Enum):
