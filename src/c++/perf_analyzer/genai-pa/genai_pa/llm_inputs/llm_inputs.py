@@ -105,12 +105,12 @@ class LlmInputs:
 
         LlmInputs._check_for_valid_args(input_type, model_name, starting_index, length)
 
+        dataset = None
         if input_type == InputType.URL:
             dataset = LlmInputs._get_input_dataset_from_url(
                 model_name, starting_index, length
             )
         else:
-            dataset = None
             raise GenAiPAException(
                 "Using file/synthetic to supply LLM Input is not supported at this time"
             )
