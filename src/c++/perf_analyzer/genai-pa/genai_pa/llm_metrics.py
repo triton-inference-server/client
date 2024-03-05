@@ -81,16 +81,54 @@ class LLMMetrics(Metrics):
         time_to_first_tokens: list[int] = [],
         inter_token_latencies: list[int] = [],
         output_token_throughputs: list[int] = [],
+        num_output_tokens: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
+        self.num_output_tokens = num_output_tokens
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
         self._base_names["output_token_throughputs"] = "output_token_throughput"
+        self._base_names["num_output_tokens"] = "num_output_token"
+||||||| parent of c6e44a2 (Add num_output_token metrics and statistics)
+    def get_base_name(self, attr_name: str) -> str:
+        # Attempted to extract and store the mapping as a dataclass member as a
+        # dictionary but encountered two issues: (1) Python does not allow
+        # dataclass member to be mutable and (2) if we set it as member of
+        # normal class, the dict member will be parsed by Statistics class,
+        # which is not what we want since it's not one of the LLM metrics.
+        # Leaving it as conditional statements for now.
+        if attr_name == "time_to_first_tokens":
+            return "time_to_first_token"
+        elif attr_name == "inter_token_latencies":
+            return "inter_token_latency"
+        elif attr_name == "output_token_throughputs":
+            return "output_token_throughput"
+        else:
+            raise ValueError(f"No attribute named '{attr_name}' exists.")
+=======
+    def get_base_name(self, attr_name: str) -> str:
+        # Attempted to extract and store the mapping as a dataclass member as a
+        # dictionary but encountered two issues: (1) Python does not allow
+        # dataclass member to be mutable and (2) if we set it as member of
+        # normal class, the dict member will be parsed by Statistics class,
+        # which is not what we want since it's not one of the LLM metrics.
+        # Leaving it as conditional statements for now.
+        if attr_name == "time_to_first_tokens":
+            return "time_to_first_token"
+        elif attr_name == "inter_token_latencies":
+            return "inter_token_latency"
+        elif attr_name == "output_token_throughputs":
+            return "output_token_throughput"
+        elif attr_name == "num_output_tokens":
+            return "num_output_token"
+        else:
+            raise ValueError(f"No attribute named '{attr_name}' exists.")
+>>>>>>> c6e44a2 (Add num_output_token metrics and statistics)
 
 
 class Statistics:
@@ -121,11 +159,11 @@ class Statistics:
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
 
-    def _calculate_mean(self, data: list[int], attr: str):
+    def _calculate_mean(self, data: list[int | float], attr: str):
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int], attr: str):
+    def _calculate_percentiles(self, data: list[int | float], attr: str):
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -135,12 +173,12 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int], attr: str):
+    def _calculate_minmax(self, data: list[int | float], attr: str):
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int], attr: str):
+    def _calculate_std(self, data: list[int | float], attr: str):
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
@@ -226,6 +264,7 @@ class LLMProfileData:
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs = []
+        num_output_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
@@ -247,6 +286,7 @@ class LLMProfileData:
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)
             output_token_throughputs.append(total_output_tokens / req_latency)
+            num_output_tokens.append(total_output_tokens)
 
             # inter token latency
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
@@ -262,6 +302,7 @@ class LLMProfileData:
             time_to_first_tokens,
             inter_token_latencies,
             output_token_throughputs,
+            num_output_tokens,
         )
 
     def get_statistics(self, infer_mode: str, load_level: int | float) -> Statistics:
