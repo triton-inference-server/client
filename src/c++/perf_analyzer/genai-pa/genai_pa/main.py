@@ -65,8 +65,15 @@ def calculate_metrics(file: str) -> LLMProfileData:
     return LLMProfileData(file, t)
 
 
-def report_output(metrics: LLMProfileData):
-    print(metrics.get_statistics("concurrency", 1))
+def report_output(metrics: LLMProfileData, args):
+    if "concurrency_range" in args:
+        infer_mode = "concurrency"
+        load_level = args.concurrency_range
+    else:
+        infer_mode = "request_rate"
+        load_level = args.request_rate_range
+    # TODO: metrics reporter class that consumes Stats class for nicer formatting
+    print(metrics.get_statistics(infer_mode, int(load_level)))
 
 
 # Separate function that can raise exceptions used for testing
@@ -78,7 +85,7 @@ def run(argv=None):
         generate_inputs(args)
         args.func(args, extra_args)
         metrics = calculate_metrics(args.profile_export_file)
-        report_output(metrics)
+        report_output(metrics, args)
     except Exception as e:
         raise GenAiPAException(e)
 

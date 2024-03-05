@@ -96,7 +96,7 @@ def _add_model_args(parser):
 
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
-    load_management_group = profile_group.add_mutually_exclusive_group()
+    load_management_group = profile_group.add_mutually_exclusive_group(required=True)
 
     profile_group.add_argument(
         "-b",
