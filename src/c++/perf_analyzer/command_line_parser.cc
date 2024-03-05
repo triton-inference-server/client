@@ -1939,6 +1939,9 @@ CLParser::VerifyOptions()
           "Must supply --endpoint for OpenAI service kind. For example, "
           "\"v1/chat/completions\".");
     }
+    if (!params_->async) {
+      Usage("Only async mode is currently supported for OpenAI service-kind");
+    }
   }
 
   if (params_->should_collect_metrics &&

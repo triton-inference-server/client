@@ -90,6 +90,9 @@ BackendKindToString(const BackendKind kind)
     case TRITON_C_API:
       return std::string("TRITON_C_API");
       break;
+    case OPENAI:
+      return std::string("OPENAI");
+      break;
     default:
       return std::string("UNKNOWN");
       break;
