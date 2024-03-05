@@ -39,7 +39,7 @@ from genai_pa.llm_inputs.llm_inputs import LlmInputs
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from genai_pa.metrics import LLMProfileData
+    from genai_pa.llm_metrics import LLMProfileData
     from transformers import AutoTokenizer as tokenizer
     from transformers import logging as token_logger
 
