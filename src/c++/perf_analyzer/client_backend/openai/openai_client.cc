@@ -158,12 +158,12 @@ ChatCompletionClient::AsyncInfer(
 
   auto completion_callback = [this](HttpRequest* req) {
     auto request = static_cast<ChatCompletionRequest*>(req);
-    if (!request->is_stream_) {
-      request->SendResponse(true /* is_final */, false /* is_null */);
-    }
     request->timer_.CaptureTimestamp(
         triton::client::RequestTimers::Kind::REQUEST_END);
     UpdateInferStat(request->timer_);
+    if (!request->is_stream_) {
+      request->SendResponse(true /* is_final */, false /* is_null */);
+    }
   };
   std::unique_ptr<HttpRequest> request(new ChatCompletionRequest(
       std::move(completion_callback), std::move(callback), request_id,
@@ -185,6 +185,8 @@ ChatCompletionClient::AsyncInfer(
   raw_request->timer_.CaptureTimestamp(
       triton::client::RequestTimers::Kind::SEND_START);
   Send(multi_easy_handle, std::move(request));
+  raw_request->timer_.CaptureTimestamp(
+      triton::client::RequestTimers::Kind::SEND_END);
   return Error::Success;
 }
 
