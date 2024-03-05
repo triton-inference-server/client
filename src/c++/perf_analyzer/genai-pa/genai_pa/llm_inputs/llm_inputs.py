@@ -18,7 +18,7 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
 import requests
-from genai_pa.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
 from requests import Response
 
@@ -45,8 +45,6 @@ class LlmInputs:
     """
     A library of methods that control the generation of LLM Inputs
     """
-
-    OUTPUT_FILENAME = "./llm_inputs.json"
 
     OPEN_ORCA_URL = "https://datasets-server.huggingface.co/rows?dataset=Open-Orca%2FOpenOrca&config=default&split=train"
     CNN_DAILYMAIL_URL = "https://datasets-server.huggingface.co/rows?dataset=cnn_dailymail&config=1.0.0&split=train"
@@ -301,7 +299,7 @@ class LlmInputs:
     @classmethod
     def _write_json_to_file(cls, json_in_pa_format: Dict):
         try:
-            f = open(LlmInputs.OUTPUT_FILENAME, "w")
+            f = open(DEFAULT_INPUT_DATA_JSON, "w")
             f.write(json.dumps(json_in_pa_format, indent=2))
         finally:
             f.close()

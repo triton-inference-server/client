@@ -16,7 +16,7 @@ import json
 import os
 
 import pytest
-from genai_pa.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
 from genai_pa.llm_inputs.llm_inputs import (
     InputFormat,
@@ -180,7 +180,7 @@ class TestLlmInputs:
             model_name=CNN_DAILY_MAIL,
         )
 
-        os.remove(LlmInputs.OUTPUT_FILENAME)
+        os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
@@ -198,11 +198,11 @@ class TestLlmInputs:
             add_stream=True,
         )
         try:
-            f = open(LlmInputs.OUTPUT_FILENAME, "r")
+            f = open(DEFAULT_INPUT_DATA_JSON, "r")
             json_str = f.read()
         finally:
             f.close()
-            os.remove(LlmInputs.OUTPUT_FILENAME)
+            os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json == json.loads(json_str)
 
@@ -219,7 +219,7 @@ class TestLlmInputs:
             add_stream=True,
         )
 
-        os.remove(LlmInputs.OUTPUT_FILENAME)
+        os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
