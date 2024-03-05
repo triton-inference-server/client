@@ -73,10 +73,10 @@ def _verify_valid_arg_combination(
 ### Handlers ###
 
 
-def handler(args):
+def handler(args, extra_args):
     from genai_pa.wrapper import Profiler
 
-    Profiler.run(model=args.model, args=args)
+    Profiler.run(model=args.model, args=args, extra_args=extra_args)
 
 
 ### Parsers ###

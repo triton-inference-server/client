@@ -34,6 +34,7 @@ from itertools import pairwise
 import numpy as np
 from genai_pa.utils import load_json
 
+# Silence tokenizer warning on import
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
