@@ -84,9 +84,6 @@ class OpenAiClientBackend : public ClientBackend {
   {
   }
 
-  void ParseInferStat(
-      const tc::InferStat& openai_infer_stat, InferStat* infer_stat);
-
   std::unique_ptr<openai::ChatCompletionClient> http_client_;
   std::shared_ptr<Headers> http_headers_;
 };
