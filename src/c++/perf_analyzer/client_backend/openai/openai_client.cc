@@ -84,10 +84,8 @@ ChatCompletionClient::RequestProvider(
   request->GetNextInput(
       reinterpret_cast<uint8_t*>(contents), size * nmemb, &input_bytes);
 
-  if (input_bytes == 0) {
-    request->timer_.CaptureTimestamp(
-        triton::client::RequestTimers::Kind::SEND_END);
-  }
+  request->timer_.CaptureTimestamp(
+      triton::client::RequestTimers::Kind::SEND_END);
 
   return input_bytes;
 }
@@ -185,8 +183,6 @@ ChatCompletionClient::AsyncInfer(
   raw_request->timer_.CaptureTimestamp(
       triton::client::RequestTimers::Kind::SEND_START);
   Send(multi_easy_handle, std::move(request));
-  raw_request->timer_.CaptureTimestamp(
-      triton::client::RequestTimers::Kind::SEND_END);
   return Error::Success;
 }
 
