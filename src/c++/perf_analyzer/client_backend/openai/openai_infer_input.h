@@ -54,8 +54,8 @@ class OpenAiInferInput : public InferInput {
   /// Prepare the input to be in the form expected by an OpenAI client,
   /// must call before accessing the data.
   Error PrepareForRequest();
-  /// Get the contiguous data in string.
-  std::string& DataString() { return data_str_; }
+  /// Get the contiguous request body string
+  std::string& GetRequestBody() { return data_str_; }
 
  private:
   explicit OpenAiInferInput(
