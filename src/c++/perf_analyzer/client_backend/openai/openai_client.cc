@@ -114,7 +114,7 @@ size_t
 ChatCompletionClient::ResponseHandler(
     void* contents, size_t size, size_t nmemb, void* userp)
 {
-  // [TODO] verify if the SSE responses received are complete, or the response
+  // [TODO TMA-1666] verify if the SSE responses received are complete, or the response
   // need to be stitched first.
   // To verify, print out the received responses from SendResponse() to make
   // sure the OpenAI server doesn't chunk the HTTP responses in the way that
