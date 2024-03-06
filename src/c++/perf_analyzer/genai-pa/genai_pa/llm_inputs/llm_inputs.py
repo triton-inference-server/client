@@ -29,12 +29,6 @@ class InputType(Enum):
     SYNTHETIC = auto()
 
 
-class InputFormat(Enum):
-    OPENAI = auto()
-    TRTLLM = auto()
-    VLLM = auto()
-
-
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
@@ -70,7 +64,6 @@ class LlmInputs:
     def create_llm_inputs(
         cls,
         input_type: InputType,
-        input_format: InputFormat,
         output_format: OutputFormat,
         dataset_name: str = "",
         model_name: str = "",
@@ -88,8 +81,6 @@ class LlmInputs:
         -------------------
         input_type:
             Specify how the input is received (file or URL)
-        input_format:
-            Specify the input format
         output_format:
             Specify the output format
 
@@ -123,9 +114,7 @@ class LlmInputs:
                 "Using file/synthetic to supply LLM Input is not supported at this time"
             )
 
-        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
-            input_format, dataset
-        )
+        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset)
 
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
             output_format, generic_dataset_json, add_model_name, add_stream, model_name
@@ -181,23 +170,16 @@ class LlmInputs:
         return dataset
 
     @classmethod
-    def _convert_input_dataset_to_generic_json(
-        cls, input_format: InputFormat, dataset: Response
-    ) -> Dict:
+    def _convert_input_dataset_to_generic_json(cls, dataset: Response) -> Dict:
         dataset_json = dataset.json()
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
             raise GenAiPAException(e)
 
-        if input_format == InputFormat.OPENAI:
-            generic_dataset_json = LlmInputs._convert_openai_to_generic_input_json(
-                dataset_json
-            )
-        else:
-            raise GenAiPAException(
-                f"Input format {input_format} is not supported at this time"
-            )
+        generic_dataset_json = LlmInputs._convert_openai_to_generic_input_json(
+            dataset_json
+        )
 
         return generic_dataset_json
 
