@@ -104,7 +104,6 @@ class TestLlmInputs:
             _ = LlmInputs.create_llm_inputs(
                 input_type=InputType.URL,
                 input_format=InputFormat.OPENAI,
-                output_format=OutputFormat.OPENAI,
                 dataset_name=OPEN_ORCA,
                 output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
@@ -177,7 +176,6 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
-            output_format=OutputFormat.OPENAI,
             dataset_name=CNN_DAILY_MAIL,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
         )
@@ -194,7 +192,6 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
-            output_format=OutputFormat.OPENAI,
             dataset_name=OPEN_ORCA,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             add_model_name=True,
@@ -235,7 +232,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
-            model_name=OPEN_ORCA,
+            dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
         )
