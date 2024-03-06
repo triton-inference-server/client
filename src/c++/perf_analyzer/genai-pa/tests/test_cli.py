@@ -59,13 +59,11 @@ class TestCLIArguments:
         [
             (["-b", "2"], {"batch_size": 2}),
             (["--batch-size", "2"], {"batch_size": 2}),
-            (["--concurrency", "3"], {"concurrency_range": "3"}),
             (["--max-threads", "4"], {"max_threads": 4}),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
             ),
-            (["--request-rate", "1.5"], {"request_rate_range": "1.5"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (["--service-kind", "openai"], {"service_kind": "openai"}),
             # TODO: Remove streaming from implementation. It is invalid with HTTP.
@@ -76,8 +74,8 @@ class TestCLIArguments:
         ],
     )
     def test_arguments_output(self, arg, expected_attributes, capsys):
-        combined_args = ["--model", "test_model"] + arg
-        args = parser.parse_args(combined_args)
+        combined_args = ["--model", "test_model", "--concurrency", "2"] + arg
+        args, _ = parser.parse_args(combined_args)
 
         # Check that the attributes are set correctly
         for key, value in expected_attributes.items():
@@ -96,4 +94,11 @@ class TestCLIArguments:
 
     def test_exception_on_nonzero_exit(self):
         with pytest.raises(GenAiPAException) as e:
-            run(["-m", "nonexistent_model"])
+            run(["-m", "nonexistent_model", "--concurrency", "3"])
+
+    def test_pass_through_args(self):
+        args = ["-m", "test_model", "--concurrency", "1"]
+        other_args = ["--", "With", "great", "power"]
+        _, pass_through_args = parser.parse_args(args + other_args)
+
+        assert pass_through_args == other_args[1:]

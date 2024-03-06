@@ -46,6 +46,8 @@ class LlmInputs:
     A library of methods that control the generation of LLM Inputs
     """
 
+    OUTPUT_FILENAME = DEFAULT_INPUT_DATA_JSON
+
     OPEN_ORCA_URL = "https://datasets-server.huggingface.co/rows?dataset=Open-Orca%2FOpenOrca&config=default&split=train"
     CNN_DAILYMAIL_URL = "https://datasets-server.huggingface.co/rows?dataset=cnn_dailymail&config=1.0.0&split=train"
 

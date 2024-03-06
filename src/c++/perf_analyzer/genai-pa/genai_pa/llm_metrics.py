@@ -26,12 +26,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import contextlib
+import io
 from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
 from genai_pa.utils import load_json
-from transformers import AutoTokenizer
+
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from transformers import AutoTokenizer
 
 
 @dataclass

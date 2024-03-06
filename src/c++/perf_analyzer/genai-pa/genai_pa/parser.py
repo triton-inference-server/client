@@ -28,12 +28,12 @@ import argparse
 import logging
 from pathlib import Path
 
-from genai_pa.constants import LOGGER_NAME
+from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_HTTP_URL, LOGGER_NAME, OPEN_ORCA
 
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Prune the parsed arguments to remove args with None or False values.
     """
@@ -42,7 +42,7 @@ def prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     )
 
 
-def update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Update GenAI-PA load manager attributes to PA format
     """
@@ -57,17 +57,16 @@ def update_load_manager_args(args: argparse.ArgumentParser) -> argparse.Argument
 ### Handlers ###
 
 
-# NOTE: Placeholder
-def handler(args):
+def handler(args, extra_args):
     from genai_pa.wrapper import Profiler
 
-    Profiler.run(model=args.model, args=args)
+    Profiler.run(model=args.model, args=args, extra_args=extra_args)
 
 
 ### Parsers ###
 
 
-def add_model_args(parser):
+def _add_model_args(parser):
     model_group = parser.add_argument_group("Model")
 
     model_group.add_argument(
@@ -79,9 +78,9 @@ def add_model_args(parser):
     )
 
 
-def add_profile_args(parser):
+def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
-    load_management_group = profile_group.add_mutually_exclusive_group()
+    load_management_group = profile_group.add_mutually_exclusive_group(required=True)
 
     profile_group.add_argument(
         "-b",
@@ -152,14 +151,23 @@ def add_profile_args(parser):
     )
 
 
-def add_endpoint_args(parser):
+def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
+
+    endpoint_group.add_argument(
+        "-i",
+        type=str.lower,
+        choices=["http", "grpc"],
+        default="http",
+        required=False,
+        help=f"Sets the protocol used to communicate with inference service",
+    )
 
     endpoint_group.add_argument(
         "-u",
         "--url",
         type=str,
-        default="localhost:8001",
+        default=DEFAULT_HTTP_URL,
         required=False,
         dest="u",
         metavar="URL",
@@ -167,19 +175,18 @@ def add_endpoint_args(parser):
     )
 
 
-def add_dataset_args(parser):
-    pass
-
+def _add_dataset_args(parser):
     dataset_group = parser.add_argument_group("Dataset")
-    # TODO: Do we want to remove dataset and tokenizer?
-    # dataset_group.add_argument(
-    #     "--dataset",
-    #     type=str,
-    #     default="OpenOrca",
-    #     choices=["OpenOrca", "cnn_dailymail"],
-    #     required=False,
-    #     help="HuggingFace dataset to use for the benchmark.",
-    # )
+
+    dataset_group.add_argument(
+        "--dataset",
+        type=str.lower,
+        default=OPEN_ORCA,
+        choices=[OPEN_ORCA, CNN_DAILY_MAIL],
+        required=False,
+        help="HuggingFace dataset to use for benchmarking.",
+    )
+
     # dataset_group.add_argument(
     #     "--tokenizer",
     #     type=str,
@@ -202,14 +209,18 @@ def parse_args(argv=None):
     parser.set_defaults(func=handler)
 
     # Conceptually group args for easier visualization
-    add_model_args(parser)
-    add_profile_args(parser)
-    add_endpoint_args(parser)
-    add_dataset_args(parser)
+    _add_model_args(parser)
+    _add_profile_args(parser)
+    _add_endpoint_args(parser)
+    _add_dataset_args(parser)
 
-    args = parser.parse_args(argv)
+    args, extra_args = parser.parse_known_args(argv)
+    if extra_args:
+        # strip off the "--" demarking the pass through arguments
+        extra_args = extra_args[1:]
+        logger.info(f"Additional pass through args: {extra_args}")
 
-    args = update_load_manager_args(args)
-    args = prune_args(args)
+    args = _update_load_manager_args(args)
+    args = _prune_args(args)
 
-    return args
+    return args, extra_args
