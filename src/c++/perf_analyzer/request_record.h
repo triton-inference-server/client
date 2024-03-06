@@ -33,20 +33,40 @@
 
 namespace triton { namespace perfanalyzer {
 
+/// A record containing the data of a single response
+struct ResponseData {
+  ResponseData(const uint8_t* buf, size_t size)
+  {
+    uint8_t* array = new uint8_t[size];
+    std::memcpy(array, buf, size);
+    data_ = std::shared_ptr<uint8_t>(array, [](uint8_t* p) { delete[] p; });
+    size_ = size;
+  }
+
+  // Define equality comparison operator so it can be inserted into maps
+  bool operator==(const ResponseData& other) const
+  {
+    if (size_ != other.size_)
+      return false;
+    // Compare the contents of the arrays
+    return std::memcmp(data_.get(), other.data_.get(), size_) == 0;
+  }
+
+  std::shared_ptr<uint8_t> data_;
+  size_t size_;
+};
+
 
 /// A record of an individual request
 struct RequestRecord {
-  using ResponseOutput =
-      std::unordered_map<std::string, std::pair<const uint8_t*, size_t>>;
+  using ResponseOutput = std::unordered_map<std::string, ResponseData>;
 
   RequestRecord(
       std::chrono::time_point<std::chrono::system_clock> start_time =
           std::chrono::time_point<std::chrono::system_clock>(),
       std::vector<std::chrono::time_point<std::chrono::system_clock>>
           response_timestamps = {},
-      std::vector<
-          std::unordered_map<std::string, std::pair<const uint8_t*, size_t>>>
-          response_outputs = {},
+      std::vector<ResponseOutput> response_outputs = {},
       bool sequence_end = true, bool delayed = false, uint64_t sequence_id = 0,
       bool has_null_last_response = false)
       : start_time_(start_time), response_timestamps_(response_timestamps),
