@@ -1942,6 +1942,9 @@ CLParser::VerifyOptions()
     if (!params_->async) {
       Usage("Only async mode is currently supported for OpenAI service-kind");
     }
+    if (params_->batch_size != 1) {
+      Usage("Batching is not currently supported with OpenAI service-kind");
+    }
   }
 
   if (params_->should_collect_metrics &&
