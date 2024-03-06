@@ -121,6 +121,63 @@ class Statistics:
         attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"Statistics({attr_strs})"
 
+    def _is_seconds_field(self, stat):
+        seconds_fields = [
+            "inter_token_latency",
+            "time_to_first_token",
+            "ttft",
+            "end_to_end_latency",
+            "request_output_throughput_token_per",
+        ]
+        return stat in seconds_fields
+
+    def _print_exact_length(self, value):
+        exact_value_length = 17
+        if len(value) < exact_value_length:
+            return value.ljust(exact_value_length)
+        return value[:exact_value_length]
+
+    def pretty_print(self):
+        field_stats = {}
+        print_length_for_seconds = 17
+
+        for key, value in self.__dict__.items():
+            if key.startswith(
+                (
+                    "p25_",
+                    "p50_",
+                    "p75_",
+                    "p90_",
+                    "p95_",
+                    "p99_",
+                    "avg_",
+                    "min_",
+                    "max_",
+                    "std_",
+                )
+            ):
+                stat, field = key.split("_", 1)
+                stat = stat.replace("_", " ")
+
+                if field not in field_stats:
+                    field_stats[field] = {}
+                field_stats[field][stat] = value
+
+        for field, stats in field_stats.items():
+            is_seconds_field = self._is_seconds_field(field)
+
+            field_label = f"{field}"
+            if is_seconds_field:
+                field_label += "_s"
+            print(f"{field_label}:")
+
+            for stat, value in stats.items():
+                formatted_value = f"{value:.17f}" if abs(value) > 1e-5 else f"{value:e}"
+                if is_seconds_field:
+                    print(f"    {stat} = {self._print_exact_length(formatted_value)}")
+                else:
+                    print(f"    {stat} = {value}")
+
 
 class LLMProfileData:
     """A class that calculates and aggregates all the LLM performance statistics
@@ -167,16 +224,16 @@ class LLMProfileData:
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
-            res_outputs = request["response_outputs"]
+            # res_outputs = request["response_outputs"]
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
-            output_tokens = tokenizer(res_outputs)["input_ids"]
-            total_output_tokens = np.sum(list(map(len, output_tokens)))
-            req_latency = res_timestamps[-1] - req_timestamp
-            output_token_throughputs.append(total_output_tokens / req_latency)
+            # output_tokens = tokenizer(res_outputs)["input_ids"]
+            # total_output_tokens = np.sum(list(map(len, output_tokens)))
+            # req_latency = res_timestamps[-1] - req_timestamp
+            # output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
             for t1, t2 in pairwise(res_timestamps):
