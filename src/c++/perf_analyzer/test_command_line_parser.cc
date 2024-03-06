@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -263,6 +263,7 @@ TEST_CASE("Testing PerfAnalyzerParameters")
   CHECK(params->sequence_length == 20);
   CHECK(params->percentile == -1);
   CHECK(params->user_data.size() == 0);
+  CHECK_STRING("endpoint", params->endpoint, "");
   CHECK(params->input_shapes.size() == 0);
   CHECK(params->measurement_window_ms == 5000);
   CHECK(params->using_concurrency_range == false);

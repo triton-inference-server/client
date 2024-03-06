@@ -160,8 +160,8 @@ ProfileDataExporter::AddResponseOutputs(
     rapidjson::Value response_output_json(rapidjson::kObjectType);
     for (const auto& output : response_output) {
       const auto& name{output.first};
-      const auto& buf{output.second.first};
-      const auto& byte_size{output.second.second};
+      const auto& buf{output.second.data_.get()};
+      const auto& byte_size{output.second.size_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value output_json{};
       if (buf != nullptr) {
