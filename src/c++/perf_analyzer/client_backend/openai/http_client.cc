@@ -82,7 +82,7 @@ HttpClient::HttpClient(
     const HttpSslOptions& ssl_options)
     : url_(server_url), verbose_(verbose), ssl_options_(ssl_options)
 {
-  // [FIXME] uncommon below and remove class-wise mutex once confirm
+  // [TODO TMA-1670] uncomment below and remove class-wise mutex once confirm
   // curl >= 7.84.0 will always be used
   // auto* ver = curl_version_info(CURLVERSION_NOW);
   // if (ver->features & CURL_VERSION_THREADSAFE == 0) {
