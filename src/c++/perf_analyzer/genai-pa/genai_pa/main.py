@@ -76,7 +76,6 @@ def report_output(metrics: LLMProfileData, args):
         raise GenAiPAException(
             "Neither concurrency_range nor request_rate_range was found in args when reporting metrics"
         )
-    # TODO: metrics reporter class that consumes Stats class for nicer formatting
     stats = metrics.get_statistics(infer_mode, int(load_level))
     stats.pretty_print()
 

@@ -121,19 +121,20 @@ class Statistics:
         attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"Statistics({attr_strs})"
 
-    def _is_seconds_field(self, stat):
+    def _is_seconds_field(self, field: str):
         seconds_fields = [
             "inter_token_latency",
             "time_to_first_token",
             "end_to_end_latency",
         ]
-        return stat in seconds_fields
+        return field in seconds_fields
 
-    def _print_exact_length(self, value):
+    def _use_exact_length(self, value: str):
         exact_value_length = 17
-        if len(value) < exact_value_length:
-            return value.ljust(exact_value_length)
-        return value[:exact_value_length]
+        formatted_value = f"{value:.{exact_value_length}f}"
+        if len(formatted_value) < exact_value_length:
+            return formatted_value.ljust(exact_value_length)
+        return formatted_value[:exact_value_length]
 
     def pretty_print(self):
         field_stats = {}
@@ -171,9 +172,12 @@ class Statistics:
             print(f"{field_label}:")
 
             for stat, value in stats.items():
-                formatted_value = f"{value:.17f}" if abs(value) > 1e-5 else f"{value:e}"
                 if is_seconds_field:
-                    print(f"    {stat} = {self._print_exact_length(formatted_value)}")
+                    if value < 1e-5:
+                        formatted_value = f"{value:e}"
+                    else:
+                        formatted_value = self._use_exact_length(value)
+                    print(f"    {stat} = {formatted_value}")
                 else:
                     print(f"    {stat} = {value}")
 
@@ -224,16 +228,16 @@ class LLMProfileData:
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
-            # res_outputs = request["response_outputs"]
+            res_outputs = request["response_outputs"]
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
-            # output_tokens = tokenizer(res_outputs)["input_ids"]
-            # total_output_tokens = np.sum(list(map(len, output_tokens)))
-            # req_latency = res_timestamps[-1] - req_timestamp
-            # output_token_throughputs.append(total_output_tokens / req_latency)
+            output_tokens = tokenizer(res_outputs)["input_ids"]
+            total_output_tokens = np.sum(list(map(len, output_tokens)))
+            req_latency = res_timestamps[-1] - req_timestamp
+            output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
             for t1, t2 in pairwise(res_timestamps):
