@@ -38,10 +38,6 @@
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace openai {
 
-/// The key-value map type to be included in the request
-/// as custom headers.
-typedef std::map<std::string, std::string> Headers;
-
 // The options for authorizing and authenticating SSL/TLS connections.
 struct HttpSslOptions {
   enum CERTTYPE { CERT_PEM = 0, CERT_DER = 1 };
