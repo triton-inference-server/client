@@ -125,9 +125,7 @@ class Statistics:
         seconds_fields = [
             "inter_token_latency",
             "time_to_first_token",
-            "ttft",
             "end_to_end_latency",
-            "request_output_throughput_token_per",
         ]
         return stat in seconds_fields
 
