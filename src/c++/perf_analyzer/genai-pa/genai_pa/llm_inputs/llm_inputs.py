@@ -69,6 +69,7 @@ class LlmInputs:
         input_type: InputType,
         input_format: InputFormat,
         output_format: OutputFormat,
+        dataset_name: str = "",
         model_name: str = "",
         input_filename: str = "",
         starting_index: int = DEFAULT_STARTING_INDEX,
@@ -91,6 +92,8 @@ class LlmInputs:
 
         Optional Parameters
         -------------------
+        dataset_name:
+            The name of the dataset
         model_name:
             The model name
         starting_index:
@@ -103,12 +106,14 @@ class LlmInputs:
             If true adds a steam field to each payload
         """
 
-        LlmInputs._check_for_valid_args(input_type, model_name, starting_index, length)
+        LlmInputs._check_for_valid_args(
+            input_type, dataset_name, starting_index, length
+        )
 
         dataset = None
         if input_type == InputType.URL:
             dataset = LlmInputs._get_input_dataset_from_url(
-                model_name, starting_index, length
+                dataset_name, starting_index, length
             )
         else:
             raise GenAiPAException(
@@ -128,10 +133,12 @@ class LlmInputs:
 
     @classmethod
     def _check_for_valid_args(
-        cls, input_type: InputType, model_name: str, starting_index: int, length: int
+        cls, input_type: InputType, dataset_name: str, starting_index: int, length: int
     ) -> None:
         try:
-            LlmInputs._check_for_model_name_if_input_type_is_url(input_type, model_name)
+            LlmInputs._check_for_dataset_name_if_input_type_is_url(
+                input_type, dataset_name
+            )
             LlmInputs._check_for_valid_starting_index(starting_index)
             LlmInputs._check_for_valid_length(length)
         except Exception as e:
@@ -139,21 +146,21 @@ class LlmInputs:
 
     @classmethod
     def _get_input_dataset_from_url(
-        cls, model_name: str, starting_index: int, length: int
+        cls, dataset_name: str, starting_index: int, length: int
     ) -> Response:
-        url = LlmInputs._resolve_url(model_name)
+        url = LlmInputs._resolve_url(dataset_name)
         configured_url = LlmInputs._create_configured_url(url, starting_index, length)
         dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
 
         return dataset
 
     @classmethod
-    def _resolve_url(cls, model_name: str) -> str:
-        if model_name in LlmInputs.dataset_url_map:
-            return LlmInputs.dataset_url_map[model_name]
+    def _resolve_url(cls, dataset_name: str) -> str:
+        if dataset_name in LlmInputs.dataset_url_map:
+            return LlmInputs.dataset_url_map[dataset_name]
         else:
             raise GenAiPAException(
-                f"{model_name} does not have a corresponding URL in the dataset_url_map."
+                f"{dataset_name} does not have a corresponding URL in the dataset_url_map."
             )
 
     @classmethod
@@ -503,12 +510,12 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _check_for_model_name_if_input_type_is_url(
-        cls, input_type: InputType, model_name: str
+    def _check_for_dataset_name_if_input_type_is_url(
+        cls, input_type: InputType, dataset_name: str
     ) -> None:
-        if input_type == InputType.URL and not model_name:
+        if input_type == InputType.URL and not dataset_name:
             raise GenAiPAException(
-                "Input type is URL, but model_name is not specified."
+                "Input type is URL, but dataset_name is not specified."
             )
 
     @classmethod
