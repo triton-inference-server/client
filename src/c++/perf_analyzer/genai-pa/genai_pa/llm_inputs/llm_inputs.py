@@ -550,17 +550,13 @@ class LlmInputs:
         return empty_pa_json
 
     @classmethod
-<<<<<<< HEAD
-    def _create_new_openai_chat_completions_message(
-=======
     def _create_empty_trtllm_pa_json(cls) -> Dict:
         empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_TRTLLM_PA_FORMAT)
 
         return empty_pa_json
 
     @classmethod
-    def _create_new_message(
->>>>>>> 53db856 (Adding trtllm endpoint support)
+    def _create_new_openai_chat_completions_message(
         cls,
         header: str,
         system_role_headers: List[str],
@@ -682,10 +678,6 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-<<<<<<< HEAD
-    def _check_for_dataset_name_if_input_type_is_url(
-        cls, input_type: InputType, dataset_name: str
-=======
     def _add_optional_tags_to_trtllm_json(
         cls,
         pa_json: Dict,
@@ -712,9 +704,8 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _check_for_model_name_if_input_type_is_url(
-        cls, input_type: InputType, model_name: str
->>>>>>> 53db856 (Adding trtllm endpoint support)
+    def _check_for_dataset_name_if_input_type_is_url(
+        cls, input_type: InputType, dataset_name: str
     ) -> None:
         if input_type == InputType.URL and not dataset_name:
             raise GenAiPAException(

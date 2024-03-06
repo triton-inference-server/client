@@ -250,7 +250,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.TRTLLM,
-            model_name=OPEN_ORCA,
+            dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
         )
