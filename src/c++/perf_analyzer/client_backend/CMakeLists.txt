@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,6 +43,10 @@ if(TRITON_ENABLE_PERF_ANALYZER_TS)
   add_subdirectory(torchserve)
 endif()
 
+if(TRITON_ENABLE_PERF_ANALYZER_OPENAI)
+  add_subdirectory(openai)
+endif()
+
 set(
   CLIENT_BACKEND_SRCS
   client_backend.cc
@@ -71,6 +75,12 @@ if(TRITON_ENABLE_PERF_ANALYZER_TS)
   set(TS_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>)
 endif()
 
+if(TRITON_ENABLE_PERF_ANALYZER_OPENAI)
+  set(OPENAI_LIBRARY $<TARGET_OBJECTS:openai-client-backend-library>)
+  set(OPENAI_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:openai-client-backend-library,LINK_LIBRARIES>)
+  set(OPENAI_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:openai-client-backend-library,INCLUDE_DIRECTORIES>)
+endif()
+
 add_library(
   client-backend-library
   ${CLIENT_BACKEND_SRCS}
@@ -80,6 +90,7 @@ add_library(
   ${CAPI_LIBRARY}
   ${TFS_LIBRARY}
   ${TS_LIBRARY}
+  ${OPENAI_LIBRARY}
 )
 
 target_link_libraries(
@@ -89,6 +100,7 @@ target_link_libraries(
   ${CAPI_TARGET_LINK_LIBRARY}
   ${TFS_TARGET_LINK_LIBRARY}
   ${TS_TARGET_LINK_LIBRARY}
+  ${OPENAI_TARGET_LINK_LIBRARY}
 )
 
 target_include_directories(
@@ -97,4 +109,5 @@ target_include_directories(
   ${CAPI_TARGET_INCLUDE_DIRECTORY}
   ${TFS_TARGET_INCLUDE_DIRECTORY}
   ${TS_TARGET_INCLUDE_DIRECTORY}
+  ${OPENAI_TARGET_INCLUDE_DIRECTORY}
 )
