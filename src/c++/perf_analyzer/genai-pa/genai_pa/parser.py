@@ -60,16 +60,6 @@ def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.Argumen
     return args
 
 
-def _verify_valid_arg_combination(
-    args: argparse.ArgumentParser,
-) -> argparse.ArgumentParser:
-    # Verify protocol and default url match
-    if getattr(args, "i") == "grpc" and getattr(args, "u") == DEFAULT_HTTP_URL:
-        setattr(args, "u", DEFAULT_GRPC_URL)
-
-    return args
-
-
 ### Handlers ###
 
 
@@ -231,11 +221,12 @@ def parse_args(argv=None):
     _add_dataset_args(parser)
 
     args, extra_args = parser.parse_known_args(argv)
-    # strip off the "--" demarking the pass through arguments
-    extra_args = extra_args[1:]
+    if extra_args:
+        # strip off the "--" demarking the pass through arguments
+        extra_args = extra_args[1:]
+        logger.info(f"Additional pass through args: {extra_args}")
 
     args = _update_load_manager_args(args)
-    args = _verify_valid_arg_combination(args)
     args = _prune_args(args)
 
     return args, extra_args

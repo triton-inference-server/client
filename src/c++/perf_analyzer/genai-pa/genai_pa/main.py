@@ -69,9 +69,13 @@ def report_output(metrics: LLMProfileData, args):
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range
-    else:
+    elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
+    else:
+        raise GenAiPAException(
+            "Neither concurrency_range nor request_rate_range was found in args when reporting metrics"
+        )
     # TODO: metrics reporter class that consumes Stats class for nicer formatting
     print(metrics.get_statistics(infer_mode, int(load_level)))
 
