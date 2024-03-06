@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -98,13 +98,15 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "Usage: " << argv_[0] << " [options]" << std::endl;
   std::cerr << "==== SYNOPSIS ====\n \n";
   std::cerr << "\t--version " << std::endl;
-  std::cerr << "\t--service-kind "
-               "<\"triton\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
-            << std::endl;
   std::cerr << "\t-m <model name>" << std::endl;
   std::cerr << "\t-x <model version>" << std::endl;
-  std::cerr << "\t--bls-composing-models=<string>" << std::endl;
+  std::cerr << "\t--bls-composing-models <string>" << std::endl;
   std::cerr << "\t--model-signature-name <model signature name>" << std::endl;
+  std::cerr
+      << "\t--service-kind "
+         "<\"triton\"|\"openai\"|\"tfserving\"|\"torchserve\"|\"triton_c_api\">"
+      << std::endl;
+  std::cerr << "\t--endpoint <string>" << std::endl;
   std::cerr << "\t-v" << std::endl;
   std::cerr << std::endl;
   std::cerr << "I. MEASUREMENT PARAMETERS: " << std::endl;
@@ -151,8 +153,8 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--sequence-id-range <start:end>" << std::endl;
   std::cerr << "\t--string-length <length>" << std::endl;
   std::cerr << "\t--string-data <string>" << std::endl;
-  std::cerr << "\t--input-tensor-format=[binary|json]" << std::endl;
-  std::cerr << "\t--output-tensor-format=[binary|json]" << std::endl;
+  std::cerr << "\t--input-tensor-format [binary|json]" << std::endl;
+  std::cerr << "\t--output-tensor-format [binary|json]" << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-z" << std::endl;
   std::cerr << "\t--data-directory <path>" << std::endl;
@@ -197,21 +199,6 @@ CLParser::Usage(const std::string& msg)
             << std::endl;
 
   std::cerr
-      << FormatMessage(
-             " --service-kind: Describes the kind of service perf_analyzer to "
-             "generate load for. The options are \"triton\", \"triton_c_api\", "
-             "\"tfserving\" and \"torchserve\". Default value is \"triton\". "
-             "Note in order to use \"torchserve\" backend --input-data option "
-             "must point to a json file holding data in the following format "
-             "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
-             "content file>\"]}, {...}...]}. The type of file here will depend "
-             "on the model. In order to use \"triton_c_api\" you must specify "
-             "the Triton server install path and the model repository path via "
-             "the --triton-server-directory and --model-repository flags",
-             18)
-      << std::endl;
-
-  std::cerr
       << std::setw(9) << std::left << " -m: "
       << FormatMessage(
              "This is a required argument and is used to specify the model"
@@ -232,6 +219,33 @@ CLParser::Usage(const std::string& msg)
                    "\"tfserving\".",
                    18)
             << std::endl;
+
+  std::cerr
+      << FormatMessage(
+             " --service-kind: Describes the kind of service perf_analyzer to "
+             "generate load for. The options are \"triton\", \"openai\", "
+             "\"triton_c_api\", \"tfserving\" and \"torchserve\". Default "
+             "value is \"triton\". Note in order to use \"openai\" you must "
+             "specify an endpoint via --endpoint. "
+             "Note in order to use \"torchserve\" backend --input-data option "
+             "must point to a json file holding data in the following format "
+             "{\"data\" : [{\"TORCHSERVE_INPUT\" : [\"<complete path to the "
+             "content file>\"]}, {...}...]}. The type of file here will depend "
+             "on the model. In order to use \"triton_c_api\" you must specify "
+             "the Triton server install path and the model repository path via "
+             "the --triton-server-directory and --model-repository flags",
+             18)
+      << std::endl;
+
+  std::cerr
+      << FormatMessage(
+             " --endpoint: Describes what endpoint to send requests to on the "
+             "server. This is required when using \"openai\" service-kind, and "
+             "is ignored for all other cases. Currently only "
+             "\"v1/chat/completions\" is confirmed to work.",
+             18)
+      << std::endl;
+
   std::cerr << std::setw(9) << std::left
             << " -v: " << FormatMessage("Enables verbose mode.", 9)
             << std::endl;
@@ -303,7 +317,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr
       << FormatMessage(
-             "--periodic-concurrency-range <start:end:step>: Determines the "
+             " --periodic-concurrency-range <start:end:step>: Determines the "
              "range of concurrency levels in the similar but slightly "
              "different manner as the --concurrency-range. Perf Analyzer will "
              "start from the concurrency level of 'start' and increase by "
@@ -323,7 +337,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr
       << FormatMessage(
-             "--request-period <n>: Indicates the number of responses that "
+             " --request-period <n>: Indicates the number of responses that "
              "each request must receive before new, concurrent requests are "
              "sent when --periodic-concurrency-range is specified. Default "
              "value is 10.",
@@ -331,7 +345,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr
       << FormatMessage(
-             "--request-parameter <name:value:type>: Specifies a custom "
+             " --request-parameter <name:value:type>: Specifies a custom "
              "parameter that can be sent to a Triton backend as part of the "
              "request. For example, providing '--request-parameter "
              "max_tokens:256:int' to the command line will set an additional "
@@ -382,7 +396,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
   std::cerr
       << FormatMessage(
-             "--binary-search: Enables the binary search on the specified "
+             " --binary-search: Enables the binary search on the specified "
              "search range. This option requires 'start' and 'end' to be "
              "expilicitly specified in the --concurrency-range or "
              "--request-rate-range. When using this option, 'step' is more "
@@ -393,7 +407,7 @@ CLParser::Usage(const std::string& msg)
       << std::endl;
 
   std::cerr << FormatMessage(
-                   "--num-of-sequences: Sets the number of concurrent "
+                   " --num-of-sequences: Sets the number of concurrent "
                    "sequences for sequence models. This option is ignored when "
                    "--request-rate-range is not specified. By default, its "
                    "value is 4.",
@@ -875,6 +889,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"periodic-concurrency-range", required_argument, 0, 59},
       {"request-period", required_argument, 0, 60},
       {"request-parameter", required_argument, 0, 61},
+      {"endpoint", required_argument, 0, 62},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1169,6 +1184,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
             params_->kind = cb::TORCHSERVE;
           } else if (arg.compare("triton_c_api") == 0) {
             params_->kind = cb::TRITON_C_API;
+          } else if (arg.compare("openai") == 0) {
+            params_->kind = cb::OPENAI;
           } else {
             Usage(
                 "Failed to parse --service-kind. Unsupported type provided: '" +
@@ -1608,6 +1625,10 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->request_parameters[name] = param;
           break;
         }
+        case 62: {
+          params_->endpoint = optarg;
+          break;
+        }
         case 'v':
           params_->extra_verbose = params_->verbose;
           params_->verbose = true;
@@ -1907,6 +1928,23 @@ CLParser::VerifyOptions()
     }
 
     params_->protocol = cb::ProtocolType::UNKNOWN;
+  }
+
+  if (params_->kind == cb::BackendKind::OPENAI) {
+    if (params_->user_data.empty()) {
+      Usage("Must supply --input-data for OpenAI service kind.");
+    }
+    if (params_->endpoint.empty()) {
+      Usage(
+          "Must supply --endpoint for OpenAI service kind. For example, "
+          "\"v1/chat/completions\".");
+    }
+    if (!params_->async) {
+      Usage("Only async mode is currently supported for OpenAI service-kind");
+    }
+    if (params_->batch_size != 1) {
+      Usage("Batching is not currently supported with OpenAI service-kind");
+    }
   }
 
   if (params_->should_collect_metrics &&

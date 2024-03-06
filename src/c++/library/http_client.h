@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-/// \file
-
 #include <map>
 #include <memory>
 
@@ -49,7 +47,7 @@ struct HttpSslOptions {
   enum KEYTYPE {
     KEY_PEM = 0,
     KEY_DER = 1
-    // TODO: Support loading private key from crypto engine
+    // TODO TMA-1645: Support loading private key from crypto engine
     // KEY_ENG = 2
   };
   explicit HttpSslOptions()
