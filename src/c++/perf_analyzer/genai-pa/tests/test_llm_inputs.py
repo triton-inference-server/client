@@ -39,13 +39,13 @@ class TestLlmInputs:
 
     # TODO: Add tests that verify json schemas
 
-    def test_input_type_url_no_model_name(self):
+    def test_input_type_url_no_dataset_name(self):
         """
-        Test for exception when input type is URL and no model name
+        Test for exception when input type is URL and no dataset name
         """
         with pytest.raises(GenAiPAException):
-            _ = LlmInputs._check_for_model_name_if_input_type_is_url(
-                input_type=InputType.URL, model_name=""
+            _ = LlmInputs._check_for_dataset_name_if_input_type_is_url(
+                input_type=InputType.URL, dataset_name=""
             )
 
     def test_illegal_starting_index(self):
@@ -105,7 +105,7 @@ class TestLlmInputs:
                 input_type=InputType.URL,
                 input_format=InputFormat.OPENAI,
                 output_format=OutputFormat.OPENAI,
-                model_name=OPEN_ORCA,
+                dataset_name=OPEN_ORCA,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
                 length=int(LlmInputs.DEFAULT_LENGTH * 100),
             )
@@ -177,7 +177,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI,
-            model_name=CNN_DAILY_MAIL,
+            dataset_name=CNN_DAILY_MAIL,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -193,6 +193,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI,
+            dataset_name=OPEN_ORCA,
             model_name=OPEN_ORCA,
             add_model_name=True,
             add_stream=True,
@@ -214,7 +215,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.VLLM,
-            model_name=OPEN_ORCA,
+            dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
         )
