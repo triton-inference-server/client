@@ -28,13 +28,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from genai_pa.constants import (
-    CNN_DAILY_MAIL,
-    DEFAULT_GRPC_URL,
-    DEFAULT_HTTP_URL,
-    LOGGER_NAME,
-    OPEN_ORCA,
-)
+from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_HTTP_URL, LOGGER_NAME, OPEN_ORCA
 
 logger = logging.getLogger(LOGGER_NAME)
 
