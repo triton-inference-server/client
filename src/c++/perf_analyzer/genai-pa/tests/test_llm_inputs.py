@@ -106,6 +106,7 @@ class TestLlmInputs:
                 input_format=InputFormat.OPENAI,
                 output_format=OutputFormat.OPENAI,
                 dataset_name=OPEN_ORCA,
+                output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
                 length=int(LlmInputs.DEFAULT_LENGTH * 100),
             )
@@ -160,7 +161,7 @@ class TestLlmInputs:
             input_format=InputFormat.OPENAI, dataset=dataset
         )
         pa_json = LlmInputs._convert_generic_json_to_output_format(
-            output_format=OutputFormat.OPENAI,
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             generic_dataset=dataset_json,
             add_model_name=False,
             add_stream=False,
@@ -178,6 +179,7 @@ class TestLlmInputs:
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI,
             dataset_name=CNN_DAILY_MAIL,
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -194,7 +196,7 @@ class TestLlmInputs:
             input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI,
             dataset_name=OPEN_ORCA,
-            model_name=OPEN_ORCA,
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             add_model_name=True,
             add_stream=True,
         )
@@ -224,3 +226,21 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+
+    def test_create_openai_to_completions(self):
+        """
+        Test conversion of openai to completions
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            input_format=InputFormat.OPENAI,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
+            model_name=OPEN_ORCA,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
