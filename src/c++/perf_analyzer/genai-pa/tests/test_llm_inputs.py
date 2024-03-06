@@ -241,3 +241,21 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
+
+    def test_create_openai_to_trtllm(self):
+        """
+        Test conversion of openai to trtllm
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            input_format=InputFormat.OPENAI,
+            output_format=OutputFormat.TRTLLM,
+            model_name=OPEN_ORCA,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
