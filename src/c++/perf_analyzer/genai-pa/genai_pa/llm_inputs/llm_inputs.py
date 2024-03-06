@@ -36,7 +36,8 @@ class InputFormat(Enum):
 
 
 class OutputFormat(Enum):
-    OPENAI = auto()
+    OPENAI_CHAT_COMPLETIONS = auto()
+    OPENAI_COMPLETIONS = auto()
     TRTLLM = auto()
     VLLM = auto()
 
@@ -239,8 +240,14 @@ class LlmInputs:
         add_stream: bool,
         model_name: str = "",
     ) -> Dict:
-        if output_format == OutputFormat.OPENAI:
-            output_json = LlmInputs._convert_generic_json_to_openai_format(
+        if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
+            output_json = (
+                LlmInputs._convert_generic_json_to_openai_chat_completions_format(
+                    generic_dataset, add_model_name, add_stream, model_name
+                )
+            )
+        elif output_format == OutputFormat.OPENAI_COMPLETIONS:
+            output_json = LlmInputs._convert_generic_json_to_openai_completions_format(
                 generic_dataset, add_model_name, add_stream, model_name
             )
         elif output_format == OutputFormat.VLLM:
@@ -255,7 +262,7 @@ class LlmInputs:
         return output_json
 
     @classmethod
-    def _convert_generic_json_to_openai_format(
+    def _convert_generic_json_to_openai_chat_completions_format(
         cls,
         dataset_json: Dict,
         add_model_name: bool,
@@ -268,10 +275,35 @@ class LlmInputs:
             user_role_headers,
             _,
         ) = LlmInputs._determine_json_feature_roles(dataset_json)
-        pa_json = LlmInputs._populate_openai_output_json(
+        pa_json = LlmInputs._populate_openai_chat_completions_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
+            add_model_name,
+            add_stream,
+            model_name,
+        )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_openai_completions_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+        pa_json = LlmInputs._populate_openai_completions_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
             add_model_name,
             add_stream,
             model_name,
@@ -340,7 +372,7 @@ class LlmInputs:
         return system_role_headers, user_role_headers, text_input_headers
 
     @classmethod
-    def _populate_openai_output_json(
+    def _populate_openai_chat_completions_output_json(
         cls,
         dataset_json: Dict,
         system_role_headers: List[str],
@@ -355,13 +387,46 @@ class LlmInputs:
             pa_json["data"][0]["payload"].append({"messages": []})
 
             for header, content in entry.items():
-                new_message = LlmInputs._create_new_message(
+                new_message = LlmInputs._create_new_openai_chat_completions_message(
                     header, system_role_headers, user_role_headers, content
                 )
 
                 pa_json = LlmInputs._add_new_message_to_json(
                     pa_json, index, new_message
                 )
+
+            pa_json = LlmInputs._add_optional_tags_to_openai_json(
+                pa_json, index, add_model_name, add_stream, model_name
+            )
+
+        return pa_json
+
+    @classmethod
+    def _populate_openai_completions_output_json(
+        cls,
+        dataset_json: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        pa_json = LlmInputs._create_empty_openai_pa_json()
+
+        for index, entry in enumerate(dataset_json["rows"]):
+            pa_json["data"][0]["payload"].append({"prompt": []})
+
+            for header, content in entry.items():
+                new_prompt = LlmInputs._create_new_prompt(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
+                )
+
+                pa_json = LlmInputs._add_new_prompt_to_json(pa_json, index, new_prompt)
 
             pa_json = LlmInputs._add_optional_tags_to_openai_json(
                 pa_json, index, add_model_name, add_stream, model_name
@@ -417,7 +482,7 @@ class LlmInputs:
         return empty_pa_json
 
     @classmethod
-    def _create_new_message(
+    def _create_new_openai_chat_completions_message(
         cls,
         header: str,
         system_role_headers: List[str],
@@ -438,6 +503,26 @@ class LlmInputs:
             new_message = {}
 
         return new_message
+
+    @classmethod
+    def _create_new_prompt(
+        cls,
+        header: str,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        content: str,
+    ) -> Optional[str]:
+        new_prompt = ""
+
+        if (
+            header in system_role_headers
+            or header in user_role_headers
+            or header in text_input_headers
+        ):
+            new_prompt = content
+
+        return new_prompt
 
     @classmethod
     def _create_new_text_input(
@@ -474,6 +559,15 @@ class LlmInputs:
     ) -> Dict:
         if new_text_input:
             pa_json["data"][index]["text_input"].append(new_text_input)
+
+        return pa_json
+
+    @classmethod
+    def _add_new_prompt_to_json(
+        cls, pa_json: Dict, index: int, new_prompt: str
+    ) -> Dict:
+        if new_prompt:
+            pa_json["data"][0]["payload"][index]["prompt"].append(new_prompt)
 
         return pa_json
 
