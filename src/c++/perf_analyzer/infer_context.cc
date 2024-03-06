@@ -188,7 +188,7 @@ InferContext::GetOutput(const cb::InferResult& infer_result)
     const uint8_t* buf{nullptr};
     size_t byte_size{0};
     infer_result.RawData(requested_output->Name(), &buf, &byte_size);
-    output[requested_output->Name()] = {buf, byte_size};
+    output.emplace(requested_output->Name(), ResponseData(buf, byte_size));
   }
   return output;
 }
