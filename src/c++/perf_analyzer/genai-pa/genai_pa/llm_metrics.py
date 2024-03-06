@@ -140,6 +140,7 @@ class Statistics:
     def pretty_print(self):
         field_stats = {}
         print_length_for_seconds = 17
+        print("Output:")
 
         for key, value in self.__dict__.items():
             if key.startswith(
@@ -198,6 +199,7 @@ class LLMProfileData:
       >>> stats = pd.get_statistics(infer_mode="concurrency", level=10)
       >>>
       >>> print(stats)  # output: Statistics(avg_time_to_first_token=...)
+      >>> stats.pretty_print()  # Output: time_to_first_token_s: ...
     """
 
     def __init__(self, filename: str, tokenizer: AutoTokenizer) -> None:
