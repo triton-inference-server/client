@@ -55,7 +55,7 @@ include(FetchContent)
 
 FetchContent_Declare(
   repo-common
-  GIT_REPOSITORY https://github.com/triton-inference-server/common.git
+  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
   GIT_TAG ${TRITON_COMMON_REPO_TAG}
   GIT_SHALLOW ON
 )
@@ -72,7 +72,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
   if(TRITON_ENABLE_PERF_ANALYZER)
     FetchContent_Declare(
       repo-core
-      GIT_REPOSITORY https://github.com/triton-inference-server/core.git
+      GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/core.git
       GIT_TAG ${TRITON_CORE_REPO_TAG}
       GIT_SHALLOW ON
     )
