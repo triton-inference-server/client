@@ -26,6 +26,10 @@
 
 LOGGER_NAME: str = "genai-pa"
 
+DEFAULT_HTTP_URL = "localhost:8000"
+DEFAULT_GRPC_URL = "localhost:8001"
+
+
 OPEN_ORCA = "openorca"
 CNN_DAILY_MAIL = "cnn_dailymail"
 DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"

@@ -25,15 +25,59 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import contextlib
+import io
 import logging
 import sys
 
 from genai_pa import parser
 from genai_pa.constants import LOGGER_NAME
 from genai_pa.exceptions import GenAiPAException
+from genai_pa.llm_inputs.llm_inputs import LlmInputs
+
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from genai_pa.llm_metrics import LLMProfileData
+    from transformers import AutoTokenizer as tokenizer
+    from transformers import logging as token_logger
+
+    token_logger.set_verbosity_error()
+
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def generate_inputs(args):
+    LlmInputs.create_openai_llm_inputs(
+        args.dataset,
+        LlmInputs.DEFAULT_STARTING_INDEX,
+        LlmInputs.DEFAULT_LENGTH,
+        args.model,
+        args.streaming,
+    )
+
+
+def calculate_metrics(file: str) -> LLMProfileData:
+    t = tokenizer.from_pretrained("gpt2")
+    return LLMProfileData(file, t)
+
+
+def report_output(metrics: LLMProfileData, args):
+    if "concurrency_range" in args:
+        infer_mode = "concurrency"
+        load_level = args.concurrency_range
+    elif "request_rate_range" in args:
+        infer_mode = "request_rate"
+        load_level = args.request_rate_range
+    else:
+        raise GenAiPAException(
+            "Neither concurrency_range nor request_rate_range was found in args when reporting metrics"
+        )
+    # TODO: metrics reporter class that consumes Stats class for nicer formatting
+    print(metrics.get_statistics(infer_mode, int(load_level)))
 
 
 # Separate function that can raise exceptions used for testing
@@ -41,8 +85,11 @@ logger = logging.getLogger(LOGGER_NAME)
 # Optional argv used for testing - will default to sys.argv if None.
 def run(argv=None):
     try:
-        args = parser.parse_args(argv)
-        args.func(args)
+        args, extra_args = parser.parse_args(argv)
+        generate_inputs(args)
+        args.func(args, extra_args)
+        metrics = calculate_metrics(args.profile_export_file)
+        report_output(metrics, args)
     except Exception as e:
         raise GenAiPAException(e)
 
