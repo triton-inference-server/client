@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@
 #include "perf_utils.h"
 
 #include <fcntl.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -200,6 +202,27 @@ SerializeExplicitTensor(
     std::copy(
         serialized.begin(), serialized.end(),
         std::back_inserter(*decoded_data));
+  } else if (dt.compare("JSON") == 0) {
+    std::string serialized = "";
+
+    auto values = tensor.GetArray();
+    if (values.Size() != 1) {
+      return cb::Error(
+          "JSON format does not yet support multiple json objects in the "
+          "input");
+    }
+    for (const auto& value : values) {
+      rapidjson::StringBuffer buffer;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+      value.Accept(writer);
+
+      std::string element = buffer.GetString();
+      uint32_t len = element.size();
+      serialized.append(element);
+    }
+    std::copy(
+        serialized.begin(), serialized.end(),
+        std::back_inserter(*decoded_data));
   } else {
     for (const auto& value : tensor.GetArray()) {
       if (dt.compare("BOOL") == 0) {
@@ -298,6 +321,8 @@ SerializeExplicitTensor(
         double element(value.GetDouble());
         const char* src = reinterpret_cast<const char*>(&element);
         decoded_data->insert(decoded_data->end(), src, src + sizeof(double));
+      } else {
+        return cb::Error("Unexpected type " + dt);
       }
     }
   }

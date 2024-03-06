@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -110,6 +110,10 @@ class ModelParser {
       const int32_t batch_size,
       const std::unordered_map<std::string, std::vector<int64_t>>& input_shapes,
       std::unique_ptr<cb::ClientBackend>& backend);
+
+  cb::Error InitOpenAI(
+      const std::string& model_name, const std::string& model_version,
+      const int32_t batch_size);
 
   cb::Error InitTorchServe(
       const std::string& model_name, const std::string& model_version,

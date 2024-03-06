@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -261,6 +261,32 @@ ModelParser::InitTFServe(
   // if none are requested.
   // See here
   // https://github.com/tensorflow/serving/blob/2.3.0/tensorflow_serving/apis/predict.proto#L27
+
+  return cb::Error::Success;
+}
+
+cb::Error
+ModelParser::InitOpenAI(
+    const std::string& model_name, const std::string& model_version,
+    const int32_t batch_size)
+{
+  // OpenAI does not return model metadata hence we can not obtain any
+  // parameters.
+  model_name_ = model_name;
+  model_version_ = model_version;
+  max_batch_size_ = batch_size;
+
+  // OpenAI will take a single json input with a fully formed payload
+  auto in_it = inputs_->emplace("payload", ModelTensor()).first;
+  in_it->second.name_ = "payload";
+  in_it->second.datatype_ = "JSON";
+  in_it->second.shape_.push_back(1);
+
+  // OpenAI will reply with a single json output
+  auto out_it = outputs_->emplace("response", ModelTensor()).first;
+  out_it->second.name_ = "response";
+  out_it->second.datatype_ = "JSON";
+  out_it->second.shape_.push_back(1);
 
   return cb::Error::Success;
 }
