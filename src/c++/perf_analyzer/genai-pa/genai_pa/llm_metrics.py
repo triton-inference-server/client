@@ -60,9 +60,11 @@ class Metrics:
 
     @property
     def data(self) -> dict:
+        """Returns all the metrics."""
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     def get_base_name(self, metric_name: str) -> str:
+        """Returns singular name of a given metric."""
         if metric_name in self._base_names:
             return self._base_names[metric_name]
         else:
