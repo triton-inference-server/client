@@ -18,12 +18,7 @@ import os
 import pytest
 from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
-from genai_pa.llm_inputs.llm_inputs import (
-    InputFormat,
-    InputType,
-    LlmInputs,
-    OutputFormat,
-)
+from genai_pa.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 
 
 class TestLlmInputs:
@@ -103,7 +98,6 @@ class TestLlmInputs:
         with pytest.raises(GenAiPAException):
             _ = LlmInputs.create_llm_inputs(
                 input_type=InputType.URL,
-                input_format=InputFormat.OPENAI,
                 dataset_name=OPEN_ORCA,
                 output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
@@ -119,9 +113,7 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
-            input_format=InputFormat.OPENAI, dataset=dataset
-        )
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH
@@ -140,9 +132,7 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             length=(int(LlmInputs.DEFAULT_LENGTH / 2)),
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
-            input_format=InputFormat.OPENAI, dataset=dataset
-        )
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH / 2
@@ -156,9 +146,7 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
-            input_format=InputFormat.OPENAI, dataset=dataset
-        )
+        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
         pa_json = LlmInputs._convert_generic_json_to_output_format(
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             generic_dataset=dataset_json,
@@ -175,7 +163,6 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
-            input_format=InputFormat.OPENAI,
             dataset_name=CNN_DAILY_MAIL,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
         )
@@ -191,7 +178,6 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
-            input_format=InputFormat.OPENAI,
             dataset_name=OPEN_ORCA,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             add_model_name=True,
@@ -212,7 +198,6 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
-            input_format=InputFormat.OPENAI,
             output_format=OutputFormat.VLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -230,7 +215,6 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.URL,
-            input_format=InputFormat.OPENAI,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -241,3 +225,20 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
+
+    def test_create_openai_to_trtllm(self):
+        """
+        Test conversion of openai to trtllm
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.URL,
+            output_format=OutputFormat.TRTLLM,
+            dataset_name=OPEN_ORCA,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
