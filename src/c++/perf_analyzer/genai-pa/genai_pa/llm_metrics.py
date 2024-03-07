@@ -351,7 +351,12 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # inter token latency
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
-                inter_token_latencies.append(round((t2 - t1) / n2))
+                # TMA-1676: handle empty first/last responses
+                # if the latter response has zero token (e.g. empty string),
+                # then set it default to one for the sake of inter token latency
+                # calculation and to avoid divide by zero.
+                num_token = 1 if n2 == 0 else n2
+                inter_token_latencies.append(round((t2 - t1) / num_token))
 
         # request throughput
         benchmark_duration = max_res_timestamp - min_req_timestamp
