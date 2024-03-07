@@ -28,6 +28,10 @@ import json
 from pathlib import Path
 
 
+def remove_sse_prefix(msg: str) -> str:
+    return msg.removeprefix("data: ").strip()
+
+
 def load_json(filename: str):
     with open(filename) as f:
         return json.load(f)
