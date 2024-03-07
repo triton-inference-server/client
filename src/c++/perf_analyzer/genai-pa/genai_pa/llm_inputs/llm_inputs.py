@@ -29,12 +29,6 @@ class InputType(Enum):
     SYNTHETIC = auto()
 
 
-class InputFormat(Enum):
-    OPENAI = auto()
-    TRTLLM = auto()
-    VLLM = auto()
-
-
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
@@ -58,6 +52,8 @@ class LlmInputs:
     DEFAULT_LENGTH = 100
     MINIMUM_LENGTH = 1
 
+    DEFAULT_TRTLLM_MAX_TOKENS = 256
+
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": [{"payload": []}]}
@@ -68,7 +64,6 @@ class LlmInputs:
     def create_llm_inputs(
         cls,
         input_type: InputType,
-        input_format: InputFormat,
         output_format: OutputFormat,
         dataset_name: str = "",
         model_name: str = "",
@@ -86,8 +81,6 @@ class LlmInputs:
         -------------------
         input_type:
             Specify how the input is received (file or URL)
-        input_format:
-            Specify the input format
         output_format:
             Specify the output format
 
@@ -121,9 +114,7 @@ class LlmInputs:
                 "Using file/synthetic to supply LLM Input is not supported at this time"
             )
 
-        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(
-            input_format, dataset
-        )
+        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset)
 
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
             output_format, generic_dataset_json, add_model_name, add_stream, model_name
@@ -179,39 +170,30 @@ class LlmInputs:
         return dataset
 
     @classmethod
-    def _convert_input_dataset_to_generic_json(
-        cls, input_format: InputFormat, dataset: Response
-    ) -> Dict:
+    def _convert_input_dataset_to_generic_json(cls, dataset: Response) -> Dict:
         dataset_json = dataset.json()
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
             raise GenAiPAException(e)
 
-        if input_format == InputFormat.OPENAI:
-            generic_dataset_json = LlmInputs._convert_openai_to_generic_input_json(
-                dataset_json
-            )
-        else:
-            raise GenAiPAException(
-                f"Input format {input_format} is not supported at this time"
-            )
+        generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(
+            dataset_json
+        )
 
         return generic_dataset_json
 
     @classmethod
-    def _convert_openai_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
-        generic_input_json = LlmInputs._add_openai_features_to_generic_json(
-            {}, dataset_json
-        )
-        generic_input_json = LlmInputs._add_openai_rows_to_generic_json(
+    def _convert_dataset_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
+        generic_input_json = LlmInputs._add_features_to_generic_json({}, dataset_json)
+        generic_input_json = LlmInputs._add_rows_to_generic_json(
             generic_input_json, dataset_json
         )
 
         return generic_input_json
 
     @classmethod
-    def _add_openai_features_to_generic_json(
+    def _add_features_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
     ) -> Dict:
         if "features" in dataset_json.keys():
@@ -222,7 +204,7 @@ class LlmInputs:
         return generic_input_json
 
     @classmethod
-    def _add_openai_rows_to_generic_json(
+    def _add_rows_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
     ) -> Dict:
         generic_input_json["rows"] = []
@@ -252,6 +234,10 @@ class LlmInputs:
             )
         elif output_format == OutputFormat.VLLM:
             output_json = LlmInputs._convert_generic_json_to_vllm_format(
+                generic_dataset, add_model_name, add_stream, model_name
+            )
+        elif output_format == OutputFormat.TRTLLM:
+            output_json = LlmInputs._convert_generic_json_to_trtllm_format(
                 generic_dataset, add_model_name, add_stream, model_name
             )
         else:
@@ -326,6 +312,32 @@ class LlmInputs:
         ) = LlmInputs._determine_json_feature_roles(dataset_json)
 
         pa_json = LlmInputs._populate_vllm_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+            add_model_name,
+            add_stream,
+            model_name,
+        )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_trtllm_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+
+        pa_json = LlmInputs._populate_trtllm_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -470,6 +482,42 @@ class LlmInputs:
         return pa_json
 
     @classmethod
+    def _populate_trtllm_output_json(
+        cls,
+        dataset_json: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        pa_json = LlmInputs._create_empty_trtllm_pa_json()
+
+        for index, entry in enumerate(dataset_json["rows"]):
+            pa_json["data"].append({"text_input": []})
+
+            for header, content in entry.items():
+                new_text_input = LlmInputs._create_new_text_input(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
+                )
+
+                pa_json = LlmInputs._add_new_text_input_to_json(
+                    pa_json, index, new_text_input
+                )
+
+            pa_json = LlmInputs._add_required_tags_to_trtllm_json(pa_json, index)
+            pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
+                pa_json, index, add_model_name, add_stream, model_name
+            )
+
+        return pa_json
+
+    @classmethod
     def _create_empty_openai_pa_json(cls) -> Dict:
         empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
 
@@ -478,6 +526,12 @@ class LlmInputs:
     @classmethod
     def _create_empty_vllm_pa_json(cls) -> Dict:
         empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_VLLM_PA_FORMAT)
+
+        return empty_pa_json
+
+    @classmethod
+    def _create_empty_trtllm_pa_json(cls) -> Dict:
+        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_TRTLLM_PA_FORMAT)
 
         return empty_pa_json
 
@@ -600,6 +654,32 @@ class LlmInputs:
             pa_json["data"][index]["model"] = model_name
         if add_stream:
             pa_json["data"][index]["stream"] = [True]
+
+        return pa_json
+
+    @classmethod
+    def _add_optional_tags_to_trtllm_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+        add_model_name: bool,
+        add_stream: bool,
+        model_name: str = "",
+    ) -> Dict:
+        if add_model_name:
+            pa_json["data"][index]["model"] = model_name
+        if add_stream:
+            pa_json["data"][index]["stream"] = [True]
+
+        return pa_json
+
+    @classmethod
+    def _add_required_tags_to_trtllm_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+    ) -> Dict:
+        pa_json["data"][index]["max_tokens"] = LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS
 
         return pa_json
 
