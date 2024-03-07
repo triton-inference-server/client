@@ -149,6 +149,8 @@ class TestLLMProfileData:
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
         metrics = LLMMetrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
             time_to_first_tokens=[1, 2, 3],
             inter_token_latencies=[4, 5],
             output_token_throughputs=[7, 8, 9],
@@ -159,5 +161,5 @@ class TestLLMProfileData:
             metrics.get_base_name("output_token_throughputs")
             == "output_token_throughput"
         )
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             metrics.get_base_name("hello1234")

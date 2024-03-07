@@ -43,29 +43,52 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
     from transformers import AutoTokenizer
 
 
-@dataclass
-class LLMMetrics:
+class Metrics:
+    """A base class for all the metrics class that contains common metrics."""
+
+    def __init__(
+        self,
+        request_throughputs: list[float] = [],
+        request_latencies: list[int] = [],
+    ) -> None:
+        self.request_throughputs = request_throughputs
+        self.request_latencies = request_latencies
+        self._base_names = {
+            "request_throughputs": "request_throughput",
+            "request_latencies": "request_latency",
+        }
+
+    @property
+    def data(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
+
+    def get_base_name(self, metric_name: str) -> str:
+        if metric_name in self._base_names:
+            return self._base_names[metric_name]
+        else:
+            raise KeyError(f"No metric named '{metric_name}' exists.")
+
+
+class LLMMetrics(Metrics):
     """A simple dataclass that holds core LLM performance metrics."""
 
-    time_to_first_tokens: list[int]
-    inter_token_latencies: list[int]
-    output_token_throughputs: list[int]
+    def __init__(
+        self,
+        request_throughputs: list[float] = [],
+        request_latencies: list[int] = [],
+        time_to_first_tokens: list[int] = [],
+        inter_token_latencies: list[int] = [],
+        output_token_throughputs: list[int] = [],
+    ) -> None:
+        super().__init__(request_throughputs, request_latencies)
+        self.time_to_first_tokens = time_to_first_tokens
+        self.inter_token_latencies = inter_token_latencies
+        self.output_token_throughputs = output_token_throughputs
 
-    def get_base_name(self, attr_name: str) -> str:
-        # Attempted to extract and store the mapping as a dataclass member as a
-        # dictionary but encountered two issues: (1) Python does not allow
-        # dataclass member to be mutable and (2) if we set it as member of
-        # normal class, the dict member will be parsed by Statistics class,
-        # which is not what we want since it's not one of the LLM metrics.
-        # Leaving it as conditional statements for now.
-        if attr_name == "time_to_first_tokens":
-            return "time_to_first_token"
-        elif attr_name == "inter_token_latencies":
-            return "inter_token_latency"
-        elif attr_name == "output_token_throughputs":
-            return "output_token_throughput"
-        else:
-            raise ValueError(f"No attribute named '{attr_name}' exists.")
+        # add base name mapping
+        self._base_names["time_to_first_tokens"] = "time_to_first_token"
+        self._base_names["inter_token_latencies"] = "inter_token_latency"
+        self._base_names["output_token_throughputs"] = "output_token_throughput"
 
 
 class Statistics:
@@ -81,14 +104,14 @@ class Statistics:
 
     Example:
 
-      >>> metrics = LLMMetrics([3, 4, 5], [], [])
+      >>> metrics = LLMMetrics(request_throughputs=[2, 4])
       >>> stats = Statistics(metrics)
-      >>> print(stats.avg_time_to_first_token)  # output: 4
+      >>> print(stats.avg_request_throughput)  # output: 3
     """
 
-    def __init__(self, metrics: LLMMetrics):
-        # iterate through LLMMetrics to calculate statistics and set attributes
-        for attr, data in metrics.__dict__.items():
+    def __init__(self, metrics: Metrics):
+        # iterate through Metrics to calculate statistics and set attributes
+        for attr, data in metrics.data.items():
             if data:
                 attr = metrics.get_base_name(attr)
                 self._calculate_mean(data, attr)
@@ -196,6 +219,8 @@ class LLMProfileData:
     def _collect_llm_metrics(
         self, requests: dict, tokenizer: AutoTokenizer
     ) -> LLMMetrics:
+        min_req_timestamp, max_res_timestamp = float("inf"), 0
+        request_latencies = []
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs = []
@@ -204,20 +229,33 @@ class LLMProfileData:
             res_timestamps = request["response_timestamps"]
             res_outputs = request["response_outputs"]
 
+            # track entire benchmark duration
+            min_req_timestamp = min(min_req_timestamp, req_timestamp)
+            max_res_timestamp = max(max_res_timestamp, res_timestamps[-1])
+
+            # request latencies
+            req_latency = res_timestamps[-1] - req_timestamp
+            request_latencies.append(req_latency)
+
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
             output_tokens = tokenizer(res_outputs)["input_ids"]
             total_output_tokens = np.sum(list(map(len, output_tokens)))
-            req_latency = res_timestamps[-1] - req_timestamp
             output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
             for t1, t2 in pairwise(res_timestamps):
                 inter_token_latencies.append(t2 - t1)
 
+        # request throughput
+        benchmark_duration = max_res_timestamp - min_req_timestamp
+        request_throughputs = [len(requests) / benchmark_duration]
+
         return LLMMetrics(
+            request_throughputs,
+            request_latencies,
             time_to_first_tokens,
             inter_token_latencies,
             output_token_throughputs,
