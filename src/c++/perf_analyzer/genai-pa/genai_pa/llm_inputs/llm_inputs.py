@@ -56,7 +56,7 @@ class LlmInputs:
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
-    EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": [{"payload": []}]}
+    EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": []}
 
     dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
 
@@ -396,7 +396,8 @@ class LlmInputs:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"][0]["payload"].append({"messages": []})
+            pa_json["data"].append({"payload": []})
+            pa_json["data"][index]["payload"].append({"messages": []})
 
             for header, content in entry.items():
                 new_message = LlmInputs._create_new_openai_chat_completions_message(
@@ -427,7 +428,8 @@ class LlmInputs:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"][0]["payload"].append({"prompt": []})
+            pa_json["data"].append({"payload": []})
+            pa_json["data"][index]["payload"].append({"prompt": [""]})
 
             for header, content in entry.items():
                 new_prompt = LlmInputs._create_new_prompt(
@@ -460,7 +462,7 @@ class LlmInputs:
         pa_json = LlmInputs._create_empty_vllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"].append({"text_input": []})
+            pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
                 new_text_input = LlmInputs._create_new_text_input(
@@ -495,7 +497,7 @@ class LlmInputs:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"].append({"text_input": []})
+            pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
                 new_text_input = LlmInputs._create_new_text_input(
@@ -603,7 +605,7 @@ class LlmInputs:
         cls, pa_json: Dict, index: int, new_message: Optional[Dict]
     ) -> Dict:
         if new_message:
-            pa_json["data"][0]["payload"][index]["messages"].append(new_message)
+            pa_json["data"][index]["payload"][0]["messages"].append(new_message)
 
         return pa_json
 
@@ -612,7 +614,12 @@ class LlmInputs:
         cls, pa_json: Dict, index: int, new_text_input: str
     ) -> Dict:
         if new_text_input:
-            pa_json["data"][index]["text_input"].append(new_text_input)
+            if pa_json["data"][index]["text_input"][0]:
+                pa_json["data"][index]["text_input"][0] = (
+                    pa_json["data"][index]["text_input"][0] + f" {new_text_input}"
+                )
+            else:
+                pa_json["data"][index]["text_input"][0] = new_text_input
 
         return pa_json
 
@@ -621,7 +628,12 @@ class LlmInputs:
         cls, pa_json: Dict, index: int, new_prompt: str
     ) -> Dict:
         if new_prompt:
-            pa_json["data"][0]["payload"][index]["prompt"].append(new_prompt)
+            if pa_json["data"][index]["payload"][0]["prompt"][0]:
+                pa_json["data"][index]["payload"][0]["prompt"][0] = (
+                    pa_json["data"][index]["payload"][0]["prompt"][0] + f" {new_prompt}"
+                )
+            else:
+                pa_json["data"][index]["payload"][0]["prompt"][0] = new_prompt
 
         return pa_json
 
@@ -635,9 +647,9 @@ class LlmInputs:
         model_name: str = "",
     ) -> Dict:
         if add_model_name:
-            pa_json["data"][0]["payload"][index]["model"] = model_name
+            pa_json["data"][index]["payload"][0]["model"] = model_name
         if add_stream:
-            pa_json["data"][0]["payload"][index]["stream"] = [True]
+            pa_json["data"][index]["payload"][0]["stream"] = [True]
 
         return pa_json
 
