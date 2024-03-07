@@ -155,9 +155,9 @@ def _add_profile_args(parser):
         default="profile_export.json",
         help="Specifies the path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
-        "The GenAi-PA file will be exported to <profile_export_file>_genai_pa.<file_extension>. "
+        "The GenAi-PA file will be exported to <profile_export_file>_genai_pa.csv. "
         "For example, if the profile export file is profile_export.json, the GenAi-PA file will be "
-        "exported to profile_export_genai_pa.json.",
+        "exported to profile_export_genai_pa.csv.",
     )
     load_management_group.add_argument(
         "--request-rate",

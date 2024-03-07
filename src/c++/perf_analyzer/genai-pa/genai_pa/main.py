@@ -86,7 +86,7 @@ def report_output(metrics: LLMProfileDataParser, args):
         )
     stats = metrics.get_statistics(infer_mode, int(load_level))
     export_csv_name = args.profile_export_file.with_name(
-        args.profile_export_file.stem + "_genai_pa" + args.profile_export_file.suffix
+        args.profile_export_file.stem + "_genai_pa.csv"
     )
     stats.export_to_csv(export_csv_name)
     stats.pretty_print()
