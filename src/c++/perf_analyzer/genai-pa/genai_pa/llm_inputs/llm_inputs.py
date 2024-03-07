@@ -177,25 +177,23 @@ class LlmInputs:
         except Exception as e:
             raise GenAiPAException(e)
 
-        generic_dataset_json = LlmInputs._convert_openai_to_generic_input_json(
+        generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(
             dataset_json
         )
 
         return generic_dataset_json
 
     @classmethod
-    def _convert_openai_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
-        generic_input_json = LlmInputs._add_openai_features_to_generic_json(
-            {}, dataset_json
-        )
-        generic_input_json = LlmInputs._add_openai_rows_to_generic_json(
+    def _convert_dataset_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
+        generic_input_json = LlmInputs._add_features_to_generic_json({}, dataset_json)
+        generic_input_json = LlmInputs._add_rows_to_generic_json(
             generic_input_json, dataset_json
         )
 
         return generic_input_json
 
     @classmethod
-    def _add_openai_features_to_generic_json(
+    def _add_features_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
     ) -> Dict:
         if "features" in dataset_json.keys():
@@ -206,7 +204,7 @@ class LlmInputs:
         return generic_input_json
 
     @classmethod
-    def _add_openai_rows_to_generic_json(
+    def _add_rows_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
     ) -> Dict:
         generic_input_json["rows"] = []
