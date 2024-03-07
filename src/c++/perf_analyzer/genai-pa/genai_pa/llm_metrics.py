@@ -48,6 +48,26 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
 class Metrics:
     """A base class for all the metrics class that contains common metrics."""
 
+    metric_labels = [
+        "time_to_first_token",
+        "inter_token_latency",
+        "request_latency",
+        "output_token_throughput",
+        "request_throughput",
+        "num_output_token",
+    ]
+
+    time_fields = [
+        "inter_token_latency",
+        "time_to_first_token",
+        "request_latency",
+    ]
+
+    throughput_fields = [
+        "request_throughput",
+        "output_token_throughput",
+    ]
+
     def __init__(
         self,
         request_throughputs: list[float] = [],
@@ -90,17 +110,6 @@ class LLMMetrics(Metrics):
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
         self.num_output_tokens = num_output_tokens
-
-        metric_labels = [
-            "time_to_first_token",
-            "inter_token_latency",
-        ]
-
-        time_fields = [
-            "inter_token_latency",
-            "time_to_first_token",
-            "end_to_end_latency",
-        ]
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
@@ -164,8 +173,11 @@ class Statistics:
         attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"Statistics({attr_strs})"
 
+    def _is_throughput_field(self, field: str):
+        return field in Metrics.throughput_fields
+
     def _is_time_field(self, field: str):
-        return field in LLMMetrics.time_fields
+        return field in Metrics.time_fields
 
     def pretty_print(self):
         table = Table(title="PA LLM Metrics")
@@ -175,17 +187,25 @@ class Statistics:
         for stat in stats:
             table.add_column(stat, justify="right", style="green")
 
-        for metric in LLMMetrics.metric_labels:
+        for metric in Metrics.metric_labels:
             formatted_metric = metric.replace("_", " ").capitalize()
-            is_time_field = self._is_time_field(metric)
-            if is_time_field:
+            if self._is_time_field(metric):
                 formatted_metric += " (ns)"
+            elif self._is_throughput_field(metric):
+                formatted_metric += " (per sec)"
+
             row_values = [formatted_metric]
 
             for stat in stats:
                 value = self.__dict__.get(f"{stat}_{metric}", -1)
                 row_values.append("{:,.0f}".format(value))
-            table.add_row(*row_values)
+
+            # Without streaming, there is no inter-token latency available.
+            if metric == "inter_token_latency":
+                if all(value == -1 for value in row_values[1:]):
+                    continue
+            else:
+                table.add_row(*row_values)
 
         console = Console()
         console.print(table)
@@ -208,11 +228,12 @@ class Statistics:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
 
-            for metric in LLMMetrics.metric_labels:
+            for metric in Metrics.metric_labels:
                 formatted_metric = metric
-                is_time_field = self._is_time_field(metric)
-                if is_time_field:
+                if self._is_time_field(metric):
                     formatted_metric += "(ns)"
+                elif self._is_throughput_field(metric):
+                    formatted_metric += "(per sec)"
 
                 row_values = [formatted_metric]
 
@@ -220,7 +241,12 @@ class Statistics:
                     value = self.__dict__.get(f"{stat}_{metric}", -1)
                     row_values.append(f"{value:.0f}")
 
-                csv_writer.writerow(row_values)
+                # Without streaming, there is no inter-token latency available.
+                if metric == "inter_token_latency":
+                    if all(value == -1 for value in row_values[1:]):
+                        continue
+                else:
+                    csv_writer.writerow(row_values)
 
 
 class ProfileDataParser:
