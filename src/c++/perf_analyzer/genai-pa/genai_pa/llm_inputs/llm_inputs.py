@@ -545,6 +545,10 @@ class LlmInputs:
         user_role_headers: List[str],
         content: str,
     ) -> Optional[Dict]:
+        # Do not add messages with blank content
+        if not content:
+            return {}
+
         if header in system_role_headers:
             new_message = {
                 "role": "system",
