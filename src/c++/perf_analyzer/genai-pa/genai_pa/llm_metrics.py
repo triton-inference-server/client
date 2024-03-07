@@ -33,6 +33,8 @@ from itertools import pairwise
 
 import numpy as np
 from genai_pa.utils import load_json
+from rich.console import Console
+from rich.table import Table
 
 # Silence tokenizer warning on import
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
@@ -121,6 +123,38 @@ class Statistics:
         attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"Statistics({attr_strs})"
 
+    def _is_time_field(self, field: str):
+        time_fields = [
+            "inter_token_latency",
+            "time_to_first_token",
+            "end_to_end_latency",
+        ]
+        return field in time_fields
+
+    def pretty_print(self):
+        table = Table(title="PA LLM Metrics")
+
+        table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
+        stats = ["avg", "min", "max", "p99", "p95", "p90", "p75", "p50", "p25"]
+        for stat in stats:
+            table.add_column(stat, justify="right", style="green")
+
+        metrics = ["inter_token_latency", "time_to_first_token"]
+        for metric in metrics:
+            formatted_metric = metric.replace("_", " ").capitalize()
+            is_time_field = self._is_time_field(metric)
+            if is_time_field:
+                formatted_metric += " (ns)"
+            row_values = [formatted_metric]
+
+            for stat in stats:
+                value = self.__dict__.get(f"{stat}_{metric}", -1)
+                row_values.append("{:,.0f}".format(value))
+            table.add_row(*row_values)
+
+        console = Console()
+        console.print(table)
+
 
 class LLMProfileData:
     """A class that calculates and aggregates all the LLM performance statistics
@@ -141,6 +175,7 @@ class LLMProfileData:
       >>> stats = pd.get_statistics(infer_mode="concurrency", level=10)
       >>>
       >>> print(stats)  # output: Statistics(avg_time_to_first_token=...)
+      >>> stats.pretty_print()  # Output: time_to_first_token_s: ...
     """
 
     def __init__(self, filename: str, tokenizer: AutoTokenizer) -> None:
