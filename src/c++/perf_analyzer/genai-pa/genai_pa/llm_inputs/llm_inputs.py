@@ -653,7 +653,7 @@ class LlmInputs:
         if add_model_name:
             pa_json["data"][index]["payload"][0]["model"] = model_name
         if add_stream:
-            pa_json["data"][index]["payload"][0]["stream"] = [True]
+            pa_json["data"][index]["payload"][0]["stream"] = True
 
         return pa_json
 
