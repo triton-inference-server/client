@@ -223,9 +223,9 @@ class LLMProfileDataParser(ProfileDataParser):
     """A class that calculates and aggregates all the LLM performance statistics
     across the Perf Analyzer profile results.
 
-    The LLMProfileData class parses profile export JSON file, collects the core
-    LLM performance metrics, and calculates summary statistics for each different
-    Perf Analyzer runs/experiments.
+    The LLMProfileDataParser class parses profile export JSON file, collects the
+    core LLM performance metrics, and calculates summary statistics for each
+    different Perf Analyzer runs/experiments.
 
     Example:
 
@@ -234,7 +234,7 @@ class LLMProfileDataParser(ProfileDataParser):
       >>> from transformers import AutoTokenizer
       >>>
       >>> tokenizer = AutoTokenizer.from_pretrained("gpt2")
-      >>> pd = LLMProfileData(
+      >>> pd = LLMProfileDataParser(
       >>>     filename="profile_export.json",
       >>>     service_kind="triton",
       >>>     tokenizer=tokenizer,

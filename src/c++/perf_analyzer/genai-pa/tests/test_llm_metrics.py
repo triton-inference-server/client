@@ -31,12 +31,12 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from genai_pa.llm_profile import LLMMetrics, LLMProfileDataParser
+from genai_pa.llm_metrics import LLMMetrics, LLMProfileDataParser
 from genai_pa.utils import remove_file
 from transformers import AutoTokenizer
 
 
-class TestLLMProfileData:
+class TestLLMProfileDataParser:
     @pytest.fixture
     def prepare_triton_profile_data(self) -> None:
         path = Path("triton_profile_export.json")
