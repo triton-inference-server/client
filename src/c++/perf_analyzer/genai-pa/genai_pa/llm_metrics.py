@@ -33,6 +33,8 @@ from itertools import pairwise
 
 import numpy as np
 from genai_pa.utils import load_json
+from rich.console import Console
+from rich.table import Table
 
 # Silence tokenizer warning on import
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
@@ -121,13 +123,13 @@ class Statistics:
         attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
         return f"Statistics({attr_strs})"
 
-    def _is_seconds_field(self, field: str):
-        seconds_fields = [
+    def _is_time_field(self, field: str):
+        time_fields = [
             "inter_token_latency",
             "time_to_first_token",
             "end_to_end_latency",
         ]
-        return field in seconds_fields
+        return field in time_fields
 
     def _use_exact_length(self, value: str):
         exact_value_length = 17
@@ -137,8 +139,30 @@ class Statistics:
         return formatted_value[:exact_value_length]
 
     def pretty_print(self):
+        table = Table(title="PA LLM Metrics")
+
+        table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
+        stats = ["avg", "min", "max", "p99", "p95", "p90", "p75", "p50", "p25"]
+        for stat in stats:
+            table.add_column(stat, justify="right", style="green")
+
+        metrics = ["inter_token_latency", "time_to_first_token"]
+        for metric in metrics:
+            formatted_metric = metric.replace("_", " ").capitalize()
+            is_time_field = self._is_time_field(metric)
+            if is_time_field:
+                formatted_metric += " (ns)"
+            row_values = [formatted_metric]
+
+            for stat in stats:
+                value = self.__dict__.get(f"{stat}_{metric}", -1)
+                row_values.append("{:,.0f}".format(value))
+            table.add_row(*row_values)
+
+        console = Console()
+        console.print(table)
+
         field_stats = {}
-        print("Output:")
 
         for key, value in self.__dict__.items():
             if key.startswith(
@@ -161,24 +185,6 @@ class Statistics:
                 if field not in field_stats:
                     field_stats[field] = {}
                 field_stats[field][stat] = value
-
-        for field, stats in field_stats.items():
-            is_seconds_field = self._is_seconds_field(field)
-
-            field_label = f"{field}"
-            if is_seconds_field:
-                field_label += "_s"
-            print(f"{field_label}:")
-
-            for stat, value in stats.items():
-                if is_seconds_field:
-                    if value < 1e-5:
-                        formatted_value = f"{value:e}"
-                    else:
-                        formatted_value = self._use_exact_length(value)
-                    print(f"    {stat} = {formatted_value}")
-                else:
-                    print(f"    {stat} = {value}")
 
 
 class LLMProfileData:
