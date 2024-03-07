@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import contextlib
+import csv
 import io
 from dataclasses import dataclass
 from itertools import pairwise
@@ -50,6 +51,17 @@ class LLMMetrics:
     time_to_first_tokens: list[int]
     inter_token_latencies: list[int]
     output_token_throughputs: list[int]
+
+    metric_labels = [
+        "time_to_first_token",
+        "inter_token_latency",
+    ]
+
+    time_fields = [
+        "inter_token_latency",
+        "time_to_first_token",
+        "end_to_end_latency",
+    ]
 
     def get_base_name(self, attr_name: str) -> str:
         # Attempted to extract and store the mapping as a dataclass member as a
@@ -124,23 +136,17 @@ class Statistics:
         return f"Statistics({attr_strs})"
 
     def _is_time_field(self, field: str):
-        time_fields = [
-            "inter_token_latency",
-            "time_to_first_token",
-            "end_to_end_latency",
-        ]
-        return field in time_fields
+        return field in LLMMetrics.time_fields
 
     def pretty_print(self):
         table = Table(title="PA LLM Metrics")
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        stats = ["avg", "min", "max", "p99", "p95", "p90", "p75", "p50", "p25"]
+        stats = ["avg", "min", "max", "p99", "p90", "p75"]
         for stat in stats:
             table.add_column(stat, justify="right", style="green")
 
-        metrics = ["inter_token_latency", "time_to_first_token"]
-        for metric in metrics:
+        for metric in LLMMetrics.metric_labels:
             formatted_metric = metric.replace("_", " ").capitalize()
             is_time_field = self._is_time_field(metric)
             if is_time_field:
@@ -154,6 +160,38 @@ class Statistics:
 
         console = Console()
         console.print(table)
+
+    def export_to_csv(self, csv_filename: str):
+        header = [
+            "Statistic",
+            "avg",
+            "min",
+            "max",
+            "p99",
+            "p95",
+            "p90",
+            "p75",
+            "p50",
+            "p25",
+        ]
+
+        with open(csv_filename, mode="w", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(header)
+
+            for metric in LLMMetrics.metric_labels:
+                formatted_metric = metric
+                is_time_field = self._is_time_field(metric)
+                if is_time_field:
+                    formatted_metric += "(ns)"
+
+                row_values = [formatted_metric]
+
+                for stat in header[1:]:
+                    value = self.__dict__.get(f"{stat}_{metric}", -1)
+                    row_values.append(f"{value:.0f}")
+
+                csv_writer.writerow(row_values)
 
 
 class LLMProfileData:
@@ -202,16 +240,16 @@ class LLMProfileData:
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
-            res_outputs = request["response_outputs"]
+            # res_outputs = request["response_outputs"]
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
-            output_tokens = tokenizer(res_outputs)["input_ids"]
-            total_output_tokens = np.sum(list(map(len, output_tokens)))
-            req_latency = res_timestamps[-1] - req_timestamp
-            output_token_throughputs.append(total_output_tokens / req_latency)
+            # output_tokens = tokenizer(res_outputs)["input_ids"]
+            # total_output_tokens = np.sum(list(map(len, output_tokens)))
+            # req_latency = res_timestamps[-1] - req_timestamp
+            # output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
             for t1, t2 in pairwise(res_timestamps):
