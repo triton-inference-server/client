@@ -36,8 +36,15 @@ logger = logging.getLogger(LOGGER_NAME)
 class Profiler:
     @staticmethod
     def build_cmd(model, args, extra_args):
-        skip_args = ["model", "func", "dataset"]
-        if hasattr(args, "version"):
+        skip_args = [
+            "model",
+            "func",
+            "dataset",
+            "input_type",
+            "input_format",
+            "output_format",
+        ]
+        if hasattr(args, "version") and args.version:
             cmd = f"perf_analyzer --version"
         else:
             utils.remove_file(args.profile_export_file)
@@ -45,6 +52,8 @@ class Profiler:
             cmd = f"perf_analyzer -m {model} --async "
             for arg, value in vars(args).items():
                 if arg in skip_args:
+                    pass
+                elif value is False:
                     pass
                 elif value is True:
                     cmd += f"--{arg} "
@@ -63,7 +72,7 @@ class Profiler:
         # TODO: Once the OpenAI endpoint support is in place in PA core,
         # update the input-data option arg
         # cmd += f"--input-data {DEFAULT_INPUT_DATA_JSON}  -p 10000 -s 99"
-        cmd += f"--input-data ./input_data.json -p 10000 -s 99"
+        cmd += f"--input-data ./llm_inputs.json -p 10000 -s 999"
         return cmd
 
     @staticmethod
