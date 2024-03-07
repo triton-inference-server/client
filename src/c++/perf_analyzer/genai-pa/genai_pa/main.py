@@ -85,6 +85,10 @@ def report_output(metrics: LLMProfileDataParser, args):
             "Neither concurrency_range nor request_rate_range was found in args when reporting metrics"
         )
     stats = metrics.get_statistics(infer_mode, int(load_level))
+    export_csv_name = args.profile_export_file.with_name(
+        args.profile_export_file.stem + "_genai_pa.csv"
+    )
+    stats.export_to_csv(export_csv_name)
     stats.pretty_print()
 
 
