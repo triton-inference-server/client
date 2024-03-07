@@ -51,11 +51,19 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 def generate_inputs(args):
-    LlmInputs.create_openai_llm_inputs(
+    # TODO: remove once fale support is in
+    input_file_name = ""
+    # TODO: review if always true
+    add_model_name = True
+    LlmInputs.create_llm_inputs(
+        args.input_type,
+        args.output_format,
         args.dataset,
+        args.model,
+        input_file_name,
         LlmInputs.DEFAULT_STARTING_INDEX,
         LlmInputs.DEFAULT_LENGTH,
-        args.model,
+        add_model_name,
         args.streaming,
     )
 
