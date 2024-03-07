@@ -240,7 +240,7 @@ class LLMProfileData:
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
-            # res_outputs = request["response_outputs"]
+            res_outputs = request["response_outputs"]
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
