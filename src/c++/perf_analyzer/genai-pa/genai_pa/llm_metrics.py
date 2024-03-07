@@ -29,11 +29,12 @@
 import contextlib
 import csv
 import io
+import json
 from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
-from genai_pa.utils import load_json
+from genai_pa.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 
@@ -82,11 +83,13 @@ class LLMMetrics(Metrics):
         time_to_first_tokens: list[int] = [],
         inter_token_latencies: list[int] = [],
         output_token_throughputs: list[int] = [],
+        num_output_tokens: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
+        self.num_output_tokens = num_output_tokens
 
         metric_labels = [
             "time_to_first_token",
@@ -103,6 +106,7 @@ class LLMMetrics(Metrics):
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
         self._base_names["output_token_throughputs"] = "output_token_throughput"
+        self._base_names["num_output_tokens"] = "num_output_token"
 
 
 class Statistics:
@@ -133,11 +137,11 @@ class Statistics:
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
 
-    def _calculate_mean(self, data: list[int], attr: str):
+    def _calculate_mean(self, data: list[int | float], attr: str):
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int], attr: str):
+    def _calculate_percentiles(self, data: list[int | float], attr: str):
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -147,12 +151,12 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int], attr: str):
+    def _calculate_minmax(self, data: list[int | float], attr: str):
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int], attr: str):
+    def _calculate_std(self, data: list[int | float], attr: str):
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
@@ -219,13 +223,47 @@ class Statistics:
                 csv_writer.writerow(row_values)
 
 
-class LLMProfileData:
+class ProfileDataParser:
+    """Base profile data parser class that reads the profile data JSON file to
+    extract core metrics and calculate various performance statistics.
+    """
+
+    def __init__(self, filename: str) -> None:
+        data = load_json(filename)
+        self._parse_profile_data(data)
+
+    def _parse_profile_data(self, data: dict) -> None:
+        """Parse through the entire profile data to collect statistics."""
+        self._profile_results = {}
+        for experiment in data["experiments"]:
+            infer_mode = experiment["experiment"]["mode"]
+            load_level = experiment["experiment"]["value"]
+            requests = experiment["requests"]
+
+            metrics = self._parse_requests(requests)
+
+            # aggregate and calculate statistics
+            statistics = Statistics(metrics)
+            self._profile_results[(infer_mode, load_level)] = statistics
+
+    def _parse_requests(self, requests: dict) -> LLMMetrics:
+        """Parse each request in profile data to extract core metrics."""
+        raise NotImplementedError
+
+    def get_statistics(self, infer_mode: str, load_level: int | float) -> Statistics:
+        """Return profile statistics if it exists."""
+        if (infer_mode, load_level) not in self._profile_results:
+            raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
+        return self._profile_results[(infer_mode, load_level)]
+
+
+class LLMProfileDataParser(ProfileDataParser):
     """A class that calculates and aggregates all the LLM performance statistics
     across the Perf Analyzer profile results.
 
-    The LLMProfileData class parses profile export JSON file, collects the core
-    LLM performance metrics, and calculates summary statistics for each different
-    Perf Analyzer runs/experiments.
+    The LLMProfileDataParser class parses profile export JSON file, collects the
+    core LLM performance metrics, and calculates summary statistics for each
+    different Perf Analyzer runs/experiments.
 
     Example:
 
@@ -234,40 +272,38 @@ class LLMProfileData:
       >>> from transformers import AutoTokenizer
       >>>
       >>> tokenizer = AutoTokenizer.from_pretrained("gpt2")
-      >>> pd = LLMProfileData(filename="profile_export.json", tokenizer)
+      >>> pd = LLMProfileDataParser(
+      >>>     filename="profile_export.json",
+      >>>     service_kind="triton",
+      >>>     tokenizer=tokenizer,
+      >>> )
       >>> stats = pd.get_statistics(infer_mode="concurrency", level=10)
       >>>
       >>> print(stats)  # output: Statistics(avg_time_to_first_token=...)
       >>> stats.pretty_print()  # Output: time_to_first_token_s: ...
     """
 
-    def __init__(self, filename: str, tokenizer: AutoTokenizer) -> None:
-        data = load_json(filename)
-        self._profile_results = {}
+    def __init__(
+        self, filename: str, service_kind: str, tokenizer: AutoTokenizer
+    ) -> None:
+        self._tokenizer = tokenizer
+        self._service_kind = service_kind
+        super().__init__(filename)
 
-        for experiment in data["experiments"]:
-            infer_mode = experiment["experiment"]["mode"]
-            load_level = experiment["experiment"]["value"]
-            requests = experiment["requests"]
-
-            metrics = self._collect_llm_metrics(requests, tokenizer)
-
-            # aggregate and calculate statistics
-            statistics = Statistics(metrics)
-            self._profile_results[(infer_mode, load_level)] = statistics
-
-    def _collect_llm_metrics(
-        self, requests: dict, tokenizer: AutoTokenizer
-    ) -> LLMMetrics:
+    def _parse_requests(self, requests: dict) -> LLMMetrics:
+        """Parse each requests in profile export data to extract key metrics."""
         min_req_timestamp, max_res_timestamp = float("inf"), 0
         request_latencies = []
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs = []
+        num_generated_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
             res_outputs = request["response_outputs"]
+
+            self._preprocess_response(res_timestamps, res_outputs)
 
             # track entire benchmark duration
             min_req_timestamp = min(min_req_timestamp, req_timestamp)
@@ -281,10 +317,11 @@ class LLMProfileData:
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
-            output_tokens = tokenizer(res_outputs)["input_ids"]
+            output_tokens = self._tokenize_response_outputs(res_outputs)
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)
             output_token_throughputs.append(total_output_tokens / req_latency)
+            num_generated_tokens.append(total_output_tokens)
 
             # inter token latency
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
@@ -300,9 +337,58 @@ class LLMProfileData:
             time_to_first_tokens,
             inter_token_latencies,
             output_token_throughputs,
+            num_generated_tokens,
         )
 
-    def get_statistics(self, infer_mode: str, load_level: int | float) -> Statistics:
-        if (infer_mode, load_level) not in self._profile_results:
-            raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
-        return self._profile_results[(infer_mode, load_level)]
+    def _preprocess_response(
+        self, res_timestamps: list[int], res_outputs: list[dict[str, str]]
+    ) -> None:
+        """Helper function to preprocess responses of a request."""
+        if self._service_kind == "openai":
+            openai_final_response = res_outputs[-1]["response"]
+            openai_final_response = remove_sse_prefix(openai_final_response)
+
+            # remove the null final response because this has no output token
+            # and will cause problems when calculating metrics/statistics.
+            if openai_final_response == "[DONE]":
+                res_timestamps.pop()
+                res_outputs.pop()
+
+    def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
+        """Deserialize the response output and return tokenized outputs."""
+        if self._service_kind == "triton":
+            return self._tokenize_triton_response_output(res_outputs)
+        elif self._service_kind == "openai":
+            return self._tokenize_openai_response_output(res_outputs)
+        else:
+            raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
+
+    def _tokenize_triton_response_output(self, res_outputs: dict) -> list[list[int]]:
+        """Tokenize the Triton response output texts."""
+        output_texts = []
+        for output in res_outputs:
+            output_texts.append(output["text_output"])
+        return self._tokenizer(output_texts)["input_ids"]
+
+    def _tokenize_openai_response_output(self, res_outputs: dict) -> list[list[int]]:
+        """Tokenize the OpenAI response output texts."""
+        output_texts = []
+        for output in res_outputs:
+            # extract payload and deserialize into dict object
+            openai_response = remove_sse_prefix(output["response"])
+            openai_response = json.loads(openai_response)
+            completions = openai_response["choices"][0]
+
+            if openai_response["object"] == "text_completion":  # legacy
+                output_texts.append(completions["text"])
+            elif openai_response["object"] == "chat.completion":  # non-streaming
+                text = completions["message"]["content"]
+                output_texts.append(text)
+            elif openai_response["object"] == "chat.completion.chunk":  # streaming
+                text = completions["delta"].get("content", "")
+                output_texts.append(text)
+            else:
+                obj_type = openai_response["object"]
+                raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
+
+        return self._tokenizer(output_texts)["input_ids"]

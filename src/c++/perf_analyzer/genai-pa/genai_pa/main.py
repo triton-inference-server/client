@@ -39,7 +39,7 @@ from genai_pa.llm_inputs.llm_inputs import LlmInputs
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from genai_pa.llm_metrics import LLMProfileData
+    from genai_pa.llm_metrics import LLMProfileDataParser
     from transformers import AutoTokenizer as tokenizer
     from transformers import logging as token_logger
 
@@ -68,12 +68,12 @@ def generate_inputs(args):
     )
 
 
-def calculate_metrics(file: str) -> LLMProfileData:
+def calculate_metrics(file: str, service_kind: str) -> LLMProfileDataParser:
     t = tokenizer.from_pretrained("gpt2")
-    return LLMProfileData(file, t)
+    return LLMProfileDataParser(file, service_kind, t)
 
 
-def report_output(metrics: LLMProfileData, args):
+def report_output(metrics: LLMProfileDataParser, args):
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range
@@ -100,7 +100,7 @@ def run(argv=None):
         args, extra_args = parser.parse_args(argv)
         generate_inputs(args)
         args.func(args, extra_args)
-        metrics = calculate_metrics(args.profile_export_file)
+        metrics = calculate_metrics(args.profile_export_file, args.service_kind)
         report_output(metrics, args)
     except Exception as e:
         raise GenAiPAException(e)
