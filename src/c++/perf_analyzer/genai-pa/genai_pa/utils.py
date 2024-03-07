@@ -40,3 +40,17 @@ def remove_file(file: Path):
 
 def convert_option_name(name: str) -> str:
     return name.replace("_", "-")
+
+
+def get_enum_names(enum):
+    names = []
+    for e in enum:
+        names.append(e.name.lower())
+    return names
+
+
+def get_enum_entry(name, enum):
+    for e in enum:
+        if e.name.lower() == name.lower():
+            return e
+    return None

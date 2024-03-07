@@ -28,18 +28,24 @@ import argparse
 import logging
 from pathlib import Path
 
-from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_HTTP_URL, LOGGER_NAME, OPEN_ORCA
+import genai_pa.utils as utils
+from genai_pa.constants import (
+    CNN_DAILY_MAIL,
+    DEFAULT_HTTP_URL,
+    DEFAULT_INPUT_DATA_JSON,
+    LOGGER_NAME,
+    OPEN_ORCA,
+)
+from genai_pa.llm_inputs.llm_inputs import InputType, OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
 
 
 def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
-    Prune the parsed arguments to remove args with None or False values.
+    Prune the parsed arguments to remove args with None.
     """
-    return argparse.Namespace(
-        **{k: v for k, v in vars(args).items() if v is not None if v is not False}
-    )
+    return argparse.Namespace(**{k: v for k, v in vars(args).items() if v is not None})
 
 
 def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -51,6 +57,16 @@ def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.Argumen
         if attr_val is not None:
             setattr(args, f"{attr_key}_range", f"{attr_val}")
         delattr(args, attr_key)
+    return args
+
+
+def _convert_str_to_enum_entry(args, option, enum):
+    """
+    Convert string option to corresponding enum entry
+    """
+    attr_val = getattr(args, option)
+    if attr_val is not None:
+        setattr(args, f"{option}", utils.get_enum_entry(attr_val, enum))
     return args
 
 
@@ -70,11 +86,29 @@ def _add_model_args(parser):
     model_group = parser.add_argument_group("Model")
 
     model_group.add_argument(
+        "--input-type",
+        type=str,
+        choices=utils.get_enum_names(InputType),
+        default="url",
+        required=False,
+        help=f"The source of the input data.",
+    )
+
+    model_group.add_argument(
         "-m",
         "--model",
         type=str,
         required=True,
         help=f"The name of the model to benchmark.",
+    )
+
+    model_group.add_argument(
+        "--output-format",
+        type=str,
+        choices=utils.get_enum_names(OutputFormat),
+        default="trtllm",
+        required=False,
+        help=f"The format of the data sent to triton.",
     )
 
 
@@ -96,6 +130,15 @@ def _add_profile_args(parser):
         required=False,
         help="Sets the concurrency value to benchmark.",
     )
+
+    profile_group.add_argument(
+        "--input-data",
+        type=Path,
+        default=DEFAULT_INPUT_DATA_JSON,
+        required=False,
+        help="Path to the input data json file that contains the list of requests.",
+    )
+
     profile_group.add_argument(
         "--max-threads",
         type=int,
@@ -105,14 +148,7 @@ def _add_profile_args(parser):
         "created for providing desired concurrency or request rate. "
         "The default value is 16.",
     )
-    # TODO: necessary?
-    # parser.add_argument(
-    #     "--output-length",
-    #     type=int,
-    #     default=128,
-    #     required=False,
-    #     help="The output length (tokens) to use for benchmarking LLMs. (Default: 128)",
-    # )
+
     profile_group.add_argument(
         "--profile-export-file",
         type=Path,
@@ -153,6 +189,10 @@ def _add_profile_args(parser):
 
 def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
+
+    endpoint_group.add_argument(
+        "--endpoint", type=str, required=False, help="Specify an endpoint."
+    )
 
     endpoint_group.add_argument(
         "-i",
@@ -221,6 +261,8 @@ def parse_args(argv=None):
         logger.info(f"Additional pass through args: {extra_args}")
 
     args = _update_load_manager_args(args)
+    args = _convert_str_to_enum_entry(args, "input_type", InputType)
+    args = _convert_str_to_enum_entry(args, "output_format", OutputFormat)
     args = _prune_args(args)
 
     return args, extra_args
