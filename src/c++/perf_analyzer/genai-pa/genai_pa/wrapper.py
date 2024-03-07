@@ -44,6 +44,10 @@ class Profiler:
             "input_format",
             "output_format",
         ]
+        # OpenAI service-kind sets streaming via the input file, not via the CLI
+        if args.service_kind == "openai":
+            skip_args.append("streaming")
+
         if hasattr(args, "version") and args.version:
             cmd = f"perf_analyzer --version"
         else:
