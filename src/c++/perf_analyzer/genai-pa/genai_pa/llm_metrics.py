@@ -79,7 +79,7 @@ class LLMMetrics(Metrics):
         request_throughputs: list[float] = [],
         request_latencies: list[int] = [],
         time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[float] = [],
+        inter_token_latencies: list[int] = [],
         output_token_throughputs: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
@@ -250,7 +250,7 @@ class LLMProfileData:
 
             # inter token latency
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
-                inter_token_latencies.append((t2 - t1) / n2)
+                inter_token_latencies.append(round((t2 - t1) / n2))
 
         # request throughput
         benchmark_duration = max_res_timestamp - min_req_timestamp
