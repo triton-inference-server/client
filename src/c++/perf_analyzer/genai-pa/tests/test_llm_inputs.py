@@ -155,7 +155,7 @@ class TestLlmInputs:
         )
 
         assert pa_json is not None
-        assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
     def test_create_openai_llm_inputs_cnn_dailymail(self):
         """
@@ -170,7 +170,7 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
     def test_write_to_file(self):
         """
@@ -180,6 +180,7 @@ class TestLlmInputs:
             input_type=InputType.URL,
             dataset_name=OPEN_ORCA,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            model_name="open_orca",
             add_model_name=True,
             add_stream=True,
         )
@@ -224,7 +225,7 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"][0]["payload"]) == LlmInputs.DEFAULT_LENGTH
+        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
     def test_create_openai_to_trtllm(self):
         """
