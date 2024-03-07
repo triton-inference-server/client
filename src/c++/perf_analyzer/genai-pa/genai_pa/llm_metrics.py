@@ -246,10 +246,10 @@ class LLMProfileData:
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # output token throughput
-            # output_tokens = tokenizer(res_outputs)["input_ids"]
-            # total_output_tokens = np.sum(list(map(len, output_tokens)))
-            # req_latency = res_timestamps[-1] - req_timestamp
-            # output_token_throughputs.append(total_output_tokens / req_latency)
+            output_tokens = tokenizer(res_outputs)["input_ids"]
+            total_output_tokens = np.sum(list(map(len, output_tokens)))
+            req_latency = res_timestamps[-1] - req_timestamp
+            output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
             for t1, t2 in pairwise(res_timestamps):
