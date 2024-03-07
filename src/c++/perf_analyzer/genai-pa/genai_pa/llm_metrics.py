@@ -77,7 +77,7 @@ class LLMMetrics(Metrics):
         request_throughputs: list[float] = [],
         request_latencies: list[int] = [],
         time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[int] = [],
+        inter_token_latencies: list[float] = [],
         output_token_throughputs: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
@@ -242,12 +242,13 @@ class LLMProfileData:
 
             # output token throughput
             output_tokens = tokenizer(res_outputs)["input_ids"]
-            total_output_tokens = np.sum(list(map(len, output_tokens)))
+            num_output_tokens = list(map(len, output_tokens))
+            total_output_tokens = np.sum(num_output_tokens)
             output_token_throughputs.append(total_output_tokens / req_latency)
 
             # inter token latency
-            for t1, t2 in pairwise(res_timestamps):
-                inter_token_latencies.append(t2 - t1)
+            for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
+                inter_token_latencies.append((t2 - t1) / n2)
 
         # request throughput
         benchmark_duration = max_res_timestamp - min_req_timestamp
