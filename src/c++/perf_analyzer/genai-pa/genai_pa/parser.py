@@ -29,7 +29,13 @@ import logging
 from pathlib import Path
 
 import genai_pa.utils as utils
-from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_HTTP_URL, LOGGER_NAME, OPEN_ORCA
+from genai_pa.constants import (
+    CNN_DAILY_MAIL,
+    DEFAULT_HTTP_URL,
+    DEFAULT_INPUT_DATA_JSON,
+    LOGGER_NAME,
+    OPEN_ORCA,
+)
 from genai_pa.llm_inputs.llm_inputs import InputType, OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -124,6 +130,15 @@ def _add_profile_args(parser):
         required=False,
         help="Sets the concurrency value to benchmark.",
     )
+
+    profile_group.add_argument(
+        "--input-data",
+        type=Path,
+        default=DEFAULT_INPUT_DATA_JSON,
+        required=False,
+        help="Path to the input data json file that contains the list of requests.",
+    )
+
     profile_group.add_argument(
         "--max-threads",
         type=int,
@@ -174,6 +189,10 @@ def _add_profile_args(parser):
 
 def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
+
+    endpoint_group.add_argument(
+        "--endpoint", type=str, required=False, help="Specify an endpoint."
+    )
 
     endpoint_group.add_argument(
         "-i",

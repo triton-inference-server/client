@@ -69,10 +69,7 @@ class Profiler:
             if extra_args is not None:
                 for arg in extra_args:
                     cmd += f"{arg} "
-        # TODO: Once the OpenAI endpoint support is in place in PA core,
-        # update the input-data option arg
-        # cmd += f"--input-data {DEFAULT_INPUT_DATA_JSON}  -p 10000 -s 99"
-        cmd += f"--input-data ./llm_inputs.json -p 10000 -s 999"
+        cmd += f" -p 10000 -s 999"
         return cmd
 
     @staticmethod
