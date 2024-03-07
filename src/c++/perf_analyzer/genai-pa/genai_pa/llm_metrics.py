@@ -131,13 +131,6 @@ class Statistics:
         ]
         return field in time_fields
 
-    def _use_exact_length(self, value: str):
-        exact_value_length = 17
-        formatted_value = f"{value:.{exact_value_length}f}"
-        if len(formatted_value) < exact_value_length:
-            return formatted_value.ljust(exact_value_length)
-        return formatted_value[:exact_value_length]
-
     def pretty_print(self):
         table = Table(title="PA LLM Metrics")
 
@@ -161,30 +154,6 @@ class Statistics:
 
         console = Console()
         console.print(table)
-
-        field_stats = {}
-
-        for key, value in self.__dict__.items():
-            if key.startswith(
-                (
-                    "p25_",
-                    "p50_",
-                    "p75_",
-                    "p90_",
-                    "p95_",
-                    "p99_",
-                    "avg_",
-                    "min_",
-                    "max_",
-                    "std_",
-                )
-            ):
-                stat, field = key.split("_", 1)
-                stat = stat.replace("_", " ")
-
-                if field not in field_stats:
-                    field_stats[field] = {}
-                field_stats[field][stat] = value
 
 
 class LLMProfileData:
