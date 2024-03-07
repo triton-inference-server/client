@@ -337,7 +337,8 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # request latencies
             req_latency = res_timestamps[-1] - req_timestamp
-            request_latencies.append(req_latency)
+            request_latencies.append(req_latency)  # nanosec
+            req_latency = req_latency / 1e9  # sec
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
@@ -359,7 +360,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 inter_token_latencies.append(round((t2 - t1) / num_token))
 
         # request throughput
-        benchmark_duration = max_res_timestamp - min_req_timestamp
+        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
         request_throughputs = [len(requests) / benchmark_duration]
 
         return LLMMetrics(
