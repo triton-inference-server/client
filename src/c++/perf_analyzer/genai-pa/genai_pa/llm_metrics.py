@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
-from genai_pa.utils import load_json
+from genai_pa.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 
@@ -259,11 +259,13 @@ class LLMProfileDataParser(ProfileDataParser):
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs = []
-        num_output_tokens = []
+        num_generated_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
             res_timestamps = request["response_timestamps"]
             res_outputs = request["response_outputs"]
+
+            self._preprocess_response(res_timestamps, res_outputs)
 
             # track entire benchmark duration
             min_req_timestamp = min(min_req_timestamp, req_timestamp)
@@ -281,7 +283,7 @@ class LLMProfileDataParser(ProfileDataParser):
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)
             output_token_throughputs.append(total_output_tokens / req_latency)
-            num_output_tokens.append(total_output_tokens)
+            num_generated_tokens.append(total_output_tokens)
 
             # inter token latency
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
@@ -297,8 +299,22 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens,
             inter_token_latencies,
             output_token_throughputs,
-            num_output_tokens,
+            num_generated_tokens,
         )
+
+    def _preprocess_response(
+        self, res_timestamps: list[int], res_outputs: list[dict[str, str]]
+    ) -> None:
+        """Helper function to preprocess responses of a request."""
+        if self._service_kind == "openai":
+            openai_final_response = res_outputs[-1]["response"]
+            openai_final_response = remove_sse_prefix(openai_final_response)
+
+            # remove the null final response because this has no output token
+            # and will cause problems when calculating metrics/statistics.
+            if openai_final_response == "[DONE]":
+                res_timestamps.pop()
+                res_outputs.pop()
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
         """Deserialize the response output and return tokenized outputs."""
@@ -320,15 +336,8 @@ class LLMProfileDataParser(ProfileDataParser):
         """Tokenize the OpenAI response output texts."""
         output_texts = []
         for output in res_outputs:
-            # extract payload
-            openai_response = output["response"].removeprefix("data: ").strip()
-
-            # final null response payload
-            if openai_response == "[DONE]":
-                output_texts.append("")
-                break
-
-            # deserialize into dict object
+            # extract payload and deserialize into dict object
+            openai_response = remove_sse_prefix(output["response"])
             openai_response = json.loads(openai_response)
             completions = openai_response["choices"][0]
 

@@ -119,6 +119,7 @@ class TestLLMProfileDataParser:
                     "requests": [
                         {
                             "timestamp": 1,
+                            # null final timestamp & output will be ignored
                             "response_timestamps": [3, 5, 8, 12],
                             "response_outputs": [
                                 {
@@ -138,6 +139,7 @@ class TestLLMProfileDataParser:
                         },
                         {
                             "timestamp": 2,
+                            # null final timestamp & output will be ignored
                             "response_timestamps": [4, 7, 11, 15, 18],
                             "response_outputs": [
                                 {
@@ -263,10 +265,10 @@ class TestLLMProfileDataParser:
         * time to first tokens
             - experiment 1: [3 - 1, 4 - 2] = [2, 2]
         * inter token latencies
-            - experiment 1: [5 - 3, 8 - 5, 12 - 8, 7 - 4, 11 - 7, 15 - 11, 18 - 15]
-                          : [2, 3, 4, 3, 4, 4, 3]
+            - experiment 1: [(5 - 3)/1, (8 - 5)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
+                          : [2, 3, 3, 2, 2]
         * output token throughputs
-            - experiment 1: [3/(12 - 1), 5/(18 - 2)] = [3/11, 5/16]
+            - experiment 1: [3/(8 - 1), 5/(15 - 2)] = [3/7, 5/13]
         * num output tokens
             - experiment 1: [3, 5]
         """
@@ -281,28 +283,28 @@ class TestLLMProfileDataParser:
         stat = pd.get_statistics(infer_mode="concurrency", load_level=10)
 
         assert stat.avg_time_to_first_token == 2
-        assert stat.avg_inter_token_latency == pytest.approx(23 / 7)
-        assert stat.avg_output_token_throughput == pytest.approx(103 / 352)
+        assert stat.avg_inter_token_latency == 2.4
+        assert stat.avg_output_token_throughput == pytest.approx(37 / 91)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
-        assert stat.p50_inter_token_latency == 3
-        assert stat.p50_output_token_throughput == pytest.approx(103 / 352)
+        assert stat.p50_inter_token_latency == 2
+        assert stat.p50_output_token_throughput == pytest.approx(37 / 91)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        assert stat.min_output_token_throughput == pytest.approx(3 / 11)
+        assert stat.min_output_token_throughput == pytest.approx(5 / 13)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
-        assert stat.max_inter_token_latency == 4
-        assert stat.max_output_token_throughput == pytest.approx(5 / 16)
+        assert stat.max_inter_token_latency == 3
+        assert stat.max_output_token_throughput == pytest.approx(3 / 7)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
-        assert stat.std_inter_token_latency == np.std([2, 3, 4, 3, 4, 4, 3])
-        assert stat.std_output_token_throughput == np.std([3 / 11, 5 / 16])
+        assert stat.std_inter_token_latency == np.std([2, 3, 3, 2, 2])
+        assert stat.std_output_token_throughput == np.std([3 / 7, 5 / 13])
         assert stat.std_num_output_token == np.std([3, 5])
 
         # check non-existing profile data
