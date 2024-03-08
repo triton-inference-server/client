@@ -37,7 +37,7 @@ def rename_files(files: list, substr: str):
         try:
             os.rename(f, new_filename)
         except FileNotFoundError:
-            print(f"  Warning: {f} does not exist to be renamed") 
+            pass
 
 def print_summary():
     # FIXME -- print out a few basic metrics. Maybe from the csv?
@@ -72,7 +72,7 @@ for combination in itertools.product(*testing_matrix):
             print_summary()
             sanity_check()
            
-            files = ["profile_export.json", "profile_export_genai_pa.csv", "llm_inputs.json"]
-            rename_files(files, file_options_string)
+        files = ["profile_export.json", "profile_export_genai_pa.csv", "llm_inputs.json"]
+        rename_files(files, file_options_string)
 
 
