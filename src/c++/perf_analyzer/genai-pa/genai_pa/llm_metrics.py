@@ -213,7 +213,7 @@ class Statistics:
 
             # Without streaming, there is no inter-token latency available, so do not print it.
             if metric == "inter_token_latency":
-                if all(int(value) == -1 for value in row_values[1:]):
+                if all(value == "-1" for value in row_values[1:]):
                     continue
             # Without streaming, TTFT and request latency are the same, so do not print TTFT.
             elif metric == "time_to_first_token":
@@ -282,7 +282,7 @@ class Statistics:
 
                 # Without streaming, there is no inter-token latency available, so do not print it.
                 if metric == "inter_token_latency":
-                    if all(int(value) == -1 for value in row_values[1:]):
+                    if all(value == "-1" for value in row_values[1:]):
                         continue
                 # Without streaming, TTFT and request latency are the same, so do not print TTFT.
                 elif metric == "time_to_first_token":
