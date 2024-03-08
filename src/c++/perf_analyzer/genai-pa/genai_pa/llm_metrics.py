@@ -224,7 +224,8 @@ class Statistics:
                     if value_ttft != value_req_latency:
                         unique_values = False
                         break
-                continue
+                if not unique_values:
+                    continue
 
             table.add_row(*row_values)
 
@@ -294,7 +295,8 @@ class Statistics:
                         if value_ttft != value_req_latency:
                             unique_values = False
                             break
-                    continue
+                    if not unique_values:
+                        continue
 
                 csv_writer.writerow(row_values)
 
