@@ -209,7 +209,7 @@ class Statistics:
 
             for stat in stats:
                 value = self.__dict__.get(f"{stat}_{metric}", -1)
-                row_values.append(f"{value:.0f}")
+                row_values.append(f"{value:,.0f}")
 
             # Without streaming, there is no inter-token latency available, so do not print it.
             if metric == "inter_token_latency":
@@ -271,7 +271,6 @@ class Statistics:
 
                 row_values = [formatted_metric]
 
-                # Throughput fields are printed after the table
                 if is_throughput_field:
                     value = self.__dict__.get(f"{header[1]}_{metric}", -1)
                     row_values.append(f"{value:.2f}")
