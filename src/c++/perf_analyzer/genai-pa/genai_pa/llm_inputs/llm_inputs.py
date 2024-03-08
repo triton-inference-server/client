@@ -60,7 +60,7 @@ class LlmInputs:
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 250
     DEFAULT_EXPECTED_OUTPUT_TOKENS = 150
-    DEFAULT_OUTPUT_PROMPTS = 10
+    DEFAULT_NUM_OF_OUTPUT_PROMPTS = 100
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
@@ -82,7 +82,7 @@ class LlmInputs:
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
         expected_output_tokens: int = DEFAULT_EXPECTED_OUTPUT_TOKENS,
         random_seed: int = DEFAULT_RANDOM_SEED,
-        output_prompts: int = DEFAULT_OUTPUT_PROMPTS,
+        num_of_output_prompts: int = DEFAULT_NUM_OF_OUTPUT_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
     ) -> Dict:
@@ -122,7 +122,7 @@ class LlmInputs:
             The number of tokens to expect in the output. This is used to
             determine the length of the prompt. The prompt will be generated such that the output
             will be approximately this many tokens.
-        output_prompts:
+        num_of_output_prompts:
             The number of synthetic output prompts to generate
         random_seed:
             Seed used to generate random values
@@ -145,7 +145,7 @@ class LlmInputs:
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 expected_output_tokens,
-                output_prompts,
+                num_of_output_prompts,
                 random_seed,
             )
             generic_dataset_json = (
@@ -192,14 +192,14 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         expected_output_tokens: int,
-        output_prompts: int,
+        num_of_output_prompts: int,
         random_seed: int,
     ) -> Dict:
         dataset_json = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
 
-        for index in range(0, output_prompts):
+        for index in range(0, num_of_output_prompts):
             synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
                 prompt_tokens_mean,
                 prompt_tokens_stddev,

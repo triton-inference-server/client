@@ -279,6 +279,7 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.SYNTHETIC,
             output_format=OutputFormat.VLLM,
+            num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
         )
@@ -286,7 +287,7 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_OUTPUT_PROMPTS
+        assert len(pa_json["data"]) == 5
 
     def test_synthetic_to_trtllm(self):
         """
@@ -295,6 +296,7 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.SYNTHETIC,
             output_format=OutputFormat.TRTLLM,
+            num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
         )
@@ -302,7 +304,7 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_OUTPUT_PROMPTS
+        assert len(pa_json["data"]) == 5
 
     def test_synthetic_to_openai_chat_completions(self):
         """
@@ -311,6 +313,7 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.SYNTHETIC,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
         )
@@ -318,7 +321,7 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_OUTPUT_PROMPTS
+        assert len(pa_json["data"]) == 5
 
     def test_synthetic_to_openai_completions(self):
         """
@@ -327,6 +330,7 @@ class TestLlmInputs:
         pa_json = LlmInputs.create_llm_inputs(
             input_type=InputType.SYNTHETIC,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
+            num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
         )
@@ -334,4 +338,4 @@ class TestLlmInputs:
         os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_OUTPUT_PROMPTS
+        assert len(pa_json["data"]) == 5
