@@ -180,6 +180,9 @@ class Statistics:
         return field in Metrics.time_fields
 
     def pretty_print(self):
+        """Prints the statistics in a tabular format."""
+
+        singular_metric_rows = []
         table = Table(title="PA LLM Metrics")
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
@@ -189,28 +192,52 @@ class Statistics:
 
         for metric in Metrics.metric_labels:
             formatted_metric = metric.replace("_", " ").capitalize()
-            if self._is_time_field(metric):
+
+            # Throughput fields are printed after the table
+            is_throughput_field = self._is_throughput_field(metric)
+            if is_throughput_field:
+                value = self.__dict__.get(f"{stats[0]}_{metric}", -1)
+                formatted_metric += f" (per sec): {value:.2f}"
+                singular_metric_rows.append(formatted_metric)
+                continue
+
+            is_time_field = self._is_time_field(metric)
+            if is_time_field:
                 formatted_metric += " (ns)"
-            elif self._is_throughput_field(metric):
-                formatted_metric += " (per sec)"
 
             row_values = [formatted_metric]
 
             for stat in stats:
                 value = self.__dict__.get(f"{stat}_{metric}", -1)
-                row_values.append("{:,.0f}".format(value))
+                row_values.append(f"{value:,.0f}")
 
-            # Without streaming, there is no inter-token latency available.
+            # Without streaming, there is no inter-token latency available, so do not print it.
             if metric == "inter_token_latency":
-                if all(value == -1 for value in row_values[1:]):
+                if all(int(value) == -1 for value in row_values[1:]):
                     continue
-            else:
-                table.add_row(*row_values)
+            # Without streaming, TTFT and request latency are the same, so do not print TTFT.
+            elif metric == "time_to_first_token":
+                unique_values = False
+                for stat in stats:
+                    value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
+                    value_req_latency = self.__dict__.get(f"{stat}_request_latency", -1)
+                    if value_ttft != value_req_latency:
+                        unique_values = True
+                        break
+                if not unique_values:
+                    continue
+
+            table.add_row(*row_values)
 
         console = Console()
         console.print(table)
 
+        for row in singular_metric_rows:
+            print(row)
+
     def export_to_csv(self, csv_filename: str):
+        """Exports the statistics to a CSV file."""
+
         header = [
             "Statistic",
             "avg",
@@ -225,28 +252,56 @@ class Statistics:
         ]
 
         with open(csv_filename, mode="w", newline="") as csvfile:
+            singular_metric_rows = []
+
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(header)
 
             for metric in Metrics.metric_labels:
                 formatted_metric = metric
-                if self._is_time_field(metric):
+
+                is_throughput_field = self._is_throughput_field(metric)
+                is_time_field = self._is_time_field(metric)
+
+                if is_time_field:
                     formatted_metric += "(ns)"
-                elif self._is_throughput_field(metric):
+                elif is_throughput_field:
                     formatted_metric += "(per sec)"
 
                 row_values = [formatted_metric]
+
+                if is_throughput_field:
+                    value = self.__dict__.get(f"{header[1]}_{metric}", -1)
+                    row_values.append(f"{value:.2f}")
+                    singular_metric_rows.append(row_values)
+                    continue
 
                 for stat in header[1:]:
                     value = self.__dict__.get(f"{stat}_{metric}", -1)
                     row_values.append(f"{value:.0f}")
 
-                # Without streaming, there is no inter-token latency available.
+                # Without streaming, there is no inter-token latency available, so do not print it.
                 if metric == "inter_token_latency":
-                    if all(value == -1 for value in row_values[1:]):
+                    if all(int(value) == -1 for value in row_values[1:]):
                         continue
-                else:
-                    csv_writer.writerow(row_values)
+                # Without streaming, TTFT and request latency are the same, so do not print TTFT.
+                elif metric == "time_to_first_token":
+                    unique_values = False
+                    for stat in header[1:]:
+                        value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
+                        value_req_latency = self.__dict__.get(
+                            f"{stat}_request_latency", -1
+                        )
+                        if value_ttft != value_req_latency:
+                            unique_values = True
+                            break
+                    if not unique_values:
+                        continue
+
+                csv_writer.writerow(row_values)
+
+            for row in singular_metric_rows:
+                csv_writer.writerow(row)
 
 
 class ProfileDataParser:
