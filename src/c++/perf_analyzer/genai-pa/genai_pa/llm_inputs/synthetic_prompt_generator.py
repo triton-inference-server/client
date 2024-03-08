@@ -29,7 +29,8 @@ class SyntheticPromptGenerator:
         expected_output_tokens: int = 150,
     ) -> Tuple[str, int]:
         """
-        Generate a prompt that randomly samples lines from a the sonnet at sonnet.txt.
+        Generate a prompt that randomly samples lines from
+        Washington's farewell address at farewell.txt.
 
         Args:
             prompt_tokens_mean:
@@ -40,12 +41,6 @@ class SyntheticPromptGenerator:
                 The number of tokens to expect in the output. This is used to
                 determine the length of the prompt. The prompt will be generated such that the output
                 will be approximately this many tokens.
-
-        Note:
-            Tokens will be counted from the sonnet using the Llama tokenizer. Using one tokenizer
-            ensures a fairer comparison across different LLMs. For example, if gpt 3.5 tokenizes
-            a prompt in less tokens than Llama2, then this will be reflected in the results since
-            they will be fed identical prompts.
 
         Returns:
             A tuple of the prompt and the length of the prompt.
@@ -63,9 +58,9 @@ class SyntheticPromptGenerator:
         )
         remaining_prompt_tokens = num_prompt_tokens - prompt_token_length
 
-        sonnet_lines = SyntheticPromptGenerator._create_sonnet_lines()
-        prompt = SyntheticPromptGenerator._create_prompt_from_sonnet_lines(
-            prompt, remaining_prompt_tokens, sonnet_lines
+        farewell_lines = SyntheticPromptGenerator._create_farewell_lines()
+        prompt = SyntheticPromptGenerator._create_prompt_from_farewell_lines(
+            prompt, remaining_prompt_tokens, farewell_lines
         )
 
         return (prompt, num_prompt_tokens)
@@ -95,24 +90,24 @@ class SyntheticPromptGenerator:
         return num_prompt_tokens
 
     @classmethod
-    def _create_sonnet_lines(cls) -> List[str]:
-        sonnet_path = pathlib.Path(__file__).parent.resolve() / "sonnet.txt"
-        with open(sonnet_path, "r") as f:
-            sonnet_lines = f.readlines()
-        random.shuffle(sonnet_lines)
+    def _create_farewell_lines(cls) -> List[str]:
+        farewell_path = pathlib.Path(__file__).parent.resolve() / "farewell.txt"
+        with open(farewell_path, "r") as f:
+            farewell_lines = f.readlines()
+        random.shuffle(farewell_lines)
 
-        return sonnet_lines
+        return farewell_lines
 
     @classmethod
-    def _create_prompt_from_sonnet_lines(
-        cls, prompt: str, remaining_prompt_tokens: int, sonnet_lines: List[str]
+    def _create_prompt_from_farewell_lines(
+        cls, prompt: str, remaining_prompt_tokens: int, farewell_lines: List[str]
     ) -> str:
         tokenizer = SyntheticPromptGenerator._get_tokenizer()
         get_token_length = lambda text: len(tokenizer.encode(text))
 
         sampling_lines = True
         while sampling_lines:
-            for line in sonnet_lines:
+            for line in farewell_lines:
                 line_to_add = line
                 if remaining_prompt_tokens - get_token_length(line_to_add) < 0:
                     # This will cut off a line in the middle of a word, but that's ok since an

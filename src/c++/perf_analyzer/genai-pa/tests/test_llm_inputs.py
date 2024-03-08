@@ -250,7 +250,7 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_random_sonnet(self):
+    def test_random_synthetic(self):
         """
         Test that we can produce deterministic random synthetic prompts
         """
