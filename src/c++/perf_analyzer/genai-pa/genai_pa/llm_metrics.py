@@ -260,8 +260,6 @@ class Statistics:
                 formatted_metric = metric
 
                 is_throughput_field = self._is_throughput_field(metric)
-
-                is_throughput_field = self._is_throughput_field(metric)
                 is_time_field = self._is_time_field(metric)
 
                 if is_time_field:
