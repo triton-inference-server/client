@@ -26,17 +26,17 @@ class SyntheticPromptGenerator:
         cls,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
-        expect_output_tokens: int = 150,
+        expected_output_tokens: int = 150,
     ) -> Tuple[str, int]:
         """
         Generate a prompt that randomly samples lines from a the sonnet at sonnet.txt.
 
         Args:
-            prompt_length_mean:
+            prompt_tokens_mean:
                 The mean length of the prompt to generate
-            prompt_len_stddev:
+            prompt_tokens_stddev:
                 The standard deviation of the length of the prompt to generate
-            expect_output_tokens:
+            expected_output_tokens:
                 The number of tokens to expect in the output. This is used to
                 determine the length of the prompt. The prompt will be generated such that the output
                 will be approximately this many tokens.
@@ -53,7 +53,7 @@ class SyntheticPromptGenerator:
 
         prompt = (
             "Randomly stream lines from the following text "
-            f"with {expect_output_tokens} output tokens. "
+            f"with {expected_output_tokens} output tokens. "
             "Don't generate eos tokens:\n\n"
         )
 

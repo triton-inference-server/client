@@ -43,8 +43,6 @@ class LlmInputs:
     A library of methods that control the generation of LLM Inputs
     """
 
-    DEFAULT_SEED = 0
-
     OUTPUT_FILENAME = DEFAULT_INPUT_DATA_JSON
 
     OPEN_ORCA_URL = "https://datasets-server.huggingface.co/rows?dataset=Open-Orca%2FOpenOrca&config=default&split=train"
@@ -57,6 +55,12 @@ class LlmInputs:
     MINIMUM_LENGTH = 1
 
     DEFAULT_TRTLLM_MAX_TOKENS = 256
+
+    DEFAULT_RANDOM_SEED = 0
+    DEFAULT_PROMPT_TOKENS_MEAN = 550
+    DEFAULT_PROMPT_TOKENS_STDDEV = 250
+    DEFAULT_EXPECTED_OUTPUT_TOKENS = 150
+    DEFAULT_OUTPUT_PROMPTS = 10
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
@@ -74,6 +78,11 @@ class LlmInputs:
         input_filename: str = "",
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
+        prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
+        prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
+        expected_output_tokens: int = DEFAULT_EXPECTED_OUTPUT_TOKENS,
+        random_seed: int = DEFAULT_RANDOM_SEED,
+        output_prompts: int = DEFAULT_OUTPUT_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
     ) -> Dict:
@@ -84,7 +93,7 @@ class LlmInputs:
         Required Parameters
         -------------------
         input_type:
-            Specify how the input is received (file or URL)
+            Specify how the input is received
         output_format:
             Specify the output format
 
@@ -102,6 +111,21 @@ class LlmInputs:
             If true adds a model name field to each payload
         add_stream:
             If true adds a steam field to each payload
+
+        Optional Synthetic Prompt Generation Parameters
+        -----------------------------------------------
+        prompt_tokens_mean:
+            The mean length of the prompt to generate
+        prompt_tokens_stddev:
+            The standard deviation of the length of the prompt to generate
+        expected_output_tokens:
+            The number of tokens to expect in the output. This is used to
+            determine the length of the prompt. The prompt will be generated such that the output
+            will be approximately this many tokens.
+        output_prompts:
+            The number of synthetic output prompts to generate
+        random_seed:
+            Seed used to generate random values
         """
 
         LlmInputs._check_for_valid_args(
@@ -113,12 +137,24 @@ class LlmInputs:
             dataset = LlmInputs._get_input_dataset_from_url(
                 dataset_name, starting_index, length
             )
+            generic_dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+                dataset
+            )
+        elif input_type == InputType.SYNTHETIC:
+            dataset = LlmInputs._get_input_dataset_from_synthetic(
+                prompt_tokens_mean,
+                prompt_tokens_stddev,
+                expected_output_tokens,
+                output_prompts,
+                random_seed,
+            )
+            generic_dataset_json = (
+                LlmInputs._convert_input_synthetic_dataset_to_generic_json(dataset)
+            )
         else:
             raise GenAiPAException(
-                "Using file/synthetic to supply LLM Input is not supported at this time"
+                "Using a file to supply LLM Input is not supported at this time"
             )
-
-        generic_dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset)
 
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
             output_format, generic_dataset_json, add_model_name, add_stream, model_name
@@ -151,6 +187,30 @@ class LlmInputs:
         return dataset
 
     @classmethod
+    def _get_input_dataset_from_synthetic(
+        cls,
+        prompt_tokens_mean: int,
+        prompt_tokens_stddev: int,
+        expected_output_tokens: int,
+        output_prompts: int,
+        random_seed: int,
+    ) -> Dict:
+        dataset_json = {}
+        dataset_json["features"] = [{"name": "text_input"}]
+        dataset_json["rows"] = []
+
+        for index in range(0, output_prompts):
+            synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
+                prompt_tokens_mean,
+                prompt_tokens_stddev,
+                expected_output_tokens,
+                random_seed + index,
+            )
+            dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+
+        return dataset_json
+
+    @classmethod
     def _resolve_url(cls, dataset_name: str) -> str:
         if dataset_name in LlmInputs.dataset_url_map:
             return LlmInputs.dataset_url_map[dataset_name]
@@ -174,7 +234,7 @@ class LlmInputs:
         return dataset
 
     @classmethod
-    def _convert_input_dataset_to_generic_json(cls, dataset: Response) -> Dict:
+    def _convert_input_url_dataset_to_generic_json(cls, dataset: Response) -> Dict:
         dataset_json = dataset.json()
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
@@ -184,6 +244,12 @@ class LlmInputs:
         generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(
             dataset_json
         )
+
+        return generic_dataset_json
+
+    @classmethod
+    def _convert_input_synthetic_dataset_to_generic_json(cls, dataset: Dict) -> Dict:
+        generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(dataset)
 
         return generic_dataset_json
 
@@ -757,12 +823,12 @@ class LlmInputs:
     @classmethod
     def _create_synthetic_prompt(
         cls,
-        prompt_tokens_mean: int = 550,
-        prompt_tokens_stddev: int = 250,
-        expect_output_tokens: int = 150,
-        random_seed: int = DEFAULT_SEED,
+        prompt_tokens_mean: int,
+        prompt_tokens_stddev: int,
+        expected_output_tokens: int,
+        random_seed: int,
     ) -> Tuple[str, int]:
         random.seed(random_seed)
         return SyntheticPromptGenerator.create_synthetic_prompt(
-            prompt_tokens_mean, prompt_tokens_stddev, expect_output_tokens
+            prompt_tokens_mean, prompt_tokens_stddev, expected_output_tokens
         )
