@@ -217,12 +217,12 @@ class Statistics:
                     continue
             # Without streaming, TTFT and request latency are the same, so do not print TTFT.
             elif metric == "time_to_first_token":
-                unique_values = True
+                unique_values = False
                 for stat in stats:
                     value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
                     value_req_latency = self.__dict__.get(f"{stat}_request_latency", -1)
                     if value_ttft != value_req_latency:
-                        unique_values = False
+                        unique_values = True
                         break
                 if not unique_values:
                     continue
@@ -286,14 +286,14 @@ class Statistics:
                         continue
                 # Without streaming, TTFT and request latency are the same, so do not print TTFT.
                 elif metric == "time_to_first_token":
-                    unique_values = True
+                    unique_values = False
                     for stat in header[1:]:
                         value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
                         value_req_latency = self.__dict__.get(
                             f"{stat}_request_latency", -1
                         )
                         if value_ttft != value_req_latency:
-                            unique_values = False
+                            unique_values = True
                             break
                     if not unique_values:
                         continue
