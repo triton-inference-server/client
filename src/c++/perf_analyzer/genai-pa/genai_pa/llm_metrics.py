@@ -428,6 +428,9 @@ class LLMProfileDataParser(ProfileDataParser):
         )
 
     def _remove_leading_invalid_chars(self, text: str):
+        if len(text) < 4:
+            return text
+
         for i, char in enumerate(text):
             # There will be 3 or 4 chars
             # (but sometimes the first char looks valid, so don't stop until we've seen at least 3)
