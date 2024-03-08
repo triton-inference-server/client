@@ -325,7 +325,7 @@ class ProfileDataParser:
 
             # aggregate and calculate statistics
             statistics = Statistics(metrics)
-            self._profile_results[(infer_mode, load_level)] = statistics
+            self._profile_results[(infer_mode, str(load_level))] = statistics
 
     def _parse_requests(self, requests: dict) -> LLMMetrics:
         """Parse each request in profile data to extract core metrics."""
