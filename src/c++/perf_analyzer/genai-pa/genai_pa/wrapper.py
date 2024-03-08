@@ -64,9 +64,7 @@ class Profiler:
         else:
             utils.remove_file(args.profile_export_file)
 
-            cmd = (
-                f"/workspace/client/build/install/bin/perf_analyzer -m {model} --async "
-            )
+            cmd = f"perf_analyzer -m {model} --async "
             for arg, value in vars(args).items():
                 if arg in skip_args:
                     pass
