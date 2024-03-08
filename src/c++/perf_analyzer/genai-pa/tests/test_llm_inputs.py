@@ -32,6 +32,18 @@ class TestLlmInputs:
 
         yield default_configured_url
 
+    def test_random_sonnet(self):
+        """ """
+        synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt()
+
+        # 785 is the num of tokens returned for the default seed
+        assert synthetic_prompt_tokens == 785
+
+        synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+            random_seed=LlmInputs.DEFAULT_SEED + 1
+        )
+        assert synthetic_prompt_tokens != 785
+
     # TODO: Add tests that verify json schemas
 
     def test_input_type_url_no_dataset_name(self):

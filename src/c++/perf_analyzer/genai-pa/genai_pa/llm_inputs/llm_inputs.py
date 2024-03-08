@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import random
 from copy import deepcopy
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
@@ -20,6 +21,7 @@ from typing import Dict, List, Optional, Tuple
 import requests
 from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_pa.exceptions import GenAiPAException
+from genai_pa.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from requests import Response
 
 
@@ -40,6 +42,8 @@ class LlmInputs:
     """
     A library of methods that control the generation of LLM Inputs
     """
+
+    DEFAULT_SEED = 0
 
     OUTPUT_FILENAME = DEFAULT_INPUT_DATA_JSON
 
@@ -749,3 +753,16 @@ class LlmInputs:
     def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
         if "error" in json_of_dataset.keys():
             raise GenAiPAException(json_of_dataset["error"])
+
+    @classmethod
+    def _create_synthetic_prompt(
+        cls,
+        prompt_tokens_mean: int = 550,
+        prompt_tokens_stddev: int = 250,
+        expect_output_tokens: int = 150,
+        random_seed: int = DEFAULT_SEED,
+    ) -> Tuple[str, int]:
+        random.seed(random_seed)
+        return SyntheticPromptGenerator.create_synthetic_prompt(
+            prompt_tokens_mean, prompt_tokens_stddev, expect_output_tokens
+        )
