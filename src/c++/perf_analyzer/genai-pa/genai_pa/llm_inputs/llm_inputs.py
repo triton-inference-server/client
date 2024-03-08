@@ -695,7 +695,7 @@ class LlmInputs:
         pa_json: Dict,
         index: int,
     ) -> Dict:
-        pa_json["data"][index]["max_tokens"] = LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS
+        pa_json["data"][index]["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
 
         return pa_json
 
