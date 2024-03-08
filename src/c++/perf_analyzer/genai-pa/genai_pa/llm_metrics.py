@@ -374,7 +374,7 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _remove_leading_invalid_chars(self, text: str):
         for i, char in enumerate(text):
-            # There will be 3 or 4 chars 
+            # There will be 3 or 4 chars
             # (but sometimes the first char looks valid, so don't stop until we've seen at least 3)
             if char.isprintable() and i > 2:
                 break
@@ -388,7 +388,7 @@ class LLMProfileDataParser(ProfileDataParser):
         # (PA/triton will add junk to the start of the BYTES array. Remove it here)
         if self._service_kind == "triton":
             for d in res_outputs:
-                d['text_output'] = self._remove_leading_invalid_chars(d['text_output'])
+                d["text_output"] = self._remove_leading_invalid_chars(d["text_output"])
 
         """Helper function to preprocess responses of a request."""
         if self._service_kind == "openai":

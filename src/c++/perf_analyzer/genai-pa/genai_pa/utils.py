@@ -33,7 +33,7 @@ def remove_sse_prefix(msg: str) -> str:
 
 
 def load_json(filename: str):
-    with open(filename, encoding='utf-8', errors='ignore') as f:
+    with open(filename, encoding="utf-8", errors="ignore") as f:
         return json.load(f)
 
 
