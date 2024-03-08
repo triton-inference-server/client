@@ -29,6 +29,25 @@ else:
 
 base_command = base_commands[testname]
 
+def rename_files(files: list, substr: str):
+    for f in files:
+        name, ext = f.rsplit('.', 1)
+        # Insert the substring and reassemble the filename
+        new_filename = f"{testname}__{name}__{substr}.{ext}"
+        try:
+            os.rename(f, new_filename)
+        except FileNotFoundError:
+            print(f"  Warning: {f} does not exist to be renamed") 
+
+def print_summary():
+    # FIXME -- print out a few basic metrics. Maybe from the csv?
+    pass
+
+def sanity_check():
+    # FIXME -- add in some sanity checking? Throughput isn't 0?
+    pass
+
+
 # Loop through all combinations
 for combination in itertools.product(*testing_matrix):
 
@@ -42,17 +61,18 @@ for combination in itertools.product(*testing_matrix):
     output_file = testname + "__" + file_options_string + ".log"
 
     with open(output_file, 'w') as outfile:
-        print(f"Running {command_with_options}")
-        subprocess.run(command_array, stdout=outfile, stderr=subprocess.STDOUT)
-        # FIXME return value
+        print(f"\nCMD: {command_with_options}")
+        print(f"  Output log is {output_file}")
+        proc = subprocess.run(command_array, stdout=outfile, stderr=subprocess.STDOUT)
+        
+        if proc.returncode != 0:
+            print(f"  Command failed with return code: {proc.returncode}")
+        else:
+            print(f"  Command executed successfully!")
+            print_summary()
+            sanity_check()
+           
+            files = ["profile_export.json", "profile_export_genai_pa.csv", "llm_inputs.json"]
+            rename_files(files, file_options_string)
 
-        files = ["profile_export.json", "profile_export_genai_pa.csv", "llm_inputs.json"]
-        for f in files:
-            name, ext = f.rsplit('.', 1)
-            # Insert the substring and reassemble the filename
-            new_filename = f"{testname}__{name}__{file_options_string}.{ext}"
-            try:
-                os.rename(f, new_filename)
-            except FileNotFoundError:
-                print(f"  Warning: {f} does not exist to be renamed") 
 
