@@ -199,7 +199,7 @@ class TestLLMProfileDataParser:
         )
 
         # experiment 1 statistics
-        stat = pd.get_statistics(infer_mode="concurrency", load_level=10)
+        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
@@ -227,7 +227,7 @@ class TestLLMProfileDataParser:
         assert stat.std_num_output_token == np.std([3, 5])
 
         # experiment 2 statistics
-        stat = pd.get_statistics(infer_mode="request_rate", load_level=2.0)
+        stat = pd.get_statistics(infer_mode="request_rate", load_level="2.0")
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
@@ -256,7 +256,7 @@ class TestLLMProfileDataParser:
 
         # check non-existing profile data
         with pytest.raises(KeyError):
-            pd.get_statistics(infer_mode="concurrency", load_level=30)
+            pd.get_statistics(infer_mode="concurrency", load_level="30")
 
     def test_openai_llm_profile_data(self, prepare_openai_profile_data) -> None:
         """Collect LLM metrics from profile export data and check values.
@@ -280,7 +280,7 @@ class TestLLMProfileDataParser:
         )
 
         # experiment 1 statistics
-        stat = pd.get_statistics(infer_mode="concurrency", load_level=10)
+        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.4
@@ -309,7 +309,7 @@ class TestLLMProfileDataParser:
 
         # check non-existing profile data
         with pytest.raises(KeyError):
-            pd.get_statistics(infer_mode="concurrency", load_level=40)
+            pd.get_statistics(infer_mode="concurrency", load_level="40")
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
