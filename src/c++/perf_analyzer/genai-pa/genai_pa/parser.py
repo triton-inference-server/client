@@ -160,6 +160,7 @@ def _add_profile_args(parser):
         "For example, if the profile export file is profile_export.json, the GenAi-PA file will be "
         "exported to profile_export_genai_pa.csv.",
     )
+
     load_management_group.add_argument(
         "--request-rate",
         type=float,
@@ -185,7 +186,7 @@ def _add_profile_args(parser):
         help="Indicates the allowed variation in "
         "latency measurements when determining if a result is stable. The "
         "measurement is considered as stable if the ratio of max / min "
-        "from the recent 3 measurements is within (stability percentage)% "
+        "from the recent 3 measurements is within (stability percentage) "
         "in terms of both infer per second and latency.",
     )
 
