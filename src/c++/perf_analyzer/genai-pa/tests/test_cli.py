@@ -59,15 +59,12 @@ class TestCLIArguments:
         [
             (["-b", "2"], {"batch_size": 2}),
             (["--batch-size", "2"], {"batch_size": 2}),
-            (["--max-threads", "4"], {"max_threads": 4}),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
             ),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (["--service-kind", "openai"], {"service_kind": "openai"}),
-            # TODO: Remove streaming from implementation. It is invalid with HTTP.
-            # (["--streaming"], {"streaming": True}),
             (["--version"], {"version": True}),
             (["-u", "test_url"], {"u": "test_url"}),
             (["--url", "test_url"], {"u": "test_url"}),
