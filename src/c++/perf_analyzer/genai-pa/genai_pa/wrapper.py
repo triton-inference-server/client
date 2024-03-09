@@ -35,6 +35,17 @@ logger = logging.getLogger(LOGGER_NAME)
 
 class Profiler:
     @staticmethod
+    def add_protocol_args(args):
+        cmd = ""
+        if args.service_kind == "triton":
+            cmd += f"-i grpc "
+            if args.output_format == "trtllm":
+                cmd += f"--shape max_tokens:1 --shape text_input:1 "
+        elif args.service_kind == "openai":
+            cmd += f"-i http "
+        return cmd
+
+    @staticmethod
     def build_cmd(model, args, extra_args):
         skip_args = [
             "model",
@@ -70,10 +81,11 @@ class Profiler:
                         arg = utils.convert_option_name(arg)
                         cmd += f"--{arg} {value} "
 
+            cmd += Profiler.add_protocol_args(args)
+
             if extra_args is not None:
                 for arg in extra_args:
                     cmd += f"{arg} "
-        cmd += f" -p 10000 -s 999"
         return cmd
 
     @staticmethod
