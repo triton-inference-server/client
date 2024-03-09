@@ -51,19 +51,22 @@ class TestLLMProfileDataParser:
                         {
                             "timestamp": 1,
                             "response_timestamps": [3, 5, 8],
+                            # LLMProfileDataParser preprocessse the responses
+                            # from triton server and removes first few chars.
+                            # Add whitespace to avoid valid chars being removed.
                             "response_outputs": [
-                                {"text_output": "dogs"},
-                                {"text_output": "are"},
-                                {"text_output": "cool"},
+                                {"text_output": "   dogs"},
+                                {"text_output": "   are"},
+                                {"text_output": "   cool"},
                             ],
                         },
                         {
                             "timestamp": 2,
                             "response_timestamps": [4, 7, 11],
                             "response_outputs": [
-                                {"text_output": "I"},
-                                {"text_output": "don't"},
-                                {"text_output": "cook food"},
+                                {"text_output": "   I"},
+                                {"text_output": "   don't"},
+                                {"text_output": "   cook food"},
                             ],
                         },
                     ],
@@ -78,19 +81,19 @@ class TestLLMProfileDataParser:
                             "timestamp": 5,
                             "response_timestamps": [7, 8, 13, 18],
                             "response_outputs": [
-                                {"text_output": "cats"},
-                                {"text_output": "are"},
-                                {"text_output": "cool"},
-                                {"text_output": "too"},
+                                {"text_output": "   cats"},
+                                {"text_output": "   are"},
+                                {"text_output": "   cool"},
+                                {"text_output": "   too"},
                             ],
                         },
                         {
                             "timestamp": 3,
                             "response_timestamps": [6, 8, 11],
                             "response_outputs": [
-                                {"text_output": "it's"},
-                                {"text_output": "very"},
-                                {"text_output": "simple work"},
+                                {"text_output": "   it's"},
+                                {"text_output": "   very"},
+                                {"text_output": "   simple work"},
                             ],
                         },
                     ],
@@ -203,27 +206,33 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
-        assert stat.avg_output_token_throughput == pytest.approx(31 / 63)
+        avg_ott = (31 / 63) * 1e9  # ns to sec
+        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
         assert stat.p50_inter_token_latency == 2
-        assert stat.p50_output_token_throughput == pytest.approx(31 / 63)
+        p50_ott = (31 / 63) * 1e9  # ns to sec
+        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        assert stat.min_output_token_throughput == pytest.approx(3 / 7)
+        min_ott = (3 / 7) * 1e9  # ns to sec
+        assert stat.min_output_token_throughput == pytest.approx(min_ott)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
         assert stat.max_inter_token_latency == 3
-        assert stat.max_output_token_throughput == pytest.approx(5 / 9)
+        max_ott = (5 / 9) * 1e9  # ns to sec
+        assert stat.max_output_token_throughput == pytest.approx(max_ott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
         assert stat.std_inter_token_latency == np.std([2, 3, 2, 2])
-        assert stat.std_output_token_throughput == np.std([3 / 7, 5 / 9])
+        ott1 = (3 / 7) * 1e9
+        ott2 = (5 / 9) * 1e9
+        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
         assert stat.std_num_output_token == np.std([3, 5])
 
         # experiment 2 statistics
@@ -231,27 +240,33 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
-        assert stat.avg_output_token_throughput == pytest.approx(97 / 208)
+        avg_ott = (97 / 208) * 1e9  # ns to sec
+        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
         assert stat.avg_num_output_token == 4.5
 
         assert stat.p50_time_to_first_token == 2.5
         assert stat.p50_inter_token_latency == 2
-        assert stat.p50_output_token_throughput == pytest.approx(97 / 208)
+        p50_ott = (97 / 208) * 1e9  # ns to sec
+        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
         assert stat.p50_num_output_token == 4.5
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 1
-        assert stat.min_output_token_throughput == pytest.approx(4 / 13)
+        min_ott = (4 / 13) * 1e9  # ns to sec
+        assert stat.min_output_token_throughput == pytest.approx(min_ott)
         assert stat.min_num_output_token == 4
 
         assert stat.max_time_to_first_token == 3
         assert stat.max_inter_token_latency == 5
-        assert stat.max_output_token_throughput == pytest.approx(5 / 8)
+        max_ott = (5 / 8) * 1e9  # ns to sec
+        assert stat.max_output_token_throughput == pytest.approx(max_ott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 3])
         assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 2])
-        assert stat.std_output_token_throughput == np.std([4 / 13, 5 / 8])
+        ott1 = (4 / 13) * 1e9
+        ott2 = (5 / 8) * 1e9
+        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
         assert stat.std_num_output_token == np.std([4, 5])
 
         # check non-existing profile data
@@ -284,27 +299,33 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.4
-        assert stat.avg_output_token_throughput == pytest.approx(37 / 91)
+        avg_ott = (37 / 91) * 1e9  # ns to sec
+        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
         assert stat.p50_inter_token_latency == 2
-        assert stat.p50_output_token_throughput == pytest.approx(37 / 91)
+        p50_ott = (37 / 91) * 1e9  # ns to sec
+        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        assert stat.min_output_token_throughput == pytest.approx(5 / 13)
+        min_ott = (5 / 13) * 1e9
+        assert stat.min_output_token_throughput == pytest.approx(min_ott)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
         assert stat.max_inter_token_latency == 3
-        assert stat.max_output_token_throughput == pytest.approx(3 / 7)
+        max_ott = (3 / 7) * 1e9
+        assert stat.max_output_token_throughput == pytest.approx(max_ott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
         assert stat.std_inter_token_latency == np.std([2, 3, 3, 2, 2])
-        assert stat.std_output_token_throughput == np.std([3 / 7, 5 / 13])
+        ott1 = (3 / 7) * 1e9
+        ott2 = (5 / 13) * 1e9
+        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
         assert stat.std_num_output_token == np.std([3, 5])
 
         # check non-existing profile data
