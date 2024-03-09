@@ -51,6 +51,7 @@ class TestLLMProfileDataParser:
                         {
                             "timestamp": 1,
                             "response_timestamps": [3, 5, 8],
+                            # FIXME - remove the whitespace once PA handles it.
                             # LLMProfileDataParser preprocessse the responses
                             # from triton server and removes first few chars.
                             # Add whitespace to avoid valid chars being removed.
