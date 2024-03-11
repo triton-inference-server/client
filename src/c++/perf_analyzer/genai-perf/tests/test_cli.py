@@ -43,9 +43,13 @@ class TestCLIArguments:
             ),
         ],
     )
-    def test_help_arguments_output_and_exit(self, arg, expected_output, capsys):
+    def test_help_arguments_output_and_exit(
+        self, monkeypatch, arg, expected_output, capsys
+    ):
+        monkeypatch.setattr("sys.argv", ["genai-pa", "--help"])
+
         with pytest.raises(SystemExit) as excinfo:
-            _ = parser.parse_args(arg)
+            _ = parser.parse_args()
 
         # Check that the exit was successful
         assert excinfo.value.code == 0
@@ -70,9 +74,16 @@ class TestCLIArguments:
             (["--url", "test_url"], {"u": "test_url"}),
         ],
     )
-    def test_arguments_output(self, arg, expected_attributes, capsys):
-        combined_args = ["--model", "test_model", "--concurrency", "2"] + arg
-        args, _ = parser.parse_args(combined_args)
+    def test_arguments_output(self, monkeypatch, arg, expected_attributes, capsys):
+        combined_args = [
+            "genai-pa",
+            "--model",
+            "test_model",
+            "--concurrency",
+            "2",
+        ] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
 
         # Check that the attributes are set correctly
         for key, value in expected_attributes.items():
@@ -82,20 +93,34 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
-    def test_arguments_model_not_provided(self):
+    def test_arguments_model_not_provided(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", "genai-pa")
         with pytest.raises(SystemExit) as exc_info:
             _ = parser.parse_args()
 
         # Check that the exit was unsuccessful
         assert exc_info.value.code != 0
 
-    def test_exception_on_nonzero_exit(self):
+    def test_exception_on_nonzero_exit(self, monkeypatch):
+        monkeypatch.setattr(
+            "sys.argv", ["genai-pa", "-m", "nonexistent_model", "--concurrency", "3"]
+        )
         with pytest.raises(GenAIPerfException) as e:
-            run(["-m", "nonexistent_model", "--concurrency", "3"])
+            run()
 
-    def test_pass_through_args(self):
-        args = ["-m", "test_model", "--concurrency", "1"]
+    def test_pass_through_args(self, monkeypatch):
+        args = ["genai-pa", "-m", "test_model", "--concurrency", "1"]
         other_args = ["--", "With", "great", "power"]
-        _, pass_through_args = parser.parse_args(args + other_args)
+        monkeypatch.setattr("sys.argv", args + other_args)
+        _, pass_through_args = parser.parse_args()
 
         assert pass_through_args == other_args[1:]
+
+    def test_wrong_args(self, monkeypatch):
+        monkeypatch.setattr(
+            "sys.argv",
+            ["genai-pa", "-m", "nonexisten_model", "--concurrency", "2", "--wrong-arg"],
+        )
+        with pytest.raises(GenAiPAException) as e:
+            run(["genai-pa", "-m", "nonexistent_model", "--concurrency", "3"])
+            assert "unrecognized arguments: --wrong-arg" in e

@@ -94,7 +94,6 @@ def report_output(metrics: LLMProfileDataParser, args):
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
-# Optional argv used for testing - will default to sys.argv if None.
 def run(argv=None):
     try:
         args, extra_args = parser.parse_args(argv)
