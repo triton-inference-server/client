@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import io
 import math
 import pathlib
 import random
 from typing import List, Tuple
 
-from transformers import LlamaTokenizerFast
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from transformers import LlamaTokenizerFast
 
 
 class SyntheticPromptGenerator:
