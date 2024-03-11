@@ -56,15 +56,15 @@ def generate_inputs(args):
     # TODO: review if always true
     add_model_name = True
     LlmInputs.create_llm_inputs(
-        args.input_type,
-        args.output_format,
-        args.dataset,
-        args.model,
-        input_file_name,
-        LlmInputs.DEFAULT_STARTING_INDEX,
-        LlmInputs.DEFAULT_LENGTH,
-        add_model_name,
-        args.streaming,
+        input_type=args.input_type,
+        output_format=args.output_format,
+        dataset_name=args.dataset,
+        model_name=args.model,
+        input_filename=input_file_name,
+        starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
+        length=LlmInputs.DEFAULT_LENGTH,
+        add_model_name=add_model_name,
+        add_stream=args.streaming,
     )
 
 
