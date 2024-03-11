@@ -55,7 +55,10 @@ class Profiler:
             "input_type",
             "input_format",
             "output_format",
-            # The 'streaming' passed in to this script is to determine if the LLM response should be streaming. That is different than the 'streaming' that PA takes, which means something else (and is required for decoupled models into triton)
+            # The 'streaming' passed in to this script is to determine if the
+            # LLM response should be streaming. That is different than the
+            # 'streaming' that PA takes, which means something else (and is
+            # required for decoupled models into triton).
             "streaming",
         ]
 
