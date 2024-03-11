@@ -26,6 +26,7 @@
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 import genai_perf.utils as utils
@@ -249,8 +250,10 @@ def _add_dataset_args(parser):
 ### Entrypoint ###
 
 
-# Optional argv used for testing - will default to sys.argv if None.
 def parse_args(argv=None):
+    if argv is None:
+        argv = sys.argv
+
     parser = argparse.ArgumentParser(
         prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
@@ -263,15 +266,17 @@ def parse_args(argv=None):
     _add_endpoint_args(parser)
     _add_dataset_args(parser)
 
-    args, extra_args = parser.parse_known_args(argv)
-    if extra_args:
-        # strip off the "--" demarking the pass through arguments
-        extra_args = extra_args[1:]
-        logger.info(f"Additional pass through args: {extra_args}")
+    # Check for passthrough args
+    if "--" in argv:
+        passthrough_index = argv.index("--")
+        print("Detected passthrough args: ", argv[passthrough_index + 1 :])
+    else:
+        passthrough_index = len(argv)
 
+    args = parser.parse_args(argv[1:passthrough_index])
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "input_type", InputType)
     args = _convert_str_to_enum_entry(args, "output_format", OutputFormat)
     args = _prune_args(args)
 
-    return args, extra_args
+    return args, argv[passthrough_index + 1 :]
