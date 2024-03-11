@@ -1,22 +1,19 @@
-import subprocess
-import os
-import shutil
 import itertools
-
+import os
+import subprocess
 import sys
-    
 
 # Define the options for option1 and option2
 testing_matrix = [
     ["--concurrency 1", "--concurrency 32", "--request-rate 1", "--request-rate 32"],
-    ["--streaming", ""]
+    ["--streaming", ""],
 ]
 
 base_commands = {
     "nim_chat": "genai-pa -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999--output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
     "nim_completions": "genai-pa -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --output-format openai_completions --service-kind openai --endpoint v1/completions",
     "vllm_openai": "genai-pa -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
-    "triton_trtllm": "genai-pa -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --output-format trtllm"
+    "triton_trtllm": "genai-pa -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --output-format trtllm",
 }
 testname = ""
 
@@ -24,15 +21,16 @@ if len(sys.argv) == 2:
     # The second element in sys.argv is the input string
     testname = sys.argv[1]
 else:
-    options = ' '.join(base_commands.keys())
+    options = " ".join(base_commands.keys())
     print(f"This script requires exactly one argument. It must be one of {options}")
     exit(1)
 
 base_command = base_commands[testname]
 
+
 def rename_files(files: list, substr: str):
     for f in files:
-        name, ext = f.rsplit('.', 1)
+        name, ext = f.rsplit(".", 1)
         # Insert the substring and reassemble the filename
         new_filename = f"{testname}__{name}__{substr}.{ext}"
         try:
@@ -40,9 +38,11 @@ def rename_files(files: list, substr: str):
         except FileNotFoundError:
             pass
 
+
 def print_summary():
     # FIXME -- print out a few basic metrics. Maybe from the csv?
     pass
+
 
 def sanity_check():
     # FIXME -- add in some sanity checking? Throughput isn't 0?
@@ -51,29 +51,30 @@ def sanity_check():
 
 # Loop through all combinations
 for combination in itertools.product(*testing_matrix):
-
-    options_string = ' '.join(combination)
+    options_string = " ".join(combination)
     command_with_options = f"{base_command} {options_string}"
     command_array = command_with_options.split()
 
-    file_options_string = '__'.join(combination)
+    file_options_string = "__".join(combination)
     file_options_string = file_options_string.replace(" ", "")
     file_options_string = file_options_string.replace("-", "")
     output_file = testname + "__" + file_options_string + ".log"
 
-    with open(output_file, 'w') as outfile:
+    with open(output_file, "w") as outfile:
         print(f"\nCMD: {command_with_options}")
         print(f"  Output log is {output_file}")
         proc = subprocess.run(command_array, stdout=outfile, stderr=subprocess.STDOUT)
-        
+
         if proc.returncode != 0:
             print(f"  Command failed with return code: {proc.returncode}")
         else:
             print(f"  Command executed successfully!")
             print_summary()
             sanity_check()
-           
-        files = ["profile_export.json", "profile_export_genai_pa.csv", "llm_inputs.json"]
+
+        files = [
+            "profile_export.json",
+            "profile_export_genai_pa.csv",
+            "llm_inputs.json",
+        ]
         rename_files(files, file_options_string)
-
-
