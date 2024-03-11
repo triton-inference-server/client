@@ -74,7 +74,10 @@ class Profiler:
                 elif value is False:
                     pass
                 elif value is True:
-                    cmd += f"--{arg} "
+                    if len(arg) == 1:
+                        cmd += f"-{arg} "
+                    else:
+                        cmd += f"--{arg} "
                 elif arg == "batch_size":
                     cmd += f"-b {value} "
                 else:
