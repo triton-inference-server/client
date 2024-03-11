@@ -27,8 +27,8 @@
 import logging
 import subprocess
 
-import genai_pa.utils as utils
-from genai_pa.constants import LOGGER_NAME
+import genai_perf.utils as utils
+from genai_perf.constants import LOGGER_NAME
 
 logger = logging.getLogger(LOGGER_NAME)
 

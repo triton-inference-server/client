@@ -30,16 +30,16 @@ import io
 import logging
 import sys
 
-from genai_pa import parser
-from genai_pa.constants import LOGGER_NAME
-from genai_pa.exceptions import GenAiPAException
-from genai_pa.llm_inputs.llm_inputs import LlmInputs
+from genai_perf import parser
+from genai_perf.constants import LOGGER_NAME
+from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.llm_inputs import LlmInputs
 
 # Silence tokenizer warning on import
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from genai_pa.llm_metrics import LLMProfileDataParser
+    from genai_perf.llm_metrics import LLMProfileDataParser
     from transformers import AutoTokenizer as tokenizer
     from transformers import logging as token_logger
 
@@ -81,12 +81,12 @@ def report_output(metrics: LLMProfileDataParser, args):
         infer_mode = "request_rate"
         load_level = args.request_rate_range
     else:
-        raise GenAiPAException(
+        raise GenAIPerfException(
             "Neither concurrency_range nor request_rate_range was found in args when reporting metrics"
         )
     stats = metrics.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
-        args.profile_export_file.stem + "_genai_pa.csv"
+        args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
     stats.pretty_print()
@@ -103,7 +103,7 @@ def run(argv=None):
         metrics = calculate_metrics(args.profile_export_file, args.service_kind)
         report_output(metrics, args)
     except Exception as e:
-        raise GenAiPAException(e)
+        raise GenAIPerfException(e)
 
 
 def main():

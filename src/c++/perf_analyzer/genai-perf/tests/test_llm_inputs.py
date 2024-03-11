@@ -16,9 +16,9 @@ import json
 import os
 
 import pytest
-from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
-from genai_pa.exceptions import GenAiPAException
-from genai_pa.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
+from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 
 
 class TestLlmInputs:
@@ -38,7 +38,7 @@ class TestLlmInputs:
         """
         Test for exception when input type is URL and no dataset name
         """
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_dataset_name_if_input_type_is_url(
                 input_type=InputType.URL, dataset_name=""
             )
@@ -47,20 +47,20 @@ class TestLlmInputs:
         """
         Test for exceptions when illegal values are given for starting index
         """
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")
 
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_starting_index(starting_index=-1)
 
     def test_illegal_length(self):
         """
         Test for exceptions when illegal values are given for length
         """
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_length(length="foo")
 
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_length(length=0)
 
     def test_create_configured_url(self):
@@ -84,7 +84,7 @@ class TestLlmInputs:
         """
         Test for exception when URL is bad
         """
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs._download_dataset(
                 "https://bad-url.zzz",
                 LlmInputs.DEFAULT_STARTING_INDEX,
@@ -95,7 +95,7 @@ class TestLlmInputs:
         """
         Test for exception when length is out of range
         """
-        with pytest.raises(GenAiPAException):
+        with pytest.raises(GenAIPerfException):
             _ = LlmInputs.create_llm_inputs(
                 input_type=InputType.URL,
                 dataset_name=OPEN_ORCA,
