@@ -131,6 +131,7 @@ class SyntheticPromptGenerator:
 
     @classmethod
     def _get_tokenizer(cls) -> LlamaTokenizerFast:
+        # TODO: this should change to use the tokenizer from GPT2
         tokenizer = LlamaTokenizerFast.from_pretrained(
             "hf-internal-testing/llama-tokenizer"
         )
