@@ -29,6 +29,7 @@ import subprocess
 
 import genai_pa.utils as utils
 from genai_pa.constants import LOGGER_NAME
+from genai_pa.llm_inputs.llm_inputs import OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -39,7 +40,7 @@ class Profiler:
         cmd = ""
         if args.service_kind == "triton":
             cmd += f"-i grpc "
-            if args.output_format == "trtllm":
+            if args.output_format == OutputFormat.TRTLLM:
                 cmd += f"--shape max_tokens:1 --shape text_input:1 "
         elif args.service_kind == "openai":
             cmd += f"-i http "
