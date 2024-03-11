@@ -46,6 +46,7 @@ def rename_files(files: list, substr: str):
         try:
             os.rename(f, new_filename)
         except FileNotFoundError:
+            # Just ignore the error, since if PA failed these files may not exist
             pass
 
 
