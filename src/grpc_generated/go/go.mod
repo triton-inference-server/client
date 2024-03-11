@@ -3,7 +3,7 @@ module github.com/triton-inference-server/client/src/grpc_generated/go
 go 1.21
 
 require (
-	google.golang.org/grpc v1.51.0
+	google.golang.org/grpc v1.62.0
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
