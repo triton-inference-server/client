@@ -113,7 +113,9 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
+        dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+            dataset=dataset
+        )
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH
@@ -132,7 +134,9 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             length=(int(LlmInputs.DEFAULT_LENGTH / 2)),
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
+        dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+            dataset=dataset
+        )
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH / 2
@@ -146,7 +150,9 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_STARTING_INDEX,
             LlmInputs.DEFAULT_LENGTH,
         )
-        dataset_json = LlmInputs._convert_input_dataset_to_generic_json(dataset=dataset)
+        dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+            dataset=dataset
+        )
         pa_json = LlmInputs._convert_generic_json_to_output_format(
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             generic_dataset=dataset_json,
@@ -243,3 +249,93 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+
+    def test_random_synthetic(self):
+        """
+        Test that we can produce deterministic random synthetic prompts
+        """
+        synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+            LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+            LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+            LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
+            LlmInputs.DEFAULT_RANDOM_SEED,
+        )
+
+        # 785 is the num of tokens returned for the default seed
+        assert synthetic_prompt_tokens == 785
+
+        synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+            LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+            LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+            LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
+            LlmInputs.DEFAULT_RANDOM_SEED + 1,
+        )
+        assert synthetic_prompt_tokens != 785
+
+    def test_synthetic_to_vllm(self):
+        """
+        Test generating synthetic prompts and converting to vllm
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.SYNTHETIC,
+            output_format=OutputFormat.VLLM,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == 5
+
+    def test_synthetic_to_trtllm(self):
+        """
+        Test generating synthetic prompts and converting to trtllm
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == 5
+
+    def test_synthetic_to_openai_chat_completions(self):
+        """
+        Test generating synthetic prompts and converting to OpenAI chat completions
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.SYNTHETIC,
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == 5
+
+    def test_synthetic_to_openai_completions(self):
+        """
+        Test generating synthetic prompts and converting to OpenAI completions
+        """
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=InputType.SYNTHETIC,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+        )
+
+        os.remove(DEFAULT_INPUT_DATA_JSON)
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == 5

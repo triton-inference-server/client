@@ -142,6 +142,8 @@ def _add_profile_args(parser):
     profile_group.add_argument(
         "-p",
         "--measurement-interval",
+        type=int,
+        default="10000",
         required=False,
         help="Indicates the time interval used "
         "for each measurement in milliseconds. The perf analyzer will "
@@ -182,6 +184,8 @@ def _add_profile_args(parser):
     profile_group.add_argument(
         "-s",
         "--stability-percentage",
+        type=int,
+        default=999,
         required=False,
         help="Indicates the allowed variation in "
         "latency measurements when determining if a result is stable. The "
@@ -195,6 +199,10 @@ def _add_profile_args(parser):
         action="store_true",
         required=False,
         help=f"Enables the use of the streaming API.",
+    )
+
+    profile_group.add_argument(
+        "-v", action="store_true", required=False, help="Enables verbose mode."
     )
 
     profile_group.add_argument(
