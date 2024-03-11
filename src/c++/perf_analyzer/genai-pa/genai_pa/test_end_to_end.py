@@ -3,7 +3,17 @@ import os
 import subprocess
 import sys
 
-# Define the options for option1 and option2
+# How to run:
+#   test_end_to_end.py <target>
+#     Where target is "nim_chat" or "nim_completions" or "vllm_openai" or "triton_trtllm"
+#
+# For all cases but vllm_openai, it assumes that the server will be on port 9999
+#
+# This script will run a sweep of all combinations of values in the testing matrix
+# by appending those options on to the genai-pa base command
+#
+
+
 testing_matrix = [
     ["--concurrency 1", "--concurrency 32", "--request-rate 1", "--request-rate 32"],
     ["--streaming", ""],
