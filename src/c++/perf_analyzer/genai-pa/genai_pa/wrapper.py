@@ -39,7 +39,7 @@ class Profiler:
     def add_protocol_args(args):
         cmd = ""
         if args.service_kind == "triton":
-            cmd += f"-i grpc "
+            cmd += f"-i grpc --streaming "
             if args.output_format == OutputFormat.TRTLLM:
                 cmd += f"--shape max_tokens:1 --shape text_input:1 "
         elif args.service_kind == "openai":
@@ -55,10 +55,9 @@ class Profiler:
             "input_type",
             "input_format",
             "output_format",
+            # The 'streaming' passed in to this script is to determine if the LLM response should be streaming. That is different than the 'streaming' that PA takes, which means something else (and is required for decoupled models into triton)
+            "streaming",
         ]
-        # OpenAI service-kind sets streaming via the input file, not via the CLI
-        if args.service_kind == "openai":
-            skip_args.append("streaming")
 
         if hasattr(args, "version") and args.version:
             cmd = f"perf_analyzer --version"
