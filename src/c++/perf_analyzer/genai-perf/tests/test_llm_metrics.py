@@ -36,6 +36,11 @@ from genai_perf.utils import remove_file
 from transformers import AutoTokenizer
 
 
+def ns_to_sec(ns: int) -> int | float:
+    """Convert from nanosecond to second."""
+    return ns / 1e9
+
+
 class TestLLMProfileDataParser:
     @pytest.fixture
     def prepare_triton_profile_data(self) -> None:
@@ -188,9 +193,12 @@ class TestLLMProfileDataParser:
             - experiment 2: [(8 - 7)/1, (13 - 8)/1, (18 - 13)/1, (8 - 6)/1, (11 - 8)/2]
                           : [1, 5, 5, 2, 3/2]
                           : [1, 5, 5, 2, 2]
-        * output token throughputs
+        * request output token throughputs
             - experiment 1: [3/(8 - 1), 5/(11 - 2)] = [3/7, 5/9]
             - experiment 2: [4/(18 - 5), 5/(11 - 3)] = [4/13, 5/8]
+        * overall output token throughputs
+            - experiment 1: [(3 + 5)/(11 - 1)] = [8/10]
+            - experiment 2: [(4 + 5)/(18 - 3)] = [3/5]
         * num output tokens
             - experiment 1: [3, 5]
             - experiment 2: [4, 5]
@@ -207,68 +215,78 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
-        avg_ott = (31 / 63) * 1e9  # ns to sec
-        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
+        avg_rott = 31 / ns_to_sec(63)
+        assert stat.avg_request_output_token_throughput == pytest.approx(avg_rott)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
         assert stat.p50_inter_token_latency == 2
-        p50_ott = (31 / 63) * 1e9  # ns to sec
-        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
+        p50_rott = 31 / ns_to_sec(63)
+        assert stat.p50_request_output_token_throughput == pytest.approx(p50_rott)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        min_ott = (3 / 7) * 1e9  # ns to sec
-        assert stat.min_output_token_throughput == pytest.approx(min_ott)
+        min_rott = 3 / ns_to_sec(7)
+        assert stat.min_request_output_token_throughput == pytest.approx(min_rott)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
         assert stat.max_inter_token_latency == 3
-        max_ott = (5 / 9) * 1e9  # ns to sec
-        assert stat.max_output_token_throughput == pytest.approx(max_ott)
+        max_rott = 5 / ns_to_sec(9)
+        assert stat.max_request_output_token_throughput == pytest.approx(max_rott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
         assert stat.std_inter_token_latency == np.std([2, 3, 2, 2])
-        ott1 = (3 / 7) * 1e9
-        ott2 = (5 / 9) * 1e9
-        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
+        rott1 = 3 / ns_to_sec(7)
+        rott2 = 5 / ns_to_sec(9)
+        assert stat.std_request_output_token_throughput == pytest.approx(
+            np.std([rott1, rott2])
+        )
         assert stat.std_num_output_token == np.std([3, 5])
+
+        oott = 8 / ns_to_sec(10)
+        assert stat.avg_overall_output_token_throughput == pytest.approx(oott)
 
         # experiment 2 statistics
         stat = pd.get_statistics(infer_mode="request_rate", load_level="2.0")
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
-        avg_ott = (97 / 208) * 1e9  # ns to sec
-        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
+        avg_rott = 97 / ns_to_sec(208)
+        assert stat.avg_request_output_token_throughput == pytest.approx(avg_rott)
         assert stat.avg_num_output_token == 4.5
 
         assert stat.p50_time_to_first_token == 2.5
         assert stat.p50_inter_token_latency == 2
-        p50_ott = (97 / 208) * 1e9  # ns to sec
-        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
+        p50_rott = 97 / ns_to_sec(208)
+        assert stat.p50_request_output_token_throughput == pytest.approx(p50_rott)
         assert stat.p50_num_output_token == 4.5
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 1
-        min_ott = (4 / 13) * 1e9  # ns to sec
-        assert stat.min_output_token_throughput == pytest.approx(min_ott)
+        min_rott = 4 / ns_to_sec(13)
+        assert stat.min_request_output_token_throughput == pytest.approx(min_rott)
         assert stat.min_num_output_token == 4
 
         assert stat.max_time_to_first_token == 3
         assert stat.max_inter_token_latency == 5
-        max_ott = (5 / 8) * 1e9  # ns to sec
-        assert stat.max_output_token_throughput == pytest.approx(max_ott)
+        max_rott = 5 / ns_to_sec(8)
+        assert stat.max_request_output_token_throughput == pytest.approx(max_rott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 3])
         assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 2])
-        ott1 = (4 / 13) * 1e9
-        ott2 = (5 / 8) * 1e9
-        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
+        rott1 = 4 / ns_to_sec(13)
+        rott2 = 5 / ns_to_sec(8)
+        assert stat.std_request_output_token_throughput == pytest.approx(
+            np.std([rott1, rott2])
+        )
         assert stat.std_num_output_token == np.std([4, 5])
+
+        oott = 6 / ns_to_sec(10)
+        assert stat.avg_overall_output_token_throughput == pytest.approx(oott)
 
         # check non-existing profile data
         with pytest.raises(KeyError):
@@ -283,8 +301,10 @@ class TestLLMProfileDataParser:
         * inter token latencies
             - experiment 1: [(5 - 3)/1, (8 - 5)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
                           : [2, 3, 3, 2, 2]
-        * output token throughputs
+        * request output token throughputs
             - experiment 1: [3/(8 - 1), 5/(15 - 2)] = [3/7, 5/13]
+        * overall output token throughputs
+            - experiment 1: [(3 + 5)/(15 - 1)] = [4/7]
         * num output tokens
             - experiment 1: [3, 5]
         """
@@ -300,34 +320,39 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.4
-        avg_ott = (37 / 91) * 1e9  # ns to sec
-        assert stat.avg_output_token_throughput == pytest.approx(avg_ott)
+        avg_rott = 37 / ns_to_sec(91)
+        assert stat.avg_request_output_token_throughput == pytest.approx(avg_rott)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
         assert stat.p50_inter_token_latency == 2
-        p50_ott = (37 / 91) * 1e9  # ns to sec
-        assert stat.p50_output_token_throughput == pytest.approx(p50_ott)
+        p50_rott = 37 / ns_to_sec(91)
+        assert stat.p50_request_output_token_throughput == pytest.approx(p50_rott)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        min_ott = (5 / 13) * 1e9
-        assert stat.min_output_token_throughput == pytest.approx(min_ott)
+        min_rott = 5 / ns_to_sec(13)
+        assert stat.min_request_output_token_throughput == pytest.approx(min_rott)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
         assert stat.max_inter_token_latency == 3
-        max_ott = (3 / 7) * 1e9
-        assert stat.max_output_token_throughput == pytest.approx(max_ott)
+        max_rott = 3 / ns_to_sec(7)
+        assert stat.max_request_output_token_throughput == pytest.approx(max_rott)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
         assert stat.std_inter_token_latency == np.std([2, 3, 3, 2, 2])
-        ott1 = (3 / 7) * 1e9
-        ott2 = (5 / 13) * 1e9
-        assert stat.std_output_token_throughput == pytest.approx(np.std([ott1, ott2]))
+        rott1 = 3 / ns_to_sec(7)
+        rott2 = 5 / ns_to_sec(13)
+        assert stat.std_request_output_token_throughput == pytest.approx(
+            np.std([rott1, rott2])
+        )
         assert stat.std_num_output_token == np.std([3, 5])
+
+        oott = 4 / ns_to_sec(7)
+        assert stat.avg_overall_output_token_throughput == pytest.approx(oott)
 
         # check non-existing profile data
         with pytest.raises(KeyError):
@@ -340,14 +365,15 @@ class TestLLMProfileDataParser:
             request_latencies=[3, 44],
             time_to_first_tokens=[1, 2, 3],
             inter_token_latencies=[4, 5],
-            output_token_throughputs=[7, 8, 9],
+            overall_output_token_throughputs=[22.13, 9423.02],
+            request_output_token_throughputs=[7, 8, 9],
             num_output_tokens=[3, 4],
         )
         assert metrics.get_base_name("time_to_first_tokens") == "time_to_first_token"
         assert metrics.get_base_name("inter_token_latencies") == "inter_token_latency"
         assert (
-            metrics.get_base_name("output_token_throughputs")
-            == "output_token_throughput"
+            metrics.get_base_name("request_output_token_throughputs")
+            == "request_output_token_throughput"
         )
         assert metrics.get_base_name("num_output_tokens") == "num_output_token"
         with pytest.raises(KeyError):

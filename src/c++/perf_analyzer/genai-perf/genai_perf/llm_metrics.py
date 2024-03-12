@@ -51,7 +51,8 @@ class Metrics:
         "time_to_first_token",
         "inter_token_latency",
         "request_latency",
-        "output_token_throughput",
+        "overall_output_token_throughput",
+        "request_output_token_throughput",
         "request_throughput",
         "num_output_token",
     ]
@@ -64,7 +65,8 @@ class Metrics:
 
     throughput_fields = [
         "request_throughput",
-        "output_token_throughput",
+        "overall_output_token_throughput",
+        "request_output_token_throughput",
     ]
 
     def __init__(
@@ -101,19 +103,26 @@ class LLMMetrics(Metrics):
         request_latencies: list[int] = [],
         time_to_first_tokens: list[int] = [],
         inter_token_latencies: list[int] = [],
-        output_token_throughputs: list[int] = [],
+        overall_output_token_throughputs: list[float] = [],
+        request_output_token_throughputs: list[int] = [],
         num_output_tokens: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
         self.inter_token_latencies = inter_token_latencies
-        self.output_token_throughputs = output_token_throughputs
+        self.overall_output_token_throughputs = overall_output_token_throughputs
+        self.request_output_token_throughputs = request_output_token_throughputs
         self.num_output_tokens = num_output_tokens
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
-        self._base_names["output_token_throughputs"] = "output_token_throughput"
+        self._base_names[
+            "overall_output_token_throughputs"
+        ] = "overall_output_token_throughput"
+        self._base_names[
+            "request_output_token_throughputs"
+        ] = "request_output_token_throughput"
         self._base_names["num_output_tokens"] = "num_output_token"
 
 
@@ -376,7 +385,7 @@ class LLMProfileDataParser(ProfileDataParser):
         request_latencies = []
         time_to_first_tokens = []
         inter_token_latencies = []
-        output_token_throughputs = []
+        request_output_token_throughputs = []
         num_generated_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
@@ -397,11 +406,11 @@ class LLMProfileDataParser(ProfileDataParser):
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
-            # output token throughput
+            # request output token throughput
             output_tokens = self._tokenize_response_outputs(res_outputs)
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)
-            output_token_throughputs.append(total_output_tokens / req_latency)
+            request_output_token_throughputs.append(total_output_tokens / req_latency)
             num_generated_tokens.append(total_output_tokens)
 
             # inter token latency
@@ -413,16 +422,20 @@ class LLMProfileDataParser(ProfileDataParser):
                 num_token = 1 if n2 == 0 else n2
                 inter_token_latencies.append(round((t2 - t1) / num_token))
 
-        # request throughput
+        # request & overall output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
         request_throughputs = [len(requests) / benchmark_duration]
+        overall_output_token_throughputs = [
+            sum(num_generated_tokens) / benchmark_duration
+        ]
 
         return LLMMetrics(
             request_throughputs,
             request_latencies,
             time_to_first_tokens,
             inter_token_latencies,
-            output_token_throughputs,
+            overall_output_token_throughputs,
+            request_output_token_throughputs,
             num_generated_tokens,
         )
 
