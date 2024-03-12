@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-class GenAiPAException(Exception):
+class GenAIPerfException(Exception):
     """
-    A custom exception specific to the GenAI-PA
+    A custom exception specific to the genai-perf
     """
 
     pass

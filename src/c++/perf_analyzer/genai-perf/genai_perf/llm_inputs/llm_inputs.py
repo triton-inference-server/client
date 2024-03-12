@@ -19,9 +19,9 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
 import requests
-from genai_pa.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
-from genai_pa.exceptions import GenAiPAException
-from genai_pa.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
+from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from requests import Response
 
 
@@ -174,7 +174,7 @@ class LlmInputs:
             LlmInputs._check_for_valid_starting_index(starting_index)
             LlmInputs._check_for_valid_length(length)
         except Exception as e:
-            raise GenAiPAException(e)
+            raise GenAIPerfException(e)
 
     @classmethod
     def _get_input_dataset_from_url(
@@ -215,7 +215,7 @@ class LlmInputs:
         if dataset_name in LlmInputs.dataset_url_map:
             return LlmInputs.dataset_url_map[dataset_name]
         else:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 f"{dataset_name} does not have a corresponding URL in the dataset_url_map."
             )
 
@@ -239,7 +239,7 @@ class LlmInputs:
         try:
             LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
-            raise GenAiPAException(e)
+            raise GenAIPerfException(e)
 
         generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(
             dataset_json
@@ -311,7 +311,7 @@ class LlmInputs:
                 generic_dataset, add_model_name, add_stream, model_name
             )
         else:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 f"Output format {output_format} is not currently supported"
             )
 
@@ -774,29 +774,29 @@ class LlmInputs:
         cls, input_type: InputType, dataset_name: str
     ) -> None:
         if input_type == InputType.URL and not dataset_name:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 "Input type is URL, but dataset_name is not specified."
             )
 
     @classmethod
     def _check_for_valid_starting_index(cls, starting_index: int) -> None:
         if not isinstance(starting_index, int):
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 f"starting_index: {starting_index} must be an integer."
             )
 
         if starting_index < LlmInputs.MINIMUM_STARTING_INDEX:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 f"starting_index: {starting_index} must be larger than {LlmInputs.MINIMUM_STARTING_INDEX}."
             )
 
     @classmethod
     def _check_for_valid_length(cls, length: int) -> None:
         if not isinstance(length, int):
-            raise GenAiPAException(f"length: {length} must be an integer.")
+            raise GenAIPerfException(f"length: {length} must be an integer.")
 
         if length < LlmInputs.MINIMUM_LENGTH:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 f"starting_index: {length} must be larger than {LlmInputs.MINIMUM_LENGTH}."
             )
 
@@ -806,7 +806,7 @@ class LlmInputs:
             response = requests.get(configured_url)
         except Exception as e:
             error_message = LlmInputs._create_error_message(e)
-            raise GenAiPAException(error_message)
+            raise GenAIPerfException(error_message)
 
         return response
 
