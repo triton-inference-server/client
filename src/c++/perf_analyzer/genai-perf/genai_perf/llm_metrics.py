@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
-from genai_pa.utils import load_json, remove_sse_prefix
+from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 

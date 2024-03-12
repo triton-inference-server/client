@@ -28,15 +28,15 @@ import argparse
 import logging
 from pathlib import Path
 
-import genai_pa.utils as utils
-from genai_pa.constants import (
+import genai_perf.utils as utils
+from genai_perf.constants import (
     CNN_DAILY_MAIL,
     DEFAULT_HTTP_URL,
     DEFAULT_INPUT_DATA_JSON,
     LOGGER_NAME,
     OPEN_ORCA,
 )
-from genai_pa.llm_inputs.llm_inputs import InputType, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -50,7 +50,7 @@ def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
 
 def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
-    Update GenAI-PA load manager attributes to PA format
+    Update genai-perf load manager attributes to PA format
     """
     for attr_key in ["concurrency", "request_rate"]:
         attr_val = getattr(args, attr_key)
@@ -74,7 +74,7 @@ def _convert_str_to_enum_entry(args, option, enum):
 
 
 def handler(args, extra_args):
-    from genai_pa.wrapper import Profiler
+    from genai_perf.wrapper import Profiler
 
     Profiler.run(model=args.model, args=args, extra_args=extra_args)
 
@@ -158,9 +158,9 @@ def _add_profile_args(parser):
         default="profile_export.json",
         help="Specifies the path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
-        "The GenAi-PA file will be exported to <profile_export_file>_genai_pa.csv. "
-        "For example, if the profile export file is profile_export.json, the GenAi-PA file will be "
-        "exported to profile_export_genai_pa.csv.",
+        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
+        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
+        "exported to profile_export_genai_perf.csv.",
     )
 
     load_management_group.add_argument(
@@ -260,7 +260,7 @@ def _add_dataset_args(parser):
 # Optional argv used for testing - will default to sys.argv if None.
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
-        prog="genai-pa",
+        prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
     )
     parser.set_defaults(func=handler)
