@@ -250,9 +250,8 @@ def _add_dataset_args(parser):
 ### Entrypoint ###
 
 
-def parse_args(argv=None):
-    if argv is None:
-        argv = sys.argv
+def parse_args():
+    argv = sys.argv
 
     parser = argparse.ArgumentParser(
         prog="genai-perf",

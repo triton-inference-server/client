@@ -46,7 +46,7 @@ class TestCLIArguments:
     def test_help_arguments_output_and_exit(
         self, monkeypatch, arg, expected_output, capsys
     ):
-        monkeypatch.setattr("sys.argv", ["genai-pa", "--help"])
+        monkeypatch.setattr("sys.argv", ["genai-perf", "--help"])
 
         with pytest.raises(SystemExit) as excinfo:
             _ = parser.parse_args()
@@ -74,7 +74,7 @@ class TestCLIArguments:
     )
     def test_arguments_output(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = [
-            "genai-pa",
+            "genai-perf",
             "--model",
             "test_model",
             "--concurrency",
@@ -92,7 +92,7 @@ class TestCLIArguments:
         assert captured.out == ""
 
     def test_arguments_model_not_provided(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", "genai-pa")
+        monkeypatch.setattr("sys.argv", "genai-perf")
         with pytest.raises(SystemExit) as exc_info:
             _ = parser.parse_args()
 
@@ -101,24 +101,36 @@ class TestCLIArguments:
 
     def test_exception_on_nonzero_exit(self, monkeypatch):
         monkeypatch.setattr(
-            "sys.argv", ["genai-pa", "-m", "nonexistent_model", "--concurrency", "3"]
+            "sys.argv", ["genai-perf", "-m", "nonexistent_model", "--concurrency", "3"]
         )
         with pytest.raises(GenAIPerfException) as e:
             run()
 
     def test_pass_through_args(self, monkeypatch):
-        args = ["genai-pa", "-m", "test_model", "--concurrency", "1"]
+        args = ["genai-perf", "-m", "test_model", "--concurrency", "1"]
         other_args = ["--", "With", "great", "power"]
         monkeypatch.setattr("sys.argv", args + other_args)
         _, pass_through_args = parser.parse_args()
 
         assert pass_through_args == other_args[1:]
 
-    def test_wrong_args(self, monkeypatch):
+    def test_wrong_args(self, monkeypatch, capsys):
         monkeypatch.setattr(
             "sys.argv",
-            ["genai-pa", "-m", "nonexisten_model", "--concurrency", "2", "--wrong-arg"],
+            [
+                "genai-perf",
+                "-m",
+                "nonexistent_model",
+                "--concurrency",
+                "2",
+                "--wrong-arg",
+            ],
         )
-        with pytest.raises(GenAiPAException) as e:
-            run(["genai-pa", "-m", "nonexistent_model", "--concurrency", "3"])
-            assert "unrecognized arguments: --wrong-arg" in e
+        expected_output = "unrecognized arguments: --wrong-arg"
+
+        with pytest.raises(SystemExit) as excinfo:
+            run()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
