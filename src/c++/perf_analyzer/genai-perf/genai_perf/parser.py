@@ -276,7 +276,7 @@ def parse_args():
     # Check for passthrough args
     if "--" in argv:
         passthrough_index = argv.index("--")
-        print("Detected passthrough args: ", argv[passthrough_index + 1 :])
+        logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
     else:
         passthrough_index = len(argv)
 
