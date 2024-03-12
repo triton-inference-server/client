@@ -30,7 +30,6 @@ import contextlib
 import csv
 import io
 import json
-from dataclasses import dataclass
 from itertools import pairwise
 
 import numpy as np
