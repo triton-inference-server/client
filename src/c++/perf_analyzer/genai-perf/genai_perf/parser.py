@@ -224,7 +224,6 @@ def _add_endpoint_args(parser):
         "-u",
         "--url",
         type=str,
-        default=DEFAULT_HTTP_URL,
         required=False,
         dest="u",
         metavar="URL",
