@@ -31,8 +31,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from genai_pa.llm_metrics import LLMMetrics, LLMProfileDataParser
-from genai_pa.utils import remove_file
+from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
+from genai_perf.utils import remove_file
 from transformers import AutoTokenizer
 
 

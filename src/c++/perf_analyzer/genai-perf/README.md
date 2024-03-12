@@ -1,4 +1,4 @@
-# genai-pa
+# genai-perf
 
 ## Installation
 
@@ -12,14 +12,14 @@ pip install .
 
 ```bash
 # Explore the commands
-genai-pa -h
+genai-perf -h
 ```
 
 ## Examples
 
 ```
 # Profile an LLM with hard-coded inputs
-genai-pa -m my_llm_model
+genai-perf -m my_llm_model
 ```
 
 ## Test

@@ -27,9 +27,9 @@
 from pathlib import Path
 
 import pytest
-from genai_pa import parser
-from genai_pa.exceptions import GenAiPAException
-from genai_pa.main import run
+from genai_perf import parser
+from genai_perf.exceptions import GenAIPerfException
+from genai_perf.main import run
 
 
 class TestCLIArguments:
@@ -90,7 +90,7 @@ class TestCLIArguments:
         assert exc_info.value.code != 0
 
     def test_exception_on_nonzero_exit(self):
-        with pytest.raises(GenAiPAException) as e:
+        with pytest.raises(GenAIPerfException) as e:
             run(["-m", "nonexistent_model", "--concurrency", "3"])
 
     def test_pass_through_args(self):
