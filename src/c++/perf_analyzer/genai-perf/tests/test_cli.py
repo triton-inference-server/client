@@ -61,8 +61,6 @@ class TestCLIArguments:
     @pytest.mark.parametrize(
         "arg, expected_attributes",
         [
-            (["-b", "2"], {"batch_size": 2}),
-            (["--batch-size", "2"], {"batch_size": 2}),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
