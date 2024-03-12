@@ -36,7 +36,7 @@ from genai_perf.constants import (
     LOGGER_NAME,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat, LlmInputs
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -92,6 +92,22 @@ def _add_model_args(parser):
         default="url",
         required=False,
         help=f"The source of the input data.",
+    )
+
+    model_group.add_argument(
+        "--mean-input-tokens",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+        required=False,
+        help=f"The mean of number of tokens of synthetic input data.",
+    )
+
+    model_group.add_argument(
+        "--stddev-input-tokens",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of number of tokens of synthetic input data.",
     )
 
     model_group.add_argument(

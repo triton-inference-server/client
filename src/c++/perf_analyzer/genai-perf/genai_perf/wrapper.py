@@ -60,6 +60,8 @@ class Profiler:
             # 'streaming' that PA takes, which means something else (and is
             # required for decoupled models into triton).
             "streaming",
+            "mean_input_tokens",
+            "stddev_input_tokens"
         ]
 
         if hasattr(args, "version") and args.version:

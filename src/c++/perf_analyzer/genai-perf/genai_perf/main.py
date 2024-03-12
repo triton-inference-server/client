@@ -63,6 +63,8 @@ def generate_inputs(args):
         input_filename=input_file_name,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=LlmInputs.DEFAULT_LENGTH,
+        prompt_tokens_mean=args.mean_input_tokens,
+        prompt_tokens_stddev=args.stddev_input_tokens,
         add_model_name=add_model_name,
         add_stream=args.streaming,
     )
