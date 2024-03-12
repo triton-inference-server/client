@@ -360,6 +360,7 @@ class TestLLMProfileDataParser:
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
+        # initialize with dummy values
         metrics = LLMMetrics(
             request_throughputs=[10.12, 11.33],
             request_latencies=[3, 44],
