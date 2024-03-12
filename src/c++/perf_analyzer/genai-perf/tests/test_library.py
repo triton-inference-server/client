@@ -24,9 +24,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import genai_pa
+import genai_perf
 
 
 # Placeholder to add real tests in the future
 def test_version():
-    print(genai_pa.__version__)
+    print(genai_perf.__version__)
