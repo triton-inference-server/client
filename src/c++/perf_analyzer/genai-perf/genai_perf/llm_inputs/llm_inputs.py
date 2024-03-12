@@ -152,7 +152,7 @@ class LlmInputs:
                 LlmInputs._convert_input_synthetic_dataset_to_generic_json(dataset)
             )
         else:
-            raise GenAiPAException(
+            raise GenAIPerfException(
                 "Using a file to supply LLM Input is not supported at this time"
             )
 
@@ -822,7 +822,7 @@ class LlmInputs:
     @classmethod
     def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
         if "error" in json_of_dataset.keys():
-            raise GenAiPAException(json_of_dataset["error"])
+            raise GenAIPerfException(json_of_dataset["error"])
 
     @classmethod
     def _create_synthetic_prompt(
