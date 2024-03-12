@@ -116,14 +116,6 @@ def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
     load_management_group = profile_group.add_mutually_exclusive_group(required=True)
 
-    profile_group.add_argument(
-        "-b",
-        "--batch-size",
-        type=int,
-        default=1,
-        required=False,
-        help="The batch size to benchmark. The default value is 1.",
-    )
     load_management_group.add_argument(
         "--concurrency",
         type=int,
