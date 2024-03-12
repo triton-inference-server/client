@@ -93,20 +93,29 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
-    def test_arguments_model_not_provided(self, monkeypatch):
-        monkeypatch.setattr("sys.argv", "genai-perf")
-        with pytest.raises(SystemExit) as exc_info:
-            _ = parser.parse_args()
+    def test_arguments_model_not_provided(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "--concurrency", "2"])
+        expected_output = "the following arguments are required: -m/--model"
 
-        # Check that the exit was unsuccessful
-        assert exc_info.value.code != 0
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
 
-    def test_exception_on_nonzero_exit(self, monkeypatch):
-        monkeypatch.setattr(
-            "sys.argv", ["genai-perf", "-m", "nonexistent_model", "--concurrency", "3"]
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    def test_arguments_load_level_not_provided(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
+        expected_output = (
+            "one of the arguments --concurrency --request-rate is required"
         )
-        with pytest.raises(GenAIPerfException) as e:
-            run()
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
 
     def test_pass_through_args(self, monkeypatch):
         args = ["genai-perf", "-m", "test_model", "--concurrency", "1"]
@@ -116,7 +125,7 @@ class TestCLIArguments:
 
         assert pass_through_args == other_args[1:]
 
-    def test_wrong_args(self, monkeypatch, capsys):
+    def test_expected_errors(self, monkeypatch, capsys):
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -131,7 +140,7 @@ class TestCLIArguments:
         expected_output = "unrecognized arguments: --wrong-arg"
 
         with pytest.raises(SystemExit) as excinfo:
-            run()
+            parser.parse_args()
 
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
