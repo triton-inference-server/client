@@ -94,9 +94,9 @@ def report_output(metrics: LLMProfileDataParser, args):
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
-def run(argv=None):
+def run():
     try:
-        args, extra_args = parser.parse_args(argv)
+        args, extra_args = parser.parse_args()
         generate_inputs(args)
         args.func(args, extra_args)
         metrics = calculate_metrics(args.profile_export_file, args.service_kind)
