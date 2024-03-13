@@ -26,9 +26,11 @@
 
 from pathlib import Path
 
+import genai_perf.utils as utils
 import pytest
 from genai_perf import parser
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
 from genai_perf.main import run
 
 
@@ -61,25 +63,68 @@ class TestCLIArguments:
     @pytest.mark.parametrize(
         "arg, expected_attributes",
         [
+            (["--concurrency", "3"], {"concurrency_range": "3"}),
+            (
+                ["--input-type", "file"],
+                {"input_type": utils.get_enum_entry("file", InputType)},
+            ),
+            (
+                ["--input-type", "synthetic"],
+                {"input_type": utils.get_enum_entry("synthetic", InputType)},
+            ),
+            (
+                ["--input-type", "url"],
+                {"input_type": utils.get_enum_entry("url", InputType)},
+            ),
+            (["--measurement-interval", "100"], {"measurement_interval": 100}),
+            (["-p", "100"], {"measurement_interval": 100}),
+            (
+                ["--output-format", "openai_chat_completions"],
+                {
+                    "output_format": utils.get_enum_entry(
+                        "openai_chat_completions", OutputFormat
+                    )
+                },
+            ),
+            (
+                ["--output-format", "openai_completions"],
+                {
+                    "output_format": utils.get_enum_entry(
+                        "openai_completions", OutputFormat
+                    )
+                },
+            ),
+            (
+                ["--output-format", "trtllm"],
+                {"output_format": utils.get_enum_entry("trtllm", OutputFormat)},
+            ),
+            (
+                ["--output-format", "vllm"],
+                {"output_format": utils.get_enum_entry("vllm", OutputFormat)},
+            ),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
             ),
+            (["--request-rate", "4.0"], {"request_rate_range": "4.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (["--service-kind", "openai"], {"service_kind": "openai"}),
+            (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
+            (["-s", "99.5"], {"stability_percentage": 99.5}),
+            (["--streaming"], {"streaming": True}),
             (["--version"], {"version": True}),
-            (["-u", "test_url"], {"u": "test_url"}),
+            (["-v"], {"version": True}),
             (["--url", "test_url"], {"u": "test_url"}),
+            (["-u", "test_url"], {"u": "test_url"}),
+            # Test default values, split into own test later
+            (["--concurrency", "2"], {"version": False}),
+            (["--concurrency", "2"], {"streaming": False}),
         ],
     )
     def test_arguments_output(self, monkeypatch, arg, expected_attributes, capsys):
-        combined_args = [
-            "genai-perf",
-            "--model",
-            "test_model",
-            "--concurrency",
-            "2",
-        ] + arg
+        combined_args = ["genai-perf", "--model", "test_model"] + arg
+        if "--concurrency" != arg[0] and "--request-rate" != arg[0]:
+            combined_args.extend(["--concurrency", "2"])
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
