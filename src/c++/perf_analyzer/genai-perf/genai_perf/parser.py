@@ -32,12 +32,11 @@ from pathlib import Path
 import genai_perf.utils as utils
 from genai_perf.constants import (
     CNN_DAILY_MAIL,
-    DEFAULT_HTTP_URL,
     DEFAULT_INPUT_DATA_JSON,
     LOGGER_NAME,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
 
@@ -87,12 +86,39 @@ def _add_model_args(parser):
     model_group = parser.add_argument_group("Model")
 
     model_group.add_argument(
+        "--expected-output-tokens",
+        type=int,
+        default=LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
+        required=False,
+        help="The number of tokens to expect in the output. "
+        "This is used to determine the length of the prompt. "
+        "The prompt will be generated such that the output will "
+        "be approximately this many tokens.",
+    )
+
+    model_group.add_argument(
         "--input-type",
         type=str,
         choices=utils.get_enum_names(InputType),
-        default="url",
+        default="synthetic",
         required=False,
         help=f"The source of the input data.",
+    )
+
+    model_group.add_argument(
+        "--input-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+        required=False,
+        help=f"The mean of number of tokens of synthetic input data.",
+    )
+
+    model_group.add_argument(
+        "--input-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of number of tokens of synthetic input data.",
     )
 
     model_group.add_argument(
@@ -104,12 +130,28 @@ def _add_model_args(parser):
     )
 
     model_group.add_argument(
+        "--num-of-output-prompts",
+        type=int,
+        default=LlmInputs.DEFAULT_NUM_OF_OUTPUT_PROMPTS,
+        required=False,
+        help="The number of synthetic output prompts to generate",
+    )
+
+    model_group.add_argument(
         "--output-format",
         type=str,
         choices=utils.get_enum_names(OutputFormat),
         default="trtllm",
         required=False,
         help=f"The format of the data sent to triton.",
+    )
+
+    model_group.add_argument(
+        "--random-seed",
+        type=int,
+        default=LlmInputs.DEFAULT_RANDOM_SEED,
+        required=False,
+        help="Seed used to generate random values",
     )
 
 
