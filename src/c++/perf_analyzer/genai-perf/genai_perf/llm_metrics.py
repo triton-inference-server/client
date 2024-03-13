@@ -417,7 +417,7 @@ class LLMProfileDataParser(ProfileDataParser):
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
-            # request output token throughput
+            # output token throughput per request
             output_tokens = self._tokenize_response_outputs(res_outputs)
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)

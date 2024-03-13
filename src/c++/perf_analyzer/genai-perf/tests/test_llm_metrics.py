@@ -193,7 +193,7 @@ class TestLLMProfileDataParser:
             - experiment 2: [(8 - 7)/1, (13 - 8)/1, (18 - 13)/1, (8 - 6)/1, (11 - 8)/2]
                           : [1, 5, 5, 2, 3/2]
                           : [1, 5, 5, 2, 2]
-        * request output token throughputs
+        * output token throughputs per request
             - experiment 1: [3/(8 - 1), 5/(11 - 2)] = [3/7, 5/9]
             - experiment 2: [4/(18 - 5), 5/(11 - 3)] = [4/13, 5/8]
         * output token throughputs
@@ -301,7 +301,7 @@ class TestLLMProfileDataParser:
         * inter token latencies
             - experiment 1: [(5 - 3)/1, (8 - 5)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
                           : [2, 3, 3, 2, 2]
-        * request output token throughputs
+        * output token throughputs per request
             - experiment 1: [3/(8 - 1), 5/(15 - 2)] = [3/7, 5/13]
         * output token throughputs
             - experiment 1: [(3 + 5)/(15 - 1)] = [4/7]
