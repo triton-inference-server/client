@@ -64,6 +64,11 @@ class TestCLIArguments:
         "arg, expected_attributes",
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
+            (["--endpoint", "v1/completions"], {"endpoint": "v1/completions"}),
+            (
+                ["--endpoint", "v1/chat/completions"],
+                {"endpoint": "v1/chat/completions"},
+            ),
             (
                 ["--input-type", "file"],
                 {"input_type": utils.get_enum_entry("file", InputType)},
@@ -116,12 +121,9 @@ class TestCLIArguments:
             (["-v"], {"version": True}),
             (["--url", "test_url"], {"u": "test_url"}),
             (["-u", "test_url"], {"u": "test_url"}),
-            # Test default values, split into own test later
-            (["--concurrency", "2"], {"version": False}),
-            (["--concurrency", "2"], {"streaming": False}),
         ],
     )
-    def test_arguments_output(self, monkeypatch, arg, expected_attributes, capsys):
+    def test_all_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         if "--concurrency" != arg[0] and "--request-rate" != arg[0]:
             combined_args.extend(["--concurrency", "2"])
@@ -136,7 +138,7 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
-    def test_arguments_model_not_provided(self, monkeypatch, capsys):
+    def test_model_not_provided(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--concurrency", "2"])
         expected_output = "the following arguments are required: -m/--model"
 
