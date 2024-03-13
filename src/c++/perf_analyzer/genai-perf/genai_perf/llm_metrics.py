@@ -209,11 +209,14 @@ class Statistics:
                 singular_metric_rows.append(formatted_metric)
                 continue
 
+            # TODO (TMA-1712): need to decide if we need this metric. Remove
+            # from statistics display for now.
             # TODO (TMA-1678): output_token_throughput_per_request is treated
             # separately since the current code treats all throughput metrics to
             # be displayed outside of the statistics table.
             if metric == "output_token_throughput_per_request":
                 formatted_metric += f" (per sec)"
+                continue
 
             is_time_field = self._is_time_field(metric)
             if is_time_field:
@@ -281,11 +284,14 @@ class Statistics:
                     formatted_metric += "(ns)"
                 elif is_throughput_field:
                     formatted_metric += "(per sec)"
+                # TODO (TMA-1712): need to decide if we need this metric. Do not
+                # include in the csv for now.
                 # TODO (TMA-1678): output_token_throughput_per_request is treated
                 # separately since the current code treats all throughput metrics
                 # to be displayed outside of the statistics table.
                 elif metric == "output_token_throughput_per_request":
                     formatted_metric += "(per sec)"
+                    continue
 
                 row_values = [formatted_metric]
 
