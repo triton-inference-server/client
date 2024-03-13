@@ -63,10 +63,12 @@ class Metrics:
         "request_latency",
     ]
 
+    # TODO (TMA-1678): output_token_throughput_per_request is not on this list
+    # since the current code treats all the throughput metrics to be displayed
+    # outside of the statistics table.
     throughput_fields = [
         "request_throughput",
         "output_token_throughput",
-        "output_token_throughput_per_request",
     ]
 
     def __init__(
@@ -207,6 +209,12 @@ class Statistics:
                 singular_metric_rows.append(formatted_metric)
                 continue
 
+            # TODO (TMA-1678): output_token_throughput_per_request is treated
+            # separately since the current code treats all throughput metrics to
+            # be displayed outside of the statistics table.
+            if metric == "output_token_throughput_per_request":
+                formatted_metric += f" (per sec)"
+
             is_time_field = self._is_time_field(metric)
             if is_time_field:
                 formatted_metric += " (ns)"
@@ -272,6 +280,11 @@ class Statistics:
                 if is_time_field:
                     formatted_metric += "(ns)"
                 elif is_throughput_field:
+                    formatted_metric += "(per sec)"
+                # TODO (TMA-1678): output_token_throughput_per_request is treated
+                # separately since the current code treats all throughput metrics
+                # to be displayed outside of the statistics table.
+                elif metric == "output_token_throughput_per_request":
                     formatted_metric += "(per sec)"
 
                 row_values = [formatted_metric]
