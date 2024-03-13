@@ -177,7 +177,7 @@ def _add_profile_args(parser):
     profile_group.add_argument(
         "-s",
         "--stability-percentage",
-        type=int,
+        type=float,
         default=999,
         required=False,
         help="Indicates the allowed variation in "
@@ -195,10 +195,7 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "-v", action="store_true", required=False, help="Enables verbose mode."
-    )
-
-    profile_group.add_argument(
+        "-v",
         "--version",
         action="store_true",
         required=False,
