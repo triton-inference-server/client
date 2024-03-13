@@ -51,7 +51,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 def generate_inputs(args):
-    # TODO: remove once fale support is in
+    # TODO: remove once file support is implemented
     input_file_name = ""
     # TODO: review if always true
     add_model_name = True
