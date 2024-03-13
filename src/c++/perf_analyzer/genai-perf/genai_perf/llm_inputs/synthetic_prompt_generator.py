@@ -25,6 +25,9 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
 ) as stderr:
     from transformers import LlamaTokenizerFast
 
+# TODO TMA-1718: This should be passed in (and should not be in bare code)
+tokenizer = LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
+
 
 class SyntheticPromptGenerator:
     @classmethod
@@ -137,9 +140,4 @@ class SyntheticPromptGenerator:
 
     @classmethod
     def _get_tokenizer(cls) -> LlamaTokenizerFast:
-        # TODO: this should change to use the tokenizer from GPT2
-        tokenizer = LlamaTokenizerFast.from_pretrained(
-            "hf-internal-testing/llama-tokenizer"
-        )
-
         return tokenizer
