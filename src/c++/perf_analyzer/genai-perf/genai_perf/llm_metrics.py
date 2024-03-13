@@ -52,6 +52,7 @@ class Metrics:
         "inter_token_latency",
         "request_latency",
         "output_token_throughput",
+        "output_token_throughput_per_request",
         "request_throughput",
         "num_output_token",
     ]
@@ -62,6 +63,9 @@ class Metrics:
         "request_latency",
     ]
 
+    # TODO (TMA-1678): output_token_throughput_per_request is not on this list
+    # since the current code treats all the throughput metrics to be displayed
+    # outside of the statistics table.
     throughput_fields = [
         "request_throughput",
         "output_token_throughput",
@@ -101,19 +105,24 @@ class LLMMetrics(Metrics):
         request_latencies: list[int] = [],
         time_to_first_tokens: list[int] = [],
         inter_token_latencies: list[int] = [],
-        output_token_throughputs: list[int] = [],
+        output_token_throughputs: list[float] = [],
+        output_token_throughputs_per_request: list[int] = [],
         num_output_tokens: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
+        self.output_token_throughputs_per_request = output_token_throughputs_per_request
         self.num_output_tokens = num_output_tokens
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
         self._base_names["output_token_throughputs"] = "output_token_throughput"
+        self._base_names[
+            "output_token_throughputs_per_request"
+        ] = "output_token_throughput_per_request"
         self._base_names["num_output_tokens"] = "num_output_token"
 
 
@@ -200,6 +209,15 @@ class Statistics:
                 singular_metric_rows.append(formatted_metric)
                 continue
 
+            # TODO (TMA-1712): need to decide if we need this metric. Remove
+            # from statistics display for now.
+            # TODO (TMA-1678): output_token_throughput_per_request is treated
+            # separately since the current code treats all throughput metrics to
+            # be displayed outside of the statistics table.
+            if metric == "output_token_throughput_per_request":
+                formatted_metric += f" (per sec)"
+                continue
+
             is_time_field = self._is_time_field(metric)
             if is_time_field:
                 formatted_metric += " (ns)"
@@ -266,6 +284,14 @@ class Statistics:
                     formatted_metric += "(ns)"
                 elif is_throughput_field:
                     formatted_metric += "(per sec)"
+                # TODO (TMA-1712): need to decide if we need this metric. Do not
+                # include in the csv for now.
+                # TODO (TMA-1678): output_token_throughput_per_request is treated
+                # separately since the current code treats all throughput metrics
+                # to be displayed outside of the statistics table.
+                elif metric == "output_token_throughput_per_request":
+                    formatted_metric += "(per sec)"
+                    continue
 
                 row_values = [formatted_metric]
 
@@ -376,7 +402,7 @@ class LLMProfileDataParser(ProfileDataParser):
         request_latencies = []
         time_to_first_tokens = []
         inter_token_latencies = []
-        output_token_throughputs = []
+        output_token_throughputs_per_request = []
         num_generated_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
@@ -397,11 +423,13 @@ class LLMProfileDataParser(ProfileDataParser):
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
-            # output token throughput
+            # output token throughput per request
             output_tokens = self._tokenize_response_outputs(res_outputs)
             num_output_tokens = list(map(len, output_tokens))
             total_output_tokens = np.sum(num_output_tokens)
-            output_token_throughputs.append(total_output_tokens / req_latency)
+            output_token_throughputs_per_request.append(
+                total_output_tokens / req_latency
+            )
             num_generated_tokens.append(total_output_tokens)
 
             # inter token latency
@@ -413,9 +441,10 @@ class LLMProfileDataParser(ProfileDataParser):
                 num_token = 1 if n2 == 0 else n2
                 inter_token_latencies.append(round((t2 - t1) / num_token))
 
-        # request throughput
+        # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
         request_throughputs = [len(requests) / benchmark_duration]
+        output_token_throughputs = [sum(num_generated_tokens) / benchmark_duration]
 
         return LLMMetrics(
             request_throughputs,
@@ -423,6 +452,7 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens,
             inter_token_latencies,
             output_token_throughputs,
+            output_token_throughputs_per_request,
             num_generated_tokens,
         )
 
