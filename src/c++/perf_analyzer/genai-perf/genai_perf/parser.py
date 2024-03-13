@@ -213,7 +213,8 @@ def _add_profile_args(parser):
         required=False,
         help="Describes the kind of service perf_analyzer will "
         'generate load for. The options are "triton" and '
-        '"openai". The default value is "triton".',
+        '"openai". Note in order to use "openai" you must specify '
+        'an endpoint via --endpoint. The default value is "triton".',
     )
 
     profile_group.add_argument(
@@ -249,7 +250,13 @@ def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
 
     endpoint_group.add_argument(
-        "--endpoint", type=str, required=False, help="Specify an endpoint."
+        "--endpoint",
+        type=str,
+        choices=["v1/completions", "v1/chat/completions"],
+        required=False,
+        help="Describes what endpoint to send requests to on the "
+        'server. This is required when using "openai" service-kind. '
+        "This is ignored in other cases.",
     )
 
     endpoint_group.add_argument(
