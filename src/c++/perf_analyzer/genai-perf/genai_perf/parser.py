@@ -239,6 +239,13 @@ def _add_profile_args(parser):
 
     profile_group.add_argument(
         "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Enables verbose mode.",
+    )
+
+    profile_group.add_argument(
         "--version",
         action="store_true",
         required=False,
