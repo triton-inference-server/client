@@ -17,13 +17,18 @@ import sys
 testing_matrix = [
     ["--concurrency 1", "--concurrency 32", "--request-rate 1", "--request-rate 32"],
     ["--streaming", ""],
+    [
+        "--input-type url",
+        "--input-type synthetic --input-tokens-mean 200 --input-tokens-stddev 20",
+    ],
 ]
 
 base_commands = {
-    "nim_chat": "genai-pa -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999--output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
-    "nim_completions": "genai-pa -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --output-format openai_completions --service-kind openai --endpoint v1/completions",
-    "vllm_openai": "genai-pa -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
-    "triton_trtllm": "genai-pa -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --output-format trtllm",
+    "nim_chat": "genai-perf -v -s 999 -p 10000 -m llama-2-7b-chat -u http://localhost:9999 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
+    "nim_completions": "genai-perf -v -s 999 -p 10000 -m llama-2-7b -u http://localhost:9999 --output-format openai_completions --service-kind openai --endpoint v1/completions",
+    "vllm_openai": "genai-perf -v -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
+    "triton_trtllm": "genai-perf -v -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --output-format trtllm",
+    "triton_vllm": "genai-perf -v -s 999 -p 20000 -m gpt2_vllm --service-kind triton --output-format vllm",
 }
 testname = ""
 
@@ -42,7 +47,7 @@ def rename_files(files: list, substr: str):
     for f in files:
         name, ext = f.rsplit(".", 1)
         # Insert the substring and reassemble the filename
-        new_filename = f"{testname}__{name}__{substr}.{ext}"
+        new_filename = f"{testname}__{substr}__{name}.{ext}"
         try:
             os.rename(f, new_filename)
         except FileNotFoundError:
@@ -66,7 +71,7 @@ for combination in itertools.product(*testing_matrix):
     command_with_options = f"{base_command} {options_string}"
     command_array = command_with_options.split()
 
-    file_options_string = "__".join(combination)
+    file_options_string = "_".join(combination)
     file_options_string = file_options_string.replace(" ", "")
     file_options_string = file_options_string.replace("-", "")
     output_file = testname + "__" + file_options_string + ".log"
@@ -85,7 +90,7 @@ for combination in itertools.product(*testing_matrix):
 
         files = [
             "profile_export.json",
-            "profile_export_genai_pa.csv",
+            "profile_export_genai_perf.csv",
             "llm_inputs.json",
         ]
         rename_files(files, file_options_string)
