@@ -125,7 +125,6 @@ class TestCLIArguments:
             (["--verbose"], {"verbose": True}),
             (["-v"], {"verbose": True}),
             (["--version"], {"version": True}),
-            (["-v"], {"verbose": True}),
             (["--url", "test_url"], {"u": "test_url"}),
             (["-u", "test_url"], {"u": "test_url"}),
         ],
