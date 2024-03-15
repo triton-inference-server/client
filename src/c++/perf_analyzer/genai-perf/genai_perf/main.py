@@ -85,9 +85,6 @@ def report_output(metrics: LLMProfileDataParser, args):
     elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
-    else:
-        infer_mode = "concurrency"
-        load_level = "1"
     stats = metrics.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
         args.profile_export_file.stem + "_genai_perf.csv"
