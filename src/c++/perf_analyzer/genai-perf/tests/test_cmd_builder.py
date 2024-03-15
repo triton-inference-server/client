@@ -63,11 +63,12 @@ class TestCmdBuilder:
         args, extra_args = parser.parse_args()
         cmd_string = Profiler.build_cmd(args, extra_args)
 
+        # Ensure the correct arguments are appended.
         assert cmd_string.count(" -i grpc") == 1
         assert cmd_string.count(" --streaming") == 1
         assert cmd_string.count(f"-u {DEFAULT_GRPC_URL}") == 1
 
-        if arg == "trtllm":
+        if arg[1] == "trtllm":
             assert cmd_string.count("--shape max_tokens:1") == 1
             assert cmd_string.count("--shape text_input:1") == 1
 
@@ -85,4 +86,5 @@ class TestCmdBuilder:
         args, extra_args = parser.parse_args()
         cmd_string = Profiler.build_cmd(args, extra_args)
 
+        # Ensure the correct arguments are appended.
         assert cmd_string.count(" -i http") == 1
