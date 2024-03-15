@@ -118,7 +118,10 @@ class TestCLIArguments:
             (["--random-seed", "8"], {"random_seed": 8}),
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
-            (["--service-kind", "openai"], {"service_kind": "openai"}),
+            (
+                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                {"service_kind": "openai", "endpoint": "v1/chat/completions"},
+            ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
             (["-s", "99.5"], {"stability_percentage": 99.5}),
             (["--streaming"], {"streaming": True}),
@@ -194,6 +197,20 @@ class TestCLIArguments:
             ],
         )
         expected_output = "unrecognized arguments: --wrong-arg"
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    def test_service_openai_no_endpoint(self, monkeypatch, capsys):
+        args = ["genai-perf", "-m", "test_model", "--service-kind", "openai"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = (
+            "The --endpoint option is required when using the 'openai' service-kind."
+        )
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
