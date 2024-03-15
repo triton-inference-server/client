@@ -131,8 +131,6 @@ class TestCLIArguments:
     )
     def test_all_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = ["genai-perf", "--model", "test_model"] + arg
-        if "--concurrency" != arg[0] and "--request-rate" != arg[0]:
-            combined_args.extend(["--concurrency", "2"])
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -144,21 +142,19 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
-    def test_model_not_provided(self, monkeypatch, capsys):
-        monkeypatch.setattr("sys.argv", ["genai-perf", "--concurrency", "2"])
-        expected_output = "the following arguments are required: -m/--model"
-
-        with pytest.raises(SystemExit) as excinfo:
-            parser.parse_args()
-
-        assert excinfo.value.code != 0
-        captured = capsys.readouterr()
-        assert expected_output in captured.err
-
-    def test_arguments_load_level_not_provided(self, monkeypatch, capsys):
+    def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
+        args, extra_args = parser.parse_args()
+        assert getattr(args, "concurrency_range") == "1"
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_load_level_mutually_exclusive(self, monkeypatch, capsys):
+        monkeypatch.setattr(
+            "sys.argv", ["genai-perf", "--concurrency", "3", "--request-rate", "9.0"]
+        )
         expected_output = (
-            "one of the arguments --concurrency --request-rate is required"
+            "argument --request-rate: not allowed with argument --concurrency"
         )
 
         with pytest.raises(SystemExit) as excinfo:
@@ -168,23 +164,32 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert expected_output in captured.err
 
+    def test_model_not_provided(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.argv", ["genai-perf"])
+        expected_output = "the following arguments are required: -m/--model"
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
     def test_pass_through_args(self, monkeypatch):
-        args = ["genai-perf", "-m", "test_model", "--concurrency", "1"]
+        args = ["genai-perf", "-m", "test_model"]
         other_args = ["--", "With", "great", "power"]
         monkeypatch.setattr("sys.argv", args + other_args)
         _, pass_through_args = parser.parse_args()
 
         assert pass_through_args == other_args[1:]
 
-    def test_expected_errors(self, monkeypatch, capsys):
+    def test_unrecognized_arg(self, monkeypatch, capsys):
         monkeypatch.setattr(
             "sys.argv",
             [
                 "genai-perf",
                 "-m",
                 "nonexistent_model",
-                "--concurrency",
-                "2",
                 "--wrong-arg",
             ],
         )
