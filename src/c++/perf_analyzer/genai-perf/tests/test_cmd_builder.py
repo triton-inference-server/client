@@ -24,9 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pathlib import Path
-
-import genai_perf.utils as utils
 import pytest
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_GRPC_URL
