@@ -49,13 +49,13 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def build_cmd(model, args, extra_args):
+    def build_cmd(args, extra_args):
         skip_args = [
-            "model",
             "func",
             "dataset",
             "input_type",
             "input_format",
+            "model",
             "output_format",
             # The 'streaming' passed in to this script is to determine if the
             # LLM response should be streaming. That is different than the
@@ -74,7 +74,7 @@ class Profiler:
         else:
             utils.remove_file(args.profile_export_file)
 
-            cmd = f"perf_analyzer -m {model} --async "
+            cmd = f"perf_analyzer -m {args.model} --async "
             for arg, value in vars(args).items():
                 if arg in skip_args:
                     pass
@@ -85,8 +85,6 @@ class Profiler:
                         cmd += f"-{arg} "
                     else:
                         cmd += f"--{arg} "
-                elif arg == "batch_size":
-                    cmd += f"-b {value} "
                 else:
                     if len(arg) == 1:
                         cmd += f"-{arg} {value} "
@@ -102,7 +100,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def run(model, args=None, extra_args=None):
-        cmd = Profiler.build_cmd(model, args, extra_args)
+    def run(args=None, extra_args=None):
+        cmd = Profiler.build_cmd(args, extra_args)
         logger.info(f"Running Perf Analyzer : '{cmd}'")
         subprocess.run(cmd, shell=True, check=True)
