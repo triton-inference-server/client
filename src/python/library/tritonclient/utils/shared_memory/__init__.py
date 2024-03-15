@@ -326,6 +326,7 @@ class SharedMemoryException(Exception):
             -4: "unable to read/mmap the shared memory region",
             -5: "unable to unlink the shared memory region",
             -6: "unable to munmap the shared memory region",
+            -7: "unable to create file mapping",
         }
         self._msg = None
         if type(err) == str:

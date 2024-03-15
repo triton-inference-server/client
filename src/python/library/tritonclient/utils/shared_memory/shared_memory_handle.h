@@ -30,6 +30,21 @@
 #include <cuda_runtime_api.h>
 #endif  // TRITON_ENABLE_GPU
 
+#ifdef _WIN32
+#include <windows.h>
+struct SharedMemoryHandle {
+  std::string triton_shm_name_;
+  std::string shm_key_;
+#ifdef TRITON_ENABLE_GPU
+  cudaIpcMemHandle_t cuda_shm_handle_;
+  int device_id_;
+#endif  // TRITON_ENABLE_GPU
+  void* base_addr_;
+  HANDLE shm_handle_;
+  size_t offset_;
+  size_t byte_size_;
+};
+#else
 struct SharedMemoryHandle {
   std::string triton_shm_name_;
   std::string shm_key_;
@@ -42,3 +57,4 @@ struct SharedMemoryHandle {
   size_t offset_;
   size_t byte_size_;
 };
+#endif
