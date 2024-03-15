@@ -41,6 +41,23 @@ from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 logger = logging.getLogger(LOGGER_NAME)
 
 
+def _check_conditional_args(
+    parser: argparse.ArgumentParser, args: argparse.ArgumentParser
+) -> None:
+    """
+    Check for conditional args and raise an error if they are not set.
+    """
+    if args.service_kind == "openai":
+        if args.endpoint is None:
+            parser.error(
+                "The --endpoint option is required when using the 'openai' service-kind."
+            )
+    elif args.endpoint is not None:
+        logger.warning(
+            "The --endpoint option is ignored when not using the 'openai' service-kind."
+        )
+
+
 def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """
     Prune the parsed arguments to remove args with None.
@@ -80,7 +97,7 @@ def _convert_str_to_enum_entry(args, option, enum):
 def handler(args, extra_args):
     from genai_perf.wrapper import Profiler
 
-    Profiler.run(model=args.model, args=args, extra_args=extra_args)
+    Profiler.run(args=args, extra_args=extra_args)
 
 
 ### Parsers ###
@@ -329,6 +346,7 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "input_type", InputType)
     args = _convert_str_to_enum_entry(args, "output_format", OutputFormat)
