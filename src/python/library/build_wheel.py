@@ -28,6 +28,7 @@
 import argparse
 import os
 import pathlib
+import platform
 import re
 import shutil
 import subprocess
@@ -84,6 +85,12 @@ if __name__ == "__main__":
         help="Include linux specific artifacts.",
     )
     parser.add_argument(
+        "--windows",
+        action="store_true",
+        required=False,
+        help="Include windows specific artifacts.",
+    )
+    parser.add_argument(
         "--perf-analyzer",
         type=str,
         required=False,
@@ -118,7 +125,7 @@ if __name__ == "__main__":
         cpdir("tritonhttpclient", os.path.join(FLAGS.whl_dir, "tritonhttpclient"))
     if os.path.isdir("tritongrpcclient"):
         cpdir("tritongrpcclient", os.path.join(FLAGS.whl_dir, "tritongrpcclient"))
-    if FLAGS.linux:
+    if FLAGS.linux or FLAGS.windows:
         if os.path.isdir("tritonshmutils"):
             cpdir("tritonshmutils", os.path.join(FLAGS.whl_dir, "tritonshmutils"))
 
@@ -194,6 +201,21 @@ if __name__ == "__main__":
             if not os.path.exists(os.path.join(FLAGS.whl_dir, "perf_client")):
                 os.symlink("perf_analyzer", os.path.join(FLAGS.whl_dir, "perf_client"))
 
+    if FLAGS.windows:
+        cpdir(
+            "tritonclient/utils/shared_memory",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
+        )
+        shutil.copyfile(
+            "tritonclient/utils/Release/cshm.dll",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/cshm.dll"),
+        )
+        # FIXME: Enable when Windows supports GPU tensors
+        # cpdir(
+        #     "tritonclient/utils/cuda_shared_memory",
+        #     os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+        # )
+
     shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
     shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))
     cpdir("requirements", os.path.join(FLAGS.whl_dir, "requirements"))
@@ -207,6 +229,9 @@ if __name__ == "__main__":
             platform_name = "manylinux2014_ppc64le"
         else:
             platform_name = "manylinux1_x86_64"
+        args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
+    elif FLAGS.windows and platform.uname().machine == "AMD64":
+        platform_name = "win_amd64"
         args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
     else:
         args = ["python3", "setup.py", "bdist_wheel"]

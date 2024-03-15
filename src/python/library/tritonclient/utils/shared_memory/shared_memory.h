@@ -25,26 +25,28 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <fcntl.h>
-#include <stddef.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifdef _WIN32
+#define TRITONCLIENT_DECLSPEC __declspec(dllexport)
+typedef HANDLE SHM_FILE;
+#else
+define TRITONCLIENT_DECLSPEC typedef int SHM_FILE;
+#endif
+
 //==============================================================================
 // SharedMemoryControlContext
-int SharedMemoryRegionCreate(
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionCreate(
     const char* triton_shm_name, const char* shm_key, size_t byte_size,
     void** shm_handle);
-int SharedMemoryRegionSet(
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionSet(
     void* shm_handle, size_t offset, size_t byte_size, const void* data);
-int GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key, int* shm_fd,
+TRITONCLIENT_DECLSPEC int GetSharedMemoryHandleInfo(
+    void* shm_handle, char** shm_addr, const char** shm_key, SHM_FILE* shm_file,
     size_t* offset, size_t* byte_size);
-int SharedMemoryRegionDestroy(void* shm_handle);
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionDestroy(void* shm_handle);
 
 //==============================================================================
 

@@ -38,9 +38,7 @@ if(${TRITON_ENABLE_PYTHON_HTTP})
   file(COPY tritonhttpclient DESTINATION .)
 endif() # TRITON_ENABLE_PYTHON_HTTP
 file(COPY tritonclientutils DESTINATION .)
-if (NOT WIN32)
-  file(COPY tritonshmutils DESTINATION .)
-endif() # NOT WIN32
+file(COPY tritonshmutils DESTINATION .)
 ####################################
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION ${TRITON_VERSION})
@@ -90,6 +88,35 @@ add_custom_target(
     "${wheel_stamp_file}"
 )
 
+#
+# Windows-specific Wheel file.
+#
+if(WIN32)
+  set(WINDOWS_WHEEL_DEPENDS
+        cshm
+        ${WHEEL_DEPENDS}
+  )
+
+  if (${TRITON_ENABLE_PERF_ANALYZER})
+    set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
+  endif()
+  set(windows_wheel_stamp_file "windows_stamp.whl")
+  add_custom_command(
+    OUTPUT "${windows_wheel_stamp_file}"
+    COMMAND python3
+    ARGS
+      "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.py"
+      --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/windows"
+      --windows
+      ${perf_analyzer_arg}
+    DEPENDS ${LINUX_WHEEL_DEPENDS}
+  )
+
+  add_custom_target(
+    windows-client-wheel ALL
+    DEPENDS
+      "${windows_wheel_stamp_file}"
+  )
 #
 # Linux specific Wheel file. Compatible with x86, x64 and aarch64
 #
@@ -147,14 +174,20 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
   )
 endif() # TRITON_ENABLE_PYTHON_GRPC
 
-install(
-  CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/generic/triton*.whl\")"
-  CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
-)
 
-if (NOT WIN32)
+if(WIN32)
+  install(
+    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/windows/triton*.whl\")"
+    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
+  )
+elseif(NOT WIN32)
   install(
     CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/linux/triton*.whl\")"
+    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
+  )
+else()
+  install(
+    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/generic/triton*.whl\")"
     CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
   )
 endif() # NOT WIN32
