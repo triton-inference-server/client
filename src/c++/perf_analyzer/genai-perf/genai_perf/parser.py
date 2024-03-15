@@ -56,7 +56,11 @@ def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.Argumen
         attr_val = getattr(args, attr_key)
         if attr_val is not None:
             setattr(args, f"{attr_key}_range", f"{attr_val}")
-        delattr(args, attr_key)
+            delattr(args, attr_key)
+            return args
+
+    # If no concurrency or request rate is set, default to 1
+    setattr(args, "concurrency_range", "1")
     return args
 
 
@@ -157,7 +161,7 @@ def _add_model_args(parser):
 
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
-    load_management_group = profile_group.add_mutually_exclusive_group(required=True)
+    load_management_group = profile_group.add_mutually_exclusive_group(required=False)
 
     load_management_group.add_argument(
         "--concurrency",

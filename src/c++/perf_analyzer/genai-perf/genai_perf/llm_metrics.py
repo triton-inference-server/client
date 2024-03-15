@@ -356,7 +356,7 @@ class ProfileDataParser:
         """Parse each request in profile data to extract core metrics."""
         raise NotImplementedError
 
-    def get_statistics(self, infer_mode: str, load_level: int | float) -> Statistics:
+    def get_statistics(self, infer_mode: str, load_level: str) -> Statistics:
         """Return profile statistics if it exists."""
         if (infer_mode, load_level) not in self._profile_results:
             raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
