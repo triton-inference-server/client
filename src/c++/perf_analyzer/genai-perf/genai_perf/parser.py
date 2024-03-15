@@ -157,7 +157,7 @@ def _add_model_args(parser):
 
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
-    load_management_group = profile_group.add_mutually_exclusive_group(required=True)
+    load_management_group = profile_group.add_mutually_exclusive_group(required=False)
 
     load_management_group.add_argument(
         "--concurrency",
