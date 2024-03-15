@@ -142,6 +142,13 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
+    def test_default_load_level(self, monkeypatch, capsys):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
+        args, extra_args = parser.parse_args()
+        assert getattr(args, "concurrency_range") == "1"
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
     def test_load_level_mutually_exclusive(self, monkeypatch, capsys):
         monkeypatch.setattr(
             "sys.argv", ["genai-perf", "--concurrency", "3", "--request-rate", "9.0"]
