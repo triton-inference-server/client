@@ -47,11 +47,12 @@ def _check_conditional_args(
     """
     Check for conditional args and raise an error if they are not set.
     """
-    if args.service_kind == "openai" and args.endpoint is None:
-        parser.error(
-            "The --endpoint option is required when using the 'openai' service-kind."
-        )
-    elif args.endpoint is not None and args.service_kind != "openai":
+    if args.service_kind == "openai":
+        if args.endpoint is None:
+            parser.error(
+                "The --endpoint option is required when using the 'openai' service-kind."
+            )
+    elif args.endpoint is not None:
         logger.warning(
             "The --endpoint option is ignored when not using the 'openai' service-kind."
         )
