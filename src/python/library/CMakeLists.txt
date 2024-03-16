@@ -96,7 +96,6 @@ if(WIN32)
         cshm
         ${WHEEL_DEPENDS}
   )
-
   if (${TRITON_ENABLE_PERF_ANALYZER})
     set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
   endif()
@@ -117,10 +116,10 @@ if(WIN32)
     DEPENDS
       "${windows_wheel_stamp_file}"
   )
-#
-# Linux specific Wheel file. Compatible with x86, x64 and aarch64
-#
-if (NOT WIN32)
+else()
+  #
+  # Linux specific Wheel file. Compatible with x86, x64 and aarch64
+  #
   # Can generate linux specific wheel file on linux systems only.
   set(LINUX_WHEEL_DEPENDS
         cshm
@@ -147,7 +146,7 @@ if (NOT WIN32)
     DEPENDS
       "${linux_wheel_stamp_file}"
   )
-endif() # NOT WIN32
+endif() # WIN32
 
 if(${TRITON_ENABLE_PYTHON_GRPC})
   add_dependencies(
@@ -155,12 +154,17 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
     grpc-service-py-library proto-py-library
   )
 
-  if (NOT WIN32)
+  if (WIN32)
+    add_dependencies(
+      windows-client-wheel
+      grpc-service-py-library proto-py-library
+    )
+  else()
     add_dependencies(
       linux-client-wheel
       grpc-service-py-library proto-py-library
-  )
-  endif() # NOT WIN32
+    )
+  endif() # WIN32
 
   file(
     GLOB generated-py
@@ -180,14 +184,9 @@ if(WIN32)
     CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/windows/triton*.whl\")"
     CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
   )
-elseif(NOT WIN32)
-  install(
-    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/linux/triton*.whl\")"
-    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
-  )
 else()
   install(
-    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/generic/triton*.whl\")"
+    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/linux/triton*.whl\")"
     CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
   )
 endif() # NOT WIN32
