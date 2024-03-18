@@ -28,27 +28,33 @@ from pathlib import Path
 
 import genai_perf.utils as utils
 import pytest
-from genai_perf import parser
+from genai_perf import __version__, parser
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
 from genai_perf.main import run
 
 
 class TestCLIArguments:
+    expected_help_output = (
+        "CLI to profile LLMs and Generative AI models with Perf Analyzer"
+    )
+    expected_version_output = f"genai-perf {__version__}"
+
     @pytest.mark.parametrize(
-        "arg, expected_output",
+        "args, expected_output",
         [
-            (["-h"], "CLI to profile LLMs and Generative AI models with Perf Analyzer"),
-            (
-                ["--help"],
-                "CLI to profile LLMs and Generative AI models with Perf Analyzer",
-            ),
+            (["-h"], expected_help_output),
+            (["--help"], expected_help_output),
+            (["-m", "abc", "--help"], expected_help_output),
+            (["-m", "abc", "-h"], expected_help_output),
+            (["--version"], expected_version_output),
+            (["-m", "abc", "--version"], expected_version_output),
         ],
     )
-    def test_help_arguments_output_and_exit(
-        self, monkeypatch, arg, expected_output, capsys
+    def test_help_version_arguments_output_and_exit(
+        self, monkeypatch, args, expected_output, capsys
     ):
-        monkeypatch.setattr("sys.argv", ["genai-perf", "--help"])
+        monkeypatch.setattr("sys.argv", ["genai-perf"] + args)
 
         with pytest.raises(SystemExit) as excinfo:
             _ = parser.parse_args()
@@ -127,7 +133,6 @@ class TestCLIArguments:
             (["--streaming"], {"streaming": True}),
             (["--verbose"], {"verbose": True}),
             (["-v"], {"verbose": True}),
-            (["--version"], {"version": True}),
             (["--url", "test_url"], {"u": "test_url"}),
             (["-u", "test_url"], {"u": "test_url"}),
         ],

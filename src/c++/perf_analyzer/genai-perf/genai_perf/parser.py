@@ -38,6 +38,8 @@ from genai_perf.constants import (
 )
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 
+from . import __version__
+
 logger = logging.getLogger(LOGGER_NAME)
 
 
@@ -146,6 +148,7 @@ def _add_model_args(parser):
         "-m",
         "--model",
         type=str,
+        default="NoModel",
         required=True,
         help=f"The name of the model to benchmark.",
     )
@@ -205,7 +208,7 @@ def _add_profile_args(parser):
         "for each measurement in milliseconds. The perf analyzer will "
         "sample a time interval specified by -p and take measurement over "
         "the requests completed within that time interval. The default "
-        "value is 5000 msec.",
+        "value is 10000 msec.",
     )
 
     profile_group.add_argument(
@@ -268,8 +271,8 @@ def _add_profile_args(parser):
 
     profile_group.add_argument(
         "--version",
-        action="store_true",
-        required=False,
+        action="version",
+        version="%(prog)s " + __version__,
         help=f"Prints the version and exits.",
     )
 
