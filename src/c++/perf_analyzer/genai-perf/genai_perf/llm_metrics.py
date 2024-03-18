@@ -479,17 +479,17 @@ class LLMProfileDataParser(ProfileDataParser):
                 d["text_output"] = self._remove_leading_invalid_chars(d["text_output"])
         elif self._service_kind == "openai":
             # remove the null final response in streaming mode
-            response = res_outputs[-1]["response"]
-            response = remove_sse_prefix(response)
-            if response == "[DONE]":
+            last_response = res_outputs[-1]["response"]
+            last_response = remove_sse_prefix(last_response)
+            if last_response == "[DONE]":
                 res_timestamps.pop()
                 res_outputs.pop()
 
             # after removing the final null response, check if the last response
             # of the remaining responses is missing text/content and remove it
             # if it is an empty response.
-            response = res_outputs[-1]["response"]
-            text_output = self._extract_openai_text_output(response)
+            last_response = res_outputs[-1]["response"]
+            text_output = self._extract_openai_text_output(last_response)
             if text_output == "":
                 res_timestamps.pop()
                 res_outputs.pop()
