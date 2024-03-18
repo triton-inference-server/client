@@ -128,8 +128,8 @@ class TestLLMProfileDataParser:
                     "requests": [
                         {
                             "timestamp": 1,
-                            # null final timestamp & output will be ignored
-                            "response_timestamps": [3, 5, 8, 12, 13],
+                            # last two empty/null responses will be ignored
+                            "response_timestamps": [3, 5, 8, 12, 13, 14],
                             "response_outputs": [
                                 {
                                     "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
@@ -143,13 +143,16 @@ class TestLLMProfileDataParser:
                                 {
                                     "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
                                 },
+                                {
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                                },
                                 {"response": "data: [DONE]\n\n"},
                             ],
                         },
                         {
                             "timestamp": 2,
-                            # null final timestamp & output will be ignored
-                            "response_timestamps": [4, 7, 11, 15, 18],
+                            # last two empty/null responses will be ignored
+                            "response_timestamps": [4, 7, 11, 15, 18, 19],
                             "response_outputs": [
                                 {
                                     "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
@@ -162,6 +165,9 @@ class TestLLMProfileDataParser:
                                 },
                                 {
                                     "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                                },
+                                {
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
                                 },
                                 {"response": "data: [DONE]\n\n"},
                             ],
