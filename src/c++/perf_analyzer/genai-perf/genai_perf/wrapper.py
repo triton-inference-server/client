@@ -69,34 +69,31 @@ class Profiler:
             "random_seed",
         ]
 
-        if hasattr(args, "version") and args.version:
-            cmd = f"perf_analyzer --version"
-        else:
-            utils.remove_file(args.profile_export_file)
+        utils.remove_file(args.profile_export_file)
 
-            cmd = f"perf_analyzer -m {args.model} --async "
-            for arg, value in vars(args).items():
-                if arg in skip_args:
-                    pass
-                elif value is False:
-                    pass
-                elif value is True:
-                    if len(arg) == 1:
-                        cmd += f"-{arg} "
-                    else:
-                        cmd += f"--{arg} "
+        cmd = f"perf_analyzer -m {args.model} --async "
+        for arg, value in vars(args).items():
+            if arg in skip_args:
+                pass
+            elif value is False:
+                pass
+            elif value is True:
+                if len(arg) == 1:
+                    cmd += f"-{arg} "
                 else:
-                    if len(arg) == 1:
-                        cmd += f"-{arg} {value} "
-                    else:
-                        arg = utils.convert_option_name(arg)
-                        cmd += f"--{arg} {value} "
+                    cmd += f"--{arg} "
+            else:
+                if len(arg) == 1:
+                    cmd += f"-{arg} {value} "
+                else:
+                    arg = utils.convert_option_name(arg)
+                    cmd += f"--{arg} {value} "
 
-            cmd += Profiler.add_protocol_args(args)
+        cmd += Profiler.add_protocol_args(args)
 
-            if extra_args is not None:
-                for arg in extra_args:
-                    cmd += f"{arg} "
+        if extra_args is not None:
+            for arg in extra_args:
+                cmd += f"{arg} "
         return cmd
 
     @staticmethod
