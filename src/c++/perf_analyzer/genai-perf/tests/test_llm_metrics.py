@@ -129,19 +129,19 @@ class TestLLMProfileDataParser:
                         {
                             "timestamp": 1,
                             # null final timestamp & output will be ignored
-                            "response_timestamps": [3, 5, 8, 12],
+                            "response_timestamps": [3, 5, 8, 12, 13],
                             "response_outputs": [
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
                                 },
                                 {"response": "data: [DONE]\n\n"},
                             ],
@@ -152,16 +152,16 @@ class TestLLMProfileDataParser:
                             "response_timestamps": [4, 7, 11, 15, 18],
                             "response_outputs": [
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
                                 },
                                 {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"mistralai/Mistral-7B-v0.1","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
                                 },
                                 {"response": "data: [DONE]\n\n"},
                             ],
@@ -215,34 +215,34 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
-        avg_rott = 31 / ns_to_sec(63)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_rott)
+        avg_ottpr = 31 / ns_to_sec(63)
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
         assert stat.p50_inter_token_latency == 2
-        p50_rott = 31 / ns_to_sec(63)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_rott)
+        p50_ottpr = 31 / ns_to_sec(63)
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        min_rott = 3 / ns_to_sec(7)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_rott)
+        min_ottpr = 3 / ns_to_sec(7)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
         assert stat.max_inter_token_latency == 3
-        max_rott = 5 / ns_to_sec(9)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_rott)
+        max_ottpr = 5 / ns_to_sec(9)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
         assert stat.std_inter_token_latency == np.std([2, 3, 2, 2])
-        rott1 = 3 / ns_to_sec(7)
-        rott2 = 5 / ns_to_sec(9)
+        ottpr1 = 3 / ns_to_sec(7)
+        ottpr2 = 5 / ns_to_sec(9)
         assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([rott1, rott2])
+            np.std([ottpr1, ottpr2])
         )
         assert stat.std_num_output_token == np.std([3, 5])
 
@@ -254,34 +254,34 @@ class TestLLMProfileDataParser:
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
-        avg_rott = 97 / ns_to_sec(208)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_rott)
+        avg_ottpr = 97 / ns_to_sec(208)
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
         assert stat.avg_num_output_token == 4.5
 
         assert stat.p50_time_to_first_token == 2.5
         assert stat.p50_inter_token_latency == 2
-        p50_rott = 97 / ns_to_sec(208)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_rott)
+        p50_ottpr = 97 / ns_to_sec(208)
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
         assert stat.p50_num_output_token == 4.5
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 1
-        min_rott = 4 / ns_to_sec(13)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_rott)
+        min_ottpr = 4 / ns_to_sec(13)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
         assert stat.min_num_output_token == 4
 
         assert stat.max_time_to_first_token == 3
         assert stat.max_inter_token_latency == 5
-        max_rott = 5 / ns_to_sec(8)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_rott)
+        max_ottpr = 5 / ns_to_sec(8)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 3])
         assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 2])
-        rott1 = 4 / ns_to_sec(13)
-        rott2 = 5 / ns_to_sec(8)
+        ottpr1 = 4 / ns_to_sec(13)
+        ottpr2 = 5 / ns_to_sec(8)
         assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([rott1, rott2])
+            np.std([ottpr1, ottpr2])
         )
         assert stat.std_num_output_token == np.std([4, 5])
 
@@ -299,10 +299,10 @@ class TestLLMProfileDataParser:
         * time to first tokens
             - experiment 1: [3 - 1, 4 - 2] = [2, 2]
         * inter token latencies
-            - experiment 1: [(5 - 3)/1, (8 - 5)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
-                          : [2, 3, 3, 2, 2]
+            - experiment 1: [(5 - 3)/1, (8 - 5)/1, (12 - 8)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
+                          : [2, 3, 4, 3, 2, 2]
         * output token throughputs per request
-            - experiment 1: [3/(8 - 1), 5/(15 - 2)] = [3/7, 5/13]
+            - experiment 1: [3/(12 - 1), 5/(15 - 2)] = [3/11, 5/13]
         * output token throughputs
             - experiment 1: [(3 + 5)/(15 - 1)] = [4/7]
         * num output tokens
@@ -319,35 +319,35 @@ class TestLLMProfileDataParser:
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 
         assert stat.avg_time_to_first_token == 2
-        assert stat.avg_inter_token_latency == 2.4
-        avg_rott = 37 / ns_to_sec(91)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_rott)
+        assert stat.avg_inter_token_latency == 8 / 3
+        avg_ottpr = 47 / ns_to_sec(143)
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
         assert stat.avg_num_output_token == 4
 
         assert stat.p50_time_to_first_token == 2
-        assert stat.p50_inter_token_latency == 2
-        p50_rott = 37 / ns_to_sec(91)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_rott)
+        assert stat.p50_inter_token_latency == 2.5
+        p50_ottpr = 47 / ns_to_sec(143)
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
         assert stat.p50_num_output_token == 4
 
         assert stat.min_time_to_first_token == 2
         assert stat.min_inter_token_latency == 2
-        min_rott = 5 / ns_to_sec(13)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_rott)
+        min_ottpr = 3 / ns_to_sec(11)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
         assert stat.min_num_output_token == 3
 
         assert stat.max_time_to_first_token == 2
-        assert stat.max_inter_token_latency == 3
-        max_rott = 3 / ns_to_sec(7)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_rott)
+        assert stat.max_inter_token_latency == 4
+        max_ottpr = 5 / ns_to_sec(13)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
         assert stat.max_num_output_token == 5
 
         assert stat.std_time_to_first_token == np.std([2, 2])
-        assert stat.std_inter_token_latency == np.std([2, 3, 3, 2, 2])
-        rott1 = 3 / ns_to_sec(7)
-        rott2 = 5 / ns_to_sec(13)
+        assert stat.std_inter_token_latency == np.std([2, 3, 4, 3, 2, 2])
+        ottpr1 = 3 / ns_to_sec(11)
+        ottpr2 = 5 / ns_to_sec(13)
         assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([rott1, rott2])
+            np.std([ottpr1, ottpr2])
         )
         assert stat.std_num_output_token == np.std([3, 5])
 
