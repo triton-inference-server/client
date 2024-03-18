@@ -25,7 +25,7 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
 ) as stderr:
     from transformers import LlamaTokenizerFast
 
-# TODO TMA-1718: This should be passed in (and should not be in bare code)
+# TODO (TMA-1718): This should be passed in (and should not be in bare code)
 tokenizer = LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
 
 
