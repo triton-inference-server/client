@@ -471,20 +471,26 @@ class LLMProfileDataParser(ProfileDataParser):
     def _preprocess_response(
         self, res_timestamps: list[int], res_outputs: list[dict[str, str]]
     ) -> None:
+        """Helper function to preprocess responses of a request."""
         # FIXME -- remove this triton code once it is properly fixed in PA
         # (PA/triton will add junk to the start of the BYTES array. Remove it here)
         if self._service_kind == "triton":
             for d in res_outputs:
                 d["text_output"] = self._remove_leading_invalid_chars(d["text_output"])
+        elif self._service_kind == "openai":
+            # remove the null final response in streaming mode
+            last_response = res_outputs[-1]["response"]
+            last_response = remove_sse_prefix(last_response)
+            if last_response == "[DONE]":
+                res_timestamps.pop()
+                res_outputs.pop()
 
-        """Helper function to preprocess responses of a request."""
-        if self._service_kind == "openai":
-            openai_final_response = res_outputs[-1]["response"]
-            openai_final_response = remove_sse_prefix(openai_final_response)
-
-            # remove the null final response because this has no output token
-            # and will cause problems when calculating metrics/statistics.
-            if openai_final_response == "[DONE]":
+            # after removing the final null response, check if the last response
+            # of the remaining responses is missing text/content and remove it
+            # if it is an empty response.
+            last_response = res_outputs[-1]["response"]
+            text_output = self._extract_openai_text_output(last_response)
+            if text_output == "":
                 res_timestamps.pop()
                 res_outputs.pop()
 
@@ -508,21 +514,24 @@ class LLMProfileDataParser(ProfileDataParser):
         """Tokenize the OpenAI response output texts."""
         output_texts = []
         for output in res_outputs:
-            # extract payload and deserialize into dict object
-            openai_response = remove_sse_prefix(output["response"])
-            openai_response = json.loads(openai_response)
-            completions = openai_response["choices"][0]
-
-            if openai_response["object"] == "text_completion":  # legacy
-                output_texts.append(completions["text"])
-            elif openai_response["object"] == "chat.completion":  # non-streaming
-                text = completions["message"]["content"]
-                output_texts.append(text)
-            elif openai_response["object"] == "chat.completion.chunk":  # streaming
-                text = completions["delta"].get("content", "")
-                output_texts.append(text)
-            else:
-                obj_type = openai_response["object"]
-                raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
-
+            text = self._extract_openai_text_output(output["response"])
+            output_texts.append(text)
         return self._tokenizer(output_texts)["input_ids"]
+
+    def _extract_openai_text_output(self, response: str) -> str:
+        """Extracts text/content of the OpenAI response object."""
+        response = remove_sse_prefix(response)
+        data = json.loads(response)
+        completions = data["choices"][0]
+
+        text_output = ""
+        if data["object"] == "text_completion":  # legacy
+            text_output = completions.get("text", "")
+        elif data["object"] == "chat.completion":  # non-streaming
+            text_output = completions["message"]["content"]
+        elif data["object"] == "chat.completion.chunk":  # streaming
+            text_output = completions["delta"].get("content", "")
+        else:
+            obj_type = data["object"]
+            raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
+        return text_output
