@@ -325,7 +325,7 @@ class LlmInputs:
         add_stream: bool,
         model_name: str = "",
     ) -> Dict:
-        # OPEN: Don't know how to select a role for `text_input`
+        # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
             system_role_headers,
             user_role_headers,
