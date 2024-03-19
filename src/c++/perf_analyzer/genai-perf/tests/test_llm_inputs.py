@@ -32,7 +32,7 @@ class TestLlmInputs:
 
         yield default_configured_url
 
-    # TODO: Add tests that verify json schemas
+    # TODO (TMA-1754): Add tests that verify json schemas
 
     def test_input_type_url_no_dataset_name(self):
         """

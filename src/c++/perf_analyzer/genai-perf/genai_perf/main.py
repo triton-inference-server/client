@@ -51,9 +51,9 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 def generate_inputs(args):
-    # TODO: remove once file support is implemented
+    # TODO (TMA-1758): remove once file support is implemented
     input_file_name = ""
-    # TODO: review if always true
+    # TODO (TMA-1759): review if add_model_name is always true
     add_model_name = True
     LlmInputs.create_llm_inputs(
         input_type=args.input_type,
