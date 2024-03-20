@@ -55,15 +55,18 @@ def _check_conditional_args(
                 "The --endpoint option is required when using the 'openai' service-kind."
             )
         if args.endpoint == "v1/chat/completions":
-            args.output_format = "openai_chat_completions"
+            args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
         elif args.endpoint == "v1/completions":
-            args.output_format = "openai_completions"
+            args.output_format = OutputFormat.OPENAI_COMPLETIONS
     elif args.endpoint is not None:
         logger.warning(
             "The --endpoint option is ignored when not using the 'openai' service-kind."
         )
     if args.service_kind == "triton":
+        args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
+
+    return args
 
 
 def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -353,10 +356,9 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
-    _check_conditional_args(parser, args)
+    args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "input_type", InputType)
-    args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]
