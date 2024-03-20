@@ -301,7 +301,7 @@ def _add_output_args(parser):
 
 
 def _add_other_args(parser):
-    output_group = parser.add_argument_group("Output")
+    output_group = parser.add_argument_group("Other")
 
     # output_group.add_argument(
     #     "--tokenizer",
