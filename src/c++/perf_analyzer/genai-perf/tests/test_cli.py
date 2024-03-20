@@ -195,3 +195,24 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args, expected_format",
+        [
+            (
+                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint", "v1/completions"],
+                OutputFormat.OPENAI_COMPLETIONS,
+            ),
+            (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
+            (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
+        ],
+    )
+    def test_inferred_output_format(self, monkeypatch, args, expected_format):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "-m", "test_model"] + args)
+
+        parsed_args, _ = parser.parse_args()
+        assert parsed_args.output_format == expected_format
