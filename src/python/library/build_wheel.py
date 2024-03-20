@@ -230,9 +230,10 @@ if __name__ == "__main__":
         else:
             platform_name = "manylinux1_x86_64"
         args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
-    elif FLAGS.windows and platform.uname().machine == "AMD64":
-        platform_name = "win_amd64"
-        args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
+    # FIXME: Uncomment when Windows tests do not use WSL
+    # elif FLAGS.windows and platform.uname().machine == "AMD64":
+    #     platform_name = "win_amd64"
+    #     args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
     else:
         args = ["python3", "setup.py", "bdist_wheel"]
 
