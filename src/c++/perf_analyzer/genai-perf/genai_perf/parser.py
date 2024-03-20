@@ -200,17 +200,6 @@ def _add_profile_args(parser):
         "the requests completed within that time interval.",
     )
 
-    profile_group.add_argument(
-        "--profile-export-file",
-        type=Path,
-        default="profile_export.json",
-        help="Specifies the path where the perf_analyzer profile export will be "
-        "generated. By default, the profile export will be to profile_export.json. "
-        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
-        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
-        "exported to profile_export_genai_perf.csv.",
-    )
-
     load_management_group.add_argument(
         "--request-rate",
         type=float,
@@ -229,21 +218,6 @@ def _add_profile_args(parser):
         "measurement is considered as stable if the ratio of max / min "
         "from the recent 3 measurements is within (stability percentage) "
         "in terms of both infer per second and latency.",
-    )
-
-    profile_group.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        required=False,
-        help="Enables verbose mode.",
-    )
-
-    profile_group.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        help=f"Prints the version and exits.",
     )
 
 
@@ -311,7 +285,22 @@ def _add_endpoint_args(parser):
 def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
 
-    # dataset_group.add_argument(
+    output_group.add_argument(
+        "--profile-export-file",
+        type=Path,
+        default="profile_export.json",
+        help="Specifies the path where the perf_analyzer profile export will be "
+        "generated. By default, the profile export will be to profile_export.json. "
+        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
+        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
+        "exported to profile_export_genai_perf.csv.",
+    )
+
+
+def _add_other_args(parser):
+    output_group = parser.add_argument_group("Output")
+
+    # output_group.add_argument(
     #     "--tokenizer",
     #     type=str,
     #     default="auto",
@@ -319,6 +308,21 @@ def _add_output_args(parser):
     #     required=False,
     #     help="The HuggingFace tokenizer to use to interpret token metrics from final text results",
     # )
+
+    output_group.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Enables verbose mode.",
+    )
+
+    output_group.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        help=f"Prints the version and exits.",
+    )
 
 
 ### Entrypoint ###
@@ -338,7 +342,8 @@ def parse_args():
     _add_endpoint_args(parser)
     _add_input_args(parser)
     _add_profile_args(parser)
-    outputtput_args(Output)
+    _add_output_args(parser)
+    _add_other_args(parser)
 
     # Check for passthrough args
     if "--" in argv:
