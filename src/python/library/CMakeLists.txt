@@ -108,7 +108,7 @@ if(WIN32)
       --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/windows"
       --windows
       ${perf_analyzer_arg}
-    DEPENDS ${LINUX_WHEEL_DEPENDS}
+    DEPENDS ${WINDOWS_WHEEL_DEPENDS}
   )
 
   add_custom_target(
