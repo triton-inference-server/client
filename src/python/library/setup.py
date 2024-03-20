@@ -78,7 +78,10 @@ extras_require["all"] = list(chain(extras_require.values()))
 platform_package_data = []
 if "linux" in PLATFORM_FLAG:
     platform_package_data += ["libcshm.so"]
-elif PLATFORM_FLAG == "win_amd64":
+# FIXME: Uncomment when Windows tests do not use WSL
+# elif PLATFORM_FLAG == "win_amd64":
+#     platform_package_data += ["cshm.dll"]
+else:
     platform_package_data += ["cshm.dll"]
 
 data_files = [
