@@ -58,7 +58,7 @@ def generate_inputs(args):
     LlmInputs.create_llm_inputs(
         input_type=args.input_type,
         output_format=args.output_format,
-        dataset_name=args.dataset,
+        dataset_name=args.input_dataset,
         model_name=args.model,
         input_filename=input_file_name,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,

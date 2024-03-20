@@ -54,10 +54,16 @@ def _check_conditional_args(
             parser.error(
                 "The --endpoint option is required when using the 'openai' service-kind."
             )
+        if args.endpoint == "v1/chat/completions":
+            args.output_format = "openai_chat_completions"
+        elif args.endpoint == "v1/completions":
+            args.output_format = "openai_completions"
     elif args.endpoint is not None:
         logger.warning(
             "The --endpoint option is ignored when not using the 'openai' service-kind."
         )
+    if args.service_kind == "triton":
+        args.output_format = args.backend
 
 
 def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -105,10 +111,10 @@ def handler(args, extra_args):
 ### Parsers ###
 
 
-def _add_model_args(parser):
-    model_group = parser.add_argument_group("Model")
+def _add_input_args(parser):
+    input_group = parser.add_argument_group("Input")
 
-    model_group.add_argument(
+    input_group.add_argument(
         "--expected-output-tokens",
         type=int,
         default=LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
@@ -119,7 +125,32 @@ def _add_model_args(parser):
         "be approximately this many tokens.",
     )
 
-    model_group.add_argument(
+    input_group.add_argument(
+        "--input-dataset",
+        type=str.lower,
+        default=OPEN_ORCA,
+        choices=[OPEN_ORCA, CNN_DAILY_MAIL],
+        required=False,
+        help="HuggingFace dataset to use for benchmarking.",
+    )
+
+    input_group.add_argument(
+        "--input-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+        required=False,
+        help=f"The mean of number of tokens of synthetic input data.",
+    )
+
+    input_group.add_argument(
+        "--input-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of number of tokens of synthetic input data.",
+    )
+
+    input_group.add_argument(
         "--input-type",
         type=str,
         choices=utils.get_enum_names(InputType),
@@ -128,54 +159,20 @@ def _add_model_args(parser):
         help=f"The source of the input data.",
     )
 
-    model_group.add_argument(
-        "--input-tokens-mean",
-        type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
-        required=False,
-        help=f"The mean of number of tokens of synthetic input data.",
-    )
-
-    model_group.add_argument(
-        "--input-tokens-stddev",
-        type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
-        required=False,
-        help=f"The standard deviation of number of tokens of synthetic input data.",
-    )
-
-    model_group.add_argument(
-        "-m",
-        "--model",
-        type=str,
-        default="NoModel",
-        required=True,
-        help=f"The name of the model to benchmark.",
-    )
-
-    model_group.add_argument(
+    input_group.add_argument(
         "--num-of-output-prompts",
         type=int,
         default=LlmInputs.DEFAULT_NUM_OF_OUTPUT_PROMPTS,
         required=False,
-        help="The number of synthetic output prompts to generate",
+        help=f"The number of synthetic output prompts to generate. ",
     )
 
-    model_group.add_argument(
-        "--output-format",
-        type=str,
-        choices=utils.get_enum_names(OutputFormat),
-        default="trtllm",
-        required=False,
-        help=f"The format of the data sent to triton.",
-    )
-
-    model_group.add_argument(
+    input_group.add_argument(
         "--random-seed",
         type=int,
         default=LlmInputs.DEFAULT_RANDOM_SEED,
         required=False,
-        help="Seed used to generate random values",
+        help="Seed used to generate random values.",
     )
 
 
@@ -191,24 +188,16 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "--input-data",
-        type=Path,
-        default=DEFAULT_INPUT_DATA_JSON,
-        required=False,
-        help="Path to the input data json file that contains the list of requests.",
-    )
-
-    profile_group.add_argument(
-        "-p",
         "--measurement-interval",
+        "-p",
+        dest="p",
         type=int,
         default="10000",
         required=False,
         help="Indicates the time interval used "
         "for each measurement in milliseconds. The perf analyzer will "
         "sample a time interval specified by -p and take measurement over "
-        "the requests completed within that time interval. The default "
-        "value is 10000 msec.",
+        "the requests completed within that time interval.",
     )
 
     profile_group.add_argument(
@@ -230,18 +219,6 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "--service-kind",
-        type=str,
-        choices=["triton", "openai"],
-        default="triton",
-        required=False,
-        help="Describes the kind of service perf_analyzer will "
-        'generate load for. The options are "triton" and '
-        '"openai". Note in order to use "openai" you must specify '
-        'an endpoint via --endpoint. The default value is "triton".',
-    )
-
-    profile_group.add_argument(
         "-s",
         "--stability-percentage",
         type=float,
@@ -252,13 +229,6 @@ def _add_profile_args(parser):
         "measurement is considered as stable if the ratio of max / min "
         "from the recent 3 measurements is within (stability percentage) "
         "in terms of both infer per second and latency.",
-    )
-
-    profile_group.add_argument(
-        "--streaming",
-        action="store_true",
-        required=False,
-        help=f"Enables the use of the streaming API.",
     )
 
     profile_group.add_argument(
@@ -281,6 +251,24 @@ def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
 
     endpoint_group.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        default="NoModel",
+        required=True,
+        help=f"The name of the model to benchmark.",
+    )
+
+    endpoint_group.add_argument(
+        "--backend",
+        type=str,
+        choices=utils.get_enum_names(OutputFormat)[1:],
+        default="trtllm",
+        required=False,
+        help=f"When using Triton, the backend of the model. ",
+    )
+
+    endpoint_group.add_argument(
         "--endpoint",
         type=str,
         choices=["v1/completions", "v1/chat/completions"],
@@ -288,6 +276,25 @@ def _add_endpoint_args(parser):
         help="Describes what endpoint to send requests to on the "
         'server. This is required when using "openai" service-kind. '
         "This is ignored in other cases.",
+    )
+
+    endpoint_group.add_argument(
+        "--service-kind",
+        type=str,
+        choices=["triton", "openai"],
+        default="triton",
+        required=False,
+        help="Describes the kind of service perf_analyzer will "
+        'generate load for. The options are "triton" and '
+        '"openai". Note in order to use "openai", you must specify '
+        "an endpoint via --endpoint.",
+    )
+
+    endpoint_group.add_argument(
+        "--streaming",
+        action="store_true",
+        required=False,
+        help=f"Enables the use of the streaming API.",
     )
 
     endpoint_group.add_argument(
@@ -301,17 +308,8 @@ def _add_endpoint_args(parser):
     )
 
 
-def _add_dataset_args(parser):
-    dataset_group = parser.add_argument_group("Dataset")
-
-    dataset_group.add_argument(
-        "--dataset",
-        type=str.lower,
-        default=OPEN_ORCA,
-        choices=[OPEN_ORCA, CNN_DAILY_MAIL],
-        required=False,
-        help="HuggingFace dataset to use for benchmarking.",
-    )
+def _add_output_args(parser):
+    output_group = parser.add_argument_group("Output")
 
     # dataset_group.add_argument(
     #     "--tokenizer",
@@ -332,14 +330,15 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.set_defaults(func=handler)
 
     # Conceptually group args for easier visualization
-    _add_model_args(parser)
-    _add_profile_args(parser)
     _add_endpoint_args(parser)
-    _add_dataset_args(parser)
+    _add_input_args(parser)
+    _add_profile_args(parser)
+    outputtput_args(Output)
 
     # Check for passthrough args
     if "--" in argv:
@@ -352,7 +351,7 @@ def parse_args():
     _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "input_type", InputType)
-    args = _convert_str_to_enum_entry(args, "output_format", OutputFormat)
+    args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]
