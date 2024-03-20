@@ -79,10 +79,6 @@ class TestCLIArguments:
             (["--input-tokens-mean", "6"], {"input_tokens_mean": 6}),
             (["--input-tokens-stddev", "7"], {"input_tokens_stddev": 7}),
             (
-                ["--input-type", "file"],
-                {"input_type": utils.get_enum_entry("file", InputType)},
-            ),
-            (
                 ["--input-type", "synthetic"],
                 {"input_type": utils.get_enum_entry("synthetic", InputType)},
             ),
@@ -90,33 +86,9 @@ class TestCLIArguments:
                 ["--input-type", "url"],
                 {"input_type": utils.get_enum_entry("url", InputType)},
             ),
-            (["--measurement-interval", "100"], {"measurement_interval": 100}),
-            (["-p", "100"], {"measurement_interval": 100}),
+            (["--measurement-interval", "100"], {"p": 100}),
+            (["-p", "100"], {"p": 100}),
             (["--num-of-output-prompts", "101"], {"num_of_output_prompts": 101}),
-            (
-                ["--output-format", "openai_chat_completions"],
-                {
-                    "output_format": utils.get_enum_entry(
-                        "openai_chat_completions", OutputFormat
-                    )
-                },
-            ),
-            (
-                ["--output-format", "openai_completions"],
-                {
-                    "output_format": utils.get_enum_entry(
-                        "openai_completions", OutputFormat
-                    )
-                },
-            ),
-            (
-                ["--output-format", "trtllm"],
-                {"output_format": utils.get_enum_entry("trtllm", OutputFormat)},
-            ),
-            (
-                ["--output-format", "vllm"],
-                {"output_format": utils.get_enum_entry("vllm", OutputFormat)},
-            ),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},

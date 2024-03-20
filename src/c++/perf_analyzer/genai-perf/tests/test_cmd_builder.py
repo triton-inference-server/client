@@ -39,8 +39,8 @@ class TestCmdBuilder:
             (["--url", "testurl:1000"]),
         ],
     )
-    def test_url_exactly_once(self, monkeypatch, arg):
-        args = ["genai-perf", "-m", "test_model"] + arg
+    def test_url_exactly_once_triton(self, monkeypatch, arg):
+        args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
         cmd_string = Profiler.build_cmd(args, extra_args)
@@ -51,10 +51,8 @@ class TestCmdBuilder:
     @pytest.mark.parametrize(
         "arg",
         [
-            (["--output-format", "openai_chat_completions"]),
-            (["--output-format", "openai_completions"]),
-            (["--output-format", "trtllm"]),
-            (["--output-format", "vllm"]),
+            (["--backend", "trtllm"]),
+            (["--backend", "vllm"]),
         ],
     )
     def test_service_triton(self, monkeypatch, arg):
@@ -67,21 +65,26 @@ class TestCmdBuilder:
         assert cmd_string.count(" -i grpc") == 1
         assert cmd_string.count(" --streaming") == 1
         assert cmd_string.count(f"-u {DEFAULT_GRPC_URL}") == 1
-
+        print(args.output_format)
         if arg[1] == "trtllm":
             assert cmd_string.count("--shape max_tokens:1") == 1
             assert cmd_string.count("--shape text_input:1") == 1
 
-    def test_service_openai(self, monkeypatch):
+    @pytest.mark.parametrize(
+        "arg",
+        [
+            (["--endpoint", "v1/completions"]),
+            (["--endpoint", "v1/chat/completions"]),
+        ],
+    )
+    def test_service_openai(self, monkeypatch, arg):
         args = [
             "genai-perf",
             "-m",
             "test_model",
             "--service-kind",
             "openai",
-            "--endpoint",
-            "v1/completions",
-        ]
+        ] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
         cmd_string = Profiler.build_cmd(args, extra_args)
