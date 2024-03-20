@@ -193,7 +193,6 @@ def _add_profile_args(parser):
     profile_group.add_argument(
         "--measurement-interval",
         "-p",
-        dest="p",
         type=int,
         default="10000",
         required=False,
@@ -211,8 +210,8 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "-s",
         "--stability-percentage",
+        "-s",
         type=float,
         default=999,
         required=False,
@@ -239,7 +238,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--backend",
         type=str,
-        choices=utils.get_enum_names(OutputFormat)[1:],
+        choices=utils.get_enum_names(OutputFormat)[2:],
         default="trtllm",
         required=False,
         help=f"When using Triton, the backend of the model. ",
@@ -248,7 +247,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint",
         type=str,
-        choices=["v1/completions", "v1/chat/completions"],
+        choices=["v1/chat/completions", "v1/completions"],
         required=False,
         help="Describes what endpoint to send requests to on the "
         'server. This is required when using "openai" service-kind. '

@@ -76,6 +76,7 @@ class TestCLIArguments:
                 {"endpoint": "v1/chat/completions"},
             ),
             (["--expected-output-tokens", "5"], {"expected_output_tokens": 5}),
+            (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (["--input-tokens-mean", "6"], {"input_tokens_mean": 6}),
             (["--input-tokens-stddev", "7"], {"input_tokens_stddev": 7}),
             (
@@ -86,8 +87,8 @@ class TestCLIArguments:
                 ["--input-type", "url"],
                 {"input_type": utils.get_enum_entry("url", InputType)},
             ),
-            (["--measurement-interval", "100"], {"p": 100}),
-            (["-p", "100"], {"p": 100}),
+            (["--measurement-interval", "100"], {"measurement_interval": 100}),
+            (["-p", "100"], {"measurement_interval": 100}),
             (["--num-of-output-prompts", "101"], {"num_of_output_prompts": 101}),
             (
                 ["--profile-export-file", "text.txt"],
