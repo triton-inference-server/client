@@ -65,7 +65,6 @@ class TestCmdBuilder:
         assert cmd_string.count(" -i grpc") == 1
         assert cmd_string.count(" --streaming") == 1
         assert cmd_string.count(f"-u {DEFAULT_GRPC_URL}") == 1
-        print(args.output_format)
         if arg[1] == "trtllm":
             assert cmd_string.count("--shape max_tokens:1") == 1
             assert cmd_string.count("--shape text_input:1") == 1

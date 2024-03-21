@@ -45,7 +45,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.ArgumentParser
-) -> None:
+) -> argparse.ArgumentParser:
     """
     Check for conditional args and raise an error if they are not set.
     """
@@ -134,7 +134,7 @@ def _add_input_args(parser):
         default=OPEN_ORCA,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
-        help="HuggingFace dataset to use for benchmarking.",
+        help="The HuggingFace dataset to use for benchmarking.",
     )
 
     input_group.add_argument(
@@ -175,7 +175,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_RANDOM_SEED,
         required=False,
-        help="Seed used to generate random values.",
+        help="The seed used to generate random values.",
     )
 
 
@@ -187,7 +187,7 @@ def _add_profile_args(parser):
         "--concurrency",
         type=int,
         required=False,
-        help="Sets the concurrency value to benchmark.",
+        help="The concurrency value to benchmark.",
     )
 
     profile_group.add_argument(
@@ -196,9 +196,9 @@ def _add_profile_args(parser):
         type=int,
         default="10000",
         required=False,
-        help="Indicates the time interval used "
+        help="The time interval used "
         "for each measurement in milliseconds. The perf analyzer will "
-        "sample a time interval specified by -p and take measurement over "
+        "sample a time interval specified and take measurement over "
         "the requests completed within that time interval.",
     )
 
@@ -210,12 +210,12 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "--stability-percentage",
         "-s",
+        "--stability-percentage",
         type=float,
         default=999,
         required=False,
-        help="Indicates the allowed variation in "
+        help="The allowed variation in "
         "latency measurements when determining if a result is stable. The "
         "measurement is considered as stable if the ratio of max / min "
         "from the recent 3 measurements is within (stability percentage) "
@@ -230,7 +230,6 @@ def _add_endpoint_args(parser):
         "-m",
         "--model",
         type=str,
-        default="NoModel",
         required=True,
         help=f"The name of the model to benchmark.",
     )
@@ -241,7 +240,8 @@ def _add_endpoint_args(parser):
         choices=utils.get_enum_names(OutputFormat)[2:],
         default="trtllm",
         required=False,
-        help=f"When using Triton, the backend of the model. ",
+        help=f'When using the "triton" service-kind, '
+        "this is the backend of the model. ",
     )
 
     endpoint_group.add_argument(
@@ -249,8 +249,8 @@ def _add_endpoint_args(parser):
         type=str,
         choices=["v1/chat/completions", "v1/completions"],
         required=False,
-        help="Describes what endpoint to send requests to on the "
-        'server. This is required when using "openai" service-kind. '
+        help="The endpoint to send requests to on the "
+        'server. This is required when using the "openai" service-kind. '
         "This is ignored in other cases.",
     )
 
@@ -260,17 +260,16 @@ def _add_endpoint_args(parser):
         choices=["triton", "openai"],
         default="triton",
         required=False,
-        help="Describes the kind of service perf_analyzer will "
-        'generate load for. The options are "triton" and '
-        '"openai". Note in order to use "openai", you must specify '
-        "an endpoint via --endpoint.",
+        help="The kind of service perf_analyzer will "
+        'generate load for. In order to use "openai", '
+        "you must specify an endpoint via --endpoint.",
     )
 
     endpoint_group.add_argument(
         "--streaming",
         action="store_true",
         required=False,
-        help=f"Enables the use of the streaming API.",
+        help=f"An option to enable the use of the streaming API.",
     )
 
     endpoint_group.add_argument(
@@ -291,7 +290,7 @@ def _add_output_args(parser):
         "--profile-export-file",
         type=Path,
         default="profile_export.json",
-        help="Specifies the path where the perf_analyzer profile export will be "
+        help="The path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
         "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
         "For example, if the profile export file is profile_export.json, the genai-perf file will be "
@@ -316,14 +315,14 @@ def _add_other_args(parser):
         "--verbose",
         action="store_true",
         required=False,
-        help="Enables verbose mode.",
+        help="An option to enable verbose mode.",
     )
 
     output_group.add_argument(
         "--version",
         action="version",
         version="%(prog)s " + __version__,
-        help=f"Prints the version and exits.",
+        help=f"An option to print the version and exit.",
     )
 
 
