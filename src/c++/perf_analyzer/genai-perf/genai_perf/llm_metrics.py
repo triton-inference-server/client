@@ -255,8 +255,8 @@ class Statistics:
     def export_to_csv(self, csv_filename: str):
         """Exports the statistics to a CSV file."""
 
-        header = [
-            "Statistic",
+        multiple_metric_header = [
+            "Metric",
             "avg",
             "min",
             "max",
@@ -268,40 +268,47 @@ class Statistics:
             "p25",
         ]
 
+        single_metric_header = [
+            "Metric",
+            "Value",
+        ]
+
         with open(csv_filename, mode="w", newline="") as csvfile:
             singular_metric_rows = []
 
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(header)
+            csv_writer.writerow(multiple_metric_header)
 
             for metric in Metrics.metric_labels:
-                formatted_metric = metric
+                formatted_metric = metric.replace("_", " ").title()
 
                 is_throughput_field = self._is_throughput_field(metric)
                 is_time_field = self._is_time_field(metric)
 
                 if is_time_field:
-                    formatted_metric += "(ns)"
+                    formatted_metric += " (ns)"
                 elif is_throughput_field:
-                    formatted_metric += "(per sec)"
+                    formatted_metric += " (per sec)"
                 # TODO (TMA-1712): need to decide if we need this metric. Do not
                 # include in the csv for now.
                 # TODO (TMA-1678): output_token_throughput_per_request is treated
                 # separately since the current code treats all throughput metrics
                 # to be displayed outside of the statistics table.
                 elif metric == "output_token_throughput_per_request":
-                    formatted_metric += "(per sec)"
+                    formatted_metric += " (per sec)"
                     continue
 
                 row_values = [formatted_metric]
 
                 if is_throughput_field:
-                    value = self.__dict__.get(f"{header[1]}_{metric}", -1)
+                    value = self.__dict__.get(
+                        f"{multiple_metric_header[1]}_{metric}", -1
+                    )
                     row_values.append(f"{value:.2f}")
                     singular_metric_rows.append(row_values)
                     continue
 
-                for stat in header[1:]:
+                for stat in multiple_metric_header[1:]:
                     value = self.__dict__.get(f"{stat}_{metric}", -1)
                     row_values.append(f"{value:.0f}")
 
@@ -312,7 +319,7 @@ class Statistics:
                 # Without streaming, TTFT and request latency are the same, so do not print TTFT.
                 elif metric == "time_to_first_token":
                     unique_values = False
-                    for stat in header[1:]:
+                    for stat in multiple_metric_header[1:]:
                         value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
                         value_req_latency = self.__dict__.get(
                             f"{stat}_request_latency", -1
@@ -325,6 +332,8 @@ class Statistics:
 
                 csv_writer.writerow(row_values)
 
+            csv_writer.writerow([])
+            csv_writer.writerow(single_metric_header)
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
