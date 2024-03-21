@@ -43,129 +43,20 @@ def ns_to_sec(ns: int) -> int | float:
 
 
 class TestLLMProfileDataParser:
-    openai_profile_data = {
-        "experiments": [
-            {
-                "experiment": {
-                    "mode": "concurrency",
-                    "value": 10,
-                },
-                "requests": [
-                    {
-                        "timestamp": 1,
-                        # last two empty/null responses will be ignored
-                        "response_timestamps": [3, 5, 8, 12, 13, 14],
-                        "response_outputs": [
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
-                            },
-                            {"response": "data: [DONE]\n\n"},
-                        ],
-                    },
-                    {
-                        "timestamp": 2,
-                        # last two empty/null responses will be ignored
-                        "response_timestamps": [4, 7, 11, 15, 18, 19],
-                        "response_outputs": [
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
-                            },
-                            {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
-                            },
-                            {"response": "data: [DONE]\n\n"},
-                        ],
-                    },
-                ],
-            },
-        ],
-    }
-
-    triton_profile_data = {
-        "experiments": [
-            {
-                "experiment": {
-                    "mode": "concurrency",
-                    "value": 10,
-                },
-                "requests": [
-                    {
-                        "timestamp": 1,
-                        "response_timestamps": [3, 5, 8],
-                        # FIXME - remove the whitespace once PA handles it.
-                        # LLMProfileDataParser preprocessse the responses
-                        # from triton server and removes first few chars.
-                        # Add whitespace to avoid valid chars being removed.
-                        "response_outputs": [
-                            {"text_output": "   dogs"},
-                            {"text_output": "   are"},
-                            {"text_output": "   cool"},
-                        ],
-                    },
-                    {
-                        "timestamp": 2,
-                        "response_timestamps": [4, 7, 11],
-                        "response_outputs": [
-                            {"text_output": "   I"},
-                            {"text_output": "   don't"},
-                            {"text_output": "   cook food"},
-                        ],
-                    },
-                ],
-            },
-            {
-                "experiment": {
-                    "mode": "request_rate",
-                    "value": 2.0,
-                },
-                "requests": [
-                    {
-                        "timestamp": 5,
-                        "response_timestamps": [7, 8, 13, 18],
-                        "response_outputs": [
-                            {"text_output": "   cats"},
-                            {"text_output": "   are"},
-                            {"text_output": "   cool"},
-                            {"text_output": "   too"},
-                        ],
-                    },
-                    {
-                        "timestamp": 3,
-                        "response_timestamps": [6, 8, 11],
-                        "response_outputs": [
-                            {"text_output": "   it's"},
-                            {"text_output": "   very"},
-                            {"text_output": "   simple work"},
-                        ],
-                    },
-                ],
-            },
-        ],
-    }
-
     @pytest.fixture
     def mock_read_write(self, monkeypatch) -> None:
+        """
+        This function will mock the open function for specific files:
+
+        - For "triton_profile_export.json", it will read and return the
+          contents of self.triton_profile_data
+        - For "openai_profile_export.json", it will read and return the
+          contents of self.openai_profile_data
+        - For "profile_export.csv", it will capture all data written to
+          the file, and return it as the return value of this function
+        - For all other files, it will behave like the normal open function
+        """
+
         written_data = []
 
         original_open = open
@@ -422,3 +313,124 @@ class TestLLMProfileDataParser:
         assert metrics.get_base_name("num_output_tokens") == "num_output_token"
         with pytest.raises(KeyError):
             metrics.get_base_name("hello1234")
+
+    openai_profile_data = {
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        # last two empty/null responses will be ignored
+                        "response_timestamps": [3, 5, 8, 12, 13, 14],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        # last two empty/null responses will be ignored
+                        "response_timestamps": [4, 7, 11, 15, 18, 19],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    triton_profile_data = {
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "response_timestamps": [3, 5, 8],
+                        # FIXME - remove the whitespace once PA handles it.
+                        # LLMProfileDataParser preprocessse the responses
+                        # from triton server and removes first few chars.
+                        # Add whitespace to avoid valid chars being removed.
+                        "response_outputs": [
+                            {"text_output": "   dogs"},
+                            {"text_output": "   are"},
+                            {"text_output": "   cool"},
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        "response_timestamps": [4, 7, 11],
+                        "response_outputs": [
+                            {"text_output": "   I"},
+                            {"text_output": "   don't"},
+                            {"text_output": "   cook food"},
+                        ],
+                    },
+                ],
+            },
+            {
+                "experiment": {
+                    "mode": "request_rate",
+                    "value": 2.0,
+                },
+                "requests": [
+                    {
+                        "timestamp": 5,
+                        "response_timestamps": [7, 8, 13, 18],
+                        "response_outputs": [
+                            {"text_output": "   cats"},
+                            {"text_output": "   are"},
+                            {"text_output": "   cool"},
+                            {"text_output": "   too"},
+                        ],
+                    },
+                    {
+                        "timestamp": 3,
+                        "response_timestamps": [6, 8, 11],
+                        "response_outputs": [
+                            {"text_output": "   it's"},
+                            {"text_output": "   very"},
+                            {"text_output": "   simple work"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
