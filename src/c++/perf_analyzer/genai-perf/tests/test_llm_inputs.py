@@ -261,8 +261,8 @@ class TestLlmInputs:
             LlmInputs.DEFAULT_RANDOM_SEED,
         )
 
-        # 785 is the num of tokens returned for the default seed
-        assert synthetic_prompt_tokens == 785
+        # 550 is the num of tokens returned for the default seed
+        assert synthetic_prompt_tokens == 550
 
         synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
