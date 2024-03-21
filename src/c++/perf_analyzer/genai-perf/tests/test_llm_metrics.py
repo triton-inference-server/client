@@ -205,13 +205,15 @@ class TestLLMProfileDataParser:
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 
         expected_content = [
-            "Statistic,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
-            "time_to_first_token(ns),2,2,2,2,2,2,2,2,2\r\n",
-            "inter_token_latency(ns),2,2,3,3,3,3,2,2,2\r\n",
-            "request_latency(ns),8,7,9,9,9,9,8,8,8\r\n",
-            "num_output_token,4,3,5,5,5,5,4,4,4\r\n",
-            "output_token_throughput(per sec),800000000.00\r\n",
-            "request_throughput(per sec),200000000.00\r\n",
+            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
+            "Time To First Token (ns),2,2,2,2,2,2,2,2,2\r\n",
+            "Inter Token Latency (ns),2,2,3,3,3,3,2,2,2\r\n",
+            "Request Latency (ns),8,7,9,9,9,9,8,8,8\r\n",
+            "Num Output Token,4,3,5,5,5,5,4,4,4\r\n",
+            "\r\n",
+            "Metric,Value\r\n",
+            "Output Token Throughput (per sec),800000000.00\r\n",
+            "Request Throughput (per sec),200000000.00\r\n",
         ]
 
         stat.export_to_csv("profile_export.csv")
