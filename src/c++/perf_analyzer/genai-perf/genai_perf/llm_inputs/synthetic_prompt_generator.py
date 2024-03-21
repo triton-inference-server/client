@@ -19,23 +19,25 @@ import pathlib
 import random
 from typing import List, Tuple
 
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    # TODO (TMA-1718): This should be passed in (and should not be in bare code)
-    from transformers import LlamaTokenizerFast
+from genai_perf.tokenizer import AutoTokenizer
 
-    tokenizer = LlamaTokenizerFast.from_pretrained(
-        "hf-internal-testing/llama-tokenizer"
-    )
+# # Silence tokenizer warning on import
+# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+#     io.StringIO()
+# ) as stderr:
+#     # TODO (TMA-1718): This should be passed in (and should not be in bare code)
+#     from transformers import LlamaTokenizerFast
+
+#     tokenizer = LlamaTokenizerFast.from_pretrained(
+#         "hf-internal-testing/llama-tokenizer"
+#     )
 
 
 class SyntheticPromptGenerator:
     @classmethod
     def create_synthetic_prompt(
         cls,
-        tokenizer: LlamaTokenizerFast,
+        tokenizer: AutoTokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
         expected_output_tokens: int = 150,
@@ -80,9 +82,7 @@ class SyntheticPromptGenerator:
         return (prompt, num_prompt_tokens)
 
     @classmethod
-    def _get_prompt_token_length(
-        cls, prompt: str, tokenizer: LlamaTokenizerFast
-    ) -> int:
+    def _get_prompt_token_length(cls, prompt: str, tokenizer: AutoTokenizer) -> int:
         get_token_length = lambda text: len(tokenizer.encode(text))
 
         prompt_token_length = get_token_length(prompt)
@@ -119,7 +119,7 @@ class SyntheticPromptGenerator:
         prompt: str,
         remaining_prompt_tokens: int,
         farewell_lines: List[str],
-        tokenizer: LlamaTokenizerFast,
+        tokenizer: AutoTokenizer,
     ) -> str:
         get_token_length = lambda text: len(tokenizer.encode(text))
 

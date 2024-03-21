@@ -33,15 +33,16 @@ import json
 from itertools import pairwise
 
 import numpy as np
+from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    from transformers import AutoTokenizer
+# # Silence tokenizer warning on import
+# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+#     io.StringIO()
+# ) as stderr:
+#     from transformers import AutoTokenizer
 
 
 class Metrics:

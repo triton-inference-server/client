@@ -37,6 +37,7 @@ from genai_perf.constants import (
     OPEN_ORCA,
 )
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
+from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
@@ -301,14 +302,13 @@ def _add_output_args(parser):
 def _add_other_args(parser):
     output_group = parser.add_argument_group("Other")
 
-    # output_group.add_argument(
-    #     "--tokenizer",
-    #     type=str,
-    #     default="auto",
-    #     choices=["auto"],
-    #     required=False,
-    #     help="The HuggingFace tokenizer to use to interpret token metrics from final text results",
-    # )
+    output_group.add_argument(
+        "--tokenizer",
+        type=str,
+        default=DEFAULT_TOKENIZER,
+        required=False,
+        help="The HuggingFace tokenizer to use to interpret token metrics from prompts and responses",
+    )
 
     output_group.add_argument(
         "-v",

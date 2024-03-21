@@ -31,26 +31,27 @@ import logging
 import sys
 
 from genai_perf import parser
+from genai_perf import tokenizer as t
 from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
+from genai_perf.llm_metrics import LLMProfileDataParser
 
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    from genai_perf.llm_metrics import LLMProfileDataParser
-    from transformers import AutoTokenizer as tokenizer
-    from transformers import logging as token_logger
+# # Silence tokenizer warning on import
+# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+#     io.StringIO()
+# ) as stderr:
+#     from transformers import AutoTokenizer as tokenizer
+#     from transformers import logging as token_logger
 
-    token_logger.set_verbosity_error()
+#     token_logger.set_verbosity_error()
 
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def generate_inputs(args):
+def generate_inputs(args, tokenizer):
     # TODO (TMA-1758): remove once file support is implemented
     input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
@@ -70,12 +71,14 @@ def generate_inputs(args):
         num_of_output_prompts=args.num_of_output_prompts,
         add_model_name=add_model_name,
         add_stream=args.streaming,
+        tokenizer=tokenizer,
     )
 
 
-def calculate_metrics(file: str, service_kind: str) -> LLMProfileDataParser:
-    t = tokenizer.from_pretrained("gpt2")
-    return LLMProfileDataParser(file, service_kind, t)
+def calculate_metrics(
+    file: str, service_kind: str, tokenizer: t.AutoTokenizer
+) -> LLMProfileDataParser:
+    return LLMProfileDataParser(file, service_kind, tokenizer)
 
 
 def report_output(metrics: LLMProfileDataParser, args):
@@ -98,7 +101,8 @@ def report_output(metrics: LLMProfileDataParser, args):
 def run():
     try:
         args, extra_args = parser.parse_args()
-        generate_inputs(args)
+        tokenizer = t.get_tokenizer(args.tokenizer)
+        generate_inputs(args, tokenizer)
         args.func(args, extra_args)
         metrics = calculate_metrics(args.profile_export_file, args.service_kind)
         report_output(metrics, args)
