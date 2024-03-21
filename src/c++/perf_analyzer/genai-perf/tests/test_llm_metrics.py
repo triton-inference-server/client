@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+from io import StringIO
 from pathlib import Path
 
 import numpy as np
@@ -42,150 +43,184 @@ def ns_to_sec(ns: int) -> int | float:
 
 
 class TestLLMProfileDataParser:
+    openai_profile_data = {
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        # last two empty/null responses will be ignored
+                        "response_timestamps": [3, 5, 8, 12, 13, 14],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        # last two empty/null responses will be ignored
+                        "response_timestamps": [4, 7, 11, 15, 18, 19],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    triton_profile_data = {
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "response_timestamps": [3, 5, 8],
+                        # FIXME - remove the whitespace once PA handles it.
+                        # LLMProfileDataParser preprocessse the responses
+                        # from triton server and removes first few chars.
+                        # Add whitespace to avoid valid chars being removed.
+                        "response_outputs": [
+                            {"text_output": "   dogs"},
+                            {"text_output": "   are"},
+                            {"text_output": "   cool"},
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        "response_timestamps": [4, 7, 11],
+                        "response_outputs": [
+                            {"text_output": "   I"},
+                            {"text_output": "   don't"},
+                            {"text_output": "   cook food"},
+                        ],
+                    },
+                ],
+            },
+            {
+                "experiment": {
+                    "mode": "request_rate",
+                    "value": 2.0,
+                },
+                "requests": [
+                    {
+                        "timestamp": 5,
+                        "response_timestamps": [7, 8, 13, 18],
+                        "response_outputs": [
+                            {"text_output": "   cats"},
+                            {"text_output": "   are"},
+                            {"text_output": "   cool"},
+                            {"text_output": "   too"},
+                        ],
+                    },
+                    {
+                        "timestamp": 3,
+                        "response_timestamps": [6, 8, 11],
+                        "response_outputs": [
+                            {"text_output": "   it's"},
+                            {"text_output": "   very"},
+                            {"text_output": "   simple work"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
     @pytest.fixture
-    def prepare_triton_profile_data(self) -> None:
-        path = Path("triton_profile_export.json")
-        profile_data = {
-            "experiments": [
-                {
-                    "experiment": {
-                        "mode": "concurrency",
-                        "value": 10,
-                    },
-                    "requests": [
-                        {
-                            "timestamp": 1,
-                            "response_timestamps": [3, 5, 8],
-                            # FIXME - remove the whitespace once PA handles it.
-                            # LLMProfileDataParser preprocessse the responses
-                            # from triton server and removes first few chars.
-                            # Add whitespace to avoid valid chars being removed.
-                            "response_outputs": [
-                                {"text_output": "   dogs"},
-                                {"text_output": "   are"},
-                                {"text_output": "   cool"},
-                            ],
-                        },
-                        {
-                            "timestamp": 2,
-                            "response_timestamps": [4, 7, 11],
-                            "response_outputs": [
-                                {"text_output": "   I"},
-                                {"text_output": "   don't"},
-                                {"text_output": "   cook food"},
-                            ],
-                        },
-                    ],
-                },
-                {
-                    "experiment": {
-                        "mode": "request_rate",
-                        "value": 2.0,
-                    },
-                    "requests": [
-                        {
-                            "timestamp": 5,
-                            "response_timestamps": [7, 8, 13, 18],
-                            "response_outputs": [
-                                {"text_output": "   cats"},
-                                {"text_output": "   are"},
-                                {"text_output": "   cool"},
-                                {"text_output": "   too"},
-                            ],
-                        },
-                        {
-                            "timestamp": 3,
-                            "response_timestamps": [6, 8, 11],
-                            "response_outputs": [
-                                {"text_output": "   it's"},
-                                {"text_output": "   very"},
-                                {"text_output": "   simple work"},
-                            ],
-                        },
-                    ],
-                },
-            ],
-        }
+    def mock_read_write(self, monkeypatch) -> None:
+        written_data = []
 
-        with open(path, "w") as f:
-            json.dump(profile_data, f)
+        original_open = open
 
-        yield None
+        def custom_open(filename, *args, **kwargs):
+            def write(content):
+                written_data.append(content)
 
-        # clean up
-        remove_file(path)
+            if filename == "triton_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.triton_profile_data))
+                return tmp_file
+            elif filename == "openai_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.openai_profile_data))
+                return tmp_file
+            elif filename == "profile_export.csv":
+                tmp_file = StringIO()
+                tmp_file.write = write
+                return tmp_file
+            else:
+                return original_open(filename, *args, **kwargs)
 
-    @pytest.fixture
-    def prepare_openai_profile_data(self) -> None:
-        path = Path("openai_profile_export.json")
-        profile_data = {
-            "experiments": [
-                {
-                    "experiment": {
-                        "mode": "concurrency",
-                        "value": 10,
-                    },
-                    "requests": [
-                        {
-                            "timestamp": 1,
-                            # last two empty/null responses will be ignored
-                            "response_timestamps": [3, 5, 8, 12, 13, 14],
-                            "response_outputs": [
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
-                                },
-                                {"response": "data: [DONE]\n\n"},
-                            ],
-                        },
-                        {
-                            "timestamp": 2,
-                            # last two empty/null responses will be ignored
-                            "response_timestamps": [4, 7, 11, 15, 18, 19],
-                            "response_outputs": [
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
-                                },
-                                {
-                                    "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
-                                },
-                                {"response": "data: [DONE]\n\n"},
-                            ],
-                        },
-                    ],
-                },
-            ],
-        }
+        monkeypatch.setattr("builtins.open", custom_open)
 
-        with open(path, "w") as f:
-            json.dump(profile_data, f)
+        return written_data
 
-        yield None
+    def test_csv_output(self, mock_read_write) -> None:
+        """
+        Collect LLM metrics from profile export data and confirm correct values are printed in csv
+        """
 
-        # clean up
-        remove_file(path)
+        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        pd = LLMProfileDataParser(
+            filename="triton_profile_export.json",
+            service_kind="triton",
+            tokenizer=tokenizer,
+        )
+        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 
-    def test_triton_llm_profile_data(self, prepare_triton_profile_data) -> None:
+        expected_content = [
+            "Statistic,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
+            "time_to_first_token(ns),2,2,2,2,2,2,2,2,2\r\n",
+            "inter_token_latency(ns),2,2,3,3,3,3,2,2,2\r\n",
+            "request_latency(ns),8,7,9,9,9,9,8,8,8\r\n",
+            "num_output_token,4,3,5,5,5,5,4,4,4\r\n",
+            "output_token_throughput(per sec),800000000.00\r\n",
+            "request_throughput(per sec),200000000.00\r\n",
+        ]
+
+        stat.export_to_csv("profile_export.csv")
+
+        returned_data = mock_read_write
+
+        assert returned_data == expected_content
+
+    def test_triton_llm_profile_data(self, mock_read_write) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
@@ -298,7 +333,7 @@ class TestLLMProfileDataParser:
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="30")
 
-    def test_openai_llm_profile_data(self, prepare_openai_profile_data) -> None:
+    def test_openai_llm_profile_data(self, mock_read_write) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
