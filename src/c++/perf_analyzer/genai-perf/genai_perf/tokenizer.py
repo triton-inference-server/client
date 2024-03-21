@@ -36,9 +36,6 @@ def get_tokenizer(tokenizer_model: str) -> AutoTokenizer:
     """
     try:
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
-        # if tokenizer_model is not None:
-        # else:
-        #     tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
     except Exception as e:
         raise GenAIPerfException(e)
 

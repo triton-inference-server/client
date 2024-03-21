@@ -27,12 +27,6 @@ from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGene
 from genai_perf.tokenizer import AutoTokenizer
 from requests import Response
 
-# # Silence tokenizer warning on import
-# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-#     io.StringIO()
-# ) as stderr:
-#     from transformers import LlamaTokenizerFast
-
 
 class InputType(Enum):
     SYNTHETIC = auto()

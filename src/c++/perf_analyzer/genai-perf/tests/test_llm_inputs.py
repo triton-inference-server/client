@@ -24,12 +24,6 @@ from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_O
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 
-# # Silence tokenizer warning on import
-# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-#     io.StringIO()
-# ) as stderr:
-#     from transformers import LlamaTokenizerFast
-
 
 class TestLlmInputs:
     @pytest.fixture

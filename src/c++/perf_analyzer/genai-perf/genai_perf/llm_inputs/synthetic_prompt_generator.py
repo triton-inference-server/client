@@ -21,17 +21,6 @@ from typing import List, Tuple
 
 from genai_perf.tokenizer import AutoTokenizer
 
-# # Silence tokenizer warning on import
-# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-#     io.StringIO()
-# ) as stderr:
-#     # TODO (TMA-1718): This should be passed in (and should not be in bare code)
-#     from transformers import LlamaTokenizerFast
-
-#     tokenizer = LlamaTokenizerFast.from_pretrained(
-#         "hf-internal-testing/llama-tokenizer"
-#     )
-
 
 class SyntheticPromptGenerator:
     @classmethod

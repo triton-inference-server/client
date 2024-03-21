@@ -37,16 +37,6 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser
 
-# # Silence tokenizer warning on import
-# with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-#     io.StringIO()
-# ) as stderr:
-#     from transformers import AutoTokenizer as tokenizer
-#     from transformers import logging as token_logger
-
-#     token_logger.set_verbosity_error()
-
-
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
 
