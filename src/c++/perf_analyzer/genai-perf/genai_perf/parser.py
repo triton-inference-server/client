@@ -45,7 +45,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.ArgumentParser
-) -> None:
+) -> argparse.ArgumentParser:
     """
     Check for conditional args and raise an error if they are not set.
     """
@@ -54,10 +54,19 @@ def _check_conditional_args(
             parser.error(
                 "The --endpoint option is required when using the 'openai' service-kind."
             )
+        if args.endpoint == "v1/chat/completions":
+            args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+        elif args.endpoint == "v1/completions":
+            args.output_format = OutputFormat.OPENAI_COMPLETIONS
     elif args.endpoint is not None:
         logger.warning(
             "The --endpoint option is ignored when not using the 'openai' service-kind."
         )
+    if args.service_kind == "triton":
+        args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
+        args.output_format = args.backend
+
+    return args
 
 
 def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
@@ -105,10 +114,10 @@ def handler(args, extra_args):
 ### Parsers ###
 
 
-def _add_model_args(parser):
-    model_group = parser.add_argument_group("Model")
+def _add_input_args(parser):
+    input_group = parser.add_argument_group("Input")
 
-    model_group.add_argument(
+    input_group.add_argument(
         "--expected-output-tokens",
         type=int,
         default=LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
@@ -119,7 +128,32 @@ def _add_model_args(parser):
         "be approximately this many tokens.",
     )
 
-    model_group.add_argument(
+    input_group.add_argument(
+        "--input-dataset",
+        type=str.lower,
+        default=OPEN_ORCA,
+        choices=[OPEN_ORCA, CNN_DAILY_MAIL],
+        required=False,
+        help="The HuggingFace dataset to use for benchmarking.",
+    )
+
+    input_group.add_argument(
+        "--input-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+        required=False,
+        help=f"The mean of number of tokens of synthetic input data.",
+    )
+
+    input_group.add_argument(
+        "--input-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of number of tokens of synthetic input data.",
+    )
+
+    input_group.add_argument(
         "--input-type",
         type=str,
         choices=utils.get_enum_names(InputType),
@@ -128,54 +162,20 @@ def _add_model_args(parser):
         help=f"The source of the input data.",
     )
 
-    model_group.add_argument(
-        "--input-tokens-mean",
-        type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
-        required=False,
-        help=f"The mean of number of tokens of synthetic input data.",
-    )
-
-    model_group.add_argument(
-        "--input-tokens-stddev",
-        type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
-        required=False,
-        help=f"The standard deviation of number of tokens of synthetic input data.",
-    )
-
-    model_group.add_argument(
-        "-m",
-        "--model",
-        type=str,
-        default="NoModel",
-        required=True,
-        help=f"The name of the model to benchmark.",
-    )
-
-    model_group.add_argument(
+    input_group.add_argument(
         "--num-of-output-prompts",
         type=int,
         default=LlmInputs.DEFAULT_NUM_OF_OUTPUT_PROMPTS,
         required=False,
-        help="The number of synthetic output prompts to generate",
+        help=f"The number of synthetic output prompts to generate. ",
     )
 
-    model_group.add_argument(
-        "--output-format",
-        type=str,
-        choices=utils.get_enum_names(OutputFormat),
-        default="trtllm",
-        required=False,
-        help=f"The format of the data sent to triton.",
-    )
-
-    model_group.add_argument(
+    input_group.add_argument(
         "--random-seed",
         type=int,
         default=LlmInputs.DEFAULT_RANDOM_SEED,
         required=False,
-        help="Seed used to generate random values",
+        help="The seed used to generate random values.",
     )
 
 
@@ -187,39 +187,19 @@ def _add_profile_args(parser):
         "--concurrency",
         type=int,
         required=False,
-        help="Sets the concurrency value to benchmark.",
+        help="The concurrency value to benchmark.",
     )
 
     profile_group.add_argument(
-        "--input-data",
-        type=Path,
-        default=DEFAULT_INPUT_DATA_JSON,
-        required=False,
-        help="Path to the input data json file that contains the list of requests.",
-    )
-
-    profile_group.add_argument(
-        "-p",
         "--measurement-interval",
+        "-p",
         type=int,
         default="10000",
         required=False,
-        help="Indicates the time interval used "
+        help="The time interval used "
         "for each measurement in milliseconds. The perf analyzer will "
-        "sample a time interval specified by -p and take measurement over "
-        "the requests completed within that time interval. The default "
-        "value is 10000 msec.",
-    )
-
-    profile_group.add_argument(
-        "--profile-export-file",
-        type=Path,
-        default="profile_export.json",
-        help="Specifies the path where the perf_analyzer profile export will be "
-        "generated. By default, the profile export will be to profile_export.json. "
-        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
-        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
-        "exported to profile_export_genai_perf.csv.",
+        "sample a time interval specified and take measurement over "
+        "the requests completed within that time interval.",
     )
 
     load_management_group.add_argument(
@@ -230,50 +210,16 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
-        "--service-kind",
-        type=str,
-        choices=["triton", "openai"],
-        default="triton",
-        required=False,
-        help="Describes the kind of service perf_analyzer will "
-        'generate load for. The options are "triton" and '
-        '"openai". Note in order to use "openai" you must specify '
-        'an endpoint via --endpoint. The default value is "triton".',
-    )
-
-    profile_group.add_argument(
         "-s",
         "--stability-percentage",
         type=float,
         default=999,
         required=False,
-        help="Indicates the allowed variation in "
+        help="The allowed variation in "
         "latency measurements when determining if a result is stable. The "
         "measurement is considered as stable if the ratio of max / min "
         "from the recent 3 measurements is within (stability percentage) "
         "in terms of both infer per second and latency.",
-    )
-
-    profile_group.add_argument(
-        "--streaming",
-        action="store_true",
-        required=False,
-        help=f"Enables the use of the streaming API.",
-    )
-
-    profile_group.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        required=False,
-        help="Enables verbose mode.",
-    )
-
-    profile_group.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        help=f"Prints the version and exits.",
     )
 
 
@@ -281,13 +227,49 @@ def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
 
     endpoint_group.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        required=True,
+        help=f"The name of the model to benchmark.",
+    )
+
+    endpoint_group.add_argument(
+        "--backend",
+        type=str,
+        choices=utils.get_enum_names(OutputFormat)[2:],
+        default="trtllm",
+        required=False,
+        help=f'When using the "triton" service-kind, '
+        "this is the backend of the model. ",
+    )
+
+    endpoint_group.add_argument(
         "--endpoint",
         type=str,
-        choices=["v1/completions", "v1/chat/completions"],
+        choices=["v1/chat/completions", "v1/completions"],
         required=False,
-        help="Describes what endpoint to send requests to on the "
-        'server. This is required when using "openai" service-kind. '
+        help="The endpoint to send requests to on the "
+        'server. This is required when using the "openai" service-kind. '
         "This is ignored in other cases.",
+    )
+
+    endpoint_group.add_argument(
+        "--service-kind",
+        type=str,
+        choices=["triton", "openai"],
+        default="triton",
+        required=False,
+        help="The kind of service perf_analyzer will "
+        'generate load for. In order to use "openai", '
+        "you must specify an endpoint via --endpoint.",
+    )
+
+    endpoint_group.add_argument(
+        "--streaming",
+        action="store_true",
+        required=False,
+        help=f"An option to enable the use of the streaming API.",
     )
 
     endpoint_group.add_argument(
@@ -301,19 +283,25 @@ def _add_endpoint_args(parser):
     )
 
 
-def _add_dataset_args(parser):
-    dataset_group = parser.add_argument_group("Dataset")
+def _add_output_args(parser):
+    output_group = parser.add_argument_group("Output")
 
-    dataset_group.add_argument(
-        "--dataset",
-        type=str.lower,
-        default=OPEN_ORCA,
-        choices=[OPEN_ORCA, CNN_DAILY_MAIL],
-        required=False,
-        help="HuggingFace dataset to use for benchmarking.",
+    output_group.add_argument(
+        "--profile-export-file",
+        type=Path,
+        default="profile_export.json",
+        help="The path where the perf_analyzer profile export will be "
+        "generated. By default, the profile export will be to profile_export.json. "
+        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
+        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
+        "exported to profile_export_genai_perf.csv.",
     )
 
-    # dataset_group.add_argument(
+
+def _add_other_args(parser):
+    output_group = parser.add_argument_group("Other")
+
+    # output_group.add_argument(
     #     "--tokenizer",
     #     type=str,
     #     default="auto",
@@ -321,6 +309,21 @@ def _add_dataset_args(parser):
     #     required=False,
     #     help="The HuggingFace tokenizer to use to interpret token metrics from final text results",
     # )
+
+    output_group.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="An option to enable verbose mode.",
+    )
+
+    output_group.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        help=f"An option to print the version and exit.",
+    )
 
 
 ### Entrypoint ###
@@ -332,14 +335,16 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.set_defaults(func=handler)
 
     # Conceptually group args for easier visualization
-    _add_model_args(parser)
-    _add_profile_args(parser)
     _add_endpoint_args(parser)
-    _add_dataset_args(parser)
+    _add_input_args(parser)
+    _add_profile_args(parser)
+    _add_output_args(parser)
+    _add_other_args(parser)
 
     # Check for passthrough args
     if "--" in argv:
@@ -349,10 +354,9 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
-    _check_conditional_args(parser, args)
+    args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "input_type", InputType)
-    args = _convert_str_to_enum_entry(args, "output_format", OutputFormat)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]

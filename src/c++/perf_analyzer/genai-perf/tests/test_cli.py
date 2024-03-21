@@ -76,12 +76,9 @@ class TestCLIArguments:
                 {"endpoint": "v1/chat/completions"},
             ),
             (["--expected-output-tokens", "5"], {"expected_output_tokens": 5}),
+            (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (["--input-tokens-mean", "6"], {"input_tokens_mean": 6}),
             (["--input-tokens-stddev", "7"], {"input_tokens_stddev": 7}),
-            (
-                ["--input-type", "file"],
-                {"input_type": utils.get_enum_entry("file", InputType)},
-            ),
             (
                 ["--input-type", "synthetic"],
                 {"input_type": utils.get_enum_entry("synthetic", InputType)},
@@ -93,30 +90,6 @@ class TestCLIArguments:
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
             (["--num-of-output-prompts", "101"], {"num_of_output_prompts": 101}),
-            (
-                ["--output-format", "openai_chat_completions"],
-                {
-                    "output_format": utils.get_enum_entry(
-                        "openai_chat_completions", OutputFormat
-                    )
-                },
-            ),
-            (
-                ["--output-format", "openai_completions"],
-                {
-                    "output_format": utils.get_enum_entry(
-                        "openai_completions", OutputFormat
-                    )
-                },
-            ),
-            (
-                ["--output-format", "trtllm"],
-                {"output_format": utils.get_enum_entry("trtllm", OutputFormat)},
-            ),
-            (
-                ["--output-format", "vllm"],
-                {"output_format": utils.get_enum_entry("vllm", OutputFormat)},
-            ),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
@@ -223,3 +196,24 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args, expected_format",
+        [
+            (
+                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint", "v1/completions"],
+                OutputFormat.OPENAI_COMPLETIONS,
+            ),
+            (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
+            (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
+        ],
+    )
+    def test_inferred_output_format(self, monkeypatch, args, expected_format):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "-m", "test_model"] + args)
+
+        parsed_args, _ = parser.parse_args()
+        assert parsed_args.output_format == expected_format
