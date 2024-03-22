@@ -18,15 +18,10 @@ import json
 import os
 
 import pytest
+from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
-
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    from transformers import LlamaTokenizerFast
 
 
 class TestLlmInputs:
@@ -43,7 +38,7 @@ class TestLlmInputs:
     # TODO (TMA-1754): Add tests that verify json schemas
     @pytest.fixture
     def default_tokenizer(self):
-        yield LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
+        yield tokenizer.get_tokenizer(tokenizer.DEFAULT_TOKENIZER)
 
     def test_input_type_url_no_dataset_name(self):
         """
