@@ -16,6 +16,7 @@ import json
 import os
 
 import pytest
+from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
@@ -33,6 +34,9 @@ class TestLlmInputs:
         yield default_configured_url
 
     # TODO (TMA-1754): Add tests that verify json schemas
+    @pytest.fixture
+    def default_tokenizer(self):
+        yield tokenizer.get_tokenizer(tokenizer.DEFAULT_TOKENIZER)
 
     def test_input_type_url_no_dataset_name(self):
         """
@@ -41,6 +45,15 @@ class TestLlmInputs:
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_dataset_name_if_input_type_is_url(
                 input_type=InputType.URL, dataset_name=""
+            )
+
+    def test_input_type_synthetic_no_tokenizer(self):
+        """
+        Test for exception when input type is SYNTHETIC and no tokenizer
+        """
+        with pytest.raises(GenAIPerfException):
+            _ = LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
+                input_type=InputType.SYNTHETIC, tokenizer=None
             )
 
     def test_illegal_starting_index(self):
@@ -250,11 +263,12 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_random_synthetic(self):
+    def test_random_synthetic(self, default_tokenizer):
         """
         Test that we can produce deterministic random synthetic prompts
         """
         synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+            default_tokenizer,
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
             LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
             LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
@@ -265,14 +279,15 @@ class TestLlmInputs:
         assert synthetic_prompt_tokens == 550
 
         synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+            default_tokenizer,
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
-            LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+            LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV + 250,
             LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
             LlmInputs.DEFAULT_RANDOM_SEED + 1,
         )
         assert synthetic_prompt_tokens != 785
 
-    def test_synthetic_to_vllm(self):
+    def test_synthetic_to_vllm(self, default_tokenizer):
         """
         Test generating synthetic prompts and converting to vllm
         """
@@ -282,6 +297,7 @@ class TestLlmInputs:
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
+            tokenizer=default_tokenizer,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -289,7 +305,7 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_trtllm(self):
+    def test_synthetic_to_trtllm(self, default_tokenizer):
         """
         Test generating synthetic prompts and converting to trtllm
         """
@@ -299,6 +315,7 @@ class TestLlmInputs:
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
+            tokenizer=default_tokenizer,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -306,7 +323,7 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_openai_chat_completions(self):
+    def test_synthetic_to_openai_chat_completions(self, default_tokenizer):
         """
         Test generating synthetic prompts and converting to OpenAI chat completions
         """
@@ -316,6 +333,7 @@ class TestLlmInputs:
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
+            tokenizer=default_tokenizer,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -323,7 +341,7 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_openai_completions(self):
+    def test_synthetic_to_openai_completions(self, default_tokenizer):
         """
         Test generating synthetic prompts and converting to OpenAI completions
         """
@@ -333,6 +351,7 @@ class TestLlmInputs:
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
+            tokenizer=default_tokenizer,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)

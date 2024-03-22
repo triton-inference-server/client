@@ -19,20 +19,14 @@ import pathlib
 import random
 from typing import List, Tuple
 
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    from transformers import LlamaTokenizerFast
-
-# TODO (TMA-1718): This should be passed in (and should not be in bare code)
-tokenizer = LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
+from genai_perf.tokenizer import AutoTokenizer
 
 
 class SyntheticPromptGenerator:
     @classmethod
     def create_synthetic_prompt(
         cls,
+        tokenizer: AutoTokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
         expected_output_tokens: int = 150,
@@ -61,7 +55,9 @@ class SyntheticPromptGenerator:
             "Don't generate eos tokens:\n\n"
         )
 
-        prompt_token_length = SyntheticPromptGenerator._get_prompt_token_length(prompt)
+        prompt_token_length = SyntheticPromptGenerator._get_prompt_token_length(
+            prompt, tokenizer
+        )
         num_prompt_tokens = SyntheticPromptGenerator._get_num_prompt_tokens(
             prompt_tokens_mean, prompt_tokens_stddev, prompt_token_length
         )
@@ -69,14 +65,13 @@ class SyntheticPromptGenerator:
 
         farewell_lines = SyntheticPromptGenerator._create_farewell_lines()
         prompt = SyntheticPromptGenerator._create_prompt_from_farewell_lines(
-            prompt, remaining_prompt_tokens, farewell_lines
+            prompt, remaining_prompt_tokens, farewell_lines, tokenizer
         )
 
         return (prompt, num_prompt_tokens)
 
     @classmethod
-    def _get_prompt_token_length(cls, prompt: str) -> int:
-        tokenizer = SyntheticPromptGenerator._get_tokenizer()
+    def _get_prompt_token_length(cls, prompt: str, tokenizer: AutoTokenizer) -> int:
         get_token_length = lambda text: len(tokenizer.encode(text))
 
         prompt_token_length = get_token_length(prompt)
@@ -109,9 +104,12 @@ class SyntheticPromptGenerator:
 
     @classmethod
     def _create_prompt_from_farewell_lines(
-        cls, prompt: str, remaining_prompt_tokens: int, farewell_lines: List[str]
+        cls,
+        prompt: str,
+        remaining_prompt_tokens: int,
+        farewell_lines: List[str],
+        tokenizer: AutoTokenizer,
     ) -> str:
-        tokenizer = SyntheticPromptGenerator._get_tokenizer()
         get_token_length = lambda text: len(tokenizer.encode(text))
 
         sampling_lines = True
@@ -137,7 +135,3 @@ class SyntheticPromptGenerator:
             random_pos_int = int(random.gauss(mean, stddev))
 
         return random_pos_int
-
-    @classmethod
-    def _get_tokenizer(cls) -> LlamaTokenizerFast:
-        return tokenizer
