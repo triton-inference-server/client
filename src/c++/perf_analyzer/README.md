@@ -74,9 +74,6 @@ changes in performance as you experiment with different optimization strategies.
   [TorchServe](docs/benchmarking.md#benchmarking-torchserve) can be used as the
   inference server in addition to the default Triton server
 
-- [LLMs](docs/llm.md) can also be measured and characterized with specific metrics
-  like first-token latency and token-to-token latency
-
 <br>
 
 # Quick Start
