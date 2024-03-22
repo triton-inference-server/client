@@ -30,12 +30,7 @@ import sys
 from pathlib import Path
 
 import genai_perf.utils as utils
-from genai_perf.constants import (
-    CNN_DAILY_MAIL,
-    DEFAULT_INPUT_DATA_JSON,
-    LOGGER_NAME,
-    OPEN_ORCA,
-)
+from genai_perf.constants import CNN_DAILY_MAIL, LOGGER_NAME, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 

@@ -25,23 +25,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import contextlib
-import io
 import logging
 import sys
+from argparse import ArgumentParser
 
 from genai_perf import parser
-from genai_perf import tokenizer as t
 from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser
+from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
 
 
-def generate_inputs(args, tokenizer):
+def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
     # TODO (TMA-1758): remove once file support is implemented
     input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
@@ -66,7 +65,7 @@ def generate_inputs(args, tokenizer):
 
 
 def calculate_metrics(
-    file: str, service_kind: str, tokenizer: t.AutoTokenizer
+    file: str, service_kind: str, tokenizer: AutoTokenizer
 ) -> LLMProfileDataParser:
     return LLMProfileDataParser(file, service_kind, tokenizer)
 
@@ -91,7 +90,7 @@ def report_output(metrics: LLMProfileDataParser, args):
 def run():
     try:
         args, extra_args = parser.parse_args()
-        tokenizer = t.get_tokenizer(args.tokenizer)
+        tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
         metrics = calculate_metrics(

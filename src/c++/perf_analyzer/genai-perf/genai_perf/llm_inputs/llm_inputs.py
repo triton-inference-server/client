@@ -24,7 +24,7 @@ import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, AutoTokenizer
 from requests import Response
 
 
@@ -87,7 +87,7 @@ class LlmInputs:
         num_of_output_prompts: int = DEFAULT_NUM_OF_OUTPUT_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
-        tokenizer: AutoTokenizer = None,
+        tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs

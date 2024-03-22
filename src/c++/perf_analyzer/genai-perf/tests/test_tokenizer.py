@@ -24,20 +24,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import genai_perf.tokenizer as t
 import pytest
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 
 
 class TestTokenizer:
     def test_default_tokenizer(self):
-        tokenizer_model = t.DEFAULT_TOKENIZER
-        t.get_tokenizer(tokenizer_model)
+        tokenizer_model = DEFAULT_TOKENIZER
+        get_tokenizer(tokenizer_model)
 
     def test_non_default_tokenizer(self):
         tokenizer_model = "gpt2"
-        t.get_tokenizer(tokenizer_model)
+        get_tokenizer(tokenizer_model)
 
     def test_bad_tokenizer(self):
         with pytest.raises(GenAIPerfException):
-            t.get_tokenizer("bad_tokenizer")
+            get_tokenizer("bad_tokenizer")
