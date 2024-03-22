@@ -28,7 +28,7 @@ import logging
 import subprocess
 
 import genai_perf.utils as utils
-from genai_perf.constants import DEFAULT_GRPC_URL, LOGGER_NAME
+from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON, LOGGER_NAME
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -52,7 +52,7 @@ class Profiler:
     def build_cmd(args, extra_args):
         skip_args = [
             "func",
-            "dataset",
+            "input_dataset",
             "input_type",
             "input_format",
             "model",
@@ -72,7 +72,7 @@ class Profiler:
 
         utils.remove_file(args.profile_export_file)
 
-        cmd = f"perf_analyzer -m {args.model} --async "
+        cmd = f"perf_analyzer -m {args.model} --async --input-data {DEFAULT_INPUT_DATA_JSON} "
         for arg, value in vars(args).items():
             if arg in skip_args:
                 pass
