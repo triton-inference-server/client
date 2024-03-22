@@ -94,7 +94,9 @@ def run():
         tokenizer = t.get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        metrics = calculate_metrics(args.profile_export_file, args.service_kind)
+        metrics = calculate_metrics(
+            args.profile_export_file, args.service_kind, tokenizer
+        )
         report_output(metrics, args)
     except Exception as e:
         raise GenAIPerfException(e)
