@@ -38,7 +38,6 @@ class TestLlmInputs:
     # TODO (TMA-1754): Add tests that verify json schemas
     @pytest.fixture
     def default_tokenizer(self):
-        # yield LlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
         yield tokenizer.get_tokenizer(tokenizer.DEFAULT_TOKENIZER)
 
     def test_input_type_url_no_dataset_name(self):
