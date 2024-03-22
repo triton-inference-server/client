@@ -52,4 +52,4 @@ outputs, how to benchmark different servers, and more.
 - [Input Data](input_data.md)
 - [Measurements & Metrics](measurements_metrics.md)
 - [Benchmarking](benchmarking.md)
-- [Large Language Models (LLMs)](llm.md)
+- [Large Language Models (LLMs)](../genai-perf/README.md)
