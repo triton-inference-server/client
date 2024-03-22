@@ -84,7 +84,8 @@ class TestLLMProfileDataParser:
 
     def test_csv_output(self, mock_read_write) -> None:
         """
-        Collect LLM metrics from profile export data and confirm correct values are printed in csv
+        Collect LLM metrics from profile export data and confirm correct values are
+        printed in csv.
         """
 
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
