@@ -16,7 +16,6 @@ import contextlib
 import io
 import json
 import os
-import token
 
 import pytest
 from genai_perf import tokenizer
