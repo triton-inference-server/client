@@ -33,9 +33,9 @@
 
 namespace triton { namespace perfanalyzer {
 
-/// A record containing the data of a single response
-struct ResponseData {
-  ResponseData(const uint8_t* buf, size_t size)
+/// A record containing the data of a single request input or response output
+struct RecordData {
+  RecordData(const uint8_t* buf, size_t size)
   {
     uint8_t* array = new uint8_t[size];
     std::memcpy(array, buf, size);
@@ -44,7 +44,7 @@ struct ResponseData {
   }
 
   // Define equality comparison operator so it can be inserted into maps
-  bool operator==(const ResponseData& other) const
+  bool operator==(const RecordData& other) const
   {
     if (size_ != other.size_)
       return false;
@@ -59,19 +59,24 @@ struct ResponseData {
 
 /// A record of an individual request
 struct RequestRecord {
-  using ResponseOutput = std::unordered_map<std::string, ResponseData>;
+  // TODO: uncomment
+  // using RequestInput = std::unordered_map<std::string, RecordData>;
+  using RequestInput = std::unordered_map<std::string, std::string>;
+  using ResponseOutput = std::unordered_map<std::string, RecordData>;
 
   RequestRecord(
       std::chrono::time_point<std::chrono::system_clock> start_time =
           std::chrono::time_point<std::chrono::system_clock>(),
       std::vector<std::chrono::time_point<std::chrono::system_clock>>
           response_timestamps = {},
+      std::vector<RequestInput> request_inputs = {},
       std::vector<ResponseOutput> response_outputs = {},
       bool sequence_end = true, bool delayed = false, uint64_t sequence_id = 0,
       bool has_null_last_response = false)
       : start_time_(start_time), response_timestamps_(response_timestamps),
-        response_outputs_(response_outputs), sequence_end_(sequence_end),
-        delayed_(delayed), sequence_id_(sequence_id),
+        request_inputs_(request_inputs), response_outputs_(response_outputs),
+        sequence_end_(sequence_end), delayed_(delayed),
+        sequence_id_(sequence_id),
         has_null_last_response_(has_null_last_response)
   {
   }
@@ -81,6 +86,8 @@ struct RequestRecord {
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       response_timestamps_;
 
+  // Collection of request inputs
+  std::vector<RequestInput> request_inputs_;
   // Collection of response outputs
   std::vector<ResponseOutput> response_outputs_;
   // Whether or not the request is at the end of a sequence.

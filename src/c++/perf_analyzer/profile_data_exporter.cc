@@ -122,6 +122,11 @@ ProfileDataExporter::AddRequests(
       request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     }
 
+    rapidjson::Value request_inputs(rapidjson::kObjectType);
+    AddRequestInputs(request_inputs, raw_request.request_inputs_);
+    request.AddMember(
+        "request_inputs", request_inputs, document_.GetAllocator());
+
     rapidjson::Value response_timestamps(rapidjson::kArrayType);
     AddResponseTimestamps(
         response_timestamps, raw_request.response_timestamps_);
@@ -148,6 +153,35 @@ ProfileDataExporter::AddResponseTimestamps(
     rapidjson::Value timestamp_json;
     timestamp_json.SetUint64(timestamp.time_since_epoch().count());
     timestamps_json.PushBack(timestamp_json, document_.GetAllocator());
+  }
+}
+
+// TODO: refactor
+void
+ProfileDataExporter::AddRequestInputs(
+    rapidjson::Value& request_inputs_json,
+    const std::vector<RequestRecord::RequestInput>& request_inputs)
+{
+  for (const auto& request_input : request_inputs) {
+    for (const auto& input : request_input) {
+      const std::string& name{input.first};
+      const auto& content{input.second};
+      // TODO: uncomment
+      // const auto& buf{input.second.data_.get()};
+      // const auto& byte_size{input.second.size_};
+      rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
+      rapidjson::Value input_json{};
+      input_json.SetString(content.c_str(), document_.GetAllocator());
+      // if (buf != nullptr) {
+      //   output_json.SetString(
+      //       reinterpret_cast<const char*>(buf), byte_size,
+      //       document_.GetAllocator());
+      // } else {
+      //   output_json.SetString("", 0, document_.GetAllocator());
+      // }
+      request_inputs_json.AddMember(
+          name_json, input_json, document_.GetAllocator());
+    }
   }
 }
 

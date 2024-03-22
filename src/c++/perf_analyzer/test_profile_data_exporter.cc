@@ -57,6 +57,7 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
       request_timestamp,
       std::vector<std::chrono::time_point<std::chrono::system_clock>>{
           response_timestamp1, response_timestamp2},
+      {},
       {response_output1, response_output2},
       0,
       false,

@@ -178,33 +178,33 @@ TEST_CASE("testing the ValidLatencyMeasurement function")
       // in the vector of requests, but if it is, we exclude it: not included in
       // current window
       RequestRecord(
-          time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, {}, 0,
-          false, 0, false),
+          time_point(ns(1)), std::vector<time_point>{time_point(ns(2))}, {}, {},
+          0, false, 0, false),
 
       // request starts before window starts and ends inside window: included in
       // current window
       RequestRecord(
-          time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, {}, 0,
-          false, 0, false),
+          time_point(ns(3)), std::vector<time_point>{time_point(ns(5))}, {}, {},
+          0, false, 0, false),
 
       // requests start and end inside window: included in current window
       RequestRecord(
-          time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, {}, 0,
-          false, 0, false),
+          time_point(ns(6)), std::vector<time_point>{time_point(ns(9))}, {}, {},
+          0, false, 0, false),
       RequestRecord(
           time_point(ns(10)), std::vector<time_point>{time_point(ns(14))}, {},
-          0, false, 0, false),
+          {}, 0, false, 0, false),
 
       // request starts before window ends and ends after window ends: not
       // included in current window
       RequestRecord(
           time_point(ns(15)), std::vector<time_point>{time_point(ns(20))}, {},
-          0, false, 0, false),
+          {}, 0, false, 0, false),
 
       // request starts after window ends: not included in current window
       RequestRecord(
           time_point(ns(21)), std::vector<time_point>{time_point(ns(27))}, {},
-          0, false, 0, false)};
+          {}, 0, false, 0, false)};
 
   TestInferenceProfiler::ValidLatencyMeasurement(
       window, valid_sequence_count, delayed_request_count, &latencies,
@@ -882,7 +882,7 @@ TEST_CASE(
         request1_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response1_timestamp, response2_timestamp},
-        {}, 0, false, 0, false)};
+        {}, {}, 0, false, 0, false)};
 
     auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
     RequestRecord request_record2{};
@@ -897,7 +897,7 @@ TEST_CASE(
           request2_timestamp,
           std::vector<std::chrono::time_point<std::chrono::system_clock>>{
               response3_timestamp, response4_timestamp, response5_timestamp},
-          {}, 0, false, 0, false);
+          {}, {}, 0, false, 0, false);
       expected_response_count = 5;
     }
     SUBCASE("second request has two data responses and one null response")
@@ -909,7 +909,7 @@ TEST_CASE(
           request2_timestamp,
           std::vector<std::chrono::time_point<std::chrono::system_clock>>{
               response3_timestamp, response4_timestamp, response5_timestamp},
-          {}, 0, false, 0, true);
+          {}, {}, 0, false, 0, true);
       expected_response_count = 4;
     }
     SUBCASE("second request has one null response")
@@ -917,7 +917,7 @@ TEST_CASE(
       request_record2 = RequestRecord(
           request2_timestamp,
           std::vector<std::chrono::time_point<std::chrono::system_clock>>{}, {},
-          0, false, 0, true);
+          {}, 0, false, 0, true);
       expected_response_count = 2;
     }
 
@@ -948,7 +948,7 @@ TEST_CASE(
         request1_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response1_timestamp},
-        {}, 0, false, 0, false)};
+        {}, {}, 0, false, 0, false)};
 
     auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
     auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(4)};
@@ -956,7 +956,7 @@ TEST_CASE(
         request2_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response2_timestamp},
-        {}, 0, false, 0, false)};
+        {}, {}, 0, false, 0, false)};
 
     auto request3_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
     auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
@@ -964,7 +964,7 @@ TEST_CASE(
         request3_timestamp,
         std::vector<std::chrono::time_point<std::chrono::system_clock>>{
             response3_timestamp},
-        {}, 0, false, 0, false)};
+        {}, {}, 0, false, 0, false)};
 
     mock_inference_profiler.all_request_records_ = {
         request_record1, request_record2, request_record3};

@@ -65,16 +65,15 @@ TEST_CASE("profile_data_collector: AddData")
   auto request1_response2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
   uint8_t fake_data[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
   RequestRecord::ResponseOutput request1_response1_output{
-      {"key1", ResponseData(fake_data, 1)},
-      {"key2", ResponseData(fake_data, 2)}};
+      {"key1", RecordData(fake_data, 1)}, {"key2", RecordData(fake_data, 2)}};
   RequestRecord::ResponseOutput request1_response2_output{
-      {"key3", ResponseData(fake_data, 3)},
-      {"key4", ResponseData(fake_data, 4)}};
+      {"key3", RecordData(fake_data, 3)}, {"key4", RecordData(fake_data, 4)}};
 
   RequestRecord request_record1{
       request1_timestamp,
       std::vector<std::chrono::time_point<std::chrono::system_clock>>{
           request1_response1_timestamp, request1_response2_timestamp},
+      {},
       {request1_response1_output, request1_response2_output},
       0,
       false,
@@ -86,16 +85,15 @@ TEST_CASE("profile_data_collector: AddData")
   auto request2_response1_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
   auto request2_response2_timestamp{clock_epoch + std::chrono::nanoseconds(6)};
   RequestRecord::ResponseOutput request2_response1_output{
-      {"key5", ResponseData(fake_data, 5)},
-      {"key6", ResponseData(fake_data, 6)}};
+      {"key5", RecordData(fake_data, 5)}, {"key6", RecordData(fake_data, 6)}};
   RequestRecord::ResponseOutput request2_response2_output{
-      {"key7", ResponseData(fake_data, 7)},
-      {"key8", ResponseData(fake_data, 8)}};
+      {"key7", RecordData(fake_data, 7)}, {"key8", RecordData(fake_data, 8)}};
 
   RequestRecord request_record2{
       request2_timestamp,
       std::vector<std::chrono::time_point<std::chrono::system_clock>>{
           request2_response1_timestamp, request2_response2_timestamp},
+      {},
       {request2_response1_output, request2_response2_output},
       0,
       false,
