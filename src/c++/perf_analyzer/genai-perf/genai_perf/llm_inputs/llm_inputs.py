@@ -22,6 +22,7 @@ import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, AutoTokenizer
 from requests import Response
 
 
@@ -84,6 +85,7 @@ class LlmInputs:
         num_of_output_prompts: int = DEFAULT_NUM_OF_OUTPUT_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
+        tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -111,6 +113,11 @@ class LlmInputs:
         add_stream:
             If true adds a steam field to each payload
 
+        Required Synthetic Prompt Generation Parameters
+        -----------------------------------------------
+        tokenizer:
+           The tokenizer to use when generating synthetic prompts
+
         Optional Synthetic Prompt Generation Parameters
         -----------------------------------------------
         prompt_tokens_mean:
@@ -128,7 +135,7 @@ class LlmInputs:
         """
 
         LlmInputs._check_for_valid_args(
-            input_type, dataset_name, starting_index, length
+            input_type, dataset_name, starting_index, length, tokenizer
         )
 
         dataset = None
@@ -141,6 +148,7 @@ class LlmInputs:
             )
         elif input_type == InputType.SYNTHETIC:
             dataset = LlmInputs._get_input_dataset_from_synthetic(
+                tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 expected_output_tokens,
@@ -164,14 +172,23 @@ class LlmInputs:
 
     @classmethod
     def _check_for_valid_args(
-        cls, input_type: InputType, dataset_name: str, starting_index: int, length: int
+        cls,
+        input_type: InputType,
+        dataset_name: str,
+        starting_index: int,
+        length: int,
+        tokenizer: AutoTokenizer,
     ) -> None:
         try:
             LlmInputs._check_for_dataset_name_if_input_type_is_url(
                 input_type, dataset_name
             )
+            LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
+                input_type, tokenizer
+            )
             LlmInputs._check_for_valid_starting_index(starting_index)
             LlmInputs._check_for_valid_length(length)
+
         except Exception as e:
             raise GenAIPerfException(e)
 
@@ -188,6 +205,7 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_synthetic(
         cls,
+        tokenizer: AutoTokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         expected_output_tokens: int,
@@ -200,6 +218,7 @@ class LlmInputs:
 
         for index in range(0, num_of_output_prompts):
             synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
+                tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 expected_output_tokens,
@@ -778,6 +797,15 @@ class LlmInputs:
             )
 
     @classmethod
+    def _check_for_tokenzier_if_input_type_is_synthetic(
+        cls, input_type: InputType, tokenizer: AutoTokenizer
+    ) -> None:
+        if input_type == InputType.SYNTHETIC and not tokenizer:
+            raise GenAIPerfException(
+                "Input type is SYNTHETIC, but a tokenizer was not specified."
+            )
+
+    @classmethod
     def _check_for_valid_starting_index(cls, starting_index: int) -> None:
         if not isinstance(starting_index, int):
             raise GenAIPerfException(
@@ -826,6 +854,7 @@ class LlmInputs:
     @classmethod
     def _create_synthetic_prompt(
         cls,
+        tokenizer: AutoTokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         expected_output_tokens: int,
@@ -833,5 +862,5 @@ class LlmInputs:
     ) -> Tuple[str, int]:
         random.seed(random_seed)
         return SyntheticPromptGenerator.create_synthetic_prompt(
-            prompt_tokens_mean, prompt_tokens_stddev, expected_output_tokens
+            tokenizer, prompt_tokens_mean, prompt_tokens_stddev, expected_output_tokens
         )
