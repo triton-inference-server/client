@@ -60,7 +60,7 @@ class LlmInputs:
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 0
     DEFAULT_EXPECTED_OUTPUT_TOKENS = 150
-    DEFAULT_NUM_OF_OUTPUT_PROMPTS = 100
+    DEFAULT_NUM_PROMPTS = 100
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
     EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
@@ -82,7 +82,7 @@ class LlmInputs:
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
         expected_output_tokens: int = DEFAULT_EXPECTED_OUTPUT_TOKENS,
         random_seed: int = DEFAULT_RANDOM_SEED,
-        num_of_output_prompts: int = DEFAULT_NUM_OF_OUTPUT_PROMPTS,
+        num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
         tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
