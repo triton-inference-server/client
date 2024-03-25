@@ -118,10 +118,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
         required=False,
-        help="The number of tokens to expect in the output. "
-        "This is used to determine the length of the prompt. "
-        "The prompt will be generated such that the output will "
-        "be approximately this many tokens.",
+        help="The number of tokens to request in the output. This is used when input-type is synthetic to tell the LLM how many output tokens to generate in each response.",
     )
 
     input_group.add_argument(
@@ -130,7 +127,7 @@ def _add_input_args(parser):
         default=OPEN_ORCA,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
-        help="The HuggingFace dataset to use for benchmarking.",
+        help="The HuggingFace dataset to use for prompts when input-type is dataset.",
     )
 
     input_group.add_argument(
@@ -138,7 +135,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
-        help=f"The mean of number of tokens of synthetic input data.",
+        help=f"The mean of number of tokens in the generated prompts when input-type is synthetic.",
     )
 
     input_group.add_argument(
@@ -146,7 +143,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
-        help=f"The standard deviation of number of tokens of synthetic input data.",
+        help=f"The standard deviation of number of tokens in the generated prompts when input-type is synthetic.",
     )
 
     input_group.add_argument(
@@ -163,7 +160,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_NUM_PROMPTS,
         required=False,
-        help=f"The number of unique prompts to generate. ",
+        help=f"The number of unique prompts to generate as stimulus.",
     )
 
     input_group.add_argument(
