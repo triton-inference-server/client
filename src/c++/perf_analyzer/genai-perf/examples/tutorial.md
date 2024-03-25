@@ -76,25 +76,21 @@ docker run -it --gpus all --net=host --rm --shm-size=1G --ulimit memlock=-1 \
     tritonserver --model-repository ./models
 ```
 
-4. Download the pre-built Triton SDK Container which includes
-GenAI-Perf and Performance Analyzer from the
+4. In a separate terminal window, download the pre-built Triton SDK Container
+which includes GenAI-Perf and Performance Analyzer from the
 [NGC](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/tritonserver)
-registry.
+registry and launch the container.
 
 ```bash
 export RELEASE=<yy.mm>
 docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
-```
 
-5. In a separate terminal window, launch the SDK container
-
-```bash
 docker run --gpus all -it --net host --shm-size=1g --ulimit stack=67108864 \
   nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk \
   bash
 ```
 
-6. Profile GPT2 via GenAI-Perf
+5. Profile GPT2 via GenAI-Perf
 
 ```bash
 genai-perf -m gpt2_vllm --concurrency 1 --input-type url --output-format vllm -u localhost:8001 --streaming
