@@ -61,7 +61,7 @@ instance_group [
 registry.
 
 ```bash
-export RELEASE=<yy.mm> # e.g. to use the release from the end of February of 2024, do `export RELEASE=24.02`
+export RELEASE=<yy.mm> # e.g. to use the release from the end of March of 2024, do `export RELEASE=24.03`
 
 docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
 ```
