@@ -87,13 +87,13 @@ genai-perf --help
 ## Triton with TRT-LLM
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --output-format trtllm
+genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend trtllm
 ```
 
 ## Triton with vLLM
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --output-format vllm
+genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend vllm
 ```
 
 ## OpenAI Chat Completions Compatible APIs
@@ -101,7 +101,7 @@ genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --output-format v
 https://platform.openai.com/docs/api-reference/chat
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/chat/completions --output-format openai_chat_completions
+genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/chat/completions
 ```
 
 ## OpenAI Completions Compatible APIs
@@ -109,24 +109,27 @@ genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/cha
 https://platform.openai.com/docs/api-reference/completions
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/completions --output-format openai_completions
+genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/completions
 ```
 
 # Model Inputs
-GenAI-Perf supports model inputs from either the HuggingFace OpenOrca or
-CNN_DailyMail datasets or it can create synthetic input data. This is specified
-using the `--input-type` CLI option.
+GenAI-Perf supports model input prompts from either synthetically generated inputs,
+or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
+using the `--prompt-source` CLI option.
+
+When the dataset is synthetic you can specify the following options:
+* `--num-prompts`: The number of unique prompts to generate
+* `--synthetic-tokens-mean`: The mean number of tokens of synthetic input data.
+* `--synthetic-tokens-stddev`: The standard deviation number of tokens of synthetic
+  input data.
+* `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
+  to return in the response
+* `--random-seed`: The seed used to generate random values.
 
 When the dataset is coming from HuggingFace you can specify the following
 options:
+* `--num-prompts`: The number of unique prompts to generate
 * `--dataset`: HuggingFace dataset to use for benchmarking.
-
-When the dataset is synthetic you can specify the following options:
-* `--num-of-output-prompts`: The number of synthetic output prompts to generate
-* `--input-tokens-mean`: The mean number of tokens of synthetic input data.
-* `--input-tokens-stddev`: The standard deviation number of tokens of synthetic
-  input data.
-* `--random-seed`: The seed used to generate random values.
 
 # Metrics
 
@@ -156,20 +159,23 @@ Enables verbose mode.
 
 Prints the version and exits.
 
-##### `--expected-output-tokens <int>`
-The number of tokens to expect in the output. This is used to determine the
-length of the prompt. The prompt will be generated such that the output will be
-approximately this many tokens.
+##### `--prompt-source {dataset,synthetic}`
 
-##### `--input-type {url,file,synthetic}`
+The source of the input prompts.
 
-The source of the input data.
+##### `--input-dataset {openorca,cnn_dailymail}`
 
-##### `--input-tokens-mean <int>`
+The HuggingFace dataset to use for prompts when prompt-source is dataset.
+
+##### `--synthetic-requested-output-tokens <int>`
+The number of tokens to request in the output. This is used when prompt-source
+is synthetic to tell the LLM how many output tokens to generate in each response.
+
+##### `--synthetic-tokens-mean <int>`
 
 The mean of the number of tokens of synthetic input data.
 
-##### `--input-tokens-stddev <int>`
+##### `--synthetic-tokens-stddev <int>`
 
 The standard deviation of number of tokens of synthetic input data.
 
@@ -178,25 +184,21 @@ The standard deviation of number of tokens of synthetic input data.
 
 The name of the model to benchmark.
 
-##### `--num-of-output-prompts <int>`
+##### `--num-prompts <int>`
 
-The number of synthetic output prompts to generate
+The number of unique prompts to generate as stimulus.
 
-##### `--output-format {openai_chat_completions,openai_completions,trtllm,vllm}`
+##### `--backend {trtllm,vllm}`
 
-The format of the data sent to triton.
+When using the "triton" service-kind, this is the backend of the model.
 
 ##### `--random-seed <int>`
 
-Seed used to generate random values
+Seed used to generate random values.
 
 ##### `--concurrency <int>`
 
 Sets the concurrency value to benchmark.
-
-##### `--input-data <file>`
-
-Path to the input data json file that contains the list of requests.
 
 ##### `-p <int>`
 ##### `--measurement-interval <int>`
@@ -205,7 +207,7 @@ Indicates the time interval used for each measurement in milliseconds. The perf
 analyzer will sample a time interval specified by -p and take measurement over
 the requests completed within that time interval.
 
-The default value is `5000`.
+The default value is `10000`.
 
 ##### `--profile-export-file <file>`
 
@@ -249,9 +251,6 @@ using `openai` service-kind. This is ignored in other cases.
 
 URL of the endpoint to target for benchmarking.
 
-##### `--dataset {openorca,cnn_dailymail}`
-
-HuggingFace dataset to use for benchmarking.
 
 # Known Issues
 
