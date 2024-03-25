@@ -44,7 +44,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_dataset_name_if_input_type_is_url(
-                input_type=PromptSource.URL, dataset_name=""
+                input_type=PromptSource.DATASET, dataset_name=""
             )
 
     def test_input_type_synthetic_no_tokenizer(self):
@@ -110,7 +110,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs.create_llm_inputs(
-                input_type=PromptSource.URL,
+                input_type=PromptSource.DATASET,
                 dataset_name=OPEN_ORCA,
                 output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
@@ -181,7 +181,7 @@ class TestLlmInputs:
         Test CNN_DAILYMAIL can be accessed
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.URL,
+            input_type=PromptSource.DATASET,
             dataset_name=CNN_DAILY_MAIL,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
         )
@@ -196,7 +196,7 @@ class TestLlmInputs:
         Test that write to file is working correctly
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.URL,
+            input_type=PromptSource.DATASET,
             dataset_name=OPEN_ORCA,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             model_name="open_orca",
@@ -217,7 +217,7 @@ class TestLlmInputs:
         Test conversion of openai to vllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.URL,
+            input_type=PromptSource.DATASET,
             output_format=OutputFormat.VLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -234,7 +234,7 @@ class TestLlmInputs:
         Test conversion of openai to completions
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.URL,
+            input_type=PromptSource.DATASET,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -251,7 +251,7 @@ class TestLlmInputs:
         Test conversion of openai to trtllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.URL,
+            input_type=PromptSource.DATASET,
             output_format=OutputFormat.TRTLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
