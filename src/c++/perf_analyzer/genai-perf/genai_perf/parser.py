@@ -114,20 +114,45 @@ def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
     input_group.add_argument(
-        "--synthetic-requested-output-tokens",
-        type=int,
-        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
-        required=False,
-        help="The number of tokens to request in the output. This is used when input-type is synthetic to tell the LLM how many output tokens to generate in each response.",
-    )
-
-    input_group.add_argument(
         "--input-dataset",
         type=str.lower,
         default=OPEN_ORCA,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
         help="The HuggingFace dataset to use for prompts when input-type is dataset.",
+    )
+
+    input_group.add_argument(
+        "--num-prompts",
+        type=int,
+        default=LlmInputs.DEFAULT_NUM_PROMPTS,
+        required=False,
+        help=f"The number of unique prompts to generate as stimulus.",
+    )
+
+    input_group.add_argument(
+        "--prompt-source",
+        type=str,
+        choices=utils.get_enum_names(PromptSource),
+        default="synthetic",
+        required=False,
+        help=f"The source of the input prompts.",
+    )
+
+    input_group.add_argument(
+        "--random-seed",
+        type=int,
+        default=LlmInputs.DEFAULT_RANDOM_SEED,
+        required=False,
+        help="The seed used to generate random values.",
+    )
+
+    input_group.add_argument(
+        "--synthetic-requested-output-tokens",
+        type=int,
+        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
+        required=False,
+        help="The number of tokens to request in the output. This is used when input-type is synthetic to tell the LLM how many output tokens to generate in each response.",
     )
 
     input_group.add_argument(
@@ -144,31 +169,6 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
         help=f"The standard deviation of number of tokens in the generated prompts when input-type is synthetic.",
-    )
-
-    input_group.add_argument(
-        "--prompt-source",
-        type=str,
-        choices=utils.get_enum_names(PromptSource),
-        default="synthetic",
-        required=False,
-        help=f"The source of the input prompts.",
-    )
-
-    input_group.add_argument(
-        "--num-prompts",
-        type=int,
-        default=LlmInputs.DEFAULT_NUM_PROMPTS,
-        required=False,
-        help=f"The number of unique prompts to generate as stimulus.",
-    )
-
-    input_group.add_argument(
-        "--random-seed",
-        type=int,
-        default=LlmInputs.DEFAULT_RANDOM_SEED,
-        required=False,
-        help="The seed used to generate random values.",
     )
 
 
