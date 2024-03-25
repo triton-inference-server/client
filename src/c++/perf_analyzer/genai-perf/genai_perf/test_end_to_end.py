@@ -20,10 +20,11 @@ testing_matrix = [
 ]
 
 base_commands = {
-    "nim_chat": "genai-perf -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
-    "nim_completions": "genai-perf -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --output-format openai_completions --service-kind openai --endpoint v1/completions",
-    "vllm_openai": "genai-perf -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --output-format openai_chat_completions --service-kind openai --endpoint v1/chat/completions",
-    "triton_trtllm": "genai-perf -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --output-format trtllm",
+    "nim_chat": "genai-perf -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999 --service-kind openai --endpoint v1/chat/completions",
+    "nim_completions": "genai-perf -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --service-kind openai --endpoint v1/completions",
+    "vllm_openai": "genai-perf -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --service-kind openai --endpoint v1/chat/completions",
+    "triton_trtllm": "genai-perf -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --backend trtllm",
+    "triton_vllm": "genai-perf -s 999 -p 20000 -m gpt2_vllm --service-kind triton --backend vllm",
 }
 testname = ""
 
