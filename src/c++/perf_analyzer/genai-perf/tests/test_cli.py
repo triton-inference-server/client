@@ -77,8 +77,8 @@ class TestCLIArguments:
             ),
             (["--expected-output-tokens", "5"], {"expected_output_tokens": 5}),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
-            (["--input-tokens-mean", "6"], {"input_tokens_mean": 6}),
-            (["--input-tokens-stddev", "7"], {"input_tokens_stddev": 7}),
+            (["--synthetic-tokens-mean", "6"], {"synthetic_tokens_mean": 6}),
+            (["--synthetic-tokens-stddev", "7"], {"synthetic_tokens_stddev": 7}),
             (
                 ["--prompt-source", "synthetic"],
                 {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},

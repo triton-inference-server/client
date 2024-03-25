@@ -134,7 +134,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--input-tokens-mean",
+        "--synthetic-tokens-mean",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
@@ -142,7 +142,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--input-tokens-stddev",
+        "--synthetic-tokens-stddev",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,

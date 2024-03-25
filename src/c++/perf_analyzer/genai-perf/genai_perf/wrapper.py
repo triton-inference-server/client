@@ -63,8 +63,8 @@ class Profiler:
             # 'streaming' that PA takes, which means something else (and is
             # required for decoupled models into triton).
             "streaming",
-            "input_tokens_mean",
-            "input_tokens_stddev",
+            "synthetic_tokens_mean",
+            "synthetic_tokens_stddev",
             "expected_output_tokens",
             "num_of_output_prompts",
             "random_seed",
