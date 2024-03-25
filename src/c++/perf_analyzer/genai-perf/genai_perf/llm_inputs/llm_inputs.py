@@ -26,7 +26,7 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER, AutoTokenizer
 from requests import Response
 
 
-class InputType(Enum):
+class PromptSource(Enum):
     SYNTHETIC = auto()
     URL = auto()
 
@@ -71,7 +71,7 @@ class LlmInputs:
     @classmethod
     def create_llm_inputs(
         cls,
-        input_type: InputType,
+        input_type: PromptSource,
         output_format: OutputFormat,
         dataset_name: str = "",
         model_name: str = "",
@@ -139,14 +139,14 @@ class LlmInputs:
         )
 
         dataset = None
-        if input_type == InputType.URL:
+        if input_type == PromptSource.URL:
             dataset = LlmInputs._get_input_dataset_from_url(
                 dataset_name, starting_index, length
             )
             generic_dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
                 dataset
             )
-        elif input_type == InputType.SYNTHETIC:
+        elif input_type == PromptSource.SYNTHETIC:
             dataset = LlmInputs._get_input_dataset_from_synthetic(
                 tokenizer,
                 prompt_tokens_mean,
@@ -173,7 +173,7 @@ class LlmInputs:
     @classmethod
     def _check_for_valid_args(
         cls,
-        input_type: InputType,
+        input_type: PromptSource,
         dataset_name: str,
         starting_index: int,
         length: int,
@@ -789,18 +789,18 @@ class LlmInputs:
 
     @classmethod
     def _check_for_dataset_name_if_input_type_is_url(
-        cls, input_type: InputType, dataset_name: str
+        cls, input_type: PromptSource, dataset_name: str
     ) -> None:
-        if input_type == InputType.URL and not dataset_name:
+        if input_type == PromptSource.URL and not dataset_name:
             raise GenAIPerfException(
                 "Input type is URL, but dataset_name is not specified."
             )
 
     @classmethod
     def _check_for_tokenzier_if_input_type_is_synthetic(
-        cls, input_type: InputType, tokenizer: AutoTokenizer
+        cls, input_type: PromptSource, tokenizer: AutoTokenizer
     ) -> None:
-        if input_type == InputType.SYNTHETIC and not tokenizer:
+        if input_type == PromptSource.SYNTHETIC and not tokenizer:
             raise GenAIPerfException(
                 "Input type is SYNTHETIC, but a tokenizer was not specified."
             )
