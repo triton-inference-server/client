@@ -24,13 +24,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import subprocess
+from unittest.mock import ANY, MagicMock, patch
+
 import pytest
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_GRPC_URL
 from genai_perf.wrapper import Profiler
 
 
-class TestCmdBuilder:
+class TestWrapper:
     @pytest.mark.parametrize(
         "arg",
         [
@@ -90,3 +93,31 @@ class TestCmdBuilder:
 
         # Ensure the correct arguments are appended.
         assert cmd_string.count(" -i http") == 1
+
+    @patch("genai_perf.wrapper.subprocess.run")
+    def test_stdout_verbose(self, mock_subprocess_run):
+        args = MagicMock()
+        args.model = "test_model"
+        args.verbose = True
+        Profiler.run(args=args, extra_args=None)
+
+        # Check that standard output was not redirected.
+        for call_args in mock_subprocess_run.call_args_list:
+            _, kwargs = call_args
+            assert (
+                "stdout" not in kwargs or kwargs["stdout"] is None
+            ), "With the verbose flag, stdout should not be redirected."
+
+    @patch("genai_perf.wrapper.subprocess.run")
+    def test_stdout_not_verbose(self, mock_subprocess_run):
+        args = MagicMock()
+        args.model = "test_model"
+        args.verbose = False
+        Profiler.run(args=args, extra_args=None)
+
+        # Check that standard output was redirected.
+        for call_args in mock_subprocess_run.call_args_list:
+            _, kwargs = call_args
+            assert (
+                kwargs["stdout"] is subprocess.DEVNULL
+            ), "When the verbose flag is not passed, stdout should be redirected to /dev/null."
