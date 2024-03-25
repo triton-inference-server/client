@@ -35,12 +35,13 @@ namespace triton { namespace perfanalyzer {
 
 /// A record containing the data of a single request input or response output
 struct RecordData {
-  RecordData(const uint8_t* buf, size_t size)
+  RecordData(const uint8_t* buf, size_t size, std::string data_type = "")
   {
     uint8_t* array = new uint8_t[size];
     std::memcpy(array, buf, size);
     data_ = std::shared_ptr<uint8_t>(array, [](uint8_t* p) { delete[] p; });
     size_ = size;
+    data_type_ = data_type;
   }
 
   // Define equality comparison operator so it can be inserted into maps
@@ -54,14 +55,13 @@ struct RecordData {
 
   std::shared_ptr<uint8_t> data_;
   size_t size_;
+  std::string data_type_;
 };
 
 
 /// A record of an individual request
 struct RequestRecord {
-  // TODO: uncomment
-  // using RequestInput = std::unordered_map<std::string, RecordData>;
-  using RequestInput = std::unordered_map<std::string, std::string>;
+  using RequestInput = std::unordered_map<std::string, RecordData>;
   using ResponseOutput = std::unordered_map<std::string, RecordData>;
 
   RequestRecord(

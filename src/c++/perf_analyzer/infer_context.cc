@@ -194,8 +194,9 @@ InferContext::GetInputs(const InferData& infer_data)
   for (const auto& request_input : infer_data_.valid_inputs_) {
     const uint8_t* buf{nullptr};
     size_t byte_size{0};
-    // TODO: read input data
-    input.emplace(request_input->Name(), "Hello World!");
+    std::string data_type{request_input->Datatype()};
+    request_input->RawData(&buf, &byte_size);
+    input.emplace(request_input->Name(), RecordData(buf, byte_size, data_type));
   }
   return input;
 }

@@ -283,6 +283,8 @@ class TritonInferInput : public InferInput {
   /// See InferInput::SetSharedMemory()
   Error SetSharedMemory(
       const std::string& name, size_t byte_size, size_t offset = 0) override;
+  /// See InferInput::RawData()
+  Error RawData(const uint8_t** buf, size_t* byte_size) override;
 
  private:
   explicit TritonInferInput(

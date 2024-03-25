@@ -164,21 +164,26 @@ ProfileDataExporter::AddRequestInputs(
 {
   for (const auto& request_input : request_inputs) {
     for (const auto& input : request_input) {
-      const std::string& name{input.first};
-      const auto& content{input.second};
-      // TODO: uncomment
-      // const auto& buf{input.second.data_.get()};
-      // const auto& byte_size{input.second.size_};
+      const auto& name{input.first};
+      const auto& buf{input.second.data_.get()};
+      const auto& byte_size{input.second.size_};
+      const auto& data_type{input.second.data_type_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value input_json{};
-      input_json.SetString(content.c_str(), document_.GetAllocator());
-      // if (buf != nullptr) {
-      //   output_json.SetString(
-      //       reinterpret_cast<const char*>(buf), byte_size,
-      //       document_.GetAllocator());
-      // } else {
-      //   output_json.SetString("", 0, document_.GetAllocator());
-      // }
+      std::cout << "DTYPE: " << data_type << std::endl;
+      if (buf != nullptr) {
+        if (data_type == "BYTES" || data_type == "JSON") {
+          input_json.SetString(
+              reinterpret_cast<const char*>(buf), byte_size,
+              document_.GetAllocator());
+        } else if (data_type == "BOOL") {
+          bool is_true = (*buf > 0);
+          input_json.SetBool(is_true);
+        }
+        // TODO
+      } else {
+        input_json.SetString("", 0, document_.GetAllocator());
+      }
       request_inputs_json.AddMember(
           name_json, input_json, document_.GetAllocator());
     }

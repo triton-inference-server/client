@@ -756,6 +756,13 @@ TritonInferInput::SetSharedMemory(
   return Error::Success;
 }
 
+Error
+TritonInferInput::RawData(const uint8_t** buf, size_t* byte_size)
+{
+  RETURN_IF_TRITON_ERROR(input_->RawData(buf, byte_size));
+  return Error::Success;
+}
+
 TritonInferInput::TritonInferInput(
     const std::string& name, const std::string& datatype)
     : InferInput(BackendKind::TRITON, name, datatype)
