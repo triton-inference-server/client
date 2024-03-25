@@ -26,7 +26,7 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# **Perf Analyzer Documentation**
+# Perf Analyzer Documentation
 
 | [Installation](README.md#installation) | [Getting Started](README.md#getting-started) | [User Guide](README.md#user-guide) |
 | -------------------------------------- | -------------------------------------------- | ---------------------------------- |
