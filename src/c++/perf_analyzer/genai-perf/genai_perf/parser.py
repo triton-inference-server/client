@@ -159,11 +159,11 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--num-of-output-prompts",
+        "--num-prompts",
         type=int,
-        default=LlmInputs.DEFAULT_NUM_OF_OUTPUT_PROMPTS,
+        default=LlmInputs.DEFAULT_NUM_PROMPTS,
         required=False,
-        help=f"The number of synthetic output prompts to generate. ",
+        help=f"The number of unique prompts to generate. ",
     )
 
     input_group.add_argument(
