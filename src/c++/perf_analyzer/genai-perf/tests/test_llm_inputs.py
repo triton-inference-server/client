@@ -19,7 +19,7 @@ import pytest
 from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 
 
 class TestLlmInputs:
@@ -44,7 +44,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_dataset_name_if_input_type_is_url(
-                input_type=InputType.URL, dataset_name=""
+                input_type=PromptSource.URL, dataset_name=""
             )
 
     def test_input_type_synthetic_no_tokenizer(self):
@@ -53,7 +53,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
-                input_type=InputType.SYNTHETIC, tokenizer=None
+                input_type=PromptSource.SYNTHETIC, tokenizer=None
             )
 
     def test_illegal_starting_index(self):
@@ -110,7 +110,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs.create_llm_inputs(
-                input_type=InputType.URL,
+                input_type=PromptSource.URL,
                 dataset_name=OPEN_ORCA,
                 output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
                 starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
@@ -181,7 +181,7 @@ class TestLlmInputs:
         Test CNN_DAILYMAIL can be accessed
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.URL,
+            input_type=PromptSource.URL,
             dataset_name=CNN_DAILY_MAIL,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
         )
@@ -196,7 +196,7 @@ class TestLlmInputs:
         Test that write to file is working correctly
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.URL,
+            input_type=PromptSource.URL,
             dataset_name=OPEN_ORCA,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             model_name="open_orca",
@@ -217,7 +217,7 @@ class TestLlmInputs:
         Test conversion of openai to vllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.URL,
+            input_type=PromptSource.URL,
             output_format=OutputFormat.VLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -234,7 +234,7 @@ class TestLlmInputs:
         Test conversion of openai to completions
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.URL,
+            input_type=PromptSource.URL,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -251,7 +251,7 @@ class TestLlmInputs:
         Test conversion of openai to trtllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.URL,
+            input_type=PromptSource.URL,
             output_format=OutputFormat.TRTLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
@@ -292,7 +292,7 @@ class TestLlmInputs:
         Test generating synthetic prompts and converting to vllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.SYNTHETIC,
+            input_type=PromptSource.SYNTHETIC,
             output_format=OutputFormat.VLLM,
             num_of_output_prompts=5,
             add_model_name=False,
@@ -310,7 +310,7 @@ class TestLlmInputs:
         Test generating synthetic prompts and converting to trtllm
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.SYNTHETIC,
+            input_type=PromptSource.SYNTHETIC,
             output_format=OutputFormat.TRTLLM,
             num_of_output_prompts=5,
             add_model_name=False,
@@ -328,7 +328,7 @@ class TestLlmInputs:
         Test generating synthetic prompts and converting to OpenAI chat completions
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.SYNTHETIC,
+            input_type=PromptSource.SYNTHETIC,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             num_of_output_prompts=5,
             add_model_name=False,
@@ -346,7 +346,7 @@ class TestLlmInputs:
         Test generating synthetic prompts and converting to OpenAI completions
         """
         pa_json = LlmInputs.create_llm_inputs(
-            input_type=InputType.SYNTHETIC,
+            input_type=PromptSource.SYNTHETIC,
             output_format=OutputFormat.OPENAI_COMPLETIONS,
             num_of_output_prompts=5,
             add_model_name=False,

@@ -31,7 +31,7 @@ from pathlib import Path
 
 import genai_perf.utils as utils
 from genai_perf.constants import CNN_DAILY_MAIL, LOGGER_NAME, OPEN_ORCA
-from genai_perf.llm_inputs.llm_inputs import InputType, LlmInputs, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
@@ -150,12 +150,12 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--input-type",
+        "--prompt-source",
         type=str,
-        choices=utils.get_enum_names(InputType),
+        choices=utils.get_enum_names(PromptSource),
         default="synthetic",
         required=False,
-        help=f"The source of the input data.",
+        help=f"The source of the input prompts.",
     )
 
     input_group.add_argument(
@@ -351,7 +351,7 @@ def parse_args():
     args = parser.parse_args(argv[1:passthrough_index])
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _convert_str_to_enum_entry(args, "input_type", InputType)
+    args = _convert_str_to_enum_entry(args, "prompt_source", PromptSource)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]

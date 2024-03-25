@@ -30,7 +30,7 @@ import genai_perf.utils as utils
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.llm_inputs import InputType, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
 from genai_perf.main import run
 
 
@@ -80,12 +80,12 @@ class TestCLIArguments:
             (["--input-tokens-mean", "6"], {"input_tokens_mean": 6}),
             (["--input-tokens-stddev", "7"], {"input_tokens_stddev": 7}),
             (
-                ["--input-type", "synthetic"],
-                {"input_type": utils.get_enum_entry("synthetic", InputType)},
+                ["--prompt-source", "synthetic"],
+                {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
             ),
             (
-                ["--input-type", "url"],
-                {"input_type": utils.get_enum_entry("url", InputType)},
+                ["--prompt-source", "url"],
+                {"prompt_source": utils.get_enum_entry("url", PromptSource)},
             ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
