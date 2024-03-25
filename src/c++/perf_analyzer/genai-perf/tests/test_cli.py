@@ -75,7 +75,10 @@ class TestCLIArguments:
                 ["--endpoint", "v1/chat/completions"],
                 {"endpoint": "v1/chat/completions"},
             ),
-            (["--expected-output-tokens", "5"], {"expected_output_tokens": 5}),
+            (
+                ["--synthetic-requested-output-tokens", "5"],
+                {"synthetic_requested_output_tokens": 5},
+            ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (["--synthetic-tokens-mean", "6"], {"synthetic_tokens_mean": 6}),
             (["--synthetic-tokens-stddev", "7"], {"synthetic_tokens_stddev": 7}),

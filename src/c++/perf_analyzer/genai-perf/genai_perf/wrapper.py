@@ -65,7 +65,7 @@ class Profiler:
             "streaming",
             "synthetic_tokens_mean",
             "synthetic_tokens_stddev",
-            "expected_output_tokens",
+            "synthetic_requested_output_tokens",
             "num_of_output_prompts",
             "random_seed",
             "tokenizer",

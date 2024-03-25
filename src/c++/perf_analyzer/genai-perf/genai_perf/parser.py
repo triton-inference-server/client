@@ -114,9 +114,9 @@ def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
     input_group.add_argument(
-        "--expected-output-tokens",
+        "--synthetic-requested-output-tokens",
         type=int,
-        default=LlmInputs.DEFAULT_EXPECTED_OUTPUT_TOKENS,
+        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
         required=False,
         help="The number of tokens to expect in the output. "
         "This is used to determine the length of the prompt. "

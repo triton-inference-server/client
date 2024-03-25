@@ -55,7 +55,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
         length=args.num_prompts,
         prompt_tokens_mean=args.synthetic_tokens_mean,
         prompt_tokens_stddev=args.synthetic_tokens_stddev,
-        expected_output_tokens=args.expected_output_tokens,
+        expected_output_tokens=args.synthetic_requested_output_tokens,
         random_seed=args.random_seed,
         num_of_output_prompts=args.num_prompts,
         add_model_name=add_model_name,
