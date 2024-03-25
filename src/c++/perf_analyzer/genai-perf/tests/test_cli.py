@@ -89,7 +89,7 @@ class TestCLIArguments:
             ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
-            (["--num-of-output-prompts", "101"], {"num_of_output_prompts": 101}),
+            (["--num-prompts", "101"], {"num_prompts": 101}),
             (
                 ["--profile-export-file", "text.txt"],
                 {"profile_export_file": Path("text.txt")},
