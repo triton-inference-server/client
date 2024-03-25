@@ -28,7 +28,7 @@ from requests import Response
 
 class PromptSource(Enum):
     SYNTHETIC = auto()
-    URL = auto()
+    DATASET = auto()
 
 
 class OutputFormat(Enum):
@@ -139,7 +139,7 @@ class LlmInputs:
         )
 
         dataset = None
-        if input_type == PromptSource.URL:
+        if input_type == PromptSource.DATASET:
             dataset = LlmInputs._get_input_dataset_from_url(
                 dataset_name, starting_index, length
             )
@@ -791,9 +791,9 @@ class LlmInputs:
     def _check_for_dataset_name_if_input_type_is_url(
         cls, input_type: PromptSource, dataset_name: str
     ) -> None:
-        if input_type == PromptSource.URL and not dataset_name:
+        if input_type == PromptSource.DATASET and not dataset_name:
             raise GenAIPerfException(
-                "Input type is URL, but dataset_name is not specified."
+                "Input type is dataset, but dataset_name is not specified."
             )
 
     @classmethod

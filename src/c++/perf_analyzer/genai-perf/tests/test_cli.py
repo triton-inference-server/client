@@ -84,8 +84,8 @@ class TestCLIArguments:
                 {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
             ),
             (
-                ["--prompt-source", "url"],
-                {"prompt_source": utils.get_enum_entry("url", PromptSource)},
+                ["--prompt-source", "dataset"],
+                {"prompt_source": utils.get_enum_entry("dataset", PromptSource)},
             ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
