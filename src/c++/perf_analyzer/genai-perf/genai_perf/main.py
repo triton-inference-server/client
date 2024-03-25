@@ -61,6 +61,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
         add_model_name=add_model_name,
         add_stream=args.streaming,
         tokenizer=tokenizer,
+        extra_inputs=parser.get_extra_inputs_as_dict(args),
     )
 
 

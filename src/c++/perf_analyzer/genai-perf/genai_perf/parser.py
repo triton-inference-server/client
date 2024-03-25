@@ -171,6 +171,14 @@ def _add_input_args(parser):
         help=f"The standard deviation of number of tokens in the generated prompts when prompt-source is synthetic.",
     )
 
+    parser.add_argument(
+        "--extra-inputs",
+        action="append",
+        help="Provide additional inputs to include with every request. "
+        "You can repeat this flag for multiple inputs. "
+        "Inputs should be in a key:value format.",
+    )
+
 
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
@@ -316,6 +324,21 @@ def _add_other_args(parser):
         version="%(prog)s " + __version__,
         help=f"An option to print the version and exit.",
     )
+
+
+def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
+    request_inputs = {}
+    if hasattr(args, "extra_inputs"):
+        for input_str in args.extra_inputs:
+            try:
+                key, value = input_str.split(":", 1)
+                request_inputs[key] = value
+            except ValueError:
+                args.error(
+                    f"Invalid input format for --extra-inputs: {input_str}"
+                    "Expected input format: 'key:value'"
+                )
+    return request_inputs
 
 
 ### Entrypoint ###

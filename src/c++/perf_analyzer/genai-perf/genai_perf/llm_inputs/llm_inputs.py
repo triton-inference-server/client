@@ -86,6 +86,7 @@ class LlmInputs:
         add_model_name: bool = False,
         add_stream: bool = False,
         tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
+        extra_inputs: Dict = {},
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -112,6 +113,8 @@ class LlmInputs:
             If true adds a model name field to each payload
         add_stream:
             If true adds a steam field to each payload
+        extra_inputs:
+            If provided, append these inputs to every request
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -162,6 +165,10 @@ class LlmInputs:
             raise GenAIPerfException(
                 "Using a file to supply LLM Input is not supported at this time"
             )
+
+        if extra_inputs:
+            for entry in generic_dataset_json["rows"]:
+                entry["row"].update(extra_inputs)
 
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
             output_format, generic_dataset_json, add_model_name, add_stream, model_name
