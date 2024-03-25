@@ -46,7 +46,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
     # TODO (TMA-1759): review if add_model_name is always true
     add_model_name = True
     LlmInputs.create_llm_inputs(
-        input_type=args.input_type,
+        input_type=args.prompt_source,
         output_format=args.output_format,
         dataset_name=args.input_dataset,
         model_name=args.model,
