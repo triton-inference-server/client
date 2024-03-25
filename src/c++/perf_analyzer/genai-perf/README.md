@@ -118,17 +118,17 @@ or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
 using the `--prompt-source` CLI option.
 
 When the dataset is synthetic you can specify the following options:
-* `--num-prompts`: The number of unique prompts to generate
+* `--num-prompts`: The number of unique prompts to generate.
 * `--synthetic-tokens-mean`: The mean number of tokens of synthetic input data.
 * `--synthetic-tokens-stddev`: The standard deviation number of tokens of synthetic
   input data.
 * `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
-  to return in the response
+  to return in the response.
 * `--random-seed`: The seed used to generate random values.
 
 When the dataset is coming from HuggingFace you can specify the following
 options:
-* `--num-prompts`: The number of unique prompts to generate
+* `--num-prompts`: The number of unique prompts to generate.
 * `--dataset`: HuggingFace dataset to use for benchmarking.
 
 # Metrics
