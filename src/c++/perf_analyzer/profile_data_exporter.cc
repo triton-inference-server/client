@@ -156,7 +156,6 @@ ProfileDataExporter::AddResponseTimestamps(
   }
 }
 
-// TODO: refactor
 void
 ProfileDataExporter::AddRequestInputs(
     rapidjson::Value& request_inputs_json,
