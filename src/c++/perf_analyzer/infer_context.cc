@@ -188,6 +188,14 @@ InferContext::GetOutput(const cb::InferResult& infer_result)
     const uint8_t* buf{nullptr};
     size_t byte_size{0};
     infer_result.RawData(requested_output->Name(), &buf, &byte_size);
+
+    // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
+    // of the rest of the data (which we already know based on byte_size). It
+    // should be ignored here, as it isn't part of the actual response
+    if (requested_output->Datatype() == "BYTES") {
+      buf += 4;
+      byte_size -= 4;
+    }
     output.emplace(requested_output->Name(), ResponseData(buf, byte_size));
   }
   return output;
