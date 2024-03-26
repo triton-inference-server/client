@@ -185,7 +185,6 @@ class InferContext {
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
  private:
-  // Get all the request inputs that are being sent to the server.
   const RequestRecord::RequestInput GetInputs();
 
   const RequestRecord::ResponseOutput GetOutputs(

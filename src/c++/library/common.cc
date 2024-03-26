@@ -185,7 +185,7 @@ InferInput::AppendFromString(const std::vector<std::string>& input)
 Error
 InferInput::RawData(const uint8_t** buf, size_t* byte_size)
 {
-  // TODO - handle multi-batch case
+  // TMA-1775 - handle multi-batch case
   *buf = bufs_[0];
   *byte_size = buf_byte_sizes_[0];
   return Error::Success;

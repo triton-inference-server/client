@@ -86,9 +86,7 @@ struct RequestRecord {
   std::vector<std::chrono::time_point<std::chrono::system_clock>>
       response_timestamps_;
 
-  // Collection of request inputs
   std::vector<RequestInput> request_inputs_;
-  // Collection of response outputs
   std::vector<ResponseOutput> response_outputs_;
   // Whether or not the request is at the end of a sequence.
   bool sequence_end_;
