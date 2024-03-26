@@ -30,11 +30,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The following guide provides an example on how to use GenAI-Perf
 to measure and characterize the performance behaviors of Large Language Models
-(LLMs) using [vLLM](https://github.com/vllm-project/vllm).
+(LLMs).
 
 ## Setup: Download and configure Triton Server and Client environment
 
-1. In a clean working directory, start by entering the following code snippet:
+1. In a clean working directory, start by executing the following code snippet
+to create a triton model repository:
 
 ```bash
 MODEL_REPO="${PWD}/models"
@@ -83,8 +84,6 @@ registry and launch the container.
 
 ```bash
 export RELEASE=<yy.mm>
-docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
-
 docker run --gpus all -it --net host --shm-size=1g --ulimit stack=67108864 \
   nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk \
   bash
@@ -93,7 +92,7 @@ docker run --gpus all -it --net host --shm-size=1g --ulimit stack=67108864 \
 5. Profile GPT2 via GenAI-Perf
 
 ```bash
-genai-perf -m gpt2_vllm --concurrency 1 --input-type url --output-format vllm -u localhost:8001 --streaming
+genai-perf -m gpt2_vllm --concurrency 1 --output-format vllm --streaming
 ```
 
 By default, all metrics will saved in the `profile_export_genai_perf.csv` file.
