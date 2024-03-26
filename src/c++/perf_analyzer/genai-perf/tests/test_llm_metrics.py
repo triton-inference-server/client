@@ -385,23 +385,19 @@ class TestLLMProfileDataParser:
                     {
                         "timestamp": 1,
                         "response_timestamps": [3, 5, 8],
-                        # FIXME - remove the whitespace once PA handles it.
-                        # LLMProfileDataParser preprocessse the responses
-                        # from triton server and removes first few chars.
-                        # Add whitespace to avoid valid chars being removed.
                         "response_outputs": [
-                            {"text_output": "   dogs"},
-                            {"text_output": "   are"},
-                            {"text_output": "   cool"},
+                            {"text_output": "dogs"},
+                            {"text_output": "are"},
+                            {"text_output": "cool"},
                         ],
                     },
                     {
                         "timestamp": 2,
                         "response_timestamps": [4, 7, 11],
                         "response_outputs": [
-                            {"text_output": "   I"},
-                            {"text_output": "   don't"},
-                            {"text_output": "   cook food"},
+                            {"text_output": "I"},
+                            {"text_output": "don't"},
+                            {"text_output": "cook food"},
                         ],
                     },
                 ],
@@ -416,19 +412,19 @@ class TestLLMProfileDataParser:
                         "timestamp": 5,
                         "response_timestamps": [7, 8, 13, 18],
                         "response_outputs": [
-                            {"text_output": "   cats"},
-                            {"text_output": "   are"},
-                            {"text_output": "   cool"},
-                            {"text_output": "   too"},
+                            {"text_output": "cats"},
+                            {"text_output": "are"},
+                            {"text_output": "cool"},
+                            {"text_output": "too"},
                         ],
                     },
                     {
                         "timestamp": 3,
                         "response_timestamps": [6, 8, 11],
                         "response_outputs": [
-                            {"text_output": "   it's"},
-                            {"text_output": "   very"},
-                            {"text_output": "   simple work"},
+                            {"text_output": "it's"},
+                            {"text_output": "very"},
+                            {"text_output": "simple work"},
                         ],
                     },
                 ],
