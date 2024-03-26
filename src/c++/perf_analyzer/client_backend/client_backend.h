@@ -581,17 +581,23 @@ class InferRequestedOutput {
   /// \param infer_output Returns a new InferOutputGrpc object.
   /// \param kind The kind of the associated client backend.
   /// \param name The name of output being requested.
+  /// \param datatype The datatype of the output
   /// \param class_count The number of classifications to be requested. The
   /// default value is 0 which means the classification results are not
   /// requested.
   /// \return Error object indicating success or failure.
   static Error Create(
       InferRequestedOutput** infer_output, const BackendKind kind,
-      const std::string& name, const size_t class_count = 0);
+      const std::string& name, const std::string& datatype,
+      const size_t class_count = 0);
 
   /// Gets name of the associated output tensor.
   /// \return The name of the tensor.
   const std::string& Name() const { return name_; }
+
+  /// Gets datatype of the associated output tensor.
+  /// \return The datatype of the tensor
+  const std::string& Datatype() const { return datatype_; }
 
   /// Set the output tensor data to be written to specified shared
   /// memory region.
@@ -605,9 +611,12 @@ class InferRequestedOutput {
       const size_t offset = 0);
 
  protected:
-  InferRequestedOutput(const BackendKind kind, const std::string& name);
+  InferRequestedOutput(
+      const BackendKind kind, const std::string& name,
+      const std::string& datatype);
   const BackendKind kind_;
   const std::string name_;
+  const std::string datatype_;
 };
 
 //

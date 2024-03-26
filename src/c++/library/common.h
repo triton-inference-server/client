@@ -400,7 +400,7 @@ class InferRequestedOutput {
   /// \return Error object indicating success or failure.
   static Error Create(
       InferRequestedOutput** infer_output, const std::string& name,
-      const size_t class_count = 0);
+      const std::string& datatype = "INT32", const size_t class_count = 0);
 
   /// Gets name of the associated output tensor.
   /// \return The name of the tensor.
@@ -455,9 +455,11 @@ class InferRequestedOutput {
 #endif
 
   explicit InferRequestedOutput(
-      const std::string& name, const size_t class_count = 0);
+      const std::string& name, const std::string& datatype,
+      const size_t class_count = 0);
 
   std::string name_;
+  std::string datatype_;
   size_t class_count_;
 
   // Used only if working with Shared Memory

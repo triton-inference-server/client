@@ -83,14 +83,15 @@ OpenAiClientBackend::ClientInferStat(InferStat* infer_stat)
 
 Error
 OpenAiInferRequestedOutput::Create(
-    InferRequestedOutput** infer_output, const std::string& name)
+    InferRequestedOutput** infer_output, const std::string& name,
+    const std::string& datatype)
 {
   OpenAiInferRequestedOutput* local_infer_output =
-      new OpenAiInferRequestedOutput(name);
+      new OpenAiInferRequestedOutput(name, datatype);
 
   tc::InferRequestedOutput* openai_infer_output;
   RETURN_IF_TRITON_ERROR(
-      tc::InferRequestedOutput::Create(&openai_infer_output, name));
+      tc::InferRequestedOutput::Create(&openai_infer_output, name, datatype));
   local_infer_output->output_.reset(openai_infer_output);
 
   *infer_output = local_infer_output;
@@ -98,8 +99,9 @@ OpenAiInferRequestedOutput::Create(
   return Error::Success;
 }
 
-OpenAiInferRequestedOutput::OpenAiInferRequestedOutput(const std::string& name)
-    : InferRequestedOutput(BackendKind::OPENAI, name)
+OpenAiInferRequestedOutput::OpenAiInferRequestedOutput(
+    const std::string& name, const std::string& datatype)
+    : InferRequestedOutput(BackendKind::OPENAI, name, datatype)
 {
 }
 

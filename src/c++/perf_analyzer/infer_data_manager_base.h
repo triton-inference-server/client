@@ -138,7 +138,8 @@ class InferDataManagerBase : public IInferDataManager {
       InferData& infer_data) = 0;
 
   virtual cb::Error InitInferDataOutput(
-      const std::string& name, InferData& infer_data) = 0;
+      const std::string& name, const ModelTensor& model_tensor,
+      InferData& infer_data) = 0;
 
   void AddInferDataParameters(InferData& infer_data);
 

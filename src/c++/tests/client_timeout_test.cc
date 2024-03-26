@@ -474,7 +474,7 @@ main(int argc, char** argv)
   // Generate the outputs to be requested.
   tc::InferRequestedOutput* output0;
   FAIL_IF_ERR(
-      tc::InferRequestedOutput::Create(&output0, "OUTPUT0"),
+      tc::InferRequestedOutput::Create(&output0, "OUTPUT0", "INT32"),
       "unable to get 'OUTPUT0'");
   std::shared_ptr<tc::InferRequestedOutput> output0_ptr;
   output0_ptr.reset(output0);

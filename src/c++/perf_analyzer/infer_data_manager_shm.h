@@ -142,7 +142,8 @@ class InferDataManagerShm : public InferDataManagerBase {
       InferData& infer_data) override;
 
   cb::Error InitInferDataOutput(
-      const std::string& name, InferData& infer_data) override;
+      const std::string& name, const ModelTensor& model_tensor,
+      InferData& infer_data) override;
 
   /// Helper function to update the inputs
   /// \param thread_id The ID of the calling thread
