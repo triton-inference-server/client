@@ -114,8 +114,7 @@ InferContext::SendRequest(
   thread_stat_->num_sent_requests_++;
 
   // Parse the request inputs to save in the profile export file
-  RequestRecord::RequestInput request_inputs{};
-  request_inputs = GetInputs(infer_data_);
+  RequestRecord::RequestInput request_inputs{GetInputs()};
 
   if (async_) {
     uint64_t unique_request_id{(thread_id_ << 48) | ((request_id << 16) >> 16)};
@@ -188,7 +187,7 @@ InferContext::SendRequest(
 }
 
 const RequestRecord::RequestInput
-InferContext::GetInputs(const InferData& infer_data)
+InferContext::GetInputs()
 {
   RequestRecord::RequestInput input{};
   for (const auto& request_input : infer_data_.valid_inputs_) {

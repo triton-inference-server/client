@@ -186,7 +186,7 @@ class InferContext {
 
  private:
   // Get all the request inputs that are being sent to the server.
-  const RequestRecord::RequestInput GetInputs(const InferData& infer_data);
+  const RequestRecord::RequestInput GetInputs();
 
   const RequestRecord::ResponseOutput GetOutputs(
       const cb::InferResult& infer_result);

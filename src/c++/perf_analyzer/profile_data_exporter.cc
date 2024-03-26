@@ -170,17 +170,18 @@ ProfileDataExporter::AddRequestInputs(
       const auto& data_type{input.second.data_type_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value input_json{};
-      std::cout << "DTYPE: " << data_type << std::endl;
       if (buf != nullptr) {
         if (data_type == "BYTES" || data_type == "JSON") {
           input_json.SetString(
               reinterpret_cast<const char*>(buf), byte_size,
               document_.GetAllocator());
+        } else if (data_type == "INT32") {
+          auto* val = reinterpret_cast<int32_t*>(buf);
+          input_json.SetInt(*val);
         } else if (data_type == "BOOL") {
           bool is_true = (*buf > 0);
           input_json.SetBool(is_true);
         }
-        // TODO
       } else {
         input_json.SetString("", 0, document_.GetAllocator());
       }
