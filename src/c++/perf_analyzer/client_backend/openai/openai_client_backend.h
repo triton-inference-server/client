@@ -95,13 +95,15 @@ class OpenAiClientBackend : public ClientBackend {
 class OpenAiInferRequestedOutput : public InferRequestedOutput {
  public:
   static Error Create(
-      InferRequestedOutput** infer_output, const std::string& name);
+      InferRequestedOutput** infer_output, const std::string& name,
+      const std::string& datatype);
   /// Returns the raw InferRequestedOutput object required by OpenAi client
   /// library.
   tc::InferRequestedOutput* Get() const { return output_.get(); }
 
  private:
-  explicit OpenAiInferRequestedOutput(const std::string& name);
+  explicit OpenAiInferRequestedOutput(
+      const std::string& name, const std::string& datatype);
 
   std::unique_ptr<tc::InferRequestedOutput> output_;
 };
