@@ -385,11 +385,11 @@ class TestLlmInputs:
 
         assert len(pa_json["data"]) == 5
 
+        # Verify that each entry in the generated JSON includes the additional key-value pairs
         if (
             output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
             or output_format == OutputFormat.OPENAI_COMPLETIONS
         ):
-            # Verify that each entry in the generated JSON includes the additional key-value pairs
             for entry in pa_json.get("data", []):
                 assert "payload" in entry, "Payload is missing in the request"
                 payload = entry["payload"]
@@ -401,7 +401,6 @@ class TestLlmInputs:
                         item["additional_key"] == "additional_value"
                     ), "The value of additional_key is incorrect"
         elif output_format == OutputFormat.TRTLLM or output_format == OutputFormat.VLLM:
-            # Verify that each entry in the generated JSON includes the additional key-value pairs
             for entry in pa_json.get("data", []):
                 assert (
                     "additional_key" in entry
@@ -411,7 +410,3 @@ class TestLlmInputs:
                 ), "The value of additional_key is incorrect"
         else:
             assert False, f"Unsupported output format: {output_format}"
-
-    print(
-        "Test passed: --request-input key:value is correctly added to every request in input-data.json"
-    )

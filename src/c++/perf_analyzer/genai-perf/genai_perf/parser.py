@@ -113,6 +113,13 @@ def handler(args, extra_args):
 def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
+    parser.add_argument(
+        "--extra-inputs",
+        action="append",
+        help="Provide additional inputs to include with every request. "
+        "You can repeat this flag for multiple inputs. Inputs should be in a key:value format.",
+    )
+
     input_group.add_argument(
         "--input-dataset",
         type=str.lower,
@@ -145,13 +152,6 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_RANDOM_SEED,
         required=False,
         help="The seed used to generate random values.",
-    )
-
-    parser.add_argument(
-        "--synthetic-extra-inputs",
-        action="append",
-        help="Provide additional inputs to include with every request when prompt-source is synthetic. "
-        "You can repeat this flag for multiple inputs. Inputs should be in a key:value format.",
     )
 
     input_group.add_argument(
@@ -327,16 +327,24 @@ def _add_other_args(parser):
 
 def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
     request_inputs = {}
-    if hasattr(args, "synthetic_extra_inputs"):
-        for input_str in args.synthetic_extra_inputs:
+    if hasattr(args, "extra_inputs"):
+        key = ""
+        for input_str in args.extra_inputs:
             try:
                 key, value = input_str.split(":", 1)
-                request_inputs[key] = value
+                if not key or not value:
+                    raise ValueError("Key or value is empty")
             except ValueError:
-                args.error(
-                    f"Invalid input format for --synthetic--extra-inputs: {input_str}"
+                raise ValueError(
+                    f"Invalid input format for --extra-inputs: {input_str}\n"
                     "Expected input format: 'key:value'"
                 )
+            if key in request_inputs:
+                raise ValueError(
+                    f"Key already exists in request_inputs dictionary: {key}"
+                )
+            request_inputs[key] = value
+
     return request_inputs
 
 

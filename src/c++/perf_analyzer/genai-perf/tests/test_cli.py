@@ -29,7 +29,6 @@ from pathlib import Path
 import genai_perf.utils as utils
 import pytest
 from genai_perf import __version__, parser
-from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
 from genai_perf.main import run
 
@@ -76,17 +75,17 @@ class TestCLIArguments:
                 {"endpoint": "v1/chat/completions"},
             ),
             (
-                ["--synthetic-extra-inputs", "random_key:random_value"],
-                {"synthetic_extra_inputs": ["random_key:random_value"]},
+                ["--extra-inputs", "test_key:test_value"],
+                {"extra_inputs": ["test_key:test_value"]},
             ),
             (
                 [
-                    "--synthetic-extra-inputs",
-                    "random_key:5",
-                    "--synthetic-extra-inputs",
-                    "another_random_key:6",
+                    "--extra-inputs",
+                    "test_key:5",
+                    "--extra-inputs",
+                    "another_test_key:6",
                 ],
-                {"synthetic_extra_inputs": ["random_key:5", "another_random_key:6"]},
+                {"extra_inputs": ["test_key:5", "another_test_key:6"]},
             ),
             (
                 ["--synthetic-requested-output-tokens", "5"],
@@ -233,3 +232,35 @@ class TestCLIArguments:
 
         parsed_args, _ = parser.parse_args()
         assert parsed_args.output_format == expected_format
+
+    @pytest.mark.parametrize(
+        "args, expected_error",
+        [
+            (
+                ["--extra-inputs", "hi:"],
+                "Invalid input format for --extra-inputs: hi:\nExpected input format: 'key:value'",
+            ),
+            (
+                ["--extra-inputs", ":a"],
+                "Invalid input format for --extra-inputs: :a\nExpected input format: 'key:value'",
+            ),
+            (
+                ["--extra-inputs", "unknown"],
+                "Invalid input format for --extra-inputs: unknown\nExpected input format: 'key:value'",
+            ),
+            (
+                ["--extra-inputs", "test_key:5", "--extra-inputs", "test_key:6"],
+                "Key already exists in request_inputs dictionary: test_key",
+            ),
+        ],
+    )
+    def test_repeated_extra_arg_warning(self, monkeypatch, args, expected_error):
+        combined_args = ["genai-perf", "-m", "test_model"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+
+        parsed_args, _ = parser.parse_args()
+
+        with pytest.raises(ValueError) as exc_info:
+            _ = parser.get_extra_inputs_as_dict(parsed_args)
+
+        assert str(exc_info.value) == expected_error
