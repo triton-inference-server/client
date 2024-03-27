@@ -195,6 +195,14 @@ InferContext::GetInputs()
     size_t byte_size{0};
     std::string data_type{request_input->Datatype()};
     request_input->RawData(&buf, &byte_size);
+
+    // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
+    // of the rest of the data (which we already know based on byte_size). It
+    // should be ignored here, as it isn't part of the actual request
+    if (data_type == "BYTES") {
+      buf += 4;
+      byte_size -= 4;
+    }
     input.emplace(request_input->Name(), RecordData(buf, byte_size, data_type));
   }
   return input;
