@@ -64,13 +64,6 @@ if(NOT TRITON_ENABLE_PYTHON_GRPC)
   set(TRITON_COMMON_ENABLE_PROTOBUF_PYTHON OFF)
 endif()
 
-# FIXME: Windows client currently does not support GPU tensors.
-# For simplicity, we will override this option here.
-if(WIN32 AND TRITON_ENABLE_GPU)
-  message("GPU shared memory is not currently supported by the Windows client. Forcing TRITON_ENABLE_GPU to false.")
-  set(TRITON_ENABLE_GPU OFF CACHE BOOL "GPU disabled" FORCE)
-endif()
-
 #
 # Dependencies
 #
