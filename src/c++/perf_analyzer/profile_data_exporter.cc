@@ -169,6 +169,7 @@ ProfileDataExporter::AddRequestInputs(
       const auto& data_type{input.second.data_type_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value input_json{};
+      // TMA-1777: support other data types
       if (buf != nullptr) {
         if (data_type == "BYTES" || data_type == "JSON") {
           input_json.SetString(
@@ -180,6 +181,10 @@ ProfileDataExporter::AddRequestInputs(
         } else if (data_type == "BOOL") {
           bool is_true = (*buf > 0);
           input_json.SetBool(is_true);
+        } else {
+          std::cerr << "WARNING: data type '" + data_type +
+                           "' is not supported with JSON."
+                    << std::endl;
         }
       } else {
         input_json.SetString("", 0, document_.GetAllocator());
@@ -203,6 +208,7 @@ ProfileDataExporter::AddResponseOutputs(
       const auto& byte_size{output.second.size_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value output_json{};
+      // TMA-1777: support other data types
       if (buf != nullptr) {
         output_json.SetString(
             reinterpret_cast<const char*>(buf), byte_size,
