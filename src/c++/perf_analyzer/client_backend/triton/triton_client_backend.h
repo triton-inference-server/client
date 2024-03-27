@@ -299,7 +299,7 @@ class TritonInferRequestedOutput : public InferRequestedOutput {
  public:
   static Error Create(
       InferRequestedOutput** infer_output, const std::string& name,
-      const std::string& datatype, const size_t class_count = 0);
+      const size_t class_count = 0, const std::string& datatype = "");
   /// Returns the raw InferRequestedOutput object required by triton client
   /// library.
   tc::InferRequestedOutput* Get() const { return output_.get(); }

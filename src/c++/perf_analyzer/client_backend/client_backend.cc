@@ -524,7 +524,7 @@ InferRequestedOutput::Create(
 {
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
-        infer_output, name, datatype, class_count));
+        infer_output, name, class_count, datatype));
   }
 #ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
   else if (kind == OPENAI) {
@@ -541,7 +541,7 @@ InferRequestedOutput::Create(
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
-        infer_output, name, class_count));
+        infer_output, name, class_count, datatype));
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
   else {

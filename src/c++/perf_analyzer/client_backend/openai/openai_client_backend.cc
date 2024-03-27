@@ -90,8 +90,8 @@ OpenAiInferRequestedOutput::Create(
       new OpenAiInferRequestedOutput(name, datatype);
 
   tc::InferRequestedOutput* openai_infer_output;
-  RETURN_IF_TRITON_ERROR(
-      tc::InferRequestedOutput::Create(&openai_infer_output, name, datatype));
+  RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
+      &openai_infer_output, name, 0, datatype));
   local_infer_output->output_.reset(openai_infer_output);
 
   *infer_output = local_infer_output;

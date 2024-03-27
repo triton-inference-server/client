@@ -279,7 +279,7 @@ InferInput::GetNext(
 Error
 InferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const std::string& name,
-    const std::string& datatype, const size_t class_count)
+    const size_t class_count, const std::string& datatype)
 {
   *infer_output = new InferRequestedOutput(name, datatype, class_count);
   return Error::Success;
