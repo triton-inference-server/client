@@ -110,9 +110,9 @@ class LlmInputs:
         length:
             Number of entries to gather
         add_model_name:
-            If true adds a model name field to each payload
+            If true, adds a model name field to each payload
         add_stream:
-            If true adds a steam field to each payload
+            If true, adds a steam field to each payload
         extra_inputs:
             If provided, append these inputs to every request
 
@@ -166,12 +166,13 @@ class LlmInputs:
                 "Using a file to supply LLM Input is not supported at this time"
             )
 
-        if extra_inputs:
-            for entry in generic_dataset_json["rows"]:
-                entry["row"].update(extra_inputs)
-
         json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
-            output_format, generic_dataset_json, add_model_name, add_stream, model_name
+            output_format,
+            generic_dataset_json,
+            add_model_name,
+            add_stream,
+            model_name,
+            extra_inputs,
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
@@ -316,24 +317,29 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = (
                 LlmInputs._convert_generic_json_to_openai_chat_completions_format(
-                    generic_dataset, add_model_name, add_stream, model_name
+                    generic_dataset,
+                    add_model_name,
+                    add_stream,
+                    model_name,
+                    extra_inputs,
                 )
             )
         elif output_format == OutputFormat.OPENAI_COMPLETIONS:
             output_json = LlmInputs._convert_generic_json_to_openai_completions_format(
-                generic_dataset, add_model_name, add_stream, model_name
+                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
             )
         elif output_format == OutputFormat.VLLM:
             output_json = LlmInputs._convert_generic_json_to_vllm_format(
-                generic_dataset, add_model_name, add_stream, model_name
+                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
             )
         elif output_format == OutputFormat.TRTLLM:
             output_json = LlmInputs._convert_generic_json_to_trtllm_format(
-                generic_dataset, add_model_name, add_stream, model_name
+                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
             )
         else:
             raise GenAIPerfException(
@@ -349,6 +355,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
@@ -363,6 +370,7 @@ class LlmInputs:
             add_model_name,
             add_stream,
             model_name,
+            extra_inputs,
         )
 
         return pa_json
@@ -374,6 +382,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         (
             system_role_headers,
@@ -388,6 +397,7 @@ class LlmInputs:
             add_model_name,
             add_stream,
             model_name,
+            extra_inputs,
         )
 
         return pa_json
@@ -399,6 +409,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         (
             system_role_headers,
@@ -414,6 +425,7 @@ class LlmInputs:
             add_model_name,
             add_stream,
             model_name,
+            extra_inputs,
         )
 
         return pa_json
@@ -425,6 +437,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         (
             system_role_headers,
@@ -440,6 +453,7 @@ class LlmInputs:
             add_model_name,
             add_stream,
             model_name,
+            extra_inputs,
         )
 
         return pa_json
@@ -487,6 +501,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
@@ -504,7 +519,7 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_openai_json(
-                pa_json, index, add_model_name, add_stream, model_name
+                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
             )
 
         return pa_json
@@ -519,6 +534,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
@@ -538,7 +554,7 @@ class LlmInputs:
                 pa_json = LlmInputs._add_new_prompt_to_json(pa_json, index, new_prompt)
 
             pa_json = LlmInputs._add_optional_tags_to_openai_json(
-                pa_json, index, add_model_name, add_stream, model_name
+                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
             )
 
         return pa_json
@@ -553,6 +569,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_vllm_pa_json()
 
@@ -573,7 +590,7 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_vllm_json(
-                pa_json, index, add_model_name, add_stream, model_name
+                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
             )
 
         return pa_json
@@ -588,6 +605,7 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
 
@@ -609,7 +627,7 @@ class LlmInputs:
 
             pa_json = LlmInputs._add_required_tags_to_trtllm_json(pa_json, index)
             pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
-                pa_json, index, add_model_name, add_stream, model_name
+                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
             )
 
         return pa_json
@@ -744,11 +762,14 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         if add_model_name:
             pa_json["data"][index]["payload"][0]["model"] = model_name
         if add_stream:
             pa_json["data"][index]["payload"][0]["stream"] = True
+        for key, value in extra_inputs.items():
+            pa_json["data"][index]["payload"][0][key] = value
 
         return pa_json
 
@@ -760,11 +781,14 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         if add_model_name:
             pa_json["data"][index]["model"] = model_name
         if add_stream:
             pa_json["data"][index]["stream"] = [True]
+        for key, value in extra_inputs.items():
+            pa_json["data"][index][key] = value
 
         return pa_json
 
@@ -776,11 +800,14 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         model_name: str = "",
+        extra_inputs: Dict = {},
     ) -> Dict:
         if add_model_name:
             pa_json["data"][index]["model"] = model_name
         if add_stream:
             pa_json["data"][index]["stream"] = [True]
+        for key, value in extra_inputs.items():
+            pa_json["data"][index][key] = value
 
         return pa_json
 
