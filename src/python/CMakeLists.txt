@@ -45,6 +45,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
+# FIXME: Windows client currently does not support GPU tensors.
+# For simplicity, we will override this option here.
+if(WIN32 AND TRITON_ENABLE_GPU)
+  message("GPU shared memory is not currently supported by the Windows python client. Forcing TRITON_ENABLE_GPU to false.")
+  set(TRITON_ENABLE_GPU OFF CACHE BOOL "GPU disabled" FORCE)
+endif()
+
 #
 # Dependencies
 #
