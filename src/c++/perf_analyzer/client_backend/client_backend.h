@@ -613,7 +613,7 @@ class InferRequestedOutput {
  protected:
   InferRequestedOutput(
       const BackendKind kind, const std::string& name,
-      const std::string& datatype);
+      const std::string& datatype = "");
   const BackendKind kind_;
   const std::string name_;
   const std::string datatype_;
