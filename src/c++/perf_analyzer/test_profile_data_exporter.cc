@@ -47,19 +47,23 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   auto response_timestamp2{clock_epoch + nanoseconds(3)};
 
   // Request inputs
-  std::vector<std::string> in_bufs{"123", "456", "true"};
+  const std::string in_buf1{"abc123"};
+  const int32_t in_buf2{456};
+  const bool in_buf3{true};
+  const std::string in_buf4{"{\"abc\":\"def\"}"};
+
   RequestRecord::RequestInput request_input{
       {"in_key1",
-       {reinterpret_cast<const uint8_t*>(in_bufs[0].data()), in_bufs[0].size(),
+       {reinterpret_cast<const uint8_t*>(in_buf1.data()), in_buf1.size(),
         "BYTES"}},
       {"in_key2",
-       {reinterpret_cast<const uint8_t*>(in_bufs[1].data()), in_bufs[1].size(),
-        "INT32"}},
+       {reinterpret_cast<const uint8_t*>(&in_buf2), sizeof(in_buf2), "INT32"}},
       {"in_key3",
-       {reinterpret_cast<const uint8_t*>(in_bufs[2].data()), in_bufs[2].size(),
-        "BOOL"}},
+       {reinterpret_cast<const uint8_t*>(&in_buf3), sizeof(in_buf3), "BOOL"}},
+      {"in_key4",
+       {reinterpret_cast<const uint8_t*>(in_buf4.data()), sizeof(in_buf4),
+        "JSON"}},
   };
-
 
   // Response outputs
   std::vector<std::string> out_bufs{"abc", "def", "ghi", "jkl"};
@@ -113,7 +117,7 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
               {
                 "timestamp" : 1,
                 "sequence_id" : 1,
-                "request_inputs" : {"in_key1":"123","in_key2":456,"in_key3":true},
+                "request_inputs" : {"in_key1":"abc123","in_key2":456,"in_key3":true,"in_key4":"{\"abc\":\"def\"}"},
                 "response_timestamps" : [ 2, 3 ],
                 "response_outputs" : [ {"out_key1":"abc","out_key2":"def"}, {"out_key3":"ghi","out_key4":"jkl"} ]
               }
@@ -150,6 +154,20 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
 
   CHECK(actual_request["timestamp"] == expected_request["timestamp"]);
   CHECK(actual_request["sequence_id"] == expected_request["sequence_id"]);
+
+  CHECK(
+      actual_request["request_inputs"]["in_key1"] ==
+      expected_request["request_inputs"]["in_key1"]);
+  CHECK(
+      actual_request["request_inputs"]["in_key2"] ==
+      expected_request["request_inputs"]["in_key2"]);
+  CHECK(
+      actual_request["request_inputs"]["in_key3"] ==
+      expected_request["request_inputs"]["in_key3"]);
+  auto act_inkey_4 = actual_request["request_inputs"]["in_key4"].GetString();
+  auto exp_inkey_4 = expected_request["request_inputs"]["in_key4"].GetString();
+  CHECK(std::string{act_inkey_4} == std::string{exp_inkey_4});
+
   CHECK(
       actual_request["response_timestamps"][0] ==
       expected_request["response_timestamps"][0]);
