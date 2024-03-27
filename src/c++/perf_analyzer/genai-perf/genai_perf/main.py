@@ -47,7 +47,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
     add_model_name = True
     try:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)
-    except Exception as e:
+    except ValueError as e:
         raise GenAIPerfException(e)
 
     LlmInputs.create_llm_inputs(
