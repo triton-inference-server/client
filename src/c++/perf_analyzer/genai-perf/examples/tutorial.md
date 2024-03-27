@@ -62,7 +62,7 @@ instance_group [
 registry.
 
 ```bash
-export RELEASE=<yy.mm> # e.g. to use the release from the end of March of 2024, do `export RELEASE=24.03`
+export RELEASE=<yy.mm> # e.g. to use the release from the end of April of 2024, do `export RELEASE=24.04`
 
 docker pull nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
 ```
@@ -92,7 +92,7 @@ docker run --gpus all -it --net host --shm-size=1g --ulimit stack=67108864 \
 5. Profile GPT2 via GenAI-Perf
 
 ```bash
-genai-perf -m gpt2_vllm --concurrency 1 --output-format vllm --streaming
+genai-perf -m gpt2_vllm --backend vllm --streaming
 ```
 
 By default, all metrics will saved in the `profile_export_genai_perf.csv` file.
