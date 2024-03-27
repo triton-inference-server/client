@@ -199,7 +199,7 @@ InferContext::GetInputs()
     // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
     // of the rest of the data (which we already know based on byte_size). It
     // should be ignored here, as it isn't part of the actual request
-    if (data_type == "BYTES") {
+    if (data_type == "BYTES" && byte_size >= 4) {
       buf += 4;
       byte_size -= 4;
     }
