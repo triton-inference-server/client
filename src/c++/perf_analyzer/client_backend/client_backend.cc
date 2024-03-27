@@ -519,16 +519,17 @@ InferInput::InferInput(
 Error
 InferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const BackendKind kind,
-    const std::string& name, const size_t class_count)
+    const std::string& name, const std::string& datatype,
+    const size_t class_count)
 {
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
-        infer_output, name, class_count));
+        infer_output, name, class_count, datatype));
   }
 #ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
   else if (kind == OPENAI) {
-    RETURN_IF_CB_ERROR(
-        openai::OpenAiInferRequestedOutput::Create(infer_output, name));
+    RETURN_IF_CB_ERROR(openai::OpenAiInferRequestedOutput::Create(
+        infer_output, name, datatype));
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
@@ -540,7 +541,7 @@ InferRequestedOutput::Create(
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
-        infer_output, name, class_count));
+        infer_output, name, class_count, datatype));
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
   else {
@@ -564,8 +565,9 @@ InferRequestedOutput::SetSharedMemory(
 }
 
 InferRequestedOutput::InferRequestedOutput(
-    const BackendKind kind, const std::string& name)
-    : kind_(kind), name_(name)
+    const BackendKind kind, const std::string& name,
+    const std::string& datatype)
+    : kind_(kind), name_(name), datatype_(datatype)
 {
 }
 

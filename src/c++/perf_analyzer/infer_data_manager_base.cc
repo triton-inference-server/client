@@ -115,7 +115,8 @@ InferDataManagerBase::InitInferData(InferData& infer_data)
   }
 
   for (const auto& output : *(parser_->Outputs())) {
-    RETURN_IF_ERROR(InitInferDataOutput(output.first, infer_data));
+    RETURN_IF_ERROR(
+        InitInferDataOutput(output.first, output.second, infer_data));
   }
 
   return cb::Error::Success;
