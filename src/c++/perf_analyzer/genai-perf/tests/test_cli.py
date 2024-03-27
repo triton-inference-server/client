@@ -76,6 +76,19 @@ class TestCLIArguments:
                 {"endpoint": "v1/chat/completions"},
             ),
             (
+                ["--synthetic-extra-inputs", "random_key:random_value"],
+                {"synthetic_extra_inputs": ["random_key:random_value"]},
+            ),
+            (
+                [
+                    "--synthetic-extra-inputs",
+                    "random_key:5",
+                    "--synthetic-extra-inputs",
+                    "another_random_key:6",
+                ],
+                {"synthetic_extra_inputs": ["random_key:5", "another_random_key:6"]},
+            ),
+            (
                 ["--synthetic-requested-output-tokens", "5"],
                 {"synthetic_requested_output_tokens": 5},
             ),

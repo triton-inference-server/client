@@ -147,6 +147,13 @@ def _add_input_args(parser):
         help="The seed used to generate random values.",
     )
 
+    parser.add_argument(
+        "--synthetic-extra-inputs",
+        action="append",
+        help="Provide additional inputs to include with every request when prompt-source is synthetic. "
+        "You can repeat this flag for multiple inputs. Inputs should be in a key:value format.",
+    )
+
     input_group.add_argument(
         "--synthetic-requested-output-tokens",
         type=int,
@@ -169,14 +176,6 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
         help=f"The standard deviation of number of tokens in the generated prompts when prompt-source is synthetic.",
-    )
-
-    parser.add_argument(
-        "--extra-inputs",
-        action="append",
-        help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. "
-        "Inputs should be in a key:value format.",
     )
 
 
@@ -328,14 +327,14 @@ def _add_other_args(parser):
 
 def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
     request_inputs = {}
-    if hasattr(args, "extra_inputs"):
-        for input_str in args.extra_inputs:
+    if hasattr(args, "synthetic_extra_inputs"):
+        for input_str in args.synthetic_extra_inputs:
             try:
                 key, value = input_str.split(":", 1)
                 request_inputs[key] = value
             except ValueError:
                 args.error(
-                    f"Invalid input format for --extra-inputs: {input_str}"
+                    f"Invalid input format for --synthetic--extra-inputs: {input_str}"
                     "Expected input format: 'key:value'"
                 )
     return request_inputs
