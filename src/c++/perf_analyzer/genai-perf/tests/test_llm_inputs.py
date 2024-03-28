@@ -358,3 +358,55 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == 5
+
+    @pytest.mark.parametrize(
+        "output_format",
+        [
+            (OutputFormat.OPENAI_CHAT_COMPLETIONS),
+            (OutputFormat.OPENAI_COMPLETIONS),
+            (OutputFormat.TRTLLM),
+            (OutputFormat.VLLM),
+        ],
+    )
+    def test_llm_inputs_extra_inputs(self, default_tokenizer, output_format) -> None:
+        # Simulate --request-input arguments
+        request_inputs = {"additional_key": "additional_value"}
+
+        # Generate input data with the additional request inputs
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=PromptSource.SYNTHETIC,
+            output_format=output_format,
+            num_of_output_prompts=5,  # Generate a small number of prompts for the test
+            add_model_name=False,
+            add_stream=True,
+            tokenizer=default_tokenizer,
+            extra_inputs=request_inputs,  # Pass the simulated --request-input arguments here
+        )
+
+        assert len(pa_json["data"]) == 5
+
+        # Verify that each entry in the generated JSON includes the additional key-value pairs
+        if (
+            output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
+            or output_format == OutputFormat.OPENAI_COMPLETIONS
+        ):
+            for entry in pa_json.get("data", []):
+                assert "payload" in entry, "Payload is missing in the request"
+                payload = entry["payload"]
+                for item in payload:
+                    assert (
+                        "additional_key" in item
+                    ), "The additional_key is not present in the request"
+                    assert (
+                        item["additional_key"] == "additional_value"
+                    ), "The value of additional_key is incorrect"
+        elif output_format == OutputFormat.TRTLLM or output_format == OutputFormat.VLLM:
+            for entry in pa_json.get("data", []):
+                assert (
+                    "additional_key" in entry
+                ), "The additional_key is not present in the request"
+                assert (
+                    entry["additional_key"] == "additional_value"
+                ), "The value of additional_key is incorrect"
+        else:
+            assert False, f"Unsupported output format: {output_format}"
