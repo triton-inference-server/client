@@ -293,9 +293,9 @@ InferInput::GetNext(
 Error
 InferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const std::string& name,
-    const size_t class_count)
+    const size_t class_count, const std::string& datatype)
 {
-  *infer_output = new InferRequestedOutput(name, class_count);
+  *infer_output = new InferRequestedOutput(name, datatype, class_count);
   return Error::Success;
 }
 
@@ -323,8 +323,10 @@ InferRequestedOutput::UnsetSharedMemory()
 }
 
 InferRequestedOutput::InferRequestedOutput(
-    const std::string& name, const size_t class_count)
-    : name_(name), class_count_(class_count), io_type_(NONE)
+    const std::string& name, const std::string& datatype,
+    const size_t class_count)
+    : name_(name), datatype_(datatype), class_count_(class_count),
+      io_type_(NONE)
 {
 }
 

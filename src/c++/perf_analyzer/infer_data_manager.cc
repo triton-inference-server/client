@@ -175,11 +175,12 @@ InferDataManager::InitInferDataInput(
 
 cb::Error
 InferDataManager::InitInferDataOutput(
-    const std::string& name, InferData& infer_data)
+    const std::string& name, const ModelTensor& model_tensor,
+    InferData& infer_data)
 {
   cb::InferRequestedOutput* requested_output;
-  RETURN_IF_ERROR(
-      cb::InferRequestedOutput::Create(&requested_output, backend_kind_, name));
+  RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
+      &requested_output, backend_kind_, name, model_tensor.datatype_));
   infer_data.outputs_.push_back(requested_output);
 
   return cb::Error::Success;

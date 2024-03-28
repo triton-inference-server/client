@@ -775,14 +775,14 @@ TritonInferInput::TritonInferInput(
 Error
 TritonInferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const std::string& name,
-    const size_t class_count)
+    const size_t class_count, const std::string& datatype)
 {
   TritonInferRequestedOutput* local_infer_output =
-      new TritonInferRequestedOutput(name);
+      new TritonInferRequestedOutput(name, datatype);
 
   tc::InferRequestedOutput* triton_infer_output;
   RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
-      &triton_infer_output, name, class_count));
+      &triton_infer_output, name, class_count, datatype));
   local_infer_output->output_.reset(triton_infer_output);
 
   *infer_output = local_infer_output;
@@ -800,8 +800,9 @@ TritonInferRequestedOutput::SetSharedMemory(
 }
 
 
-TritonInferRequestedOutput::TritonInferRequestedOutput(const std::string& name)
-    : InferRequestedOutput(BackendKind::TRITON, name)
+TritonInferRequestedOutput::TritonInferRequestedOutput(
+    const std::string& name, const std::string& datatype)
+    : InferRequestedOutput(BackendKind::TRITON, name, datatype)
 {
 }
 

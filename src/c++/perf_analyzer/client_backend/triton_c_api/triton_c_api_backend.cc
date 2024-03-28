@@ -335,14 +335,14 @@ TritonCApiInferInput::TritonCApiInferInput(
 Error
 TritonCApiInferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const std::string& name,
-    const size_t class_count)
+    const size_t class_count, const std::string& datatype)
 {
   TritonCApiInferRequestedOutput* local_infer_output =
       new TritonCApiInferRequestedOutput(name);
 
   tc::InferRequestedOutput* triton_infer_output;
   RETURN_IF_TRITON_ERROR(tc::InferRequestedOutput::Create(
-      &triton_infer_output, name, class_count));
+      &triton_infer_output, name, class_count, datatype));
   local_infer_output->output_.reset(triton_infer_output);
 
   *infer_output = local_infer_output;
