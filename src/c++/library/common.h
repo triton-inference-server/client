@@ -334,6 +334,15 @@ class InferInput {
   /// \return Error object indicating success or failure.
   Error AppendFromString(const std::vector<std::string>& input);
 
+  /// Get access to the buffer holding raw input. Note the buffer is owned by
+  /// InferInput instance. Users can copy out the data if required to extend
+  /// the lifetime.
+  /// \param buf Returns the pointer to the start of the buffer.
+  /// \param byte_size Returns the size of buffer in bytes.
+  /// \return Error object indicating success or failure of the
+  /// request.
+  Error RawData(const uint8_t** buf, size_t* byte_size);
+
   /// Gets the size of data added into this input in bytes.
   /// \param byte_size The size of data added in bytes.
   /// \return Error object indicating success or failure.

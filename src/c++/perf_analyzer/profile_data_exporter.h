@@ -69,6 +69,9 @@ class ProfileDataExporter {
   void AddRequests(
       rapidjson::Value& entry, rapidjson::Value& requests,
       const Experiment& raw_experiment);
+  void AddRequestInputs(
+      rapidjson::Value& inputs_json,
+      const std::vector<RequestRecord::RequestInput>& inputs);
   void AddResponseTimestamps(
       rapidjson::Value& timestamps_json,
       const std::vector<std::chrono::time_point<std::chrono::system_clock>>&

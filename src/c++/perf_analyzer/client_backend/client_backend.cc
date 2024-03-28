@@ -505,6 +505,14 @@ InferInput::SetSharedMemory(
       pa::GENERIC_ERROR);
 }
 
+Error
+InferInput::RawData(const uint8_t** buf, size_t* byte_size)
+{
+  return Error(
+      "client backend of kind " + BackendKindToString(kind_) +
+          " does not support RawData() for InferInput",
+      pa::GENERIC_ERROR);
+}
 
 InferInput::InferInput(
     const BackendKind kind, const std::string& name,

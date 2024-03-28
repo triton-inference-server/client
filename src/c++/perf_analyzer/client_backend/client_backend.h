@@ -558,6 +558,15 @@ class InferInput {
   virtual Error SetSharedMemory(
       const std::string& name, size_t byte_size, size_t offset = 0);
 
+  /// Get access to the buffer holding raw input. Note the buffer is owned by
+  /// InferInput instance. Users can copy out the data if required to extend
+  /// the lifetime.
+  /// \param buf Returns the pointer to the start of the buffer.
+  /// \param byte_size Returns the size of buffer in bytes.
+  /// \return Error object indicating success or failure of the
+  /// request.
+  virtual Error RawData(const uint8_t** buf, size_t* byte_size);
+
  protected:
   InferInput(
       const BackendKind kind, const std::string& name,

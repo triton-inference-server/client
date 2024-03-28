@@ -122,6 +122,11 @@ ProfileDataExporter::AddRequests(
       request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     }
 
+    rapidjson::Value request_inputs(rapidjson::kObjectType);
+    AddRequestInputs(request_inputs, raw_request.request_inputs_);
+    request.AddMember(
+        "request_inputs", request_inputs, document_.GetAllocator());
+
     rapidjson::Value response_timestamps(rapidjson::kArrayType);
     AddResponseTimestamps(
         response_timestamps, raw_request.response_timestamps_);
@@ -152,6 +157,45 @@ ProfileDataExporter::AddResponseTimestamps(
 }
 
 void
+ProfileDataExporter::AddRequestInputs(
+    rapidjson::Value& request_inputs_json,
+    const std::vector<RequestRecord::RequestInput>& request_inputs)
+{
+  for (const auto& request_input : request_inputs) {
+    for (const auto& input : request_input) {
+      const auto& name{input.first};
+      const auto& buf{input.second.data_.get()};
+      const auto& byte_size{input.second.size_};
+      const auto& data_type{input.second.data_type_};
+      rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
+      rapidjson::Value input_json{};
+      // TMA-1777: support other data types
+      if (buf != nullptr) {
+        if (data_type == "BYTES" || data_type == "JSON") {
+          input_json.SetString(
+              reinterpret_cast<const char*>(buf), byte_size,
+              document_.GetAllocator());
+        } else if (data_type == "INT32") {
+          auto* val = reinterpret_cast<int32_t*>(buf);
+          input_json.SetInt(*val);
+        } else if (data_type == "BOOL") {
+          bool is_true = (*buf > 0);
+          input_json.SetBool(is_true);
+        } else {
+          std::cerr << "WARNING: data type '" + data_type +
+                           "' is not supported with JSON."
+                    << std::endl;
+        }
+      } else {
+        input_json.SetString("", 0, document_.GetAllocator());
+      }
+      request_inputs_json.AddMember(
+          name_json, input_json, document_.GetAllocator());
+    }
+  }
+}
+
+void
 ProfileDataExporter::AddResponseOutputs(
     rapidjson::Value& outputs_json,
     const std::vector<RequestRecord::ResponseOutput>& response_outputs)
@@ -164,6 +208,7 @@ ProfileDataExporter::AddResponseOutputs(
       const auto& byte_size{output.second.size_};
       rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
       rapidjson::Value output_json{};
+      // TMA-1777: support other data types
       if (buf != nullptr) {
         output_json.SetString(
             reinterpret_cast<const char*>(buf), byte_size,

@@ -72,6 +72,15 @@ OpenAiInferInput::AppendRaw(const uint8_t* input, size_t input_byte_size)
 }
 
 Error
+OpenAiInferInput::RawData(const uint8_t** buf, size_t* byte_size)
+{
+  // TMA-1775 - handle multi-batch case
+  *buf = bufs_[0];
+  *byte_size = buf_byte_sizes_[0];
+  return Error::Success;
+}
+
+Error
 OpenAiInferInput::PrepareForRequest()
 {
   // Reset position so request sends entire input.
