@@ -191,9 +191,9 @@ InferContext::GetInputs()
 {
   RequestRecord::RequestInput input{};
   for (const auto& request_input : infer_data_.valid_inputs_) {
+    std::string data_type{request_input->Datatype()};
     const uint8_t* buf{nullptr};
     size_t byte_size{0};
-    std::string data_type{request_input->Datatype()};
     request_input->RawData(&buf, &byte_size);
 
     // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
@@ -213,17 +213,20 @@ InferContext::GetOutputs(const cb::InferResult& infer_result)
 {
   RequestRecord::ResponseOutput output{};
   for (const auto& requested_output : infer_data_.outputs_) {
+    std::string data_type{requested_output->Datatype()};
     const uint8_t* buf{nullptr};
     size_t byte_size{0};
     infer_result.RawData(requested_output->Name(), &buf, &byte_size);
+
     // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
     // of the rest of the data (which we already know based on byte_size). It
     // should be ignored here, as it isn't part of the actual response
-    if (requested_output->Datatype() == "BYTES" && byte_size >= 4) {
+    if (data_type == "BYTES" && byte_size >= 4) {
       buf += 4;
       byte_size -= 4;
     }
-    output.emplace(requested_output->Name(), ResponseData(buf, byte_size));
+    output.emplace(
+        requested_output->Name(), RecordData(buf, byte_size, data_type));
   }
   return output;
 }
