@@ -788,7 +788,7 @@ class LlmInputs:
         if add_stream:
             pa_json["data"][index]["stream"] = [True]
         for key, value in extra_inputs.items():
-            pa_json["data"][index][key] = value
+            pa_json["data"][index][key] = [value]
 
         return pa_json
 
@@ -807,7 +807,7 @@ class LlmInputs:
         if add_stream:
             pa_json["data"][index]["stream"] = [True]
         for key, value in extra_inputs.items():
-            pa_json["data"][index][key] = value
+            pa_json["data"][index][key] = [value]
 
         return pa_json
 

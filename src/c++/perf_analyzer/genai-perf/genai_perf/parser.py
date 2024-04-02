@@ -55,8 +55,8 @@ def _check_conditional_args(
         elif args.endpoint == "v1/completions":
             args.output_format = OutputFormat.OPENAI_COMPLETIONS
     elif args.endpoint is not None:
-        logger.warning(
-            "The --endpoint option is ignored when not using the 'openai' service-kind."
+        parser.error(
+            "The --endpoint option should only be used when using the 'openai' service-kind."
         )
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
@@ -113,7 +113,7 @@ def handler(args, extra_args):
 def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
-    parser.add_argument(
+    input_group.add_argument(
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
@@ -249,9 +249,8 @@ def _add_endpoint_args(parser):
         type=str,
         choices=["v1/chat/completions", "v1/completions"],
         required=False,
-        help="The endpoint to send requests to on the "
-        'server. This is required when using the "openai" service-kind. '
-        "This is ignored in other cases.",
+        help=f"The endpoint to send requests to on the "
+        'server. This is only used with the "openai" service-kind. ',
     )
 
     endpoint_group.add_argument(
@@ -339,6 +338,22 @@ def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
                     f"Invalid input format for --extra-inputs: {input_str}\n"
                     "Expected input format: 'key:value'"
                 )
+
+            # Convert the value to a bool, int, or float if applicable
+            is_bool = value.lower() in ["true", "false"]
+            is_int = value.isdigit()
+            is_float = value.count(".") == 1 and (
+                value[0] == "." or value.replace(".", "").isdigit()
+            )
+
+            # Convert value to bool, int, or float if applicable
+            if is_bool:
+                value = value.lower() == "true"
+            elif is_int:
+                value = int(value)
+            elif is_float:
+                value = float(value)
+
             if key in request_inputs:
                 raise ValueError(
                     f"Key already exists in request_inputs dictionary: {key}"
