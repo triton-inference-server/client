@@ -28,12 +28,10 @@
 
 import json
 from io import StringIO
-from pathlib import Path
 
 import numpy as np
 import pytest
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
-from genai_perf.utils import remove_file
 from transformers import AutoTokenizer
 
 
