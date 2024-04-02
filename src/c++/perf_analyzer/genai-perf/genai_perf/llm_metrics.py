@@ -26,9 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import contextlib
 import csv
-import io
 import json
 from itertools import pairwise
 
@@ -78,6 +76,13 @@ class Metrics:
             "request_latencies": "request_latency",
         }
 
+    def __repr__(self):
+        attr_strs = []
+        for k, v in self.__dict__.items():
+            if not k.startswith("_"):
+                attr_strs.append(f"{k}={v}")
+        return f"Metrics({','.join(attr_strs)})"
+
     @property
     def data(self) -> dict:
         """Returns all the metrics."""
@@ -99,7 +104,7 @@ class LLMMetrics(Metrics):
         request_throughputs: list[float] = [],
         request_latencies: list[int] = [],
         time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[int] = [],
+        inter_token_latencies: list[list[int]] = [[]],
         output_token_throughputs: list[float] = [],
         output_token_throughputs_per_request: list[int] = [],
         num_output_tokens: list[int] = [],
@@ -141,13 +146,25 @@ class Statistics:
 
     def __init__(self, metrics: Metrics):
         # iterate through Metrics to calculate statistics and set attributes
+        self._metrics = metrics
         for attr, data in metrics.data.items():
             if data:
                 attr = metrics.get_base_name(attr)
+                data = self._preprocess_data(data, attr)
                 self._calculate_mean(data, attr)
                 self._calculate_percentiles(data, attr)
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
+
+    def _preprocess_data(self, data: list, attr: str) -> list[int | float]:
+        new_data = []
+        if attr == "inter_token_latency":
+            # flatten inter token latencies to 1D
+            for d in data:
+                new_data += d
+        else:
+            new_data = data
+        return new_data
 
     def _calculate_mean(self, data: list[int | float], attr: str):
         avg = np.mean(data)
@@ -173,8 +190,21 @@ class Statistics:
         setattr(self, "std_" + attr, std)
 
     def __repr__(self):
-        attr_strs = ",".join([f"{k}={v}" for k, v in self.__dict__.items()])
-        return f"Statistics({attr_strs})"
+        attr_strs = []
+        for k, v in self.__dict__.items():
+            if not k.startswith("_"):
+                attr_strs.append(f"{k}={v}")
+        return f"Statistics({','.join(attr_strs)})"
+
+    @property
+    def data(self) -> dict:
+        """Return all the aggregated statistics."""
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
+
+    @property
+    def metrics(self) -> Metrics:
+        """Return the underlying metrics used to calculate the statistics."""
+        return self._metrics
 
     def _is_throughput_field(self, field: str):
         return field in Metrics.throughput_fields
@@ -437,13 +467,15 @@ class LLMProfileDataParser(ProfileDataParser):
             num_generated_tokens.append(total_output_tokens)
 
             # inter token latency
+            itl_per_request = []
             for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
                 # TMA-1676: handle empty first/last responses
                 # if the latter response has zero token (e.g. empty string),
                 # then set it default to one for the sake of inter token latency
                 # calculation and to avoid divide by zero.
                 num_token = 1 if n2 == 0 else n2
-                inter_token_latencies.append(round((t2 - t1) / num_token))
+                itl_per_request.append(round((t2 - t1) / num_token))
+            inter_token_latencies.append(itl_per_request)
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec

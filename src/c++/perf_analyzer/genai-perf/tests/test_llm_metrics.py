@@ -122,12 +122,12 @@ class TestLLMProfileDataParser:
             - experiment 1: [3 - 1, 4 - 2] = [2, 2]
             - experiment 2: [7 - 5, 6 - 3] = [2, 3]
         * inter token latencies
-            - experiment 1: [(5 - 3)/1, (8 - 5)/1, (7 - 4)/2, (11 - 7)/2]
-                          : [2, 3, 3/2, 2]
-                          : [2, 3, 2, 2]
-            - experiment 2: [(8 - 7)/1, (13 - 8)/1, (18 - 13)/1, (8 - 6)/1, (11 - 8)/2]
-                          : [1, 5, 5, 2, 3/2]
-                          : [1, 5, 5, 2, 2]
+            - experiment 1: [[(5 - 3)/1, (8 - 5)/1], [(7 - 4)/2, (11 - 7)/2]]
+                          : [[2, 3], [3/2, 2]]
+                          : [[2, 3], [2, 2]]  # rounded up
+            - experiment 2: [[(8 - 7)/1, (13 - 8)/1, (18 - 13)/1], [(8 - 6)/1, (11 - 8)/2]]
+                          : [[1, 5, 5], [2, 3/2]]
+                          : [[1, 5, 5], [2, 2]]  # rounded up
         * output token throughputs per request
             - experiment 1: [3/(8 - 1), 5/(11 - 2)] = [3/7, 5/9]
             - experiment 2: [4/(18 - 5), 5/(11 - 3)] = [4/13, 5/8]
@@ -145,8 +145,17 @@ class TestLLMProfileDataParser:
             tokenizer=tokenizer,
         )
 
-        # experiment 1 statistics
+        # experiment 1 metrics & statistics
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stat.metrics
+
+        assert metrics.time_to_first_tokens == [2, 2]
+        assert metrics.inter_token_latencies == [[2, 3], [2, 2]]
+        ottpr = [3 / ns_to_sec(7), 5 / ns_to_sec(9)]
+        assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
+        ott = [8 / ns_to_sec(10)]
+        assert metrics.output_token_throughputs == pytest.approx(ott)
+        assert metrics.num_output_tokens == [3, 5]
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
@@ -186,6 +195,15 @@ class TestLLMProfileDataParser:
 
         # experiment 2 statistics
         stat = pd.get_statistics(infer_mode="request_rate", load_level="2.0")
+        metrics = stat.metrics
+
+        assert metrics.time_to_first_tokens == [2, 3]
+        assert metrics.inter_token_latencies == [[1, 5, 5], [2, 2]]
+        ottpr = [4 / ns_to_sec(13), 5 / ns_to_sec(8)]
+        assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
+        ott = [3 / ns_to_sec(5)]
+        assert metrics.output_token_throughputs == pytest.approx(ott)
+        assert metrics.num_output_tokens == [4, 5]
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
@@ -234,8 +252,8 @@ class TestLLMProfileDataParser:
         * time to first tokens
             - experiment 1: [3 - 1, 4 - 2] = [2, 2]
         * inter token latencies
-            - experiment 1: [(5 - 3)/1, (8 - 5)/1, (12 - 8)/1, (7 - 4)/1, (11 - 7)/2, (15 - 11)/2]
-                          : [2, 3, 4, 3, 2, 2]
+            - experiment 1: [[(5 - 3)/1, (8 - 5)/1, (12 - 8)/1], [(7 - 4)/1, (11 - 7)/2, (15 - 11)/2]]
+                          : [[2, 3, 4], [3, 2, 2]]
         * output token throughputs per request
             - experiment 1: [3/(12 - 1), 5/(15 - 2)] = [3/11, 5/13]
         * output token throughputs
@@ -252,6 +270,15 @@ class TestLLMProfileDataParser:
 
         # experiment 1 statistics
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stat.metrics
+
+        assert metrics.time_to_first_tokens == [2, 2]
+        assert metrics.inter_token_latencies == [[2, 3, 4], [3, 2, 2]]
+        ottpr = [3 / ns_to_sec(11), 5 / ns_to_sec(13)]
+        assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
+        ott = [4 / ns_to_sec(7)]
+        assert metrics.output_token_throughputs == pytest.approx(ott)
+        assert metrics.num_output_tokens == [3, 5]
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 8 / 3
