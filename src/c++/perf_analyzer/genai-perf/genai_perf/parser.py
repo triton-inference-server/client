@@ -117,7 +117,7 @@ def _add_input_args(parser):
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. Inputs should be in a input_name:value format.",
+        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
     )
 
     input_group.add_argument(
@@ -327,26 +327,27 @@ def _add_other_args(parser):
 def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
     request_inputs = {}
     if hasattr(args, "extra_inputs"):
-        input_name = ""
         for input_str in args.extra_inputs:
-            try:
-                input_name, value = input_str.split(":", 1)
-                if not input_name or not value:
-                    raise ValueError("Input_name or value is empty")
-            except ValueError:
+            semicolon_count = input_str.count(":")
+            if semicolon_count != 1:
                 raise ValueError(
                     f"Invalid input format for --extra-inputs: {input_str}\n"
                     "Expected input format: 'input_name:value'"
                 )
+            input_name, value = input_str.split(":", 1)
 
-            # Convert the value to a bool, int, or float if applicable
+            if not input_name or not value:
+                raise ValueError(
+                    f"Input name or value is empty in --extra-inputs: {input_str}\n"
+                    "Expected input format: 'input_name:value'"
+                )
+
             is_bool = value.lower() in ["true", "false"]
             is_int = value.isdigit()
             is_float = value.count(".") == 1 and (
                 value[0] == "." or value.replace(".", "").isdigit()
             )
 
-            # Convert value to bool, int, or float if applicable
             if is_bool:
                 value = value.lower() == "true"
             elif is_int:
