@@ -131,6 +131,11 @@ options:
 * `--num-prompts`: The number of unique prompts to generate.
 * `--dataset`: HuggingFace dataset to use for benchmarking.
 
+You can optionally set additional model inputs with the following option:
+* `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
+such as `Stream:True` or `max_tokens:5`. This flag can be repeated to provide multiple inputs.
+
+
 # Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
@@ -240,6 +245,13 @@ both infer per second and latency.
 ##### `--streaming`
 
 Enables the use of the streaming API.
+
+##### `--extra-inputs`
+
+Provides an additional input for use with the model with a singular value,
+such as `Stream:True` or `max_tokens:5`. This flag can be repeated to provide multiple inputs.
+
+
 
 ##### `--endpoint {v1/completions,v1/chat/completions}`
 

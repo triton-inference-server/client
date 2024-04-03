@@ -117,7 +117,7 @@ def _add_input_args(parser):
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. Inputs should be in a key:value format.",
+        "You can repeat this flag for multiple inputs. Inputs should be in a input_name:value format.",
     )
 
     input_group.add_argument(
@@ -327,16 +327,16 @@ def _add_other_args(parser):
 def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
     request_inputs = {}
     if hasattr(args, "extra_inputs"):
-        key = ""
+        input_name = ""
         for input_str in args.extra_inputs:
             try:
-                key, value = input_str.split(":", 1)
-                if not key or not value:
-                    raise ValueError("Key or value is empty")
+                input_name, value = input_str.split(":", 1)
+                if not input_name or not value:
+                    raise ValueError("Input_name or value is empty")
             except ValueError:
                 raise ValueError(
                     f"Invalid input format for --extra-inputs: {input_str}\n"
-                    "Expected input format: 'key:value'"
+                    "Expected input format: 'input_name:value'"
                 )
 
             # Convert the value to a bool, int, or float if applicable
@@ -354,11 +354,11 @@ def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
             elif is_float:
                 value = float(value)
 
-            if key in request_inputs:
+            if input_name in request_inputs:
                 raise ValueError(
-                    f"Key already exists in request_inputs dictionary: {key}"
+                    f"Input name already exists in request_inputs dictionary: {input_name}"
                 )
-            request_inputs[key] = value
+            request_inputs[input_name] = value
 
     return request_inputs
 

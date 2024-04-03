@@ -241,19 +241,19 @@ class TestCLIArguments:
         [
             (
                 ["--extra-inputs", "hi:"],
-                "Invalid input format for --extra-inputs: hi:\nExpected input format: 'key:value'",
+                "Invalid input format for --extra-inputs: hi:\nExpected input format: 'input_name:value'",
             ),
             (
                 ["--extra-inputs", ":a"],
-                "Invalid input format for --extra-inputs: :a\nExpected input format: 'key:value'",
+                "Invalid input format for --extra-inputs: :a\nExpected input format: 'input_name:value'",
             ),
             (
                 ["--extra-inputs", "unknown"],
-                "Invalid input format for --extra-inputs: unknown\nExpected input format: 'key:value'",
+                "Invalid input format for --extra-inputs: unknown\nExpected input format: 'input_name:value'",
             ),
             (
                 ["--extra-inputs", "test_key:5", "--extra-inputs", "test_key:6"],
-                "Key already exists in request_inputs dictionary: test_key",
+                "Input name already exists in request_inputs dictionary: test_key",
             ),
         ],
     )
