@@ -358,3 +358,52 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == 5
+
+    @pytest.mark.parametrize(
+        "output_format",
+        [
+            (OutputFormat.OPENAI_CHAT_COMPLETIONS),
+            (OutputFormat.OPENAI_COMPLETIONS),
+            (OutputFormat.TRTLLM),
+            (OutputFormat.VLLM),
+        ],
+    )
+    def test_llm_inputs_extra_inputs(self, default_tokenizer, output_format) -> None:
+        request_inputs = {"additional_key": "additional_value"}
+
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=PromptSource.SYNTHETIC,
+            output_format=output_format,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+            tokenizer=default_tokenizer,
+            extra_inputs=request_inputs,
+        )
+
+        assert len(pa_json["data"]) == 5
+
+        if (
+            output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
+            or output_format == OutputFormat.OPENAI_COMPLETIONS
+        ):
+            for entry in pa_json["data"]:
+                assert "payload" in entry, "Payload is missing in the request"
+                payload = entry["payload"]
+                for item in payload:
+                    assert (
+                        "additional_key" in item
+                    ), "The additional_key is not present in the request"
+                    assert (
+                        item["additional_key"] == "additional_value"
+                    ), "The value of additional_key is incorrect"
+        elif output_format == OutputFormat.TRTLLM or output_format == OutputFormat.VLLM:
+            for entry in pa_json["data"]:
+                assert (
+                    "additional_key" in entry
+                ), "The additional_key is not present in the request"
+                assert entry["additional_key"] == [
+                    "additional_value"
+                ], "The value of additional_key is incorrect"
+        else:
+            assert False, f"Unsupported output format: {output_format}"

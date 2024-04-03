@@ -45,6 +45,11 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
     input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
     add_model_name = True
+    try:
+        extra_input_dict = parser.get_extra_inputs_as_dict(args)
+    except ValueError as e:
+        raise GenAIPerfException(e)
+
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
         output_format=args.output_format,
@@ -61,6 +66,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
         add_model_name=add_model_name,
         add_stream=args.streaming,
         tokenizer=tokenizer,
+        extra_inputs=extra_input_dict,
     )
 
 
