@@ -133,7 +133,7 @@ options:
 
 You can optionally set additional model inputs with the following option:
 * `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
-such as `Stream:True` or `max_tokens:5`. This flag can be repeated to provide multiple inputs.
+such as `Stream:True` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
 
 
 # Metrics
@@ -249,7 +249,7 @@ Enables the use of the streaming API.
 ##### `--extra-inputs`
 
 Provides an additional input for use with the model with a singular value,
-such as `Stream:True` or `max_tokens:5`. This flag can be repeated to provide multiple inputs.
+such as `Stream:True` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
 
 
 
