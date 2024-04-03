@@ -405,8 +405,8 @@ class TestLlmInputs:
                 assert (
                     "additional_key" in entry
                 ), "The additional_key is not present in the request"
-                assert (
-                    entry["additional_key"] == "additional_value"
-                ), "The value of additional_key is incorrect"
+                assert entry["additional_key"] == [
+                    "additional_value"
+                ], "The value of additional_key is incorrect"
         else:
             assert False, f"Unsupported output format: {output_format}"

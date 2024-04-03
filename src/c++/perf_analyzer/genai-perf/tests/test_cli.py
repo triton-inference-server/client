@@ -69,9 +69,12 @@ class TestCLIArguments:
         "arg, expected_attributes",
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
-            (["--endpoint", "v1/completions"], {"endpoint": "v1/completions"}),
             (
-                ["--endpoint", "v1/chat/completions"],
+                ["--endpoint", "v1/completions", "--service-kind", "openai"],
+                {"endpoint": "v1/completions"},
+            ),
+            (
+                ["--endpoint", "v1/chat/completions", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
             ),
             (
