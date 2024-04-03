@@ -185,7 +185,9 @@ class InferContext {
   std::function<void(uint32_t)> async_callback_finalize_func_ = nullptr;
 
  private:
-  const RequestRecord::ResponseOutput GetOutput(
+  const RequestRecord::RequestInput GetInputs();
+
+  const RequestRecord::ResponseOutput GetOutputs(
       const cb::InferResult& infer_result);
 
   const uint32_t id_{0};
