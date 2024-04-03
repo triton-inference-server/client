@@ -409,3 +409,25 @@ class TestLlmInputs:
                 ], f"The value of {input_name} is incorrect"
         else:
             assert False, f"Unsupported output format: {output_format}"
+
+    def test_trtllm_default_max_tokens(self, default_tokenizer) -> None:
+        input_name = "max_tokens"
+        input_value = 256
+
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+            tokenizer=default_tokenizer,
+        )
+
+        assert len(pa_json["data"]) == 5
+        for entry in pa_json["data"]:
+            assert (
+                input_name in entry
+            ), f"The {input_name} is not present in the request"
+            assert entry[input_name] == [
+                input_value
+            ], f"The value of {input_name} is incorrect"
