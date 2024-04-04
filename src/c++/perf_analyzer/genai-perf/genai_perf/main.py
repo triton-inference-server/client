@@ -106,6 +106,12 @@ def create_graphs(stats: Statistics) -> None:
         filename_root="ttft",
         x_label="Time to First Token of Individual Requests (seconds)",
     )
+    bp.create_box_plot(
+        data_col_name="request_latencies",
+        graph_title="Total Output Time Analysis",
+        filename_root="tot",
+        x_label="Time to Completion of Individual Requests (seconds)",
+    )
 
 
 # Separate function that can raise exceptions used for testing
