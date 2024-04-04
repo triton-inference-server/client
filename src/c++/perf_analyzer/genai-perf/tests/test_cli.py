@@ -95,8 +95,8 @@ class TestCLIArguments:
                 {"synthetic_requested_output_tokens": 5},
             ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
-            (["--synthetic-tokens-mean", "6"], {"synthetic_tokens_mean": 6}),
-            (["--synthetic-tokens-stddev", "7"], {"synthetic_tokens_stddev": 7}),
+            (["--synthetic-tokens-mean", "6"], {"synthetic_input_tokens_mean": 6}),
+            (["--synthetic-tokens-stddev", "7"], {"synthetic_input_tokens_stddev": 7}),
             (
                 ["--prompt-source", "synthetic"],
                 {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},

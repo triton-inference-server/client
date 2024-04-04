@@ -59,7 +59,10 @@ class LlmInputs:
     DEFAULT_RANDOM_SEED = 0
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 0
+    # TODO: Remove requested output tokens from LlmInputs
     DEFAULT_REQUESTED_OUTPUT_TOKENS = 150
+    DEFAULT_OUTPUT_TOKENS_MEAN = -1
+    DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
@@ -78,9 +81,11 @@ class LlmInputs:
         input_filename: str = "",
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
+        expected_output_tokens: int = DEFAULT_REQUESTED_OUTPUT_TOKENS,
+        output_tokens_mean: int = DEFAULT_OUTPUT_TOKENS_MEAN,
+        output_tokens_stddev: int = DEFAULT_OUTPUT_TOKENS_STDDEV,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
-        expected_output_tokens: int = DEFAULT_REQUESTED_OUTPUT_TOKENS,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -115,6 +120,10 @@ class LlmInputs:
             If true, adds a steam field to each payload
         extra_inputs:
             If provided, append these inputs to every request
+        output_tokens_mean:
+            The mean length of the output to generate. If not using fixed output lengths, this should be set to -1.
+        output_tokens_stddev:
+            The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -127,10 +136,6 @@ class LlmInputs:
             The mean length of the prompt to generate
         prompt_tokens_stddev:
             The standard deviation of the length of the prompt to generate
-        expected_output_tokens:
-            The number of tokens to expect in the output. This is used to
-            determine the length of the prompt. The prompt will be generated such that the output
-            will be approximately this many tokens.
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         random_seed:
@@ -154,8 +159,8 @@ class LlmInputs:
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
-                expected_output_tokens,
-                num_of_output_prompts,
+                output_tokens_mean,
+                output_tokens_stddev,
                 random_seed,
             )
             generic_dataset_json = (
@@ -171,8 +176,10 @@ class LlmInputs:
             generic_dataset_json,
             add_model_name,
             add_stream,
-            model_name,
             extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            model_name,
         )
         LlmInputs._write_json_to_file(json_in_pa_format)
 
@@ -316,8 +323,10 @@ class LlmInputs:
         generic_dataset: Dict,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = (
@@ -325,21 +334,41 @@ class LlmInputs:
                     generic_dataset,
                     add_model_name,
                     add_stream,
-                    model_name,
                     extra_inputs,
+                    output_tokens_mean,
+                    output_tokens_stddev,
+                    model_name,
                 )
             )
         elif output_format == OutputFormat.OPENAI_COMPLETIONS:
             output_json = LlmInputs._convert_generic_json_to_openai_completions_format(
-                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
         elif output_format == OutputFormat.VLLM:
             output_json = LlmInputs._convert_generic_json_to_vllm_format(
-                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
         elif output_format == OutputFormat.TRTLLM:
             output_json = LlmInputs._convert_generic_json_to_trtllm_format(
-                generic_dataset, add_model_name, add_stream, model_name, extra_inputs
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
         else:
             raise GenAIPerfException(
@@ -354,8 +383,10 @@ class LlmInputs:
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
@@ -369,8 +400,10 @@ class LlmInputs:
             user_role_headers,
             add_model_name,
             add_stream,
-            model_name,
             extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            model_name,
         )
 
         return pa_json
@@ -381,8 +414,10 @@ class LlmInputs:
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         (
             system_role_headers,
@@ -396,8 +431,10 @@ class LlmInputs:
             text_input_headers,
             add_model_name,
             add_stream,
-            model_name,
             extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            model_name,
         )
 
         return pa_json
@@ -408,9 +445,12 @@ class LlmInputs:
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
+        # TODO: Fix below, see when started having mismatch of types
         (
             system_role_headers,
             user_role_headers,
@@ -424,8 +464,10 @@ class LlmInputs:
             text_input_headers,
             add_model_name,
             add_stream,
-            model_name,
             extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            model_name,
         )
 
         return pa_json
@@ -436,13 +478,15 @@ class LlmInputs:
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         (
             system_role_headers,
             user_role_headers,
-            text_input_headers,
+            _,
         ) = LlmInputs._determine_json_feature_roles(dataset_json)
 
         pa_json = LlmInputs._populate_trtllm_output_json(
@@ -452,8 +496,10 @@ class LlmInputs:
             text_input_headers,
             add_model_name,
             add_stream,
-            model_name,
             extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            model_name,
         )
 
         return pa_json
@@ -500,8 +546,10 @@ class LlmInputs:
         user_role_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
@@ -519,7 +567,14 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_openai_json(
-                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
 
         return pa_json
@@ -533,8 +588,10 @@ class LlmInputs:
         text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_openai_pa_json()
 
@@ -554,7 +611,14 @@ class LlmInputs:
                 pa_json = LlmInputs._add_new_prompt_to_json(pa_json, index, new_prompt)
 
             pa_json = LlmInputs._add_optional_tags_to_openai_json(
-                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
 
         return pa_json
@@ -568,8 +632,10 @@ class LlmInputs:
         text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_vllm_pa_json()
 
@@ -590,7 +656,14 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_optional_tags_to_vllm_json(
-                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
 
         return pa_json
@@ -604,8 +677,10 @@ class LlmInputs:
         text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
         include_max_tokens = "max_tokens" not in extra_inputs
@@ -630,7 +705,14 @@ class LlmInputs:
                 pa_json, index, include_max_tokens
             )
             pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
-                pa_json, index, add_model_name, add_stream, model_name, extra_inputs
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
 
         return pa_json
@@ -764,15 +846,21 @@ class LlmInputs:
         index: int,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
+        row = pa_json["data"][index]["payload"][0]
         if add_model_name:
-            pa_json["data"][index]["payload"][0]["model"] = model_name
+            row["model"] = model_name
         if add_stream:
-            pa_json["data"][index]["payload"][0]["stream"] = True
+            row["stream"] = True
+        if output_tokens_mean != -1:
+            row["max_tokens"] = random.gauss(output_tokens_mean, output_tokens_stddev)
+            row["ignore_eos"] = True
         for key, value in extra_inputs.items():
-            pa_json["data"][index]["payload"][0][key] = value
+            row[key] = value
 
         return pa_json
 
@@ -783,15 +871,21 @@ class LlmInputs:
         index: int,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean,
+        output_tokens_stddev,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
+        row = pa_json["data"][index]
         if add_model_name:
-            pa_json["data"][index]["model"] = model_name
+            row["model"] = model_name
         if add_stream:
-            pa_json["data"][index]["stream"] = [True]
+            row["stream"] = [True]
+        if output_tokens_mean != -1:
+            row["max_tokens"] = [random.gauss(output_tokens_mean, output_tokens_stddev)]
+            row["ignore_eos"] = [True]
         for key, value in extra_inputs.items():
-            pa_json["data"][index][key] = [value]
+            row[key] = [value]
 
         return pa_json
 
@@ -802,15 +896,22 @@ class LlmInputs:
         index: int,
         add_model_name: bool,
         add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
-        extra_inputs: Dict = {},
     ) -> Dict:
+        row = pa_json["data"][index]
         if add_model_name:
-            pa_json["data"][index]["model"] = model_name
+            row["model"] = model_name
         if add_stream:
-            pa_json["data"][index]["stream"] = [True]
+            row["stream"] = [True]
+        # TODO: Add error checking to return warning max tokens are provided if also providing distribution
+        if output_tokens_mean != -1:
+            row["max_tokens"] = [random.gauss(output_tokens_mean, output_tokens_stddev)]
+            row["ignore_eos"] = [True]
         for key, value in extra_inputs.items():
-            pa_json["data"][index][key] = [value]
+            row[key] = [value]
 
         return pa_json
 
@@ -821,8 +922,9 @@ class LlmInputs:
         index: int,
         include_max_tokens: bool,
     ) -> Dict:
+        row = pa_json["data"][index]
         if include_max_tokens:
-            pa_json["data"][index]["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
+            row["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
 
         return pa_json
 

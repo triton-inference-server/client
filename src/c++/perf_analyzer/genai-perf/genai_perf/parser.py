@@ -61,6 +61,10 @@ def _check_conditional_args(
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
+    if args.output_tokens_mean is None and args.output_tokens_stddev is not None:
+        parser.error(
+            "The --output-tokens-stddev option requires the --output-tokens-mean option to be set."
+        )
 
     return args
 
@@ -138,6 +142,22 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
+        "--output-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        required=False,
+        help=f"The mean number of tokens in each output.",
+    )
+
+    input_group.add_argument(
+        "--output-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of the number of tokens in each output. This is only used when output-tokens-mean is provided.",
+    )
+
+    input_group.add_argument(
         "--prompt-source",
         type=str,
         choices=utils.get_enum_names(PromptSource),
@@ -163,7 +183,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-tokens-mean",
+        "--synthetic-input-tokens-mean",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
@@ -171,7 +191,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-tokens-stddev",
+        "--synthetic-input-tokens-stddev",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
