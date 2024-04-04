@@ -368,8 +368,10 @@ class TestLlmInputs:
             (OutputFormat.VLLM),
         ],
     )
-    def test_llm_inputs_extra_inputs(self, default_tokenizer, output_format) -> None:
-        request_inputs = {"additional_key": "additional_value"}
+    def test_extra_inputs(self, default_tokenizer, output_format) -> None:
+        input_name = "max_tokens"
+        input_value = 5
+        request_inputs = {input_name: input_value}
 
         pa_json = LlmInputs.create_llm_inputs(
             input_type=PromptSource.SYNTHETIC,
@@ -392,18 +394,40 @@ class TestLlmInputs:
                 payload = entry["payload"]
                 for item in payload:
                     assert (
-                        "additional_key" in item
-                    ), "The additional_key is not present in the request"
+                        input_name in item
+                    ), f"The input name {input_name} is not present in the request"
                     assert (
-                        item["additional_key"] == "additional_value"
-                    ), "The value of additional_key is incorrect"
+                        item[input_name] == input_value
+                    ), f"The value of {input_name} is incorrect"
         elif output_format == OutputFormat.TRTLLM or output_format == OutputFormat.VLLM:
             for entry in pa_json["data"]:
                 assert (
-                    "additional_key" in entry
-                ), "The additional_key is not present in the request"
-                assert entry["additional_key"] == [
-                    "additional_value"
-                ], "The value of additional_key is incorrect"
+                    input_name in entry
+                ), f"The {input_name} is not present in the request"
+                assert entry[input_name] == [
+                    input_value
+                ], f"The value of {input_name} is incorrect"
         else:
             assert False, f"Unsupported output format: {output_format}"
+
+    def test_trtllm_default_max_tokens(self, default_tokenizer) -> None:
+        input_name = "max_tokens"
+        input_value = 256
+
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            num_of_output_prompts=5,
+            add_model_name=False,
+            add_stream=True,
+            tokenizer=default_tokenizer,
+        )
+
+        assert len(pa_json["data"]) == 5
+        for entry in pa_json["data"]:
+            assert (
+                input_name in entry
+            ), f"The {input_name} is not present in the request"
+            assert entry[input_name] == [
+                input_value
+            ], f"The value of {input_name} is incorrect"

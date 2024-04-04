@@ -608,6 +608,7 @@ class LlmInputs:
         extra_inputs: Dict = {},
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
+        include_max_tokens = "max_tokens" not in extra_inputs
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"text_input": [""]})
@@ -625,7 +626,9 @@ class LlmInputs:
                     pa_json, index, new_text_input
                 )
 
-            pa_json = LlmInputs._add_required_tags_to_trtllm_json(pa_json, index)
+            pa_json = LlmInputs._add_required_tags_to_trtllm_json(
+                pa_json, index, include_max_tokens
+            )
             pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
                 pa_json, index, add_model_name, add_stream, model_name, extra_inputs
             )
@@ -816,8 +819,10 @@ class LlmInputs:
         cls,
         pa_json: Dict,
         index: int,
+        include_max_tokens: bool,
     ) -> Dict:
-        pa_json["data"][index]["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
+        if include_max_tokens:
+            pa_json["data"][index]["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
 
         return pa_json
 
