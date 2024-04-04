@@ -28,19 +28,14 @@
 
 import csv
 import json
-import logging
 from itertools import pairwise
 
 import numpy as np
-from genai_perf.constants import LOGGER_NAME
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
-
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(LOGGER_NAME)
 
 _OPENAI_CHAT_COMPLETIONS = OutputFormat.OPENAI_CHAT_COMPLETIONS
 _OPENAI_COMPLETIONS = OutputFormat.OPENAI_COMPLETIONS
