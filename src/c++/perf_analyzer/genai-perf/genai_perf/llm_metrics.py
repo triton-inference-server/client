@@ -148,9 +148,9 @@ class Statistics:
         # iterate through Metrics to calculate statistics and set attributes
         self._metrics = metrics
         for attr, data in metrics.data.items():
+            attr = metrics.get_base_name(attr)
+            data = self._preprocess_data(data, attr)
             if data:
-                attr = metrics.get_base_name(attr)
-                data = self._preprocess_data(data, attr)
                 self._calculate_mean(data, attr)
                 self._calculate_percentiles(data, attr)
                 self._calculate_minmax(data, attr)
