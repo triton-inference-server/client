@@ -28,13 +28,22 @@
 
 import csv
 import json
+import logging
 from itertools import pairwise
 
 import numpy as np
+from genai_perf.constants import LOGGER_NAME
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
+
+logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(LOGGER_NAME)
+
+_OPENAI_CHAT_COMPLETIONS = OutputFormat.OPENAI_CHAT_COMPLETIONS
+_OPENAI_COMPLETIONS = OutputFormat.OPENAI_COMPLETIONS
 
 
 class Metrics:
@@ -48,6 +57,7 @@ class Metrics:
         "output_token_throughput_per_request",
         "request_throughput",
         "num_output_token",
+        "num_input_token",
     ]
 
     time_fields = [
@@ -108,6 +118,7 @@ class LLMMetrics(Metrics):
         output_token_throughputs: list[float] = [],
         output_token_throughputs_per_request: list[int] = [],
         num_output_tokens: list[int] = [],
+        num_input_tokens: list[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -115,6 +126,7 @@ class LLMMetrics(Metrics):
         self.output_token_throughputs = output_token_throughputs
         self.output_token_throughputs_per_request = output_token_throughputs_per_request
         self.num_output_tokens = num_output_tokens
+        self.num_input_tokens = num_input_tokens
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
@@ -124,6 +136,7 @@ class LLMMetrics(Metrics):
             "output_token_throughputs_per_request"
         ] = "output_token_throughput_per_request"
         self._base_names["num_output_tokens"] = "num_output_token"
+        self._base_names["num_input_tokens"] = "num_input_token"
 
 
 class Statistics:
@@ -424,10 +437,15 @@ class LLMProfileDataParser(ProfileDataParser):
     """
 
     def __init__(
-        self, filename: str, service_kind: str, tokenizer: AutoTokenizer
+        self,
+        filename: str,
+        service_kind: str,
+        output_format: OutputFormat,
+        tokenizer: AutoTokenizer,
     ) -> None:
         self._tokenizer = tokenizer
         self._service_kind = service_kind
+        self._output_format = output_format
         super().__init__(filename)
 
     def _parse_requests(self, requests: dict) -> LLMMetrics:
@@ -437,9 +455,11 @@ class LLMProfileDataParser(ProfileDataParser):
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs_per_request = []
+        num_input_tokens = []
         num_generated_tokens = []
         for request in requests:
             req_timestamp = request["timestamp"]
+            req_inputs = request["request_inputs"]
             res_timestamps = request["response_timestamps"]
             res_outputs = request["response_outputs"]
 
@@ -456,6 +476,10 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
+
+            # number of input tokens
+            input_tokens = self._tokenize_request_inputs(req_inputs)
+            num_input_tokens.append(len(input_tokens))
 
             # output token throughput per request
             output_tokens = self._tokenize_response_outputs(res_outputs)
@@ -490,6 +514,7 @@ class LLMProfileDataParser(ProfileDataParser):
             output_token_throughputs,
             output_token_throughputs_per_request,
             num_generated_tokens,
+            num_input_tokens,
         )
 
     def _preprocess_response(
@@ -512,6 +537,33 @@ class LLMProfileDataParser(ProfileDataParser):
             if text_output == "":
                 res_timestamps.pop()
                 res_outputs.pop()
+
+    def _tokenize_request_inputs(self, req_inputs: dict) -> list[list[int]]:
+        """Deserialize the request input and return tokenized inputs."""
+        if self._service_kind == "triton":
+            return self._tokenize_triton_request_input(req_inputs)
+        elif self._service_kind == "openai":
+            return self._tokenize_openai_request_input(req_inputs)
+        else:
+            raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
+
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[list[int]]:
+        """Tokenize the Triton request input texts."""
+        # TODO
+        return []
+
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[list[int]]:
+        """Tokenize the OpenAI request input texts."""
+        payload = json.loads(req_inputs["payload"])
+        if self._output_format == _OPENAI_CHAT_COMPLETIONS:
+            input_text = payload["messages"][0]["content"]
+        elif self._output_format == _OPENAI_COMPLETIONS:
+            input_text = payload["prompt"][0]
+        else:
+            raise ValueError(
+                "Failed to parse OpenAI request input in profile export file."
+            )
+        return self._tokenizer(input_text)["input_ids"]
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
         """Deserialize the response output and return tokenized outputs."""

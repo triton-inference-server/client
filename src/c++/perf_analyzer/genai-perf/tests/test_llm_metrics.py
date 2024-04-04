@@ -31,6 +31,7 @@ from io import StringIO
 
 import numpy as np
 import pytest
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
 from transformers import AutoTokenizer
 
@@ -90,6 +91,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
+            output_format=OutputFormat.TRTLLM,
             tokenizer=tokenizer,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -100,6 +102,7 @@ class TestLLMProfileDataParser:
             "Inter Token Latency (ns),2,2,3,3,3,3,2,2,2\r\n",
             "Request Latency (ns),8,7,9,9,9,9,8,8,8\r\n",
             "Num Output Token,4,3,5,5,5,5,4,4,4\r\n",
+            "Num Input Token,-1,-1,-1,-1,-1,-1,-1,-1,-1\r\n",
             "\r\n",
             "Metric,Value\r\n",
             "Output Token Throughput (per sec),800000000.00\r\n",
@@ -135,11 +138,15 @@ class TestLLMProfileDataParser:
         * num output tokens
             - experiment 1: [3, 5]
             - experiment 2: [4, 5]
+        * num input tokens
+            - experiment 1: [3, 5]
+            - experiment 2: [4, 5]
         """
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
+            output_format=OutputFormat.TRTLLM,
             tokenizer=tokenizer,
         )
 
@@ -154,6 +161,7 @@ class TestLLMProfileDataParser:
         ott = [8 / ns_to_sec(10)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [3, 5]
+        assert metrics.num_input_tokens == []
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 2.25
@@ -202,6 +210,7 @@ class TestLLMProfileDataParser:
         ott = [3 / ns_to_sec(5)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [4, 5]
+        assert metrics.num_input_tokens == []
 
         assert stat.avg_time_to_first_token == 2.5
         assert stat.avg_inter_token_latency == 3
@@ -258,11 +267,14 @@ class TestLLMProfileDataParser:
             - experiment 1: [(3 + 5)/(15 - 1)] = [4/7]
         * num output tokens
             - experiment 1: [3, 5]
+        * num input tokens
+            - experiment 1: [2, 2]
         """
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
         pd = LLMProfileDataParser(
             filename="openai_profile_export.json",
             service_kind="openai",
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
             tokenizer=tokenizer,
         )
 
@@ -277,6 +289,7 @@ class TestLLMProfileDataParser:
         ott = [4 / ns_to_sec(7)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [3, 5]
+        assert metrics.num_input_tokens == [2, 2]
 
         assert stat.avg_time_to_first_token == 2
         assert stat.avg_inter_token_latency == 8 / 3
@@ -329,6 +342,7 @@ class TestLLMProfileDataParser:
             output_token_throughputs=[22.13, 9423.02],
             output_token_throughputs_per_request=[7, 8, 9],
             num_output_tokens=[3, 4],
+            num_input_tokens=[12, 34],
         )
         assert metrics.get_base_name("time_to_first_tokens") == "time_to_first_token"
         assert metrics.get_base_name("inter_token_latencies") == "inter_token_latency"
@@ -337,6 +351,7 @@ class TestLLMProfileDataParser:
             == "output_token_throughput_per_request"
         )
         assert metrics.get_base_name("num_output_tokens") == "num_output_token"
+        assert metrics.get_base_name("num_input_tokens") == "num_input_token"
         with pytest.raises(KeyError):
             metrics.get_base_name("hello1234")
 
@@ -350,6 +365,9 @@ class TestLLMProfileDataParser:
                 "requests": [
                     {
                         "timestamp": 1,
+                        "request_inputs": {
+                            "payload": '{"messages":[{"role":"user","content":"Hello world"}],"model":"llama-2-7b","stream":true}',
+                        },
                         # last two empty/null responses will be ignored
                         "response_timestamps": [3, 5, 8, 12, 13, 14],
                         "response_outputs": [
@@ -373,6 +391,9 @@ class TestLLMProfileDataParser:
                     },
                     {
                         "timestamp": 2,
+                        "request_inputs": {
+                            "payload": '{"messages":[{"role":"user","content":"Hello world"}],"model":"llama-2-7b","stream":true}',
+                        },
                         # last two empty/null responses will be ignored
                         "response_timestamps": [4, 7, 11, 15, 18, 19],
                         "response_outputs": [
@@ -409,6 +430,7 @@ class TestLLMProfileDataParser:
                 "requests": [
                     {
                         "timestamp": 1,
+                        "request_inputs": {},
                         "response_timestamps": [3, 5, 8],
                         "response_outputs": [
                             {"text_output": "dogs"},
@@ -418,6 +440,7 @@ class TestLLMProfileDataParser:
                     },
                     {
                         "timestamp": 2,
+                        "request_inputs": {},
                         "response_timestamps": [4, 7, 11],
                         "response_outputs": [
                             {"text_output": "I"},
@@ -435,6 +458,7 @@ class TestLLMProfileDataParser:
                 "requests": [
                     {
                         "timestamp": 5,
+                        "request_inputs": {},
                         "response_timestamps": [7, 8, 13, 18],
                         "response_outputs": [
                             {"text_output": "cats"},
@@ -445,6 +469,7 @@ class TestLLMProfileDataParser:
                     },
                     {
                         "timestamp": 3,
+                        "request_inputs": {},
                         "response_timestamps": [6, 8, 11],
                         "response_outputs": [
                             {"text_output": "it's"},
