@@ -465,6 +465,11 @@ class LLMProfileDataParser(ProfileDataParser):
 
             self._preprocess_response(res_timestamps, res_outputs)
 
+            # Skip requests with empty response. This happens sometimes when the
+            # model returns a single response with empty string.
+            if not res_timestamps:
+                continue
+
             # track entire benchmark duration
             min_req_timestamp = min(min_req_timestamp, req_timestamp)
             max_res_timestamp = max(max_res_timestamp, res_timestamps[-1])
