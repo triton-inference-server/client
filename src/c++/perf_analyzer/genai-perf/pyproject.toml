@@ -49,7 +49,10 @@ dependencies = [
   "numpy",
   "pytest",
   "rich",
-  "transformers"
+  "transformers",
+  "plotly",
+  "pandas",
+  "kaleido",
 ]
 
 # CLI Entrypoint

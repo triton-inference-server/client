@@ -32,8 +32,9 @@ from argparse import ArgumentParser
 from genai_perf import parser
 from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.graphs.box_plot import BoxPlot
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_metrics import LLMProfileDataParser
+from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
@@ -81,19 +82,30 @@ def calculate_metrics(
     )
 
 
-def report_output(metrics: LLMProfileDataParser, args):
+def report_output(data_parser: LLMProfileDataParser, args):
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range
     elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
-    stats = metrics.get_statistics(infer_mode, load_level)
+    stats = data_parser.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
     stats.pretty_print()
+    create_graphs(stats)
+
+
+def create_graphs(stats: Statistics) -> None:
+    bp = BoxPlot(stats)
+    bp.create_box_plot(
+        data_col_name="time_to_first_tokens",
+        graph_title="Time to First Token Analysis",
+        filename_root="ttft",
+        x_label="Time to First Token of Individual Requests (seconds)",
+    )
 
 
 # Separate function that can raise exceptions used for testing
@@ -104,8 +116,8 @@ def run():
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        metrics = calculate_metrics(args, tokenizer)
-        report_output(metrics, args)
+        data_parser = calculate_metrics(args, tokenizer)
+        report_output(data_parser, args)
     except Exception as e:
         raise GenAIPerfException(e)
 
