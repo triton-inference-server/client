@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2019-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2019-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -63,7 +63,7 @@ _cshm_get_shared_memory_handle_info.argtypes = [
     c_void_p,
     POINTER(c_char_p),
     POINTER(c_char_p),
-    POINTER(c_int),
+    POINTER(c_void_p),
     POINTER(c_uint64),
     POINTER(c_uint64),
 ]
@@ -205,7 +205,7 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
         The numpy array generated using the contents of the specified shared
         memory region.
     """
-    shm_fd = c_int()
+    shm_file = c_void_p()
     region_offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()
@@ -216,7 +216,7 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
                 shm_handle,
                 byref(shm_addr),
                 byref(shm_key),
-                byref(shm_fd),
+                byref(shm_file),
                 byref(region_offset),
                 byref(byte_size),
             )
@@ -285,9 +285,7 @@ def destroy_shared_memory_region(shm_handle):
         If unable to unlink the shared memory region.
     """
 
-    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
-
-    shm_fd = c_int()
+    shm_file = c_void_p()
     offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()
@@ -298,13 +296,16 @@ def destroy_shared_memory_region(shm_handle):
                 shm_handle,
                 byref(shm_addr),
                 byref(shm_key),
-                byref(shm_fd),
+                byref(shm_file),
                 byref(offset),
                 byref(byte_size),
             )
         )
     )
-    mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
+    shm_key_copy = bytes(shm_key.value)
+    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
+
+    mapped_shm_regions.remove(shm_key_copy.decode("utf-8"))
 
     return
 

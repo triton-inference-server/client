@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -180,13 +180,13 @@ endif() # TRITON_ENABLE_PYTHON_GRPC
 
 
 if(WIN32)
-  install(
-    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/windows/triton*.whl\")"
-    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
-  )
+  set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/windows")
 else()
-  install(
-    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/linux/triton*.whl\")"
-    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
-  )
-endif() # NOT WIN32
+  set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/linux")
+endif() # WIN32
+
+install(
+  CODE "file(GLOB _Wheel \"${WHEEL_DIR}/triton*.whl\")"
+  CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
+)
+

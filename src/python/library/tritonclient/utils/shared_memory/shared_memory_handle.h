@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2024, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -32,29 +32,23 @@
 
 #ifdef _WIN32
 #include <windows.h>
-struct SharedMemoryHandle {
-  std::string triton_shm_name_;
-  std::string shm_key_;
-#ifdef TRITON_ENABLE_GPU
-  cudaIpcMemHandle_t cuda_shm_handle_;
-  int device_id_;
-#endif  // TRITON_ENABLE_GPU
-  void* base_addr_;
-  HANDLE shm_handle_;
-  size_t offset_;
-  size_t byte_size_;
-};
+#endif  // _WIN32
+
+struct ShmFile {
+#ifdef _WIN32
+  HANDLE shm_file_;
+  ShmFile(void* shm_file) { shm_file_ = static_cast<HANDLE>(shm_file); };
 #else
+  int shm_file_;
+  ShmFile(int shm_file) { shm_file_ = *static_cast<int*>(shm_file); };
+#endif  // _WIN32
+};
+
 struct SharedMemoryHandle {
   std::string triton_shm_name_;
   std::string shm_key_;
-#ifdef TRITON_ENABLE_GPU
-  cudaIpcMemHandle_t cuda_shm_handle_;
-  int device_id_;
-#endif  // TRITON_ENABLE_GPU
   void* base_addr_;
-  int shm_fd_;
+  ShmFile* platform_handle_;
   size_t offset_;
   size_t byte_size_;
 };
-#endif

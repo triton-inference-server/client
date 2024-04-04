@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -78,13 +78,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dest-dir", type=str, required=True, help="Destination directory."
     )
-    parser.add_argument(
+    platform_group = parser.add_mutually_exclusive_group()
+    platform_group.add_argument(
         "--linux",
         action="store_true",
         required=False,
         help="Include linux specific artifacts.",
     )
-    parser.add_argument(
+    platform_group.add_argument(
         "--windows",
         action="store_true",
         required=False,
@@ -210,7 +211,7 @@ if __name__ == "__main__":
             "tritonclient/utils/Release/cshm.dll",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/cshm.dll"),
         )
-        # FIXME: Enable when Windows supports GPU tensors
+        # FIXME: Enable when Windows supports GPU tensors DLIS-4169
         # cpdir(
         #     "tritonclient/utils/cuda_shared_memory",
         #     os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),

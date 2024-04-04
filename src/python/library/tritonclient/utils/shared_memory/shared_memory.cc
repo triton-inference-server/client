@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2024, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -41,29 +41,29 @@
 
 //==============================================================================
 // SharedMemoryControlContext
-
-#ifdef _WIN32
 namespace {
 
 void*
 SharedMemoryHandleCreate(
     std::string triton_shm_name, void* shm_addr, std::string shm_key,
-    HANDLE shm_handle, size_t offset, size_t byte_size)
+    void* shm_file, size_t offset, size_t byte_size)
 {
   SharedMemoryHandle* handle = new SharedMemoryHandle();
   handle->triton_shm_name_ = triton_shm_name;
   handle->base_addr_ = shm_addr;
   handle->shm_key_ = shm_key;
-  handle->shm_handle_ = shm_handle;
+  handle->platform_handle_ = new ShmFile(shm_file);
   handle->offset_ = offset;
   handle->byte_size_ = byte_size;
-  return reinterpret_cast<void*>(handle);
+  return static_cast<void*>(handle);
 }
 
 int
 SharedMemoryRegionMap(
-    HANDLE shm_handle, size_t offset, size_t byte_size, void** shm_addr)
+    void* shm_file, size_t offset, size_t byte_size, void** shm_addr)
 {
+#ifdef _WIN32
+  HANDLE file_handle = static_cast<HANDLE>(shm_file);
   // The MapViewOfFile function takes a high-order and low-order DWORD (4 bytes
   // each) for offset. 'size_t' can either be 4 or 8 bytes depending on the
   // operating system. To handle both cases agnostically, we cast 'offset' to
@@ -74,14 +74,14 @@ SharedMemoryRegionMap(
   DWORD low_order_offset = upperbound_offset & 0xFFFFFFFF;
   // map shared memory to process address space
   *shm_addr = MapViewOfFile(
-      shm_handle,           // handle to map object
+      file_handle,          // handle to map object
       FILE_MAP_ALL_ACCESS,  // read/write permission
       high_order_offset,    // offset (high-order DWORD)
       low_order_offset,     // offset (low-order DWORD)
       byte_size);
 
   if (*shm_addr == NULL) {
-    CloseHandle(shm_handle);
+    CloseHandle(file_handle);
     return -1;
   }
   // For Windows, we cannot close the shared memory handle here. When all
@@ -89,6 +89,17 @@ SharedMemoryRegionMap(
   // file the shared memory object uses. Instead, we close on error or when
   // we are destroying the shared memory object.
   return 0;
+#else
+  int fd = *static_cast<int*>(shm_file);
+  // map shared memory to process address space
+  *shm_addr = mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, fd, offset);
+  if (*shm_addr == MAP_FAILED) {
+    return -1;
+  }
+
+  // close shared memory descriptor, return 0 if success else return -1
+  return close(fd);
+#endif
 }
 
 }  // namespace
@@ -98,6 +109,7 @@ SharedMemoryRegionCreate(
     const char* triton_shm_name, const char* shm_key, size_t byte_size,
     void** shm_handle)
 {
+#ifdef _WIN32
   // The CreateFileMapping function takes a high-order and low-order DWORD (4
   // bytes each) for size. 'size_t' can either be 4 or 8 bytes depending on the
   // operating system. To handle both cases agnostically, we cast 'byte_size' to
@@ -121,7 +133,7 @@ SharedMemoryRegionCreate(
 
   // get base address of shared memory region
   void* shm_addr = nullptr;
-  int err = SharedMemoryRegionMap(local_handle, 0, byte_size, &shm_addr);
+  int err = SharedMemoryRegionMap((void*)local_handle, 0, byte_size, &shm_addr);
   if (err == -1) {
     return -4;
   }
@@ -129,92 +141,8 @@ SharedMemoryRegionCreate(
   // create a handle for the shared memory region
   *shm_handle = SharedMemoryHandleCreate(
       std::string(triton_shm_name), shm_addr, std::string(shm_key),
-      local_handle, 0, byte_size);
-  return 0;
-}
-
-TRITONCLIENT_DECLSPEC int
-SharedMemoryRegionSet(
-    void* shm_handle, size_t offset, size_t byte_size, const void* data)
-{
-  void* shm_addr =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle)->base_addr_;
-  char* shm_addr_offset = reinterpret_cast<char*>(shm_addr);
-  std::memcpy(shm_addr_offset + offset, data, byte_size);
-  return 0;
-}
-
-TRITONCLIENT_DECLSPEC int
-GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key,
-    SHM_FILE* shm_file_handle, size_t* offset, size_t* byte_size)
-{
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
-  *shm_addr = reinterpret_cast<char*>(handle->base_addr_);
-  *shm_key = handle->shm_key_.c_str();
-  *shm_file_handle = handle->shm_handle_;
-  *offset = handle->offset_;
-  *byte_size = handle->byte_size_;
-  return 0;
-}
-
-TRITONCLIENT_DECLSPEC int
-SharedMemoryRegionDestroy(void* shm_handle)
-{
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
-  void* shm_addr = reinterpret_cast<char*>(handle->base_addr_);
-  bool success = UnmapViewOfFile(shm_addr);
-  if (!success) {
-    return -6;
-  }
-  // We keep Windows shared memory handles open until we are done
-  // using them. When all handles are closed, the system will free
-  // the section of the pagaing file that the object uses.
-  CloseHandle(handle->shm_handle_);
-
-  return 0;
-}
+      (void*)local_handle, 0, byte_size);
 #else
-namespace {
-
-void*
-SharedMemoryHandleCreate(
-    std::string triton_shm_name, void* shm_addr, std::string shm_key,
-    SHM_FILE shm_file, size_t offset, size_t byte_size)
-{
-  SharedMemoryHandle* handle = new SharedMemoryHandle();
-  handle->triton_shm_name_ = triton_shm_name;
-  handle->base_addr_ = shm_addr;
-  handle->shm_key_ = shm_key;
-  handle->shm_file_ = shm_file;
-  handle->offset_ = offset;
-  handle->byte_size_ = byte_size;
-  return reinterpret_cast<void*>(handle);
-}
-
-int
-SharedMemoryRegionMap(
-    int shm_fd, size_t offset, size_t byte_size, void** shm_addr)
-{
-  // map shared memory to process address space
-  *shm_addr = mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, shm_fd, offset);
-  if (*shm_addr == MAP_FAILED) {
-    return -1;
-  }
-
-  // close shared memory descriptor, return 0 if success else return -1
-  return close(shm_fd);
-}
-
-}  // namespace
-
-int
-SharedMemoryRegionCreate(
-    const char* triton_shm_name, const char* shm_key, size_t byte_size,
-    void** shm_handle)
-{
   // get shared memory region descriptor
   int shm_fd = shm_open(shm_key, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   if (shm_fd == -1) {
@@ -229,50 +157,64 @@ SharedMemoryRegionCreate(
 
   // get base address of shared memory region
   void* shm_addr = nullptr;
-  int err = SharedMemoryRegionMap(shm_fd, 0, byte_size, &shm_addr);
+  int err = SharedMemoryRegionMap((void*)&shm_fd, 0, byte_size, &shm_addr);
   if (err == -1) {
     return -4;
   }
 
   // create a handle for the shared memory region
   *shm_handle = SharedMemoryHandleCreate(
-      std::string(triton_shm_name), shm_addr, std::string(shm_key), shm_fd, 0,
-      byte_size);
+      std::string(triton_shm_name), shm_addr, std::string(shm_key),
+      (void*)&shm_fd, 0, byte_size);
+#endif
   return 0;
 }
 
-int
+TRITONCLIENT_DECLSPEC int
 SharedMemoryRegionSet(
     void* shm_handle, size_t offset, size_t byte_size, const void* data)
 {
-  void* shm_addr =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle)->base_addr_;
-  char* shm_addr_offset = reinterpret_cast<char*>(shm_addr);
+  void* shm_addr = static_cast<SharedMemoryHandle*>(shm_handle)->base_addr_;
+  char* shm_addr_offset = static_cast<char*>(shm_addr);
   std::memcpy(shm_addr_offset + offset, data, byte_size);
   return 0;
 }
 
-int
+TRITONCLIENT_DECLSPEC int
 GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key, SHM_FILE* shm_fd,
+    void* shm_handle, char** shm_addr, const char** shm_key, void** shm_file,
     size_t* offset, size_t* byte_size)
 {
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
-  *shm_addr = reinterpret_cast<char*>(handle->base_addr_);
+#ifdef _WIN32
+  HANDLE* file = static_cast<HANDLE*>(shm_file);
+#else
+  int* file = *static_cast<int**>(shm_file);
+#endif  // _WIN32
+  SharedMemoryHandle* handle = static_cast<SharedMemoryHandle*>(shm_handle);
+  *shm_addr = static_cast<char*>(handle->base_addr_);
   *shm_key = handle->shm_key_.c_str();
-  *shm_fd = handle->shm_fd_;
+  *file = handle->platform_handle_->shm_file_;
   *offset = handle->offset_;
   *byte_size = handle->byte_size_;
   return 0;
 }
 
-int
+TRITONCLIENT_DECLSPEC int
 SharedMemoryRegionDestroy(void* shm_handle)
 {
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
-  void* shm_addr = reinterpret_cast<char*>(handle->base_addr_);
+  SharedMemoryHandle* handle = static_cast<SharedMemoryHandle*>(shm_handle);
+  void* shm_addr = static_cast<char*>(handle->base_addr_);
+
+#ifdef _WIN32
+  bool success = UnmapViewOfFile(shm_addr);
+  if (!success) {
+    return -6;
+  }
+  // We keep Windows shared memory handles open until we are done
+  // using them. When all handles are closed, the system will free
+  // the section of the paging file that the object uses.
+  CloseHandle(handle->platform_handle_->shm_file_);
+#else
   int status = munmap(shm_addr, handle->byte_size_);
   if (status == -1) {
     return -6;
@@ -282,8 +224,13 @@ SharedMemoryRegionDestroy(void* shm_handle)
   if (shm_fd == -1) {
     return -5;
   }
+#endif  // _WIN32
+
+  // FIXME: Investigate use of smart pointers for these
+  // allocations instead
+  delete handle->platform_handle_;
+  delete handle;
 
   return 0;
 }
-#endif
 //==============================================================================
