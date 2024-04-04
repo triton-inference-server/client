@@ -582,7 +582,7 @@ class LLMProfileDataParser(ProfileDataParser):
         output_texts = []
         for output in res_outputs:
             output_texts.append(output["text_output"])
-        return self._tokenizer(output_texts)["input_ids"]
+        return self._run_tokenizer(output_texts)
 
     def _tokenize_openai_response_output(self, res_outputs: dict) -> list[list[int]]:
         """Tokenize the OpenAI response output texts."""
