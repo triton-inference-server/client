@@ -136,6 +136,10 @@ class LlmInputs:
             The mean length of the prompt to generate
         prompt_tokens_stddev:
             The standard deviation of the length of the prompt to generate
+        expected_output_tokens:
+            The number of tokens to expect in the output. This is used to
+            determine the length of the prompt. The prompt will be generated such that the output
+            will be approximately this many tokens.
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         random_seed:
@@ -159,8 +163,8 @@ class LlmInputs:
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
-                output_tokens_mean,
-                output_tokens_stddev,
+                expected_output_tokens,
+                num_of_output_prompts,
                 random_seed,
             )
             generic_dataset_json = (
@@ -230,7 +234,6 @@ class LlmInputs:
         dataset_json = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
-
         for index in range(0, num_of_output_prompts):
             synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
                 tokenizer,
@@ -486,7 +489,7 @@ class LlmInputs:
         (
             system_role_headers,
             user_role_headers,
-            _,
+            text_input_headers,
         ) = LlmInputs._determine_json_feature_roles(dataset_json)
 
         pa_json = LlmInputs._populate_trtllm_output_json(
@@ -856,6 +859,9 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = True
+        # TODO: Fix this. Ignore_eos does not result in a fixed length output and OpenAi has no minimum token argument.
+        # Users online cannot figure out how to do this. Look into how to do this.
+        # This may be as good as it gets, so test this.
         if output_tokens_mean != -1:
             row["max_tokens"] = random.gauss(output_tokens_mean, output_tokens_stddev)
             row["ignore_eos"] = True
@@ -882,8 +888,10 @@ class LlmInputs:
         if add_stream:
             row["stream"] = [True]
         if output_tokens_mean != -1:
-            row["max_tokens"] = [random.gauss(output_tokens_mean, output_tokens_stddev)]
-            row["ignore_eos"] = [True]
+            # TODO: We'd need to support dict output here for sampling parameters. These inputs get ignored.
+            number_of_tokens = random.gauss(output_tokens_mean, output_tokens_stddev)
+            row["min_tokens"] = [number_of_tokens]
+            row["max_tokens"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]
 
@@ -906,7 +914,9 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        # TODO: Add error checking to return warning max tokens are provided if also providing distribution
+        # TODO: Add error checking to return warning max tokens are provided if also providing distribution for all backends and endpoints.
+        # TODO: Fix this. Ignore_eos does not result in a fixed length output and TRT-LLM as no minimum token argument.
+        # This may work on TRT-LLM if the model allows it, so test this.
         if output_tokens_mean != -1:
             row["max_tokens"] = [random.gauss(output_tokens_mean, output_tokens_stddev)]
             row["ignore_eos"] = [True]
