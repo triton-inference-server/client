@@ -33,6 +33,7 @@ from genai_perf import parser
 from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.box_plot import BoxPlot
+from genai_perf.graphs.heat_map import HeatMap
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
@@ -111,6 +112,18 @@ def create_graphs(stats: Statistics) -> None:
         graph_title="Total Output Time Analysis",
         filename_root="tot",
         x_label="Time to Completion of Individual Requests (seconds)",
+    )
+
+    hm = HeatMap(stats)
+    hm.create_heat_map(
+        x_key="num_input_tokens",
+        y_key="num_output_tokens",
+        x_metric="input_tokens",
+        y_metric="generated_tokens",
+        graph_title="Distribution of Input Tokens to Generated Tokens (Over All Requests)",
+        x_label="Number of Input Tokens Per Request",
+        y_label="Number of Generated Tokens Per Request",
+        filename_root="heatmap",
     )
 
 
