@@ -52,6 +52,7 @@ namespace triton { namespace perfanalyzer {
 #ifndef DOCTEST_CONFIG_DISABLE
 class NaggyMockInferenceProfiler;
 class TestInferenceProfiler;
+class ModelParser;
 #endif
 
 /// Constant parameters that determine the whether stopping criteria has met
@@ -536,6 +537,10 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
 
+#ifndef DOCTEST_CONFIG_DISABLE
+  void SetTopLevelRequestCaching(bool enable_top_level_request_caching);
+#endif
+
   /// \param start_status The model status at the start of the measurement.
   /// \param end_status The model status at the end of the measurement.
   /// \param server_stats Returns the summary that the fields recorded by server
@@ -738,6 +743,7 @@ class InferenceProfiler {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;
   friend TestInferenceProfiler;
+  friend ModelParser;
 
  public:
   InferenceProfiler() = default;

@@ -169,6 +169,10 @@ ModelParser::InitTriton(
     response_cache_enabled_ = cache_itr->value["enable"].GetBool();
   }
 
+  if (cache_itr != config.MemberEnd()) {
+    top_level_request_caching_enabled_ = cache_itr->value["enable"].GetBool();
+  }
+
   return cb::Error::Success;
 }
 

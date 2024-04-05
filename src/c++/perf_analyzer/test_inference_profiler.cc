@@ -160,7 +160,14 @@ class TestInferenceProfiler : public InferenceProfiler {
     return InferenceProfiler::DetermineStatsModelVersion(
         model_identifier, start_stats, end_stats, model_version);
   }
+
+  void SetTopLevelRequestCaching(bool enable_top_level_request_caching)
+  {
+    InferenceProfiler::SetTopLevelRequestCaching(
+        enable_top_level_request_caching);
+  }
 };
+
 
 TEST_CASE("testing the ValidLatencyMeasurement function")
 {
@@ -850,6 +857,23 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
     expect_exception = true;
   }
 
+  SUBCASE("One entry - version -1 - valid and in start")
+  {
+    model_identifier = {"ModelA", "-1"};
+    start_stats_map.insert({{"ModelA", "3"}, old_stats});
+    end_stats_map.insert({{"ModelA", "3"}, new_stats});
+    tip.SetTopLevelRequestCaching(true);
+    expected_model_version = -1;
+  }
+
+  SUBCASE("One entry - version -1 - not valid")
+  {
+    model_identifier = {"ModelA", "-1"};
+    end_stats_map.insert({{"ModelA", "3"}, old_stats});
+    tip.SetTopLevelRequestCaching(false);
+    expected_model_version = -1;
+    expect_exception = true;
+  }
 
   std::stringstream captured_cerr;
   std::streambuf* old = std::cerr.rdbuf(captured_cerr.rdbuf());

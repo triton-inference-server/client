@@ -1517,7 +1517,8 @@ InferenceProfiler::DetermineStatsModelVersion(
     }
   }
 
-  if (*status_model_version == -1) {
+  if (*status_model_version == -1 &&
+      (parser_ == nullptr || !parser_->TopLevelRequestCachingEnabled())) {
     return cb::Error(
         "failed to find the requested model version", pa::GENERIC_ERROR);
   }
@@ -1532,6 +1533,22 @@ InferenceProfiler::DetermineStatsModelVersion(
 
   return cb::Error::Success;
 }
+
+// Only for unit-testing
+#ifndef DOCTEST_CONFIG_DISABLE
+void
+InferenceProfiler::SetTopLevelRequestCaching(
+    bool enable_top_level_request_caching)
+{
+  // parser_ = std::make_shared<MockModelParser>();
+  parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
+  if (parser_ == nullptr) {
+    std::cout << "NULL Pointer" << std::endl;
+  } else {
+    parser_->SetTopLevelRequestCaching(enable_top_level_request_caching);
+  }
+}
+#endif
 
 cb::Error
 InferenceProfiler::SummarizeServerStats(
@@ -1588,8 +1605,27 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    return cb::Error(
-        "missing statistics for requested model", pa::GENERIC_ERROR);
+    if (parser_ == nullptr || !parser_->TopLevelRequestCachingEnabled()) {
+      return cb::Error(
+          "missing statistics for requested model", pa::GENERIC_ERROR);
+    } else {
+      server_stats->inference_count = 0;
+      server_stats->execution_count = 0;
+      server_stats->success_count = 0;
+      server_stats->queue_count = 0;
+      server_stats->compute_input_count = 0;
+      server_stats->compute_infer_count = 0;
+      server_stats->compute_output_count = 0;
+      server_stats->cumm_time_ns = 0;
+      server_stats->queue_time_ns = 0;
+      server_stats->compute_input_time_ns = 0;
+      server_stats->compute_infer_time_ns = 0;
+      server_stats->compute_output_time_ns = 0;
+      server_stats->cache_hit_count = 0;
+      server_stats->cache_hit_time_ns = 0;
+      server_stats->cache_miss_count = 0;
+      server_stats->cache_miss_time_ns = 0;
+    }
   } else {
     uint64_t start_infer_cnt = 0;
     uint64_t start_exec_cnt = 0;
