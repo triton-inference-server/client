@@ -686,7 +686,9 @@ class LlmInputs:
         model_name: str = "",
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
-        include_max_tokens = "max_tokens" not in extra_inputs
+        include_max_tokens = (
+            "max_tokens" not in extra_inputs or output_tokens_mean != -1
+        )
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"text_input": [""]})
@@ -863,7 +865,9 @@ class LlmInputs:
         # Users online cannot figure out how to do this. Look into how to do this.
         # This may be as good as it gets, so test this.
         if output_tokens_mean != -1:
-            row["max_tokens"] = random.gauss(output_tokens_mean, output_tokens_stddev)
+            row["max_tokens"] = int(
+                random.gauss(output_tokens_mean, output_tokens_stddev)
+            )
             row["ignore_eos"] = True
         for key, value in extra_inputs.items():
             row[key] = value
@@ -888,12 +892,20 @@ class LlmInputs:
         if add_stream:
             row["stream"] = [True]
         if output_tokens_mean != -1:
-            # TODO: We'd need to support dict output here for sampling parameters. These inputs get ignored.
-            number_of_tokens = random.gauss(output_tokens_mean, output_tokens_stddev)
-            row["min_tokens"] = [number_of_tokens]
-            row["max_tokens"] = [number_of_tokens]
+            number_of_tokens = str(
+                int(max(0, random.gauss(output_tokens_mean, output_tokens_stddev)))
+            )
+            sampling_parameters = {
+                # "min_tokens": number_of_tokens,
+                "ignore_eos": str(True),
+                "max_tokens": number_of_tokens,
+            }
+            sampling_parameters_str = json.dumps(sampling_parameters)
+            row["sampling_parameters"] = [sampling_parameters_str]
         for key, value in extra_inputs.items():
             row[key] = [value]
+        if "exclude_input_in_output" not in row:
+            row["exclude_input_in_output"] = [True]
 
         return pa_json
 
@@ -918,7 +930,9 @@ class LlmInputs:
         # TODO: Fix this. Ignore_eos does not result in a fixed length output and TRT-LLM as no minimum token argument.
         # This may work on TRT-LLM if the model allows it, so test this.
         if output_tokens_mean != -1:
-            row["max_tokens"] = [random.gauss(output_tokens_mean, output_tokens_stddev)]
+            row["max_tokens"] = [
+                int(random.gauss(output_tokens_mean, output_tokens_stddev))
+            ]
             row["ignore_eos"] = [True]
         for key, value in extra_inputs.items():
             row[key] = [value]
