@@ -53,6 +53,7 @@ dependencies = [
   "plotly",
   "pandas",
   "kaleido",
+  "statsmodels",
 ]
 
 # CLI Entrypoint

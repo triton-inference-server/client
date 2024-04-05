@@ -34,6 +34,7 @@ from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.box_plot import BoxPlot
 from genai_perf.graphs.heat_map import HeatMap
+from genai_perf.graphs.scatter_plot import ScatterPlot
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
@@ -124,6 +125,36 @@ def create_graphs(stats: Statistics) -> None:
         x_label="Number of Input Tokens Per Request",
         y_label="Number of Generated Tokens Per Request",
         filename_root="heatmap",
+    )
+
+    sp = ScatterPlot(stats)
+    sp.create_scatter_plot(
+        x_key="num_input_tokens",
+        y_key="time_to_first_tokens",
+        scale_y=True,
+        graph_title="Time to First Token vs Size of Initial Prompt",
+        x_label="Number of Input Tokens",
+        y_label="Time to First Token (seconds)",
+        filename_root="ttft_v_input_tokens",
+    )
+
+    itl_latencies = stats.metrics.data["inter_token_latencies"]
+    x_data = []
+    y_data = []
+    for itl_latency_list in itl_latencies:
+        for index, latency in enumerate(itl_latency_list):
+            x_data.append(index + 1)
+            y_data.append(latency / 1e9)
+
+    sp.create_scatter_plot(
+        x_key="token_position",
+        y_key="inter_token_latencies",
+        graph_title="Token-to-Token Latencies vs Token Position",
+        x_label="Token Position",
+        y_label="Token to Token Latency (seconds)",
+        filename_root="itl_v_position",
+        preprocessed_x_data=x_data,
+        preprocessed_y_data=y_data,
     )
 
 

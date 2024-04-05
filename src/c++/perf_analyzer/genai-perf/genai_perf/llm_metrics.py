@@ -224,7 +224,7 @@ class Statistics:
         """Prints the statistics in a tabular format."""
 
         singular_metric_rows = []
-        table = Table(title="PA LLM Metrics")
+        table = Table(title="LLM Metrics")
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
         stats = ["avg", "min", "max", "p99", "p90", "p75"]
