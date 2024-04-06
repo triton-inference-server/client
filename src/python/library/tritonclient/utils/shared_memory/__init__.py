@@ -205,7 +205,10 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
         The numpy array generated using the contents of the specified shared
         memory region.
     """
-    shm_file = c_void_p()
+    # Safe initializer for Unix case where shm_file must be dereferenced to
+    # base in order to store file descriptor.
+    safe_initializer = c_int(-1)
+    shm_file = cast(byref(safe_initializer), c_void_p)
     region_offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()
@@ -284,8 +287,10 @@ def destroy_shared_memory_region(shm_handle):
     SharedMemoryException
         If unable to unlink the shared memory region.
     """
-
-    shm_file = c_void_p()
+    # Safe initializer for Unix case where shm_file must be dereferenced to
+    # base in order to store file descriptor.
+    safe_initializer = c_int(-1)
+    shm_file = cast(byref(safe_initializer), c_void_p)
     offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()

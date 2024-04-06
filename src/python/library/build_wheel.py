@@ -92,6 +92,12 @@ if __name__ == "__main__":
         help="Include windows specific artifacts.",
     )
     parser.add_argument(
+        "--include-gpu-libs",
+        action="store_true",
+        required=False,
+        help="Include gpu specific libraries",
+    )
+    parser.add_argument(
         "--perf-analyzer",
         type=str,
         required=False,
@@ -186,10 +192,11 @@ if __name__ == "__main__":
             "tritonclient/utils/libcshm.so",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/libcshm.so"),
         )
-        cpdir(
-            "tritonclient/utils/cuda_shared_memory",
-            os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
-        )
+        if FLAGS.include_gpu_libs:
+            cpdir(
+                "tritonclient/utils/cuda_shared_memory",
+                os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+            )
 
         # Copy the pre-compiled perf_analyzer binary
         if FLAGS.perf_analyzer is not None:
@@ -212,10 +219,11 @@ if __name__ == "__main__":
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/cshm.dll"),
         )
         # FIXME: Enable when Windows supports GPU tensors DLIS-4169
-        # cpdir(
-        #     "tritonclient/utils/cuda_shared_memory",
-        #     os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
-        # )
+        # if FLAGS.include_gpu_libs:
+        #     cpdir(
+        #         "tritonclient/utils/cuda_shared_memory",
+        #         os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+        #     )
 
     shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
     shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))

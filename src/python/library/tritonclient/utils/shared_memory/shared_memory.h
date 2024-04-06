@@ -32,7 +32,7 @@ extern "C" {
 #ifdef _WIN32
 #define TRITONCLIENT_DECLSPEC __declspec(dllexport)
 #else
-define TRITONCLIENT_DECLSPEC
+#define TRITONCLIENT_DECLSPEC
 #endif
 
 //==============================================================================

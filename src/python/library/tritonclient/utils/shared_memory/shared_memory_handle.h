@@ -33,14 +33,20 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif  // _WIN32
+#include <memory>
 
 struct ShmFile {
 #ifdef _WIN32
   HANDLE shm_file_;
   ShmFile(void* shm_file) { shm_file_ = static_cast<HANDLE>(shm_file); };
+  HANDLE* GetShmFile() { return &shm_file_; };
 #else
-  int shm_file_;
-  ShmFile(int shm_file) { shm_file_ = *static_cast<int*>(shm_file); };
+  std::unique_ptr<int> shm_file_;
+  ShmFile(void* shm_file)
+  {
+    shm_file_ = std::make_unique<int>(*static_cast<int*>(shm_file));
+  };
+  int* GetShmFile() { return shm_file_.get(); }
 #endif  // _WIN32
 };
 
@@ -48,7 +54,7 @@ struct SharedMemoryHandle {
   std::string triton_shm_name_;
   std::string shm_key_;
   void* base_addr_;
-  ShmFile* platform_handle_;
+  std::unique_ptr<ShmFile> platform_handle_;
   size_t offset_;
   size_t byte_size_;
 };

@@ -52,7 +52,7 @@ SharedMemoryHandleCreate(
   handle->triton_shm_name_ = triton_shm_name;
   handle->base_addr_ = shm_addr;
   handle->shm_key_ = shm_key;
-  handle->platform_handle_ = new ShmFile(shm_file);
+  handle->platform_handle_ = std::make_unique<ShmFile>(shm_file);
   handle->offset_ = offset;
   handle->byte_size_ = byte_size;
   return static_cast<void*>(handle);
@@ -97,8 +97,7 @@ SharedMemoryRegionMap(
     return -1;
   }
 
-  // close shared memory descriptor, return 0 if success else return -1
-  return close(fd);
+  return 0;
 #endif
 }
 
@@ -119,7 +118,7 @@ SharedMemoryRegionCreate(
   DWORD high_order_size = (upperbound_size >> 32) & 0xFFFFFFFF;
   DWORD low_order_size = upperbound_size & 0xFFFFFFFF;
 
-  HANDLE local_handle = CreateFileMapping(
+  HANDLE shm_file = CreateFileMapping(
       INVALID_HANDLE_VALUE,  // use paging file
       NULL,                  // default security
       PAGE_READWRITE,        // read/write access
@@ -127,13 +126,13 @@ SharedMemoryRegionCreate(
       low_order_size,        // maximum object size (low-order DWORD)
       shm_key);              // name of mapping object
 
-  if (local_handle == NULL) {
+  if (shm_file == NULL) {
     return -7;
   }
 
   // get base address of shared memory region
   void* shm_addr = nullptr;
-  int err = SharedMemoryRegionMap((void*)local_handle, 0, byte_size, &shm_addr);
+  int err = SharedMemoryRegionMap((void*)shm_file, 0, byte_size, &shm_addr);
   if (err == -1) {
     return -4;
   }
@@ -141,7 +140,7 @@ SharedMemoryRegionCreate(
   // create a handle for the shared memory region
   *shm_handle = SharedMemoryHandleCreate(
       std::string(triton_shm_name), shm_addr, std::string(shm_key),
-      (void*)local_handle, 0, byte_size);
+      (void*)shm_file, 0, byte_size);
 #else
   // get shared memory region descriptor
   int shm_fd = shm_open(shm_key, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -188,12 +187,12 @@ GetSharedMemoryHandleInfo(
 #ifdef _WIN32
   HANDLE* file = static_cast<HANDLE*>(shm_file);
 #else
-  int* file = *static_cast<int**>(shm_file);
+  int* file = *reinterpret_cast<int**>(shm_file);
 #endif  // _WIN32
   SharedMemoryHandle* handle = static_cast<SharedMemoryHandle*>(shm_handle);
   *shm_addr = static_cast<char*>(handle->base_addr_);
   *shm_key = handle->shm_key_.c_str();
-  *file = handle->platform_handle_->shm_file_;
+  *file = *(handle->platform_handle_->GetShmFile());
   *offset = handle->offset_;
   *byte_size = handle->byte_size_;
   return 0;
@@ -213,7 +212,7 @@ SharedMemoryRegionDestroy(void* shm_handle)
   // We keep Windows shared memory handles open until we are done
   // using them. When all handles are closed, the system will free
   // the section of the paging file that the object uses.
-  CloseHandle(handle->platform_handle_->shm_file_);
+  CloseHandle(*(handle->platform_handle_->GetShmFile()));
 #else
   int status = munmap(shm_addr, handle->byte_size_);
   if (status == -1) {
@@ -224,11 +223,11 @@ SharedMemoryRegionDestroy(void* shm_handle)
   if (shm_fd == -1) {
     return -5;
   }
+  close(*(handle->platform_handle_->GetShmFile()));
 #endif  // _WIN32
 
-  // FIXME: Investigate use of smart pointers for these
-  // allocations instead
-  delete handle->platform_handle_;
+  // FIXME: Investigate use of smart pointers for this
+  // allocation instead
   delete handle;
 
   return 0;

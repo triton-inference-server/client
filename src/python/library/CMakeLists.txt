@@ -128,7 +128,10 @@ else()
 
   if (${TRITON_ENABLE_PERF_ANALYZER})
     set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
-  endif()
+  endif() # TRITON_ENABLE_PERF_ANALYZER
+  if (${TRITON_ENABLE_GPU})
+    set(gpu_arg --include-gpu-libs)
+  endif() # TRITON_ENABLE_GPU
   set(linux_wheel_stamp_file "linux_stamp.whl")
   add_custom_command(
     OUTPUT "${linux_wheel_stamp_file}"
@@ -138,6 +141,7 @@ else()
       --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/linux"
       --linux
       ${perf_analyzer_arg}
+      ${gpu_arg}
     DEPENDS ${LINUX_WHEEL_DEPENDS}
   )
 
@@ -178,7 +182,14 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
   )
 endif() # TRITON_ENABLE_PYTHON_GRPC
 
+# Generic Wheel
+set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/generic")
+install(
+  CODE "file(GLOB _Wheel \"${WHEEL_DIR}/triton*.whl\")"
+  CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
+)
 
+# Platform-specific wheels
 if(WIN32)
   set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/windows")
 else()
