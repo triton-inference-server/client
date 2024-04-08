@@ -453,7 +453,6 @@ class LlmInputs:
         output_tokens_stddev,
         model_name: str = "",
     ) -> Dict:
-        # TODO: Fix below, see when started having mismatch of types
         (
             system_role_headers,
             user_role_headers,
@@ -861,9 +860,6 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = True
-        # TODO: Fix this. Ignore_eos does not result in a fixed length output and OpenAi has no minimum token argument.
-        # Users online cannot figure out how to do this. Look into how to do this.
-        # This may be as good as it gets, so test this.
         if output_tokens_mean != -1:
             row["max_tokens"] = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
@@ -926,9 +922,6 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        # TODO: Add error checking to return warning max tokens are provided if also providing distribution for all backends and endpoints.
-        # TODO: Fix this. Ignore_eos does not result in a fixed length output and TRT-LLM as no minimum token argument.
-        # This may work on TRT-LLM if the model allows it, so test this.
         if output_tokens_mean != -1:
             row["max_tokens"] = [
                 int(random.gauss(output_tokens_mean, output_tokens_stddev))

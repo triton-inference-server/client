@@ -88,7 +88,7 @@ class SyntheticPromptGenerator:
         # Ensure prompt length is at least as long as the base
         while num_prompt_tokens < prompt_token_length:
             num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
-                prompt_tokens_mean, prompt_tokens_stddev
+                mean, stddev
             )
 
         return num_prompt_tokens
