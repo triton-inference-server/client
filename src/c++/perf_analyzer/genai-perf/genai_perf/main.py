@@ -103,13 +103,13 @@ def report_output(data_parser: LLMProfileDataParser, args):
 def create_graphs(stats: Statistics) -> None:
     bp = BoxPlot(stats)
     bp.create_box_plot(
-        data_col_name="time_to_first_tokens",
+        y_key="time_to_first_tokens",
         graph_title="Time to First Token Analysis",
         filename_root="ttft",
         x_label="Time to First Token of Individual Requests (seconds)",
     )
     bp.create_box_plot(
-        data_col_name="request_latencies",
+        y_key="request_latencies",
         graph_title="Total Output Time Analysis",
         filename_root="tot",
         x_label="Time to Completion of Individual Requests (seconds)",

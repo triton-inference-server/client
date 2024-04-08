@@ -29,30 +29,31 @@ import os
 
 import pandas as pd
 import plotly.express as px
+from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
 
 
-class BoxPlot:
+class BoxPlot(BasePlot):
     """
     Generate a box plot in jpeg and html format.
     """
 
     def __init__(self, stats: Statistics) -> None:
-        self._stats = stats.data
-        self._metrics = stats.metrics
-
-    def _scale_ns_to_s(self, value):
-        return value / 1000_000_000
+        super().__init__(stats)
 
     def create_box_plot(
-        self, data_col_name: str, graph_title: str, filename_root: str, x_label: str
+        self,
+        y_key: str,
+        graph_title: str,
+        filename_root: str,
+        x_label: str,
     ):
-        scaled_data = list(map(self._scale_ns_to_s, self._metrics.data[data_col_name]))
-        df = pd.DataFrame(scaled_data, columns=[data_col_name])
+        scaled_data = [self._scale(x, (1 / 1e9)) for x in self._metrics.data[y_key]]
+        df = pd.DataFrame(scaled_data, columns=[y_key])
 
         fig = px.box(
             df,
-            y=data_col_name,
+            y=y_key,
             points="all",
             title=graph_title,
         )
@@ -60,6 +61,7 @@ class BoxPlot:
         fig.update_xaxes(
             title_text=x_label,
         )
+
         fig.update_yaxes(title_text="")
 
         if not os.path.exists("images"):
@@ -67,14 +69,14 @@ class BoxPlot:
         print(f"Generating '{graph_title}' html and jpeg files")
         fig.write_html(f"images/{filename_root}.html")
 
-        self._add_annotations(fig, data_col_name)
+        self._add_annotations(fig, y_key)
 
         fig.write_image(f"images/{filename_root}.jpeg")
 
-    def _add_annotations(self, fig, data_col_name):
-        stat_root_name = self._metrics.get_base_name(data_col_name)
+    def _add_annotations(self, fig, y_key):
+        stat_root_name = self._metrics.get_base_name(y_key)
 
-        val = self._scale_ns_to_s(self._stats[f"max_{stat_root_name}"])
+        val = self._scale(self._stats[f"max_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -83,7 +85,7 @@ class BoxPlot:
             yshift=10,
         )
 
-        val = self._scale_ns_to_s(self._stats[f"p75_{stat_root_name}"])
+        val = self._scale(self._stats[f"p75_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -92,7 +94,7 @@ class BoxPlot:
             yshift=10,
         )
 
-        val = self._scale_ns_to_s(self._stats[f"p50_{stat_root_name}"])
+        val = self._scale(self._stats[f"p50_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -101,7 +103,7 @@ class BoxPlot:
             yshift=10,
         )
 
-        val = self._scale_ns_to_s(self._stats[f"p25_{stat_root_name}"])
+        val = self._scale(self._stats[f"p25_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -110,7 +112,7 @@ class BoxPlot:
             yshift=10,
         )
 
-        val = self._scale_ns_to_s(self._stats[f"min_{stat_root_name}"])
+        val = self._scale(self._stats[f"min_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,

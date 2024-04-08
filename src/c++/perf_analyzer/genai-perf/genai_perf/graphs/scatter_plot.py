@@ -29,20 +29,17 @@ import os
 
 import pandas as pd
 import plotly.express as px
+from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
 
 
-class ScatterPlot:
+class ScatterPlot(BasePlot):
     """
     Generate a scatter plot in jpeg and html format.
     """
 
     def __init__(self, stats: Statistics) -> None:
-        self._stats = stats.data
-        self._metrics = stats.metrics
-
-    def _scale_ns_to_s(self, value):
-        return value / 1000_000_000
+        super().__init__(stats)
 
     def create_scatter_plot(
         self,
@@ -59,11 +56,15 @@ class ScatterPlot:
     ):
         if not preprocessed_x_data and not preprocessed_y_data:
             if scale_x:
-                x_values = list(map(self._scale_ns_to_s, self._metrics.data[x_key]))
+                x_values = [
+                    self._scale(x, (1 / 1e9)) for x in self._metrics.data[x_key]
+                ]
             else:
                 x_values = self._metrics.data[x_key]
             if scale_y:
-                y_values = list(map(self._scale_ns_to_s, self._metrics.data[y_key]))
+                y_values = [
+                    self._scale(x, (1 / 1e9)) for x in self._metrics.data[y_key]
+                ]
             else:
                 y_values = self._metrics.data[y_key]
         else:

@@ -25,58 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
 
-import pandas as pd
-import plotly.express as px
-from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
 
 
-class HeatMap(BasePlot):
+class BasePlot:
     """
-    Generate a heat map in jpeg and html format.
+    Base class for plots
     """
 
     def __init__(self, stats: Statistics) -> None:
-        super().__init__(stats)
+        self._stats = stats.data
+        self._metrics = stats.metrics
 
-    def create_heat_map(
-        self,
-        x_key: str,
-        y_key: str,
-        x_metric: str,
-        y_metric: str,
-        graph_title: str,
-        x_label: str,
-        y_label: str,
-        filename_root: str,
-    ):
-        x_values = self._metrics.data[x_key]
-        y_values = self._metrics.data[y_key]
-        df = pd.DataFrame(
-            {
-                x_metric: x_values,
-                y_metric: y_values,
-            }
-        )
-        fig = px.density_heatmap(
-            df,
-            x=x_metric,
-            y=y_metric,
-        )
-        fig.update_layout(
-            title={
-                "text": graph_title,
-                "xanchor": "center",
-                "x": 0.5,
-            }
-        )
-        fig.update_xaxes(title_text=x_label)
-        fig.update_yaxes(title_text=y_label)
-
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        print(f"Generating '{graph_title}' html and jpeg files")
-        fig.write_html(f"images/{filename_root}.html")
-        fig.write_image(f"images/{filename_root}.jpeg")
+    def _scale(self, value, factor):
+        return value * factor
