@@ -67,7 +67,7 @@ class BoxPlot(BasePlot):
 
         fig_jpeg = copy.deepcopy(fig)
 
-        self._add_annotations(fig, y_key)
+        self._add_annotations(fig_jpeg, y_key)
 
         self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
