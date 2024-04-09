@@ -151,9 +151,7 @@ def _add_input_args(parser):
         required=False,
         help=f"The mean number of tokens in each output. Ensure the --tokenizer value is set correctly. "
         "Note that there is still some variability in the requested number of output tokens, but GenAi-Perf "
-        "attempts its best effort with your backend, endpoint, and model to get the right number of output tokens. "
-        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to "
-        "not echo the input tokens in the output.",
+        "attempts its best effort with your backend, endpoint, and model to get the right number of output tokens. ",
     )
 
     input_group.add_argument(
@@ -260,7 +258,9 @@ def _add_endpoint_args(parser):
         default="trtllm",
         required=False,
         help=f'When using the "triton" service-kind, '
-        "this is the backend of the model. ",
+        "this is the backend of the model. "
+        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to "
+        "not echo the input tokens in the output.",
     )
 
     endpoint_group.add_argument(
