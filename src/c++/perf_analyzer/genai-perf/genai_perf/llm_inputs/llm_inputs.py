@@ -226,7 +226,7 @@ class LlmInputs:
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for index in range(0, num_of_output_prompts):
-            synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
+            synthetic_prompt = LlmInputs._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
@@ -1006,7 +1006,7 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         random_seed: int,
-    ) -> Tuple[str, int]:
+    ) -> str:
         random.seed(random_seed)
         return SyntheticPromptGenerator.create_synthetic_prompt(
             tokenizer, prompt_tokens_mean, prompt_tokens_stddev

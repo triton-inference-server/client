@@ -172,7 +172,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=False,
             extra_inputs={},
-            output_tokens_mean=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
+            output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
             output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
         )
 
@@ -270,7 +270,7 @@ class TestLlmInputs:
         """
         Test that we can produce deterministic random synthetic prompts
         """
-        synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
+        synthetic_prompt = LlmInputs._create_synthetic_prompt(
             default_tokenizer,
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
             LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
@@ -278,7 +278,8 @@ class TestLlmInputs:
         )
 
         # 550 is the num of tokens returned for the default seed
-        assert synthetic_prompt_tokens == 550
+        token_length = len(default_tokenizer.encode(synthetic_prompt))
+        assert token_length == 550
 
         synthetic_prompt, synthetic_prompt_tokens = LlmInputs._create_synthetic_prompt(
             default_tokenizer,

@@ -29,7 +29,7 @@ class SyntheticPromptGenerator:
         tokenizer: AutoTokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
-    ) -> Tuple[str, int]:
+    ) -> str:
         """
         Generate a prompt that randomly samples lines from
         Washington's farewell address at farewell.txt.
@@ -43,7 +43,6 @@ class SyntheticPromptGenerator:
         Returns:
             A tuple of the prompt and the length of the prompt.
         """
-        ## TODO: Since the number of tokens is just used for testing, can we remove it and use length in the test?
 
         num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
             prompt_tokens_mean, prompt_tokens_stddev
@@ -54,7 +53,7 @@ class SyntheticPromptGenerator:
             num_prompt_tokens, farewell_lines, tokenizer
         )
 
-        return (prompt, num_prompt_tokens)
+        return prompt
 
     @classmethod
     def _create_farewell_lines(cls) -> List[str]:
@@ -68,7 +67,7 @@ class SyntheticPromptGenerator:
     @classmethod
     def _create_prompt_from_farewell_lines(
         cls,
-        remaining_prompt_tokens: int,
+        prompt_tokens: int,
         farewell_lines: List[str],
         tokenizer: AutoTokenizer,
     ) -> str:
@@ -87,7 +86,7 @@ class SyntheticPromptGenerator:
                     prompt += line_to_add
                     break
                 prompt += line_to_add
-                remaining_prompt_tokens -= get_token_length(line_to_add)
+                remaining_prompt_tokens = prompt_tokens - get_token_length(prompt)
 
         return prompt
 
