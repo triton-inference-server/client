@@ -149,11 +149,11 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
-        help=f"The mean number of tokens in each output. Ensure the --tokenizer value is set correctly."
-        "Note that there is still some variability in the requested number of output tokens, but GenAi-Perf"
-        "attempts its best effort with your backend, endpoint, and model to get the right number of output tokens."
-        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to"
-        "ignore the input tokens in the output.",
+        help=f"The mean number of tokens in each output. Ensure the --tokenizer value is set correctly. "
+        "Note that there is still some variability in the requested number of output tokens, but GenAi-Perf "
+        "attempts its best effort with your backend, endpoint, and model to get the right number of output tokens. "
+        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to "
+        "not echo the input tokens in the output.",
     )
 
     input_group.add_argument(

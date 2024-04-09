@@ -126,8 +126,8 @@ using the `--prompt-source` CLI option.
 
 When the dataset is synthetic you can specify the following options:
 * `--num-prompts`: The number of unique prompts to generate.
-* `--synthetic-tokens-mean`: The mean number of tokens of synthetic input data.
-* `--synthetic-tokens-stddev`: The standard deviation number of tokens of synthetic
+* `--synthetic-input-tokens-mean`: The mean number of tokens of synthetic input data.
+* `--synthetic-input-tokens-stddev`: The standard deviation of the number of tokens of synthetic
   input data.
 * `--random-seed`: The seed used to generate random values.
 
@@ -136,9 +136,12 @@ options:
 * `--num-prompts`: The number of unique prompts to generate.
 * `--dataset`: HuggingFace dataset to use for benchmarking.
 
-You can optionally set additional model inputs with the following option:
+You can optionally set additional model inputs with the following options:
 * `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
 such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
+* `--output-tokens-mean`: The mean number of tokens to request from the model.
+* `--output-tokens-stddev`: The standard deviation of the number of tokens to request from the model.
+  input data.
 
 
 # Metrics
@@ -182,13 +185,21 @@ The source of the input prompts.
 
 The HuggingFace dataset to use for prompts when prompt-source is dataset.
 
-##### `--synthetic-tokens-mean <int>`
+##### `--synthetic-input-tokens-mean <int>`
 
 The mean of the number of tokens of synthetic input data.
 
-##### `--synthetic-tokens-stddev <int>`
+##### `--synthetic-input-tokens-stddev <int>`
 
-The standard deviation of number of tokens of synthetic input data.
+The standard deviation of the number of tokens of synthetic input data.
+
+##### `--output-tokens-mean <int>`
+
+The mean of the number of output tokens to request from the model.
+
+##### `--output-tokens-stddev <int>`
+
+The standard deviation of the number of output tokens to request from the model.
 
 ##### `-m <str>`
 ##### `--model <str>`
