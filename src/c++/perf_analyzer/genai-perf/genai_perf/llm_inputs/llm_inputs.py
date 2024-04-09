@@ -326,7 +326,7 @@ class LlmInputs:
         generic_dataset: Dict,
         add_model_name: bool,
         add_stream: bool,
-        extra_inputs,
+        extra_inputs: Dict,
         output_tokens_mean,
         output_tokens_stddev,
         model_name: str = "",

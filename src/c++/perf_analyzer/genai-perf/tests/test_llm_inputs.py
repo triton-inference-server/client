@@ -171,6 +171,9 @@ class TestLlmInputs:
             generic_dataset=dataset_json,
             add_model_name=False,
             add_stream=False,
+            extra_inputs={},
+            output_tokens_mean=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
+            output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
         )
 
         assert pa_json is not None
