@@ -100,6 +100,14 @@ class TestCLIArguments:
                 {"synthetic_input_tokens_stddev": 7},
             ),
             (
+                ["--output-tokens-mean", "6"],
+                {"output_tokens_mean": 6},
+            ),
+            (
+                ["--output-tokens-mean", "6", "--output-tokens-stddev", "7"],
+                {"output_tokens_stddev": 7},
+            ),
+            (
                 ["--prompt-source", "synthetic"],
                 {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
             ),
@@ -203,12 +211,21 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert expected_output in captured.err
 
-    def test_service_openai_no_endpoint(self, monkeypatch, capsys):
-        args = ["genai-perf", "-m", "test_model", "--service-kind", "openai"]
+    @pytest.mark.parametrize(
+        "args, expected_output",
+        [
+            (
+                ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
+                "The --endpoint option is required when using the 'openai' service-kind.",
+            ),
+            (
+                ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
+                "The --output-tokens-mean option is required when using --output-tokens-stddev.",
+            ),
+        ],
+    )
+    def test_conditional_errors(self, args, expected_output, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", args)
-        expected_output = (
-            "The --endpoint option is required when using the 'openai' service-kind."
-        )
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()

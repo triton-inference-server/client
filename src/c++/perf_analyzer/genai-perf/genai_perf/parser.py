@@ -61,9 +61,12 @@ def _check_conditional_args(
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
-    if args.output_tokens_mean is None and args.output_tokens_stddev is not None:
+    if (
+        args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
+        and args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV
+    ):
         parser.error(
-            "The --output-tokens-stddev option requires the --output-tokens-mean option to be set."
+            "The --output-tokens-mean option is required when using --output-tokens-stddev."
         )
 
     return args
@@ -144,7 +147,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--output-tokens-mean",
         type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
         help=f"The mean number of tokens in each output. Ensure the --tokenizer value is set correctly."
         "Note that there is still some variability in the requested number of output tokens, but GenAi-Perf"

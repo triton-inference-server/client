@@ -679,7 +679,8 @@ class LlmInputs:
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
         include_max_tokens = (
-            "max_tokens" not in extra_inputs or output_tokens_mean != -1
+            "max_tokens" not in extra_inputs
+            or output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
@@ -853,7 +854,7 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = True
-        if output_tokens_mean != -1:
+        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
             row["max_tokens"] = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
@@ -880,11 +881,13 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        if output_tokens_mean != -1:
+        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
             number_of_tokens = str(
                 int(max(0, random.gauss(output_tokens_mean, output_tokens_stddev)))
             )
             sampling_parameters = {
+                # TODO: Once min_tokens is supported in the vLLM backend
+                # switch from ignore_eos to min_tokens for improved accuracy.
                 # "min_tokens": number_of_tokens,
                 "ignore_eos": str(True),
                 "max_tokens": number_of_tokens,
@@ -915,7 +918,7 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        if output_tokens_mean != -1:
+        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
             row["max_tokens"] = [
                 int(random.gauss(output_tokens_mean, output_tokens_stddev))
             ]
