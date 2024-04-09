@@ -89,8 +89,9 @@ SharedMemoryManager::RegisterSystemMemory(
 
 Error
 SharedMemoryManager::GetMemoryInfo(
-    const std::string& name, size_t offset, void** shm_mapped_addr,
-    TRITONSERVER_MemoryType* memory_type, int64_t* device_id)
+    const std::string& name, size_t offset, size_t byte_size,
+    void** shm_mapped_addr, TRITONSERVER_MemoryType* memory_type,
+    int64_t* device_id)
 {
   // protect shared_memory_map_ from concurrent access
   std::lock_guard<std::mutex> lock(mu_);

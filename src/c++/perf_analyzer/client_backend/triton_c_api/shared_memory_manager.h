@@ -70,19 +70,22 @@ class SharedMemoryManager {
   Error RegisterSystemMemory(
       const std::string& name, void* ptr, const size_t byte_size);
 
-  /// Get the access information for the shared memory block with the specified
-  /// name. Return an Error if named block doesn't exist.
+  /// Get the access information for the shared memory block
+  /// with the specified name. Return TRITONSERVER_ERROR_NOT_FOUND
+  /// if named block doesn't exist.
   /// \param name The name of the shared memory block to get.
   /// \param offset The offset in the block
+  /// \param byte_size The byte size to request for the shm region
   /// \param shm_mapped_addr Returns the pointer to the shared
   /// memory block with the specified name and offset
   /// \param memory_type Returns the type of the memory
   /// \param device_id Returns the device id associated with the
   /// memory block
-  /// \return an Error indicating success or failure.
+  /// \return a TRITONSERVER_Error indicating success or failure.
   Error GetMemoryInfo(
-      const std::string& name, size_t offset, void** shm_mapped_addr,
-      TRITONSERVER_MemoryType* memory_type, int64_t* device_id);
+      const std::string& name, size_t offset, size_t byte_size,
+      void** shm_mapped_addr, TRITONSERVER_MemoryType* memory_type,
+      int64_t* device_id);
 
   /// Removes the named shared memory block of the specified type from
   /// the manager. Any future attempt to get the details of this block
