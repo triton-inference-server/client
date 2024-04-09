@@ -26,21 +26,30 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import os
+import shutil
 import sys
 from argparse import ArgumentParser
 
 from genai_perf import parser
 from genai_perf.constants import LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.graphs.box_plot import BoxPlot
-from genai_perf.graphs.heat_map import HeatMap
-from genai_perf.graphs.scatter_plot import ScatterPlot
+from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
+DEFAULT_PARQUET_FILE = "all_data"
+
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def create_artifacts_dirs():
+    if not os.path.exists("artifacts"):
+        os.mkdir("artifacts")
+        os.mkdir("artifacts/data")
+        os.mkdir("artifacts/images")
 
 
 def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
@@ -96,65 +105,21 @@ def report_output(data_parser: LLMProfileDataParser, args):
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
+    stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
     create_graphs(stats)
 
 
 def create_graphs(stats: Statistics) -> None:
-    bp = BoxPlot(stats)
-    bp.create_box_plot(
-        y_key="time_to_first_tokens",
-        graph_title="Time to First Token Analysis",
-        filename_root="ttft",
-        x_label="Time to First Token of Individual Requests (seconds)",
-    )
-    bp.create_box_plot(
-        y_key="request_latencies",
-        graph_title="Total Output Time Analysis",
-        filename_root="tot",
-        x_label="Time to Completion of Individual Requests (seconds)",
-    )
+    plot_manager = PlotManager(stats)
+    plot_manager.create_default_graphs()
 
-    hm = HeatMap(stats)
-    hm.create_heat_map(
-        x_key="num_input_tokens",
-        y_key="num_output_tokens",
-        x_metric="input_tokens",
-        y_metric="generated_tokens",
-        graph_title="Distribution of Input Tokens to Generated Tokens (Over All Requests)",
-        x_label="Number of Input Tokens Per Request",
-        y_label="Number of Generated Tokens Per Request",
-        filename_root="heatmap",
-    )
 
-    sp = ScatterPlot(stats)
-    sp.create_scatter_plot(
-        x_key="num_input_tokens",
-        y_key="time_to_first_tokens",
-        scale_y=True,
-        graph_title="Time to First Token vs Size of Initial Prompt",
-        x_label="Number of Input Tokens",
-        y_label="Time to First Token (seconds)",
-        filename_root="ttft_v_input_tokens",
-    )
-
-    itl_latencies = stats.metrics.data["inter_token_latencies"]
-    x_data = []
-    y_data = []
-    for itl_latency_list in itl_latencies:
-        for index, latency in enumerate(itl_latency_list):
-            x_data.append(index + 1)
-            y_data.append(latency / 1e9)
-
-    sp.create_scatter_plot(
-        x_key="token_position",
-        y_key="inter_token_latencies",
-        graph_title="Token-to-Token Latencies vs Token Position",
-        x_label="Token Position",
-        y_label="Token to Token Latency (seconds)",
-        filename_root="itl_v_position",
-        preprocessed_x_data=x_data,
-        preprocessed_y_data=y_data,
+def finalize():
+    shutil.move("llm_inputs.json", "artifacts/data/llm_inputs.json")
+    shutil.move("profile_export.json", "artifacts/data/profile_json.json")
+    shutil.move(
+        "profile_export_genai_perf.csv", "artifacts/data/profile_export_genai_perf.csv"
     )
 
 
@@ -162,12 +127,14 @@ def create_graphs(stats: Statistics) -> None:
 # to assert correct errors and messages.
 def run():
     try:
+        create_artifacts_dirs()
         args, extra_args = parser.parse_args()
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)
+        finalize()
     except Exception as e:
         raise GenAIPerfException(e)
 
