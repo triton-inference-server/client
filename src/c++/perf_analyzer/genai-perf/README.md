@@ -112,6 +112,13 @@ https://platform.openai.com/docs/api-reference/completions
 genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/completions
 ```
 
+> [!Note]
+> GenAI-Perf uses Llama tokenizer as a default tokenizer to parse and calculate
+> token metrics on the input prompts and output responses. Users can instead
+> specify a custom huggingface tokenizer using `--tokenizer` command line option
+> as well.
+
+
 # Model Inputs
 GenAI-Perf supports model input prompts from either synthetically generated inputs,
 or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
@@ -163,6 +170,11 @@ Enables verbose mode.
 ##### `--version`
 
 Prints the version and exits.
+
+##### `--tokenizer <str>`
+
+The HuggingFace tokenizer to use to interpret token metrics from prompts and
+responses.
 
 ##### `--prompt-source {dataset,synthetic}`
 
