@@ -26,8 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import os
-
 from genai_perf.graphs.box_plot import BoxPlot
 from genai_perf.graphs.heat_map import HeatMap
 from genai_perf.graphs.scatter_plot import ScatterPlot
