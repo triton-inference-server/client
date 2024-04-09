@@ -31,6 +31,7 @@ import json
 from itertools import pairwise
 
 import numpy as np
+import pandas as pd
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
@@ -369,6 +370,26 @@ class Statistics:
             csv_writer.writerow(single_metric_header)
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
+
+    def export_parquet(self, parquet_filename: str):
+        max_length = -1
+        col_index = 0
+        filler_list = []
+        df = pd.DataFrame()
+        # Data frames require all columns of the same length
+        # find the max length column
+        for key, value in self._metrics.data.items():
+            max_length = max(max_length, len(value))
+        # Insert None for shorter columns to match longest column
+        for key, value in self._metrics.data.items():
+            if len(value) < max_length:
+                diff = max_length - len(value)
+                filler_list = [None] * diff
+            df.insert(col_index, key, value + filler_list)
+            diff = 0
+            filler_list = []
+            col_index = col_index + 1
+        df.to_parquet(f"artifacts/data/{parquet_filename}")
 
 
 class ProfileDataParser:
