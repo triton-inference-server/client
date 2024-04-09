@@ -73,9 +73,14 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
 
 
 def calculate_metrics(
-    file: str, service_kind: str, tokenizer: AutoTokenizer
+    args: ArgumentParser, tokenizer: AutoTokenizer
 ) -> LLMProfileDataParser:
-    return LLMProfileDataParser(file, service_kind, tokenizer)
+    return LLMProfileDataParser(
+        filename=args.profile_export_file,
+        service_kind=args.service_kind,
+        output_format=args.output_format,
+        tokenizer=tokenizer,
+    )
 
 
 def report_output(metrics: LLMProfileDataParser, args):
@@ -101,9 +106,7 @@ def run():
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        metrics = calculate_metrics(
-            args.profile_export_file, args.service_kind, tokenizer
-        )
+        metrics = calculate_metrics(args, tokenizer)
         report_output(metrics, args)
     except Exception as e:
         raise GenAIPerfException(e)
