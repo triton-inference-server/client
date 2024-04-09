@@ -28,31 +28,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # GenAI-Perf
 
-A tool to facilitate benchmarking generative AI models leveraging NVIDIA’s
-[performance analyzer tool](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer).
+GenAI-Perf is a command line tool for measuring the throughput and latency  of
+generative AI models served through inference servers. For large language models
+(LLMs) specifically, GenAI-Perf provides various metrics such as output token
+throughput, time to first token, inter-token latency, request throughput, and
+more.
 
-GenAI-Perf builds upon the performant stimulus generation of the performance
-analyzer to easily benchmark LLMs. Multiple endpoints are currently supported.
-
-The GenAI-Perf workflow enables a user to
-* [Generate prompts](#model-inputs) using either
-  * synthetic generated data
-  * open orca or CNN daily mail datasets
-* Transform the prompts to a format understood by the
-[chosen endpoint](#basic-usage)
-  * Triton Infer
-  * OpenAI
-* Use Performance Analyzer to drive stimulus
-* Gather LLM relevant [metrics](#metrics)
-* Generate reports
-
-all from the [command line](#cli).
+GenAI-Perf requires that the generative AI model is already loaded in an
+inference server and accessible over a network. Users specify a model name and
+the inference server URL. Users can also specify if they want inputs to the
+model to be synthetically generated or pulled from a dataset. Users can also
+specify how they want the load to be generated (e.g. how many concurrent
+requests are sent at a time or a particular request send rate).
 
 > [!Note]
-> GenAI-Perf is currently in early release while under rapid development.
+> Note: GenAI-Perf is currently in early release and under rapid development.
 > While we will try to remain consistent, command line options are subject to
-> change until the software hits 1.0. Known issues will also be documented as the
-> tool matures.
+> change until the software hits 1.0.
+> Known issues will also be documented as the tool matures.
 
 # Installation
 
@@ -61,11 +54,15 @@ all from the [command line](#cli).
 Available starting with the 24.03 release of the
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
 
+Run the Triton Inference Server SDK docker container:
+
 ```bash
-RELEASE="24.03"
+docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:24.03-py3-sdk
+```
 
-docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+Run GenAI-Perf:
 
+```bash
 genai-perf --help
 ```
 
@@ -75,58 +72,240 @@ This method requires that Perf Analyzer is installed in your development
 environment.
 
 ```bash
-RELEASE="24.03"
+pip install "git+https://github.com/triton-inference-server/client.git@r24.03#subdirectory=src/c++/perf_analyzer/genai-perf"
+```
 
-pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#egg=genai-perf&subdirectory=src/c++/perf_analyzer/genai-perf"
+Run GenAI-Perf:
 
+```bash
 genai-perf --help
 ```
 
 # Basic Usage
 
-## Triton with TRT-LLM
+The server and model will already need to be running/accessible before running
+GenAI-Perf.
+
+After running GenAI-Perf, the results are printed to the command line and saved
+in a `profile_export_genai_perf.csv` file.
+
+## Triton Inference Server with TensorRT-LLM Backend
+
+<details>
+<summary>Here are example instructions on running the GPT2 model on Triton
+Inference Server with TensorRT-LLM:</summary>
+
+1. Run the Triton TensorRT-LLM container:
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --output-format trtllm
+docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:24.03-trtllm-python-py3
 ```
 
-## Triton with vLLM
+2. Install model dependencies (~5 min):
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --output-format vllm
+pip install \
+  --extra-index-url https://pypi.nvidia.com \
+  -U \
+  psutil \
+  "pynvml>=11.5.0" \
+  torch==2.1.2 \
+  tensorrt_llm==0.8.0 \
+  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+```
+
+3. Download model:
+
+```bash
+triton import -m gpt2 --backend tensorrtllm
+```
+
+4. Run server:
+
+```bash
+triton start
+```
+
+</details>
+</br>
+
+GenAI-Perf can be run from wherever it was installed. If it’s on the same
+machine as the server container, you can run GenAI-Perf like this:
+
+```bash
+genai-perf -m gpt2 --service-kind triton --output-format trtllm --input-tokens-mean 200 --input-tokens-stddev 0 --streaming --concurrency 1
+```
+
+Example output:
+
+```
+                                              PA LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃                Statistic ┃        avg ┃        min ┃        max ┃        p99 ┃        p90 ┃        p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Time to first token (ns) │ 11,182,408 │ 10,706,503 │ 13,875,938 │ 12,017,948 │ 11,878,155 │ 11,789,258 │
+│ Inter token latency (ns) │  1,013,174 │    136,721 │  4,068,603 │  1,550,931 │  1,497,520 │  1,022,919 │
+│     Request latency (ns) │ 53,280,063 │ 30,740,044 │ 59,664,925 │ 55,859,882 │ 53,987,990 │ 53,867,980 │
+│         Num output token │         46 │         18 │         53 │         51 │         49 │         47 │
+└──────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┘
+Output token throughput (per sec): 859.02
+Request throughput (per sec): 18.72
+```
+
+## Triton Inference Server with vLLM Backend
+
+<details>
+<summary>Here are example instructions on running the GPT2 model on Triton with
+vLLM:</summary>
+
+1. Run the Triton vLLM container:
+
+```bash
+docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:24.03-vllm-python-py3
+```
+
+2. Install model dependencies (~5 min):
+
+```bash
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+```
+
+3. Download model:
+
+```bash
+triton import -m gpt2 --backend vllm
+```
+
+4. Run server:
+
+```bash
+triton start
+```
+
+</details>
+</br>
+
+GenAI-Perf can be run from wherever it was installed. If it’s on the same
+machine as the server container, you can run GenAI-Perf like this:
+
+```bash
+genai-perf -m gpt2 --service-kind triton --output-format vllm --input-tokens-mean 200 --input-tokens-stddev 0 --streaming --concurrency 1
+```
+
+Example output:
+
+```
+                                              PA LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃                Statistic ┃        avg ┃        min ┃        max ┃        p99 ┃        p90 ┃        p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Time to first token (ns) │ 13,214,478 │ 10,764,205 │ 38,550,060 │ 22,862,108 │ 16,303,985 │ 13,836,136 │
+│ Inter token latency (ns) │  2,936,136 │      3,869 │ 11,923,633 │  4,093,398 │  3,139,745 │  3,033,398 │
+│     Request latency (ns) │ 57,227,234 │ 37,765,913 │ 88,951,099 │ 79,935,677 │ 64,973,767 │ 58,820,014 │
+│         Num output token │         16 │          8 │         19 │         16 │         16 │         16 │
+└──────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┘
+Output token throughput (per sec): 279.15
+Request throughput (per sec): 17.45
 ```
 
 ## OpenAI Chat Completions Compatible APIs
 
-https://platform.openai.com/docs/api-reference/chat
+### OpenAI Chat Completions
+
+<details>
+<summary>Here are example instructions on running the GPT2 model on vLLM via its
+<a href=https://platform.openai.com/docs/api-reference/chat>OpenAI-chat-completions-compatible API</a>:
+</summary>
+
+1. Run the vLLM OpenAI-compatible API server:
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/chat/completions --output-format openai_chat_completions
+docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 --dtype float16 --max-model-len 1024
 ```
 
-## OpenAI Completions Compatible APIs
+</details>
+</br>
 
-https://platform.openai.com/docs/api-reference/completions
+GenAI-Perf can be run from wherever it was installed. If it’s on the same
+machine as the server container, you can run GenAI-Perf like this:
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/completions --output-format openai_completions
+genai-perf -m gpt2 --service-kind openai --endpoint v1/chat/completions --output-format openai_chat_completions --input-tokens-mean 200 --input-tokens-stddev 0 --streaming --concurrency 1
+```
+
+Example output:
+
+```
+                                                      PA LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃                Statistic ┃           avg ┃         min ┃           max ┃           p99 ┃           p90 ┃           p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Time to first token (ns) │     8,608,119 │   8,301,517 │     9,927,047 │     9,655,734 │     8,729,382 │     8,628,921 │
+│ Inter token latency (ns) │     2,408,936 │       3,805 │     5,064,721 │     2,795,042 │     2,507,276 │     2,472,543 │
+│     Request latency (ns) │ 1,413,884,921 │ 182,823,305 │ 2,094,378,983 │ 2,090,798,466 │ 2,074,160,653 │ 2,068,209,175 │
+│         Num output token │           583 │          77 │           861 │           860 │           853 │           847 │
+└──────────────────────────┴───────────────┴─────────────┴───────────────┴───────────────┴───────────────┴───────────────┘
+Output token throughput (per sec): 412.04
+Request throughput (per sec): 0.71
+```
+
+### OpenAI Completions
+
+<details>
+<summary>Here are example instructions on running the GPT2 model on vLLM via its
+<a href=https://platform.openai.com/docs/api-reference/completions>OpenAI-completions-compatible API</a>:
+</summary>
+
+1. Run the vLLM OpenAI-compatible API server:
+
+```bash
+docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 --dtype float16 --max-model-len 1024
+```
+
+</details>
+</br>
+
+GenAI-Perf can be run from wherever it was installed. If it’s on the same
+machine as the server container, you can run GenAI-Perf like this:
+
+```bash
+genai-perf -m gpt2 --service-kind openai --endpoint v1/completions --output-format openai_completions --input-tokens-mean 200 --input-tokens-stddev 0 --concurrency 1
+```
+
+Example output:
+
+```
+                                            PA LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃            Statistic ┃        avg ┃        min ┃        max ┃        p99 ┃        p90 ┃        p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Request latency (ns) │ 41,221,138 │ 17,522,610 │ 50,452,443 │ 47,291,315 │ 41,620,663 │ 41,396,763 │
+│     Num output token │         16 │          4 │         17 │         16 │         16 │         16 │
+└──────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┘
+Output token throughput (per sec): 384.39
+Request throughput (per sec): 24.23
 ```
 
 # Model Inputs
-GenAI-Perf supports model inputs from either the HuggingFace OpenOrca or
-CNN_DailyMail datasets or it can create synthetic input data. This is specified
-using the `--input-type` CLI option.
+
+GenAI-Perf supports model input prompts from either synthetically generated
+inputs, or from the HuggingFace
+[OpenOrca](https://huggingface.co/datasets/Open-Orca/OpenOrca) or
+[CNN_DailyMail](https://huggingface.co/datasets/cnn_dailymail) datasets. This is
+specified using the `--dataset` CLI option.
+
+When the dataset is synthetic you can specify the following options:
+* `--num-of-output-prompts=<int>`: The number of unique prompts to generate, <= 1.
+* `--input-tokens-mean=<int>`: The mean number of tokens of synthetic input data, <= 1.
+* `--input-tokens-stddev=<int>`: The standard deviation number of tokens of synthetic input data, <= 0.
+* `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
+  to return in the response.
+* `--random-seed=<int>`: The seed used to generate random values, >= 0.
 
 When the dataset is coming from HuggingFace you can specify the following
 options:
 * `--dataset`: HuggingFace dataset to use for benchmarking.
-
-When the dataset is synthetic you can specify the following options:
-* `--num-of-output-prompts`: The number of synthetic output prompts to generate
-* `--input-tokens-mean`: The mean number of tokens of synthetic input data.
-* `--input-tokens-stddev`: The standard deviation number of tokens of synthetic
-  input data.
-* `--random-seed`: The seed used to generate random values.
+* `--num-of-output-prompts`: The number of synthetic output prompts to generate.
 
 # Metrics
 
@@ -147,6 +326,8 @@ the inference server.
 ##### `-h`
 ##### `--help`
 
+Show the help message and exit.
+
 ##### `-v`
 ##### `--verbose`
 
@@ -157,6 +338,7 @@ Enables verbose mode.
 Prints the version and exits.
 
 ##### `--expected-output-tokens <int>`
+
 The number of tokens to expect in the output. This is used to determine the
 length of the prompt. The prompt will be generated such that the output will be
 approximately this many tokens.
@@ -187,15 +369,12 @@ The number of synthetic output prompts to generate
 The format of the data sent to triton.
 
 ##### `--random-seed <int>`
-
 Seed used to generate random values
 
 ##### `--concurrency <int>`
-
 Sets the concurrency value to benchmark.
 
 ##### `--input-data <file>`
-
 Path to the input data json file that contains the list of requests.
 
 ##### `-p <int>`
@@ -203,17 +382,16 @@ Path to the input data json file that contains the list of requests.
 
 Indicates the time interval used for each measurement in milliseconds. The perf
 analyzer will sample a time interval specified by -p and take measurement over
-the requests completed within that time interval.
-
-The default value is `5000`.
+the requests completed within that time interval. The default value is `5000`
+msec.
 
 ##### `--profile-export-file <file>`
 
 Specifies the path where the perf_analyzer profile export will be generated. By
-default, the profile export will be to profile_export.json. The genai-perf file
-will be exported to profile_export_file>_genai_perf.csv. For example, if the
-profile export file is profile_export.json, the genai-perf file will be exported
-to profile_export_genai_perf.csv.
+default, the profile export will be to `profile_export.json`. The genai-perf
+file will be exported to `<profile_export_file>_genai_perf.csv`. For example,
+if the profile export file is `profile_export.json`, the genai-perf file will be
+exported to `profile_export_genai_perf.csv`.
 
 ##### `--request-rate <float>`
 
@@ -223,9 +401,7 @@ Sets the request rate for the load generated by PA.
 
 Describes the kind of service perf_analyzer will generate load for. The options
 are `triton` and `openai`. Note in order to use `openai` you must specify an
-endpoint via `--endpoint`.
-
-The default value is `triton`.
+endpoint via `--endpoint`. The default value is `triton`.
 
 ##### `-s <float>`
 ##### `--stability-percentage <float>`
