@@ -17,7 +17,7 @@ import io
 import math
 import pathlib
 import random
-from typing import List, Tuple
+from typing import List
 
 from genai_perf.tokenizer import AutoTokenizer
 
@@ -41,7 +41,7 @@ class SyntheticPromptGenerator:
                 The standard deviation of the length of the prompt to generate
 
         Returns:
-            A tuple of the prompt and the length of the prompt.
+            The prompt.
         """
 
         num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(

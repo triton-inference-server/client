@@ -149,9 +149,11 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
-        help=f"The mean number of tokens in each output. Ensure the --tokenizer value is set correctly. "
-        "Note that there is still some variability in the requested number of output tokens, but GenAi-Perf "
-        "attempts its best effort with your backend, endpoint, and model to get the right number of output tokens. ",
+        help=f"The mean number of tokens in each output. "
+        "Ensure the --tokenizer value is set correctly. "
+        "Note that there is still some variability in the requested number "
+        "of output tokens, but GenAi-Perf attempts its best effort with your "
+        "model to get the right number of output tokens. ",
     )
 
     input_group.add_argument(
@@ -159,7 +161,8 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
         required=False,
-        help=f"The standard deviation of the number of tokens in each output. This is only used when output-tokens-mean is provided.",
+        help=f"The standard deviation of the number of tokens in each output. "
+        "This is only used when output-tokens-mean is provided.",
     )
 
     input_group.add_argument(
