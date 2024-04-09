@@ -67,7 +67,7 @@ class SyntheticPromptGenerator:
     @classmethod
     def _create_prompt_from_farewell_lines(
         cls,
-        prompt_tokens: int,
+        remaining_prompt_tokens: int,
         farewell_lines: List[str],
         tokenizer: AutoTokenizer,
     ) -> str:
@@ -86,7 +86,7 @@ class SyntheticPromptGenerator:
                     prompt += line_to_add
                     break
                 prompt += line_to_add
-                remaining_prompt_tokens = prompt_tokens - get_token_length(prompt)
+                remaining_prompt_tokens -= get_token_length(line_to_add)
 
         return prompt
 
