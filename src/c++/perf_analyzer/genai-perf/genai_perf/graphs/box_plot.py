@@ -25,7 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
+
+import copy
 
 import pandas as pd
 import plotly.express as px
@@ -64,14 +65,13 @@ class BoxPlot(BasePlot):
 
         fig.update_yaxes(title_text="")
 
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        print(f"Generating '{graph_title}' html and jpeg files")
-        fig.write_html(f"images/{filename_root}.html")
+        fig_jpeg = copy.deepcopy(fig)
 
         self._add_annotations(fig, y_key)
 
-        fig.write_image(f"images/{filename_root}.jpeg")
+        self._generate_parquet(df, filename_root)
+        self._generate_graph_file(fig, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig_jpeg, filename_root + ".jpeg", graph_title)
 
     def _add_annotations(self, fig, y_key):
         stat_root_name = self._metrics.get_base_name(y_key)

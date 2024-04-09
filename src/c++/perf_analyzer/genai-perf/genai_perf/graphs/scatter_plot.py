@@ -95,8 +95,6 @@ class ScatterPlot(BasePlot):
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")
 
-        if not os.path.exists("images"):
-            os.mkdir("images")
-        print(f"Generating '{graph_title}' html and jpeg files")
-        fig.write_html(f"images/{filename_root}.html")
-        fig.write_image(f"images/{filename_root}.jpeg")
+        self._generate_parquet(df, filename_root)
+        self._generate_graph_file(fig, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)

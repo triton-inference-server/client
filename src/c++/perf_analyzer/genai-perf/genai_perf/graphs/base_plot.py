@@ -26,7 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+import os
+
+from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
+from pandas import DataFrame
+from plotly.graph_objects import Figure
 
 
 class BasePlot:
@@ -40,3 +45,17 @@ class BasePlot:
 
     def _scale(self, value, factor):
         return value * factor
+
+    def _generate_parquet(self, dataframe: DataFrame, file: str):
+        dataframe.to_parquet(f"artifacts/data/{file}.gzip")
+
+    def _generate_graph_file(self, fig: Figure, file: str, title: str):
+        if file.endswith("jpeg"):
+            print(f"Generating '{title}' jpeg")
+            fig.write_image(f"artifacts/images/{file}")
+        elif file.endswith("html"):
+            fig.write_html(f"artifacts/images/{file}")
+            print(f"Generating '{title}' html")
+        else:
+            extension = file.split(".")[-1]
+            raise GenAIPerfException(f"image file type {extension} is not supported")
