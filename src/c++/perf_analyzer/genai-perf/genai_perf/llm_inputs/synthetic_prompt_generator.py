@@ -29,8 +29,7 @@ class SyntheticPromptGenerator:
         tokenizer: AutoTokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
-        expected_output_tokens: int = 150,
-    ) -> Tuple[str, int]:
+    ) -> str:
         """
         Generate a prompt that randomly samples lines from
         Washington's farewell address at farewell.txt.
@@ -40,58 +39,21 @@ class SyntheticPromptGenerator:
                 The mean length of the prompt to generate
             prompt_tokens_stddev:
                 The standard deviation of the length of the prompt to generate
-            expected_output_tokens:
-                The number of tokens to expect in the output. This is used to
-                determine the length of the prompt. The prompt will be generated such that the output
-                will be approximately this many tokens.
 
         Returns:
             A tuple of the prompt and the length of the prompt.
         """
 
-        prompt = (
-            "Randomly stream lines from the following text "
-            f"with {expected_output_tokens} output tokens. "
-            "Don't generate eos tokens:\n\n"
+        num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
+            prompt_tokens_mean, prompt_tokens_stddev
         )
-
-        prompt_token_length = SyntheticPromptGenerator._get_prompt_token_length(
-            prompt, tokenizer
-        )
-        num_prompt_tokens = SyntheticPromptGenerator._get_num_prompt_tokens(
-            prompt_tokens_mean, prompt_tokens_stddev, prompt_token_length
-        )
-        remaining_prompt_tokens = num_prompt_tokens - prompt_token_length
 
         farewell_lines = SyntheticPromptGenerator._create_farewell_lines()
         prompt = SyntheticPromptGenerator._create_prompt_from_farewell_lines(
-            prompt, remaining_prompt_tokens, farewell_lines, tokenizer
+            num_prompt_tokens, farewell_lines, tokenizer
         )
 
-        return (prompt, num_prompt_tokens)
-
-    @classmethod
-    def _get_prompt_token_length(cls, prompt: str, tokenizer: AutoTokenizer) -> int:
-        get_token_length = lambda text: len(tokenizer.encode(text))
-
-        prompt_token_length = get_token_length(prompt)
-
-        return prompt_token_length
-
-    @classmethod
-    def _get_num_prompt_tokens(
-        cls, mean: int, stddev: int, prompt_token_length: int
-    ) -> int:
-        num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
-            mean, stddev
-        )
-        # Ensure prompt length is at least as long as the base
-        while num_prompt_tokens < prompt_token_length:
-            num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
-                mean, stddev
-            )
-
-        return num_prompt_tokens
+        return prompt
 
     @classmethod
     def _create_farewell_lines(cls) -> List[str]:
@@ -105,11 +67,11 @@ class SyntheticPromptGenerator:
     @classmethod
     def _create_prompt_from_farewell_lines(
         cls,
-        prompt: str,
         remaining_prompt_tokens: int,
         farewell_lines: List[str],
         tokenizer: AutoTokenizer,
     ) -> str:
+        prompt = ""
         get_token_length = lambda text: len(tokenizer.encode(text))
 
         sampling_lines = True

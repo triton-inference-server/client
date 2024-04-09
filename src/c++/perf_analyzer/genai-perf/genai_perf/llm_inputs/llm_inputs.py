@@ -59,8 +59,6 @@ class LlmInputs:
     DEFAULT_RANDOM_SEED = 0
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 0
-    # TODO: Remove requested output tokens from LlmInputs
-    DEFAULT_REQUESTED_OUTPUT_TOKENS = 150
     DEFAULT_OUTPUT_TOKENS_MEAN = -1
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
@@ -81,7 +79,6 @@ class LlmInputs:
         input_filename: str = "",
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
-        expected_output_tokens: int = DEFAULT_REQUESTED_OUTPUT_TOKENS,
         output_tokens_mean: int = DEFAULT_OUTPUT_TOKENS_MEAN,
         output_tokens_stddev: int = DEFAULT_OUTPUT_TOKENS_STDDEV,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
@@ -136,10 +133,6 @@ class LlmInputs:
             The mean length of the prompt to generate
         prompt_tokens_stddev:
             The standard deviation of the length of the prompt to generate
-        expected_output_tokens:
-            The number of tokens to expect in the output. This is used to
-            determine the length of the prompt. The prompt will be generated such that the output
-            will be approximately this many tokens.
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         random_seed:
@@ -163,7 +156,6 @@ class LlmInputs:
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
-                expected_output_tokens,
                 num_of_output_prompts,
                 random_seed,
             )
@@ -227,7 +219,6 @@ class LlmInputs:
         tokenizer: AutoTokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
-        expected_output_tokens: int,
         num_of_output_prompts: int,
         random_seed: int,
     ) -> Dict:
@@ -235,11 +226,10 @@ class LlmInputs:
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for index in range(0, num_of_output_prompts):
-            synthetic_prompt, _ = LlmInputs._create_synthetic_prompt(
+            synthetic_prompt = LlmInputs._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
-                expected_output_tokens,
                 random_seed + index,
             )
             dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
@@ -1015,10 +1005,9 @@ class LlmInputs:
         tokenizer: AutoTokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
-        expected_output_tokens: int,
         random_seed: int,
-    ) -> Tuple[str, int]:
+    ) -> str:
         random.seed(random_seed)
         return SyntheticPromptGenerator.create_synthetic_prompt(
-            tokenizer, prompt_tokens_mean, prompt_tokens_stddev, expected_output_tokens
+            tokenizer, prompt_tokens_mean, prompt_tokens_stddev
         )
