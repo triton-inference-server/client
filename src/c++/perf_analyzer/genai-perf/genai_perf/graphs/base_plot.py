@@ -47,7 +47,7 @@ class BasePlot:
         return value * factor
 
     def _generate_parquet(self, dataframe: DataFrame, file: str):
-        dataframe.to_parquet(f"artifacts/data/{file}.gzip")
+        dataframe.to_parquet(f"artifacts/data/{file}.gzip", compression="gzip")
 
     def _generate_graph_file(self, fig: Figure, file: str, title: str):
         if file.endswith("jpeg"):

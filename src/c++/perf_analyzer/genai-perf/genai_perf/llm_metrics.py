@@ -389,7 +389,7 @@ class Statistics:
             diff = 0
             filler_list = []
             col_index = col_index + 1
-        df.to_parquet(f"artifacts/data/{parquet_filename}")
+        df.to_parquet(f"artifacts/data/{parquet_filename}.gzip", compression="gzip")
 
 
 class ProfileDataParser:
