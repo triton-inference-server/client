@@ -274,7 +274,6 @@ class TestLlmInputs:
             default_tokenizer,
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
             LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
-            LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
             LlmInputs.DEFAULT_RANDOM_SEED,
         )
 
@@ -285,7 +284,6 @@ class TestLlmInputs:
             default_tokenizer,
             LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
             LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV + 250,
-            LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
             LlmInputs.DEFAULT_RANDOM_SEED + 1,
         )
         assert synthetic_prompt_tokens != 785

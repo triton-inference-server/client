@@ -66,7 +66,6 @@ class Profiler:
             "streaming",
             "synthetic_input_tokens_mean",
             "synthetic_input_tokens_stddev",
-            "synthetic_requested_output_tokens",
             "output_tokens_mean",
             "output_tokens_stddev",
             "num_prompts",

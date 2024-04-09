@@ -90,10 +90,6 @@ class TestCLIArguments:
                 ],
                 {"extra_inputs": ["test_key:5", "another_test_key:6"]},
             ),
-            (
-                ["--synthetic-requested-output-tokens", "5"],
-                {"synthetic_requested_output_tokens": 5},
-            ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (
                 ["--synthetic-input-tokens-mean", "6"],

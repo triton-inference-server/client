@@ -122,8 +122,6 @@ When the dataset is synthetic you can specify the following options:
 * `--synthetic-tokens-mean`: The mean number of tokens of synthetic input data.
 * `--synthetic-tokens-stddev`: The standard deviation number of tokens of synthetic
   input data.
-* `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
-  to return in the response.
 * `--random-seed`: The seed used to generate random values.
 
 When the dataset is coming from HuggingFace you can specify the following
@@ -171,10 +169,6 @@ The source of the input prompts.
 ##### `--input-dataset {openorca,cnn_dailymail}`
 
 The HuggingFace dataset to use for prompts when prompt-source is dataset.
-
-##### `--synthetic-requested-output-tokens <int>`
-The number of tokens to request in the output. This is used when prompt-source
-is synthetic to tell the LLM how many output tokens to generate in each response.
 
 ##### `--synthetic-tokens-mean <int>`
 

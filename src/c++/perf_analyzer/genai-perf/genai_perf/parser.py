@@ -175,14 +175,6 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-requested-output-tokens",
-        type=int,
-        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
-        required=False,
-        help="The number of tokens to request in the output. This is used when prompt-source is synthetic to tell the LLM how many output tokens to generate in each response.",
-    )
-
-    input_group.add_argument(
         "--synthetic-input-tokens-mean",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
