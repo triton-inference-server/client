@@ -71,7 +71,7 @@ class SharedMemoryManager {
       const std::string& name, void* ptr, const size_t byte_size);
 
   /// Get the access information for the shared memory block
-  /// with the specified name. Return TRITONSERVER_ERROR_NOT_FOUND
+  /// with the specified name. Return an Error
   /// if named block doesn't exist.
   /// \param name The name of the shared memory block to get.
   /// \param offset The offset in the block
