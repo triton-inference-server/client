@@ -320,8 +320,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
@@ -411,8 +411,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         (
@@ -442,8 +442,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         (
@@ -474,8 +474,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         (
@@ -845,8 +845,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         row = pa_json["data"][index]["payload"][0]
@@ -872,8 +872,8 @@ class LlmInputs:
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
-        output_tokens_mean,
-        output_tokens_stddev,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
         row = pa_json["data"][index]
