@@ -64,8 +64,8 @@ class BoxPlot(BasePlot):
 
         fig.update_yaxes(title_text="")
 
+        # create a copy to avoid annotations on html file
         fig_jpeg = copy.deepcopy(fig)
-
         self._add_annotations(fig_jpeg, y_key)
 
         self._generate_parquet(df, filename_root)
