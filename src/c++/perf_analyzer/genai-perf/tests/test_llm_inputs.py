@@ -444,7 +444,7 @@ class TestLlmInputs:
         output_tokens_mean = 100
         output_tokens_stddev = 0
 
-        pa_json = LlmInputs.create_llm_inputs(
+        _ = LlmInputs.create_llm_inputs(
             input_type=PromptSource.SYNTHETIC,
             output_format=output_format,
             num_of_output_prompts=5,
@@ -462,7 +462,6 @@ class TestLlmInputs:
         with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
             llm_inputs_data = json.load(f)
 
-        item = None
         for entry in llm_inputs_data["data"]:
             if (
                 output_format == OutputFormat.OPENAI_COMPLETIONS
