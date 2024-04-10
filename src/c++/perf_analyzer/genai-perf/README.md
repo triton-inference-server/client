@@ -124,24 +124,26 @@ GenAI-Perf supports model input prompts from either synthetically generated inpu
 or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
 using the `--prompt-source` CLI option.
 
-When the dataset is synthetic you can specify the following options:
+When the dataset is synthetic, you can specify the following options:
 * `--num-prompts`: The number of unique prompts to generate.
 * `--synthetic-input-tokens-mean`: The mean number of tokens of synthetic input data.
 * `--synthetic-input-tokens-stddev`: The standard deviation of the number of tokens of synthetic
   input data.
 * `--random-seed`: The seed used to generate random values.
 
-When the dataset is coming from HuggingFace you can specify the following
+When the dataset is coming from HuggingFace, you can specify the following
 options:
 * `--num-prompts`: The number of unique prompts to generate.
 * `--dataset`: HuggingFace dataset to use for benchmarking.
 
-You can optionally set additional model inputs with the following options:
+For any dataset, you can specify the following options:
+* `--output-tokens-mean`: The mean number of tokens to request from the model.
+* `--output-tokens-stddev`: The standard deviation of the number of tokens to
+request from the model. input data.
+
+You can optionally set additional model inputs with the following option:
 * `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
 such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
-* `--output-tokens-mean`: The mean number of tokens to request from the model.
-* `--output-tokens-stddev`: The standard deviation of the number of tokens to request from the model.
-  input data.
 
 
 # Metrics
