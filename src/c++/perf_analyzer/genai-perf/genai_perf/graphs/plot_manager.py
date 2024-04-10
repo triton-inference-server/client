@@ -72,7 +72,7 @@ class PlotManager:
             x_key="num_input_tokens",
             y_key="time_to_first_tokens",
             scale_y=True,
-            graph_title="Time to First Token vs Number of Input tokens",
+            graph_title="Time to First Token vs Number of Input Tokens",
             x_label="Number of Input Tokens",
             y_label="Time to First Token (seconds)",
             filename_root="ttft_vs_input_tokens",

@@ -60,9 +60,7 @@ class BoxPlot(BasePlot):
             title=graph_title,
         )
         fig.update_layout(title_x=0.5)
-        fig.update_xaxes(
-            title_text=x_label,
-        )
+        fig.update_xaxes(title_text=x_label)
 
         fig.update_yaxes(title_text="")
 
