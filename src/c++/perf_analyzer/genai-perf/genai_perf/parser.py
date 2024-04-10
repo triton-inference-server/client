@@ -61,6 +61,13 @@ def _check_conditional_args(
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
+    if (
+        args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
+        and args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV
+    ):
+        parser.error(
+            "The --output-tokens-mean option is required when using --output-tokens-stddev."
+        )
 
     return args
 
@@ -138,6 +145,27 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
+        "--output-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
+        required=False,
+        help=f"The mean number of tokens in each output. "
+        "Ensure the --tokenizer value is set correctly. "
+        "Note that there is still some variability in the requested number "
+        "of output tokens, but GenAi-Perf attempts its best effort with your "
+        "model to get the right number of output tokens. ",
+    )
+
+    input_group.add_argument(
+        "--output-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of the number of tokens in each output. "
+        "This is only used when output-tokens-mean is provided.",
+    )
+
+    input_group.add_argument(
         "--prompt-source",
         type=str,
         choices=utils.get_enum_names(PromptSource),
@@ -155,15 +183,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-requested-output-tokens",
-        type=int,
-        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
-        required=False,
-        help="The number of tokens to request in the output. This is used when prompt-source is synthetic to tell the LLM how many output tokens to generate in each response.",
-    )
-
-    input_group.add_argument(
-        "--synthetic-tokens-mean",
+        "--synthetic-input-tokens-mean",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
@@ -171,7 +191,7 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-tokens-stddev",
+        "--synthetic-input-tokens-stddev",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
@@ -241,7 +261,9 @@ def _add_endpoint_args(parser):
         default="trtllm",
         required=False,
         help=f'When using the "triton" service-kind, '
-        "this is the backend of the model. ",
+        "this is the backend of the model. "
+        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to "
+        "not echo the input tokens in the output.",
     )
 
     endpoint_group.add_argument(
