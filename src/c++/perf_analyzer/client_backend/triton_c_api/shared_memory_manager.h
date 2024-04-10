@@ -81,7 +81,7 @@ class SharedMemoryManager {
   /// \param memory_type Returns the type of the memory
   /// \param device_id Returns the device id associated with the
   /// memory block
-  /// \return a TRITONSERVER_Error indicating success or failure.
+  /// \return an Error indicating success or failure.
   Error GetMemoryInfo(
       const std::string& name, size_t offset, size_t byte_size,
       void** shm_mapped_addr, TRITONSERVER_MemoryType* memory_type,
