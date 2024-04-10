@@ -40,8 +40,8 @@ logger = logging.getLogger(LOGGER_NAME)
 
 
 def _check_conditional_args(
-    parser: argparse.ArgumentParser, args: argparse.ArgumentParser
-) -> argparse.ArgumentParser:
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
     """
     Check for conditional args and raise an error if they are not set.
     """
@@ -72,14 +72,14 @@ def _check_conditional_args(
     return args
 
 
-def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def _prune_args(args: argparse.Namespace) -> argparse.Namespace:
     """
     Prune the parsed arguments to remove args with None.
     """
     return argparse.Namespace(**{k: v for k, v in vars(args).items() if v is not None})
 
 
-def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
     """
     Update genai-perf load manager attributes to PA format
     """
@@ -346,7 +346,7 @@ def _add_other_args(parser):
     )
 
 
-def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
+def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
     if hasattr(args, "extra_inputs"):
         for input_str in args.extra_inputs:

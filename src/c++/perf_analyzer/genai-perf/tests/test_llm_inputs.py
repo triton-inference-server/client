@@ -61,7 +61,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
-                input_type=PromptSource.SYNTHETIC, tokenizer=None
+                input_type=PromptSource.SYNTHETIC, tokenizer=None  # type: ignore
             )
 
     def test_illegal_starting_index(self):
@@ -69,7 +69,7 @@ class TestLlmInputs:
         Test for exceptions when illegal values are given for starting index
         """
         with pytest.raises(GenAIPerfException):
-            _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")
+            _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")  # type: ignore
 
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_starting_index(starting_index=-1)
@@ -79,7 +79,7 @@ class TestLlmInputs:
         Test for exceptions when illegal values are given for length
         """
         with pytest.raises(GenAIPerfException):
-            _ = LlmInputs._check_for_valid_length(length="foo")
+            _ = LlmInputs._check_for_valid_length(length="foo")  # type: ignore
 
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_length(length=0)
@@ -215,10 +215,9 @@ class TestLlmInputs:
             add_stream=True,
         )
         try:
-            f = open(DEFAULT_INPUT_DATA_JSON, "r")
-            json_str = f.read()
+            with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
+                json_str = f.read()
         finally:
-            f.close()
             os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json == json.loads(json_str)
