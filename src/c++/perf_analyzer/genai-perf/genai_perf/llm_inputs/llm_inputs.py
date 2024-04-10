@@ -919,10 +919,11 @@ class LlmInputs:
         if add_stream:
             row["stream"] = [True]
         if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
-            row["max_tokens"] = [
-                int(random.gauss(output_tokens_mean, output_tokens_stddev))
-            ]
-            row["ignore_eos"] = [True]
+            number_of_tokens = int(
+                random.gauss(output_tokens_mean, output_tokens_stddev)
+            )
+            row["min_length"] = [number_of_tokens]
+            row["max_tokens"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]
 
