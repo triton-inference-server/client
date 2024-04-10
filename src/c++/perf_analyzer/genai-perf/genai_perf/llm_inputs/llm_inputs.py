@@ -678,7 +678,7 @@ class LlmInputs:
         model_name: str = "",
     ) -> Dict:
         pa_json = LlmInputs._create_empty_trtllm_pa_json()
-        include_max_tokens = (
+        default_max_tokens = (
             "max_tokens" not in extra_inputs
             or output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
         )
@@ -700,7 +700,7 @@ class LlmInputs:
                 )
 
             pa_json = LlmInputs._add_required_tags_to_trtllm_json(
-                pa_json, index, include_max_tokens
+                pa_json, index, default_max_tokens
             )
             pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
                 pa_json,
@@ -933,10 +933,10 @@ class LlmInputs:
         cls,
         pa_json: Dict,
         index: int,
-        include_max_tokens: bool,
+        default_max_tokens: bool,
     ) -> Dict:
         row = pa_json["data"][index]
-        if include_max_tokens:
+        if default_max_tokens:
             row["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
 
         return pa_json
