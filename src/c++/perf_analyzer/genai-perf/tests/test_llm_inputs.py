@@ -506,11 +506,11 @@ class TestLlmInputs:
                     entry["max_tokens"][0] == output_tokens_mean
                 ), "max_tokens parameter is not properly set"
                 assert (
-                    "ignore_eos" in entry
-                ), "ignore_eos parameter is missing in llm_inputs.json"
+                    "min_length" in entry
+                ), "min_length parameter is missing in llm_inputs.json"
                 assert (
-                    entry["ignore_eos"][0] == True
-                ), "ignore_eos parameter is not properly set"
+                    entry["min_length"][0] == output_tokens_mean
+                ), "min_length parameter is not properly set"
             else:
                 assert False, f"Unsupported output format: {output_format}"
 
