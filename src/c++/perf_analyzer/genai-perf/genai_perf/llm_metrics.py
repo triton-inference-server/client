@@ -463,6 +463,10 @@ class LLMProfileDataParser(ProfileDataParser):
         tokenizer: AutoTokenizer,
     ) -> None:
         self._tokenizer = tokenizer
+        # disable add_bos_token so that llama tokenizer does not add bos token
+        # (aka. beginning-of-sentence) to the beginning of every response
+        # outputs, increasing the token count by 1 for each output response.
+        self._tokenizer.add_bos_token = False
         self._service_kind = service_kind
         self._output_format = output_format
         super().__init__(filename)
@@ -602,7 +606,7 @@ class LLMProfileDataParser(ProfileDataParser):
         output_texts = []
         for output in res_outputs:
             output_texts.append(output["text_output"])
-        return self._tokenizer(output_texts)["input_ids"]
+        return self._run_tokenizer(output_texts)
 
     def _tokenize_openai_response_output(self, res_outputs: dict) -> list[list[int]]:
         """Tokenize the OpenAI response output texts."""
@@ -610,7 +614,15 @@ class LLMProfileDataParser(ProfileDataParser):
         for output in res_outputs:
             text = self._extract_openai_text_output(output["response"])
             output_texts.append(text)
-        return self._tokenizer(output_texts)["input_ids"]
+        return self._run_tokenizer(output_texts)
+
+    def _run_tokenizer(self, output_texts: list[str]) -> list[list[int]]:
+        # exclamation mark trick forces the llama tokenization to consistently
+        # start each output with a specific token which allows us to safely skip
+        # the first token of every tokenized output and get only the ones that
+        # are returned by the model
+        output_texts = ["!" + txt for txt in output_texts]
+        return [out[1:] for out in self._tokenizer(output_texts)["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
