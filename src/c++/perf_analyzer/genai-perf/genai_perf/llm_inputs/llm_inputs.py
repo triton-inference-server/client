@@ -922,7 +922,7 @@ class LlmInputs:
             number_of_tokens = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
-            row["min_tokens"] = [number_of_tokens]
+            row["min_length"] = [number_of_tokens]
             row["max_tokens"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]
