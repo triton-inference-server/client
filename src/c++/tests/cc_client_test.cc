@@ -273,8 +273,8 @@ class GRPCTraceTest : public ::testing::Test {
         "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
         "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
         "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
-        "\"TIMESTAMPS\"}}settings{key:\"trace_rate\"value{value:\"1\"}}"
-        "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+        "\"TIMESTAMPS\"}}settings{key:\"trace_mode\"value{value:\"triton\"}}"
+        "settings{key:\"trace_rate\"value{value:\"1\"}}";
     err = client_->GetTraceSettings(&response, model_name_);
     ASSERT_TRUE(err.IsOk())
         << "unable to get trace settings: " << err.Message();
@@ -1491,22 +1491,22 @@ TEST_F(GRPCTraceTest, GRPCUpdateTraceSettings)
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"model.log\"}}settings{key:\"trace_level\"value{value:\"TIMESTAMPS\"}}"
-      "settings{key:\"trace_rate\"value{value:\"1\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "settings{key:\"trace_mode\"value{value:\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::string expected_second_model_settings =
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"model.log\"}}settings{key:\"trace_level\"value{value:"
-      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_rate\"value{value:"
-      "\"1\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_mode\"value{value:"
+      "\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::string expected_global_settings =
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"another.log\"}}settings{key:\"trace_level\"value{value:"
-      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_rate\"value{value:"
-      "\"1\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_mode\"value{value:"
+      "\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
 
   std::map<std::string, std::vector<std::string>> model_update_settings = {
       {"trace_file", {"model.log"}}};
@@ -1575,20 +1575,20 @@ TEST_F(GRPCTraceTest, GRPCClearTraceSettings)
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
-      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"1\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "\"OFF\"}}settings{key:\"trace_mode\"value{value:\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::string expected_first_model_settings =
       "settings{key:\"log_frequency\"value{value:\"34\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
-      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"12\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "\"OFF\"}}settings{key:\"trace_mode\"value{value:\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"12\"}}";
   std::string expected_second_model_settings =
       "settings{key:\"log_frequency\"value{value:\"34\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
       "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
-      "\"OFF\"}}settings{key:\"trace_rate\"value{value:\"1\"}}"
-      "settings{key:\"trace_mode\"value{value:\"triton\"}}";
+      "\"OFF\"}}settings{key:\"trace_mode\"value{value:\"triton\"}}"
+      "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::map<std::string, std::vector<std::string>> global_clear_settings = {
       {"trace_rate", {}}, {"trace_count", {}}};
   std::map<std::string, std::vector<std::string>> model_clear_settings = {
