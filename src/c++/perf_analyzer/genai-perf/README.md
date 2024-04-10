@@ -124,19 +124,22 @@ GenAI-Perf supports model input prompts from either synthetically generated inpu
 or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
 using the `--prompt-source` CLI option.
 
-When the dataset is synthetic you can specify the following options:
+When the dataset is synthetic, you can specify the following options:
 * `--num-prompts`: The number of unique prompts to generate.
-* `--synthetic-tokens-mean`: The mean number of tokens of synthetic input data.
-* `--synthetic-tokens-stddev`: The standard deviation number of tokens of synthetic
+* `--synthetic-input-tokens-mean`: The mean number of tokens of synthetic input data.
+* `--synthetic-input-tokens-stddev`: The standard deviation of the number of tokens of synthetic
   input data.
-* `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
-  to return in the response.
 * `--random-seed`: The seed used to generate random values.
 
-When the dataset is coming from HuggingFace you can specify the following
+When the dataset is coming from HuggingFace, you can specify the following
 options:
 * `--num-prompts`: The number of unique prompts to generate.
 * `--dataset`: HuggingFace dataset to use for benchmarking.
+
+For any dataset, you can specify the following options:
+* `--output-tokens-mean`: The mean number of tokens to request from the model.
+* `--output-tokens-stddev`: The standard deviation of the number of tokens to
+request from the model. input data.
 
 You can optionally set additional model inputs with the following option:
 * `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
@@ -184,17 +187,21 @@ The source of the input prompts.
 
 The HuggingFace dataset to use for prompts when prompt-source is dataset.
 
-##### `--synthetic-requested-output-tokens <int>`
-The number of tokens to request in the output. This is used when prompt-source
-is synthetic to tell the LLM how many output tokens to generate in each response.
-
-##### `--synthetic-tokens-mean <int>`
+##### `--synthetic-input-tokens-mean <int>`
 
 The mean of the number of tokens of synthetic input data.
 
-##### `--synthetic-tokens-stddev <int>`
+##### `--synthetic-input-tokens-stddev <int>`
 
-The standard deviation of number of tokens of synthetic input data.
+The standard deviation of the number of tokens of synthetic input data.
+
+##### `--output-tokens-mean <int>`
+
+The mean of the number of output tokens to request from the model.
+
+##### `--output-tokens-stddev <int>`
+
+The standard deviation of the number of output tokens to request from the model.
 
 ##### `-m <str>`
 ##### `--model <str>`
