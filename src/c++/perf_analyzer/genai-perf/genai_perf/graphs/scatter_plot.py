@@ -49,8 +49,8 @@ class ScatterPlot(BasePlot):
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
-        preprocessed_x_data=[],
-        preprocessed_y_data=[],
+        preprocessed_x_data=None,
+        preprocessed_y_data=None,
     ):
         if not preprocessed_x_data and not preprocessed_y_data:
             if scale_x:

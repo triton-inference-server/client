@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
 from pandas import DataFrame
@@ -45,15 +46,17 @@ class BasePlot:
         return value * factor
 
     def _generate_parquet(self, dataframe: DataFrame, file: str):
-        dataframe.to_parquet(f"artifacts/data/{file}.gzip", compression="gzip")
+        dataframe.to_parquet(
+            f"{DEFAULT_ARTIFACT_DIR}/data/{file}.gzip", compression="gzip"
+        )
 
     def _generate_graph_file(self, fig: Figure, file: str, title: str):
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
-            fig.write_image(f"artifacts/images/{file}")
+            fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/images/{file}")
         elif file.endswith("html"):
-            fig.write_html(f"artifacts/images/{file}")
             print(f"Generating '{title}' html")
+            fig.write_html(f"{DEFAULT_ARTIFACT_DIR}/images/{file}")
         else:
             extension = file.split(".")[-1]
             raise GenAIPerfException(f"image file type {extension} is not supported")

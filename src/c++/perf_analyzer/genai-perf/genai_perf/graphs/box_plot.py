@@ -32,6 +32,7 @@ import pandas as pd
 import plotly.express as px
 from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
+from plotly.graph_objects import Figure
 
 
 class BoxPlot(BasePlot):
@@ -73,7 +74,11 @@ class BoxPlot(BasePlot):
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
         self._generate_graph_file(fig_jpeg, filename_root + ".jpeg", graph_title)
 
-    def _add_annotations(self, fig, y_key):
+    def _add_annotations(self, fig: Figure, y_key: str) -> None:
+        """
+        Add annotations to the non html version of the box plot
+        to replace the missing hovertext
+        """
         stat_root_name = self._metrics.get_base_name(y_key)
 
         val = self._scale(self._stats[f"max_{stat_root_name}"], (1 / 1e9))

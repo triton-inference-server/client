@@ -32,14 +32,12 @@ import sys
 from argparse import ArgumentParser
 
 from genai_perf import parser
-from genai_perf.constants import LOGGER_NAME
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE, LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
-
-DEFAULT_PARQUET_FILE = "all_data"
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
@@ -47,9 +45,9 @@ logger = logging.getLogger(LOGGER_NAME)
 
 def create_artifacts_dirs():
     if not os.path.exists("artifacts"):
-        os.mkdir("artifacts")
-        os.mkdir("artifacts/data")
-        os.mkdir("artifacts/images")
+        os.mkdir("f{DEFAULT_ARTIFACT_DIR}")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
 
 def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
@@ -116,10 +114,11 @@ def create_graphs(stats: Statistics) -> None:
 
 
 def finalize():
-    shutil.move("llm_inputs.json", "artifacts/data/llm_inputs.json")
-    shutil.move("profile_export.json", "artifacts/data/profile_json.json")
+    shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
+    shutil.move("profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_json.json")
     shutil.move(
-        "profile_export_genai_perf.csv", "artifacts/data/profile_export_genai_perf.csv"
+        "profile_export_genai_perf.csv",
+        f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",
     )
 
 

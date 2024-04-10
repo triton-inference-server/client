@@ -32,6 +32,7 @@ from itertools import pairwise
 
 import numpy as np
 import pandas as pd
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
@@ -389,7 +390,9 @@ class Statistics:
             diff = 0
             filler_list = []
             col_index = col_index + 1
-        df.to_parquet(f"artifacts/data/{parquet_filename}.gzip", compression="gzip")
+        df.to_parquet(
+            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
+        )
 
 
 class ProfileDataParser:
