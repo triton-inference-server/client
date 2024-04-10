@@ -88,7 +88,7 @@ class LlmInputs:
         add_model_name: bool = False,
         add_stream: bool = False,
         tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
-        extra_inputs: Dict = None,
+        extra_inputs: Dict | None = None,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
