@@ -29,7 +29,7 @@ import logging
 import os
 import shutil
 import sys
-from argparse import ArgumentParser
+from argparse import Namespace
 
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE, LOGGER_NAME
@@ -37,7 +37,11 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
-from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
+from genai_perf.tokenizer import (
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+    get_tokenizer,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
@@ -50,7 +54,9 @@ def create_artifacts_dirs():
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
 
-def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
+def generate_inputs(
+    args: Namespace, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
+) -> None:
     # TODO (TMA-1758): remove once file support is implemented
     input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
@@ -82,7 +88,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
 
 
 def calculate_metrics(
-    args: ArgumentParser, tokenizer: AutoTokenizer
+    args: Namespace, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
 ) -> LLMProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
@@ -99,6 +105,9 @@ def report_output(data_parser: LLMProfileDataParser, args):
     elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
+    else:
+        raise GenAIPerfException("No valid infer mode specified")
+
     stats = data_parser.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
         args.profile_export_file.stem + "_genai_perf.csv"

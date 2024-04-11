@@ -34,7 +34,11 @@ import numpy as np
 import pandas as pd
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import (
+    BatchEncoding,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
@@ -460,13 +464,15 @@ class LLMProfileDataParser(ProfileDataParser):
         filename: str,
         service_kind: str,
         output_format: OutputFormat,
-        tokenizer: AutoTokenizer,
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
     ) -> None:
         self._tokenizer = tokenizer
-        # disable add_bos_token so that llama tokenizer does not add bos token
+        # Disable add_bos_token so that llama tokenizer does not add bos token
         # (aka. beginning-of-sentence) to the beginning of every response
         # outputs, increasing the token count by 1 for each output response.
-        self._tokenizer.add_bos_token = False
+        # Note: The type is being ignored here, because not all tokenizers have
+        # an add_bos_token variable.
+        self._tokenizer.add_bos_token = False  # type: ignore
         self._service_kind = service_kind
         self._output_format = output_format
         super().__init__(filename)
@@ -566,7 +572,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 res_timestamps.pop()
                 res_outputs.pop()
 
-    def _tokenize_request_inputs(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_request_inputs(self, req_inputs: dict) -> BatchEncoding:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_request_input(req_inputs)
@@ -575,11 +581,12 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> BatchEncoding:
         """Tokenize the Triton request input texts."""
-        return self._tokenizer(req_inputs["text_input"])["input_ids"]
+        encodings = self._tokenizer(req_inputs["text_input"])
+        return encodings.data["input_ids"]
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> BatchEncoding:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._output_format == _OPENAI_CHAT_COMPLETIONS:
@@ -590,7 +597,8 @@ class LLMProfileDataParser(ProfileDataParser):
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
             )
-        return self._tokenizer(input_text)["input_ids"]
+        encodings = self._tokenizer(input_text)
+        return encodings.data["input_ids"]
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
         """Deserialize the response output and return tokenized outputs."""
@@ -622,7 +630,8 @@ class LLMProfileDataParser(ProfileDataParser):
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
         output_texts = ["!" + txt for txt in output_texts]
-        return [out[1:] for out in self._tokenizer(output_texts)["input_ids"]]
+        encodings = encodings = self._tokenizer(output_texts)
+        return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""

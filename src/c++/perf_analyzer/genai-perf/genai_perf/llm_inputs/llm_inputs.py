@@ -16,7 +16,7 @@ import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
@@ -24,7 +24,6 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import (
     DEFAULT_TOKENIZER,
-    AutoTokenizer,
     PreTrainedTokenizer,
     PreTrainedTokenizerFast,
     get_tokenizer,
@@ -93,10 +92,9 @@ class LlmInputs:
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast] = get_tokenizer(
-            DEFAULT_TOKENIZER
-        ),
-        extra_inputs: Dict | None = None,
+        tokenizer: PreTrainedTokenizer
+        | PreTrainedTokenizerFast = get_tokenizer(DEFAULT_TOKENIZER),
+        extra_inputs: Optional[Dict] = None,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -199,7 +197,7 @@ class LlmInputs:
         dataset_name: str,
         starting_index: int,
         length: int,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
     ) -> None:
         try:
             cls._check_for_dataset_name_if_input_type_is_url(input_type, dataset_name)
@@ -223,7 +221,7 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_synthetic(
         cls,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
@@ -947,7 +945,7 @@ class LlmInputs:
     def _check_for_tokenzier_if_input_type_is_synthetic(
         cls,
         input_type: PromptSource,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
     ) -> None:
         if input_type == PromptSource.SYNTHETIC and not tokenizer:
             raise GenAIPerfException(
@@ -1008,7 +1006,7 @@ class LlmInputs:
     @classmethod
     def _create_synthetic_prompt(
         cls,
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
+        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         random_seed: int,
