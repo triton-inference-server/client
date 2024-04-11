@@ -16,7 +16,7 @@ import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
@@ -63,9 +63,9 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
 
-    EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
-    EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
-    EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": []}
+    EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
+    EMPTY_JSON_IN_TRTLLM_PA_FORMAT: Dict = {"data": []}
+    EMPTY_JSON_IN_OPENAI_PA_FORMAT: Dict = {"data": []}
 
     dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
 
@@ -143,7 +143,6 @@ class LlmInputs:
             input_type, dataset_name, starting_index, length, tokenizer
         )
 
-        dataset = None
         if input_type == PromptSource.DATASET:
             dataset = cls._get_input_dataset_from_url(
                 dataset_name, starting_index, length
@@ -152,7 +151,7 @@ class LlmInputs:
                 dataset
             )
         elif input_type == PromptSource.SYNTHETIC:
-            dataset = cls._get_input_dataset_from_synthetic(
+            synthetic_dataset = cls._get_input_dataset_from_synthetic(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
@@ -160,7 +159,7 @@ class LlmInputs:
                 random_seed,
             )
             generic_dataset_json = cls._convert_input_synthetic_dataset_to_generic_json(
-                dataset
+                synthetic_dataset
             )
         else:
             raise GenAIPerfException(
@@ -208,7 +207,7 @@ class LlmInputs:
     ) -> Response:
         url = cls._resolve_url(dataset_name)
         configured_url = cls._create_configured_url(url, starting_index, length)
-        dataset = cls._download_dataset(configured_url, starting_index, length)
+        dataset = cls._download_dataset(configured_url)
 
         return dataset
 
@@ -220,7 +219,7 @@ class LlmInputs:
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
         random_seed: int,
-    ) -> Dict[str, Dict]:
+    ) -> Dict[str, Any]:
         dataset_json = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
@@ -253,7 +252,7 @@ class LlmInputs:
         return configured_url
 
     @classmethod
-    def _download_dataset(cls, configured_url, starting_index, length) -> Response:
+    def _download_dataset(cls, configured_url: str) -> Response:
         dataset = cls._query_server(configured_url)
 
         return dataset
@@ -292,7 +291,7 @@ class LlmInputs:
     @classmethod
     def _add_features_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
-    ) -> Dict[str, List[str]]:
+    ) -> Dict:
         if "features" in dataset_json.keys():
             generic_input_json["features"] = []
             for feature in dataset_json["features"]:
@@ -496,7 +495,7 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _write_json_to_file(cls, json_in_pa_format: Dict):
+    def _write_json_to_file(cls, json_in_pa_format: Dict) -> None:
         with open(DEFAULT_INPUT_DATA_JSON, "w") as f:
             f.write(json.dumps(json_in_pa_format, indent=2))
 

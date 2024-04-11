@@ -28,7 +28,7 @@
 
 import json
 from io import StringIO
-from typing import List
+from typing import Any, List
 
 import numpy as np
 import pytest
@@ -45,7 +45,7 @@ def ns_to_sec(ns: int) -> int | float:
 
 class TestLLMProfileDataParser:
     @pytest.fixture
-    def mock_read_write(self, monkeypatch) -> List[str]:
+    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[str]:
         """
         This function will mock the open function for specific files:
 
@@ -63,7 +63,7 @@ class TestLLMProfileDataParser:
         original_open = open
 
         def custom_open(filename, *args, **kwargs):
-            def write(self, content: str) -> int:
+            def write(self: Any, content: str) -> int:
                 written_data.append(content)
                 return len(content)
 
@@ -84,7 +84,7 @@ class TestLLMProfileDataParser:
 
         return written_data
 
-    def test_csv_output(self, mock_read_write) -> None:
+    def test_csv_output(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """
         Collect LLM metrics from profile export data and confirm correct values are
         printed in csv.
@@ -118,7 +118,7 @@ class TestLLMProfileDataParser:
 
         assert returned_data == expected_content
 
-    def test_triton_llm_profile_data(self, mock_read_write) -> None:
+    def test_triton_llm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
@@ -269,7 +269,7 @@ class TestLLMProfileDataParser:
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="30")
 
-    def test_openai_llm_profile_data(self, mock_read_write) -> None:
+    def test_openai_llm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics

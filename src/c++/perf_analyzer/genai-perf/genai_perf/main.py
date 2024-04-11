@@ -90,7 +90,7 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
     )
 
 
-def report_output(data_parser: LLMProfileDataParser, args):
+def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range

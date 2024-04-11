@@ -28,6 +28,7 @@
 
 import csv
 import json
+import typing
 from itertools import pairwise
 
 import numpy as np
@@ -73,8 +74,8 @@ class Metrics:
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
+        request_throughputs: typing.List[float] = [],
+        request_latencies: typing.List[int] = [],
     ) -> None:
         self.request_throughputs = request_throughputs
         self.request_latencies = request_latencies
@@ -108,14 +109,14 @@ class LLMMetrics(Metrics):
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
-        time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[list[int]] = [[]],
-        output_token_throughputs: list[float] = [],
-        output_token_throughputs_per_request: list[int] = [],
-        num_output_tokens: list[int] = [],
-        num_input_tokens: list[int] = [],
+        request_throughputs: typing.List[float] = [],
+        request_latencies: typing.List[int] = [],
+        time_to_first_tokens: typing.List[int] = [],
+        inter_token_latencies: typing.List[list[int]] = [[]],
+        output_token_throughputs: typing.List[float] = [],
+        output_token_throughputs_per_request: typing.List[int] = [],
+        num_output_tokens: typing.List[int] = [],
+        num_input_tokens: typing.List[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -176,11 +177,11 @@ class Statistics:
             new_data = data
         return new_data
 
-    def _calculate_mean(self, data: list[int | float], attr: str):
+    def _calculate_mean(self, data: list[int | float], attr: str) -> None:
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int | float], attr: str):
+    def _calculate_percentiles(self, data: list[int | float], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -190,16 +191,16 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int | float], attr: str):
+    def _calculate_minmax(self, data: list[int | float], attr: str) -> None:
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int | float], attr: str):
+    def _calculate_std(self, data: list[int | float], attr: str) -> None:
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attr_strs = []
         for k, v in self.__dict__.items():
             if not k.startswith("_"):
@@ -216,13 +217,13 @@ class Statistics:
         """Return the underlying metrics used to calculate the statistics."""
         return self._metrics
 
-    def _is_throughput_field(self, field: str):
+    def _is_throughput_field(self, field: str) -> bool:
         return field in Metrics.throughput_fields
 
-    def _is_time_field(self, field: str):
+    def _is_time_field(self, field: str) -> bool:
         return field in Metrics.time_fields
 
-    def pretty_print(self):
+    def pretty_print(self) -> None:
         """Prints the statistics in a tabular format."""
 
         singular_metric_rows = []
@@ -287,7 +288,7 @@ class Statistics:
         for row in singular_metric_rows:
             print(row)
 
-    def export_to_csv(self, csv_filename: str):
+    def export_to_csv(self, csv_filename: str) -> None:
         """Exports the statistics to a CSV file."""
 
         multiple_metric_header = [
@@ -372,7 +373,7 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
-    def export_parquet(self, parquet_filename: str):
+    def export_parquet(self, parquet_filename: str) -> None:
         max_length = -1
         col_index = 0
         filler_list = []
