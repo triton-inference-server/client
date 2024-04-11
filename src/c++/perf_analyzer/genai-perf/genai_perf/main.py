@@ -26,18 +26,28 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import os
+import shutil
 import sys
 from argparse import ArgumentParser
 
 from genai_perf import parser
-from genai_perf.constants import LOGGER_NAME
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE, LOGGER_NAME
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_metrics import LLMProfileDataParser
+from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
+
+
+def create_artifacts_dirs():
+    if not os.path.exists("artifacts"):
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
 
 def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
@@ -82,31 +92,49 @@ def calculate_metrics(
     )
 
 
-def report_output(metrics: LLMProfileDataParser, args):
+def report_output(data_parser: LLMProfileDataParser, args):
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range
     elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
-    stats = metrics.get_statistics(infer_mode, load_level)
+    stats = data_parser.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
+    stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
+    create_graphs(stats)
+
+
+def create_graphs(stats: Statistics) -> None:
+    plot_manager = PlotManager(stats)
+    plot_manager.create_default_graphs()
+
+
+def finalize():
+    shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
+    shutil.move("profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_json.json")
+    shutil.move(
+        "profile_export_genai_perf.csv",
+        f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",
+    )
 
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
 def run():
     try:
+        create_artifacts_dirs()
         args, extra_args = parser.parse_args()
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        metrics = calculate_metrics(args, tokenizer)
-        report_output(metrics, args)
+        data_parser = calculate_metrics(args, tokenizer)
+        report_output(data_parser, args)
+        finalize()
     except Exception as e:
         raise GenAIPerfException(e)
 
