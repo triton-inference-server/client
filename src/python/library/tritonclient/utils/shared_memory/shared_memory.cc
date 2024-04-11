@@ -46,13 +46,13 @@ namespace {
 void*
 SharedMemoryHandleCreate(
     std::string triton_shm_name, void* shm_addr, std::string shm_key,
-    void* shm_file, size_t offset, size_t byte_size)
+    ShmFile* shm_file, size_t offset, size_t byte_size)
 {
   SharedMemoryHandle* handle = new SharedMemoryHandle();
   handle->triton_shm_name_ = triton_shm_name;
   handle->base_addr_ = shm_addr;
   handle->shm_key_ = shm_key;
-  handle->platform_handle_ = std::make_unique<ShmFile>(shm_file);
+  handle->platform_handle_.reset(shm_file);
   handle->offset_ = offset;
   handle->byte_size_ = byte_size;
   return static_cast<void*>(handle);
@@ -60,10 +60,9 @@ SharedMemoryHandleCreate(
 
 int
 SharedMemoryRegionMap(
-    void* shm_file, size_t offset, size_t byte_size, void** shm_addr)
+    ShmFile* shm_file, size_t offset, size_t byte_size, void** shm_addr)
 {
 #ifdef _WIN32
-  HANDLE file_handle = static_cast<HANDLE>(shm_file);
   // The MapViewOfFile function takes a high-order and low-order DWORD (4 bytes
   // each) for offset. 'size_t' can either be 4 or 8 bytes depending on the
   // operating system. To handle both cases agnostically, we cast 'offset' to
@@ -74,14 +73,14 @@ SharedMemoryRegionMap(
   DWORD low_order_offset = upperbound_offset & 0xFFFFFFFF;
   // map shared memory to process address space
   *shm_addr = MapViewOfFile(
-      file_handle,          // handle to map object
-      FILE_MAP_ALL_ACCESS,  // read/write permission
-      high_order_offset,    // offset (high-order DWORD)
-      low_order_offset,     // offset (low-order DWORD)
+      shm_file->shm_handle_,  // handle to map object
+      FILE_MAP_ALL_ACCESS,    // read/write permission
+      high_order_offset,      // offset (high-order DWORD)
+      low_order_offset,       // offset (low-order DWORD)
       byte_size);
 
   if (*shm_addr == NULL) {
-    CloseHandle(file_handle);
+    CloseHandle(shm_file->shm_handle_);
     return -1;
   }
   // For Windows, we cannot close the shared memory handle here. When all
@@ -90,9 +89,9 @@ SharedMemoryRegionMap(
   // we are destroying the shared memory object.
   return 0;
 #else
-  int fd = *static_cast<int*>(shm_file);
   // map shared memory to process address space
-  *shm_addr = mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, fd, offset);
+  *shm_addr =
+      mmap(NULL, byte_size, PROT_WRITE, MAP_SHARED, shm_file->shm_fd_, offset);
   if (*shm_addr == MAP_FAILED) {
     return -1;
   }
@@ -118,7 +117,7 @@ SharedMemoryRegionCreate(
   DWORD high_order_size = (upperbound_size >> 32) & 0xFFFFFFFF;
   DWORD low_order_size = upperbound_size & 0xFFFFFFFF;
 
-  HANDLE shm_file = CreateFileMapping(
+  HANDLE win_handle = CreateFileMapping(
       INVALID_HANDLE_VALUE,  // use paging file
       NULL,                  // default security
       PAGE_READWRITE,        // read/write access
@@ -126,21 +125,17 @@ SharedMemoryRegionCreate(
       low_order_size,        // maximum object size (low-order DWORD)
       shm_key);              // name of mapping object
 
-  if (shm_file == NULL) {
+  if (win_handle == NULL) {
     return -7;
   }
 
+  ShmFile* shm_file = new ShmFile(win_handle);
   // get base address of shared memory region
   void* shm_addr = nullptr;
-  int err = SharedMemoryRegionMap((void*)shm_file, 0, byte_size, &shm_addr);
+  int err = SharedMemoryRegionMap(shm_file, 0, byte_size, &shm_addr);
   if (err == -1) {
     return -4;
   }
-
-  // create a handle for the shared memory region
-  *shm_handle = SharedMemoryHandleCreate(
-      std::string(triton_shm_name), shm_addr, std::string(shm_key),
-      (void*)shm_file, 0, byte_size);
 #else
   // get shared memory region descriptor
   int shm_fd = shm_open(shm_key, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
@@ -154,18 +149,18 @@ SharedMemoryRegionCreate(
     return -3;
   }
 
+  ShmFile* shm_file = new ShmFile(shm_fd);
   // get base address of shared memory region
   void* shm_addr = nullptr;
-  int err = SharedMemoryRegionMap((void*)&shm_fd, 0, byte_size, &shm_addr);
+  int err = SharedMemoryRegionMap(shm_file, 0, byte_size, &shm_addr);
   if (err == -1) {
     return -4;
   }
-
+#endif
   // create a handle for the shared memory region
   *shm_handle = SharedMemoryHandleCreate(
-      std::string(triton_shm_name), shm_addr, std::string(shm_key),
-      (void*)&shm_fd, 0, byte_size);
-#endif
+      std::string(triton_shm_name), shm_addr, std::string(shm_key), shm_file, 0,
+      byte_size);
   return 0;
 }
 
@@ -181,20 +176,20 @@ SharedMemoryRegionSet(
 
 TRITONCLIENT_DECLSPEC int
 GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key, void** shm_file,
+    void* shm_handle, char** shm_addr, const char** shm_key, void* shm_file,
     size_t* offset, size_t* byte_size)
 {
-#ifdef _WIN32
-  HANDLE* file = static_cast<HANDLE*>(shm_file);
-#else
-  int* file = *reinterpret_cast<int**>(shm_file);
-#endif  // _WIN32
   SharedMemoryHandle* handle = static_cast<SharedMemoryHandle*>(shm_handle);
+  ShmFile* file = static_cast<ShmFile*>(shm_file);
   *shm_addr = static_cast<char*>(handle->base_addr_);
   *shm_key = handle->shm_key_.c_str();
-  *file = *(handle->platform_handle_->GetShmFile());
   *offset = handle->offset_;
   *byte_size = handle->byte_size_;
+#ifdef _WIN32
+  file->shm_handle_ = handle->platform_handle_->shm_handle_;
+#else
+  file->shm_fd_ = handle->platform_handle_->shm_fd_;
+#endif
   return 0;
 }
 
@@ -212,7 +207,7 @@ SharedMemoryRegionDestroy(void* shm_handle)
   // We keep Windows shared memory handles open until we are done
   // using them. When all handles are closed, the system will free
   // the section of the paging file that the object uses.
-  CloseHandle(*(handle->platform_handle_->GetShmFile()));
+  CloseHandle(handle->platform_handle_->shm_handle_);
 #else
   int status = munmap(shm_addr, handle->byte_size_);
   if (status == -1) {
@@ -223,7 +218,7 @@ SharedMemoryRegionDestroy(void* shm_handle)
   if (shm_fd == -1) {
     return -5;
   }
-  close(*(handle->platform_handle_->GetShmFile()));
+  close(handle->platform_handle_->shm_fd_);
 #endif  // _WIN32
 
   // FIXME: Investigate use of smart pointers for this

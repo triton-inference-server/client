@@ -28,6 +28,7 @@
 
 import os
 import struct
+import sys
 from ctypes import *
 
 import numpy as np
@@ -43,6 +44,13 @@ class _utf8(object):
             return value
         else:
             return value.encode("utf8")
+
+
+class ShmFile(Structure):
+    if sys.platform == "win32":
+        _fields_ = [("shm_handle_", c_void_p)]
+    else:
+        _fields_ = [("shm_fd_", c_int)]
 
 
 _cshm_lib = "cshm" if os.name == "nt" else "libcshm.so"
@@ -63,7 +71,7 @@ _cshm_get_shared_memory_handle_info.argtypes = [
     c_void_p,
     POINTER(c_char_p),
     POINTER(c_char_p),
-    POINTER(c_void_p),
+    POINTER(ShmFile),
     POINTER(c_uint64),
     POINTER(c_uint64),
 ]
@@ -205,10 +213,7 @@ def get_contents_as_numpy(shm_handle, datatype, shape, offset=0):
         The numpy array generated using the contents of the specified shared
         memory region.
     """
-    # Safe initializer for Unix case where shm_file must be dereferenced to
-    # base in order to store file descriptor.
-    safe_initializer = c_int(-1)
-    shm_file = cast(byref(safe_initializer), c_void_p)
+    shm_file = ShmFile()
     region_offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()
@@ -287,10 +292,7 @@ def destroy_shared_memory_region(shm_handle):
     SharedMemoryException
         If unable to unlink the shared memory region.
     """
-    # Safe initializer for Unix case where shm_file must be dereferenced to
-    # base in order to store file descriptor.
-    safe_initializer = c_int(-1)
-    shm_file = cast(byref(safe_initializer), c_void_p)
+    shm_file = ShmFile()
     offset = c_uint64()
     byte_size = c_uint64()
     shm_addr = c_char_p()

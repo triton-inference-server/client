@@ -37,16 +37,11 @@
 
 struct ShmFile {
 #ifdef _WIN32
-  HANDLE shm_file_;
-  ShmFile(void* shm_file) { shm_file_ = static_cast<HANDLE>(shm_file); };
-  HANDLE* GetShmFile() { return &shm_file_; };
+  HANDLE shm_handle_;
+  ShmFile(HANDLE shm_handle) : shm_handle_(shm_handle){};
 #else
-  std::unique_ptr<int> shm_file_;
-  ShmFile(void* shm_file)
-  {
-    shm_file_ = std::make_unique<int>(*static_cast<int*>(shm_file));
-  };
-  int* GetShmFile() { return shm_file_.get(); }
+  int shm_fd_;
+  ShmFile(int shm_fd) : shm_fd_(shm_fd){};
 #endif  // _WIN32
 };
 

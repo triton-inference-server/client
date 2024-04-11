@@ -43,7 +43,7 @@ TRITONCLIENT_DECLSPEC int SharedMemoryRegionCreate(
 TRITONCLIENT_DECLSPEC int SharedMemoryRegionSet(
     void* shm_handle, size_t offset, size_t byte_size, const void* data);
 TRITONCLIENT_DECLSPEC int GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key, void** shm_file,
+    void* shm_handle, char** shm_addr, const char** shm_key, void* shm_file,
     size_t* offset, size_t* byte_size);
 TRITONCLIENT_DECLSPEC int SharedMemoryRegionDestroy(void* shm_handle);
 
