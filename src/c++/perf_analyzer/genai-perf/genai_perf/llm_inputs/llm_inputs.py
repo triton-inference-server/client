@@ -886,10 +886,7 @@ class LlmInputs:
                 int(max(0, random.gauss(output_tokens_mean, output_tokens_stddev)))
             )
             sampling_parameters = {
-                # [TODO:TMA-1830] Once min_tokens is supported in the vLLM backend,
-                # switch from ignore_eos to min_tokens for improved accuracy.
-                # "min_tokens": number_of_tokens,
-                "ignore_eos": str(True),
+                "min_tokens": number_of_tokens,
                 "max_tokens": number_of_tokens,
             }
             sampling_parameters_str = json.dumps(sampling_parameters)

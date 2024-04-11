@@ -493,11 +493,11 @@ class TestLlmInputs:
                     output_tokens_mean
                 ), "max_tokens parameter is not properly set"
                 assert (
-                    "ignore_eos" in sampling_parameters
-                ), "ignore_eos parameter is missing in sampling_parameters"
-                assert sampling_parameters["ignore_eos"] == str(
-                    True
-                ), "ignore_eos parameter is not properly set"
+                    "min_tokens" in sampling_parameters
+                ), "min_tokens parameter is missing in sampling_parameters"
+                assert sampling_parameters["min_tokens"] == str(
+                    output_tokens_mean
+                ), "min_tokens parameter is not properly set"
             elif output_format == OutputFormat.TRTLLM:
                 assert (
                     "max_tokens" in entry
