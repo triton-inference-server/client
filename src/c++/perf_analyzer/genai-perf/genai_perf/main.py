@@ -37,11 +37,7 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
-from genai_perf.tokenizer import (
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-    get_tokenizer,
-)
+from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(LOGGER_NAME)
@@ -54,9 +50,7 @@ def create_artifacts_dirs():
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
 
-def generate_inputs(
-    args: Namespace, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
-) -> None:
+def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     # TODO (TMA-1758): remove once file support is implemented
     input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
@@ -87,9 +81,7 @@ def generate_inputs(
     )
 
 
-def calculate_metrics(
-    args: Namespace, tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast
-) -> LLMProfileDataParser:
+def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
         service_kind=args.service_kind,

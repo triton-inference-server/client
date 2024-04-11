@@ -63,8 +63,9 @@ class TestLLMProfileDataParser:
         original_open = open
 
         def custom_open(filename, *args, **kwargs):
-            def write(content) -> None:
+            def write(self, content: str) -> int:
                 written_data.append(content)
+                return len(content)
 
             if filename == "triton_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.triton_profile_data))
@@ -74,7 +75,7 @@ class TestLLMProfileDataParser:
                 return tmp_file
             elif filename == "profile_export.csv":
                 tmp_file = StringIO()
-                tmp_file.write = write
+                tmp_file.write = write.__get__(tmp_file)
                 return tmp_file
             else:
                 return original_open(filename, *args, **kwargs)

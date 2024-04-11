@@ -21,24 +21,19 @@ from genai_perf.exceptions import GenAIPerfException
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from transformers import (
-        AutoTokenizer,
-        BatchEncoding,
-        PreTrainedTokenizer,
-        PreTrainedTokenizerFast,
-    )
+    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
     from transformers import logging as token_logger
-    from transformers.tokenization_utils_base import EncodingFast
+    from transformers.tokenization_utils_base import BatchEncoding
 
     token_logger.set_verbosity_error()
 
-
+Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 DEFAULT_TOKENIZER = "hf-internal-testing/llama-tokenizer"
 
 
 def get_tokenizer(
     tokenizer_model: str,
-) -> PreTrainedTokenizer | PreTrainedTokenizerFast:
+) -> Tokenizer:
     """
     Download the tokenizer from Huggingface.co
     """

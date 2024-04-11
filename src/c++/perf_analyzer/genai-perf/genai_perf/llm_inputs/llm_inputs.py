@@ -22,12 +22,7 @@ import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
-from genai_perf.tokenizer import (
-    DEFAULT_TOKENIZER,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-    get_tokenizer,
-)
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from requests import Response
 
 
@@ -92,8 +87,7 @@ class LlmInputs:
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
-        tokenizer: PreTrainedTokenizer
-        | PreTrainedTokenizerFast = get_tokenizer(DEFAULT_TOKENIZER),
+        tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
     ) -> Dict:
         """
@@ -197,7 +191,7 @@ class LlmInputs:
         dataset_name: str,
         starting_index: int,
         length: int,
-        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        tokenizer: Tokenizer,
     ) -> None:
         try:
             cls._check_for_dataset_name_if_input_type_is_url(input_type, dataset_name)
@@ -221,12 +215,12 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_synthetic(
         cls,
-        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
         random_seed: int,
-    ) -> Dict:
+    ) -> Dict[str, Dict]:
         dataset_json = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
@@ -277,13 +271,17 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _convert_input_synthetic_dataset_to_generic_json(cls, dataset: Dict) -> Dict:
+    def _convert_input_synthetic_dataset_to_generic_json(
+        cls, dataset: Dict
+    ) -> Dict[str, List[Dict]]:
         generic_dataset_json = cls._convert_dataset_to_generic_input_json(dataset)
 
         return generic_dataset_json
 
     @classmethod
-    def _convert_dataset_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
+    def _convert_dataset_to_generic_input_json(
+        cls, dataset_json: Dict
+    ) -> Dict[str, List[Dict]]:
         generic_input_json = cls._add_features_to_generic_json({}, dataset_json)
         generic_input_json = cls._add_rows_to_generic_json(
             generic_input_json, dataset_json
@@ -294,7 +292,7 @@ class LlmInputs:
     @classmethod
     def _add_features_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
-    ) -> Dict:
+    ) -> Dict[str, List[str]]:
         if "features" in dataset_json.keys():
             generic_input_json["features"] = []
             for feature in dataset_json["features"]:
@@ -305,7 +303,7 @@ class LlmInputs:
     @classmethod
     def _add_rows_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
-    ) -> Dict:
+    ) -> Dict[str, List[Dict]]:
         generic_input_json["rows"] = []
         for row in dataset_json["rows"]:
             generic_input_json["rows"].append(row["row"])
@@ -945,7 +943,7 @@ class LlmInputs:
     def _check_for_tokenzier_if_input_type_is_synthetic(
         cls,
         input_type: PromptSource,
-        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        tokenizer: Tokenizer,
     ) -> None:
         if input_type == PromptSource.SYNTHETIC and not tokenizer:
             raise GenAIPerfException(
@@ -994,19 +992,14 @@ class LlmInputs:
         return error_message
 
     @classmethod
-    def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
-        try:
-            dataset_dict = json.loads(json_of_dataset)
-        except json.JSONDecodeError:
-            raise GenAIPerfException("Failed to decode JSON data")
-
-        if "error" in dataset_dict:
-            raise GenAIPerfException(dataset_dict["error"])
+    def _check_for_error_in_json_of_dataset(cls, dataset_json: Dict) -> None:
+        if "error" in dataset_json:
+            raise GenAIPerfException(dataset_json["error"])
 
     @classmethod
     def _create_synthetic_prompt(
         cls,
-        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         random_seed: int,

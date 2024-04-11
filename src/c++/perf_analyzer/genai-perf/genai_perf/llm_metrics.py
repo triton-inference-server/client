@@ -34,11 +34,7 @@ import numpy as np
 import pandas as pd
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.tokenizer import (
-    BatchEncoding,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
+from genai_perf.tokenizer import BatchEncoding, Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
@@ -464,7 +460,7 @@ class LLMProfileDataParser(ProfileDataParser):
         filename: str,
         service_kind: str,
         output_format: OutputFormat,
-        tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+        tokenizer: Tokenizer,
     ) -> None:
         self._tokenizer = tokenizer
         # Disable add_bos_token so that llama tokenizer does not add bos token
