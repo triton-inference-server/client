@@ -14,6 +14,7 @@
 
 import contextlib
 import io
+from typing import Union
 
 from genai_perf.exceptions import GenAIPerfException
 
@@ -27,7 +28,7 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
 
     token_logger.set_verbosity_error()
 
-Tokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
+Tokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 DEFAULT_TOKENIZER = "hf-internal-testing/llama-tokenizer"
 
 

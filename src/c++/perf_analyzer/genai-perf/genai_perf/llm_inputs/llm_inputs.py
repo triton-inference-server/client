@@ -220,7 +220,7 @@ class LlmInputs:
         num_of_output_prompts: int,
         random_seed: int,
     ) -> Dict[str, Any]:
-        dataset_json = {}
+        dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for index in range(0, num_of_output_prompts):
@@ -507,7 +507,10 @@ class LlmInputs:
         USER_ROLE_LIST = ["question", "article"]
         TEXT_INPUT_LIST = ["text_input"]
 
-        system_role_headers, user_role_headers, text_input_headers = [], [], []
+        system_role_headers: List[str] = []
+        user_role_headers: List[str] = []
+        text_input_headers: List[str] = []
+
         if "features" in dataset_json.keys():
             for index, feature in enumerate(dataset_json["features"]):
                 if feature in SYSTEM_ROLE_LIST:
