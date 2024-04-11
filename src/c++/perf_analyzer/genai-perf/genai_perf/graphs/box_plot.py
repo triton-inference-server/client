@@ -47,7 +47,6 @@ class BoxPlot(BasePlot):
 
     def create_plot(
         self,
-        *,
         x_key: str = "",
         y_key: str = "",
         x_metric: str = "",
