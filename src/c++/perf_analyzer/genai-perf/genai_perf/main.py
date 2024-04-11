@@ -39,8 +39,8 @@ from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
-# logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-# logger = logging.getLogger(LOGGER_NAME)
+logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(LOGGER_NAME)
 
 
 def create_artifacts_dirs():
@@ -141,12 +141,11 @@ def run():
 
 def main():
     # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
-    # try:
-    run()
-    # except Exception as e:
-    #     # logger.error(f"{e}")
-    #     print(f"{e}")
-    #     return 1
+    try:
+        run()
+    except Exception as e:
+        logger.error(f"{e}")
+        return 1
 
     return 0
 
