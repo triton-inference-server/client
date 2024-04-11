@@ -33,3 +33,7 @@ DEFAULT_GRPC_URL = "localhost:8001"
 OPEN_ORCA = "openorca"
 CNN_DAILY_MAIL = "cnn_dailymail"
 DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
+
+
+DEFAULT_ARTIFACT_DIR = "artifacts"
+DEFAULT_PARQUET_FILE = "all_data"
