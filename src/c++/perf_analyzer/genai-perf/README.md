@@ -295,11 +295,11 @@ inputs, or from the HuggingFace
 specified using the `--dataset` CLI option.
 
 When the dataset is synthetic you can specify the following options:
-* `--num-of-output-prompts=<int>`: The number of unique prompts to generate, <= 1.
-* `--input-tokens-mean=<int>`: The mean number of tokens of synthetic input data, <= 1.
-* `--input-tokens-stddev=<int>`: The standard deviation number of tokens of synthetic input data, <= 0.
+* `--num-of-output-prompts=<int>`: The number of unique prompts to generate, >= 1.
+* `--input-tokens-mean=<int>`: The mean number of tokens of synthetic input data, >= 1.
+* `--input-tokens-stddev=<int>`: The standard deviation number of tokens of synthetic input data, >= 0.
 * `--synthetic-requested-output-tokens`: The number of output tokens to ask the model
-  to return in the response.
+  to return in the response, >= 1.
 * `--random-seed=<int>`: The seed used to generate random values, >= 0.
 
 When the dataset is coming from HuggingFace you can specify the following
