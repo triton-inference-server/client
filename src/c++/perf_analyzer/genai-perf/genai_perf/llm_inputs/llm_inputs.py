@@ -507,7 +507,7 @@ class LlmInputs:
         USER_ROLE_LIST = ["question", "article"]
         TEXT_INPUT_LIST = ["text_input"]
 
-        system_role_headers: List[str] = []
+        system_role_headers: str = []
         user_role_headers: List[str] = []
         text_input_headers: List[str] = []
 

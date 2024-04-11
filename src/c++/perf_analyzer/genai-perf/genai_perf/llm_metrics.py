@@ -26,7 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import contextlib
 import csv
+import io
 import json
 import typing
 from itertools import pairwise
@@ -35,10 +37,16 @@ import numpy as np
 import pandas as pd
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.tokenizer import BatchEncoding, Tokenizer
+from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
+
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from transformers.tokenization_utils_base import BatchEncoding
 
 _OPENAI_CHAT_COMPLETIONS = OutputFormat.OPENAI_CHAT_COMPLETIONS
 _OPENAI_COMPLETIONS = OutputFormat.OPENAI_COMPLETIONS
@@ -627,7 +635,7 @@ class LLMProfileDataParser(ProfileDataParser):
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
         output_texts = ["!" + txt for txt in output_texts]
-        encodings = encodings = self._tokenizer(output_texts)
+        encodings = self._tokenizer(output_texts)
         return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:

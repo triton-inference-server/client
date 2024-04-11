@@ -24,7 +24,6 @@ with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_st
 ) as stderr:
     from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
     from transformers import logging as token_logger
-    from transformers.tokenization_utils_base import BatchEncoding
 
     token_logger.set_verbosity_error()
 
