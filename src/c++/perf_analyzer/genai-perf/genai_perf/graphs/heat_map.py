@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,41 +25,56 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
-from pathlib import Path
+from typing import Dict
+
+import pandas as pd
+import plotly.express as px
+from genai_perf.graphs.base_plot import BasePlot
+from genai_perf.llm_metrics import Statistics
 
 
-def remove_sse_prefix(msg: str) -> str:
-    return msg.removeprefix("data: ").strip()
+class HeatMap(BasePlot):
+    """
+    Generate a heat map in jpeg and html format.
+    """
 
+    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+        super().__init__(stats, extra_data)
 
-def load_json(filename: str):
-    with open(filename, encoding="utf-8", errors="ignore") as f:
-        return json.load(f)
+    def create_plot(
+        self,
+        x_key: str = "",
+        y_key: str = "",
+        x_metric: str = "",
+        y_metric: str = "",
+        graph_title: str = "",
+        x_label: str = "",
+        y_label: str = "",
+        filename_root: str = "",
+    ):
+        x_values = self._metrics_data[x_key]
+        y_values = self._metrics_data[y_key]
+        df = pd.DataFrame(
+            {
+                x_metric: x_values,
+                y_metric: y_values,
+            }
+        )
+        fig = px.density_heatmap(
+            df,
+            x=x_metric,
+            y=y_metric,
+        )
+        fig.update_layout(
+            title={
+                "text": graph_title,
+                "xanchor": "center",
+                "x": 0.5,
+            }
+        )
+        fig.update_xaxes(title_text=x_label)
+        fig.update_yaxes(title_text=y_label)
 
-
-def remove_file(file: Path):
-    if file.is_file():
-        file.unlink()
-
-
-def convert_option_name(name: str) -> str:
-    return name.replace("_", "-")
-
-
-def get_enum_names(enum):
-    names = []
-    for e in enum:
-        names.append(e.name.lower())
-    return names
-
-
-def get_enum_entry(name, enum):
-    for e in enum:
-        if e.name.lower() == name.lower():
-            return e
-    return None
-
-
-def scale(value, factor):
-    return value * factor
+        self._generate_parquet(df, filename_root)
+        self._generate_graph_file(fig, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)
