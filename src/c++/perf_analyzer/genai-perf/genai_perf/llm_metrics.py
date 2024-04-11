@@ -31,6 +31,8 @@ import json
 from itertools import pairwise
 
 import numpy as np
+import pandas as pd
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import AutoTokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
@@ -224,7 +226,7 @@ class Statistics:
         """Prints the statistics in a tabular format."""
 
         singular_metric_rows = []
-        table = Table(title="PA LLM Metrics")
+        table = Table(title="LLM Metrics")
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
         stats = ["avg", "min", "max", "p99", "p90", "p75"]
@@ -369,6 +371,28 @@ class Statistics:
             csv_writer.writerow(single_metric_header)
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
+
+    def export_parquet(self, parquet_filename: str):
+        max_length = -1
+        col_index = 0
+        filler_list = []
+        df = pd.DataFrame()
+        # Data frames require all columns of the same length
+        # find the max length column
+        for key, value in self._metrics.data.items():
+            max_length = max(max_length, len(value))
+        # Insert None for shorter columns to match longest column
+        for key, value in self._metrics.data.items():
+            if len(value) < max_length:
+                diff = max_length - len(value)
+                filler_list = [None] * diff
+            df.insert(col_index, key, value + filler_list)
+            diff = 0
+            filler_list = []
+            col_index = col_index + 1
+        df.to_parquet(
+            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
+        )
 
 
 class ProfileDataParser:
