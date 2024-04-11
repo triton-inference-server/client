@@ -67,7 +67,8 @@ OpenAiClientBackend::AsyncInfer(
   auto raw_input = dynamic_cast<OpenAiInferInput*>(inputs[0]);
   raw_input->PrepareForRequest();
   RETURN_IF_CB_ERROR(http_client_->AsyncInfer(
-      callback, raw_input->GetRequestBody(), options.request_id_));
+      callback, raw_input->GetRequestBody(), options.request_id_,
+      *http_headers_));
   return Error::Success;
 }
 
