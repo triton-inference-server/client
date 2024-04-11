@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import Dict
+
 import pandas as pd
 import plotly.express as px
 from genai_perf.graphs.base_plot import BasePlot
@@ -36,38 +38,23 @@ class ScatterPlot(BasePlot):
     Generate a scatter plot in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics) -> None:
-        super().__init__(stats)
+    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+        super().__init__(stats, extra_data)
 
-    def create_scatter_plot(
+    def create_plot(
         self,
+        *,
         x_key: str = "",
-        scale_x: bool = False,
         y_key: str = "",
-        scale_y: bool = False,
+        x_metric: str = "",
+        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
-        preprocessed_x_data=None,
-        preprocessed_y_data=None,
     ):
-        if not preprocessed_x_data and not preprocessed_y_data:
-            if scale_x:
-                x_values = [
-                    self._scale(x, (1 / 1e9)) for x in self._metrics.data[x_key]
-                ]
-            else:
-                x_values = self._metrics.data[x_key]
-            if scale_y:
-                y_values = [
-                    self._scale(x, (1 / 1e9)) for x in self._metrics.data[y_key]
-                ]
-            else:
-                y_values = self._metrics.data[y_key]
-        else:
-            x_values = preprocessed_x_data
-            y_values = preprocessed_y_data
+        x_values = self._metrics_data[x_key]
+        y_values = self._metrics_data[y_key]
 
         df = pd.DataFrame(
             {

@@ -27,11 +27,13 @@
 
 
 import copy
+from typing import Dict
 
 import pandas as pd
 import plotly.express as px
 from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
+from genai_perf.utils import scale
 from plotly.graph_objects import Figure
 
 
@@ -40,22 +42,25 @@ class BoxPlot(BasePlot):
     Generate a box plot in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics) -> None:
-        super().__init__(stats)
+    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+        super().__init__(stats, extra_data)
 
-    def create_box_plot(
+    def create_plot(
         self,
-        y_key: str,
-        graph_title: str,
-        filename_root: str,
-        x_label: str,
+        *,
+        x_key: str = "",
+        y_key: str = "",
+        x_metric: str = "",
+        y_metric: str = "",
+        graph_title: str = "",
+        x_label: str = "",
+        y_label: str = "",
+        filename_root: str = "",
     ):
-        scaled_data = [self._scale(x, (1 / 1e9)) for x in self._metrics.data[y_key]]
-        df = pd.DataFrame(scaled_data, columns=[y_key])
-
+        df = pd.DataFrame({y_metric: self._metrics_data[y_key]})
         fig = px.box(
             df,
-            y=y_key,
+            y=y_metric,
             points="all",
             title=graph_title,
         )
@@ -66,20 +71,20 @@ class BoxPlot(BasePlot):
 
         # create a copy to avoid annotations on html file
         fig_jpeg = copy.deepcopy(fig)
-        self._add_annotations(fig_jpeg, y_key)
+        self._add_annotations(fig_jpeg, y_metric)
 
         self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
         self._generate_graph_file(fig_jpeg, filename_root + ".jpeg", graph_title)
 
-    def _add_annotations(self, fig: Figure, y_key: str) -> None:
+    def _add_annotations(self, fig: Figure, y_metric: str) -> None:
         """
         Add annotations to the non html version of the box plot
         to replace the missing hovertext
         """
-        stat_root_name = self._metrics.get_base_name(y_key)
+        stat_root_name = self._stats.metrics.get_base_name(y_metric)
 
-        val = self._scale(self._stats[f"max_{stat_root_name}"], (1 / 1e9))
+        val = scale(self._stats.data[f"max_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -88,7 +93,7 @@ class BoxPlot(BasePlot):
             yshift=10,
         )
 
-        val = self._scale(self._stats[f"p75_{stat_root_name}"], (1 / 1e9))
+        val = scale(self._stats.data[f"p75_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -97,7 +102,7 @@ class BoxPlot(BasePlot):
             yshift=10,
         )
 
-        val = self._scale(self._stats[f"p50_{stat_root_name}"], (1 / 1e9))
+        val = scale(self._stats.data[f"p50_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -106,7 +111,7 @@ class BoxPlot(BasePlot):
             yshift=10,
         )
 
-        val = self._scale(self._stats[f"p25_{stat_root_name}"], (1 / 1e9))
+        val = scale(self._stats.data[f"p25_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,
@@ -115,7 +120,7 @@ class BoxPlot(BasePlot):
             yshift=10,
         )
 
-        val = self._scale(self._stats[f"min_{stat_root_name}"], (1 / 1e9))
+        val = scale(self._stats.data[f"min_{stat_root_name}"], (1 / 1e9))
         fig.add_annotation(
             x=0.5,
             y=val,

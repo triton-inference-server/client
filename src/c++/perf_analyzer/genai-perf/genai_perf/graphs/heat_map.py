@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import Dict
+
 import pandas as pd
 import plotly.express as px
 from genai_perf.graphs.base_plot import BasePlot
@@ -36,22 +38,23 @@ class HeatMap(BasePlot):
     Generate a heat map in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics) -> None:
-        super().__init__(stats)
+    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+        super().__init__(stats, extra_data)
 
-    def create_heat_map(
+    def create_plot(
         self,
-        x_key: str,
-        y_key: str,
-        x_metric: str,
-        y_metric: str,
-        graph_title: str,
-        x_label: str,
-        y_label: str,
-        filename_root: str,
+        *,
+        x_key: str = "",
+        y_key: str = "",
+        x_metric: str = "",
+        y_metric: str = "",
+        graph_title: str = "",
+        x_label: str = "",
+        y_label: str = "",
+        filename_root: str = "",
     ):
-        x_values = self._metrics.data[x_key]
-        y_values = self._metrics.data[y_key]
+        x_values = self._metrics_data[x_key]
+        y_values = self._metrics_data[y_key]
         df = pd.DataFrame(
             {
                 x_metric: x_values,

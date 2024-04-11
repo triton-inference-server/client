@@ -58,3 +58,7 @@ def get_enum_entry(name, enum):
         if e.name.lower() == name.lower():
             return e
     return None
+
+
+def scale(value, factor):
+    return value * factor

@@ -39,13 +39,13 @@ from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
 
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(LOGGER_NAME)
+# logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
+# logger = logging.getLogger(LOGGER_NAME)
 
 
 def create_artifacts_dirs():
     if not os.path.exists("artifacts"):
-        os.mkdir("f{DEFAULT_ARTIFACT_DIR}")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
@@ -130,8 +130,8 @@ def run():
         create_artifacts_dirs()
         args, extra_args = parser.parse_args()
         tokenizer = get_tokenizer(args.tokenizer)
-        generate_inputs(args, tokenizer)
-        args.func(args, extra_args)
+        # generate_inputs(args, tokenizer)
+        # args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)
         finalize()
@@ -141,11 +141,12 @@ def run():
 
 def main():
     # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
-    try:
-        run()
-    except Exception as e:
-        logger.error(f"{e}")
-        return 1
+    # try:
+    run()
+    # except Exception as e:
+    #     # logger.error(f"{e}")
+    #     print(f"{e}")
+    #     return 1
 
     return 0
 

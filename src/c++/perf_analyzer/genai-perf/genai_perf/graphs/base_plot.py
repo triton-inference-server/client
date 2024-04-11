@@ -26,6 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from copy import deepcopy
+from typing import Dict
+
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
@@ -38,12 +41,28 @@ class BasePlot:
     Base class for plots
     """
 
-    def __init__(self, stats: Statistics) -> None:
-        self._stats = stats.data
-        self._metrics = stats.metrics
+    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+        self._stats = stats
+        self._metrics_data = deepcopy(stats.metrics.data)
+        if extra_data:
+            self._metrics_data = self._metrics_data | extra_data
 
-    def _scale(self, value, factor):
-        return value * factor
+    def create_plot(
+        self,
+        *,
+        x_key: str,
+        y_key: str,
+        x_metric: str,
+        y_metric: str,
+        graph_title: str,
+        x_label: str,
+        y_label: str,
+        filename_root: str,
+    ) -> None:
+        """
+        Create plot for specific graph type
+        """
+        raise NotImplementedError
 
     def _generate_parquet(self, dataframe: DataFrame, file: str):
         dataframe.to_parquet(
