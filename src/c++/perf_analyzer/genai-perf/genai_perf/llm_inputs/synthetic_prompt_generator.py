@@ -17,16 +17,20 @@ import io
 import math
 import pathlib
 import random
-from typing import List
+from typing import List, Union
 
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import (
+    AutoTokenizer,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 
 
 class SyntheticPromptGenerator:
     @classmethod
     def create_synthetic_prompt(
         cls,
-        tokenizer: AutoTokenizer,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
     ) -> str:

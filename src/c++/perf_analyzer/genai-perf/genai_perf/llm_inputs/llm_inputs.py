@@ -501,16 +501,13 @@ class LlmInputs:
 
     @classmethod
     def _write_json_to_file(cls, json_in_pa_format: Dict):
-        try:
-            f = open(DEFAULT_INPUT_DATA_JSON, "w")
+        with open(DEFAULT_INPUT_DATA_JSON, "w") as f:
             f.write(json.dumps(json_in_pa_format, indent=2))
-        finally:
-            f.close()
 
     @classmethod
     def _determine_json_feature_roles(
         cls, dataset_json: Dict
-    ) -> Tuple[List[str], List[str]]:
+    ) -> Tuple[List[str], List[str], List[str]]:
         SYSTEM_ROLE_LIST = ["system_prompt"]
         USER_ROLE_LIST = ["question", "article"]
         TEXT_INPUT_LIST = ["text_input"]
@@ -766,7 +763,7 @@ class LlmInputs:
         user_role_headers: List[str],
         text_input_headers: List[str],
         content: str,
-    ) -> Optional[str]:
+    ) -> str:
         new_prompt = ""
 
         if (
@@ -786,7 +783,7 @@ class LlmInputs:
         user_role_headers: List[str],
         text_input_headers: List[str],
         content: str,
-    ) -> Optional[str]:
+    ) -> str:
         new_text_input = ""
 
         if (
@@ -1000,8 +997,13 @@ class LlmInputs:
 
     @classmethod
     def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
-        if "error" in json_of_dataset.keys():
-            raise GenAIPerfException(json_of_dataset["error"])
+        try:
+            dataset_dict = json.loads(json_of_dataset)
+        except json.JSONDecodeError:
+            raise GenAIPerfException("Failed to decode JSON data")
+
+        if "error" in dataset_dict:
+            raise GenAIPerfException(dataset_dict["error"])
 
     @classmethod
     def _create_synthetic_prompt(
