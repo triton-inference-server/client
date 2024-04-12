@@ -75,8 +75,8 @@ class TestWrapper:
     @pytest.mark.parametrize(
         "arg",
         [
-            (["--endpoint", "v1/completions"]),
-            (["--endpoint", "v1/chat/completions"]),
+            (["--endpoint", "completions"]),
+            (["--endpoint", "chat"]),
         ],
     )
     def test_service_openai(self, monkeypatch, arg):

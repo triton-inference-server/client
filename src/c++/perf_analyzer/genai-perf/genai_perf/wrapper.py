@@ -71,6 +71,7 @@ class Profiler:
             "num_prompts",
             "random_seed",
             "tokenizer",
+            "port",
         ]
 
         utils.remove_file(args.profile_export_file)
@@ -104,7 +105,7 @@ class Profiler:
     def run(args=None, extra_args=None):
         cmd = Profiler.build_cmd(args, extra_args)
         logger.info(f"Running Perf Analyzer : '{cmd}'")
-        if args and args.verbose:
-            subprocess.run(cmd, shell=True, check=True, stdout=None)
-        else:
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
+        # if args and args.verbose:
+        #     subprocess.run(cmd, shell=True, check=True, stdout=None)
+        # else:
+        #     subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)

@@ -38,6 +38,8 @@ from . import __version__
 
 logger = logging.getLogger(LOGGER_NAME)
 
+_endpoint_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+
 
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
@@ -50,14 +52,26 @@ def _check_conditional_args(
             parser.error(
                 "The --endpoint option is required when using the 'openai' service-kind."
             )
-        if args.endpoint == "v1/chat/completions":
+        if args.endpoint == "chat":
             args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-        elif args.endpoint == "v1/completions":
+        elif args.endpoint == "completions":
             args.output_format = OutputFormat.OPENAI_COMPLETIONS
+        if not args.port:
+            if not args.endpoint:
+                parser.error(
+                    "The --port option should only be used when using the "
+                    "'openai' service-kind and --endpoint options."
+                )
+            else:
+                args.endpoint = _endpoint_map[args.endpoint]
+        else:
+            args.endpoint = args.port
+
     elif args.endpoint is not None:
         parser.error(
             "The --endpoint option should only be used when using the 'openai' service-kind."
         )
+
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
@@ -269,10 +283,17 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint",
         type=str,
-        choices=["v1/chat/completions", "v1/completions"],
+        choices=["chat", "completions"],
         required=False,
         help=f"The endpoint to send requests to on the "
         'server. This is only used with the "openai" service-kind. ',
+    )
+
+    endpoint_group.add_argument(
+        "--port",
+        type=str,
+        required=False,
+        help=f"Set a custom port that differs from the OpenAI defaults",
     )
 
     endpoint_group.add_argument(

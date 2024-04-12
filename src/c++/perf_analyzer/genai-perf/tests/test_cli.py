@@ -70,12 +70,34 @@ class TestCLIArguments:
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
-                ["--endpoint", "v1/completions", "--service-kind", "openai"],
+                ["--endpoint", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
             ),
             (
-                ["--endpoint", "v1/chat/completions", "--service-kind", "openai"],
+                ["--endpoint", "chat", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
+            ),
+            (
+                [
+                    "--endpoint",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--port",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint",
+                    "completions",
+                    "--service-kind",
+                    "openai",
+                    "--port",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
             ),
             (
                 ["--extra-inputs", "test_key:test_value"],
@@ -126,7 +148,7 @@ class TestCLIArguments:
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
@@ -238,11 +260,22 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/completions"],
+                ["--service-kind", "openai", "--endpoint", "completions"],
+                OutputFormat.OPENAI_COMPLETIONS,
+            ),
+            (
+                [
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "completions",
+                    "--port",
+                    "custom/address",
+                ],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
