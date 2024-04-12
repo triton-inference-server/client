@@ -16,13 +16,13 @@ import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
-from genai_perf.tokenizer import DEFAULT_TOKENIZER, AutoTokenizer
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from requests import Response
 
 
@@ -63,9 +63,9 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
 
-    EMPTY_JSON_IN_VLLM_PA_FORMAT = {"data": []}
-    EMPTY_JSON_IN_TRTLLM_PA_FORMAT = {"data": []}
-    EMPTY_JSON_IN_OPENAI_PA_FORMAT = {"data": []}
+    EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
+    EMPTY_JSON_IN_TRTLLM_PA_FORMAT: Dict = {"data": []}
+    EMPTY_JSON_IN_OPENAI_PA_FORMAT: Dict = {"data": []}
 
     dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
 
@@ -87,8 +87,8 @@ class LlmInputs:
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
         add_stream: bool = False,
-        tokenizer: AutoTokenizer = DEFAULT_TOKENIZER,
-        extra_inputs: Dict | None = None,
+        tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
+        extra_inputs: Optional[Dict] = None,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -139,28 +139,27 @@ class LlmInputs:
             Seed used to generate random values
         """
 
-        LlmInputs._check_for_valid_args(
+        cls._check_for_valid_args(
             input_type, dataset_name, starting_index, length, tokenizer
         )
 
-        dataset = None
         if input_type == PromptSource.DATASET:
-            dataset = LlmInputs._get_input_dataset_from_url(
+            dataset = cls._get_input_dataset_from_url(
                 dataset_name, starting_index, length
             )
-            generic_dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+            generic_dataset_json = cls._convert_input_url_dataset_to_generic_json(
                 dataset
             )
         elif input_type == PromptSource.SYNTHETIC:
-            dataset = LlmInputs._get_input_dataset_from_synthetic(
+            synthetic_dataset = cls._get_input_dataset_from_synthetic(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 num_of_output_prompts,
                 random_seed,
             )
-            generic_dataset_json = (
-                LlmInputs._convert_input_synthetic_dataset_to_generic_json(dataset)
+            generic_dataset_json = cls._convert_input_synthetic_dataset_to_generic_json(
+                synthetic_dataset
             )
         else:
             raise GenAIPerfException(
@@ -170,7 +169,7 @@ class LlmInputs:
         if extra_inputs is None:
             extra_inputs = {}
 
-        json_in_pa_format = LlmInputs._convert_generic_json_to_output_format(
+        json_in_pa_format = cls._convert_generic_json_to_output_format(
             output_format,
             generic_dataset_json,
             add_model_name,
@@ -180,7 +179,7 @@ class LlmInputs:
             output_tokens_stddev,
             model_name,
         )
-        LlmInputs._write_json_to_file(json_in_pa_format)
+        cls._write_json_to_file(json_in_pa_format)
 
         return json_in_pa_format
 
@@ -191,17 +190,13 @@ class LlmInputs:
         dataset_name: str,
         starting_index: int,
         length: int,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
     ) -> None:
         try:
-            LlmInputs._check_for_dataset_name_if_input_type_is_url(
-                input_type, dataset_name
-            )
-            LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
-                input_type, tokenizer
-            )
-            LlmInputs._check_for_valid_starting_index(starting_index)
-            LlmInputs._check_for_valid_length(length)
+            cls._check_for_dataset_name_if_input_type_is_url(input_type, dataset_name)
+            cls._check_for_tokenzier_if_input_type_is_synthetic(input_type, tokenizer)
+            cls._check_for_valid_starting_index(starting_index)
+            cls._check_for_valid_length(length)
 
         except Exception as e:
             raise GenAIPerfException(e)
@@ -210,26 +205,26 @@ class LlmInputs:
     def _get_input_dataset_from_url(
         cls, dataset_name: str, starting_index: int, length: int
     ) -> Response:
-        url = LlmInputs._resolve_url(dataset_name)
-        configured_url = LlmInputs._create_configured_url(url, starting_index, length)
-        dataset = LlmInputs._download_dataset(configured_url, starting_index, length)
+        url = cls._resolve_url(dataset_name)
+        configured_url = cls._create_configured_url(url, starting_index, length)
+        dataset = cls._download_dataset(configured_url)
 
         return dataset
 
     @classmethod
     def _get_input_dataset_from_synthetic(
         cls,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
         random_seed: int,
-    ) -> Dict:
-        dataset_json = {}
+    ) -> Dict[str, Any]:
+        dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for index in range(0, num_of_output_prompts):
-            synthetic_prompt = LlmInputs._create_synthetic_prompt(
+            synthetic_prompt = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
@@ -241,8 +236,8 @@ class LlmInputs:
 
     @classmethod
     def _resolve_url(cls, dataset_name: str) -> str:
-        if dataset_name in LlmInputs.dataset_url_map:
-            return LlmInputs.dataset_url_map[dataset_name]
+        if dataset_name in cls.dataset_url_map:
+            return cls.dataset_url_map[dataset_name]
         else:
             raise GenAIPerfException(
                 f"{dataset_name} does not have a corresponding URL in the dataset_url_map."
@@ -257,8 +252,8 @@ class LlmInputs:
         return configured_url
 
     @classmethod
-    def _download_dataset(cls, configured_url, starting_index, length) -> Response:
-        dataset = LlmInputs._query_server(configured_url)
+    def _download_dataset(cls, configured_url: str) -> Response:
+        dataset = cls._query_server(configured_url)
 
         return dataset
 
@@ -266,26 +261,28 @@ class LlmInputs:
     def _convert_input_url_dataset_to_generic_json(cls, dataset: Response) -> Dict:
         dataset_json = dataset.json()
         try:
-            LlmInputs._check_for_error_in_json_of_dataset(dataset_json)
+            cls._check_for_error_in_json_of_dataset(dataset_json)
         except Exception as e:
             raise GenAIPerfException(e)
 
-        generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(
-            dataset_json
-        )
+        generic_dataset_json = cls._convert_dataset_to_generic_input_json(dataset_json)
 
         return generic_dataset_json
 
     @classmethod
-    def _convert_input_synthetic_dataset_to_generic_json(cls, dataset: Dict) -> Dict:
-        generic_dataset_json = LlmInputs._convert_dataset_to_generic_input_json(dataset)
+    def _convert_input_synthetic_dataset_to_generic_json(
+        cls, dataset: Dict
+    ) -> Dict[str, List[Dict]]:
+        generic_dataset_json = cls._convert_dataset_to_generic_input_json(dataset)
 
         return generic_dataset_json
 
     @classmethod
-    def _convert_dataset_to_generic_input_json(cls, dataset_json: Dict) -> Dict:
-        generic_input_json = LlmInputs._add_features_to_generic_json({}, dataset_json)
-        generic_input_json = LlmInputs._add_rows_to_generic_json(
+    def _convert_dataset_to_generic_input_json(
+        cls, dataset_json: Dict
+    ) -> Dict[str, List[Dict]]:
+        generic_input_json = cls._add_features_to_generic_json({}, dataset_json)
+        generic_input_json = cls._add_rows_to_generic_json(
             generic_input_json, dataset_json
         )
 
@@ -305,7 +302,7 @@ class LlmInputs:
     @classmethod
     def _add_rows_to_generic_json(
         cls, generic_input_json: Dict, dataset_json: Dict
-    ) -> Dict:
+    ) -> Dict[str, List[Dict]]:
         generic_input_json["rows"] = []
         for row in dataset_json["rows"]:
             generic_input_json["rows"].append(row["row"])
@@ -325,19 +322,17 @@ class LlmInputs:
         model_name: str = "",
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
-            output_json = (
-                LlmInputs._convert_generic_json_to_openai_chat_completions_format(
-                    generic_dataset,
-                    add_model_name,
-                    add_stream,
-                    extra_inputs,
-                    output_tokens_mean,
-                    output_tokens_stddev,
-                    model_name,
-                )
+            output_json = cls._convert_generic_json_to_openai_chat_completions_format(
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                model_name,
             )
         elif output_format == OutputFormat.OPENAI_COMPLETIONS:
-            output_json = LlmInputs._convert_generic_json_to_openai_completions_format(
+            output_json = cls._convert_generic_json_to_openai_completions_format(
                 generic_dataset,
                 add_model_name,
                 add_stream,
@@ -347,7 +342,7 @@ class LlmInputs:
                 model_name,
             )
         elif output_format == OutputFormat.VLLM:
-            output_json = LlmInputs._convert_generic_json_to_vllm_format(
+            output_json = cls._convert_generic_json_to_vllm_format(
                 generic_dataset,
                 add_model_name,
                 add_stream,
@@ -357,7 +352,7 @@ class LlmInputs:
                 model_name,
             )
         elif output_format == OutputFormat.TRTLLM:
-            output_json = LlmInputs._convert_generic_json_to_trtllm_format(
+            output_json = cls._convert_generic_json_to_trtllm_format(
                 generic_dataset,
                 add_model_name,
                 add_stream,
@@ -389,8 +384,8 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             _,
-        ) = LlmInputs._determine_json_feature_roles(dataset_json)
-        pa_json = LlmInputs._populate_openai_chat_completions_output_json(
+        ) = cls._determine_json_feature_roles(dataset_json)
+        pa_json = cls._populate_openai_chat_completions_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -419,8 +414,8 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             text_input_headers,
-        ) = LlmInputs._determine_json_feature_roles(dataset_json)
-        pa_json = LlmInputs._populate_openai_completions_output_json(
+        ) = cls._determine_json_feature_roles(dataset_json)
+        pa_json = cls._populate_openai_completions_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -450,9 +445,9 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             text_input_headers,
-        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+        ) = cls._determine_json_feature_roles(dataset_json)
 
-        pa_json = LlmInputs._populate_vllm_output_json(
+        pa_json = cls._populate_vllm_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -482,9 +477,9 @@ class LlmInputs:
             system_role_headers,
             user_role_headers,
             text_input_headers,
-        ) = LlmInputs._determine_json_feature_roles(dataset_json)
+        ) = cls._determine_json_feature_roles(dataset_json)
 
-        pa_json = LlmInputs._populate_trtllm_output_json(
+        pa_json = cls._populate_trtllm_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -500,22 +495,22 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _write_json_to_file(cls, json_in_pa_format: Dict):
-        try:
-            f = open(DEFAULT_INPUT_DATA_JSON, "w")
+    def _write_json_to_file(cls, json_in_pa_format: Dict) -> None:
+        with open(DEFAULT_INPUT_DATA_JSON, "w") as f:
             f.write(json.dumps(json_in_pa_format, indent=2))
-        finally:
-            f.close()
 
     @classmethod
     def _determine_json_feature_roles(
         cls, dataset_json: Dict
-    ) -> Tuple[List[str], List[str]]:
+    ) -> Tuple[List[str], List[str], List[str]]:
         SYSTEM_ROLE_LIST = ["system_prompt"]
         USER_ROLE_LIST = ["question", "article"]
         TEXT_INPUT_LIST = ["text_input"]
 
-        system_role_headers, user_role_headers, text_input_headers = [], [], []
+        system_role_headers: List[str] = []
+        user_role_headers: List[str] = []
+        text_input_headers: List[str] = []
+
         if "features" in dataset_json.keys():
             for index, feature in enumerate(dataset_json["features"]):
                 if feature in SYSTEM_ROLE_LIST:
@@ -546,22 +541,20 @@ class LlmInputs:
         output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
-        pa_json = LlmInputs._create_empty_openai_pa_json()
+        pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"messages": []})
 
             for header, content in entry.items():
-                new_message = LlmInputs._create_new_openai_chat_completions_message(
+                new_message = cls._create_new_openai_chat_completions_message(
                     header, system_role_headers, user_role_headers, content
                 )
 
-                pa_json = LlmInputs._add_new_message_to_json(
-                    pa_json, index, new_message
-                )
+                pa_json = cls._add_new_message_to_json(pa_json, index, new_message)
 
-            pa_json = LlmInputs._add_optional_tags_to_openai_json(
+            pa_json = cls._add_optional_tags_to_openai_json(
                 pa_json,
                 index,
                 add_model_name,
@@ -588,14 +581,14 @@ class LlmInputs:
         output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
-        pa_json = LlmInputs._create_empty_openai_pa_json()
+        pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"prompt": [""]})
 
             for header, content in entry.items():
-                new_prompt = LlmInputs._create_new_prompt(
+                new_prompt = cls._create_new_prompt(
                     header,
                     system_role_headers,
                     user_role_headers,
@@ -603,9 +596,9 @@ class LlmInputs:
                     content,
                 )
 
-                pa_json = LlmInputs._add_new_prompt_to_json(pa_json, index, new_prompt)
+                pa_json = cls._add_new_prompt_to_json(pa_json, index, new_prompt)
 
-            pa_json = LlmInputs._add_optional_tags_to_openai_json(
+            pa_json = cls._add_optional_tags_to_openai_json(
                 pa_json,
                 index,
                 add_model_name,
@@ -632,13 +625,13 @@ class LlmInputs:
         output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
-        pa_json = LlmInputs._create_empty_vllm_pa_json()
+        pa_json = cls._create_empty_vllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
-                new_text_input = LlmInputs._create_new_text_input(
+                new_text_input = cls._create_new_text_input(
                     header,
                     system_role_headers,
                     user_role_headers,
@@ -646,11 +639,11 @@ class LlmInputs:
                     content,
                 )
 
-                pa_json = LlmInputs._add_new_text_input_to_json(
+                pa_json = cls._add_new_text_input_to_json(
                     pa_json, index, new_text_input
                 )
 
-            pa_json = LlmInputs._add_optional_tags_to_vllm_json(
+            pa_json = cls._add_optional_tags_to_vllm_json(
                 pa_json,
                 index,
                 add_model_name,
@@ -677,17 +670,17 @@ class LlmInputs:
         output_tokens_stddev: int,
         model_name: str = "",
     ) -> Dict:
-        pa_json = LlmInputs._create_empty_trtllm_pa_json()
+        pa_json = cls._create_empty_trtllm_pa_json()
         default_max_tokens = (
             "max_tokens" not in extra_inputs
-            or output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
+            or output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
-                new_text_input = LlmInputs._create_new_text_input(
+                new_text_input = cls._create_new_text_input(
                     header,
                     system_role_headers,
                     user_role_headers,
@@ -695,14 +688,14 @@ class LlmInputs:
                     content,
                 )
 
-                pa_json = LlmInputs._add_new_text_input_to_json(
+                pa_json = cls._add_new_text_input_to_json(
                     pa_json, index, new_text_input
                 )
 
-            pa_json = LlmInputs._add_required_tags_to_trtllm_json(
+            pa_json = cls._add_required_tags_to_trtllm_json(
                 pa_json, index, default_max_tokens
             )
-            pa_json = LlmInputs._add_optional_tags_to_trtllm_json(
+            pa_json = cls._add_optional_tags_to_trtllm_json(
                 pa_json,
                 index,
                 add_model_name,
@@ -717,19 +710,19 @@ class LlmInputs:
 
     @classmethod
     def _create_empty_openai_pa_json(cls) -> Dict:
-        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
+        empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
 
         return empty_pa_json
 
     @classmethod
     def _create_empty_vllm_pa_json(cls) -> Dict:
-        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_VLLM_PA_FORMAT)
+        empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_VLLM_PA_FORMAT)
 
         return empty_pa_json
 
     @classmethod
     def _create_empty_trtllm_pa_json(cls) -> Dict:
-        empty_pa_json = deepcopy(LlmInputs.EMPTY_JSON_IN_TRTLLM_PA_FORMAT)
+        empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_TRTLLM_PA_FORMAT)
 
         return empty_pa_json
 
@@ -768,7 +761,7 @@ class LlmInputs:
         user_role_headers: List[str],
         text_input_headers: List[str],
         content: str,
-    ) -> Optional[str]:
+    ) -> str:
         new_prompt = ""
 
         if (
@@ -788,7 +781,7 @@ class LlmInputs:
         user_role_headers: List[str],
         text_input_headers: List[str],
         content: str,
-    ) -> Optional[str]:
+    ) -> str:
         new_text_input = ""
 
         if (
@@ -854,7 +847,7 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = True
-        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
+        if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
             row["max_tokens"] = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
@@ -881,7 +874,7 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
+        if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
             number_of_tokens = str(
                 int(max(0, random.gauss(output_tokens_mean, output_tokens_stddev)))
             )
@@ -915,7 +908,7 @@ class LlmInputs:
             row["model"] = model_name
         if add_stream:
             row["stream"] = [True]
-        if output_tokens_mean != LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
+        if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
             number_of_tokens = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
@@ -935,7 +928,7 @@ class LlmInputs:
     ) -> Dict:
         row = pa_json["data"][index]
         if default_max_tokens:
-            row["max_tokens"] = [LlmInputs.DEFAULT_TRTLLM_MAX_TOKENS]
+            row["max_tokens"] = [cls.DEFAULT_TRTLLM_MAX_TOKENS]
 
         return pa_json
 
@@ -950,7 +943,9 @@ class LlmInputs:
 
     @classmethod
     def _check_for_tokenzier_if_input_type_is_synthetic(
-        cls, input_type: PromptSource, tokenizer: AutoTokenizer
+        cls,
+        input_type: PromptSource,
+        tokenizer: Tokenizer,
     ) -> None:
         if input_type == PromptSource.SYNTHETIC and not tokenizer:
             raise GenAIPerfException(
@@ -964,9 +959,9 @@ class LlmInputs:
                 f"starting_index: {starting_index} must be an integer."
             )
 
-        if starting_index < LlmInputs.MINIMUM_STARTING_INDEX:
+        if starting_index < cls.MINIMUM_STARTING_INDEX:
             raise GenAIPerfException(
-                f"starting_index: {starting_index} must be larger than {LlmInputs.MINIMUM_STARTING_INDEX}."
+                f"starting_index: {starting_index} must be larger than {cls.MINIMUM_STARTING_INDEX}."
             )
 
     @classmethod
@@ -974,9 +969,9 @@ class LlmInputs:
         if not isinstance(length, int):
             raise GenAIPerfException(f"length: {length} must be an integer.")
 
-        if length < LlmInputs.MINIMUM_LENGTH:
+        if length < cls.MINIMUM_LENGTH:
             raise GenAIPerfException(
-                f"starting_index: {length} must be larger than {LlmInputs.MINIMUM_LENGTH}."
+                f"starting_index: {length} must be larger than {cls.MINIMUM_LENGTH}."
             )
 
     @classmethod
@@ -984,7 +979,7 @@ class LlmInputs:
         try:
             response = requests.get(configured_url)
         except Exception as e:
-            error_message = LlmInputs._create_error_message(e)
+            error_message = cls._create_error_message(e)
             raise GenAIPerfException(error_message)
 
         return response
@@ -999,14 +994,14 @@ class LlmInputs:
         return error_message
 
     @classmethod
-    def _check_for_error_in_json_of_dataset(cls, json_of_dataset: str) -> None:
-        if "error" in json_of_dataset.keys():
-            raise GenAIPerfException(json_of_dataset["error"])
+    def _check_for_error_in_json_of_dataset(cls, dataset_json: Dict) -> None:
+        if "error" in dataset_json:
+            raise GenAIPerfException(dataset_json["error"])
 
     @classmethod
     def _create_synthetic_prompt(
         cls,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         random_seed: int,
