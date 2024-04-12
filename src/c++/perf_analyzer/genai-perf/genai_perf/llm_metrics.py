@@ -30,8 +30,8 @@ import contextlib
 import csv
 import io
 import json
-import typing
 from itertools import pairwise
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -82,8 +82,8 @@ class Metrics:
 
     def __init__(
         self,
-        request_throughputs: typing.List[float] = [],
-        request_latencies: typing.List[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
     ) -> None:
         self.request_throughputs = request_throughputs
         self.request_latencies = request_latencies
@@ -117,14 +117,14 @@ class LLMMetrics(Metrics):
 
     def __init__(
         self,
-        request_throughputs: typing.List[float] = [],
-        request_latencies: typing.List[int] = [],
-        time_to_first_tokens: typing.List[int] = [],
-        inter_token_latencies: typing.List[list[int]] = [[]],
-        output_token_throughputs: typing.List[float] = [],
-        output_token_throughputs_per_request: typing.List[int] = [],
-        num_output_tokens: typing.List[int] = [],
-        num_input_tokens: typing.List[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
+        time_to_first_tokens: List[int] = [],
+        inter_token_latencies: List[list[int]] = [[]],
+        output_token_throughputs: List[float] = [],
+        output_token_throughputs_per_request: List[int] = [],
+        num_output_tokens: List[int] = [],
+        num_input_tokens: List[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
