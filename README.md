@@ -665,11 +665,9 @@ should be marked as the start of the sequence and the last inference
 requests should be marked as the end of the sequence.
 
 The use of sequence ID and start and end flags are demonstrated in the
-C++ example applications simple_http_sequence_stream_infer_client.cc
-and simple_grpc_sequence_stream_infer_client.cc.  The use of sequence
-ID and start and end flags are demonstrated in the Python example
-application simple_http_sequence_stream_infer_client.py and
-simple_grpc_sequence_stream_infer_client.py.
+C++ example applications simple_grpc_sequence_stream_infer_client.cc.
+The use of sequence ID and start and end flags are demonstrated in the
+Python example application simple_grpc_sequence_stream_infer_client.py.
 
 ## Image Classification Example
 
