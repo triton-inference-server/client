@@ -63,12 +63,12 @@ class BasePlot:
         """
         raise NotImplementedError
 
-    def _generate_parquet(self, dataframe: DataFrame, file: str):
+    def _generate_parquet(self, dataframe: DataFrame, file: str) -> None:
         dataframe.to_parquet(
             f"{DEFAULT_ARTIFACT_DIR}/data/{file}.gzip", compression="gzip"
         )
 
-    def _generate_graph_file(self, fig: Figure, file: str, title: str):
+    def _generate_graph_file(self, fig: Figure, file: str, title: str) -> None:
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
             fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/images/{file}")

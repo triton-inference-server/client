@@ -72,3 +72,13 @@ repos:
   - id: mixed-line-ending
   - id: requirements-txt-fixer
   - id: trailing-whitespace
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.9.0
+  hooks:
+  - id: mypy
+    types_or: [python, cython]
+    additional_dependencies: [tokenize-rt==3.2.0, types-requests]
+    exclude: >-
+      (?x)
+      ^(?!(src/c\+\+/perf_analyzer/genai-perf/)).*\.py$

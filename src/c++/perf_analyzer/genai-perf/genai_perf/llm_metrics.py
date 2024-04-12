@@ -29,12 +29,13 @@
 import csv
 import json
 from itertools import pairwise
+from typing import List
 
 import numpy as np
 import pandas as pd
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
@@ -73,8 +74,8 @@ class Metrics:
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
     ) -> None:
         self.request_throughputs = request_throughputs
         self.request_latencies = request_latencies
@@ -108,14 +109,14 @@ class LLMMetrics(Metrics):
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
-        time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[list[int]] = [[]],
-        output_token_throughputs: list[float] = [],
-        output_token_throughputs_per_request: list[int] = [],
-        num_output_tokens: list[int] = [],
-        num_input_tokens: list[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
+        time_to_first_tokens: List[int] = [],
+        inter_token_latencies: List[list[int]] = [[]],
+        output_token_throughputs: List[float] = [],
+        output_token_throughputs_per_request: List[int] = [],
+        num_output_tokens: List[int] = [],
+        num_input_tokens: List[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -176,11 +177,11 @@ class Statistics:
             new_data = data
         return new_data
 
-    def _calculate_mean(self, data: list[int | float], attr: str):
+    def _calculate_mean(self, data: list[int | float], attr: str) -> None:
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int | float], attr: str):
+    def _calculate_percentiles(self, data: list[int | float], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -190,16 +191,16 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int | float], attr: str):
+    def _calculate_minmax(self, data: list[int | float], attr: str) -> None:
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int | float], attr: str):
+    def _calculate_std(self, data: list[int | float], attr: str) -> None:
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attr_strs = []
         for k, v in self.__dict__.items():
             if not k.startswith("_"):
@@ -216,13 +217,13 @@ class Statistics:
         """Return the underlying metrics used to calculate the statistics."""
         return self._metrics
 
-    def _is_throughput_field(self, field: str):
+    def _is_throughput_field(self, field: str) -> bool:
         return field in Metrics.throughput_fields
 
-    def _is_time_field(self, field: str):
+    def _is_time_field(self, field: str) -> bool:
         return field in Metrics.time_fields
 
-    def pretty_print(self):
+    def pretty_print(self) -> None:
         """Prints the statistics in a tabular format."""
 
         singular_metric_rows = []
@@ -287,7 +288,7 @@ class Statistics:
         for row in singular_metric_rows:
             print(row)
 
-    def export_to_csv(self, csv_filename: str):
+    def export_to_csv(self, csv_filename: str) -> None:
         """Exports the statistics to a CSV file."""
 
         multiple_metric_header = [
@@ -372,7 +373,7 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
-    def export_parquet(self, parquet_filename: str):
+    def export_parquet(self, parquet_filename: str) -> None:
         max_length = -1
         col_index = 0
         filler_list = []
@@ -460,13 +461,15 @@ class LLMProfileDataParser(ProfileDataParser):
         filename: str,
         service_kind: str,
         output_format: OutputFormat,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
     ) -> None:
         self._tokenizer = tokenizer
-        # disable add_bos_token so that llama tokenizer does not add bos token
+        # Disable add_bos_token so that llama tokenizer does not add bos token
         # (aka. beginning-of-sentence) to the beginning of every response
         # outputs, increasing the token count by 1 for each output response.
-        self._tokenizer.add_bos_token = False
+        # Note: The type is being ignored here, because not all tokenizers have
+        # an add_bos_token variable.
+        self._tokenizer.add_bos_token = False  # type: ignore
         self._service_kind = service_kind
         self._output_format = output_format
         super().__init__(filename)
@@ -566,7 +569,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 res_timestamps.pop()
                 res_outputs.pop()
 
-    def _tokenize_request_inputs(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_request_inputs(self, req_inputs: dict) -> list[int]:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_request_input(req_inputs)
@@ -575,11 +578,12 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the Triton request input texts."""
-        return self._tokenizer(req_inputs["text_input"])["input_ids"]
+        encodings = self._tokenizer(req_inputs["text_input"])
+        return encodings.data["input_ids"]
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._output_format == _OPENAI_CHAT_COMPLETIONS:
@@ -590,7 +594,8 @@ class LLMProfileDataParser(ProfileDataParser):
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
             )
-        return self._tokenizer(input_text)["input_ids"]
+        encodings = self._tokenizer(input_text)
+        return encodings.data["input_ids"]
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
         """Deserialize the response output and return tokenized outputs."""
@@ -622,7 +627,8 @@ class LLMProfileDataParser(ProfileDataParser):
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
         output_texts = ["!" + txt for txt in output_texts]
-        return [out[1:] for out in self._tokenizer(output_texts)["input_ids"]]
+        encodings = self._tokenizer(output_texts)
+        return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
