@@ -42,12 +42,6 @@ from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 
-# Silence tokenizer warning on import
-with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
-    io.StringIO()
-) as stderr:
-    from transformers.tokenization_utils_base import BatchEncoding
-
 _OPENAI_CHAT_COMPLETIONS = OutputFormat.OPENAI_CHAT_COMPLETIONS
 _OPENAI_COMPLETIONS = OutputFormat.OPENAI_COMPLETIONS
 
@@ -577,7 +571,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 res_timestamps.pop()
                 res_outputs.pop()
 
-    def _tokenize_request_inputs(self, req_inputs: dict) -> BatchEncoding:
+    def _tokenize_request_inputs(self, req_inputs: dict) -> list[int]:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_request_input(req_inputs)
@@ -586,12 +580,12 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> BatchEncoding:
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the Triton request input texts."""
         encodings = self._tokenizer(req_inputs["text_input"])
         return encodings.data["input_ids"]
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> BatchEncoding:
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._output_format == _OPENAI_CHAT_COMPLETIONS:

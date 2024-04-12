@@ -507,7 +507,7 @@ class LlmInputs:
         USER_ROLE_LIST = ["question", "article"]
         TEXT_INPUT_LIST = ["text_input"]
 
-        system_role_headers: str = []
+        system_role_headers: List[str] = []
         user_role_headers: List[str] = []
         text_input_headers: List[str] = []
 
@@ -518,7 +518,7 @@ class LlmInputs:
                 if feature in USER_ROLE_LIST:
                     user_role_headers.append(feature)
                 if feature in TEXT_INPUT_LIST:
-                    user_role_headers.append(feature)
+                    text_input_headers.append(feature)
 
         assert (
             system_role_headers is not None

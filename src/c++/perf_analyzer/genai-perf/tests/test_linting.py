@@ -30,4 +30,4 @@ import subprocess
 def test_type_checking():
     result = subprocess.run(["bash", "tests/L0_type_checking/test.sh"])
 
-    assert result.returncode == 0, "Type checking failed"
+    assert result.returncode == 0, f"Linting failures found. Test failed. "

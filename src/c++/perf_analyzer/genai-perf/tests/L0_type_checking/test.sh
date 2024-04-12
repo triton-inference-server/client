@@ -14,5 +14,7 @@
 # limitations under the License.
 
 mypy --config-file ./tests/L0_type_checking/mypi.ini
+MYPY_EXIT_CODE=$?
 rm -rf .mypy_cache
-exit $?
+
+exit $MYPY_EXIT_CODE

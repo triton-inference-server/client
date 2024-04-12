@@ -46,10 +46,12 @@ maintainers = []
 keywords = []
 requires-python = ">=3.8,<4"
 dependencies = [
+  "mypy",
   "numpy",
   "pytest",
   "rich",
   "transformers",
+  "types-requests",
   "plotly",
   "pandas",
   "kaleido",
