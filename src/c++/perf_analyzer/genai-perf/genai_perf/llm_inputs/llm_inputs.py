@@ -518,7 +518,7 @@ class LlmInputs:
                 if feature in USER_ROLE_LIST:
                     user_role_headers.append(feature)
                 if feature in TEXT_INPUT_LIST:
-                    text_input_headers.append(feature)
+                    user_role_headers.append(feature)
 
         assert (
             system_role_headers is not None
