@@ -91,6 +91,17 @@ class TestCLIArguments:
             (
                 [
                     "--endpoint",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--port",
+                    "   /custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint",
                     "completions",
                     "--service-kind",
                     "openai",
@@ -238,6 +249,18 @@ class TestCLIArguments:
         [
             (
                 ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
+                "The --endpoint option is required when using the 'openai' service-kind.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--port",
+                    "custom/address",
+                ],
                 "The --endpoint option is required when using the 'openai' service-kind.",
             ),
             (

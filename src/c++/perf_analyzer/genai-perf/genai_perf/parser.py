@@ -52,21 +52,15 @@ def _check_conditional_args(
             parser.error(
                 "The --endpoint option is required when using the 'openai' service-kind."
             )
-        if args.endpoint == "chat":
-            args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-        elif args.endpoint == "completions":
-            args.output_format = OutputFormat.OPENAI_COMPLETIONS
-        if not args.port:
-            if not args.endpoint:
-                parser.error(
-                    "The --port option should only be used when using the "
-                    "'openai' service-kind and --endpoint options."
-                )
+        else:
+            if args.endpoint == "chat":
+                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+            elif args.endpoint == "completions":
+                args.output_format = OutputFormat.OPENAI_COMPLETIONS
+            if args.port:
+                args.endpoint = args.port.lstrip(" /")
             else:
                 args.endpoint = _endpoint_map[args.endpoint]
-        else:
-            args.endpoint = args.port
-
     elif args.endpoint is not None:
         parser.error(
             "The --endpoint option should only be used when using the 'openai' service-kind."
