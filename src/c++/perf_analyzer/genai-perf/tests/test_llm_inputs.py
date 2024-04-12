@@ -20,6 +20,7 @@ from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.tokenizer import Tokenizer
 
 
 class TestLlmInputs:
@@ -61,7 +62,7 @@ class TestLlmInputs:
         """
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_tokenzier_if_input_type_is_synthetic(
-                input_type=PromptSource.SYNTHETIC, tokenizer=None
+                input_type=PromptSource.SYNTHETIC, tokenizer=None  # type: ignore
             )
 
     def test_illegal_starting_index(self):
@@ -69,7 +70,7 @@ class TestLlmInputs:
         Test for exceptions when illegal values are given for starting index
         """
         with pytest.raises(GenAIPerfException):
-            _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")
+            _ = LlmInputs._check_for_valid_starting_index(starting_index="foo")  # type: ignore
 
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_starting_index(starting_index=-1)
@@ -79,7 +80,7 @@ class TestLlmInputs:
         Test for exceptions when illegal values are given for length
         """
         with pytest.raises(GenAIPerfException):
-            _ = LlmInputs._check_for_valid_length(length="foo")
+            _ = LlmInputs._check_for_valid_length(length="foo")  # type: ignore
 
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._check_for_valid_length(length=0)
@@ -108,8 +109,6 @@ class TestLlmInputs:
         with pytest.raises(GenAIPerfException):
             _ = LlmInputs._download_dataset(
                 "https://bad-url.zzz",
-                LlmInputs.DEFAULT_STARTING_INDEX,
-                LlmInputs.DEFAULT_LENGTH,
             )
 
     def test_llm_inputs_error_in_server_response(self):
@@ -131,8 +130,6 @@ class TestLlmInputs:
         """
         dataset = LlmInputs._download_dataset(
             default_configured_url,
-            LlmInputs.DEFAULT_STARTING_INDEX,
-            LlmInputs.DEFAULT_LENGTH,
         )
         dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
             dataset=dataset
@@ -152,8 +149,6 @@ class TestLlmInputs:
         )
         dataset = LlmInputs._download_dataset(
             configured_url,
-            LlmInputs.DEFAULT_STARTING_INDEX,
-            length=(int(LlmInputs.DEFAULT_LENGTH / 2)),
         )
         dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
             dataset=dataset
@@ -168,8 +163,6 @@ class TestLlmInputs:
         """
         dataset = LlmInputs._download_dataset(
             default_configured_url,
-            LlmInputs.DEFAULT_STARTING_INDEX,
-            LlmInputs.DEFAULT_LENGTH,
         )
         dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
             dataset=dataset
@@ -215,10 +208,9 @@ class TestLlmInputs:
             add_stream=True,
         )
         try:
-            f = open(DEFAULT_INPUT_DATA_JSON, "r")
-            json_str = f.read()
+            with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
+                json_str = f.read()
         finally:
-            f.close()
             os.remove(DEFAULT_INPUT_DATA_JSON)
 
         assert pa_json == json.loads(json_str)
@@ -376,7 +368,9 @@ class TestLlmInputs:
     @pytest.mark.parametrize(
         "output_format", [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_FORMATS]
     )
-    def test_extra_inputs(self, default_tokenizer, output_format) -> None:
+    def test_extra_inputs(
+        self, default_tokenizer: Tokenizer, output_format: OutputFormat
+    ) -> None:
         input_name = "max_tokens"
         input_value = 5
         request_inputs = {input_name: input_value}
@@ -418,7 +412,7 @@ class TestLlmInputs:
         else:
             assert False, f"Unsupported output format: {output_format}"
 
-    def test_trtllm_default_max_tokens(self, default_tokenizer) -> None:
+    def test_trtllm_default_max_tokens(self, default_tokenizer: Tokenizer) -> None:
         input_name = "max_tokens"
         input_value = 256
 

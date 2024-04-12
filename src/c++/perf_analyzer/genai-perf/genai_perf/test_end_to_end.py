@@ -39,7 +39,7 @@ else:
 base_command = base_commands[testname]
 
 
-def rename_files(files: list, substr: str):
+def rename_files(files: list, substr: str) -> None:
     for f in files:
         name, ext = f.rsplit(".", 1)
         # Insert the substring and reassemble the filename

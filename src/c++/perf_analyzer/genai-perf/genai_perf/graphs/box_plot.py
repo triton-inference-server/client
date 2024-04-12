@@ -55,7 +55,7 @@ class BoxPlot(BasePlot):
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
-    ):
+    ) -> None:
         df = pd.DataFrame({y_metric: self._metrics_data[y_key]})
         fig = px.box(
             df,

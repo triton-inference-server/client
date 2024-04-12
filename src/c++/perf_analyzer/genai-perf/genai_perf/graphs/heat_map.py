@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 import plotly.express as px
@@ -38,7 +38,7 @@ class HeatMap(BasePlot):
     Generate a heat map in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
+    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
         super().__init__(stats, extra_data)
 
     def create_plot(
@@ -51,7 +51,7 @@ class HeatMap(BasePlot):
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
-    ):
+    ) -> None:
         x_values = self._metrics_data[x_key]
         y_values = self._metrics_data[y_key]
         df = pd.DataFrame(
