@@ -173,7 +173,6 @@ class HTTPTraceTest : public ::testing::Test {
     std::string response;
 
     std::map<std::string, std::vector<std::string>> clear_settings = {
-        {"trace_file", {}},
         {"trace_level", {}},
         {"trace_rate", {}},
         {"trace_count", {}},
@@ -247,7 +246,6 @@ class GRPCTraceTest : public ::testing::Test {
     inference::TraceSettingResponse response;
 
     std::map<std::string, std::vector<std::string>> clear_settings = {
-        {"trace_file", {}},
         {"trace_level", {}},
         {"trace_rate", {}},
         {"trace_count", {}},
@@ -1363,27 +1361,35 @@ TEST_F(HTTPTraceTest, HTTPUpdateTraceSettings)
 
   std::string expected_first_model_settings =
       "{\"trace_level\":[\"TIMESTAMPS\"],\"trace_rate\":\"1\",\"trace_count\":"
-      "\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"model.log\",\"trace_"
+      "\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"global_unittest.log\","
+      "\"trace_"
       "mode\":\"triton\"}";
   std::string expected_second_model_settings =
       "{\"trace_level\":[\"TIMESTAMPS\",\"TENSORS\"],\"trace_rate\":\"1\","
-      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"model."
+      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"global_"
+      "unittest."
       "log\",\"trace_mode\":\"triton\"}";
   std::string expected_global_settings =
       "{\"trace_level\":[\"TIMESTAMPS\",\"TENSORS\"],\"trace_rate\":\"1\","
-      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"another."
+      "\"trace_count\":\"-1\",\"log_frequency\":\"0\",\"trace_file\":\"global_"
+      "unittest."
       "log\",\"trace_mode\":\"triton\"}";
 
   std::map<std::string, std::vector<std::string>> model_update_settings = {
       {"trace_file", {"model.log"}}};
   std::map<std::string, std::vector<std::string>> global_update_settings = {
-      {"trace_file", {"another.log"}},
       {"trace_level", {"TIMESTAMPS", "TENSORS"}}};
 
   err = this->client_->UpdateTraceSettings(
       &trace_settings, this->model_name_, model_update_settings);
-  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
-                          << err.Message();
+  ASSERT_FALSE(err.IsOk()) << "update disabled settings: trace_file";
+  ASSERT_TRUE(
+      err.Message() ==
+      "trace file location can not be updated through network protocol")
+      << "error: Unexpected error message: " << err.Message();
+
+  err = this->client_->GetTraceSettings(&trace_settings, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
   ASSERT_EQ(trace_settings, expected_first_model_settings)
       << "error: Unexpected updated model trace settings" << std::endl;
   // Note that 'trace_level' may be mismatch due to the order of the levels
@@ -1490,20 +1496,21 @@ TEST_F(GRPCTraceTest, GRPCUpdateTraceSettings)
   std::string expected_first_model_settings =
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
-      "\"model.log\"}}settings{key:\"trace_level\"value{value:\"TIMESTAMPS\"}}"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"TIMESTAMPS\"}}"
       "settings{key:\"trace_mode\"value{value:\"triton\"}}"
       "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::string expected_second_model_settings =
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
-      "\"model.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
       "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_mode\"value{value:"
       "\"triton\"}}"
       "settings{key:\"trace_rate\"value{value:\"1\"}}";
   std::string expected_global_settings =
       "settings{key:\"log_frequency\"value{value:\"0\"}}settings{key:\"trace_"
       "count\"value{value:\"-1\"}}settings{key:\"trace_file\"value{value:"
-      "\"another.log\"}}settings{key:\"trace_level\"value{value:"
+      "\"global_unittest.log\"}}settings{key:\"trace_level\"value{value:"
       "\"TIMESTAMPS\"value:\"TENSORS\"}}settings{key:\"trace_mode\"value{value:"
       "\"triton\"}}"
       "settings{key:\"trace_rate\"value{value:\"1\"}}";
@@ -1511,14 +1518,19 @@ TEST_F(GRPCTraceTest, GRPCUpdateTraceSettings)
   std::map<std::string, std::vector<std::string>> model_update_settings = {
       {"trace_file", {"model.log"}}};
   std::map<std::string, std::vector<std::string>> global_update_settings = {
-      {"trace_file", {"another.log"}},
       {"trace_level", {"TIMESTAMPS", "TENSORS"}}};
 
 
   err = this->client_->UpdateTraceSettings(
       &response, this->model_name_, model_update_settings);
-  ASSERT_TRUE(err.IsOk()) << "unable to update trace settings: "
-                          << err.Message();
+  ASSERT_FALSE(err.IsOk()) << "update disabled settings: trace_file";
+  ASSERT_TRUE(
+      err.Message() ==
+      "trace file location can not be updated through network protocol")
+      << "error: Unexpected error message: " << err.Message();
+
+  err = this->client_->GetTraceSettings(&response, this->model_name_);
+  ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
   EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
   ASSERT_EQ(trace_settings, expected_first_model_settings)
       << "error: Unexpected updated model trace settings" << std::endl;
@@ -1534,7 +1546,7 @@ TEST_F(GRPCTraceTest, GRPCUpdateTraceSettings)
   ASSERT_EQ(trace_settings, expected_global_settings)
       << "error: Unexpected updated global trace settings" << std::endl;
 
-  err = client_->GetTraceSettings(&response, this->model_name_);
+  err = this->client_->GetTraceSettings(&response, this->model_name_);
   ASSERT_TRUE(err.IsOk()) << "unable to get trace settings: " << err.Message();
   EXPECT_NO_FATAL_FAILURE(ConvertResponse(response, &trace_settings));
   ASSERT_EQ(trace_settings, expected_second_model_settings)
