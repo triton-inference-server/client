@@ -101,7 +101,7 @@ genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend vllm
 https://platform.openai.com/docs/api-reference/chat
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/chat/completions
+genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint chat
 ```
 
 ## OpenAI Completions Compatible APIs
@@ -109,7 +109,7 @@ genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/cha
 https://platform.openai.com/docs/api-reference/completions
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint v1/completions
+genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint completions
 ```
 
 > [!Note]
@@ -272,10 +272,15 @@ such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply mul
 
 
 
-##### `--endpoint {v1/completions,v1/chat/completions}`
+##### `--endpoint {completions,chat}`
 
 Describes what endpoint to send requests to on the server. This is required when
 using `openai` service-kind. This is ignored in other cases.
+
+##### `--port <str>`
+
+Set a custom port that differs from the OpenAI defaults. This is ignored when
+not using the `openai` service-kind.
 
 ##### `-u <url>`
 ##### `--url <url>`
