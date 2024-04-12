@@ -1518,7 +1518,7 @@ InferenceProfiler::DetermineStatsModelVersion(
   }
 
   if (*status_model_version == -1 &&
-      (parser_ == nullptr || !parser_->TopLevelRequestCachingEnabled())) {
+      (parser_ == nullptr || !parser_->TopLevelResponseCachingEnabled())) {
     return cb::Error(
         "failed to find the requested model version", pa::GENERIC_ERROR);
   }
@@ -1536,17 +1536,16 @@ InferenceProfiler::DetermineStatsModelVersion(
 
 // Only for unit-testing
 #ifndef DOCTEST_CONFIG_DISABLE
-void
-InferenceProfiler::SetTopLevelRequestCaching(
-    bool enable_top_level_request_caching)
+cb::Error
+InferenceProfiler::SetTopLevelResponseCaching(
+    bool enable_top_level_response_caching)
 {
-  // parser_ = std::make_shared<MockModelParser>();
-  parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
-  if (parser_ == nullptr) {
-    std::cout << "NULL Pointer" << std::endl;
-  } else {
-    parser_->SetTopLevelRequestCaching(enable_top_level_request_caching);
-  }
+    parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
+    if(parser_ == nullptr) {
+      return cb::Error("Null Pointer Exception");
+    }
+    parser_->SetTopLevelResponseCaching(enable_top_level_response_caching);
+    return cb::Error::Success;
 }
 #endif
 
@@ -1589,6 +1588,26 @@ InferenceProfiler::SummarizeServerStats(
   return cb::Error::Success;
 }
 
+void 
+InferenceProfiler::ResetServerStats(ServerSideStats* server_stats) {
+  server_stats->inference_count = 0;
+  server_stats->execution_count = 0;
+  server_stats->success_count = 0;
+  server_stats->queue_count = 0;
+  server_stats->compute_input_count = 0;
+  server_stats->compute_infer_count = 0;
+  server_stats->compute_output_count = 0;
+  server_stats->cumm_time_ns = 0;
+  server_stats->queue_time_ns = 0;
+  server_stats->compute_input_time_ns = 0;
+  server_stats->compute_infer_time_ns = 0;
+  server_stats->compute_output_time_ns = 0;
+  server_stats->cache_hit_count = 0;
+  server_stats->cache_hit_time_ns = 0;
+  server_stats->cache_miss_count = 0;
+  server_stats->cache_miss_time_ns = 0;
+}
+
 cb::Error
 InferenceProfiler::SummarizeServerStatsHelper(
     const cb::ModelIdentifier& model_identifier,
@@ -1605,26 +1624,13 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    if (parser_ == nullptr || !parser_->TopLevelRequestCachingEnabled()) {
+    if (parser_ == nullptr || !parser_->TopLevelResponseCachingEnabled()) {
       return cb::Error(
           "missing statistics for requested model", pa::GENERIC_ERROR);
     } else {
-      server_stats->inference_count = 0;
-      server_stats->execution_count = 0;
-      server_stats->success_count = 0;
-      server_stats->queue_count = 0;
-      server_stats->compute_input_count = 0;
-      server_stats->compute_infer_count = 0;
-      server_stats->compute_output_count = 0;
-      server_stats->cumm_time_ns = 0;
-      server_stats->queue_time_ns = 0;
-      server_stats->compute_input_time_ns = 0;
-      server_stats->compute_infer_time_ns = 0;
-      server_stats->compute_output_time_ns = 0;
-      server_stats->cache_hit_count = 0;
-      server_stats->cache_hit_time_ns = 0;
-      server_stats->cache_miss_count = 0;
-      server_stats->cache_miss_time_ns = 0;
+      //function to set composing model stats as 0 in case of top-level ensemble request cache hit
+      //since the composing model will not be executed.
+      ResetServerStats(server_stats);
     }
   } else {
     uint64_t start_infer_cnt = 0;

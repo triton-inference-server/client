@@ -531,14 +531,20 @@ class InferenceProfiler {
   ///  measurement
   /// \param end_stats The stats for all models at the end of the measurement
   /// \param model_version The determined model version
+
   cb::Error DetermineStatsModelVersion(
       const cb::ModelIdentifier& model_identifier,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
 
+  //This function sets composing model server stats to 0 in case of a cache hit
+  //when top level response cache is enabled, since composing models are not executed
+  //and do not have any stats
+  void ResetServerStats(ServerSideStats* server_stats);
+
 #ifndef DOCTEST_CONFIG_DISABLE
-  void SetTopLevelRequestCaching(bool enable_top_level_request_caching);
+  cb::Error SetTopLevelResponseCaching(bool enable_top_level_request_caching);
 #endif
 
   /// \param start_status The model status at the start of the measurement.

@@ -75,7 +75,7 @@ class ModelParser {
         composing_models_map_(std::make_shared<ComposingModelMap>()),
         scheduler_type_(NONE), max_batch_size_(0), is_decoupled_(false),
         response_cache_enabled_(false),
-        top_level_request_caching_enabled_(false)
+        top_level_response_caching_enabled_(false)
   {
   }
 
@@ -157,16 +157,16 @@ class ModelParser {
   /// \return the truth value of whether top level request caching is enabled
   /// for this model
 
-  bool TopLevelRequestCachingEnabled() const
+  bool TopLevelResponseCachingEnabled() const
   {
-    return top_level_request_caching_enabled_;
+    return top_level_response_caching_enabled_;
   }
 
 /// Only for testing
 #ifndef DOCTEST_CONFIG_DISABLE
-  void SetTopLevelRequestCaching(bool enable_top_level_request_caching)
+  void SetTopLevelResponseCaching(bool enable_top_level_response_caching)
   {
-    top_level_request_caching_enabled_ = enable_top_level_request_caching;
+    top_level_response_caching_enabled_ = enable_top_level_response_caching;
   }
 #endif
 
@@ -240,7 +240,7 @@ class ModelParser {
   std::string model_signature_name_;
   size_t max_batch_size_;
   bool response_cache_enabled_;
-  bool top_level_request_caching_enabled_ = false;
+  bool top_level_response_caching_enabled_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestModelParser;

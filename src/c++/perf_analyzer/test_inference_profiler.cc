@@ -161,10 +161,10 @@ class TestInferenceProfiler : public InferenceProfiler {
         model_identifier, start_stats, end_stats, model_version);
   }
 
-  void SetTopLevelRequestCaching(bool enable_top_level_request_caching)
+  cb::Error SetTopLevelResponseCaching(bool enable_top_level_response_caching)
   {
-    InferenceProfiler::SetTopLevelRequestCaching(
-        enable_top_level_request_caching);
+    return InferenceProfiler::SetTopLevelResponseCaching(
+        enable_top_level_response_caching);
   }
 };
 
@@ -862,7 +862,8 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
     model_identifier = {"ModelA", "-1"};
     start_stats_map.insert({{"ModelA", "3"}, old_stats});
     end_stats_map.insert({{"ModelA", "3"}, new_stats});
-    tip.SetTopLevelRequestCaching(true);
+    cb::Error status = tip.SetTopLevelResponseCaching(true);
+    CHECK(status.IsOk());
     expected_model_version = -1;
   }
 
@@ -870,7 +871,8 @@ TEST_CASE("determine_stats_model_version: testing DetermineStatsModelVersion()")
   {
     model_identifier = {"ModelA", "-1"};
     end_stats_map.insert({{"ModelA", "3"}, old_stats});
-    tip.SetTopLevelRequestCaching(false);
+    cb::Error status = tip.SetTopLevelResponseCaching(false);
+    CHECK(status.IsOk());
     expected_model_version = -1;
     expect_exception = true;
   }
