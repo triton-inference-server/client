@@ -538,9 +538,9 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
 
-  //This function sets composing model server stats to 0 in case of a cache hit
-  //when top level response cache is enabled, since composing models are not executed
-  //and do not have any stats
+  // This function sets composing model server stats to 0 in case of a cache hit
+  // when top level response cache is enabled, since composing models are not
+  // executed and do not have any stats
   void ResetServerStats(ServerSideStats* server_stats);
 
 #ifndef DOCTEST_CONFIG_DISABLE

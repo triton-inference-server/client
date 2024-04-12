@@ -1540,12 +1540,12 @@ cb::Error
 InferenceProfiler::SetTopLevelResponseCaching(
     bool enable_top_level_response_caching)
 {
-    parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
-    if(parser_ == nullptr) {
-      return cb::Error("Null Pointer Exception");
-    }
-    parser_->SetTopLevelResponseCaching(enable_top_level_response_caching);
-    return cb::Error::Success;
+  parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
+  if (parser_ == nullptr) {
+    return cb::Error("Null Pointer Exception");
+  }
+  parser_->SetTopLevelResponseCaching(enable_top_level_response_caching);
+  return cb::Error::Success;
 }
 #endif
 
@@ -1588,8 +1588,9 @@ InferenceProfiler::SummarizeServerStats(
   return cb::Error::Success;
 }
 
-void 
-InferenceProfiler::ResetServerStats(ServerSideStats* server_stats) {
+void
+InferenceProfiler::ResetServerStats(ServerSideStats* server_stats)
+{
   server_stats->inference_count = 0;
   server_stats->execution_count = 0;
   server_stats->success_count = 0;
@@ -1628,8 +1629,9 @@ InferenceProfiler::SummarizeServerStatsHelper(
       return cb::Error(
           "missing statistics for requested model", pa::GENERIC_ERROR);
     } else {
-      //function to set composing model stats as 0 in case of top-level ensemble request cache hit
-      //since the composing model will not be executed.
+      // function to set composing model stats as 0 in case of top-level
+      // ensemble request cache hit since the composing model will not be
+      // executed.
       ResetServerStats(server_stats);
     }
   } else {
