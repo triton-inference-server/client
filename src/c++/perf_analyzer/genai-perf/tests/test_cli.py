@@ -70,45 +70,45 @@ class TestCLIArguments:
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
-                ["--endpoint", "completions", "--service-kind", "openai"],
-                {"endpoint": "v1/completions"},
+                ["--api", "completions", "--service-kind", "openai"],
+                {"api": "v1/completions"},
             ),
             (
-                ["--endpoint", "chat", "--service-kind", "openai"],
-                {"endpoint": "v1/chat/completions"},
+                ["--api", "chat", "--service-kind", "openai"],
+                {"api": "v1/chat/completions"},
             ),
             (
                 [
-                    "--endpoint",
+                    "--api",
                     "chat",
                     "--service-kind",
                     "openai",
                     "--port",
                     "custom/address",
                 ],
-                {"endpoint": "custom/address"},
+                {"api": "custom/address"},
             ),
             (
                 [
-                    "--endpoint",
+                    "--api",
                     "chat",
                     "--service-kind",
                     "openai",
                     "--port",
                     "   /custom/address",
                 ],
-                {"endpoint": "custom/address"},
+                {"api": "custom/address"},
             ),
             (
                 [
-                    "--endpoint",
+                    "--api",
                     "completions",
                     "--service-kind",
                     "openai",
                     "--port",
                     "custom/address",
                 ],
-                {"endpoint": "custom/address"},
+                {"api": "custom/address"},
             ),
             (
                 ["--extra-inputs", "test_key:test_value"],
@@ -159,8 +159,8 @@ class TestCLIArguments:
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--endpoint", "chat"],
-                {"service_kind": "openai", "endpoint": "v1/chat/completions"},
+                ["--service-kind", "openai", "--api", "chat"],
+                {"service_kind": "openai", "api": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
             (["-s", "99.5"], {"stability_percentage": 99.5}),
@@ -249,7 +249,7 @@ class TestCLIArguments:
         [
             (
                 ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
-                "The --endpoint option is required when using the 'openai' service-kind.",
+                "The --api option is required when using the 'openai' service-kind.",
             ),
             (
                 [
@@ -261,7 +261,7 @@ class TestCLIArguments:
                     "--port",
                     "custom/address",
                 ],
-                "The --endpoint option is required when using the 'openai' service-kind.",
+                "The --api option is required when using the 'openai' service-kind.",
             ),
             (
                 ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
@@ -283,18 +283,18 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--endpoint", "chat"],
+                ["--service-kind", "openai", "--api", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--endpoint", "completions"],
+                ["--service-kind", "openai", "--api", "completions"],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
                 [
                     "--service-kind",
                     "openai",
-                    "--endpoint",
+                    "--api",
                     "completions",
                     "--port",
                     "custom/address",
