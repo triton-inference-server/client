@@ -57,7 +57,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
             elif args.endpoint == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
-            if args.port:
+
+            if args.port is not None:
                 args.endpoint = args.port.lstrip(" /")
             else:
                 args.endpoint = _endpoint_map[args.endpoint]
