@@ -71,11 +71,11 @@ class TestCLIArguments:
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
                 ["--api", "completions", "--service-kind", "openai"],
-                {"api": "v1/completions"},
+                {"endpoint": "v1/completions"},
             ),
             (
                 ["--api", "chat", "--service-kind", "openai"],
-                {"api": "v1/chat/completions"},
+                {"endpoint": "v1/chat/completions"},
             ),
             (
                 [
@@ -83,10 +83,10 @@ class TestCLIArguments:
                     "chat",
                     "--service-kind",
                     "openai",
-                    "--port",
+                    "--endpoint",
                     "custom/address",
                 ],
-                {"api": "custom/address"},
+                {"endpoint": "custom/address"},
             ),
             (
                 [
@@ -94,10 +94,10 @@ class TestCLIArguments:
                     "chat",
                     "--service-kind",
                     "openai",
-                    "--port",
+                    "--endpoint",
                     "   /custom/address",
                 ],
-                {"api": "custom/address"},
+                {"endpoint": "custom/address"},
             ),
             (
                 [
@@ -105,10 +105,10 @@ class TestCLIArguments:
                     "completions",
                     "--service-kind",
                     "openai",
-                    "--port",
+                    "--endpoint",
                     "custom/address",
                 ],
-                {"api": "custom/address"},
+                {"endpoint": "custom/address"},
             ),
             (
                 ["--extra-inputs", "test_key:test_value"],
@@ -160,7 +160,7 @@ class TestCLIArguments:
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
                 ["--service-kind", "openai", "--api", "chat"],
-                {"service_kind": "openai", "api": "v1/chat/completions"},
+                {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
             (["-s", "99.5"], {"stability_percentage": 99.5}),
@@ -258,7 +258,7 @@ class TestCLIArguments:
                     "test_model",
                     "--service-kind",
                     "openai",
-                    "--port",
+                    "--endpoint",
                     "custom/address",
                 ],
                 "The --api option is required when using the 'openai' service-kind.",
@@ -296,7 +296,7 @@ class TestCLIArguments:
                     "openai",
                     "--api",
                     "completions",
-                    "--port",
+                    "--endpoint",
                     "custom/address",
                 ],
                 OutputFormat.OPENAI_COMPLETIONS,

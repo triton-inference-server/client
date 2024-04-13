@@ -58,7 +58,7 @@ def _check_conditional_args(
             elif args.api == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
 
-            if args.port is not None:
+            if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
             else:
                 args.endpoint = _api_map[args.api]
@@ -262,6 +262,14 @@ def _add_endpoint_args(parser):
         required=True,
         help=f"The name of the model to benchmark.",
     )
+    endpoint_group.add_argument(
+        "--api",
+        type=str,
+        choices=["chat", "completions"],
+        required=False,
+        help=f"The api to send requests to on the "
+        'server. This is only used with the "openai" service-kind. ',
+    )
 
     endpoint_group.add_argument(
         "--backend",
@@ -276,19 +284,10 @@ def _add_endpoint_args(parser):
     )
 
     endpoint_group.add_argument(
-        "--api",
-        type=str,
-        choices=["chat", "completions"],
-        required=False,
-        help=f"The api to send requests to on the "
-        'server. This is only used with the "openai" service-kind. ',
-    )
-
-    endpoint_group.add_argument(
-        "--port",
+        "--endpoint",
         type=str,
         required=False,
-        help=f"Set a custom port that differs from the OpenAI defaults",
+        help=f"Set a custom endpoint that differs from the OpenAI defaults",
     )
 
     endpoint_group.add_argument(

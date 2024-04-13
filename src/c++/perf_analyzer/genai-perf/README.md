@@ -277,9 +277,9 @@ such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply mul
 Describes what api to send requests to on the server. This is required when
 using `openai` service-kind. This is ignored in other cases.
 
-##### `--port <str>`
+##### `--endpoint <str>`
 
-Set a custom port that differs from the OpenAI defaults. This is ignored when
+Set a custom endpoint that differs from the OpenAI defaults. This is ignored when
 not using the `openai` service-kind.
 
 ##### `-u <url>`
