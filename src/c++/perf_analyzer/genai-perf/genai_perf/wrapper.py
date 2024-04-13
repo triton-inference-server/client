@@ -37,15 +37,15 @@ logger = logging.getLogger(LOGGER_NAME)
 class Profiler:
     @staticmethod
     def add_protocol_args(args):
-        cmd = ""
+        cmd = [""]
         if args.service_kind == "triton":
-            cmd += f"-i grpc --streaming "
+            cmd += ["-i", "grpc", "--streaming"]
             if "u" not in vars(args).keys():
-                cmd += f"-u {DEFAULT_GRPC_URL} "
+                cmd += ["-u", f"{DEFAULT_GRPC_URL}"]
             if args.output_format == OutputFormat.TRTLLM:
-                cmd += f"--shape max_tokens:1 --shape text_input:1 "
+                cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
         elif args.service_kind == "openai":
-            cmd += f"-i http "
+            cmd += ["-i", "http"]
         return cmd
 
     @staticmethod
@@ -76,7 +76,14 @@ class Profiler:
 
         utils.remove_file(args.profile_export_file)
 
-        cmd = f"perf_analyzer -m {args.model} --async --input-data {DEFAULT_INPUT_DATA_JSON} "
+        cmd = [
+            f"perf_analyzer",
+            "-m",
+            f"{args.model}",
+            "--async",
+            "--input-data",
+            f"{DEFAULT_INPUT_DATA_JSON}",
+        ]
         for arg, value in vars(args).items():
             if arg in skip_args:
                 pass
@@ -84,28 +91,28 @@ class Profiler:
                 pass
             elif value is True:
                 if len(arg) == 1:
-                    cmd += f"-{arg} "
+                    cmd += [f"-{arg}"]
                 else:
-                    cmd += f"--{arg} "
+                    cmd += [f"--{arg}"]
             else:
                 if len(arg) == 1:
-                    cmd += f"-{arg} {value} "
+                    cmd += [f"-{arg}", f"{value}"]
                 else:
                     arg = utils.convert_option_name(arg)
-                    cmd += f"--{arg} {value} "
+                    cmd += [f"--{arg}", f"{value}"]
 
         cmd += Profiler.add_protocol_args(args)
 
         if extra_args is not None:
             for arg in extra_args:
-                cmd += f"{arg} "
+                cmd += [f"{arg}"]
         return cmd
 
     @staticmethod
     def run(args=None, extra_args=None):
         cmd = Profiler.build_cmd(args, extra_args)
-        logger.info(f"Running Perf Analyzer : '{cmd}'")
+        logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
         if args and args.verbose:
-            subprocess.run(cmd, shell=True, check=True, stdout=None)
+            subprocess.run(cmd, check=True, stdout=None)
         else:
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
