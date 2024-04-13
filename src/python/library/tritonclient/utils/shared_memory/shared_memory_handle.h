@@ -37,8 +37,11 @@
 
 struct ShmFile {
 #ifdef _WIN32
-  HANDLE shm_handle_;
-  ShmFile(HANDLE shm_handle) : shm_handle_(shm_handle){};
+  HANDLE backing_file_handle_;
+  HANDLE shm_mapping_handle_;
+  ShmFile(HANDLE backing_file_handle, HANDLE shm_mapping_handle)
+      : backing_file_handle_(backing_file_handle),
+        shm_mapping_handle_(shm_mapping_handle){};
 #else
   int shm_fd_;
   ShmFile(int shm_fd) : shm_fd_(shm_fd){};

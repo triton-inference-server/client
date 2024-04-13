@@ -48,7 +48,10 @@ class _utf8(object):
 
 class ShmFile(Structure):
     if sys.platform == "win32":
-        _fields_ = [("shm_handle_", c_void_p)]
+        _fields_ = [
+            ("backing_file_handle_", c_void_p),
+            ("shm_mapping_handle_", c_void_p),
+        ]
     else:
         _fields_ = [("shm_fd_", c_int)]
 
@@ -334,7 +337,9 @@ class SharedMemoryException(Exception):
             -4: "unable to read/mmap the shared memory region",
             -5: "unable to unlink the shared memory region",
             -6: "unable to munmap the shared memory region",
-            -7: "unable to create file mapping",
+            -7: "unable to create shm directory or backing file",
+            -8: "unable to create file mapping",
+            -9: "unable to delete backing file",
         }
         self._msg = None
         if type(err) == str:
