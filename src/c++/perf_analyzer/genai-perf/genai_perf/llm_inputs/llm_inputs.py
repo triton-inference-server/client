@@ -825,9 +825,7 @@ class LlmInputs:
     ) -> Dict:
         if new_prompt:
             if pa_json["data"][index]["payload"][0]["prompt"]:
-                pa_json["data"][index]["payload"][0]["prompt"] = (
-                    pa_json["data"][index]["payload"][0]["prompt"] + f" {new_prompt}"
-                )
+                pa_json["data"][index]["payload"][0]["prompt"] += f" {new_prompt}"
             else:
                 pa_json["data"][index]["payload"][0]["prompt"] = new_prompt
 
