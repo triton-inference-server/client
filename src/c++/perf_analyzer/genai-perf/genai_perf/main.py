@@ -117,7 +117,9 @@ def create_graphs(stats: Statistics) -> None:
 
 def finalize():
     shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
-    shutil.move("profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_json.json")
+    shutil.move(
+        "profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_export.json"
+    )
     shutil.move(
         "profile_export_genai_perf.csv",
         f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",

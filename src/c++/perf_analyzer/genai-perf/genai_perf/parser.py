@@ -38,6 +38,8 @@ from . import __version__
 
 logger = logging.getLogger(LOGGER_NAME)
 
+_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+
 
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
@@ -46,18 +48,25 @@ def _check_conditional_args(
     Check for conditional args and raise an error if they are not set.
     """
     if args.service_kind == "openai":
-        if args.endpoint is None:
+        if args.endpoint_type is None:
             parser.error(
-                "The --endpoint option is required when using the 'openai' service-kind."
+                "The --endpoint-type option is required when using the 'openai' service-kind."
             )
-        if args.endpoint == "v1/chat/completions":
-            args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-        elif args.endpoint == "v1/completions":
-            args.output_format = OutputFormat.OPENAI_COMPLETIONS
-    elif args.endpoint is not None:
+        else:
+            if args.endpoint_type == "chat":
+                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+            elif args.endpoint_type == "completions":
+                args.output_format = OutputFormat.OPENAI_COMPLETIONS
+
+            if args.endpoint is not None:
+                args.endpoint = args.endpoint.lstrip(" /")
+            else:
+                args.endpoint = _endpoint_type_map[args.endpoint_type]
+    elif args.endpoint_type is not None:
         parser.error(
-            "The --endpoint option should only be used when using the 'openai' service-kind."
+            "The --endpoint-type option should only be used when using the 'openai' service-kind."
         )
+
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
@@ -253,6 +262,14 @@ def _add_endpoint_args(parser):
         required=True,
         help=f"The name of the model to benchmark.",
     )
+    endpoint_group.add_argument(
+        "--endpoint-type",
+        type=str,
+        choices=["chat", "completions"],
+        required=False,
+        help=f"The endpoint-type to send requests to on the "
+        'server. This is only used with the "openai" service-kind. ',
+    )
 
     endpoint_group.add_argument(
         "--backend",
@@ -269,10 +286,8 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint",
         type=str,
-        choices=["v1/chat/completions", "v1/completions"],
         required=False,
-        help=f"The endpoint to send requests to on the "
-        'server. This is only used with the "openai" service-kind. ',
+        help=f"Set a custom endpoint that differs from the OpenAI defaults",
     )
 
     endpoint_group.add_argument(
@@ -283,7 +298,7 @@ def _add_endpoint_args(parser):
         required=False,
         help="The kind of service perf_analyzer will "
         'generate load for. In order to use "openai", '
-        "you must specify an endpoint via --endpoint.",
+        "you must specify an api via --endpoint-type.",
     )
 
     endpoint_group.add_argument(
