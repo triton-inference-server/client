@@ -121,7 +121,7 @@ struct ServerSideStats {
 
   std::map<cb::ModelIdentifier, ServerSideStats> composing_models_stat;
   // function to set server stats as 0
-  void ResetServerStats()
+  void Reset()
   {
     inference_count = 0;
     execution_count = 0;

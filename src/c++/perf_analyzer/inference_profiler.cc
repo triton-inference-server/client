@@ -1610,7 +1610,7 @@ InferenceProfiler::SummarizeServerStatsHelper(
     } else {
       // Setting server stats 0 for composing model in case of ensemble request cache hit
       // since the composing model will not be executed
-      server_stats->ResetServerStats();
+      server_stats->Reset();
     }
   } else {
     uint64_t start_infer_cnt = 0;
