@@ -89,7 +89,6 @@ class LlmInputs:
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
-        concatenate_prompts: bool = True,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -181,7 +180,6 @@ class LlmInputs:
             output_tokens_mean,
             output_tokens_stddev,
             model_name,
-            concatenate_prompts,
         )
         cls._write_json_to_file(json_in_pa_format)
 
@@ -324,7 +322,6 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         model_name: str = "",
-        concatenate_prompts: bool = True,
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
@@ -345,7 +342,6 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 model_name,
-                concatenate_prompts,
             )
         elif output_format == OutputFormat.VLLM:
             output_json = cls._convert_generic_json_to_vllm_format(
@@ -415,7 +411,6 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         model_name: str = "",
-        concatenate_prompts: bool = True,
     ) -> Dict:
         (
             system_role_headers,
@@ -433,7 +428,6 @@ class LlmInputs:
             output_tokens_mean,
             output_tokens_stddev,
             model_name,
-            concatenate_prompts,
         )
 
         return pa_json
@@ -588,13 +582,12 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         model_name: str = "",
-        concatenate_prompts: bool = True,
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"payload": []})
-            pa_json["data"][index]["payload"].append({"prompt": [""]})
+            pa_json["data"][index]["payload"].append({"prompt": ""})
 
             for header, content in entry.items():
                 new_prompt = cls._create_new_prompt(
@@ -605,9 +598,7 @@ class LlmInputs:
                     content,
                 )
 
-                pa_json = cls._add_new_prompt_to_json(
-                    pa_json, index, new_prompt, concatenate_prompts
-                )
+                pa_json = cls._add_new_prompt_to_json(pa_json, index, new_prompt)
 
             pa_json = cls._add_optional_tags_to_openai_json(
                 pa_json,
@@ -833,22 +824,14 @@ class LlmInputs:
         pa_json: Dict,
         index: int,
         new_prompt: str,
-        concatenate_prompts: bool = True,
     ) -> Dict:
         if new_prompt:
-            if pa_json["data"][index]["payload"][0]["prompt"][0]:
-                if concatenate_prompts:
-                    pa_json["data"][index]["payload"][0]["prompt"][0] = (
-                        pa_json["data"][index]["payload"][0]["prompt"][0]
-                        + f" {new_prompt}"
-                    )
-                else:
-                    pa_json["data"][index]["payload"][0]["prompt"][0].append(new_prompt)
+            if pa_json["data"][index]["payload"][0]["prompt"]:
+                pa_json["data"][index]["payload"][0]["prompt"] = (
+                    pa_json["data"][index]["payload"][0]["prompt"] + f" {new_prompt}"
+                )
             else:
-                if concatenate_prompts:
-                    pa_json["data"][index]["payload"][0]["prompt"][0] = new_prompt
-                else:
-                    pa_json["data"][index]["payload"][0]["prompt"][0] = [new_prompt]
+                pa_json["data"][index]["payload"][0]["prompt"] = new_prompt
 
         return pa_json
 

@@ -242,7 +242,6 @@ class TestLlmInputs:
             dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
-            concatenate_prompts=False,
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
