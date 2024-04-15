@@ -1608,8 +1608,8 @@ InferenceProfiler::SummarizeServerStatsHelper(
       return cb::Error(
           "missing statistics for requested model", pa::GENERIC_ERROR);
     } else {
-      // Setting server stats 0 for composing model in case of ensemble request cache hit
-      // since the composing model will not be executed
+      // Setting server stats 0 for composing model in case of ensemble request
+      // cache hit since the composing model will not be executed
       server_stats->Reset();
     }
   } else {
