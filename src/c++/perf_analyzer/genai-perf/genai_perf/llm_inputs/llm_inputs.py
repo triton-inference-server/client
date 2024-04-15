@@ -585,7 +585,7 @@ class LlmInputs:
 
         for index, entry in enumerate(dataset_json["rows"]):
             pa_json["data"].append({"payload": []})
-            pa_json["data"][index]["payload"].append({"prompt": [""]})
+            pa_json["data"][index]["payload"].append({"prompt": ""})
 
             for header, content in entry.items():
                 new_prompt = cls._create_new_prompt(
@@ -818,15 +818,16 @@ class LlmInputs:
 
     @classmethod
     def _add_new_prompt_to_json(
-        cls, pa_json: Dict, index: int, new_prompt: str
+        cls,
+        pa_json: Dict,
+        index: int,
+        new_prompt: str,
     ) -> Dict:
         if new_prompt:
-            if pa_json["data"][index]["payload"][0]["prompt"][0]:
-                pa_json["data"][index]["payload"][0]["prompt"][0] = (
-                    pa_json["data"][index]["payload"][0]["prompt"][0] + f" {new_prompt}"
-                )
+            if pa_json["data"][index]["payload"][0]["prompt"]:
+                pa_json["data"][index]["payload"][0]["prompt"] += f" {new_prompt}"
             else:
-                pa_json["data"][index]["payload"][0]["prompt"][0] = new_prompt
+                pa_json["data"][index]["payload"][0]["prompt"] = new_prompt
 
         return pa_json
 

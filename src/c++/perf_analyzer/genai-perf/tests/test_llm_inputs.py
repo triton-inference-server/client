@@ -248,6 +248,10 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+        # NIM legacy completion endpoint only supports string and not
+        # array of strings. Verify that the prompt is of type string
+        # not list
+        assert isinstance(pa_json["data"][0]["payload"][0]["prompt"], str)
 
     def test_create_openai_to_trtllm(self):
         """
