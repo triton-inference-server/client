@@ -70,16 +70,16 @@ class TestCLIArguments:
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
-                ["--api", "completions", "--service-kind", "openai"],
+                ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
             ),
             (
-                ["--api", "chat", "--service-kind", "openai"],
+                ["--endpoint-type", "chat", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
             ),
             (
                 [
-                    "--api",
+                    "--endpoint-type",
                     "chat",
                     "--service-kind",
                     "openai",
@@ -90,7 +90,7 @@ class TestCLIArguments:
             ),
             (
                 [
-                    "--api",
+                    "--endpoint-type",
                     "chat",
                     "--service-kind",
                     "openai",
@@ -101,7 +101,7 @@ class TestCLIArguments:
             ),
             (
                 [
-                    "--api",
+                    "--endpoint-type",
                     "completions",
                     "--service-kind",
                     "openai",
@@ -159,7 +159,7 @@ class TestCLIArguments:
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--api", "chat"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
@@ -249,7 +249,7 @@ class TestCLIArguments:
         [
             (
                 ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
-                "The --api option is required when using the 'openai' service-kind.",
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
             ),
             (
                 [
@@ -261,7 +261,7 @@ class TestCLIArguments:
                     "--endpoint",
                     "custom/address",
                 ],
-                "The --api option is required when using the 'openai' service-kind.",
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
             ),
             (
                 ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
@@ -283,18 +283,18 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--api", "chat"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--api", "completions"],
+                ["--service-kind", "openai", "--endpoint-type", "completions"],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
                 [
                     "--service-kind",
                     "openai",
-                    "--api",
+                    "--endpoint-type",
                     "completions",
                     "--endpoint",
                     "custom/address",

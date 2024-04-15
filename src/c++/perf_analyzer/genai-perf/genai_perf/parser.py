@@ -38,7 +38,7 @@ from . import __version__
 
 logger = logging.getLogger(LOGGER_NAME)
 
-_api_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
 
 def _check_conditional_args(
@@ -48,23 +48,23 @@ def _check_conditional_args(
     Check for conditional args and raise an error if they are not set.
     """
     if args.service_kind == "openai":
-        if args.api is None:
+        if args.endpoint_type is None:
             parser.error(
-                "The --api option is required when using the 'openai' service-kind."
+                "The --endpoint-type option is required when using the 'openai' service-kind."
             )
         else:
-            if args.api == "chat":
+            if args.endpoint_type == "chat":
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-            elif args.api == "completions":
+            elif args.endpoint_type == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
             else:
-                args.endpoint = _api_map[args.api]
-    elif args.api is not None:
+                args.endpoint = _endpoint_type_map[args.endpoint_type]
+    elif args.endpoint_type is not None:
         parser.error(
-            "The --api option should only be used when using the 'openai' service-kind."
+            "The --endpoint-type option should only be used when using the 'openai' service-kind."
         )
 
     if args.service_kind == "triton":
@@ -263,11 +263,11 @@ def _add_endpoint_args(parser):
         help=f"The name of the model to benchmark.",
     )
     endpoint_group.add_argument(
-        "--api",
+        "--endpoint-type",
         type=str,
         choices=["chat", "completions"],
         required=False,
-        help=f"The api to send requests to on the "
+        help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind. ',
     )
 
@@ -298,7 +298,7 @@ def _add_endpoint_args(parser):
         required=False,
         help="The kind of service perf_analyzer will "
         'generate load for. In order to use "openai", '
-        "you must specify an api via --api.",
+        "you must specify an api via --endpoint-type.",
     )
 
     endpoint_group.add_argument(
