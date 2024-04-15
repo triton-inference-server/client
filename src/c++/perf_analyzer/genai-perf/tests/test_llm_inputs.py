@@ -24,8 +24,8 @@ from genai_perf.tokenizer import Tokenizer
 
 
 class TestLlmInputs:
-    # Define service kind, backend or endpoint, and output format combinations
-    SERVICE_KIND_BACKEND_ENDPOINT_FORMATS = [
+    # Define service kind, backend or api, and output format combinations
+    SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS = [
         ("triton", "vllm", OutputFormat.VLLM),
         ("triton", "trtllm", OutputFormat.TRTLLM),
         ("openai", "v1/completions", OutputFormat.OPENAI_COMPLETIONS),
@@ -371,7 +371,8 @@ class TestLlmInputs:
         assert len(pa_json["data"]) == 5
 
     @pytest.mark.parametrize(
-        "output_format", [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_FORMATS]
+        "output_format",
+        [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
     )
     def test_extra_inputs(
         self, default_tokenizer: Tokenizer, output_format: OutputFormat
@@ -440,7 +441,8 @@ class TestLlmInputs:
             ], f"The value of {input_name} is incorrect"
 
     @pytest.mark.parametrize(
-        "output_format", [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_FORMATS]
+        "output_format",
+        [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
     )
     def test_output_tokens_mean(self, output_format, default_tokenizer):
         if output_format != OutputFormat.VLLM and output_format != OutputFormat.TRTLLM:

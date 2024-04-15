@@ -72,6 +72,7 @@ class Profiler:
             "num_prompts",
             "random_seed",
             "tokenizer",
+            "endpoint_type",
         ]
 
         utils.remove_file(args.profile_export_file)
