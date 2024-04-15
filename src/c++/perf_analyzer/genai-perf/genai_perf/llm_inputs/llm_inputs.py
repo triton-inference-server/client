@@ -121,8 +121,6 @@ class LlmInputs:
             The mean length of the output to generate. If not using fixed output lengths, this should be set to -1.
         output_tokens_stddev:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
-        concatenate_prompts:
-            If true, create a single prompt string. Else, create a list of prompt strings
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
