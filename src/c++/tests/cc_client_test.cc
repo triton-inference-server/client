@@ -42,28 +42,24 @@ template <typename ClientType>
 class ClientTest : public ::testing::Test {
  public:
   ClientTest()
-      : model_name_("onnx_int32_int32_int32"), shape_{1, 16}, dtype_("INT32"),
-        client_type_("")
+      : model_name_("onnx_int32_int32_int32"), shape_{1, 16}, dtype_("INT32")
   {
   }
 
   void SetUp() override
   {
-    std::string url = "";
-    std::string client_type = "";
+    std::string url;
     if (std::is_same<ClientType, tc::InferenceServerGrpcClient>::value) {
       url = "localhost:8001";
-      this->client_type_ = "grpc";
     } else if (std::is_same<ClientType, tc::InferenceServerHttpClient>::value) {
       url = "localhost:8000";
-      this->client_type_ = "http";
     } else {
       ASSERT_TRUE(false) << "Unrecognized client class type '"
                          << typeid(ClientType).name() << "'";
     }
     auto err = ClientType::Create(&this->client_, url);
-    ASSERT_TRUE(err.IsOk()) << "failed to create " << this->client_type_
-                            << " client: " << err.Message();
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create GRPC client: " << err.Message();
 
     // Initialize 3 sets of inputs, each with 16 elements
     for (size_t i = 0; i < 3; ++i) {
@@ -106,21 +102,6 @@ class ClientTest : public ::testing::Test {
   }
 
   void ValidateOutput(
-      const tc::InferResult* result,
-      const std::map<std::string, std::vector<int32_t>>& expected_output)
-  {
-    ASSERT_TRUE(result->RequestStatus().IsOk());
-    for (const auto& expected : expected_output) {
-      const uint8_t* buf = nullptr;
-      size_t byte_size = 0;
-      auto err = result->RawData(expected.first, &buf, &byte_size);
-      ASSERT_TRUE(err.IsOk()) << "failed to retrieve output '" << expected.first
-                              << "' for result: " << err.Message();
-      ASSERT_EQ(byte_size, (expected.second.size() * sizeof(int32_t)));
-      EXPECT_EQ(memcmp(buf, expected.second.data(), byte_size), 0);
-    }
-  }
-  void ValidateOutputs(
       const std::vector<tc::InferResult*>& results,
       const std::vector<std::map<std::string, std::vector<int32_t>>>&
           expected_outputs)
@@ -128,7 +109,17 @@ class ClientTest : public ::testing::Test {
     ASSERT_EQ(results.size(), expected_outputs.size())
         << "unexpected number of results";
     for (size_t i = 0; i < results.size(); ++i) {
-      ValidateOutput(results[i], expected_outputs[i]);
+      ASSERT_TRUE(results[i]->RequestStatus().IsOk());
+      for (const auto& expected : expected_outputs[i]) {
+        const uint8_t* buf = nullptr;
+        size_t byte_size = 0;
+        auto err = results[i]->RawData(expected.first, &buf, &byte_size);
+        ASSERT_TRUE(err.IsOk())
+            << "failed to retrieve output '" << expected.first
+            << "' for result " << i << ": " << err.Message();
+        ASSERT_EQ(byte_size, (expected.second.size() * sizeof(int32_t)));
+        EXPECT_EQ(memcmp(buf, expected.second.data(), byte_size), 0);
+      }
     }
   }
 
@@ -136,42 +127,106 @@ class ClientTest : public ::testing::Test {
       const std::string& model_name, const std::string& config,
       const std::map<std::string, std::vector<char>>& files = {});
 
-  tc::Error CreateClientWithSpecifications(
-      const std::string& server_url, bool verbose = false, bool use_ssl = false,
-      const tc::SslOptions& ssl_options = tc::SslOptions(),
-      const tc::KeepAliveOptions& keepalive_options = tc::KeepAliveOptions(),
-      const bool use_cached_channel = true);
-
   std::string model_name_;
   std::unique_ptr<ClientType> client_;
   std::vector<std::vector<int32_t>> input_data_;
   std::vector<int64_t> shape_;
   std::string dtype_;
-  std::string client_type_;
 };
 
-template <>
-tc::Error
-ClientTest<tc::InferenceServerGrpcClient>::CreateClientWithSpecifications(
-    const std::string& server_url, bool verbose, bool use_ssl,
-    const tc::SslOptions& ssl_options,
-    const tc::KeepAliveOptions& keepalive_options,
-    const bool use_cached_channel)
-{
-  return this->client_->Create(
-      &this->client_, server_url, verbose, use_ssl, ssl_options,
-      keepalive_options, use_cached_channel);
-}
+class GRPCClientTest : public ::testing::Test {
+ public:
+  GRPCClientTest()
+      : model_name_("onnx_int32_int32_int32"), shape_{1, 16}, dtype_("INT32")
+  {
+  }
 
-template <>
-tc::Error
-ClientTest<tc::InferenceServerHttpClient>::CreateClientWithSpecifications(
-    const std::string& server_url, bool verbose, bool use_ssl,
-    const tc::SslOptions& ssl_options,
-    const tc::KeepAliveOptions& keepalive_option, const bool use_cached_channel)
-{
-  return this->client_->Create(&this->client_, server_url);
-}
+  void SetUp() override
+  {
+    std::string url = "localhost:8001";
+    bool verbose = false;
+    bool use_ssl = false;
+    const tc::SslOptions& ssl_options = tc::SslOptions();
+    const tc::KeepAliveOptions& keepalive_options = tc::KeepAliveOptions();
+    bool use_cached_channel = false;
+    auto err = tc::InferenceServerGrpcClient::Create(
+        &this->client_, url, verbose, use_ssl, ssl_options, keepalive_options,
+        use_cached_channel);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create GRPC client: " << err.Message();
+
+    // Initialize 3 sets of inputs, each with 16 elements
+    for (size_t i = 0; i < 3; ++i) {
+      this->input_data_.emplace_back();
+      for (size_t j = 0; j < 16; ++j) {
+        this->input_data_.back().emplace_back(i * 16 + j);
+      }
+    }
+  }
+
+  tc::Error PrepareInputs(
+      const std::vector<int32_t>& input_0, const std::vector<int32_t>& input_1,
+      std::vector<tc::InferInput*>* inputs)
+  {
+    inputs->emplace_back();
+    auto err = tc::InferInput::Create(
+        &inputs->back(), "INPUT0", this->shape_, this->dtype_);
+    if (!err.IsOk()) {
+      return err;
+    }
+    err = inputs->back()->AppendRaw(
+        reinterpret_cast<const uint8_t*>(input_0.data()),
+        input_0.size() * sizeof(int32_t));
+    if (!err.IsOk()) {
+      return err;
+    }
+    inputs->emplace_back();
+    err = tc::InferInput::Create(
+        &inputs->back(), "INPUT1", this->shape_, this->dtype_);
+    if (!err.IsOk()) {
+      return err;
+    }
+    err = inputs->back()->AppendRaw(
+        reinterpret_cast<const uint8_t*>(input_1.data()),
+        input_1.size() * sizeof(int32_t));
+    if (!err.IsOk()) {
+      return err;
+    }
+    return tc::Error::Success;
+  }
+
+  void ValidateOutput(
+      const std::vector<tc::InferResult*>& results,
+      const std::vector<std::map<std::string, std::vector<int32_t>>>&
+          expected_outputs)
+  {
+    ASSERT_EQ(results.size(), expected_outputs.size())
+        << "unexpected number of results";
+    for (size_t i = 0; i < results.size(); ++i) {
+      ASSERT_TRUE(results[i]->RequestStatus().IsOk());
+      for (const auto& expected : expected_outputs[i]) {
+        const uint8_t* buf = nullptr;
+        size_t byte_size = 0;
+        auto err = results[i]->RawData(expected.first, &buf, &byte_size);
+        ASSERT_TRUE(err.IsOk())
+            << "failed to retrieve output '" << expected.first
+            << "' for result " << i << ": " << err.Message();
+        ASSERT_EQ(byte_size, (expected.second.size() * sizeof(int32_t)));
+        EXPECT_EQ(memcmp(buf, expected.second.data(), byte_size), 0);
+      }
+    }
+  }
+
+  tc::Error LoadModel(
+      const std::string& model_name, const std::string& config,
+      const std::map<std::string, std::vector<char>>& files = {});
+
+  std::string model_name_;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client_;
+  std::vector<std::vector<int32_t>> input_data_;
+  std::vector<int64_t> shape_;
+  std::string dtype_;
+};
 
 template <>
 tc::Error
@@ -390,7 +445,7 @@ TYPED_TEST_P(ClientTest, InferMulti)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiDifferentOutputs)
@@ -455,7 +510,7 @@ TYPED_TEST_P(ClientTest, InferMultiDifferentOutputs)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiDifferentOptions)
@@ -517,7 +572,7 @@ TYPED_TEST_P(ClientTest, InferMultiDifferentOptions)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiOneOption)
@@ -569,7 +624,7 @@ TYPED_TEST_P(ClientTest, InferMultiOneOption)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiOneOutput)
@@ -622,7 +677,7 @@ TYPED_TEST_P(ClientTest, InferMultiOneOutput)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiNoOutput)
@@ -670,7 +725,7 @@ TYPED_TEST_P(ClientTest, InferMultiNoOutput)
   ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
                           << err.Message();
 
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, InferMultiMismatchOptions)
@@ -807,7 +862,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMulti)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiDifferentOutputs)
@@ -884,7 +939,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiDifferentOutputs)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiDifferentOptions)
@@ -958,7 +1013,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiDifferentOptions)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiOneOption)
@@ -1022,7 +1077,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiOneOption)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiOneOutput)
@@ -1087,7 +1142,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiOneOutput)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiNoOutput)
@@ -1147,7 +1202,7 @@ TYPED_TEST_P(ClientTest, AsyncInferMultiNoOutput)
 
   std::unique_lock<std::mutex> lk(mu);
   cv.wait(lk, [this, &results] { return !results.empty(); });
-  EXPECT_NO_FATAL_FAILURE(this->ValidateOutputs(results, expected_outputs));
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 TYPED_TEST_P(ClientTest, AsyncInferMultiMismatchOptions)
@@ -1385,63 +1440,6 @@ TYPED_TEST_P(ClientTest, LoadWithConfigOverride)
         << "failed to get version readiness: " << err.Message();
     ASSERT_EQ(ready, vr.second) << "expect model " << model_name << " version "
                                 << vr.first << " readiness: " << vr.second;
-  }
-}
-
-TYPED_TEST_P(ClientTest, InferNoUseCachedChannel)
-{
-  if (this->client_type_ == "grpc") {
-    std::string url = "localhost:8001";
-    bool verbose = false;
-    bool use_ssl = false;
-    const tc::SslOptions& ssl_options = tc::SslOptions();
-    const tc::KeepAliveOptions& keepalive_options = tc::KeepAliveOptions();
-    bool use_cached_channel = false;
-    auto err = this->CreateClientWithSpecifications(
-        url, verbose, use_ssl, ssl_options, keepalive_options,
-        use_cached_channel);
-    ASSERT_TRUE(err.IsOk())
-        << "failed to create GRPC client: " << err.Message();
-
-    tc::InferOptions option(this->model_name_);
-    std::vector<tc::InferInput*> inputs;
-    std::vector<const tc::InferRequestedOutput*> outputs;
-
-    std::map<std::string, std::vector<int32_t>> expected_outputs;
-    // Not swap
-    option.model_version_ = "1";
-    const auto& input_0 = this->input_data_[0];
-    const auto& input_1 = this->input_data_[1];
-    err = this->PrepareInputs(input_0, input_1, &inputs);
-
-    tc::InferRequestedOutput* output;
-    err = tc::InferRequestedOutput::Create(&output, "OUTPUT0");
-    ASSERT_TRUE(err.IsOk())
-        << "failed to create inference output: " << err.Message();
-    outputs.emplace_back(output);
-    err = tc::InferRequestedOutput::Create(&output, "OUTPUT1");
-    ASSERT_TRUE(err.IsOk())
-        << "failed to create inference output: " << err.Message();
-    outputs.emplace_back(output);
-
-    {
-      auto& expected = expected_outputs["OUTPUT0"];
-      for (size_t i = 0; i < 16; ++i) {
-        expected.emplace_back(input_0[i] + input_1[i]);
-      }
-    }
-    {
-      auto& expected = expected_outputs["OUTPUT1"];
-      for (size_t i = 0; i < 16; ++i) {
-        expected.emplace_back(input_0[i] - input_1[i]);
-      }
-    }
-
-    tc::InferResult* result;
-    err = this->client_->Infer(&result, option, inputs, outputs);
-    ASSERT_TRUE(err.IsOk())
-        << "failed to perform multiple inferences: " << err.Message();
-    EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(result, expected_outputs));
   }
 }
 
@@ -1709,6 +1707,58 @@ TEST_F(GRPCTraceTest, GRPCClearTraceSettings)
   ASSERT_EQ(trace_settings, expected_global_settings)
       << "error: Unexpected global trace settings after model clear"
       << std::endl;
+}
+
+TEST_F(GRPCClientTest, InferMultiNoUseCachedChannel)
+{
+  // Create only 1 sets of 'options'.
+  tc::Error err = tc::Error::Success;
+  std::vector<tc::InferOptions> options;
+  std::vector<std::vector<tc::InferInput*>> inputs;
+  std::vector<std::vector<const tc::InferRequestedOutput*>> outputs;
+
+  std::vector<std::map<std::string, std::vector<int32_t>>> expected_outputs;
+  options.emplace_back(this->model_name_);
+  // Not swap
+  options.back().model_version_ = "1";
+  for (size_t i = 0; i < 3; ++i) {
+    const auto& input_0 = this->input_data_[i % this->input_data_.size()];
+    const auto& input_1 = this->input_data_[(i + 1) % this->input_data_.size()];
+    inputs.emplace_back();
+    err = this->PrepareInputs(input_0, input_1, &inputs.back());
+
+    tc::InferRequestedOutput* output;
+    outputs.emplace_back();
+    err = tc::InferRequestedOutput::Create(&output, "OUTPUT0");
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create inference output: " << err.Message();
+    outputs.back().emplace_back(output);
+    err = tc::InferRequestedOutput::Create(&output, "OUTPUT1");
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create inference output: " << err.Message();
+    outputs.back().emplace_back(output);
+
+    expected_outputs.emplace_back();
+    {
+      auto& expected = expected_outputs.back()["OUTPUT0"];
+      for (size_t i = 0; i < 16; ++i) {
+        expected.emplace_back(input_0[i] + input_1[i]);
+      }
+    }
+    {
+      auto& expected = expected_outputs.back()["OUTPUT1"];
+      for (size_t i = 0; i < 16; ++i) {
+        expected.emplace_back(input_0[i] - input_1[i]);
+      }
+    }
+  }
+
+  std::vector<tc::InferResult*> results;
+  err = this->client_->InferMulti(&results, options, inputs, outputs);
+  ASSERT_TRUE(err.IsOk()) << "failed to perform multiple inferences: "
+                          << err.Message();
+
+  EXPECT_NO_FATAL_FAILURE(this->ValidateOutput(results, expected_outputs));
 }
 
 class TestHttpInferRequest : public tc::HttpInferRequest {
@@ -2251,7 +2301,7 @@ REGISTER_TYPED_TEST_SUITE_P(
     AsyncInferMultiDifferentOptions, AsyncInferMultiOneOption,
     AsyncInferMultiOneOutput, AsyncInferMultiNoOutput,
     AsyncInferMultiMismatchOptions, AsyncInferMultiMismatchOutputs,
-    LoadWithFileOverride, LoadWithConfigOverride, InferNoUseCachedChannel);
+    LoadWithFileOverride, LoadWithConfigOverride);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(GRPC, ClientTest, tc::InferenceServerGrpcClient);
 INSTANTIATE_TYPED_TEST_SUITE_P(HTTP, ClientTest, tc::InferenceServerHttpClient);
