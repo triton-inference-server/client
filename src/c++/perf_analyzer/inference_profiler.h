@@ -120,6 +120,26 @@ struct ServerSideStats {
   uint64_t cache_miss_time_ns;
 
   std::map<cb::ModelIdentifier, ServerSideStats> composing_models_stat;
+  // function to set server stats as 0
+  void ResetServerStats()
+  {
+    inference_count = 0;
+    execution_count = 0;
+    success_count = 0;
+    queue_count = 0;
+    compute_input_count = 0;
+    compute_infer_count = 0;
+    compute_output_count = 0;
+    cumm_time_ns = 0;
+    queue_time_ns = 0;
+    compute_input_time_ns = 0;
+    compute_infer_time_ns = 0;
+    compute_output_time_ns = 0;
+    cache_hit_count = 0;
+    cache_hit_time_ns = 0;
+    cache_miss_count = 0;
+    cache_miss_time_ns = 0;
+  }
 };
 
 /// Holds the statistics recorded at the client side.

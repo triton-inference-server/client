@@ -1588,27 +1588,6 @@ InferenceProfiler::SummarizeServerStats(
   return cb::Error::Success;
 }
 
-void
-InferenceProfiler::ResetServerStats(ServerSideStats* server_stats)
-{
-  server_stats->inference_count = 0;
-  server_stats->execution_count = 0;
-  server_stats->success_count = 0;
-  server_stats->queue_count = 0;
-  server_stats->compute_input_count = 0;
-  server_stats->compute_infer_count = 0;
-  server_stats->compute_output_count = 0;
-  server_stats->cumm_time_ns = 0;
-  server_stats->queue_time_ns = 0;
-  server_stats->compute_input_time_ns = 0;
-  server_stats->compute_infer_time_ns = 0;
-  server_stats->compute_output_time_ns = 0;
-  server_stats->cache_hit_count = 0;
-  server_stats->cache_hit_time_ns = 0;
-  server_stats->cache_miss_count = 0;
-  server_stats->cache_miss_time_ns = 0;
-}
-
 cb::Error
 InferenceProfiler::SummarizeServerStatsHelper(
     const cb::ModelIdentifier& model_identifier,
@@ -1629,10 +1608,9 @@ InferenceProfiler::SummarizeServerStatsHelper(
       return cb::Error(
           "missing statistics for requested model", pa::GENERIC_ERROR);
     } else {
-      // function to set composing model stats as 0 in case of top-level
-      // ensemble request cache hit since the composing model will not be
-      // executed.
-      ResetServerStats(server_stats);
+      // Setting server stats 0 for composing model in case of ensemble request cache hit
+      // since the composing model will not be executed
+      server_stats->ResetServerStats();
     }
   } else {
     uint64_t start_infer_cnt = 0;
