@@ -104,7 +104,7 @@ class Profiler:
     @staticmethod
     def run(args=None, extra_args=None):
         cmd = Profiler.build_cmd(args, extra_args)
-        print(f"Running Perf Analyzer : '{cmd}'")
+        logger.info(f"Running Perf Analyzer : '{cmd}'")
         if args and args.verbose:
             subprocess.run(cmd, shell=True, check=True, stdout=None)
         else:
