@@ -248,6 +248,7 @@ class TestLlmInputs:
 
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+        assert isinstance(pa_json["data"][0]["payload"][0]["prompt"], str)
 
     def test_create_openai_to_trtllm(self):
         """
