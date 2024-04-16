@@ -89,7 +89,6 @@ class TritonClientBackend : public ClientBackend {
   static Error Create(
       const std::string& url, const ProtocolType protocol,
       const SslOptionsBase& ssl_options,
-      const std::map<std::string, std::vector<std::string>> trace_options,
       const grpc_compression_algorithm compression_algorithm,
       std::shared_ptr<tc::Headers> http_headers, const bool verbose,
       const std::string& metrics_url,
