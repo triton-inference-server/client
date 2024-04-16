@@ -62,7 +62,7 @@ Available starting with the 24.03 release of the
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
 
 ```bash
-RELEASE="<YY.MM>" # please refer to Triton Inference Server latest release  
+RELEASE="<YY.MM>" # YY.MM is the version of Triton in a year.month format.
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
