@@ -81,6 +81,7 @@ class LlmInputs:
         length: int = DEFAULT_LENGTH,
         output_tokens_mean: int = DEFAULT_OUTPUT_TOKENS_MEAN,
         output_tokens_stddev: int = DEFAULT_OUTPUT_TOKENS_STDDEV,
+        output_tokens_deterministic: bool = False,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
         random_seed: int = DEFAULT_RANDOM_SEED,
@@ -121,6 +122,8 @@ class LlmInputs:
             The mean length of the output to generate. If not using fixed output lengths, this should be set to -1.
         output_tokens_stddev:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
+        output_tokens_deterministic:
+            If true, the output tokens will set the minimum and maximum tokens to be equivalent.
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -177,6 +180,7 @@ class LlmInputs:
             extra_inputs,
             output_tokens_mean,
             output_tokens_stddev,
+            output_tokens_deterministic,
             model_name,
         )
         cls._write_json_to_file(json_in_pa_format)
@@ -319,6 +323,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
@@ -329,6 +334,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
         elif output_format == OutputFormat.OPENAI_COMPLETIONS:
@@ -339,6 +345,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
         elif output_format == OutputFormat.VLLM:
@@ -349,6 +356,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
         elif output_format == OutputFormat.TRTLLM:
@@ -359,6 +367,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
         else:
@@ -377,6 +386,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
@@ -394,6 +404,7 @@ class LlmInputs:
             extra_inputs,
             output_tokens_mean,
             output_tokens_stddev,
+            output_tokens_deterministic,
             model_name,
         )
 
@@ -408,6 +419,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         (
@@ -425,6 +437,7 @@ class LlmInputs:
             extra_inputs,
             output_tokens_mean,
             output_tokens_stddev,
+            output_tokens_deterministic,
             model_name,
         )
 
@@ -439,6 +452,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         (
@@ -457,6 +471,7 @@ class LlmInputs:
             extra_inputs,
             output_tokens_mean,
             output_tokens_stddev,
+            output_tokens_deterministic,
             model_name,
         )
 
@@ -471,6 +486,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         (
@@ -489,6 +505,7 @@ class LlmInputs:
             extra_inputs,
             output_tokens_mean,
             output_tokens_stddev,
+            output_tokens_deterministic,
             model_name,
         )
 
@@ -539,6 +556,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
@@ -562,6 +580,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
 
@@ -579,6 +598,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
@@ -606,6 +626,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
 
@@ -623,6 +644,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_vllm_pa_json()
@@ -651,6 +673,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
 
@@ -668,6 +691,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_trtllm_pa_json()
@@ -703,6 +727,7 @@ class LlmInputs:
                 extra_inputs,
                 output_tokens_mean,
                 output_tokens_stddev,
+                output_tokens_deterministic,
                 model_name,
             )
 
@@ -840,6 +865,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         row = pa_json["data"][index]["payload"][0]
@@ -851,7 +877,6 @@ class LlmInputs:
             row["max_tokens"] = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
-            row["ignore_eos"] = True
         for key, value in extra_inputs.items():
             row[key] = value
 
@@ -867,6 +892,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         row = pa_json["data"][index]
@@ -879,9 +905,10 @@ class LlmInputs:
                 int(max(0, random.gauss(output_tokens_mean, output_tokens_stddev)))
             )
             sampling_parameters = {
-                "min_tokens": number_of_tokens,
                 "max_tokens": number_of_tokens,
             }
+            if output_tokens_deterministic:
+                sampling_parameters["min_tokens"] = number_of_tokens
             sampling_parameters_str = json.dumps(sampling_parameters)
             row["sampling_parameters"] = [sampling_parameters_str]
         for key, value in extra_inputs.items():
@@ -901,6 +928,7 @@ class LlmInputs:
         extra_inputs: Dict,
         output_tokens_mean: int,
         output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
         model_name: str = "",
     ) -> Dict:
         row = pa_json["data"][index]
@@ -912,7 +940,8 @@ class LlmInputs:
             number_of_tokens = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
-            row["min_length"] = [number_of_tokens]
+            if output_tokens_deterministic:
+                row["min_length"] = [number_of_tokens]
             row["max_tokens"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]

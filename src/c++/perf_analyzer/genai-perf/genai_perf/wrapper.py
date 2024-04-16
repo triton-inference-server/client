@@ -68,6 +68,7 @@ class Profiler:
             "synthetic_input_tokens_stddev",
             "output_tokens_mean",
             "output_tokens_stddev",
+            "output_tokens_mean_deterministic",
             "num_prompts",
             "random_seed",
             "tokenizer",
