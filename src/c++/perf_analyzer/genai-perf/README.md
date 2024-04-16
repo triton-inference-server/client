@@ -48,6 +48,11 @@ The GenAI-Perf workflow enables a user to
 
 all from the [command line](#cli).
 
+> [!WARNING]
+> ##### LATEST RELEASE
+> You are currently on the `main` branch which tracks under-development progress towards the next release.
+> The current release is version [2.44.0](https://github.com/triton-inference-server/server/releases/latest) and corresponds to the 24.03 container release on NVIDIA GPU Cloud (NGC).
+
 > [!Note]
 > GenAI-Perf is currently in early release while under rapid development.
 > While we will try to remain consistent, command line options are subject to
