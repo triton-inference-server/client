@@ -175,6 +175,7 @@ class TestLlmInputs:
             extra_inputs={},
             output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
             output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+            output_tokens_deterministic=False,
         )
 
         assert pa_json is not None

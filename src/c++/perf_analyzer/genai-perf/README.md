@@ -138,6 +138,9 @@ options:
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean`: The mean number of tokens to request from the model.
+* `--output-tokens-mean-deterministic`: If an output token mean is supplied,
+this will make the token count distribution set the max and min lengths equal.
+This is supported for the Triton service-kind.
 * `--output-tokens-stddev`: The standard deviation of the number of tokens to
 request from the model. input data.
 
@@ -198,6 +201,12 @@ The standard deviation of the number of tokens of synthetic input data.
 ##### `--output-tokens-mean <int>`
 
 The mean of the number of output tokens to request from the model.
+
+##### `--output-tokens-mean-deterministic`
+
+Sets the output token distribution to add a minimum token length input
+(in addition to the maximum token length) to more deterministically
+request the number of output tokens from the model.
 
 ##### `--output-tokens-stddev <int>`
 
