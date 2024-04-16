@@ -852,9 +852,7 @@ class LlmInputs:
             row["max_tokens"] = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
-            # TODO: undo comment before merge. Official fix will come from the
-            # dyas-output-tokens branch.
-            # row["ignore_eos"] = True
+            row["ignore_eos"] = True
         for key, value in extra_inputs.items():
             row[key] = value
 
