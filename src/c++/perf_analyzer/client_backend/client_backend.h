@@ -293,7 +293,6 @@ class ClientBackendFactory {
       const BackendKind kind, const std::string& url,
       const std::string& endpoint, const ProtocolType protocol,
       const SslOptionsBase& ssl_options,
-      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -313,7 +312,6 @@ class ClientBackendFactory {
       const BackendKind kind, const std::string& url,
       const std::string& endpoint, const ProtocolType protocol,
       const SslOptionsBase& ssl_options,
-      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       const std::shared_ptr<Headers> http_headers,
       const std::string& triton_server_path,
@@ -321,7 +319,7 @@ class ClientBackendFactory {
       const std::string& metrics_url, const TensorFormat input_tensor_format,
       const TensorFormat output_tensor_format)
       : kind_(kind), url_(url), endpoint_(endpoint), protocol_(protocol),
-        ssl_options_(ssl_options), trace_options_(trace_options),
+        ssl_options_(ssl_options),
         compression_algorithm_(compression_algorithm),
         http_headers_(http_headers), triton_server_path(triton_server_path),
         model_repository_path_(model_repository_path), verbose_(verbose),
@@ -335,7 +333,6 @@ class ClientBackendFactory {
   const std::string endpoint_;
   const ProtocolType protocol_;
   const SslOptionsBase& ssl_options_;
-  const std::map<std::string, std::vector<std::string>> trace_options_;
   const GrpcCompressionAlgorithm compression_algorithm_;
   std::shared_ptr<Headers> http_headers_;
   std::string triton_server_path;
@@ -351,7 +348,6 @@ class ClientBackendFactory {
   ClientBackendFactory()
       : kind_(BackendKind()), url_(""), protocol_(ProtocolType()),
         ssl_options_(SslOptionsBase()),
-        trace_options_(std::map<std::string, std::vector<std::string>>()),
         compression_algorithm_(GrpcCompressionAlgorithm()), verbose_(false)
   {
   }
@@ -367,7 +363,6 @@ class ClientBackend {
       const BackendKind kind, const std::string& url,
       const std::string& endpoint, const ProtocolType protocol,
       const SslOptionsBase& ssl_options,
-      const std::map<std::string, std::vector<std::string>> trace_options,
       const GrpcCompressionAlgorithm compression_algorithm,
       std::shared_ptr<Headers> http_headers, const bool verbose,
       const std::string& library_directory, const std::string& model_repository,

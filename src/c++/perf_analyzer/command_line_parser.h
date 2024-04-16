@@ -95,7 +95,6 @@ struct PerfAnalyzerParameters {
 
   // Enable MPI option for using MPI functionality with multi-model mode.
   bool enable_mpi = false;
-  std::map<std::string, std::vector<std::string>> trace_options;
   bool using_old_options = false;
   bool dynamic_concurrency_mode = false;
   bool url_specified = false;

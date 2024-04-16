@@ -78,7 +78,6 @@ PerfAnalyzer::CreateAnalyzerObjects()
   FAIL_IF_ERR(
       cb::ClientBackendFactory::Create(
           params_->kind, params_->url, params_->endpoint, params_->protocol,
-          params_->ssl_options, params_->trace_options,
           params_->compression_algorithm, params_->http_headers,
           params_->triton_server_path, params_->model_repository_path,
           params_->extra_verbose, params_->metrics_url,

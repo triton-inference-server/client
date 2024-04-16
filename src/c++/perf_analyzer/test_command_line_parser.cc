@@ -160,7 +160,6 @@ CHECK_PARAMS(PAParamsPtr act, PAParamsPtr exp)
       exp->ssl_options.ssl_https_verify_peer);
   CHECK(act->verbose_csv == exp->verbose_csv);
   CHECK(act->enable_mpi == exp->enable_mpi);
-  CHECK(act->trace_options.size() == exp->trace_options.size());
   CHECK(act->using_old_options == exp->using_old_options);
   CHECK(act->dynamic_concurrency_mode == exp->dynamic_concurrency_mode);
   CHECK(act->url_specified == exp->url_specified);
@@ -332,7 +331,6 @@ TEST_CASE("Testing PerfAnalyzerParameters")
   CHECK(params->ssl_options.ssl_https_verify_peer == 1);
   CHECK(params->verbose_csv == false);
   CHECK(params->enable_mpi == false);
-  CHECK(params->trace_options.size() == 0);
   CHECK(params->using_old_options == false);
   CHECK(params->dynamic_concurrency_mode == false);
   CHECK(params->url_specified == false);

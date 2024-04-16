@@ -121,7 +121,6 @@ Error
 ClientBackendFactory::Create(
     const BackendKind kind, const std::string& url, const std::string& endpoint,
     const ProtocolType protocol, const SslOptionsBase& ssl_options,
-    const std::map<std::string, std::vector<std::string>> trace_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers,
     const std::string& triton_server_path,
@@ -131,10 +130,9 @@ ClientBackendFactory::Create(
     std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
-      kind, url, endpoint, protocol, ssl_options, trace_options,
-      compression_algorithm, http_headers, triton_server_path,
-      model_repository_path, verbose, metrics_url, input_tensor_format,
-      output_tensor_format));
+      kind, url, endpoint, protocol, ssl_options, compression_algorithm,
+      http_headers, triton_server_path, model_repository_path, verbose,
+      metrics_url, input_tensor_format, output_tensor_format));
   return Error::Success;
 }
 
@@ -143,10 +141,10 @@ ClientBackendFactory::CreateClientBackend(
     std::unique_ptr<ClientBackend>* client_backend)
 {
   RETURN_IF_CB_ERROR(ClientBackend::Create(
-      kind_, url_, endpoint_, protocol_, ssl_options_, trace_options_,
-      compression_algorithm_, http_headers_, verbose_, triton_server_path,
-      model_repository_path_, metrics_url_, input_tensor_format_,
-      output_tensor_format_, client_backend));
+      kind_, url_, endpoint_, protocol_, ssl_options_, compression_algorithm_,
+      http_headers_, verbose_, triton_server_path, model_repository_path_,
+      metrics_url_, input_tensor_format_, output_tensor_format_,
+      client_backend));
   return Error::Success;
 }
 
@@ -163,7 +161,6 @@ Error
 ClientBackend::Create(
     const BackendKind kind, const std::string& url, const std::string& endpoint,
     const ProtocolType protocol, const SslOptionsBase& ssl_options,
-    const std::map<std::string, std::vector<std::string>> trace_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
     const std::string& triton_server_path,
@@ -175,10 +172,9 @@ ClientBackend::Create(
   std::unique_ptr<ClientBackend> local_backend;
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonClientBackend::Create(
-        url, protocol, ssl_options, trace_options,
-        BackendToGrpcType(compression_algorithm), http_headers, verbose,
-        metrics_url, input_tensor_format, output_tensor_format,
-        &local_backend));
+        url, protocol, ssl_options, BackendToGrpcType(compression_algorithm),
+        http_headers, verbose, metrics_url, input_tensor_format,
+        output_tensor_format, &local_backend));
   }
 #ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
   else if (kind == OPENAI) {

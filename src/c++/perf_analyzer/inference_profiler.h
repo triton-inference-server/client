@@ -248,8 +248,6 @@ class InferenceProfiler {
   /// \param step The step size to move along the search range in linear search
   /// or the precision in binary search.
   /// \param search_mode The search algorithm to be applied.
-  /// \param summary Returns the trace of the measurement along the search
-  /// path.
   /// \return cb::Error object indicating success or failure.
   template <typename T>
   cb::Error Profile(
