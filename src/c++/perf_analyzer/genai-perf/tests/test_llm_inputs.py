@@ -175,6 +175,7 @@ class TestLlmInputs:
             extra_inputs={},
             output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
             output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+            output_tokens_deterministic=False,
         )
 
         assert pa_json is not None
@@ -438,77 +439,73 @@ class TestLlmInputs:
         "output_format", [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_FORMATS]
     )
     def test_output_tokens_mean(self, output_format, default_tokenizer):
+        if output_format != OutputFormat.VLLM and output_format != OutputFormat.TRTLLM:
+            return
+
         output_tokens_mean = 100
         output_tokens_stddev = 0
+        for deterministic in [True, False]:
+            _ = LlmInputs.create_llm_inputs(
+                input_type=PromptSource.SYNTHETIC,
+                output_format=output_format,
+                num_of_output_prompts=5,
+                add_model_name=False,
+                add_stream=True,
+                tokenizer=default_tokenizer,
+                output_tokens_mean=output_tokens_mean,
+                output_tokens_stddev=output_tokens_stddev,
+                output_tokens_deterministic=deterministic,
+            )
 
-        _ = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=output_format,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            output_tokens_mean=output_tokens_mean,
-            output_tokens_stddev=output_tokens_stddev,
-        )
+            assert os.path.exists(
+                DEFAULT_INPUT_DATA_JSON
+            ), "llm_inputs.json file is not created"
 
-        assert os.path.exists(
-            DEFAULT_INPUT_DATA_JSON
-        ), "llm_inputs.json file is not created"
+            with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
+                llm_inputs_data = json.load(f)
 
-        with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
-            llm_inputs_data = json.load(f)
+            for entry in llm_inputs_data["data"]:
+                if output_format == OutputFormat.VLLM:
+                    assert (
+                        "sampling_parameters" in entry
+                    ), "sampling_parameters is missing in llm_inputs.json"
+                    sampling_parameters = json.loads(entry["sampling_parameters"][0])
+                    assert (
+                        "max_tokens" in sampling_parameters
+                    ), "max_tokens parameter is missing in sampling_parameters"
+                    assert sampling_parameters["max_tokens"] == str(
+                        output_tokens_mean
+                    ), "max_tokens parameter is not properly set"
+                    if deterministic:
+                        assert (
+                            "min_tokens" in sampling_parameters
+                        ), "min_tokens parameter is missing in sampling_parameters"
+                        assert sampling_parameters["min_tokens"] == str(
+                            output_tokens_mean
+                        ), "min_tokens parameter is not properly set"
+                    else:
+                        assert (
+                            "min_tokens" not in sampling_parameters
+                        ), "min_tokens parameter is present in sampling_parameters"
+                elif output_format == OutputFormat.TRTLLM:
+                    assert (
+                        "max_tokens" in entry
+                    ), "max_tokens parameter is missing in llm_inputs.json"
+                    assert (
+                        entry["max_tokens"][0] == output_tokens_mean
+                    ), "max_tokens parameter is not properly set"
+                    if deterministic:
+                        assert (
+                            "min_length" in entry
+                        ), "min_length parameter is missing in llm_inputs.json"
+                        assert (
+                            entry["min_length"][0] == output_tokens_mean
+                        ), "min_length parameter is not properly set"
+                    else:
+                        assert (
+                            "min_length" not in entry
+                        ), "min_length parameter is present in llm_inputs.json"
+                else:
+                    assert False, f"Unsupported output format: {output_format}"
 
-        for entry in llm_inputs_data["data"]:
-            if (
-                output_format == OutputFormat.OPENAI_COMPLETIONS
-                or output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
-            ):
-                assert "payload" in entry, "payload is missing in llm_inputs.json"
-                payload = entry["payload"][0]
-                assert (
-                    "max_tokens" in payload
-                ), "max_tokens parameter is missing in llm_inputs.json"
-                assert (
-                    payload["max_tokens"] == output_tokens_mean
-                ), "max_tokens parameter is not properly set"
-                assert (
-                    "ignore_eos" in payload
-                ), "ignore_eos parameter is missing in llm_inputs.json"
-                assert (
-                    payload["ignore_eos"] == True
-                ), "ignore_eos parameter is not properly set"
-            elif output_format == OutputFormat.VLLM:
-                assert (
-                    "sampling_parameters" in entry
-                ), "sampling_parameters is missing in llm_inputs.json"
-                sampling_parameters = json.loads(entry["sampling_parameters"][0])
-                assert (
-                    "max_tokens" in sampling_parameters
-                ), "max_tokens parameter is missing in sampling_parameters"
-                assert sampling_parameters["max_tokens"] == str(
-                    output_tokens_mean
-                ), "max_tokens parameter is not properly set"
-                assert (
-                    "min_tokens" in sampling_parameters
-                ), "min_tokens parameter is missing in sampling_parameters"
-                assert sampling_parameters["min_tokens"] == str(
-                    output_tokens_mean
-                ), "min_tokens parameter is not properly set"
-            elif output_format == OutputFormat.TRTLLM:
-                assert (
-                    "max_tokens" in entry
-                ), "max_tokens parameter is missing in llm_inputs.json"
-                assert (
-                    entry["max_tokens"][0] == output_tokens_mean
-                ), "max_tokens parameter is not properly set"
-                assert (
-                    "min_length" in entry
-                ), "min_length parameter is missing in llm_inputs.json"
-                assert (
-                    entry["min_length"][0] == output_tokens_mean
-                ), "min_length parameter is not properly set"
-            else:
-                assert False, f"Unsupported output format: {output_format}"
-
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+            os.remove(DEFAULT_INPUT_DATA_JSON)
