@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -69,10 +69,16 @@ class ProfileDataExporter {
   void AddRequests(
       rapidjson::Value& entry, rapidjson::Value& requests,
       const Experiment& raw_experiment);
-  void AddResponses(
-      rapidjson::Value& responses,
+  void AddRequestInputs(
+      rapidjson::Value& inputs_json,
+      const std::vector<RequestRecord::RequestInput>& inputs);
+  void AddResponseTimestamps(
+      rapidjson::Value& timestamps_json,
       const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
-          response_times);
+          timestamps);
+  void AddResponseOutputs(
+      rapidjson::Value& outputs_json,
+      const std::vector<RequestRecord::ResponseOutput>& outputs);
   void AddWindowBoundaries(
       rapidjson::Value& entry, rapidjson::Value& window_boundaries,
       const Experiment& raw_experiment);

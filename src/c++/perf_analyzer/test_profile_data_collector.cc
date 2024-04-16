@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -53,35 +53,63 @@ TEST_CASE("profile_data_collector: FindExperiment")
 
 TEST_CASE("profile_data_collector: AddData")
 {
+  using std::chrono::nanoseconds;
+  using std::chrono::system_clock;
+  using std::chrono::time_point;
+
   MockProfileDataCollector collector{};
   InferenceLoadMode infer_mode{10, 20.0};
 
   // Add RequestRecords
-  auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+  auto clock_epoch{time_point<system_clock>()};
 
   uint64_t sequence_id1{123};
-  auto request_timestamp1{clock_epoch + std::chrono::nanoseconds(1)};
-  auto response_timestamp1{clock_epoch + std::chrono::nanoseconds(2)};
-  auto response_timestamp2{clock_epoch + std::chrono::nanoseconds(3)};
+  auto request1_timestamp{clock_epoch + nanoseconds(1)};
+  auto request1_response1_timestamp{clock_epoch + nanoseconds(2)};
+  auto request1_response2_timestamp{clock_epoch + nanoseconds(3)};
+  uint8_t fake_data_in[] = {0x01, 0x02, 0x03, 0x04};
+  uint8_t fake_data_out[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  RequestRecord::RequestInput request1_request_input{
+      {"key1", RecordData(fake_data_in, 1)},
+      {"key2", RecordData(fake_data_in, 2)}};
+  RequestRecord::ResponseOutput request1_response1_output{
+      {"key1", RecordData(fake_data_out, 1)},
+      {"key2", RecordData(fake_data_out, 2)}};
+  RequestRecord::ResponseOutput request1_response2_output{
+      {"key3", RecordData(fake_data_out, 3)},
+      {"key4", RecordData(fake_data_out, 4)}};
 
   RequestRecord request_record1{
-      request_timestamp1,
-      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
-          response_timestamp1, response_timestamp2},
+      request1_timestamp,
+      std::vector<time_point<system_clock>>{
+          request1_response1_timestamp, request1_response2_timestamp},
+      {request1_request_input},
+      {request1_response1_output, request1_response2_output},
       0,
       false,
       sequence_id1,
       false};
 
   uint64_t sequence_id2{456};
-  auto request_timestamp2{clock_epoch + std::chrono::nanoseconds(4)};
-  auto response_timestamp3{clock_epoch + std::chrono::nanoseconds(5)};
-  auto response_timestamp4{clock_epoch + std::chrono::nanoseconds(6)};
+  auto request2_timestamp{clock_epoch + nanoseconds(4)};
+  auto request2_response1_timestamp{clock_epoch + nanoseconds(5)};
+  auto request2_response2_timestamp{clock_epoch + nanoseconds(6)};
+  RequestRecord::RequestInput request2_request_input{
+      {"key3", RecordData(fake_data_in, 3)},
+      {"key4", RecordData(fake_data_in, 4)}};
+  RequestRecord::ResponseOutput request2_response1_output{
+      {"key5", RecordData(fake_data_out, 5)},
+      {"key6", RecordData(fake_data_out, 6)}};
+  RequestRecord::ResponseOutput request2_response2_output{
+      {"key7", RecordData(fake_data_out, 7)},
+      {"key8", RecordData(fake_data_out, 8)}};
 
   RequestRecord request_record2{
-      request_timestamp2,
-      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
-          response_timestamp3, response_timestamp4},
+      request2_timestamp,
+      std::vector<time_point<system_clock>>{
+          request2_response1_timestamp, request2_response2_timestamp},
+      {request2_request_input},
+      {request2_response1_output, request2_response2_output},
       0,
       false,
       sequence_id2,
@@ -94,13 +122,19 @@ TEST_CASE("profile_data_collector: AddData")
 
   std::vector<RequestRecord> rr{collector.experiments_[0].requests};
   CHECK(rr[0].sequence_id_ == sequence_id1);
-  CHECK(rr[0].start_time_ == request_timestamp1);
-  CHECK(rr[0].response_times_[0] == response_timestamp1);
-  CHECK(rr[0].response_times_[1] == response_timestamp2);
+  CHECK(rr[0].start_time_ == request1_timestamp);
+  CHECK(rr[0].request_inputs_[0] == request1_request_input);
+  CHECK(rr[0].response_timestamps_[0] == request1_response1_timestamp);
+  CHECK(rr[0].response_timestamps_[1] == request1_response2_timestamp);
+  CHECK(rr[0].response_outputs_[0] == request1_response1_output);
+  CHECK(rr[0].response_outputs_[1] == request1_response2_output);
   CHECK(rr[1].sequence_id_ == sequence_id2);
-  CHECK(rr[1].start_time_ == request_timestamp2);
-  CHECK(rr[1].response_times_[0] == response_timestamp3);
-  CHECK(rr[1].response_times_[1] == response_timestamp4);
+  CHECK(rr[1].start_time_ == request2_timestamp);
+  CHECK(rr[1].request_inputs_[0] == request2_request_input);
+  CHECK(rr[1].response_timestamps_[0] == request2_response1_timestamp);
+  CHECK(rr[1].response_timestamps_[1] == request2_response2_timestamp);
+  CHECK(rr[1].response_outputs_[0] == request2_response1_output);
+  CHECK(rr[1].response_outputs_[1] == request2_response2_output);
 }
 
 TEST_CASE("profile_data_collector: AddWindow")

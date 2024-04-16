@@ -25,8 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-/// \file
-
 #include <grpcpp/grpcpp.h>
 
 #include <queue>

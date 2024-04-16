@@ -338,11 +338,12 @@ InferDataManagerShm::InitInferDataInput(
 
 cb::Error
 InferDataManagerShm::InitInferDataOutput(
-    const std::string& name, InferData& infer_data)
+    const std::string& name, const ModelTensor& model_tensor,
+    InferData& infer_data)
 {
   cb::InferRequestedOutput* requested_output;
-  RETURN_IF_ERROR(
-      cb::InferRequestedOutput::Create(&requested_output, backend_kind_, name));
+  RETURN_IF_ERROR(cb::InferRequestedOutput::Create(
+      &requested_output, backend_kind_, name, model_tensor.datatype_));
   infer_data.outputs_.push_back(requested_output);
 
   std::string region_name(TensorToRegionName(name));

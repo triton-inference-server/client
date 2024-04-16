@@ -1,4 +1,4 @@
-# Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,13 +24,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
+cmake_minimum_required (VERSION 3.18)
 
-with open("profile_export.json") as f:
-    # example json demonstrating format:
-    # https://github.com/triton-inference-server/client/blob/main/src/c%2B%2B/perf_analyzer/docs/examples/decoupled_output_file.json
-    requests = json.load(f)["experiments"][0]["requests"]
-    latencies = [r["response_timestamps"][0] - r["timestamp"] for r in requests]
-    avg_latency_s = sum(latencies) / len(latencies) / 1000000000
+set(
+    OPENAI_CLIENT_BACKEND_SRCS
+    http_client.cc
+    openai_client_backend.cc
+    openai_client.cc
+    openai_infer_input.cc
+)
 
-    print("Average first-token latency: " + str(avg_latency_s) + " s")
+set(
+    OPENAI_CLIENT_BACKEND_HDRS
+    http_client.h
+    openai_client_backend.h
+    openai_client.h
+    openai_infer_input.h
+)
+
+add_library(
+    openai-client-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${OPENAI_CLIENT_BACKEND_SRCS}
+    ${OPENAI_CLIENT_BACKEND_HDRS}
+)
+
+target_link_libraries(
+  openai-client-backend-library
+  PUBLIC CURL::libcurl
+  PUBLIC httpclient_static
+)
+
+if(${TRITON_ENABLE_GPU})
+    target_include_directories(openai-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
+    target_link_libraries(openai-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+endif() # TRITON_ENABLE_GPU

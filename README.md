@@ -293,7 +293,7 @@ the install directory.
 To build the clients you must install an appropriate C++ compiler and
 other dependencies required for the build. The easiest way to do this
 is to create the [Windows min Docker
-image](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/build.md#windows-10-min-container)
+image](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/build.md#windows-10-min-image)
 and the perform the build within a container launched from that image.
 
 ```
@@ -665,11 +665,9 @@ should be marked as the start of the sequence and the last inference
 requests should be marked as the end of the sequence.
 
 The use of sequence ID and start and end flags are demonstrated in the
-C++ example applications simple_http_sequence_stream_infer_client.cc
-and simple_grpc_sequence_stream_infer_client.cc.  The use of sequence
-ID and start and end flags are demonstrated in the Python example
-application simple_http_sequence_stream_infer_client.py and
-simple_grpc_sequence_stream_infer_client.py.
+C++ example applications simple_grpc_sequence_stream_infer_client.cc.
+The use of sequence ID and start and end flags are demonstrated in the
+Python example application simple_grpc_sequence_stream_infer_client.py.
 
 ## Image Classification Example
 

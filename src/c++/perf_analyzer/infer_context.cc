@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -112,6 +112,10 @@ InferContext::SendRequest(
   }
 
   thread_stat_->num_sent_requests_++;
+
+  // Parse the request inputs to save in the profile export file
+  RequestRecord::RequestInput request_inputs{GetInputs()};
+
   if (async_) {
     uint64_t unique_request_id{(thread_id_ << 48) | ((request_id << 16) >> 16)};
     infer_data_.options_->request_id_ = std::to_string(unique_request_id);
@@ -120,6 +124,7 @@ InferContext::SendRequest(
       auto it = async_req_map_
                     .emplace(infer_data_.options_->request_id_, RequestRecord())
                     .first;
+      it->second.request_inputs_ = {request_inputs};
       it->second.start_time_ = std::chrono::system_clock::now();
       it->second.sequence_end_ = infer_data_.options_->sequence_end_;
       it->second.delayed_ = delayed;
@@ -149,8 +154,10 @@ InferContext::SendRequest(
         &results, *(infer_data_.options_), infer_data_.valid_inputs_,
         infer_data_.outputs_);
     thread_stat_->idle_timer.Stop();
+    RequestRecord::ResponseOutput response_outputs{};
     if (results != nullptr) {
       if (thread_stat_->status_.IsOk()) {
+        response_outputs = GetOutputs(*results);
         thread_stat_->status_ = ValidateOutputs(results);
       }
       delete results;
@@ -167,8 +174,9 @@ InferContext::SendRequest(
       std::lock_guard<std::mutex> lock(thread_stat_->mu_);
       auto total = end_time_sync - start_time_sync;
       thread_stat_->request_records_.emplace_back(RequestRecord(
-          start_time_sync, std::move(end_time_syncs),
-          infer_data_.options_->sequence_end_, delayed, sequence_id, false));
+          start_time_sync, std::move(end_time_syncs), {request_inputs},
+          {response_outputs}, infer_data_.options_->sequence_end_, delayed,
+          sequence_id, false));
       thread_stat_->status_ =
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));
       if (!thread_stat_->status_.IsOk()) {
@@ -178,6 +186,50 @@ InferContext::SendRequest(
   }
 }
 
+const RequestRecord::RequestInput
+InferContext::GetInputs()
+{
+  RequestRecord::RequestInput input{};
+  for (const auto& request_input : infer_data_.valid_inputs_) {
+    std::string data_type{request_input->Datatype()};
+    const uint8_t* buf{nullptr};
+    size_t byte_size{0};
+    request_input->RawData(&buf, &byte_size);
+
+    // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
+    // of the rest of the data (which we already know based on byte_size). It
+    // should be ignored here, as it isn't part of the actual request
+    if (data_type == "BYTES" && byte_size >= 4) {
+      buf += 4;
+      byte_size -= 4;
+    }
+    input.emplace(request_input->Name(), RecordData(buf, byte_size, data_type));
+  }
+  return input;
+}
+
+const RequestRecord::ResponseOutput
+InferContext::GetOutputs(const cb::InferResult& infer_result)
+{
+  RequestRecord::ResponseOutput output{};
+  for (const auto& requested_output : infer_data_.outputs_) {
+    std::string data_type{requested_output->Datatype()};
+    const uint8_t* buf{nullptr};
+    size_t byte_size{0};
+    infer_result.RawData(requested_output->Name(), &buf, &byte_size);
+
+    // The first 4 bytes of BYTES data is a 32-bit integer to indicate the size
+    // of the rest of the data (which we already know based on byte_size). It
+    // should be ignored here, as it isn't part of the actual response
+    if (data_type == "BYTES" && byte_size >= 4) {
+      buf += 4;
+      byte_size -= 4;
+    }
+    output.emplace(
+        requested_output->Name(), RecordData(buf, byte_size, data_type));
+  }
+  return output;
+}
 
 void
 InferContext::UpdateJsonData()
@@ -258,7 +310,9 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         if (thread_stat_->cb_status_.IsOk() == false) {
           return;
         }
-        it->second.response_times_.push_back(std::chrono::system_clock::now());
+        it->second.response_timestamps_.push_back(
+            std::chrono::system_clock::now());
+        it->second.response_outputs_.push_back(GetOutputs(*result));
         num_responses_++;
         if (is_null_response == true) {
           it->second.has_null_last_response_ = true;
@@ -271,7 +325,8 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
         if (is_final_response) {
           has_received_final_response_ = is_final_response;
           thread_stat_->request_records_.emplace_back(
-              it->second.start_time_, it->second.response_times_,
+              it->second.start_time_, it->second.response_timestamps_,
+              it->second.request_inputs_, it->second.response_outputs_,
               it->second.sequence_end_, it->second.delayed_,
               it->second.sequence_id_, it->second.has_null_last_response_);
           infer_backend_->ClientInferStat(&(thread_stat_->contexts_stat_[id_]));

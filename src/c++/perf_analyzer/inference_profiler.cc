@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -1282,11 +1282,12 @@ InferenceProfiler::ValidLatencyMeasurement(
     uint64_t request_end_ns;
 
     if (request_record.has_null_last_response_ == false) {
-      request_end_ns = CHRONO_TO_NANOS(request_record.response_times_.back());
-    } else if (request_record.response_times_.size() > 1) {
-      size_t last_response_idx{request_record.response_times_.size() - 2};
       request_end_ns =
-          CHRONO_TO_NANOS(request_record.response_times_[last_response_idx]);
+          CHRONO_TO_NANOS(request_record.response_timestamps_.back());
+    } else if (request_record.response_timestamps_.size() > 1) {
+      size_t last_response_idx{request_record.response_timestamps_.size() - 2};
+      request_end_ns = CHRONO_TO_NANOS(
+          request_record.response_timestamps_[last_response_idx]);
     } else {
       erase_indices.push_back(i);
       continue;
@@ -1297,7 +1298,7 @@ InferenceProfiler::ValidLatencyMeasurement(
       if ((request_end_ns >= valid_range.first) &&
           (request_end_ns <= valid_range.second)) {
         valid_latencies->push_back(request_end_ns - request_start_ns);
-        response_count += request_record.response_times_.size();
+        response_count += request_record.response_timestamps_.size();
         if (request_record.has_null_last_response_) {
           response_count--;
         }

@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -31,6 +31,10 @@
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
 #include "triton_c_api/triton_c_api_backend.h"
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
+
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+#include "openai/openai_client_backend.h"
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
 #include "tensorflow_serving/tfserve_client_backend.h"
@@ -86,6 +90,9 @@ BackendKindToString(const BackendKind kind)
     case TRITON_C_API:
       return std::string("TRITON_C_API");
       break;
+    case OPENAI:
+      return std::string("OPENAI");
+      break;
     default:
       return std::string("UNKNOWN");
       break;
@@ -112,8 +119,8 @@ BackendToGrpcType(const GrpcCompressionAlgorithm compression_algorithm)
 //
 Error
 ClientBackendFactory::Create(
-    const BackendKind kind, const std::string& url, const ProtocolType protocol,
-    const SslOptionsBase& ssl_options,
+    const BackendKind kind, const std::string& url, const std::string& endpoint,
+    const ProtocolType protocol, const SslOptionsBase& ssl_options,
     const std::map<std::string, std::vector<std::string>> trace_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers,
@@ -124,9 +131,10 @@ ClientBackendFactory::Create(
     std::shared_ptr<ClientBackendFactory>* factory)
 {
   factory->reset(new ClientBackendFactory(
-      kind, url, protocol, ssl_options, trace_options, compression_algorithm,
-      http_headers, triton_server_path, model_repository_path, verbose,
-      metrics_url, input_tensor_format, output_tensor_format));
+      kind, url, endpoint, protocol, ssl_options, trace_options,
+      compression_algorithm, http_headers, triton_server_path,
+      model_repository_path, verbose, metrics_url, input_tensor_format,
+      output_tensor_format));
   return Error::Success;
 }
 
@@ -135,7 +143,7 @@ ClientBackendFactory::CreateClientBackend(
     std::unique_ptr<ClientBackend>* client_backend)
 {
   RETURN_IF_CB_ERROR(ClientBackend::Create(
-      kind_, url_, protocol_, ssl_options_, trace_options_,
+      kind_, url_, endpoint_, protocol_, ssl_options_, trace_options_,
       compression_algorithm_, http_headers_, verbose_, triton_server_path,
       model_repository_path_, metrics_url_, input_tensor_format_,
       output_tensor_format_, client_backend));
@@ -153,8 +161,8 @@ ClientBackendFactory::Kind()
 //
 Error
 ClientBackend::Create(
-    const BackendKind kind, const std::string& url, const ProtocolType protocol,
-    const SslOptionsBase& ssl_options,
+    const BackendKind kind, const std::string& url, const std::string& endpoint,
+    const ProtocolType protocol, const SslOptionsBase& ssl_options,
     const std::map<std::string, std::vector<std::string>> trace_options,
     const GrpcCompressionAlgorithm compression_algorithm,
     std::shared_ptr<Headers> http_headers, const bool verbose,
@@ -172,6 +180,12 @@ ClientBackend::Create(
         metrics_url, input_tensor_format, output_tensor_format,
         &local_backend));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(openai::OpenAiClientBackend::Create(
+        url, endpoint, protocol, http_headers, verbose, &local_backend));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeClientBackend::Create(
@@ -421,6 +435,12 @@ InferInput::Create(
     RETURN_IF_CB_ERROR(tritonremote::TritonInferInput::Create(
         infer_input, name, dims, datatype));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(
+        openai::OpenAiInferInput::Create(infer_input, name, dims, datatype));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(tfserving::TFServeInferInput::Create(
@@ -485,6 +505,14 @@ InferInput::SetSharedMemory(
       pa::GENERIC_ERROR);
 }
 
+Error
+InferInput::RawData(const uint8_t** buf, size_t* byte_size)
+{
+  return Error(
+      "client backend of kind " + BackendKindToString(kind_) +
+          " does not support RawData() for InferInput",
+      pa::GENERIC_ERROR);
+}
 
 InferInput::InferInput(
     const BackendKind kind, const std::string& name,
@@ -499,12 +527,19 @@ InferInput::InferInput(
 Error
 InferRequestedOutput::Create(
     InferRequestedOutput** infer_output, const BackendKind kind,
-    const std::string& name, const size_t class_count)
+    const std::string& name, const std::string& datatype,
+    const size_t class_count)
 {
   if (kind == TRITON) {
     RETURN_IF_CB_ERROR(tritonremote::TritonInferRequestedOutput::Create(
-        infer_output, name, class_count));
+        infer_output, name, class_count, datatype));
   }
+#ifdef TRITON_ENABLE_PERF_ANALYZER_OPENAI
+  else if (kind == OPENAI) {
+    RETURN_IF_CB_ERROR(openai::OpenAiInferRequestedOutput::Create(
+        infer_output, name, datatype));
+  }
+#endif  // TRITON_ENABLE_PERF_ANALYZER_OPENAI
 #ifdef TRITON_ENABLE_PERF_ANALYZER_TFS
   else if (kind == TENSORFLOW_SERVING) {
     RETURN_IF_CB_ERROR(
@@ -514,7 +549,7 @@ InferRequestedOutput::Create(
 #ifdef TRITON_ENABLE_PERF_ANALYZER_C_API
   else if (kind == TRITON_C_API) {
     RETURN_IF_CB_ERROR(tritoncapi::TritonCApiInferRequestedOutput::Create(
-        infer_output, name, class_count));
+        infer_output, name, class_count, datatype));
   }
 #endif  // TRITON_ENABLE_PERF_ANALYZER_C_API
   else {
@@ -538,8 +573,9 @@ InferRequestedOutput::SetSharedMemory(
 }
 
 InferRequestedOutput::InferRequestedOutput(
-    const BackendKind kind, const std::string& name)
-    : kind_(kind), name_(name)
+    const BackendKind kind, const std::string& name,
+    const std::string& datatype)
+    : kind_(kind), name_(name), datatype_(datatype)
 {
 }
 

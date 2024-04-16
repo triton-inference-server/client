@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -122,25 +122,104 @@ ProfileDataExporter::AddRequests(
       request.AddMember("sequence_id", sequence_id, document_.GetAllocator());
     }
 
-    rapidjson::Value responses(rapidjson::kArrayType);
-    AddResponses(responses, raw_request.response_times_);
+    rapidjson::Value request_inputs(rapidjson::kObjectType);
+    AddRequestInputs(request_inputs, raw_request.request_inputs_);
     request.AddMember(
-        "response_timestamps", responses, document_.GetAllocator());
+        "request_inputs", request_inputs, document_.GetAllocator());
+
+    rapidjson::Value response_timestamps(rapidjson::kArrayType);
+    AddResponseTimestamps(
+        response_timestamps, raw_request.response_timestamps_);
+    request.AddMember(
+        "response_timestamps", response_timestamps, document_.GetAllocator());
+
+    rapidjson::Value response_outputs(rapidjson::kArrayType);
+    AddResponseOutputs(response_outputs, raw_request.response_outputs_);
+    request.AddMember(
+        "response_outputs", response_outputs, document_.GetAllocator());
+
     requests.PushBack(request, document_.GetAllocator());
   }
   entry.AddMember("requests", requests, document_.GetAllocator());
 }
 
 void
-ProfileDataExporter::AddResponses(
-    rapidjson::Value& responses,
+ProfileDataExporter::AddResponseTimestamps(
+    rapidjson::Value& timestamps_json,
     const std::vector<std::chrono::time_point<std::chrono::system_clock>>&
-        response_times)
+        timestamps)
 {
-  for (auto& response : response_times) {
-    rapidjson::Value time;
-    time.SetUint64(response.time_since_epoch().count());
-    responses.PushBack(time, document_.GetAllocator());
+  for (auto& timestamp : timestamps) {
+    rapidjson::Value timestamp_json;
+    timestamp_json.SetUint64(timestamp.time_since_epoch().count());
+    timestamps_json.PushBack(timestamp_json, document_.GetAllocator());
+  }
+}
+
+void
+ProfileDataExporter::AddRequestInputs(
+    rapidjson::Value& request_inputs_json,
+    const std::vector<RequestRecord::RequestInput>& request_inputs)
+{
+  for (const auto& request_input : request_inputs) {
+    for (const auto& input : request_input) {
+      const auto& name{input.first};
+      const auto& buf{input.second.data_.get()};
+      const auto& byte_size{input.second.size_};
+      const auto& data_type{input.second.data_type_};
+      rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
+      rapidjson::Value input_json{};
+      // TMA-1777: support other data types
+      if (buf != nullptr) {
+        if (data_type == "BYTES" || data_type == "JSON") {
+          input_json.SetString(
+              reinterpret_cast<const char*>(buf), byte_size,
+              document_.GetAllocator());
+        } else if (data_type == "INT32") {
+          auto* val = reinterpret_cast<int32_t*>(buf);
+          input_json.SetInt(*val);
+        } else if (data_type == "BOOL") {
+          bool is_true = (*buf > 0);
+          input_json.SetBool(is_true);
+        } else {
+          std::cerr << "WARNING: data type '" + data_type +
+                           "' is not supported with JSON."
+                    << std::endl;
+        }
+      } else {
+        input_json.SetString("", 0, document_.GetAllocator());
+      }
+      request_inputs_json.AddMember(
+          name_json, input_json, document_.GetAllocator());
+    }
+  }
+}
+
+void
+ProfileDataExporter::AddResponseOutputs(
+    rapidjson::Value& outputs_json,
+    const std::vector<RequestRecord::ResponseOutput>& response_outputs)
+{
+  for (const auto& response_output : response_outputs) {
+    rapidjson::Value response_output_json(rapidjson::kObjectType);
+    for (const auto& output : response_output) {
+      const auto& name{output.first};
+      const auto& buf{output.second.data_.get()};
+      const auto& byte_size{output.second.size_};
+      rapidjson::Value name_json(name.c_str(), document_.GetAllocator());
+      rapidjson::Value output_json{};
+      // TMA-1777: support other data types
+      if (buf != nullptr) {
+        output_json.SetString(
+            reinterpret_cast<const char*>(buf), byte_size,
+            document_.GetAllocator());
+      } else {
+        output_json.SetString("", 0, document_.GetAllocator());
+      }
+      response_output_json.AddMember(
+          name_json, output_json, document_.GetAllocator());
+    }
+    outputs_json.PushBack(response_output_json, document_.GetAllocator());
   }
 }
 
