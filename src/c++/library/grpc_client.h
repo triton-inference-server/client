@@ -602,6 +602,9 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>());
 
+  // Number of Cached Channels
+  size_t GetNumCachedChannels() const;
+
  private:
   InferenceServerGrpcClient(
       const std::string& url, bool verbose, bool use_ssl,
