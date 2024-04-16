@@ -945,7 +945,8 @@ TritonLoader::Infer(
       TRITONSERVER_MemoryType memory_type;
       int64_t memory_type_id;
       RETURN_IF_ERROR(shm_manager_->GetMemoryInfo(
-          shm_name, offset, &buf, &memory_type, &memory_type_id));
+          shm_name, offset, shm_byte_size, &buf, &memory_type,
+          &memory_type_id));
 
       alloc_payload.output_map_.emplace(
           std::piecewise_construct, std::forward_as_tuple(output->Name()),
@@ -1149,7 +1150,8 @@ TritonLoader::AddInputs(
         TRITONSERVER_MemoryType memory_type;
         int64_t memory_type_id;
         RETURN_IF_ERROR(shm_manager_->GetMemoryInfo(
-            shm_name, offset, &buf, &memory_type, &memory_type_id));
+            shm_name, offset, shm_byte_size, &buf, &memory_type,
+            &memory_type_id));
         RETURN_IF_TRITONSERVER_ERROR(
             inference_request_append_input_data_fn_(
                 irequest, input_name, buf, byte_size,

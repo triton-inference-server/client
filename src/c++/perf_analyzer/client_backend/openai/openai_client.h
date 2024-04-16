@@ -156,13 +156,15 @@ class ChatCompletionClient : public HttpClient {
   /// with a OpenAI-compatible server in both streaming and non-streaming case.
   Error AsyncInfer(
       std::function<void(InferResult*)> callback,
-      std::string& serialized_request_body, const std::string& request_id);
+      std::string& serialized_request_body, const std::string& request_id,
+      const Headers& headers);
 
   const InferStat& ClientInferStat() { return infer_stat_; }
 
  private:
   // setup curl handle
-  Error PreRunProcessing(CURL* curl, ChatCompletionRequest* request);
+  Error PreRunProcessing(
+      CURL* curl, ChatCompletionRequest* request, const Headers& headers);
 
   static size_t ResponseHandler(
       void* contents, size_t size, size_t nmemb, void* userp);

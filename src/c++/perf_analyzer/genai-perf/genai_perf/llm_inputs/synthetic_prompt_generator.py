@@ -19,14 +19,14 @@ import pathlib
 import random
 from typing import List
 
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import Tokenizer
 
 
 class SyntheticPromptGenerator:
     @classmethod
     def create_synthetic_prompt(
         cls,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
     ) -> str:
@@ -69,7 +69,7 @@ class SyntheticPromptGenerator:
         cls,
         remaining_prompt_tokens: int,
         farewell_lines: List[str],
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
     ) -> str:
         prompt = ""
         get_token_length = lambda text: len(tokenizer.encode(text))
