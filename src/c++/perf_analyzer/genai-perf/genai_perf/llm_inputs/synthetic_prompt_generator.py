@@ -71,6 +71,7 @@ class SyntheticPromptGenerator:
         farewell_lines: List[str],
         tokenizer: Tokenizer,
     ) -> str:
+        prompt_tokens = remaining_prompt_tokens
         prompt = ""
         get_token_length = lambda text: len(tokenizer.encode(text))
 
@@ -86,7 +87,7 @@ class SyntheticPromptGenerator:
                     prompt += line_to_add
                     break
                 prompt += line_to_add
-                remaining_prompt_tokens -= get_token_length(line_to_add)
+                remaining_prompt_tokens = prompt_tokens - get_token_length(prompt)
 
         return prompt
 
