@@ -78,7 +78,7 @@ class Profiler:
         utils.remove_file(args.profile_export_file)
 
         cmd = [
-            f"perf_analyzer",
+            "perf_analyzer",
             "-m",
             f"{args.model}",
             "--async",
