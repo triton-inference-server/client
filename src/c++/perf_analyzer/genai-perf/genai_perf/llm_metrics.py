@@ -555,13 +555,13 @@ class LLMProfileDataParser(ProfileDataParser):
         if self._service_kind == "openai":
             # Remove responses without any content
             # These are only observed to happen at the start or end
-            while res_outputs[0] and self._is_openai_empty_streaming_response(
+            while res_outputs[0] and self._is_openai_empty_response(
                 res_outputs[0]["response"]
             ):
                 res_timestamps.pop(0)
                 res_outputs.pop(0)
 
-            while res_outputs[-1] and self._is_openai_empty_streaming_response(
+            while res_outputs[-1] and self._is_openai_empty_response(
                 res_outputs[-1]["response"]
             ):
                 res_timestamps.pop()
@@ -631,6 +631,10 @@ class LLMProfileDataParser(ProfileDataParser):
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
         response = remove_sse_prefix(response)
+
+        if response == "[DONE]":
+            return ""
+
         data = json.loads(response)
         completions = data["choices"][0]
 
@@ -646,6 +650,9 @@ class LLMProfileDataParser(ProfileDataParser):
             raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
         return text_output
 
-    def _is_openai_empty_streaming_response(self, response: str) -> bool:
-        """Returns true if the response is a streaming openai response with no content"""
-        return "content" not in response
+    def _is_openai_empty_response(self, response: str) -> bool:
+        """Returns true if the response is an openai response with no content (or empty content)"""
+        text = self._extract_openai_text_output(response)
+        if text:
+            return False
+        return True
