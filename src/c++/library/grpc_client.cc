@@ -94,7 +94,7 @@ GetStub(
           "TRITON_CLIENT_GRPC_CHANNEL_MAX_SHARE_COUNT", "6"));
   const auto& channel_itr = grpc_channel_stub_map_.find(url);
   // Reuse cached channel if the channel is found in the map and
-  // used_cached_channel flag is true
+  // use_cached_channel flag is true
   if ((channel_itr != grpc_channel_stub_map_.end()) && use_cached_channel) {
     // check if NewStub should be created
     const auto& shared_count = std::get<0>(channel_itr->second);
@@ -136,6 +136,8 @@ GetStub(
   std::shared_ptr<inference::GRPCInferenceService::Stub> stub =
       inference::GRPCInferenceService::NewStub(channel);
 
+  // If `use_cached_channel` is true, create no new channels even if there
+  // are no cached channels.
   if (use_cached_channel) {
     // Replace if channel / stub have been in the map
     if (channel_itr != grpc_channel_stub_map_.end()) {
@@ -1704,6 +1706,13 @@ InferenceServerGrpcClient::~InferenceServerGrpcClient()
   } while (has_next);
 
   StopStream();
+}
+
+size_t
+InferenceServerGrpcClient::GetNumCachedChannels() const
+{
+  std::lock_guard<std::mutex> lock(grpc_channel_stub_map_mtx_);
+  return grpc_channel_stub_map_.size();
 }
 
 //==============================================================================
