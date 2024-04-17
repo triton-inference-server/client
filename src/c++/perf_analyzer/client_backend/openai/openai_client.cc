@@ -103,10 +103,10 @@ ChatCompletionClient::ResponseHeaderHandler(
   std::transform(hdr.begin(), hdr.end(), hdr.begin(), [](unsigned char c) {
     return std::tolower(c);
   });
-  if (hdr.find("content-type") != std::string::npos) {
-    request->is_stream_ = (hdr.find("text/event-stream") != std::string::npos);
+  if (hdr.find("content-type") != std::string::npos &&
+      hdr.find("text/event-stream") != std::string::npos) {
+    request->is_stream_ = true;
   }
-
   return byte_size;
 }
 
