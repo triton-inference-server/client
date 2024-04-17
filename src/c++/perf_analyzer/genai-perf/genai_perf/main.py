@@ -72,6 +72,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         prompt_tokens_stddev=args.synthetic_input_tokens_stddev,
         output_tokens_mean=args.output_tokens_mean,
         output_tokens_stddev=args.output_tokens_stddev,
+        output_tokens_deterministic=args.output_tokens_mean_deterministic,
         random_seed=args.random_seed,
         num_of_output_prompts=args.num_prompts,
         add_model_name=add_model_name,

@@ -45,6 +45,8 @@ def _check_conditional_args(
     """
     Check for conditional args and raise an error if they are not set.
     """
+
+    # Endpoint and output format checks
     if args.service_kind == "openai":
         if args.endpoint is None:
             parser.error(
@@ -58,16 +60,27 @@ def _check_conditional_args(
         parser.error(
             "The --endpoint option should only be used when using the 'openai' service-kind."
         )
+
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
-    if (
-        args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN
-        and args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV
-    ):
-        parser.error(
-            "The --output-tokens-mean option is required when using --output-tokens-stddev."
-        )
+
+    # Output token distribution checks
+    if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
+        if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
+            parser.error(
+                "The --output-tokens-mean option is required when using --output-tokens-stddev."
+            )
+        if args.output_tokens_mean_deterministic:
+            parser.error(
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic."
+            )
+
+    if args.service_kind != "triton":
+        if args.output_tokens_mean_deterministic:
+            parser.error(
+                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+            )
 
     return args
 
@@ -150,7 +163,17 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
         help=f"The mean number of tokens in each output. "
-        "Ensure the --tokenizer value is set correctly. "
+        "Ensure the --tokenizer value is set correctly. ",
+    )
+
+    input_group.add_argument(
+        "--output-tokens-mean-deterministic",
+        action="store_true",
+        required=False,
+        help=f"When using --output-tokens-mean, this flag can be set to "
+        "improve precision by setting the minimum number of tokens "
+        "equal to the requested number of tokens. This is currently "
+        "supported with the Triton service-kind. "
         "Note that there is still some variability in the requested number "
         "of output tokens, but GenAi-Perf attempts its best effort with your "
         "model to get the right number of output tokens. ",
