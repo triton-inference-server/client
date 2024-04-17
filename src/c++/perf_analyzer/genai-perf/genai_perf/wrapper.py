@@ -78,11 +78,11 @@ class Profiler:
         utils.remove_file(args.profile_export_file)
 
         cmd = [
-            "perf_analyzer",
-            "-m",
+            f"perf_analyzer",
+            f"-m",
             f"{args.model}",
-            "--async",
-            "--input-data",
+            f"--async",
+            f"--input-data",
             f"{DEFAULT_INPUT_DATA_JSON}",
         ]
         for arg, value in vars(args).items():
