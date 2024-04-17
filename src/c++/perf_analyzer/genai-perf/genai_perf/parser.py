@@ -30,13 +30,13 @@ import sys
 from pathlib import Path
 
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, LOGGER_NAME, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
-logger = logging.getLogger(LOGGER_NAME)
+logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
@@ -446,7 +446,7 @@ def parse_args():
     # Check for passthrough args
     if "--" in argv:
         passthrough_index = argv.index("--")
-        logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
+        # logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
     else:
         passthrough_index = len(argv)
 

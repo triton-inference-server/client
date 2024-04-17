@@ -29,10 +29,10 @@ import subprocess
 from argparse import Namespace
 
 import genai_perf.utils as utils
-from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON, LOGGER_NAME
+from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 
-logger = logging.getLogger(LOGGER_NAME)
+# logger = logging.getLogger(LOGGER_NAME)
 
 
 class Profiler:
@@ -113,7 +113,7 @@ class Profiler:
     @staticmethod
     def run(args: Namespace, extra_args: list[str] | None) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
-        logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
+        # logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
         if args and args.verbose:
             subprocess.run(cmd, check=True, stdout=None)
         else:
