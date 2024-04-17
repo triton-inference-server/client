@@ -553,19 +553,17 @@ class LLMProfileDataParser(ProfileDataParser):
     ) -> None:
         """Helper function to preprocess responses of a request."""
         if self._service_kind == "openai":
-            # remove the null final response in streaming mode
-            last_response = res_outputs[-1]["response"]
-            last_response = remove_sse_prefix(last_response)
-            if last_response == "[DONE]":
-                res_timestamps.pop()
-                res_outputs.pop()
+            # Remove responses without any content
+            # These are only observed to happen at the start or end
+            while res_outputs[0] and self._is_openai_empty_response(
+                res_outputs[0]["response"]
+            ):
+                res_timestamps.pop(0)
+                res_outputs.pop(0)
 
-            # after removing the final null response, check if the last response
-            # of the remaining responses is missing text/content and remove it
-            # if it is an empty response.
-            last_response = res_outputs[-1]["response"]
-            text_output = self._extract_openai_text_output(last_response)
-            if text_output == "":
+            while res_outputs[-1] and self._is_openai_empty_response(
+                res_outputs[-1]["response"]
+            ):
                 res_timestamps.pop()
                 res_outputs.pop()
 
@@ -633,6 +631,10 @@ class LLMProfileDataParser(ProfileDataParser):
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
         response = remove_sse_prefix(response)
+
+        if response == "[DONE]":
+            return ""
+
         data = json.loads(response)
         completions = data["choices"][0]
 
@@ -647,3 +649,10 @@ class LLMProfileDataParser(ProfileDataParser):
             obj_type = data["object"]
             raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
         return text_output
+
+    def _is_openai_empty_response(self, response: str) -> bool:
+        """Returns true if the response is an openai response with no content (or empty content)"""
+        text = self._extract_openai_text_output(response)
+        if text:
+            return False
+        return True
