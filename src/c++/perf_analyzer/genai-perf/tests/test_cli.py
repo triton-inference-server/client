@@ -108,6 +108,10 @@ class TestCLIArguments:
                 {"output_tokens_stddev": 7},
             ),
             (
+                ["--output-tokens-mean", "6", "--output-tokens-mean-deterministic"],
+                {"output_tokens_mean_deterministic": True},
+            ),
+            (
                 ["--prompt-source", "synthetic"],
                 {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
             ),
@@ -221,6 +225,39 @@ class TestCLIArguments:
             (
                 ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
                 "The --output-tokens-mean option is required when using --output-tokens-stddev.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "v1/chat/completions",
+                    "--output-tokens-mean",
+                    "100",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind",
             ),
         ],
     )
