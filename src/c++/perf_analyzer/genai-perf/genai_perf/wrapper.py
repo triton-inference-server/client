@@ -26,6 +26,7 @@
 
 import logging
 import subprocess
+from argparse import Namespace
 
 import genai_perf.utils as utils
 from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON, LOGGER_NAME
@@ -36,7 +37,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 class Profiler:
     @staticmethod
-    def add_protocol_args(args):
+    def add_protocol_args(args: Namespace):
         cmd = [""]
         if args.service_kind == "triton":
             cmd += ["-i", "grpc", "--streaming"]
@@ -49,7 +50,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def build_cmd(args, extra_args):
+    def build_cmd(args: Namespace, extra_args: list[str] | None = None) -> list[str]:
         skip_args = [
             "func",
             "input_dataset",
@@ -109,7 +110,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def run(args=None, extra_args=None):
+    def run(args: Namespace, extra_args: list[str] | None) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
         logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
         if args and args.verbose:
