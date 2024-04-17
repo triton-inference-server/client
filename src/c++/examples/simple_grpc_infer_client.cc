@@ -229,6 +229,10 @@ main(int argc, char** argv)
             use_cached_channel),
         err);
 
+    if (verbose) {
+      std::cout << "There are " << client->GetNumCachedChannels()
+                << " cached channels" << std::endl;
+    }
     // Create the data for the two input tensors. Initialize the first
     // to unique integers and the second to all ones.
     std::vector<int32_t> input0_data(16);
