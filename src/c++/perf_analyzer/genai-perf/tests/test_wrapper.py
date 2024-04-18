@@ -46,7 +46,8 @@ class TestWrapper:
         args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
-        cmd_string = Profiler.build_cmd(args, extra_args)
+        cmd = Profiler.build_cmd(args, extra_args)
+        cmd_string = " ".join(cmd)
 
         number_of_url_args = cmd_string.count(" -u ") + cmd_string.count(" --url ")
         assert number_of_url_args == 1
@@ -62,7 +63,8 @@ class TestWrapper:
         args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
-        cmd_string = Profiler.build_cmd(args, extra_args)
+        cmd = Profiler.build_cmd(args, extra_args)
+        cmd_string = " ".join(cmd)
 
         # Ensure the correct arguments are appended.
         assert cmd_string.count(" -i grpc") == 1
@@ -75,8 +77,8 @@ class TestWrapper:
     @pytest.mark.parametrize(
         "arg",
         [
-            (["--endpoint", "v1/completions"]),
-            (["--endpoint", "v1/chat/completions"]),
+            (["--endpoint-type", "completions"]),
+            (["--endpoint-type", "chat"]),
         ],
     )
     def test_service_openai(self, monkeypatch, arg):
@@ -89,7 +91,8 @@ class TestWrapper:
         ] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
-        cmd_string = Profiler.build_cmd(args, extra_args)
+        cmd = Profiler.build_cmd(args, extra_args)
+        cmd_string = " ".join(cmd)
 
         # Ensure the correct arguments are appended.
         assert cmd_string.count(" -i http") == 1
