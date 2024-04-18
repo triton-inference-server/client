@@ -70,12 +70,45 @@ class TestCLIArguments:
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
-                ["--endpoint", "v1/completions", "--service-kind", "openai"],
+                ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
             ),
             (
-                ["--endpoint", "v1/chat/completions", "--service-kind", "openai"],
+                ["--endpoint-type", "chat", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "   /custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "completions",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
             ),
             (
                 ["--extra-inputs", "test_key:test_value"],
@@ -130,7 +163,7 @@ class TestCLIArguments:
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
@@ -220,7 +253,19 @@ class TestCLIArguments:
         [
             (
                 ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
-                "The --endpoint option is required when using the 'openai' service-kind.",
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
             ),
             (
                 ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
@@ -275,11 +320,22 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "completions"],
+                OutputFormat.OPENAI_COMPLETIONS,
+            ),
+            (
+                [
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "completions",
+                    "--endpoint",
+                    "custom/address",
+                ],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
