@@ -154,12 +154,12 @@ class LlmInputs:
                 dataset
             )
         elif input_type == PromptSource.SYNTHETIC:
+            random.seed(random_seed)
             synthetic_dataset = cls._get_input_dataset_from_synthetic(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 num_of_output_prompts,
-                random_seed,
             )
             generic_dataset_json = cls._convert_input_synthetic_dataset_to_generic_json(
                 synthetic_dataset
@@ -222,17 +222,15 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
-        random_seed: int,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
-        for index in range(0, num_of_output_prompts):
+        for _ in range(num_of_output_prompts):
             synthetic_prompt = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
-                random_seed + index,
             )
             dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
 
@@ -1034,9 +1032,7 @@ class LlmInputs:
         tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
-        random_seed: int,
     ) -> str:
-        random.seed(random_seed)
         return SyntheticPromptGenerator.create_synthetic_prompt(
             tokenizer, prompt_tokens_mean, prompt_tokens_stddev
         )
