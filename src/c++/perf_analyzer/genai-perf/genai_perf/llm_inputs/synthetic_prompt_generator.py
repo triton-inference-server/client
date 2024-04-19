@@ -49,7 +49,7 @@ class SyntheticPromptGenerator:
         )
 
         farewell_lines = SyntheticPromptGenerator._create_farewell_lines()
-        prompt = SyntheticPromptGenerator._create_prompt_from_farewell_lines(
+        prompt = SyntheticPromptGenerator._create_prompt_from_lines(
             num_prompt_tokens, farewell_lines, tokenizer
         )
 
@@ -65,15 +65,15 @@ class SyntheticPromptGenerator:
         return farewell_lines
 
     @classmethod
-    def _create_prompt_from_farewell_lines(
+    def _create_prompt_from_lines(
         cls,
         requested_prompt_tokens: int,
-        farewell_lines: List[str],
+        source_lines: List[str],
         tokenizer: Tokenizer,
     ) -> str:
         get_token_length = lambda text: len(tokenizer.encode(text))
 
-        line_iterator = itertools.cycle(farewell_lines)
+        line_iterator = itertools.cycle(source_lines)
 
         def word_generator():
             while True:
@@ -87,9 +87,7 @@ class SyntheticPromptGenerator:
         # Fast add lines
         remaining_tokens = requested_prompt_tokens
         prompt = ""
-        num_tokens_in_avg_line = (
-            get_token_length(farewell_lines[0] + farewell_lines[1]) / 2
-        )
+        num_tokens_in_avg_line = get_token_length(source_lines[0] + source_lines[1]) / 2
         num_lines_to_add_fast = math.floor(
             0.5 * requested_prompt_tokens / num_tokens_in_avg_line
         )
@@ -114,7 +112,7 @@ class SyntheticPromptGenerator:
         # Final tweaks
         diff = requested_prompt_tokens - get_token_length(prompt)
         for _ in range(diff):
-            prompt += "hi "
+            prompt = "hi " + prompt
 
         return prompt
 
