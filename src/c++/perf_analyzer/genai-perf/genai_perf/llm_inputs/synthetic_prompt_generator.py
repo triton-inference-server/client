@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-import io
-import math
 import pathlib
 import random
 from typing import List
@@ -71,6 +68,7 @@ class SyntheticPromptGenerator:
         farewell_lines: List[str],
         tokenizer: Tokenizer,
     ) -> str:
+        requested_prompt_tokens = remaining_prompt_tokens
         prompt = ""
         get_token_length = lambda text: len(tokenizer.encode(text))
 
@@ -78,16 +76,41 @@ class SyntheticPromptGenerator:
         while sampling_lines:
             for line in farewell_lines:
                 line_to_add = line
+
+                # If the line is too big, we are near the boundary and need to
+                # go slow and potentially add one word at a time
                 if remaining_prompt_tokens - get_token_length(line_to_add) < 0:
-                    # This will cut off a line in the middle of a word, but that's ok since an
-                    # llm should be able to handle that.
-                    line_to_add = line_to_add[: int(math.ceil(remaining_prompt_tokens))]
+                    # First check if we are really over the boundary. Adding
+                    # the line may actually be less tokens than the sum of the
+                    # individual parts
+                    proposed_prompt = prompt + line_to_add
+
+                    if get_token_length(proposed_prompt) == requested_prompt_tokens:
+                        prompt = proposed_prompt
+                        sampling_lines = False
+                        break
+
+                    # Now add one word at a time
+                    words_to_add = line_to_add.split()
+                    for word in words_to_add:
+                        proposed_prompt = prompt + word + " "
+
+                        num_tokens = get_token_length(proposed_prompt)
+                        if num_tokens > requested_prompt_tokens:
+                            while get_token_length(prompt) < requested_prompt_tokens:
+                                prompt += "hi"
+                        else:
+                            prompt = proposed_prompt
+
+                        if get_token_length(prompt) >= requested_prompt_tokens:
+                            break
+
                     sampling_lines = False
-                    prompt += line_to_add
                     break
                 prompt += line_to_add
-                remaining_prompt_tokens -= get_token_length(line_to_add)
-
+                remaining_prompt_tokens = requested_prompt_tokens - get_token_length(
+                    prompt
+                )
         return prompt
 
     @classmethod
