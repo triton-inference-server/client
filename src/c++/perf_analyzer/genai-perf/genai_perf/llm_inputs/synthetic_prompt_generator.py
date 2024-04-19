@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+import math
 import pathlib
 import random
+import re
 from typing import List
 
 from genai_perf.tokenizer import Tokenizer
@@ -64,53 +67,55 @@ class SyntheticPromptGenerator:
     @classmethod
     def _create_prompt_from_farewell_lines(
         cls,
-        remaining_prompt_tokens: int,
+        requested_prompt_tokens: int,
         farewell_lines: List[str],
         tokenizer: Tokenizer,
     ) -> str:
-        requested_prompt_tokens = remaining_prompt_tokens
-        prompt = ""
         get_token_length = lambda text: len(tokenizer.encode(text))
 
-        sampling_lines = True
-        while sampling_lines:
-            for line in farewell_lines:
-                line_to_add = line
+        line_iterator = itertools.cycle(farewell_lines)
 
-                # If the line is too big, we are near the boundary and need to
-                # go slow and potentially add one word at a time
-                if remaining_prompt_tokens - get_token_length(line_to_add) < 0:
-                    # First check if we are really over the boundary. Adding
-                    # the line may actually be less tokens than the sum of the
-                    # individual parts
-                    proposed_prompt = prompt + line_to_add
+        def word_generator():
+            while True:
+                next_line = next(line_iterator)
+                words = re.split("[ \n]+", next_line)
+                for word in words:
+                    yield word
 
-                    if get_token_length(proposed_prompt) == requested_prompt_tokens:
-                        prompt = proposed_prompt
-                        sampling_lines = False
-                        break
+        word_iterator = word_generator()
 
-                    # Now add one word at a time
-                    words_to_add = line_to_add.split()
-                    for word in words_to_add:
-                        proposed_prompt = prompt + word + " "
+        # FAST ADD lines
+        remaining_tokens = requested_prompt_tokens
+        prompt = ""
+        num_tokens_in_avg_line = (
+            get_token_length(farewell_lines[0] + farewell_lines[1]) / 2
+        )
+        num_lines_to_add_fast = math.floor(
+            0.5 * requested_prompt_tokens / num_tokens_in_avg_line
+        )
+        while num_lines_to_add_fast:
+            for _ in range(num_lines_to_add_fast):
+                next_line = next(line_iterator)
+                prompt = prompt + next_line
 
-                        num_tokens = get_token_length(proposed_prompt)
-                        if num_tokens > requested_prompt_tokens:
-                            while get_token_length(prompt) < requested_prompt_tokens:
-                                prompt += "hi"
-                        else:
-                            prompt = proposed_prompt
+            curr_tokens = get_token_length(prompt)
+            remaining_tokens = requested_prompt_tokens - curr_tokens
+            num_lines_to_add_fast = math.floor(
+                0.5 * remaining_tokens / num_tokens_in_avg_line
+            )
 
-                        if get_token_length(prompt) >= requested_prompt_tokens:
-                            break
+        # FAST ADD words
+        final_line = ""
+        while get_token_length(final_line) < remaining_tokens - 3:
+            next_word = next(word_iterator)
+            final_line += next_word + " "
+        prompt += final_line
 
-                    sampling_lines = False
-                    break
-                prompt += line_to_add
-                remaining_prompt_tokens = requested_prompt_tokens - get_token_length(
-                    prompt
-                )
+        # Final tweaks
+        diff = requested_prompt_tokens - get_token_length(prompt)
+        for _ in range(diff):
+            prompt += "hi "
+
         return prompt
 
     @classmethod

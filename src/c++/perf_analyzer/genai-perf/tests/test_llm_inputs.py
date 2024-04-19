@@ -273,14 +273,13 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_random_synthetic(self, default_tokenizer):
+    def test_random_synthetic_no_stddev(self, default_tokenizer):
         """
-        Test that we can produce deterministic random synthetic prompts
+        Test that we can produce an exact number of random synthetic tokens
         """
         random.seed(1)
 
-        # This range hits all of the boundary cases of adding an additional line
-        for token_length in range(543, 557):
+        for token_length in range(500, 600):
             synthetic_prompt = LlmInputs._create_synthetic_prompt(
                 tokenizer=default_tokenizer,
                 prompt_tokens_mean=token_length,
@@ -290,18 +289,67 @@ class TestLlmInputs:
             actual_token_length = len(default_tokenizer.encode(synthetic_prompt))
             assert token_length == actual_token_length
 
-        num_samples = 50
-        prompt_tokens = []
-        for _ in range(num_samples):
-            prompt = LlmInputs._create_synthetic_prompt(
-                tokenizer=default_tokenizer,
-                prompt_tokens_mean=550,
-                prompt_tokens_stddev=100,
-            )
-            prompt_tokens.append(len(default_tokenizer.encode(prompt)))
+    def test_random_synthetic_stddev(self, default_tokenizer):
+        """
+        Test that we can produce random synthetic tokens within a requested stddev
+        """
+        random.seed(1)
 
-        assert statistics.mean(prompt_tokens) == pytest.approx(550, rel=0.1)
-        assert statistics.stdev(prompt_tokens) == pytest.approx(100, rel=0.1)
+        def _subtest(num_samples, mean, stddev):
+            prompt_tokens = []
+            for _ in range(num_samples):
+                prompt = LlmInputs._create_synthetic_prompt(
+                    tokenizer=default_tokenizer,
+                    prompt_tokens_mean=mean,
+                    prompt_tokens_stddev=stddev,
+                )
+                prompt_tokens.append(len(default_tokenizer.encode(prompt)))
+
+            assert statistics.mean(prompt_tokens) == pytest.approx(mean, rel=0.1)
+            assert statistics.stdev(prompt_tokens) == pytest.approx(stddev, rel=0.2)
+
+        _subtest(50, 200, 20)
+        _subtest(50, 400, 10)
+        _subtest(200, 50, 10)
+
+    def test_random_seed(self, default_tokenizer):
+        """
+        Test that when given the same seed, create_llm_inputs will return the same result,
+        and that when given a different seed, it will produce a different result
+        """
+
+        inputs_seed5_a = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=5,
+        )
+
+        inputs_seed5_b = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=5,
+        )
+
+        inputs_seed10 = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=10,
+        )
+
+        assert inputs_seed5_a == inputs_seed5_b
+        assert inputs_seed5_a != inputs_seed10
 
     def test_synthetic_to_vllm(self, default_tokenizer):
         """
