@@ -14,6 +14,8 @@
 
 import json
 import os
+import random
+import statistics
 
 import pytest
 from genai_perf import tokenizer
@@ -43,7 +45,7 @@ class TestLlmInputs:
         yield default_configured_url
 
     # TODO (TMA-1754): Add tests that verify json schemas
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def default_tokenizer(self):
         yield tokenizer.get_tokenizer(tokenizer.DEFAULT_TOKENIZER)
 
@@ -271,32 +273,91 @@ class TestLlmInputs:
         assert pa_json is not None
         assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    # TODO (TMA-1839): Incorrect number of tokens from fragment compared to the
-    # number of tokens from the whole text. Either the testing or function needs
-    # to be updated to account for this difference.
-    # def test_random_synthetic(self, default_tokenizer):
-    #     """
-    #     Test that we can produce deterministic random synthetic prompts
-    #     """
-    #     synthetic_prompt = LlmInputs._create_synthetic_prompt(
-    #         default_tokenizer,
-    #         LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
-    #         LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
-    #         LlmInputs.DEFAULT_RANDOM_SEED,
-    #     )
+    def test_random_synthetic_no_stddev(self, default_tokenizer):
+        """
+        Test that we can produce an exact number of random synthetic tokens
+        """
+        random.seed(1)
 
-    #     token_length = len(default_tokenizer.encode(synthetic_prompt))
-    #     assert token_length == 550
+        def _subtest(token_length):
+            synthetic_prompt = LlmInputs._create_synthetic_prompt(
+                tokenizer=default_tokenizer,
+                prompt_tokens_mean=token_length,
+                prompt_tokens_stddev=0,
+            )
 
-    #     synthetic_prompt = LlmInputs._create_synthetic_prompt(
-    #         default_tokenizer,
-    #         LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
-    #         LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV + 250,
-    #         LlmInputs.DEFAULT_RANDOM_SEED + 1,
-    #     )
+            actual_token_length = len(default_tokenizer.encode(synthetic_prompt))
+            assert token_length == actual_token_length
 
-    #     token_length = len(default_tokenizer.encode(synthetic_prompt))
-    #     assert token_length != 785
+        # Test all of 500-600 to make sure exact
+        for i in range(500, 600):
+            _subtest(i)
+
+        # Test some larger values
+        _subtest(1500)
+        _subtest(10000)
+
+    def test_random_synthetic_stddev(self, default_tokenizer):
+        """
+        Test that we can produce random synthetic tokens within a requested stddev
+        """
+        random.seed(1)
+
+        def _subtest(num_samples, mean, stddev):
+            prompt_tokens = []
+            for _ in range(num_samples):
+                prompt = LlmInputs._create_synthetic_prompt(
+                    tokenizer=default_tokenizer,
+                    prompt_tokens_mean=mean,
+                    prompt_tokens_stddev=stddev,
+                )
+                prompt_tokens.append(len(default_tokenizer.encode(prompt)))
+
+            assert statistics.mean(prompt_tokens) == pytest.approx(mean, rel=0.1)
+            assert statistics.stdev(prompt_tokens) == pytest.approx(stddev, rel=0.2)
+
+        _subtest(50, 200, 20)
+        _subtest(50, 400, 10)
+        _subtest(200, 50, 10)
+
+    def test_random_seed(self, default_tokenizer):
+        """
+        Test that when given the same seed, create_llm_inputs will return the same result,
+        and that when given a different seed, it will produce a different result
+        """
+
+        inputs_seed5_a = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=5,
+        )
+
+        inputs_seed5_b = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=5,
+        )
+
+        inputs_seed10 = LlmInputs.create_llm_inputs(
+            tokenizer=default_tokenizer,
+            input_type=PromptSource.SYNTHETIC,
+            output_format=OutputFormat.TRTLLM,
+            prompt_tokens_mean=300,
+            prompt_tokens_stddev=20,
+            num_of_output_prompts=5,
+            random_seed=10,
+        )
+
+        assert inputs_seed5_a == inputs_seed5_b
+        assert inputs_seed5_a != inputs_seed10
 
     def test_synthetic_to_vllm(self, default_tokenizer):
         """
