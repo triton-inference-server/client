@@ -226,7 +226,7 @@ class LlmInputs:
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
-        for _ in range(0, num_of_output_prompts):
+        for _ in range(num_of_output_prompts):
             synthetic_prompt = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
