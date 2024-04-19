@@ -26,9 +26,9 @@
 
 import logging
 import logging.config
-from pathlib import Path
 
-from genai_perf.constants import DEFAULT_DATE_FORMAT, DEFAULT_LOG_FORMAT
+DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s:%(lineno)s - %(message)s"
+DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M"
 
 
 def init_logging() -> None:
