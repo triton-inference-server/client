@@ -279,7 +279,7 @@ class TestLlmInputs:
         """
         random.seed(1)
 
-        for token_length in range(500, 600):
+        def _subtest(token_length):
             synthetic_prompt = LlmInputs._create_synthetic_prompt(
                 tokenizer=default_tokenizer,
                 prompt_tokens_mean=token_length,
@@ -288,6 +288,14 @@ class TestLlmInputs:
 
             actual_token_length = len(default_tokenizer.encode(synthetic_prompt))
             assert token_length == actual_token_length
+
+        # Test all of 500-600 to make sure exact
+        for i in range(500, 600):
+            _subtest(i)
+
+        # Test some larger values
+        _subtest(1500)
+        _subtest(10000)
 
     def test_random_synthetic_stddev(self, default_tokenizer):
         """

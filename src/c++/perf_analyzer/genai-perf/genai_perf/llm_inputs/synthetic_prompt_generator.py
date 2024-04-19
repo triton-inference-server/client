@@ -84,7 +84,7 @@ class SyntheticPromptGenerator:
 
         word_iterator = word_generator()
 
-        # FAST ADD lines
+        # Fast add lines
         remaining_tokens = requested_prompt_tokens
         prompt = ""
         num_tokens_in_avg_line = (
@@ -104,7 +104,7 @@ class SyntheticPromptGenerator:
                 0.5 * remaining_tokens / num_tokens_in_avg_line
             )
 
-        # FAST ADD words
+        # Fast add words
         final_line = ""
         while get_token_length(final_line) < remaining_tokens - 3:
             next_word = next(word_iterator)
