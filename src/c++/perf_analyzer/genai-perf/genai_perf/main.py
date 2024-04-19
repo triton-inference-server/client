@@ -30,7 +30,6 @@ import shutil
 import sys
 import traceback
 from argparse import Namespace
-from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
@@ -42,8 +41,8 @@ from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
-def init_logging(log_file: Path) -> None:
-    logging.init_logging(log_file)
+def init_logging() -> None:
+    logging.init_logging()
 
 
 def create_artifacts_dirs():
@@ -128,19 +127,15 @@ def finalize():
         "profile_export_genai_perf.csv",
         f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",
     )
-    shutil.move(
-        "genai_perf.log",
-        f"{DEFAULT_ARTIFACT_DIR}/data/genai_perf.log",
-    )
 
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
 def run():
     try:
+        init_logging()
         create_artifacts_dirs()
         args, extra_args = parser.parse_args()
-        init_logging(args.log_file)
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)

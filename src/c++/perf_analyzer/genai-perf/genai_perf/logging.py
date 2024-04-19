@@ -31,7 +31,7 @@ from pathlib import Path
 from genai_perf.constants import DEFAULT_DATE_FORMAT, DEFAULT_LOG_FORMAT
 
 
-def init_logging(log_file: Path) -> None:
+def init_logging() -> None:
     LOGGING_CONFIG = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -48,14 +48,6 @@ def init_logging(log_file: Path) -> None:
                 "class": "logging.StreamHandler",
                 "stream": "ext://sys.stdout",  # Default is stderr
             },
-            "file": {
-                "level": "WARNING",
-                "formatter": "standard",
-                "class": "logging.FileHandler",
-                "filename": str(log_file),
-                "mode": "a",
-                "encoding": "utf-8",
-            },
         },
         "loggers": {
             "": {  # root logger - avoid using
@@ -64,17 +56,17 @@ def init_logging(log_file: Path) -> None:
                 "propagate": False,
             },
             "__main__": {  # if __name__ == '__main__'
-                "handlers": ["console", "file"],
+                "handlers": ["console"],
                 "level": "DEBUG",
                 "propagate": False,
             },
             "genai_perf.parser": {  # must use module name for loggers
-                "handlers": ["console", "file"],
+                "handlers": ["console"],
                 "level": "DEBUG",
                 "propagate": False,
             },
             "genai_perf.wrapper": {
-                "handlers": ["console", "file"],
+                "handlers": ["console"],
                 "level": "DEBUG",
                 "propagate": False,
             },

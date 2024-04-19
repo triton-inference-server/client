@@ -74,7 +74,6 @@ class Profiler:
             "random_seed",
             "tokenizer",
             "endpoint_type",
-            "log_file",
         ]
 
         utils.remove_file(args.profile_export_file)

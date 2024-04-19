@@ -25,10 +25,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
+import genai_perf.logging as logging
 import genai_perf.utils as utils
 from genai_perf.constants import (
     CNN_DAILY_MAIL,
@@ -41,12 +41,6 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
-# Need to use the basic Config here and not the genai_perf logger until the logfile is parsed
-# Then its possible to create the logger with the fileHandler
-# If the logger is used before the fileHandle is created, a default one is created
-# that cannot be incrementally updated. A new logger would need to be constructed.
-# This uses a basic one until we have all of the information needed to create the logger correctly
-logging.basicConfig(format=DEFAULT_LOG_FORMAT, datefmt=DEFAULT_DATE_FORMAT)
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
@@ -370,14 +364,6 @@ def _add_output_args(parser):
 
 def _add_other_args(parser):
     other_group = parser.add_argument_group("Other")
-
-    other_group.add_argument(
-        "--log-file",
-        type=Path,
-        default="genai_perf.log",
-        required=False,
-        help="The path where the perf_analyzer log file will be generated.",
-    )
 
     other_group.add_argument(
         "--tokenizer",
