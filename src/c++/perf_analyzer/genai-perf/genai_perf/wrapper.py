@@ -24,15 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
 import subprocess
 from argparse import Namespace
 
+import genai_perf.logging as logging
 import genai_perf.utils as utils
 from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 
-# logger = logging.getLogger(LOGGER_NAME)
+logger = logging.getLogger(__name__)
 
 
 class Profiler:
@@ -114,7 +114,8 @@ class Profiler:
     def run(args: Namespace, extra_args: list[str] | None) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
         # logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
-        if args and args.verbose:
-            subprocess.run(cmd, check=True, stdout=None)
-        else:
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+        logger.warn(f"Running Perf Analyzer : '{' '.join(cmd)}'")
+        # if args and args.verbose:
+        #     subprocess.run(cmd, check=True, stdout=None)
+        # else:
+        #     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)

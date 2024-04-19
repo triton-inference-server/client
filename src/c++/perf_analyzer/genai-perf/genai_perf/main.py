@@ -25,13 +25,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
 import os
 import shutil
 import sys
+import traceback
 from argparse import Namespace
 from pathlib import Path
 
-import genai_perf.logging as logging
+import genai_perf.logging as genai_perf_logging
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
@@ -41,8 +43,9 @@ from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
-def init_logging() -> None:
-    logging.init_logging()
+def init_logging() -> logging.Logger:
+    genai_perf_logging.init_logging()
+    return logging.getLogger(__name__)
 
 
 def create_artifacts_dirs():
@@ -52,8 +55,8 @@ def create_artifacts_dirs():
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
 
 
-def add_file_logging(log_file: Path = Path("")):
-    logging.add_file_logger(log_file)
+def add_file_logging(log_file: Path):
+    genai_perf_logging.add_file_logger(log_file)
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -137,18 +140,15 @@ def finalize():
 # to assert correct errors and messages.
 def run():
     try:
-        init_logging()
-        logger = logging.get_logger(__name__)
-        logger.error("Test error")
         create_artifacts_dirs()
         args, extra_args = parser.parse_args()
         add_file_logging(args.log_file)
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        data_parser = calculate_metrics(args, tokenizer)
-        report_output(data_parser, args)
-        finalize()
+        # data_parser = calculate_metrics(args, tokenizer)
+        # report_output(data_parser, args)
+        # finalize()
     except Exception as e:
         raise GenAIPerfException(e)
 
@@ -156,9 +156,11 @@ def run():
 def main():
     # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
     try:
+        logger = init_logging()
         run()
     except Exception as e:
-        logger.error(f"{e}")
+        traceback.print_exc()
+        logger.error(e)
         return 1
 
     return 0
