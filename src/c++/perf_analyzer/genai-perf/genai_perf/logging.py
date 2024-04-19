@@ -37,8 +37,6 @@ def init_logging(log_file: Path) -> None:
         "disable_existing_loggers": False,
         "formatters": {
             "standard": {
-                "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)s - %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M",
                 "format": DEFAULT_LOG_FORMAT,
                 "datefmt": DEFAULT_DATE_FORMAT,
             },
