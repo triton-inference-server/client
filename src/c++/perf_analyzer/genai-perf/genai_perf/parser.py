@@ -25,17 +25,28 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
-import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import (
+    CNN_DAILY_MAIL,
+    DEFAULT_DATE_FORMAT,
+    DEFAULT_LOG_FORMAT,
+    OPEN_ORCA,
+)
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
+# Need to use the basic Config here and not the genai_perf logger until the logfile is parsed
+# Then its possible to create the logger with the fileHandler
+# If the logger is used before the fileHandle is created, a default one is created
+# that cannot be incrementally updated. A new logger would need to be constructed.
+# This uses a basic one until we have all of the information needed to create the logger correctly
+logging.basicConfig(format=DEFAULT_LOG_FORMAT, datefmt=DEFAULT_DATE_FORMAT)
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
@@ -436,7 +447,6 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 
 def parse_args():
-    # logger = logging.get_logger(__name__)
     argv = sys.argv
 
     parser = argparse.ArgumentParser(

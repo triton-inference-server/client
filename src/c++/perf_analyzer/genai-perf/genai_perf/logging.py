@@ -26,11 +26,12 @@
 
 import logging
 import logging.config
-from math import log
 from pathlib import Path
 
+from genai_perf.constants import DEFAULT_DATE_FORMAT, DEFAULT_LOG_FORMAT
 
-def init_logging() -> None:
+
+def init_logging(log_file: Path) -> None:
     LOGGING_CONFIG = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -38,6 +39,8 @@ def init_logging() -> None:
             "standard": {
                 "format": "%(asctime)s [%(levelname)s] %(name)s:%(lineno)s - %(message)s",
                 "datefmt": "%Y-%m-%d %H:%M",
+                "format": DEFAULT_LOG_FORMAT,
+                "datefmt": DEFAULT_DATE_FORMAT,
             },
         },
         "handlers": {
@@ -47,6 +50,14 @@ def init_logging() -> None:
                 "class": "logging.StreamHandler",
                 "stream": "ext://sys.stdout",  # Default is stderr
             },
+            "file": {
+                "level": "WARNING",
+                "formatter": "standard",
+                "class": "logging.FileHandler",
+                "filename": str(log_file),
+                "mode": "a",
+                "encoding": "utf-8",
+            },
         },
         "loggers": {
             "": {  # root logger - avoid using
@@ -55,69 +66,23 @@ def init_logging() -> None:
                 "propagate": False,
             },
             "__main__": {  # if __name__ == '__main__'
-                "handlers": ["console"],
+                "handlers": ["console", "file"],
                 "level": "DEBUG",
                 "propagate": False,
             },
-            "genai_perf.parser": {
-                "handlers": ["console"],
+            "genai_perf.parser": {  # must use module name for loggers
+                "handlers": ["console", "file"],
                 "level": "DEBUG",
                 "propagate": False,
             },
             "genai_perf.wrapper": {
-                "handlers": ["console"],
+                "handlers": ["console", "file"],
                 "level": "DEBUG",
                 "propagate": False,
             },
         },
     }
     logging.config.dictConfig(LOGGING_CONFIG)
-
-
-def add_file_logger(log_file: Path) -> None:
-    print(log_file)
-    # Incremental configuration to add a file handler
-    add_file_handler = {
-        "version": 1,
-        "incremental": True,
-        # "handlers": {
-        "file": {  # Adding a new file handler
-            "level": "WARNING",
-            "formatter": "standard",
-            "class": "logging.FileHandler",
-            "filename": str(log_file),
-            "mode": "a",
-            "encoding": "utf-8",
-            "force": True,
-        },
-        # },
-        "__main__": {
-            "handlers": ["console", "file"],  # Now using both console and file handlers
-        },
-        "genai_perf.parser": {
-            "handlers": ["console", "file"],
-        },
-        "genai_perf.wrapper": {
-            "handlers": ["console", "file"],
-        },
-    }
-    # update_loggers_with_file = {
-    #     "version": 1,
-    #     "incremental": True,
-    #     "__main__": {
-    #         "handlers": ["console", "file"],  # Now using both console and file handlers
-    #     },
-    #     "genai_perf.parser": {
-    #         "handlers": ["console", "file"],
-    #     },
-    #     "genai_perf.wrapper": {
-    #         "handlers": ["console", "file"],
-    #     },
-    # }
-
-    # Apply the incremental configuration
-    logging.config.dictConfig(add_file_handler)
-    # logging.config.dictConfig(update_loggers_with_file)
 
 
 def getLogger(name):

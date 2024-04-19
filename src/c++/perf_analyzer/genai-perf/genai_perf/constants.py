@@ -35,3 +35,7 @@ DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
 
 DEFAULT_ARTIFACT_DIR = "artifacts"
 DEFAULT_PARQUET_FILE = "all_data"
+
+
+DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s:%(lineno)s - %(message)s"
+DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M"
