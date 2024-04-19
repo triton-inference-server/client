@@ -45,7 +45,7 @@ class TestLlmInputs:
         yield default_configured_url
 
     # TODO (TMA-1754): Add tests that verify json schemas
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def default_tokenizer(self):
         yield tokenizer.get_tokenizer(tokenizer.DEFAULT_TOKENIZER)
 
