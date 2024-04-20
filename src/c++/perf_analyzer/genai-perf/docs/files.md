@@ -95,12 +95,34 @@ number of input tokens.
 
 ## Usage Instructions
 
-To use the generated files:
-1. Navigate to the artifacts/data directory to access the raw data files for
-detailed analysis.
-2. Decompress any GZIP files with your choice of software. In Linux, you can
-use `gzip -d "filepath"` to unzip the file at "filepath."
-3. Open .csv and .json files with spreadsheet or JSON parsing tools for structured
-data analysis.
-4. View .html visualizations in a web browser for interactive data exploration.
-5. Use an image software to open .jpeg images for static visual representations.
+To use the generated files, navigate to the artifacts/data directory. Then,
+the next steps depend on the file format you wish to work with.
+
+### GZIP Files
+
+The GZIP files contain Parquet files with calculated data, which can be read
+with Pandas in Python. For example, you can create a dataframe with these files:
+
+```
+import pandas
+df = pandas.read_partquet(path_to_file)`
+```
+
+You can then use Pandas to work with the data.
+
+```
+print(df.head())     # See the first few rows of the data.
+print(df.describe()) # Get summary statistics for the data
+```
+
+### CSV and JSON Files
+Open .csv and .json files with spreadsheet or JSON parsing tools for structured
+data analysis. These can also be read via a text editor, like Vim.
+
+### HTML Files
+
+View .html visualizations in a web browser for interactive data exploration.
+
+### JPEG Files
+
+Use an image software to open .jpeg images for static visual representations.
