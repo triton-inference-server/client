@@ -35,11 +35,13 @@ the generated files by GenAi-Perf. The files are organized as follows.
 
 ## Directory Structure
 
+```
 genai-perf/
 ├── artifacts/
 │   ├── data/
 │   └── images/
 └── docs/
+```
 
 ## File Types
 Within the artifacts and docs directories, several file types are generated,
