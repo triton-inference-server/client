@@ -31,16 +31,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## Overview
 
 This document serves as a guide to understanding the structure and contents of
-the generated files by GenAi-Perf. The files are organized as follows.
+the files generated  by GenAi-Perf.
 
 ## Directory Structure
+
+After running GenAi-Perf, your file tree should contain the following:
 
 ```
 genai-perf/
 ├── artifacts/
 │   ├── data/
 │   └── images/
-└── docs/
 ```
 
 ## File Types
@@ -57,20 +58,21 @@ The data subdirectory contains the raw and processed performance data files.
 ##### GZIP Files
 
 - all_data.gzip: Aggregated performance data from all collected metrics.
-- input_tokens_vs_generated_tokens.gzip: Data on the number of input tokens
-versus the number of generated tokens.
-- request_latency.gzip: Latency measurements for each request to the LLM.
-- time_to_first_token.gzip: Time metrics from input to the generation of the
-first token.
-- token_to_token_vs_output_position.gzip: Time from one token generation to
-the next, plotted against the position of the output token.
-- ttft_vs_input_tokens.gzip: Time to the first token in relation to the
-number of input tokens.
+- input_tokens_vs_generated_tokens.gzip: This contains data on the number of
+input tokens versus the number of generated tokens for each request.
+- request_latency.gzip: This contains the latency for each request.
+- time_to_first_token.gzip: Thsi contains the time to first token for each request.
+- token_to_token_vs_output_position.gzip: This contains the time from one token
+generation to the next versus the position of the output token for each token.
+- ttft_vs_input_tokens.gzip: This contains the time to first token versus
+the number of input tokens for each request.
 
 ##### JSON Files
 
-- llm_inputs.json: Input prompts provided to the LLM during testing.
-- profile_export.json: Exported performance profile in JSON format.
+- llm_inputs.json: This contains the input prompts provided to the LLM during testing.
+- profile_export.json: This is provided by Perf Analyzer and contains the timestamps
+for each event in the lifecycle of each request. This is low-level data used to calculate
+metrics by GenAi-Perf.
 - profile_json.json: *Confirm with team. This looks similar to profile_export.json but a bit difference.*
 
 ##### CSV File
