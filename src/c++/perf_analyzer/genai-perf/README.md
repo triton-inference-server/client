@@ -300,5 +300,3 @@ URL of the endpoint to target for benchmarking.
 
 * GenAI-Perf can be slow to finish if a high request-rate is provided
 * Token counts may not be exact
-* Token output counts are much higher than reality for now when running on
-triton server, because the input is reflected back into the output

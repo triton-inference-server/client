@@ -25,18 +25,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
+import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, LOGGER_NAME, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
-logger = logging.getLogger(LOGGER_NAME)
+logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
@@ -284,14 +284,6 @@ def _add_endpoint_args(parser):
         required=True,
         help=f"The name of the model to benchmark.",
     )
-    endpoint_group.add_argument(
-        "--endpoint-type",
-        type=str,
-        choices=["chat", "completions"],
-        required=False,
-        help=f"The endpoint-type to send requests to on the "
-        'server. This is only used with the "openai" service-kind. ',
-    )
 
     endpoint_group.add_argument(
         "--backend",
@@ -310,6 +302,15 @@ def _add_endpoint_args(parser):
         type=str,
         required=False,
         help=f"Set a custom endpoint that differs from the OpenAI defaults",
+    )
+
+    endpoint_group.add_argument(
+        "--endpoint-type",
+        type=str,
+        choices=["chat", "completions"],
+        required=False,
+        help=f"The endpoint-type to send requests to on the "
+        'server. This is only used with the "openai" service-kind. ',
     )
 
     endpoint_group.add_argument(
@@ -357,9 +358,9 @@ def _add_output_args(parser):
 
 
 def _add_other_args(parser):
-    output_group = parser.add_argument_group("Other")
+    other_group = parser.add_argument_group("Other")
 
-    output_group.add_argument(
+    other_group.add_argument(
         "--tokenizer",
         type=str,
         default=DEFAULT_TOKENIZER,
@@ -367,7 +368,7 @@ def _add_other_args(parser):
         help="The HuggingFace tokenizer to use to interpret token metrics from prompts and responses",
     )
 
-    output_group.add_argument(
+    other_group.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -375,7 +376,7 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
-    output_group.add_argument(
+    other_group.add_argument(
         "--version",
         action="version",
         version="%(prog)s " + __version__,
