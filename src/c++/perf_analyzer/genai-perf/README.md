@@ -62,7 +62,7 @@ Available starting with the 24.03 release of the
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
 
 ```bash
-RELEASE="24.03"
+RELEASE="<YY.MM>" # YY.MM is the version of Triton in a year.month format.
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
@@ -300,5 +300,3 @@ URL of the endpoint to target for benchmarking.
 
 * GenAI-Perf can be slow to finish if a high request-rate is provided
 * Token counts may not be exact
-* Token output counts are much higher than reality for now when running on
-triton server, because the input is reflected back into the output
