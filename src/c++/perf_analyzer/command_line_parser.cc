@@ -182,7 +182,6 @@ CLParser::Usage(const std::string& msg)
   std::cerr << "\t--streaming" << std::endl;
   std::cerr << "\t--grpc-compression-algorithm <compression_algorithm>"
             << std::endl;
-  std::cerr << "\t--trace-file" << std::endl;
   std::cerr << "\t--trace-level" << std::endl;
   std::cerr << "\t--trace-rate" << std::endl;
   std::cerr << "\t--trace-count" << std::endl;
@@ -721,15 +720,6 @@ CLParser::Usage(const std::string& msg)
 
   std::cerr
       << FormatMessage(
-             " --trace-file: Set the file where trace output will be saved."
-             " If --log-frequency is also specified, this argument "
-             "value will be the prefix of the files to save the trace "
-             "output. See --log-frequency for details. Only used for "
-             "service-kind of triton. Default value is none.",
-             18)
-      << std::endl;
-  std::cerr
-      << FormatMessage(
              " --trace-level: Specify a trace level. OFF to disable tracing, "
              "TIMESTAMPS to trace timestamps, TENSORS to trace tensors. It "
              "may be specified multiple times to trace multiple "
@@ -750,7 +740,7 @@ CLParser::Usage(const std::string& msg)
       << FormatMessage(
              " --log-frequency:  Set the trace log frequency. If the "
              "value is 0, Triton will only log the trace output to "
-             "<trace-file> when shutting down. Otherwise, Triton will log "
+             "the trace file when shutting down. Otherwise, Triton will log "
              "the trace output to <trace-file>.<idx> when it collects the "
              "specified number of traces. For example, if the log frequency "
              "is 100, when Triton collects the 100-th trace, it logs the "
@@ -871,25 +861,24 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"ssl-https-private-key-type", required_argument, 0, 41},
       {"verbose-csv", no_argument, 0, 42},
       {"enable-mpi", no_argument, 0, 43},
-      {"trace-file", required_argument, 0, 44},
-      {"trace-level", required_argument, 0, 45},
-      {"trace-rate", required_argument, 0, 46},
-      {"trace-count", required_argument, 0, 47},
-      {"log-frequency", required_argument, 0, 48},
-      {"collect-metrics", no_argument, 0, 49},
-      {"metrics-url", required_argument, 0, 50},
-      {"metrics-interval", required_argument, 0, 51},
-      {"sequence-length-variation", required_argument, 0, 52},
-      {"bls-composing-models", required_argument, 0, 53},
-      {"serial-sequences", no_argument, 0, 54},
-      {"input-tensor-format", required_argument, 0, 55},
-      {"output-tensor-format", required_argument, 0, 56},
-      {"version", no_argument, 0, 57},
-      {"profile-export-file", required_argument, 0, 58},
-      {"periodic-concurrency-range", required_argument, 0, 59},
-      {"request-period", required_argument, 0, 60},
-      {"request-parameter", required_argument, 0, 61},
-      {"endpoint", required_argument, 0, 62},
+      {"trace-level", required_argument, 0, 44},
+      {"trace-rate", required_argument, 0, 45},
+      {"trace-count", required_argument, 0, 46},
+      {"log-frequency", required_argument, 0, 47},
+      {"collect-metrics", no_argument, 0, 48},
+      {"metrics-url", required_argument, 0, 49},
+      {"metrics-interval", required_argument, 0, 50},
+      {"sequence-length-variation", required_argument, 0, 51},
+      {"bls-composing-models", required_argument, 0, 52},
+      {"serial-sequences", no_argument, 0, 53},
+      {"input-tensor-format", required_argument, 0, 54},
+      {"output-tensor-format", required_argument, 0, 55},
+      {"version", no_argument, 0, 56},
+      {"profile-export-file", required_argument, 0, 57},
+      {"periodic-concurrency-range", required_argument, 0, 58},
+      {"request-period", required_argument, 0, 59},
+      {"request-parameter", required_argument, 0, 60},
+      {"endpoint", required_argument, 0, 61},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1417,10 +1406,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
           break;
         }
         case 44: {
-          params_->trace_options["trace_file"] = {optarg};
-          break;
-        }
-        case 45: {
           std::string trace_level{optarg};
           if (trace_level == "OFF" || trace_level == "TIMESTAMPS" ||
               trace_level == "TENSORS") {
@@ -1434,11 +1419,11 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 46: {
+        case 45: {
           params_->trace_options["trace_rate"] = {optarg};
           break;
         }
-        case 47: {
+        case 46: {
           std::string trace_count{optarg};
           if (std::stoi(trace_count) >= -1) {
             params_->trace_options["trace_count"] = {trace_count};
@@ -1449,7 +1434,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 48: {
+        case 47: {
           std::string log_frequency{optarg};
           if (std::stoi(log_frequency) >= 0) {
             params_->trace_options["log_frequency"] = {log_frequency};
@@ -1458,16 +1443,16 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 49: {
+        case 48: {
           params_->should_collect_metrics = true;
           break;
         }
-        case 50: {
+        case 49: {
           params_->metrics_url = optarg;
           params_->metrics_url_specified = true;
           break;
         }
-        case 51: {
+        case 50: {
           std::string metrics_interval_ms{optarg};
           if (std::stoi(metrics_interval_ms) > 0) {
             params_->metrics_interval_ms = std::stoull(metrics_interval_ms);
@@ -1479,11 +1464,11 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 52: {
+        case 51: {
           params_->sequence_length_variation = std::stod(optarg);
           break;
         }
-        case 53: {
+        case 52: {
           std::string arg = optarg;
 
           // Remove all spaces in the string
@@ -1512,11 +1497,11 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 54: {
+        case 53: {
           params_->serial_sequences = true;
           break;
         }
-        case 55: {
+        case 54: {
           cb::TensorFormat input_tensor_format{ParseTensorFormat(optarg)};
           if (input_tensor_format == cb::TensorFormat::UNKNOWN) {
             Usage(
@@ -1528,7 +1513,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->input_tensor_format = input_tensor_format;
           break;
         }
-        case 56: {
+        case 55: {
           cb::TensorFormat output_tensor_format{ParseTensorFormat(optarg)};
           if (output_tensor_format == cb::TensorFormat::UNKNOWN) {
             Usage(
@@ -1540,11 +1525,11 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->output_tensor_format = output_tensor_format;
           break;
         }
-        case 57: {
+        case 56: {
           PrintVersion();
           break;
         }
-        case 58: {
+        case 57: {
           std::string profile_export_file{optarg};
           if (IsFile(profile_export_file) || IsDirectory(profile_export_file)) {
             Usage(
@@ -1554,7 +1539,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->profile_export_file = profile_export_file;
           break;
         }
-        case 59: {
+        case 58: {
           params_->is_using_periodic_concurrency_mode = true;
           std::string arg = optarg;
           std::vector<std::string> values{SplitString(arg)};
@@ -1595,7 +1580,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 60: {
+        case 59: {
           std::string request_period{optarg};
           if (std::stoi(request_period) > 0) {
             params_->request_period = std::stoull(request_period);
@@ -1604,7 +1589,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           }
           break;
         }
-        case 61: {
+        case 60: {
           std::string arg = optarg;
           std::vector<std::string> values{SplitString(arg)};
           if (values.size() != 3) {
@@ -1625,7 +1610,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->request_parameters[name] = param;
           break;
         }
-        case 62: {
+        case 61: {
           params_->endpoint = optarg;
           break;
         }

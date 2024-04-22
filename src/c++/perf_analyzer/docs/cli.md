@@ -581,19 +581,11 @@ Analyzer.
 
 ## Trace Options
 
-#### `--trace-file=<path>`
-
-Specifies the file where trace output will be saved.
-
-If `--log-frequency` is also specified, this argument value will be the
-prefix of the files to save the trace output. See `--log-frequency` for
-details. Only used for `--service-kind=triton`.
-
 #### `--trace-level=[OFF|TIMESTAMPS|TENSORS]`
 
 Specifies a trace level. `OFF` disables tracing. `TIMESTAMPS` traces
 timestamps. `TENSORS` traces tensors. It may be specified multiple times to
-trace multiple information.
+trace multiple information. Only used for `--service-kind=triton`.
 
 Default is `OFF`.
 
@@ -613,10 +605,10 @@ Default is `-1`.
 #### `--log-frequency=<n>`
 
 Specifies the trace log frequency. If the value is `0`, Triton will only log
-the trace output to path specified via `--trace-file` when shutting down.
-Otherwise, Triton will log the trace output to the path specified via
-`--trace-file`.<idx> when it collects the specified number of traces. For
-example, if `--trace-file` is specified to be `trace_file.log`, and if the log
+the trace output to the trace file when shutting down.
+Otherwise, Triton will log the trace output to `<trace-file>`.<idx> when it
+collects the specified number of traces. For
+example, if the trace file is `trace_file.log`, and if the log
 frequency is `100`, when Triton collects the 100th trace, it logs the traces
 to file `trace_file.log.0`, and when it collects the 200th trace, it logs the
 101st to the 200th traces to file `trace_file.log.1`.
