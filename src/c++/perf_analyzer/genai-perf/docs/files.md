@@ -61,7 +61,7 @@ The data subdirectory contains the raw and processed performance data files.
 - input_tokens_vs_generated_tokens.gzip: This contains data on the number of
 input tokens versus the number of generated tokens for each request.
 - request_latency.gzip: This contains the latency for each request.
-- time_to_first_token.gzip: Thsi contains the time to first token for each request.
+- time_to_first_token.gzip: This contains the time to first token for each request.
 - token_to_token_vs_output_position.gzip: This contains the time from one token
 generation to the next versus the position of the output token for each token.
 - ttft_vs_input_tokens.gzip: This contains the time to first token versus
