@@ -346,6 +346,13 @@ def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
 
     output_group.add_argument(
+        "--generate-graphs",
+        action="store_true",
+        required=False,
+        help="An option to enable the generation of graphs.",
+    )
+
+    output_group.add_argument(
         "--profile-export-file",
         type=Path,
         default="profile_export.json",
