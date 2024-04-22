@@ -38,7 +38,11 @@ def get_tokenizer(
     Download the tokenizer from Huggingface.co
     """
     try:
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+        # Silence tokenizer warning on first use
+        with contextlib.redirect_stdout(
+            io.StringIO()
+        ) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
     except Exception as e:
         raise GenAIPerfException(e)
 
