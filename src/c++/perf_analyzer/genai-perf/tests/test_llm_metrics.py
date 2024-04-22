@@ -94,7 +94,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             tokenizer=tokenizer,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -149,7 +149,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             tokenizer=tokenizer,
         )
 
