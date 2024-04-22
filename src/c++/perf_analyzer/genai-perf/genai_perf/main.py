@@ -25,22 +25,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
 import os
 import shutil
 import sys
+import traceback
 from argparse import Namespace
 
+import genai_perf.logging as logging
 from genai_perf import parser
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE, LOGGER_NAME
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(LOGGER_NAME)
+
+def init_logging() -> None:
+    logging.init_logging()
 
 
 def create_artifacts_dirs():
@@ -131,6 +133,7 @@ def finalize():
 # to assert correct errors and messages.
 def run():
     try:
+        init_logging()
         create_artifacts_dirs()
         args, extra_args = parser.parse_args()
         tokenizer = get_tokenizer(args.tokenizer)
@@ -148,7 +151,9 @@ def main():
     try:
         run()
     except Exception as e:
-        logger.error(f"{e}")
+        traceback.print_exc()
+        logger = logging.getLogger(__name__)
+        logger.error(e)
         return 1
 
     return 0
