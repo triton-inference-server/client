@@ -73,7 +73,6 @@ the number of input tokens for each request.
 - profile_export.json: This is provided by Perf Analyzer and contains the timestamps
 for each event in the lifecycle of each request. This is low-level data used to calculate
 metrics by GenAi-Perf.
-- profile_json.json: *Confirm with team. This looks similar to profile_export.json but a bit difference.*
 
 ##### CSV File
 
