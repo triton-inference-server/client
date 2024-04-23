@@ -30,7 +30,7 @@ from pathlib import Path
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_ARTIFACT_DIR, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
@@ -344,6 +344,14 @@ def _add_endpoint_args(parser):
 
 def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
+
+    output_group.add_argument(
+        "--artifact-path",
+        type=Path,
+        required=False,
+        default=DEFAULT_ARTIFACT_DIR,
+        help=f"The absolute path where all artifacts will be stored. ",
+    )
 
     output_group.add_argument(
         "--profile-export-file",

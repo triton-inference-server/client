@@ -29,11 +29,11 @@
 import csv
 import json
 from itertools import pairwise
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import pandas as pd
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
@@ -373,7 +373,7 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
-    def export_parquet(self, parquet_filename: str) -> None:
+    def export_parquet(self, parquet_filename: str, artifact_path: Path) -> None:
         max_length = -1
         col_index = 0
         filler_list = []
@@ -391,9 +391,9 @@ class Statistics:
             diff = 0
             filler_list = []
             col_index = col_index + 1
-        df.to_parquet(
-            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
-        )
+
+        final_filename = artifact_path.joinpath("data", parquet_filename)
+        df.to_parquet(final_filename, compression=None)
 
 
 class ProfileDataParser:

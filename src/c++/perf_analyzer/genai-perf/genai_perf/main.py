@@ -30,10 +30,11 @@ import shutil
 import sys
 import traceback
 from argparse import Namespace
+from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
+from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.graphs.plot_manager import PlotManager
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
@@ -45,11 +46,11 @@ def init_logging() -> None:
     logging.init_logging()
 
 
-def create_artifacts_dirs():
-    if not os.path.exists("artifacts"):
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
+def create_artifacts_dirs(artifact_path: Path) -> None:
+    if not os.path.exists(artifact_path):
+        os.makedirs(f"{artifact_path}")
+        os.mkdir(f"{artifact_path}/data")
+        os.mkdir(f"{artifact_path}/images")
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -108,24 +109,24 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
-    stats.export_parquet(DEFAULT_PARQUET_FILE)
+    stats.export_parquet(DEFAULT_PARQUET_FILE, args.artifact_path)
     stats.pretty_print()
-    create_graphs(stats)
+    create_graphs(stats, args.artifact_path)
 
 
-def create_graphs(stats: Statistics) -> None:
-    plot_manager = PlotManager(stats)
+def create_graphs(stats: Statistics, artifact_path: Path) -> None:
+    plot_manager = PlotManager(stats, artifact_path)
     plot_manager.create_default_graphs()
 
 
-def finalize():
-    shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
+def finalize(artifact_path: Path) -> None:
+    shutil.move("llm_inputs.json", artifact_path.joinpath("data", "llm_inputs.json"))
     shutil.move(
-        "profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_export.json"
+        "profile_export.json", artifact_path.joinpath("data", "profile_export.json")
     )
     shutil.move(
         "profile_export_genai_perf.csv",
-        f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",
+        artifact_path.joinpath("data", "profile_export_genai_perf.csv"),
     )
 
 
@@ -134,14 +135,14 @@ def finalize():
 def run():
     try:
         init_logging()
-        create_artifacts_dirs()
         args, extra_args = parser.parse_args()
+        create_artifacts_dirs(args.artifact_path)
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)
-        finalize()
+        finalize(args.artifact_path)
     except Exception as e:
         raise GenAIPerfException(e)
 

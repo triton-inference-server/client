@@ -27,6 +27,7 @@
 
 
 import copy
+from pathlib import Path
 from typing import Dict
 
 import pandas as pd
@@ -42,8 +43,10 @@ class BoxPlot(BasePlot):
     Generate a box plot in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(
+        self, stats: Statistics, artifact_path: Path, extra_data: Dict | None = None
+    ) -> None:
+        super().__init__(stats, artifact_path, extra_data)
 
     def create_plot(
         self,

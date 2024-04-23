@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from pathlib import Path
 from typing import Dict, Optional
 
 import pandas as pd
@@ -38,8 +39,10 @@ class HeatMap(BasePlot):
     Generate a heat map in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(
+        self, stats: Statistics, artifact_path: Path, extra_data: Optional[Dict] = None
+    ) -> None:
+        super().__init__(stats, artifact_path, extra_data)
 
     def create_plot(
         self,
