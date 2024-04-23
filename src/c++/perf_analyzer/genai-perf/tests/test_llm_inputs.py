@@ -29,7 +29,7 @@ class TestLlmInputs:
     # Define service kind, backend or api, and output format combinations
     SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS = [
         ("triton", "vllm", OutputFormat.VLLM),
-        ("triton", "trtllm", OutputFormat.TRTLLM),
+        ("triton", "tensorrtllm", OutputFormat.TENSORRTLLM),
         ("openai", "v1/completions", OutputFormat.OPENAI_COMPLETIONS),
         ("openai", "v1/chat/completions", OutputFormat.OPENAI_CHAT_COMPLETIONS),
     ]
@@ -262,7 +262,7 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=PromptSource.DATASET,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
@@ -329,7 +329,7 @@ class TestLlmInputs:
         inputs_seed5_a = LlmInputs.create_llm_inputs(
             tokenizer=default_tokenizer,
             input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             prompt_tokens_mean=300,
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
@@ -339,7 +339,7 @@ class TestLlmInputs:
         inputs_seed5_b = LlmInputs.create_llm_inputs(
             tokenizer=default_tokenizer,
             input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             prompt_tokens_mean=300,
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
@@ -349,7 +349,7 @@ class TestLlmInputs:
         inputs_seed10 = LlmInputs.create_llm_inputs(
             tokenizer=default_tokenizer,
             input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             prompt_tokens_mean=300,
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
@@ -383,7 +383,7 @@ class TestLlmInputs:
         """
         pa_json = LlmInputs.create_llm_inputs(
             input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
@@ -468,7 +468,10 @@ class TestLlmInputs:
                     assert (
                         item[input_name] == input_value
                     ), f"The value of {input_name} is incorrect"
-        elif output_format == OutputFormat.TRTLLM or output_format == OutputFormat.VLLM:
+        elif (
+            output_format == OutputFormat.TENSORRTLLM
+            or output_format == OutputFormat.VLLM
+        ):
             for entry in pa_json["data"]:
                 assert (
                     input_name in entry
@@ -485,7 +488,7 @@ class TestLlmInputs:
 
         pa_json = LlmInputs.create_llm_inputs(
             input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             num_of_output_prompts=5,
             add_model_name=False,
             add_stream=True,
@@ -506,7 +509,10 @@ class TestLlmInputs:
         [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
     )
     def test_output_tokens_mean(self, output_format, default_tokenizer):
-        if output_format != OutputFormat.VLLM and output_format != OutputFormat.TRTLLM:
+        if (
+            output_format != OutputFormat.VLLM
+            and output_format != OutputFormat.TENSORRTLLM
+        ):
             return
 
         output_tokens_mean = 100
@@ -554,7 +560,7 @@ class TestLlmInputs:
                         assert (
                             "min_tokens" not in sampling_parameters
                         ), "min_tokens parameter is present in sampling_parameters"
-                elif output_format == OutputFormat.TRTLLM:
+                elif output_format == OutputFormat.TENSORRTLLM:
                     assert (
                         "max_tokens" in entry
                     ), "max_tokens parameter is missing in llm_inputs.json"
