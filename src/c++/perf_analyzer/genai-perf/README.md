@@ -87,7 +87,7 @@ genai-perf --help
 ## Triton with TRT-LLM
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend trtllm
+genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend tensorrtllm
 ```
 
 ## Triton with vLLM
@@ -221,7 +221,7 @@ The name of the model to benchmark.
 
 The number of unique prompts to generate as stimulus.
 
-##### `--backend {trtllm,vllm}`
+##### `--backend {tensorrtllm,vllm}`
 
 When using the "triton" service-kind, this is the backend of the model.
 
