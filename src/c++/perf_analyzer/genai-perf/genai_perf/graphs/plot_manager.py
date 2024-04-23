@@ -41,7 +41,7 @@ class PlotManager:
     def __init__(self, stats: Statistics) -> None:
         self._stats = stats
 
-    def create_default_graphs(self):
+    def create_default_plots(self):
         y_metric = "time_to_first_tokens"
         y_key = "time_to_first_tokens_scaled"
         scaled_data = [scale(x, (1 / 1e9)) for x in self._stats.metrics.data[y_metric]]

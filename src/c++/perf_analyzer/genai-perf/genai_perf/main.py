@@ -45,12 +45,12 @@ def init_logging() -> None:
     logging.init_logging()
 
 
-def create_artifacts_dirs(generate_graphs: bool) -> None:
+def create_artifacts_dirs(generate_plots: bool) -> None:
     if not os.path.exists("artifacts"):
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
-        if generate_graphs:
-            os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/images")
+        if generate_plots:
+            os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/plots")
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -111,13 +111,13 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     stats.export_to_csv(export_csv_name)
     stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
-    create_graphs(stats, args.generate_graphs)
+    create_plots(stats, args.generate_plots)
 
 
-def create_graphs(stats: Statistics, generate_graphs: bool) -> None:
-    if generate_graphs:
+def create_plots(stats: Statistics, generate_plots: bool) -> None:
+    if generate_plots:
         plot_manager = PlotManager(stats)
-        plot_manager.create_default_graphs()
+        plot_manager.create_default_plots()
 
 
 def finalize():
@@ -137,7 +137,7 @@ def run():
     try:
         init_logging()
         args, extra_args = parser.parse_args()
-        create_artifacts_dirs(args.generate_graphs)
+        create_artifacts_dirs(args.generate_plots)
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)

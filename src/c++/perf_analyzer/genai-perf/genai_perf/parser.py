@@ -347,10 +347,10 @@ def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
 
     output_group.add_argument(
-        "--generate-graphs",
+        "--generate-plots",
         action="store_true",
         required=False,
-        help="An option to enable the generation of graphs.",
+        help="An option to enable the generation of plots.",
     )
 
     output_group.add_argument(
