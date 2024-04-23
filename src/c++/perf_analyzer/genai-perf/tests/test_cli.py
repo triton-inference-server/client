@@ -338,7 +338,10 @@ class TestCLIArguments:
                 ],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
-            (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
+            (
+                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                OutputFormat.TENSORRTLLM,
+            ),
             (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
         ],
     )

@@ -289,11 +289,12 @@ def _add_endpoint_args(parser):
         "--backend",
         type=str,
         choices=utils.get_enum_names(OutputFormat)[2:],
-        default="trtllm",
+        default="tensorrtllm",
         required=False,
         help=f'When using the "triton" service-kind, '
         "this is the backend of the model. "
-        "For the TRT-LLM backend, you currently must set 'exclude_input_in_output' to true in the model config to "
+        "For the TENSORRT-LLM backend, you currently must set "
+        "'exclude_input_in_output' to true in the model config to "
         "not echo the input tokens in the output.",
     )
 
