@@ -607,8 +607,8 @@ Default is `-1`.
 Specifies the trace log frequency. If the value is `0`, Triton will only log
 the trace output to the trace file when shutting down.
 Otherwise, Triton will log the trace output to `<trace-file>`.<idx> when it
-collects the specified number of traces. For
-example, if the trace file is `trace_file.log`, and if the log
+collects the specified number of traces.
+For example, if the trace file is `trace_file.log`, and if the log
 frequency is `100`, when Triton collects the 100th trace, it logs the traces
 to file `trace_file.log.0`, and when it collects the 200th trace, it logs the
 101st to the 200th traces to file `trace_file.log.1`.
