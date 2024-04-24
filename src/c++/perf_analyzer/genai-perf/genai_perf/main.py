@@ -30,6 +30,7 @@ import shutil
 import sys
 import traceback
 from argparse import Namespace
+from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
@@ -118,14 +119,15 @@ def create_graphs(stats: Statistics) -> None:
     plot_manager.create_default_graphs()
 
 
-def finalize():
+def finalize(profile_export_file: Path):
     shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
     shutil.move(
-        "profile_export.json", f"{DEFAULT_ARTIFACT_DIR}/data/profile_export.json"
+        profile_export_file, f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file}"
     )
+    profile_export_file_csv = profile_export_file.stem + "_genai_perf.csv"
     shutil.move(
-        "profile_export_genai_perf.csv",
-        f"{DEFAULT_ARTIFACT_DIR}/data/profile_export_genai_perf.csv",
+        profile_export_file_csv,
+        f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file_csv}",
     )
 
 
@@ -141,7 +143,7 @@ def run():
         args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)
-        finalize()
+        finalize(args.profile_export_file)
     except Exception as e:
         raise GenAIPerfException(e)
 
