@@ -31,8 +31,8 @@ from typing import Dict
 
 import pandas as pd
 import plotly.express as px
-from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
+from genai_perf.plots.base_plot import BasePlot
 from genai_perf.utils import scale
 from plotly.graph_objects import Figure
 

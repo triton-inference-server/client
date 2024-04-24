@@ -29,8 +29,8 @@ from typing import Dict, Optional
 
 import pandas as pd
 import plotly.express as px
-from genai_perf.graphs.base_plot import BasePlot
 from genai_perf.llm_metrics import Statistics
+from genai_perf.plots.base_plot import BasePlot
 
 
 class HeatMap(BasePlot):
