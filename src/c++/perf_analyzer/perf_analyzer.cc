@@ -143,6 +143,11 @@ PerfAnalyzer::CreateAnalyzerObjects()
     throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
   }
 
+  std::cerr << "Yes, we got here" << std::endl;
+  FAIL_IF_ERR(
+      parser_->ValidateInputsExist(params_->input_shapes),
+      "invalid inputs found");
+
   // Change the default value for the --async option for sequential models
   if ((parser_->SchedulerType() == pa::ModelParser::SEQUENCE) ||
       (parser_->SchedulerType() == pa::ModelParser::ENSEMBLE_SEQUENCE)) {

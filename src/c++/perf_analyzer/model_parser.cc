@@ -435,6 +435,23 @@ ModelParser::GetComposingSchedulerType(
 }
 
 cb::Error
+ModelParser::ValidateInputsExist(
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        user_input_shapes)
+{
+  for (const auto& user_input : user_input_shapes) {
+    std::cerr << "User input: " << user_input.first << std::endl;
+    if (inputs_->find(user_input.first) == inputs_->end()) {
+      return cb::Error(
+          "The input '" + user_input.first +
+              "' is not a valid input for the model.",
+          pa::GENERIC_ERROR);
+    }
+  }
+  return cb::Error::Success;
+}
+
+cb::Error
 ModelParser::GetInt(const rapidjson::Value& value, int64_t* integer_value)
 {
   if (value.IsString()) {

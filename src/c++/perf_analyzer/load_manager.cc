@@ -239,6 +239,8 @@ LoadManager::InitManagerInputs(
         parser_->Inputs(), zero_input, string_length, string_data));
   }
 
+  // TODO: Move input validation here from ReadData()
+
   // Reserve the required vector space
   threads_stat_.reserve(max_threads_);
 

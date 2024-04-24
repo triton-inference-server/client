@@ -121,6 +121,17 @@ DataLoader::ReadDataFromDir(
       SerializeStringTensor(output_string_data, &it->second);
     }
   }
+
+  for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
+    std::string input_name = file.path().filename().string();
+    if (inputs->find(input_name) == inputs->end()) {
+      return cb::Error(
+          "Provided data file '" + input_name +
+              "' does not correspond to a valid model input.",
+          pa::GENERIC_ERROR);
+    }
+  }
+
   return cb::Error::Success;
 }
 
@@ -168,6 +179,24 @@ DataLoader::ParseData(
   }
 
   const rapidjson::Value& streams = json["data"];
+
+  // Check all inputs are present in model inputs
+  // std::cerr << "HERE" << std::endl;
+  // if (!streams.IsObject()) {
+  //   return cb::Error(
+  //       "Expected 'data' field to be a JSON object",
+  //       pa::GENERIC_ERROR);
+  // }
+  // for (auto itr = streams.MemberBegin(); itr != streams.MemberEnd(); ++itr) {
+  //   std::cerr << "NEXT" << std::endl;
+  //   std::string user_input = itr->name.GetString();
+  //   std::cerr << user_input << std::endl;
+  //   if (inputs->find(user_input) == inputs->end()) {
+  //     return cb::Error(
+  //         "Model input '" + user_input + "' is not a valid model input.",
+  //         pa::GENERIC_ERROR);
+  //   }
+  // }
 
   // Validation data is optional, once provided, it must align with 'data'
   const rapidjson::Value* out_streams = nullptr;
@@ -237,6 +266,26 @@ DataLoader::ParseData(
     }
   }
 
+  std::cerr << "Validating..." << std::endl;
+  for (const auto& entry : input_data_) {
+    const std::string& user_input_full = entry.first;
+    // Input names are expected to be in the format of
+    // <input_name>_<stream_id>_<step_id> Extract the base input name without
+    // the IDs
+    // TODO: This was wrong... the extra inputs don't make their way into
+    // input_data_
+    size_t end_index = user_input_full.rfind('_');
+    end_index = user_input_full.rfind('_', end_index - 1);
+    std::string user_input_base = user_input_full.substr(0, end_index);
+    std::cerr << "Checking user input: " << user_input_base << std::endl;
+    if (inputs->find(user_input_base) == inputs->end()) {
+      std::cerr << "Invalid model input detected: " << user_input_base
+                << std::endl;
+      return cb::Error(
+          "Input '" + user_input_base + "' is not a valid model input.",
+          pa::GENERIC_ERROR);
+    }
+  }
 
   return cb::Error::Success;
 }

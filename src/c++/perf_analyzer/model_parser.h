@@ -169,6 +169,21 @@ class ModelParser {
     return composing_models_map_;
   }
 
+  /// Validates that all user-provided input tensor names exist in the model's
+  /// input definitions.
+  ///
+  /// \param user_input_shapes A map where keys are the names of the input
+  /// tensors supplied by the user, and values are vectors representing the
+  /// shapes of these tensors.
+  ///
+  /// \return cb::Error object indicating success or failure. Returns an error
+  /// if any user-supplied input name does not match the model's expected
+  /// inputs.
+  cb::Error ValidateInputsExist(
+      const std::unordered_map<std::string, std::vector<int64_t>>&
+          user_input_shapes);
+
+
  protected:
   ModelSchedulerType scheduler_type_;
   bool is_decoupled_;

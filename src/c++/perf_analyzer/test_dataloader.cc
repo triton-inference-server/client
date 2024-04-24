@@ -28,7 +28,8 @@
 #include "doctest.h"
 #include "mock_data_loader.h"
 
-namespace triton { namespace perfanalyzer {
+namespace triton {
+namespace perfanalyzer {
 
 /// Helper class for testing the DataLoader
 ///
@@ -193,16 +194,30 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
     expected_message =
         "missing tensor INPUT1 ( Location stream id: 0, step id: 0)";
   }
+  SUBCASE("Missing non-optional input")
+  {
+    json_str = R"({"data": [{
+     "NOT_INPUT1": { "content": 6 }
+    }]})";
+    json_str = R"({
+   "data": [
+     { "INPUT1": { "content": [1] } },
+     { "INVALID_INPUT": { "content": [2] } },
+   }]})";
+  }
+  expected_message =
+      "input INVALID_INPUT is not found in the model configuration";
+}
 
-  MockDataLoader dataloader;
-  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
-  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
-  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
-  inputs->insert(std::make_pair(input1.name_, input1));
+MockDataLoader dataloader;
+std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+inputs->insert(std::make_pair(input1.name_, input1));
 
-  cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
-  CHECK(status.IsOk() == false);
-  CHECK_EQ(status.Message(), expected_message);
+cb::Error status = dataloader.ReadDataFromStr(json_str, inputs, outputs);
+CHECK(status.IsOk() == false);
+CHECK_EQ(status.Message(), expected_message);
 }
 
 TEST_CASE(
@@ -1430,4 +1445,5 @@ TEST_CASE(
   }
 }
 
-}}  // namespace triton::perfanalyzer
+}
+}  // namespace triton::perfanalyzer
