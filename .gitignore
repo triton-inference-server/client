@@ -16,3 +16,6 @@ __pycache__/
 
 #Other
 node_modules
+
+#GenAI-Perf Artifacts
+artifacts/
