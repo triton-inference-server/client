@@ -111,13 +111,13 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     stats.export_to_csv(export_csv_name)
     stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
-    create_plots(stats, args.generate_plots)
+    if args.generate_plots:
+        create_plots(stats)
 
 
-def create_plots(stats: Statistics, generate_plots: bool) -> None:
-    if generate_plots:
-        plot_manager = PlotManager(stats)
-        plot_manager.create_default_plots()
+def create_plots(stats: Statistics) -> None:
+    plot_manager = PlotManager(stats)
+    plot_manager.create_default_plots()
 
 
 def finalize():
