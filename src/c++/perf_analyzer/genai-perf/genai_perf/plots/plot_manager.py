@@ -26,10 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from genai_perf.graphs.box_plot import BoxPlot
-from genai_perf.graphs.heat_map import HeatMap
-from genai_perf.graphs.scatter_plot import ScatterPlot
 from genai_perf.llm_metrics import Statistics
+from genai_perf.plots.box_plot import BoxPlot
+from genai_perf.plots.heat_map import HeatMap
+from genai_perf.plots.scatter_plot import ScatterPlot
 from genai_perf.utils import scale
 
 
@@ -41,7 +41,7 @@ class PlotManager:
     def __init__(self, stats: Statistics) -> None:
         self._stats = stats
 
-    def create_default_graphs(self):
+    def create_default_plots(self):
         y_metric = "time_to_first_tokens"
         y_key = "time_to_first_tokens_scaled"
         scaled_data = [scale(x, (1 / 1e9)) for x in self._stats.metrics.data[y_metric]]
