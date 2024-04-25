@@ -34,7 +34,7 @@ class PromptSource(Enum):
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
-    TRTLLM = auto()
+    TENSORRTLLM = auto()
     VLLM = auto()
 
 
@@ -54,7 +54,7 @@ class LlmInputs:
     DEFAULT_LENGTH = 100
     MINIMUM_LENGTH = 1
 
-    DEFAULT_TRTLLM_MAX_TOKENS = 256
+    DEFAULT_TENSORRTLLM_MAX_TOKENS = 256
 
     DEFAULT_RANDOM_SEED = 0
     DEFAULT_PROMPT_TOKENS_MEAN = 550
@@ -64,7 +64,7 @@ class LlmInputs:
     DEFAULT_NUM_PROMPTS = 100
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
-    EMPTY_JSON_IN_TRTLLM_PA_FORMAT: Dict = {"data": []}
+    EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_OPENAI_PA_FORMAT: Dict = {"data": []}
 
     dataset_url_map = {OPEN_ORCA: OPEN_ORCA_URL, CNN_DAILY_MAIL: CNN_DAILYMAIL_URL}
@@ -357,7 +357,7 @@ class LlmInputs:
                 output_tokens_deterministic,
                 model_name,
             )
-        elif output_format == OutputFormat.TRTLLM:
+        elif output_format == OutputFormat.TENSORRTLLM:
             output_json = cls._convert_generic_json_to_trtllm_format(
                 generic_dataset,
                 add_model_name,
@@ -745,7 +745,7 @@ class LlmInputs:
 
     @classmethod
     def _create_empty_trtllm_pa_json(cls) -> Dict:
-        empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_TRTLLM_PA_FORMAT)
+        empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT)
 
         return empty_pa_json
 
@@ -956,7 +956,7 @@ class LlmInputs:
     ) -> Dict:
         row = pa_json["data"][index]
         if default_max_tokens:
-            row["max_tokens"] = [cls.DEFAULT_TRTLLM_MAX_TOKENS]
+            row["max_tokens"] = [cls.DEFAULT_TENSORRTLLM_MAX_TOKENS]
 
         return pa_json
 

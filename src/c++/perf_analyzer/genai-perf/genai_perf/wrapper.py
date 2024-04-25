@@ -43,7 +43,7 @@ class Profiler:
             cmd += ["-i", "grpc", "--streaming"]
             if "u" not in vars(args).keys():
                 cmd += ["-u", f"{DEFAULT_GRPC_URL}"]
-            if args.output_format == OutputFormat.TRTLLM:
+            if args.output_format == OutputFormat.TENSORRTLLM:
                 cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
         elif args.service_kind == "openai":
             cmd += ["-i", "http"]
@@ -74,6 +74,7 @@ class Profiler:
             "random_seed",
             "tokenizer",
             "endpoint_type",
+            "generate_plots",
         ]
 
         utils.remove_file(args.profile_export_file)
