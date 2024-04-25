@@ -143,7 +143,6 @@ PerfAnalyzer::CreateAnalyzerObjects()
     throw pa::PerfAnalyzerException(pa::GENERIC_ERROR);
   }
 
-
   // Change the default value for the --async option for sequential models
   if ((parser_->SchedulerType() == pa::ModelParser::SEQUENCE) ||
       (parser_->SchedulerType() == pa::ModelParser::ENSEMBLE_SEQUENCE)) {

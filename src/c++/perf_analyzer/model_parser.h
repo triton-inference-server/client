@@ -169,7 +169,6 @@ class ModelParser {
     return composing_models_map_;
   }
 
-
  protected:
   ModelSchedulerType scheduler_type_;
   bool is_decoupled_;
