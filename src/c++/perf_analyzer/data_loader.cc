@@ -48,6 +48,16 @@ DataLoader::ReadDataFromDir(
   data_stream_cnt_ = 1;
   step_num_.push_back(1);
 
+  for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
+    std::string input_name = file.path().filename().string();
+    if (inputs->find(input_name) == inputs->end()) {
+      return cb::Error(
+          "Provided data file '" + input_name +
+              "' does not correspond to a valid model input.",
+          pa::GENERIC_ERROR);
+    }
+  }
+
   for (const auto& input : *inputs) {
     if (input.second.datatype_.compare("BYTES") != 0) {
       const auto file_path = data_directory + "/" + input.second.name_;
@@ -180,24 +190,6 @@ DataLoader::ParseData(
 
   const rapidjson::Value& streams = json["data"];
 
-  // Check all inputs are present in model inputs
-  // std::cerr << "HERE" << std::endl;
-  // if (!streams.IsObject()) {
-  //   return cb::Error(
-  //       "Expected 'data' field to be a JSON object",
-  //       pa::GENERIC_ERROR);
-  // }
-  // for (auto itr = streams.MemberBegin(); itr != streams.MemberEnd(); ++itr) {
-  //   std::cerr << "NEXT" << std::endl;
-  //   std::string user_input = itr->name.GetString();
-  //   std::cerr << user_input << std::endl;
-  //   if (inputs->find(user_input) == inputs->end()) {
-  //     return cb::Error(
-  //         "Model input '" + user_input + "' is not a valid model input.",
-  //         pa::GENERIC_ERROR);
-  //   }
-  // }
-
   // Validation data is optional, once provided, it must align with 'data'
   const rapidjson::Value* out_streams = nullptr;
   if (json.HasMember("validation_data")) {
@@ -263,27 +255,6 @@ DataLoader::ParseData(
         }
       }
       break;
-    }
-  }
-
-  std::cerr << "Validating..." << std::endl;
-  for (const auto& entry : input_data_) {
-    const std::string& user_input_full = entry.first;
-    // Input names are expected to be in the format of
-    // <input_name>_<stream_id>_<step_id> Extract the base input name without
-    // the IDs
-    // TODO: This was wrong... the extra inputs don't make their way into
-    // input_data_
-    size_t end_index = user_input_full.rfind('_');
-    end_index = user_input_full.rfind('_', end_index - 1);
-    std::string user_input_base = user_input_full.substr(0, end_index);
-    std::cerr << "Checking user input: " << user_input_base << std::endl;
-    if (inputs->find(user_input_base) == inputs->end()) {
-      std::cerr << "Invalid model input detected: " << user_input_base
-                << std::endl;
-      return cb::Error(
-          "Input '" + user_input_base + "' is not a valid model input.",
-          pa::GENERIC_ERROR);
     }
   }
 
@@ -496,9 +467,12 @@ DataLoader::ReadTensorData(
     const std::shared_ptr<ModelTensorMap>& tensors, const int stream_index,
     const int step_index, const bool is_input)
 {
+  std::unordered_set<std::string> model_io_names;
   auto& tensor_data = is_input ? input_data_ : output_data_;
   auto& tensor_shape = is_input ? input_shapes_ : output_shapes_;
   for (const auto& io : *tensors) {
+    std::cerr << "Checking tensor: " << io.first << std::endl;
+    model_io_names.insert(io.first);
     if (step.HasMember(io.first.c_str())) {
       std::string key_name(
           io.first + "_" + std::to_string(stream_index) + "_" +
@@ -583,6 +557,18 @@ DataLoader::ReadTensorData(
           "missing tensor " + io.first +
               " ( Location stream id: " + std::to_string(stream_index) +
               ", step id: " + std::to_string(step_index) + ")",
+          pa::GENERIC_ERROR);
+    }
+  }
+
+  // Add allowed non-model inputs/outputs to the model_io_names set
+  model_io_names.insert("model");
+
+  for (auto itr = step.MemberBegin(); itr != step.MemberEnd(); ++itr) {
+    if (model_io_names.find(itr->name.GetString()) == model_io_names.end()) {
+      return cb::Error(
+          "The input or output '" + std::string(itr->name.GetString()) +
+              "' is not found in the model configuration",
           pa::GENERIC_ERROR);
     }
   }

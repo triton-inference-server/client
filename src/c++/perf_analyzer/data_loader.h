@@ -27,6 +27,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <unordered_set>
 
 #include "model_parser.h"
 #include "perf_utils.h"
