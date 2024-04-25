@@ -193,7 +193,6 @@ LoadManager::InitManager(
         "error: sequence models do not support batching", GENERIC_ERROR);
   }
 
-
   auto status =
       InitManagerInputs(string_length, string_data, zero_input, user_data);
   THROW_IF_ERROR(status, "Failed to init manager inputs");
@@ -239,17 +238,6 @@ LoadManager::InitManagerInputs(
     RETURN_IF_ERROR(data_loader_->GenerateData(
         parser_->Inputs(), zero_input, string_length, string_data));
   }
-
-  // // TODO: Move input validation here from ReadData()
-  // const rapidjson::Value* out_streams = nullptr;
-  // if (json.HasMember("validation_data")) {
-  //   out_streams = &json["validation_data"];
-  //   if (out_streams->Size() != streams.Size()) {
-  //     return cb::Error(
-  //         "The 'validation_data' field doesn't align with 'data' field in the
-  //         " "json file", pa::GENERIC_ERROR);
-  //   }
-  // }
 
   // Reserve the required vector space
   threads_stat_.reserve(max_threads_);
