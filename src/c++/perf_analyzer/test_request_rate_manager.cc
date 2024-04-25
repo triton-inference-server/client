@@ -717,7 +717,9 @@ TEST_CASE("request_rate_infer_type")
 
 /// Check that the request distribution is correct for
 /// different Distribution types
-///
+
+// TODO: Fix the below test case. It uses INPUT2, which is not in the model
+// configuration.
 TEST_CASE("request_rate_distribution")
 {
   PerfAnalyzerParameters params;
@@ -970,6 +972,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
       expected_enable_stats_value);
 }
 
+// TODO: Fix the below test case. It uses INPUT2, which is not in the model
+// configuration.
 TEST_CASE(
     "custom_json_data: Check custom json data to ensure that it is processed "
     "correctly")
