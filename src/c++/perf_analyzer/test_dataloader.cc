@@ -195,14 +195,12 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
   }
   SUBCASE("Invalid input")
   {
-    json_str = R"({"data": [{
-     "NOT_INPUT1": { "content": 6 }
-    }]})";
-    json_str = R"({
-   "data": [
-     { "INPUT1": { "content": [1] } },
-     { "INVALID_INPUT": { "content": [2] } },
-   }]})";
+    json_str = R"({"data":
+    [{
+     "INPUT1": [2],
+     "INVALID_INPUT": [2]
+    }]
+    })";
     expected_message =
         "The input or output 'INVALID_INPUT' is not found in the model "
         "configuration";

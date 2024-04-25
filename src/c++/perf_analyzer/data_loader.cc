@@ -48,6 +48,14 @@ DataLoader::ReadDataFromDir(
   data_stream_cnt_ = 1;
   step_num_.push_back(1);
 
+  if (!std::filesystem::exists(data_directory) ||
+      !std::filesystem::is_directory(data_directory)) {
+    return cb::Error(
+        "Error: Directory does not exist or is not a directory: " +
+            std::string(data_directory),
+        pa::GENERIC_ERROR);
+  }
+
   for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
     std::string input_name = file.path().filename().string();
     if (inputs->find(input_name) == inputs->end()) {
@@ -472,7 +480,6 @@ DataLoader::ReadTensorData(
   auto& tensor_data = is_input ? input_data_ : output_data_;
   auto& tensor_shape = is_input ? input_shapes_ : output_shapes_;
   for (const auto& io : *tensors) {
-    std::cerr << "Checking tensor: " << io.first << std::endl;
     model_io_names.insert(io.first);
     if (step.HasMember(io.first.c_str())) {
       std::string key_name(
