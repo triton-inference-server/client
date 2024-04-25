@@ -120,6 +120,7 @@ TEST_CASE("update_seq_json_data: testing the UpdateSeqJsonData function")
   mock_data_loader.reset();
   mock_infer_data_manager.reset();
   mic.reset();
+  // TODO: Debug failure below.
   REQUIRE(testing::Test::HasFailure() == false);
 }
 
