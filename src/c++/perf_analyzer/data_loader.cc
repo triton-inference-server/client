@@ -57,11 +57,12 @@ DataLoader::ReadDataFromDir(
   }
 
   for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
-    std::string input_name = file.path().filename().string();
-    if (inputs->find(input_name) == inputs->end()) {
+    std::string io_name = file.path().filename().string();
+    if (inputs->find(io_name) == inputs->end() &&
+        outputs->find(io_name) == outputs->end()) {
       return cb::Error(
-          "Provided data file '" + input_name +
-              "' does not correspond to a valid model input.",
+          "Provided data file '" + io_name +
+              "' does not correspond to a valid model input or output.",
           pa::GENERIC_ERROR);
     }
   }
@@ -137,16 +138,6 @@ DataLoader::ReadDataFromDir(
           std::to_string(0));
       auto it = output_data_.emplace(key_name, std::vector<char>()).first;
       SerializeStringTensor(output_string_data, &it->second);
-    }
-  }
-
-  for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
-    std::string input_name = file.path().filename().string();
-    if (inputs->find(input_name) == inputs->end()) {
-      return cb::Error(
-          "Provided data file '" + input_name +
-              "' does not correspond to a valid model input.",
-          pa::GENERIC_ERROR);
     }
   }
 
