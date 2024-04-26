@@ -141,7 +141,7 @@ def run():
         args, extra_args = parser.parse_args()
         create_artifacts_dirs(args.generate_plots)
         tokenizer = get_tokenizer(args.tokenizer)
-        generate_inputs(args, tokenizer)
+        # generate_inputs(args, tokenizer)
         args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)

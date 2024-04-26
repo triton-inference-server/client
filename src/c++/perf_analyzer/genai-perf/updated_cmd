@@ -1,0 +1,7 @@
+genai-perf -m llama2-7b-chat \
+	   --concurrency 30 \
+	   --service-kind openai \
+           --endpoint-type chat \
+	   --u 172.31.97.131:9999 \
+	   -p 20000 \
+	   --output-tokens-mean 200
