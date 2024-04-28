@@ -547,6 +547,28 @@ class LLMProfileDataParser(ProfileDataParser):
     ) -> None:
         """Helper function to preprocess responses of a request."""
         if self._service_kind == "openai":
+            # Detect and handle single response with multiple SSE response.
+            # print(f"(before) : {res_outputs}")
+            i = 0
+            detected = False
+            while i < len(res_timestamps):
+                response = res_outputs[i]["response"]
+                responses = response.strip().split("\n\n")
+                if len(responses) > 1:
+                    detected = True
+                    # print("---------------------------")
+
+                    # merge responses
+                    # merged_response = remove_sse_prefix(responses[0])
+                    # merged_response = json.loads(merged_response)
+                    # for r in responses[1:]:
+                    #    text = self._extract_openai_text_output(r)
+                    #    merged_response["choices"][0]["delta"]["content"] += text
+
+                    # res_outputs[i] = {"response": json.dumps(merged_response)}
+
+                i += 1
+
             # Remove responses without any content
             # These are only observed to happen at the start or end
             while res_outputs[0] and self._is_openai_empty_response(

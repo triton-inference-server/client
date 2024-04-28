@@ -144,7 +144,7 @@ def run():
         args.func(args, extra_args)
         data_parser = calculate_metrics(args, tokenizer)
         report_output(data_parser, args)
-        finalize(args.profile_export_file)
+        # finalize(args.profile_export_file)
     except Exception as e:
         raise GenAIPerfException(e)
 
