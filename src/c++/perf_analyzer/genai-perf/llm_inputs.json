@@ -10,7 +10,8 @@
             }
           ],
           "model": "llama2-7b-chat",
-          "max_tokens": 200
+          "max_tokens": 200,
+          "stream": true
         }
       ]
     }

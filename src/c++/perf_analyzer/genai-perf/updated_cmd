@@ -1,7 +1,9 @@
-genai-perf -m llama2-7b-chat \
+genai-perf \
+	   -m llama2-7b-chat \
 	   --concurrency 30 \
 	   --service-kind openai \
-           --endpoint-type chat \
-	   --u 172.31.97.131:9999 \
-	   -p 20000 \
-	   --output-tokens-mean 200
+       --endpoint-type chat \
+	   --u 172.31.38.0:9999 \
+	   --streaming \
+	   -- \
+	   --max-threads 256
