@@ -145,6 +145,8 @@ SharedMemoryRegionDestroy(void* shm_handle)
     return -5;
   }
 
+  delete handle;
+
   return 0;
 }
 
