@@ -139,13 +139,16 @@ def run():
     try:
         init_logging()
         args, extra_args = parser.parse_args()
-        create_artifacts_dirs(args.generate_plots)
-        tokenizer = get_tokenizer(args.tokenizer)
-        generate_inputs(args, tokenizer)
-        args.func(args, extra_args)
-        data_parser = calculate_metrics(args, tokenizer)
-        report_output(data_parser, args)
-        finalize(args.profile_export_file)
+        if hasattr(args, "subcommand"):
+            args.func(args)
+        else:
+            create_artifacts_dirs(args.generate_plots)
+            tokenizer = get_tokenizer(args.tokenizer)
+            generate_inputs(args, tokenizer)
+            args.func(args, extra_args)
+            data_parser = calculate_metrics(args, tokenizer)
+            report_output(data_parser, args)
+            finalize(args.profile_export_file)
     except Exception as e:
         raise GenAIPerfException(e)
 

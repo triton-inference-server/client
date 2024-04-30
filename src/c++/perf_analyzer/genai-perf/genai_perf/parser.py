@@ -41,6 +41,17 @@ logger = logging.getLogger(__name__)
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
 
+def _check_model_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Check if model name is provided.
+    """
+    if not args.subcommand and not args.model:
+        parser.error("The -m/--model option is required and cannot be empty.")
+    return args
+
+
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> argparse.Namespace:
@@ -271,7 +282,7 @@ def _add_endpoint_args(parser):
         "-m",
         "--model",
         type=str,
-        required=True,
+        default=None,
         help=f"The name of the model to benchmark.",
     )
 
@@ -423,7 +434,9 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 
 def _parse_compare_args(subparsers):
-    compare = subparsers.add_parser("compare", help="Compare multiple runs.")
+    compare = subparsers.add_parser(
+        "compare", help="Generate plots that compare multiple runs."
+    )
     compare.add_argument(
         "--config",
         type=Path,
@@ -431,6 +444,7 @@ def _parse_compare_args(subparsers):
         help="The path to the YAML file that specifies plot configurations for "
         "comparing multiple runs.",
     )
+    compare.set_defaults(func=compare_handler)
 
 
 ### Handlers ###
@@ -440,6 +454,11 @@ def handler(args, extra_args):
     from genai_perf.wrapper import Profiler
 
     Profiler.run(args=args, extra_args=extra_args)
+
+
+def compare_handler(args: argparse.Namespace):
+    # TMA-1893: parse yaml file
+    pass
 
 
 ### Entrypoint ###
@@ -462,7 +481,10 @@ def parse_args():
     _add_output_args(parser)
     _add_other_args(parser)
 
-    subparsers = parser.add_subparsers(help="subparser command help")
+    # Add subcommands
+    subparsers = parser.add_subparsers(
+        help="List of subparser commands.", dest="subcommand"
+    )
     _parse_compare_args(subparsers)
 
     # Check for passthrough args
@@ -473,6 +495,7 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    args = _check_model_args(parser, args)
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
     args = _convert_str_to_enum_entry(args, "prompt_source", PromptSource)
