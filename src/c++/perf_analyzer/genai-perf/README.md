@@ -268,7 +268,7 @@ The name of the model to benchmark. (default: `None`)
 
 When using the "triton" service-kind, this is the backend of the model. For the
 TRT-LLM backend, you currently must set `exclude_input_in_output` to true in the
-model config to not echo the input tokens in the output. (default: trtllm)
+model config to not echo the input tokens in the output. (default: tensorrtllm)
 
 ##### `--endpoint <str>`
 
