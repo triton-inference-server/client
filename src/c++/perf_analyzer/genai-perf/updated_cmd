@@ -1,9 +1,10 @@
 genai-perf \
-	   -m llama2-7b-chat \
-	   --concurrency 30 \
-	   --service-kind openai \
-       --endpoint-type chat \
-	   --u 172.31.38.0:9999 \
-	   --streaming \
-	   -- \
-	   --max-threads 256
+	-m ensemble \
+	--concurrency 30 \
+	--service-kind triton \
+	--backend tensorrtllm \
+	-u localhost:8001 \
+	--streaming \
+	-s 95 \
+	-- \
+	--max-threads 256
