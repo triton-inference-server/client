@@ -2,7 +2,7 @@ genai-perf \
 	-m mistral \
 	--concurrency 30 \
 	--service-kind openai \
-	--endpoint-type chat \
+	--endpoint-type completions \
 	--u 172.31.38.167:9999 \
 	--streaming -s 95 \
 	-- \
