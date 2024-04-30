@@ -422,6 +422,17 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     return request_inputs
 
 
+def _parse_compare_args(subparsers):
+    compare = subparsers.add_parser("compare", help="Compare multiple runs.")
+    compare.add_argument(
+        "--config",
+        type=Path,
+        default="config.yaml",
+        help="The path to the YAML file that specifies plot configurations for "
+        "comparing multiple runs.",
+    )
+
+
 ### Handlers ###
 
 
@@ -450,6 +461,9 @@ def parse_args():
     _add_profile_args(parser)
     _add_output_args(parser)
     _add_other_args(parser)
+
+    subparsers = parser.add_subparsers(help="subparser command help")
+    _parse_compare_args(subparsers)
 
     # Check for passthrough args
     if "--" in argv:
