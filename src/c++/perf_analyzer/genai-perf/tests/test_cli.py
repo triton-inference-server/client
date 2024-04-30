@@ -212,7 +212,7 @@ class TestCLIArguments:
 
     def test_model_not_provided(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf"])
-        expected_output = "the following arguments are required: -m/--model"
+        expected_output = "The -m/--model option is required and cannot be empty."
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
