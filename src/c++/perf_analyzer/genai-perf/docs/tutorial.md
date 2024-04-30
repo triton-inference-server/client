@@ -86,7 +86,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 genai-perf \
   -m gpt2 \
   --service-kind triton \
-  --backend trtllm \
+  --backend tensorrtllm \
   --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
