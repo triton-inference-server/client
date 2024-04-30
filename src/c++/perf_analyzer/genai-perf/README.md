@@ -159,7 +159,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 genai-perf \
   -m gpt2 \
   --service-kind triton \
-  --backend tensorrtllm \
+  --backend trtllm \
   --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
@@ -264,7 +264,7 @@ Show the help message and exit.
 
 The name of the model to benchmark. (default: `None`)
 
-##### `--backend {tensorrtllm,vllm}`
+##### `--backend {trtllm,vllm}`
 
 When using the "triton" service-kind, this is the backend of the model. For the
 TRT-LLM backend, you currently must set `exclude_input_in_output` to true in the
