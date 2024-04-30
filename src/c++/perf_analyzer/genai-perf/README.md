@@ -28,31 +28,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # GenAI-Perf
 
-A tool to facilitate benchmarking generative AI models leveraging NVIDIA’s
-[performance analyzer tool](https://github.com/triton-inference-server/client/tree/main/src/c%2B%2B/perf_analyzer).
+GenAI-Perf is a command line tool for measuring the throughput and latency of
+generative AI models as served through an inference server. For large language
+models (LLMs), GenAI-Perf provides metrics such as
+[output token throughput](#output_token_throughput_metric),
+[time to first token](#time_to_first_token_metric),
+[inter token latency](#inter_token_latency_metric), and
+[request throughput](#request_throughput_metric). For a full list of metrics
+please see the [Metrics section](#metrics).
 
-GenAI-Perf builds upon the performant stimulus generation of the performance
-analyzer to easily benchmark LLMs. Multiple endpoints are currently supported.
+Users specify a model name, an inference server URL, the type of inputs to use
+(synthetic or from dataset), and the type of load to generate (number of
+concurrent requests, request rate).
 
-The GenAI-Perf workflow enables a user to
-* [Generate prompts](#model-inputs) using either
-  * synthetic generated data
-  * open orca or CNN daily mail datasets
-* Transform the prompts to a format understood by the
-[chosen endpoint](#basic-usage)
-  * Triton Infer
-  * OpenAI
-* Use Performance Analyzer to drive stimulus
-* Gather LLM relevant [metrics](#metrics)
-* Generate reports
-
-all from the [command line](#cli).
+GenAI-Perf generates the specified load, measures the performance of the
+inference server and reports the metrics in a simple table as console output.
+The tool also logs all results in a csv file that can be used to derive
+additional metrics and visualizations. The inference server must already be
+running when GenAI-Perf is run.
 
 > [!Note]
-> GenAI-Perf is currently in early release while under rapid development.
-> While we will try to remain consistent, command line options are subject to
-> change until the software hits 1.0. Known issues will also be documented as the
-> tool matures.
+> GenAI-Perf is currently in early release and under rapid development. While we
+> will try to remain consistent, command line options and functionality are
+> subject to change as the tool matures.
 
 # Installation
 
@@ -61,93 +59,182 @@ all from the [command line](#cli).
 Available starting with the 24.03 release of the
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
 
+Run the Triton Inference Server SDK docker container:
+
 ```bash
-RELEASE="<YY.MM>" # YY.MM is the version of Triton in a year.month format.
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+```
 
+Run GenAI-Perf:
+
+```bash
 genai-perf --help
 ```
+
+<details>
+
+<summary>To install from source:</summary>
 
 ## From Source
 
 This method requires that Perf Analyzer is installed in your development
-environment.
+environment and that you have at least Python 3.10 installed. To build Perf
+Analyzer from source, see
+[here](../docs/install.md#build-from-source).
 
 ```bash
-RELEASE="24.03"
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
 
-pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#egg=genai-perf&subdirectory=src/c++/perf_analyzer/genai-perf"
+pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
+```
 
+Run GenAI-Perf:
+
+```bash
 genai-perf --help
 ```
 
-# Basic Usage
+</details>
+</br>
 
-## Triton with TRT-LLM
+# Quick Start
 
-```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend trtllm
-```
+## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
 
-## Triton with vLLM
+### Running GPT2 on Triton Inference Server using TensorRT-LLM
 
-```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind triton --backend vllm
-```
+<details>
+<summary>See instructions</summary>
 
-## OpenAI Chat Completions Compatible APIs
-
-https://platform.openai.com/docs/api-reference/chat
+1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint-type chat
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+
+docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
 
-## OpenAI Completions Compatible APIs
-
-https://platform.openai.com/docs/api-reference/completions
+2. Install Triton CLI (~5 min):
 
 ```bash
-genai-perf -m llama-2-7b --concurrency 1 --service-kind openai --endpoint-type completions
+pip install \
+  --extra-index-url https://pypi.nvidia.com \
+  -U \
+  psutil \
+  "pynvml>=11.5.0" \
+  torch==2.1.2 \
+  tensorrt_llm==0.8.0 \
+  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
 ```
 
-> [!Note]
-> GenAI-Perf uses Llama tokenizer as a default tokenizer to parse and calculate
-> token metrics on the input prompts and output responses. Users can instead
-> specify a custom huggingface tokenizer using `--tokenizer` command line option
-> as well.
+3. Download model:
 
+```bash
+triton import -m gpt2 --backend tensorrtllm
+```
+
+4. Run server:
+
+```bash
+triton start
+```
+
+</details>
+
+### Running GenAI-Perf
+
+1. Run Triton Inference Server SDK container:
+
+```bash
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+
+docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+```
+
+2. Run GenAI-Perf:
+
+```bash
+genai-perf \
+  -m gpt2 \
+  --service-kind triton \
+  --backend tensorrtllm \
+  --prompt-source synthetic \
+  --num-prompts 100 \
+  --random-seed 123 \
+  --synthetic-input-tokens-mean 200 \
+  --synthetic-input-tokens-stddev 0 \
+  --streaming \
+  --output-tokens-mean 100 \
+  --output-tokens-stddev 0 \
+  --output-tokens-mean-deterministic \
+  --tokenizer hf-internal-testing/llama-tokenizer \
+  --concurrency 1 \
+  --measurement-interval 4000 \
+  --profile-export-file my_profile_export.json \
+  --url localhost:8001
+```
+
+Example output:
+
+```
+                                                  LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃                Statistic ┃         avg ┃         min ┃         max ┃         p99 ┃         p90 ┃         p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
+│ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
+│     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
+│         Num output token │         104 │         100 │         129 │         128 │         109 │         105 │
+│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+└──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
+Output token throughput (per sec): 460.42
+Request throughput (per sec): 4.44
+```
+
+See [Tutorial](docs/tutorial.md) for additional examples.
 
 # Model Inputs
-GenAI-Perf supports model input prompts from either synthetically generated inputs,
-or from the HuggingFace OpenOrca or CNN_DailyMail datasets. This is specified
-using the `--prompt-source` CLI option.
+
+GenAI-Perf supports model input prompts from either synthetically generated
+inputs, or from the HuggingFace
+[OpenOrca](https://huggingface.co/datasets/Open-Orca/OpenOrca) or
+[CNN_DailyMail](https://huggingface.co/datasets/cnn_dailymail) datasets. This is
+specified using the `--input-dataset` CLI option.
 
 When the dataset is synthetic, you can specify the following options:
-* `--num-prompts`: The number of unique prompts to generate.
-* `--synthetic-input-tokens-mean`: The mean number of tokens of synthetic input data.
-* `--synthetic-input-tokens-stddev`: The standard deviation of the number of tokens of synthetic
-  input data.
-* `--random-seed`: The seed used to generate random values.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
+  >= 1.
+* `--synthetic-input-tokens-mean <int>`: The mean of number of tokens in the
+  generated prompts when prompt-source is synthetic, >= 1.
+* `--synthetic-input-tokens-stddev <int>`: The standard deviation of number of
+  tokens in the generated prompts when prompt-source is synthetic, >= 0.
+* `--random-seed <int>`: The seed used to generate random values, >= 0.
 
 When the dataset is coming from HuggingFace, you can specify the following
 options:
-* `--num-prompts`: The number of unique prompts to generate.
-* `--dataset`: HuggingFace dataset to use for benchmarking.
+* `--input-dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
+  benchmarking.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
+  >= 1.
 
 For any dataset, you can specify the following options:
-* `--output-tokens-mean`: The mean number of tokens to request from the model.
-* `--output-tokens-mean-deterministic`: If an output token mean is supplied,
-this will make the token count distribution set the max and min lengths equal.
-This is supported for the Triton service-kind.
-* `--output-tokens-stddev`: The standard deviation of the number of tokens to
-request from the model. input data.
+* `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
+  the `--tokenizer` value is set correctly, >= 1.
+* `--output-tokens-stddev <int>`: The standard deviation of the number of tokens
+  in each output. This is only used when output-tokens-mean is provided, >= 1.
+* `--output-tokens-mean-deterministic`: When using `--output-tokens-mean`, this
+  flag can be set to improve precision by setting the minimum number of tokens
+  equal to the requested number of tokens. This is currently supported with the
+  Triton service-kind. Note that there is still some variability in the
+  requested number of output tokens, but GenAi-Perf attempts its best effort
+  with your model to get the right number of output tokens.
 
 You can optionally set additional model inputs with the following option:
-* `--extra-inputs {input_name}:{value}`: An additional input for use with the model with a singular value,
-such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
-
+* `--extra-inputs <input_name>:<value>`: An additional input for use with the
+  model with a singular value, such as `stream:true` or `max_tokens:5`. This
+  flag can be repeated to supply multiple extra inputs.
 
 # Metrics
 
@@ -156,149 +243,162 @@ the inference server.
 
 | Metric | Description | Aggregations |
 | - | - | - |
-| Time to First Token | Time between when a request is sent and when its first response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
-| Inter Token Latency | Time between intermediate responses for a single request divided by the number of generated tokens of the latter response, one value per response per request in benchmark | Avg, min, max, p99, p90, p75 |
+| <span id="time_to_first_token_metric">Time to First Token</span> | Time between when a request is sent and when its first response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
+| <span id="inter_token_latency_metric">Inter Token Latency</span> | Time between intermediate responses for a single request divided by the number of generated tokens of the latter response, one value per response per request in benchmark | Avg, min, max, p99, p90, p75 |
 | Request Latency | Time between when a request is sent and when its final response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | Number of Output Tokens | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
-| Output Token Throughput | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
-| Request Throughput | Number of final responses from benchmark divided by the benchmark duration | None–one value per benchmark |
+| <span id="output_token_throughput_metric">Output Token Throughput</span> | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
+| <span id="request_throughput_metric">Request Throughput</span> | Number of final responses from benchmark divided by benchmark duration | None–one value per benchmark |
 
-# CLI
+# Command Line Options
 
 ##### `-h`
 ##### `--help`
 
-##### `-v`
-##### `--verbose`
+Show the help message and exit.
 
-Enables verbose mode.
-
-##### `--version`
-
-Prints the version and exits.
-
-##### `--tokenizer <str>`
-
-The HuggingFace tokenizer to use to interpret token metrics from prompts and
-responses.
-
-##### `--prompt-source {dataset,synthetic}`
-
-The source of the input prompts.
-
-##### `--input-dataset {openorca,cnn_dailymail}`
-
-The HuggingFace dataset to use for prompts when prompt-source is dataset.
-
-##### `--synthetic-input-tokens-mean <int>`
-
-The mean of the number of tokens of synthetic input data.
-
-##### `--synthetic-input-tokens-stddev <int>`
-
-The standard deviation of the number of tokens of synthetic input data.
-
-##### `--output-tokens-mean <int>`
-
-The mean of the number of output tokens to request from the model.
-
-##### `--output-tokens-mean-deterministic`
-
-Sets the output token distribution to add a minimum token length input
-(in addition to the maximum token length) to more deterministically
-request the number of output tokens from the model.
-
-##### `--output-tokens-stddev <int>`
-
-The standard deviation of the number of output tokens to request from the model.
+## Endpoint Options:
 
 ##### `-m <str>`
 ##### `--model <str>`
 
-The name of the model to benchmark.
+The name of the model to benchmark. (default: `None`)
 
-##### `--num-prompts <int>`
+##### `--backend {tensorrtllm,vllm}`
 
-The number of unique prompts to generate as stimulus.
-
-##### `--backend {trtllm,vllm}`
-
-When using the "triton" service-kind, this is the backend of the model.
-
-##### `--random-seed <int>`
-
-Seed used to generate random values.
-
-##### `--concurrency <int>`
-
-Sets the concurrency value to benchmark.
-
-##### `-p <int>`
-##### `--measurement-interval <int>`
-
-Indicates the time interval used for each measurement in milliseconds. The perf
-analyzer will sample a time interval specified by -p and take measurement over
-the requests completed within that time interval.
-
-The default value is `10000`.
-
-##### `--profile-export-file <file>`
-
-Specifies the path where the perf_analyzer profile export will be generated. By
-default, the profile export will be to profile_export.json. The genai-perf file
-will be exported to profile_export_file>_genai_perf.csv. For example, if the
-profile export file is profile_export.json, the genai-perf file will be exported
-to profile_export_genai_perf.csv.
-
-##### `--request-rate <float>`
-
-Sets the request rate for the load generated by PA.
-
-##### `--service-kind {triton,openai}`
-
-Describes the kind of service perf_analyzer will generate load for. The options
-are `triton` and `openai`. Note in order to use `openai` you must specify an
-api via `--endpoint-type`.
-
-The default value is `triton`.
-
-##### `-s <float>`
-##### `--stability-percentage <float>`
-
-Indicates the allowed variation in latency measurements when determining if a
-result is stable. The measurement is considered as stable if the ratio of max /
-min from the recent 3 measurements is within (stability percentage) in terms of
-both infer per second and latency.
-
-##### `--streaming`
-
-Enables the use of the streaming API.
-
-##### `--extra-inputs`
-
-Provides an additional input for use with the model with a singular value,
-such as `stream:true` or `max_tokens:5`. This flag can be repeated to supply multiple extra inputs.
-
+When using the "triton" service-kind, this is the backend of the model. For the
+TRT-LLM backend, you currently must set `exclude_input_in_output` to true in the
+model config to not echo the input tokens in the output. (default: trtllm)
 
 ##### `--endpoint <str>`
 
-Set a custom endpoint that differs from the OpenAI defaults. This is ignored when
-not using the `openai` service-kind.
+Set a custom endpoint that differs from the OpenAI defaults. (default: `None`)
 
-##### `--endpoint-type {completions,chat}`
+##### `--endpoint-type {chat,completions}`
 
-Describes what api to send requests to on the server. This is required when
-using `openai` service-kind. This is ignored in other cases.
+The endpoint-type to send requests to on the server. This is only used with the
+`openai` service-kind. (default: `None`)
+
+##### `--service-kind {triton,openai}`
+
+The kind of service perf_analyzer will generate load for. In order to use
+`openai`, you must specify an api via `--endpoint-type`. (default: `triton`)
+
+##### `--streaming`
+
+An option to enable the use of the streaming API. (default: `False`)
 
 ##### `-u <url>`
 ##### `--url <url>`
 
-URL of the endpoint to target for benchmarking.
+URL of the endpoint to target for benchmarking. (default: `None`)
 
+## Input Options
+
+##### `--extra-inputs <str>`
+
+Provide additional inputs to include with every request. You can repeat this
+flag for multiple inputs. Inputs should be in an input_name:value format.
+(default: `None`)
+
+##### `--input-dataset {openorca,cnn_dailymail}`
+
+The HuggingFace dataset to use for prompts when prompt-source is dataset.
+(default: `openorca`)
+
+##### `--num-prompts <int>`
+
+The number of unique prompts to generate as stimulus. (default: `100`)
+
+##### `--output-tokens-mean <int>`
+
+The mean number of tokens in each output. Ensure the `--tokenizer` value is set
+correctly. (default: `-1`)
+
+##### `--output-tokens-mean-deterministic`
+
+When using `--output-tokens-mean`, this flag can be set to improve precision by
+setting the minimum number of tokens equal to the requested number of tokens.
+This is currently supported with the Triton service-kind. Note that there is
+still some variability in the requested number of output tokens, but GenAi-Perf
+attempts its best effort with your model to get the right number of output
+tokens. (default: `False`)
+
+##### `--output-tokens-stddev <int>`
+
+The standard deviation of the number of tokens in each output. This is only used
+when `--output-tokens-mean` is provided. (default: `0`)
+
+##### `--prompt-source {synthetic,dataset}`
+
+The source of the input prompts. (default: `synthetic`)
+
+##### `--random-seed <int>`
+
+The seed used to generate random values. (default: `0`)
+
+##### `--synthetic-input-tokens-mean <int>`
+
+The mean of number of tokens in the generated prompts when `--prompt-source` is
+`synthetic`. (default: `550`)
+
+##### `--synthetic-input-tokens-stddev <int>`
+
+The standard deviation of number of tokens in the generated prompts when
+`--prompt-source` is `synthetic`. (default: `0`)
+
+## Profiling Options
+
+##### `--concurrency <int>`
+
+The concurrency value to benchmark. (default: `None`)
+
+##### `--measurement-interval <int>`
+##### `-p <int>`
+
+The time interval used for each measurement in milliseconds. Perf Analyzer
+will sample a time interval specified and take measurement over the requests
+completed within that time interval. (default: `10000`)
+
+##### `--request-rate <float>`
+
+Sets the request rate for the load generated by PA. (default: `None`)
+
+##### `-s <float>`
+##### `--stability-percentage <float>`
+
+The allowed variation in latency measurements when determining if a result is
+stable. The measurement is considered as stable if the ratio of max / min from
+the recent 3 measurements is within (stability percentage) in terms of both
+infer per second and latency. (default: `999`)
+
+## Output Options
+
+##### `--profile-export-file <path>`
+
+The path where the perf_analyzer profile export will be generated. By default,
+the profile export will be to `profile_export.json`. The genai-perf file will be
+exported to `<profile_export_file>_genai_perf.csv`. For example, if the profile
+export file is `profile_export.json`, the genai-perf file will be exported to
+`profile_export_genai_perf.csv`. (default: `profile_export.json`)
+
+## Other Options
+
+##### `--tokenizer <str>`
+
+The HuggingFace tokenizer to use to interpret token metrics from prompts and
+responses. (default: `hf-internal-testing/llama-tokenizer`)
+
+##### `-v`
+##### `--verbose`
+
+An option to enable verbose mode. (default: `False`)
+
+##### `--version`
+
+An option to print the version and exit.
 
 # Known Issues
 
 * GenAI-Perf can be slow to finish if a high request-rate is provided
 * Token counts may not be exact
-* Token output counts are much higher than reality for now when running on
-triton server, because the input is reflected back into the output
