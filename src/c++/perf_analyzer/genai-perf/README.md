@@ -214,7 +214,7 @@ When the dataset is synthetic, you can specify the following options:
 
 When the dataset is coming from HuggingFace, you can specify the following
 options:
-* `--dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
+* `--input-dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
   benchmarking.
 * `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
   >= 1.
@@ -373,6 +373,10 @@ the recent 3 measurements is within (stability percentage) in terms of both
 infer per second and latency. (default: `999`)
 
 ## Output Options
+
+##### `--generate-plots`
+
+An option to enable the generation of plots. (default: False)
 
 ##### `--profile-export-file <path>`
 
