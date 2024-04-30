@@ -137,6 +137,7 @@ def finalize(profile_export_file: Path):
 # to assert correct errors and messages.
 def run():
     try:
+        # TMA-1900: refactor CLI handler
         init_logging()
         args, extra_args = parser.parse_args()
         if hasattr(args, "subcommand"):
