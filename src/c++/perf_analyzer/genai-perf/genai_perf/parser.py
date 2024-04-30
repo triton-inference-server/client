@@ -126,15 +126,6 @@ def _convert_str_to_enum_entry(args, option, enum):
     return args
 
 
-### Handlers ###
-
-
-def handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
-
-
 ### Parsers ###
 
 
@@ -429,6 +420,15 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
             request_inputs[input_name] = value
 
     return request_inputs
+
+
+### Handlers ###
+
+
+def handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
 
 
 ### Entrypoint ###
