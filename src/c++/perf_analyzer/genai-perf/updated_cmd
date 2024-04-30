@@ -1,9 +1,9 @@
 genai-perf \
-	   -m llama2-7b-chat \
-	   --concurrency 30 \
-	   --service-kind openai \
-       --endpoint-type chat \
-	   --u 172.31.38.0:9999 \
-	   --streaming \
-	   -- \
-	   --max-threads 256
+	-m mistral \
+	--concurrency 30 \
+	--service-kind openai \
+	--endpoint-type chat \
+	--u 172.31.38.167:9999 \
+	--streaming -s 95 \
+	-- \
+	--max-threads 256
