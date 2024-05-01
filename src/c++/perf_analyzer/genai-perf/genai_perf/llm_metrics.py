@@ -587,7 +587,7 @@ class LLMProfileDataParser(ProfileDataParser):
         if self._output_format == _OPENAI_CHAT_COMPLETIONS:
             input_text = payload["messages"][0]["content"]
         elif self._output_format == _OPENAI_COMPLETIONS:
-            input_text = payload["prompt"][0]
+            input_text = payload["prompt"]
         else:
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
