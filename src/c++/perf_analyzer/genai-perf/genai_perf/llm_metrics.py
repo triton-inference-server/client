@@ -639,10 +639,15 @@ class LLMProfileDataParser(ProfileDataParser):
         completions = data["choices"][0]
 
         text_output = ""
-        if data["object"] == "text_completion":  # legacy
+        if "object" not in data:
+            # FIXME: TPA-47 workaround for vLLM not following OpenAI Completions
+            # API specification when streaming, missing 'object' field:
+            # https://platform.openai.com/docs/api-reference/completions
+            text_output = completions.get("text", "")
+        elif data["object"] == "text_completion":  # legacy
             text_output = completions.get("text", "")
         elif data["object"] == "chat.completion":  # non-streaming
-            text_output = completions["message"]["content"]
+            text_output = completions["message"].get("content", "")
         elif data["object"] == "chat.completion.chunk":  # streaming
             text_output = completions["delta"].get("content", "")
         else:
