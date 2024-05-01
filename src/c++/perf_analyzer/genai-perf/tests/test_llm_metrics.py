@@ -90,7 +90,7 @@ class TestLLMProfileDataParser:
         printed in csv.
         """
 
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = self.get_tokenizer()
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
@@ -145,7 +145,7 @@ class TestLLMProfileDataParser:
             - experiment 1: [3, 4]
             - experiment 2: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = self.get_tokenizer()
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
@@ -288,7 +288,7 @@ class TestLLMProfileDataParser:
         * num input tokens
             - experiment 1: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = self.get_tokenizer()
         pd = LLMProfileDataParser(
             filename="openai_profile_export.json",
             service_kind="openai",
@@ -378,6 +378,11 @@ class TestLLMProfileDataParser:
         assert metrics.get_base_name("num_input_tokens") == "num_input_token"
         with pytest.raises(KeyError):
             metrics.get_base_name("hello1234")
+
+    def get_tokenizer(self):
+        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer.add_bos_token = False  # type: ignore
+        return tokenizer
 
     openai_profile_data = {
         "experiments": [

@@ -464,12 +464,6 @@ class LLMProfileDataParser(ProfileDataParser):
         tokenizer: Tokenizer,
     ) -> None:
         self._tokenizer = tokenizer
-        # Disable add_bos_token so that llama tokenizer does not add bos token
-        # (aka. beginning-of-sentence) to the beginning of every response
-        # outputs, increasing the token count by 1 for each output response.
-        # Note: The type is being ignored here, because not all tokenizers have
-        # an add_bos_token variable.
-        self._tokenizer.add_bos_token = False  # type: ignore
         self._service_kind = service_kind
         self._output_format = output_format
         super().__init__(filename)
