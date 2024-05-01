@@ -60,7 +60,7 @@ def _check_compare_args(
     """
     if args.subcommand == "compare":
         if not args.config and not args.files:
-            parser.error("Either --config or --files option must be specified.")
+            parser.error("Either the --config or --files option must be specified.")
     return args
 
 
@@ -440,7 +440,7 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
-        "compare", help="Generate plots that compare multiple runs."
+        "compare", help="Generate plots that compare multiple profile runs."
     )
     compare_group = compare.add_argument_group("Compare")
     mx_group = compare_group.add_mutually_exclusive_group(required=False)
@@ -467,7 +467,7 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
 ### Handlers ###
 
 
-def handler(args, extra_args):
+def profile_handler(args, extra_args):
     from genai_perf.wrapper import Profiler
 
     Profiler.run(args=args, extra_args=extra_args)
