@@ -140,7 +140,7 @@ def run():
         # TMA-1900: refactor CLI handler
         init_logging()
         args, extra_args = parser.parse_args()
-        if hasattr(args, "subcommand"):
+        if args.subcommand == "compare":
             args.func(args)
         else:
             create_artifacts_dirs(args.generate_plots)
