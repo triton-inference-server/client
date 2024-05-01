@@ -210,6 +210,30 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert expected_output in captured.err
 
+    def test_compare_mutually_exclusive(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare", "--config", "hello", "--files", "a", "b", "c"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "argument -f/--files: not allowed with argument --config"
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    def test_compare_not_provided(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "Either --config or --files option must be specified."
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
     def test_model_not_provided(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf"])
         expected_output = "The -m/--model option is required and cannot be empty."
