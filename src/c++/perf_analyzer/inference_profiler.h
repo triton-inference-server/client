@@ -357,7 +357,7 @@ class InferenceProfiler {
   /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const size_t concurrent_request_count, const size_t exact_request_count,
+      const size_t concurrent_request_count, const size_t num_of_requests,
       std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
       bool& is_stable);
 
@@ -369,7 +369,7 @@ class InferenceProfiler {
   /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const double request_rate, const size_t exact_request_count,
+      const double request_rate, const size_t num_of_requests,
       std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
       bool& is_stable);
 
@@ -382,7 +382,7 @@ class InferenceProfiler {
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
-      const size_t exact_request_count, std::vector<PerfStatus>& perf_statuses,
+      const size_t num_of_requests, std::vector<PerfStatus>& perf_statuses,
       bool& meets_threshold, bool& is_stable);
 
   /// A helper function for profiling functions.

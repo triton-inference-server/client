@@ -89,7 +89,7 @@ class CustomLoadManager : public RequestRateManager {
   /// Initializes the load manager with the provided file containing request
   /// intervals
   /// \return cb::Error object indicating success or failure.
-  cb::Error InitCustomIntervals();
+  cb::Error InitCustomIntervals(const size_t num_of_requests);
 
   /// Computes the request rate from the time interval file. Fails with an error
   /// if the file is not present or is empty.

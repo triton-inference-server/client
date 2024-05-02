@@ -76,10 +76,10 @@ CustomLoadManager::CustomLoadManager(
 }
 
 cb::Error
-CustomLoadManager::InitCustomIntervals()
+CustomLoadManager::InitCustomIntervals(const size_t num_of_requests)
 {
   PauseWorkers();
-  ConfigureThreads();
+  ConfigureThreads(num_of_requests);
   auto status = GenerateSchedule();
   ResumeWorkers();
   return status;
