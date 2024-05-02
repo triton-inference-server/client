@@ -89,10 +89,11 @@ RequestRateManager::InitManagerFinalize()
 }
 
 cb::Error
-RequestRateManager::ChangeRequestRate(const double request_rate)
+RequestRateManager::ChangeRequestRate(
+    const double request_rate, const size_t num_of_requests)
 {
   PauseWorkers();
-  ConfigureThreads();
+  ConfigureThreads(num_of_requests);
   // Can safely update the schedule
   GenerateSchedule(request_rate);
   ResumeWorkers();
@@ -229,7 +230,7 @@ RequestRateManager::PauseWorkers()
 }
 
 void
-RequestRateManager::ConfigureThreads()
+RequestRateManager::ConfigureThreads(const size_t num_of_requests)
 {
   if (threads_.empty()) {
     size_t num_of_threads = DetermineNumThreads();
@@ -247,11 +248,22 @@ RequestRateManager::ConfigureThreads()
     size_t avg_num_seqs = num_of_sequences_ / workers_.size();
     size_t num_seqs_add_one = num_of_sequences_ % workers_.size();
     size_t seq_offset = 0;
+
+    size_t avg_req_count = num_of_requests / workers_.size();
+    size_t req_count_add_one = num_of_requests % workers_.size();
+
+
     for (size_t i = 0; i < workers_.size(); i++) {
       size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
       threads_config_[i]->num_sequences_ = num_of_seq;
       threads_config_[i]->seq_stat_index_offset_ = seq_offset;
       seq_offset += num_of_seq;
+
+      size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
+      threads_stat_[i]->max_requests_ = thread_num_reqs;
+      std::cout << "TKG -- req rate thread " << i << " is getting max reqs of "
+                << thread_num_reqs << std::endl;
+
       threads_.emplace_back(&IWorker::Infer, workers_[i]);
     }
   }

@@ -102,7 +102,9 @@ class RequestRateManager : public LoadManager {
   /// \param request_rate The rate at which requests must be issued to the
   /// server.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ChangeRequestRate(const double target_request_rate);
+  // FIXME TKG -- no default(?)
+  cb::Error ChangeRequestRate(
+      const double target_request_rate, const size_t num_of_requests = 0);
 
  protected:
   RequestRateManager(
@@ -138,7 +140,8 @@ class RequestRateManager : public LoadManager {
   // Pauses the worker threads
   void PauseWorkers();
 
-  void ConfigureThreads();
+  // FIXME TKG -- no default(?)
+  void ConfigureThreads(const size_t num_of_requests = 0);
 
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();

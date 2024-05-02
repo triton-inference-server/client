@@ -84,10 +84,10 @@ ConcurrencyManager::InitManagerFinalize()
 
 cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
-    const size_t concurrent_request_count, const size_t exact_request_count)
+    const size_t concurrent_request_count, const size_t num_of_requests)
 {
   PauseSequenceWorkers();
-  ReconfigThreads(concurrent_request_count, exact_request_count);
+  ReconfigThreads(concurrent_request_count, num_of_requests);
   ResumeSequenceWorkers();
 
   std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
@@ -110,7 +110,7 @@ ConcurrencyManager::PauseSequenceWorkers()
 
 void
 ConcurrencyManager::ReconfigThreads(
-    const size_t concurrent_request_count, const size_t exact_request_count)
+    const size_t concurrent_request_count, const size_t num_of_requests)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   //
@@ -141,8 +141,8 @@ ConcurrencyManager::ReconfigThreads(
     size_t threads_add_one = concurrent_request_count % threads_.size();
 
     // FIXME TKG -- ever possible to go down in concurrency??
-    size_t avg_req_count = exact_request_count / threads_.size();
-    size_t req_count_add_one = exact_request_count % threads_.size();
+    size_t avg_req_count = num_of_requests / threads_.size();
+    size_t req_count_add_one = num_of_requests % threads_.size();
 
     size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
@@ -152,11 +152,10 @@ ConcurrencyManager::ReconfigThreads(
       threads_config_[i]->concurrency_ = concurrency;
       threads_config_[i]->seq_stat_index_offset_ = seq_stat_index_offset;
 
-      // FIXME TKG -- only if specific mode
-      size_t max_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
-      threads_stat_[i]->max_requests_ = max_reqs;
+      size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
+      threads_stat_[i]->max_requests_ = thread_num_reqs;
       std::cout << "TKG -- thread " << i << " is getting max reqs of "
-                << max_reqs << std::endl;
+                << thread_num_reqs << std::endl;
 
       seq_stat_index_offset += concurrency;
 

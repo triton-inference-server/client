@@ -533,7 +533,7 @@ InferenceProfiler::InferenceProfiler(
 
 cb::Error
 InferenceProfiler::Profile(
-    const size_t concurrent_request_count, const size_t exact_request_count,
+    const size_t concurrent_request_count, const size_t num_of_requests,
     std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
@@ -545,9 +545,9 @@ InferenceProfiler::Profile(
   is_stable = false;
   meets_threshold = true;
 
-  RETURN_IF_ERROR(dynamic_cast<ConcurrencyManager*>(manager_.get())
-                      ->ChangeConcurrencyLevel(
-                          concurrent_request_count, exact_request_count));
+  RETURN_IF_ERROR(
+      dynamic_cast<ConcurrencyManager*>(manager_.get())
+          ->ChangeConcurrencyLevel(concurrent_request_count, num_of_requests));
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
@@ -591,7 +591,7 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const double request_rate, const size_t exact_request_count,
+    const double request_rate, const size_t num_of_requests,
     std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
@@ -604,7 +604,7 @@ InferenceProfiler::Profile(
   meets_threshold = true;
 
   RETURN_IF_ERROR(dynamic_cast<RequestRateManager*>(manager_.get())
-                      ->ChangeRequestRate(request_rate));
+                      ->ChangeRequestRate(request_rate, num_of_requests));
   std::cout << "Request Rate: " << request_rate
             << " inference requests per seconds" << std::endl;
 
@@ -640,14 +640,14 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const size_t exact_request_count, std::vector<PerfStatus>& perf_statuses,
+    const size_t num_of_requests, std::vector<PerfStatus>& perf_statuses,
     bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
   PerfStatus perf_status{};
 
-  RETURN_IF_ERROR(
-      dynamic_cast<CustomLoadManager*>(manager_.get())->InitCustomIntervals());
+  RETURN_IF_ERROR(dynamic_cast<CustomLoadManager*>(manager_.get())
+                      ->InitCustomIntervals(num_of_requests));
   RETURN_IF_ERROR(dynamic_cast<CustomLoadManager*>(manager_.get())
                       ->GetCustomRequestRate(&perf_status.request_rate));
 
