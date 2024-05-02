@@ -29,6 +29,7 @@ from requests import Response
 class PromptSource(Enum):
     SYNTHETIC = auto()
     DATASET = auto()
+    FILE = auto()
 
 
 class OutputFormat(Enum):

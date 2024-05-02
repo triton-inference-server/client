@@ -25,6 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -116,6 +117,21 @@ def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
     return args
 
 
+def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
+    if args.input_data is not None:
+        args["prompt_source"] = PromptSource.DATASET
+        logger.info(f"Input source is the following dataset: {args.input_data}")
+    elif args.input_file is not None:
+        args["prompt_source"] = PromptSource.FILE
+        if not os.path.exists(args.input_file):
+            raise FileNotFoundError(f"The file '{args.input_file}' does not exist.")
+        logger.info(f"Input source is from the following file: {args.input_file}")
+    else:
+        args["prompt_source"] = PromptSource.SYNTHETIC
+        logger.info("Input source is from synthetic data")
+    return args
+
+
 def _convert_str_to_enum_entry(args, option, enum):
     """
     Convert string option to corresponding enum entry
@@ -148,13 +164,22 @@ def _add_input_args(parser):
         "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
     )
 
-    input_group.add_argument(
+    prompt_source_group = input_group.add_mutually_exclusive_group(required=False)
+    prompt_source_group.add_argument(
         "--input-dataset",
         type=str.lower,
         default=OPEN_ORCA,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
         help="The HuggingFace dataset to use for prompts when prompt-source is dataset.",
+    )
+
+    prompt_source_group.add_argument(
+        "--input-file",
+        type=Path,
+        default=Path("prompt.txt"),
+        required=False,
+        help="The input file containing the single prompt to use for profiling.",
     )
 
     input_group.add_argument(
@@ -194,15 +219,6 @@ def _add_input_args(parser):
         required=False,
         help=f"The standard deviation of the number of tokens in each output. "
         "This is only used when --output-tokens-mean is provided.",
-    )
-
-    input_group.add_argument(
-        "--prompt-source",
-        type=str,
-        choices=utils.get_enum_names(PromptSource),
-        default="synthetic",
-        required=False,
-        help=f"The source of the input prompts.",
     )
 
     input_group.add_argument(
@@ -461,7 +477,7 @@ def parse_args():
     args = parser.parse_args(argv[1:passthrough_index])
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _convert_str_to_enum_entry(args, "prompt_source", PromptSource)
+    args = _infer_prompt_source(args)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]

@@ -54,6 +54,7 @@ class Profiler:
         skip_args = [
             "func",
             "input_dataset",
+            "input_file",
             "prompt_source",
             "input_format",
             "model",
