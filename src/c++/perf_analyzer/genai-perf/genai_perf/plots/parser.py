@@ -55,10 +55,11 @@ class PlotConfigParser:
         """Creates a set of default plot configurations for single run plots."""
         ttfts = stats.metrics.data["time_to_first_tokens"]
         req_latencies = stats.metrics.data["request_latencies"]
-        itls = stats.metrics.data["inter_token_latencies"]
 
+        itls = []
         token_positions = []
-        for itls_per_req in itls:
+        for itls_per_req in stats.metrics.data["inter_token_latencies"]:
+            itls += itls_per_req
             token_positions += list(range(1, len(itls_per_req) + 1))
 
         # scale to seconds
