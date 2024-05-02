@@ -37,12 +37,19 @@ class PlotType(Enum):
 
 
 @dataclass
-class PlotConfig:
-    title: str
+class ProfileRunData:
+    name: str
+    x_key: str
+    y_key: str
     x_metric: list[int | float]
     y_metric: list[int | float]
+
+
+@dataclass
+class PlotConfig:
+    title: str
+    data: list[ProfileRunData]
     x_label: str
     y_label: str
     type: PlotType
-    paths: list[Path]
     output: Path
