@@ -355,6 +355,35 @@ class TestLLMProfileDataParser:
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="40")
 
+    def test_merged_sse_response(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Test merging the multiple sse response."""
+        res_timestamps = [0, 1, 2, 3]
+        res_outputs = [
+            {
+                "response": 'data: {"choices":[{"delta":{"content":"aaa"}}],"object":"chat.completion.chunk"}\n\n'
+            },
+            {
+                "response": (
+                    'data: {"choices":[{"delta":{"content":"abc"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"1234"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"helloworld"}}],"object":"chat.completion.chunk"}\n\n'
+                )
+            },
+            {"response": "data: [DONE]\n\n"},
+        ]
+        expected_response = '{"choices": [{"delta": {"content": "abc1234helloworld"}}], "object": "chat.completion.chunk"}'
+
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+        pd = LLMProfileDataParser(
+            filename="openai_profile_export.json",
+            service_kind="openai",
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            tokenizer=tokenizer,
+        )
+
+        pd._preprocess_response(res_timestamps, res_outputs)
+        assert res_outputs[1]["response"] == expected_response
+
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
         # initialize with dummy values
