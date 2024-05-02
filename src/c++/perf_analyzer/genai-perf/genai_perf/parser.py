@@ -41,6 +41,29 @@ logger = logging.getLogger(__name__)
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
 
+def _check_model_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Check if model name is provided.
+    """
+    if not args.subcommand and not args.model:
+        parser.error("The -m/--model option is required and cannot be empty.")
+    return args
+
+
+def _check_compare_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Check compare subcommand args
+    """
+    if args.subcommand == "compare":
+        if not args.config and not args.files:
+            parser.error("Either the --config or --files option must be specified.")
+    return args
+
+
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> argparse.Namespace:
@@ -130,15 +153,6 @@ def _convert_str_to_enum_entry(args, option, enum):
     if attr_val is not None:
         setattr(args, f"{option}", utils.get_enum_entry(attr_val, enum))
     return args
-
-
-### Handlers ###
-
-
-def handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
 
 
 ### Parsers ###
@@ -286,7 +300,7 @@ def _add_endpoint_args(parser):
         "-m",
         "--model",
         type=str,
-        required=True,
+        default=None,
         help=f"The name of the model to benchmark.",
     )
 
@@ -437,6 +451,47 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     return request_inputs
 
 
+def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
+    compare = subparsers.add_parser(
+        "compare",
+        description="Subcommand to generate plots that compare multiple profile runs.",
+    )
+    compare_group = compare.add_argument_group("Compare")
+    mx_group = compare_group.add_mutually_exclusive_group(required=False)
+    mx_group.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="The path to the YAML file that specifies plot configurations for "
+        "comparing multiple runs.",
+    )
+    mx_group.add_argument(
+        "-f",
+        "--files",
+        nargs="+",
+        default=[],
+        help="List of paths to the profile export JSON files. Users can specify "
+        "this option instead of the `--config` option if they would like "
+        "GenAI-Perf to generate default plots as well as initial YAML config file.",
+    )
+    compare.set_defaults(func=compare_handler)
+    return compare
+
+
+### Handlers ###
+
+
+def profile_handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
+
+
+def compare_handler(args: argparse.Namespace):
+    # TMA-1893: parse yaml file
+    pass
+
+
 ### Entrypoint ###
 
 
@@ -448,7 +503,7 @@ def parse_args():
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.set_defaults(func=handler)
+    parser.set_defaults(func=profile_handler)
 
     # Conceptually group args for easier visualization
     _add_endpoint_args(parser)
@@ -456,6 +511,12 @@ def parse_args():
     _add_profile_args(parser)
     _add_output_args(parser)
     _add_other_args(parser)
+
+    # Add subcommands
+    subparsers = parser.add_subparsers(
+        help="List of subparser commands.", dest="subcommand"
+    )
+    compare_parser = _parse_compare_args(subparsers)
 
     # Check for passthrough args
     if "--" in argv:
@@ -466,7 +527,9 @@ def parse_args():
 
     args = parser.parse_args(argv[1:passthrough_index])
     args = _infer_prompt_source(args)
+    args = _check_model_args(parser, args)
     args = _check_conditional_args(parser, args)
+    args = _check_compare_args(compare_parser, args)
     args = _update_load_manager_args(args)
 
     return args, argv[passthrough_index + 1 :]

@@ -32,6 +32,9 @@ from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
 
 
 class TestCLIArguments:
+    # ================================================
+    # GENAI-PERF COMMAND
+    # ================================================
     expected_help_output = (
         "CLI to profile LLMs and Generative AI models with Perf Analyzer"
     )
@@ -217,7 +220,7 @@ class TestCLIArguments:
 
     def test_model_not_provided(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf"])
-        expected_output = "the following arguments are required: -m/--model"
+        expected_output = "The -m/--model option is required and cannot be empty."
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
@@ -430,6 +433,59 @@ class TestCLIArguments:
         expected_output = (
             "argument --input-file: not allowed with argument --input-dataset"
         )
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    # ================================================
+    # COMPARE SUBCOMMAND
+    # ================================================
+    expected_compare_help_output = (
+        "Subcommand to generate plots that compare multiple profile runs."
+    )
+
+    @pytest.mark.parametrize(
+        "args, expected_output",
+        [
+            (["-h"], expected_compare_help_output),
+            (["--help"], expected_compare_help_output),
+        ],
+    )
+    def test_compare_help_arguments_output_and_exit(
+        self, monkeypatch, args, expected_output, capsys
+    ):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "compare"] + args)
+
+        with pytest.raises(SystemExit) as excinfo:
+            _ = parser.parse_args()
+
+        # Check that the exit was successful
+        assert excinfo.value.code == 0
+
+        # Capture that the correct message was displayed
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
+
+    def test_compare_mutually_exclusive(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare", "--config", "hello", "--files", "a", "b", "c"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "argument -f/--files: not allowed with argument --config"
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    def test_compare_not_provided(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "Either the --config or --files option must be specified."
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
