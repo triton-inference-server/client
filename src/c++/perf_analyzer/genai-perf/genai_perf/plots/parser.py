@@ -27,7 +27,7 @@
 
 from pathlib import Path
 
-# Ignore yaml import to avoid mypy error
+# Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
 from genai_perf.llm_metrics import Statistics
