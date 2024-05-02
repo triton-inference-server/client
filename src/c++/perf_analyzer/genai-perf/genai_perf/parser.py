@@ -440,7 +440,8 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
-        "compare", help="Generate plots that compare multiple profile runs."
+        "compare",
+        description="Subcommand to generate plots that compare multiple profile runs.",
     )
     compare_group = compare.add_argument_group("Compare")
     mx_group = compare_group.add_mutually_exclusive_group(required=False)
@@ -489,7 +490,7 @@ def parse_args():
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.set_defaults(func=handler)
+    parser.set_defaults(func=profile_handler)
 
     # Conceptually group args for easier visualization
     _add_endpoint_args(parser)
