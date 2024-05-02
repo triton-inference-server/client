@@ -31,7 +31,8 @@ from pathlib import Path
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
 from genai_perf.llm_metrics import Statistics
-from genai_perf.plots.config import PlotConfig, PlotType
+from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
+from genai_perf.utils import scale
 
 
 class PlotConfigParser:
@@ -52,65 +53,66 @@ class PlotConfigParser:
     @staticmethod
     def create_default_configs(stats: Statistics, filename: Path) -> list[PlotConfig]:
         """Creates a set of default plot configurations for single run plots."""
+        ttfts = stats.metrics.data["time_to_first_tokens"]
+        req_latencies = stats.metrics.data["request_latencies"]
+        itls = stats.metrics.data["inter_token_latencies"]
+
+        token_positions = []
+        for itls_per_req in itls:
+            token_positions += list(range(1, len(itls_per_req) + 1))
+
+        # scale to seconds
+        scaled_ttfts = [scale(x, (1 / 1e9)) for x in ttfts]
+        scaled_req_latencies = [scale(x, (1 / 1e9)) for x in req_latencies]
+        scaled_itls = [scale(x, (1 / 1e9)) for x in itls]
+
         return [
             PlotConfig(
                 title="Time to First Token",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="Time to First Token (seconds)",
                 y_label="",
                 type=PlotType.BOX,
-                paths=[filename],
                 output=Path(""),
             ),
             PlotConfig(
                 title="",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="",
                 y_label="",
                 type=PlotType.SCATTER,
-                paths=[filename],
                 output=Path(""),
             ),
             PlotConfig(
                 title="",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="",
                 y_label="",
                 type=PlotType.SCATTER,
-                paths=[filename],
                 output=Path(""),
             ),
             PlotConfig(
                 title="",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="",
                 y_label="",
                 type=PlotType.SCATTER,
-                paths=[filename],
                 output=Path(""),
             ),
             PlotConfig(
                 title="",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="",
                 y_label="",
                 type=PlotType.SCATTER,
-                paths=[filename],
                 output=Path(""),
             ),
             PlotConfig(
                 title="",
-                x_metric=[],
-                y_metric=[],
+                data=[],
                 x_label="",
                 y_label="",
                 type=PlotType.SCATTER,
-                paths=[filename],
                 output=Path(""),
             ),
         ]
