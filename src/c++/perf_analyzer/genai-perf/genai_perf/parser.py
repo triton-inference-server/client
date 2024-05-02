@@ -91,6 +91,25 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
+    # input source checks
+    if args.prompt_source == PromptSource.DATASET:
+        if (
+            args.synthetic_input_tokens_mean is not None
+            or args.synthetic_input_tokens_stddev is not None
+        ):
+            parser.error(
+                "The synthetic options: --synthetic-input-tokens-mean, "
+                "--synthetic-input-tokens-stddev are not valid when using --input-dataset."
+            )
+    elif args.prompt_source == PromptSource.FILE:
+        if (
+            args.synthetic_input_tokens_mean is not None
+            or args.synthetic_input_tokens_stddev is not None
+        ):
+            parser.error(
+                "The synthetic options: --synthetic-input-tokens-mean, "
+                "--synthetic-input-tokens-stddev are not valid when using --input-file."
+            )
     return args
 
 
@@ -171,7 +190,7 @@ def _add_input_args(parser):
         default=OPEN_ORCA,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
-        help="The HuggingFace dataset to use for prompts when prompt-source is dataset.",
+        help="The HuggingFace dataset to use for prompts.",
     )
 
     prompt_source_group.add_argument(
@@ -234,7 +253,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
-        help=f"The mean of number of tokens in the generated prompts when --prompt-source is synthetic.",
+        help=f"The mean of number of tokens in the generated prompts when using synthetic data.",
     )
 
     input_group.add_argument(
@@ -242,7 +261,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
-        help=f"The standard deviation of number of tokens in the generated prompts when --prompt-source is synthetic.",
+        help=f"The standard deviation of number of tokens in the generated prompts when using synthetic data.",
     )
 
 
@@ -475,9 +494,9 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    args = _infer_prompt_source(args)
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _infer_prompt_source(args)
     args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]
