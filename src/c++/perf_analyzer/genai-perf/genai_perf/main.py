@@ -48,11 +48,10 @@ def init_logging() -> None:
 
 
 def create_artifacts_dirs(generate_plots: bool) -> None:
-    if not os.path.exists("artifacts"):
+    if not os.path.exists(f"{DEFAULT_ARTIFACT_DIR}"):
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
         os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
-        if generate_plots:
-            os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/plots")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/plots")
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:

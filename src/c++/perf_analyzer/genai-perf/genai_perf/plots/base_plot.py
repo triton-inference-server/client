@@ -71,10 +71,10 @@ class BasePlot:
     def _generate_graph_file(self, fig: Figure, file: str, title: str) -> None:
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
-            fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/images/{file}")
+            fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
         elif file.endswith("html"):
             print(f"Generating '{title}' html")
-            fig.write_html(f"{DEFAULT_ARTIFACT_DIR}/images/{file}")
+            fig.write_html(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
         else:
             extension = file.split(".")[-1]
             raise GenAIPerfException(f"image file type {extension} is not supported")
