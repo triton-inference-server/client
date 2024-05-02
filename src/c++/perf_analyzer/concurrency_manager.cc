@@ -84,10 +84,10 @@ ConcurrencyManager::InitManagerFinalize()
 
 cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
-    const size_t concurrent_request_count)
+    const size_t concurrent_request_count, const size_t exact_request_count)
 {
   PauseSequenceWorkers();
-  ReconfigThreads(concurrent_request_count);
+  ReconfigThreads(concurrent_request_count, exact_request_count);
   ResumeSequenceWorkers();
 
   std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
@@ -109,7 +109,8 @@ ConcurrencyManager::PauseSequenceWorkers()
 }
 
 void
-ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
+ConcurrencyManager::ReconfigThreads(
+    const size_t concurrent_request_count, const size_t exact_request_count)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   //
@@ -140,9 +141,8 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     size_t threads_add_one = concurrent_request_count % threads_.size();
 
     // FIXME TKG -- ever possible to go down in concurrency??
-    size_t max_req_count = 17;
-    size_t avg_req_count = max_req_count / threads_.size();
-    size_t req_count_add_one = max_req_count % threads_.size();
+    size_t avg_req_count = exact_request_count / threads_.size();
+    size_t req_count_add_one = exact_request_count % threads_.size();
 
     size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
