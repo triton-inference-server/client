@@ -1225,6 +1225,9 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::string request_count{optarg};
           if (std::stoi(request_count) > 0) {
             params_->measurement_request_count = std::stoull(request_count);
+
+            // FIXME TKG -- need a different arg
+            params_->num_requests = params_->measurement_request_count;
           } else {
             Usage(
                 "Failed to parse --measurement-request-count. The value must "

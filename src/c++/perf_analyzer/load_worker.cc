@@ -47,9 +47,9 @@ bool
 LoadWorker::HandleExitConditions()
 {
   if (ShouldExit()) {
+    thread_stat_->idle_timer.Start();
     CompleteOngoingSequences();
     WaitForOngoingRequests();
-    thread_stat_->idle_timer.Start();
     return true;
   }
   return false;

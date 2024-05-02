@@ -83,7 +83,8 @@ class TestConcurrencyManager : public TestLoadManagerBase,
       const size_t concurrent_request_count,
       std::vector<ConcurrencyWorker::ThreadConfig>& expected_configs)
   {
-    ConcurrencyManager::ReconfigThreads(concurrent_request_count);
+    // FIXME TKG! don't hardcode, and add new tests
+    ConcurrencyManager::ReconfigThreads(concurrent_request_count, 0);
 
     auto expected_size = expected_configs.size();
 

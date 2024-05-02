@@ -254,19 +254,21 @@ class InferenceProfiler {
   template <typename T>
   cb::Error Profile(
       const T start, const T end, const T step, const SearchMode search_mode,
-      std::vector<PerfStatus>& perf_statuses)
+      const size_t exact_req_count, std::vector<PerfStatus>& perf_statuses)
   {
     cb::Error err;
     bool meets_threshold, is_stable;
     if (search_mode == SearchMode::NONE) {
-      err = Profile(perf_statuses, meets_threshold, is_stable);
+      err = Profile(exact_req_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk()) {
         return err;
       }
     } else if (search_mode == SearchMode::LINEAR) {
       T current_value = start;
       do {
-        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
+        err = Profile(
+            current_value, exact_req_count, perf_statuses, meets_threshold,
+            is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -280,11 +282,13 @@ class InferenceProfiler {
             "Failed to obtain stable measurement.", pa::STABILITY_ERROR);
       }
     } else {
-      err = Profile(start, perf_statuses, meets_threshold, is_stable);
+      err = Profile(
+          start, exact_req_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (!meets_threshold)) {
         return err;
       }
-      err = Profile(end, perf_statuses, meets_threshold, is_stable);
+      err = Profile(
+          end, exact_req_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (meets_threshold)) {
         return err;
       }
@@ -293,7 +297,9 @@ class InferenceProfiler {
       T this_end = end;
       while ((this_end - this_start) > step) {
         T current_value = (this_end + this_start) / 2;
-        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
+        err = Profile(
+            current_value, exact_req_count, perf_statuses, meets_threshold,
+            is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -351,7 +357,7 @@ class InferenceProfiler {
   /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const size_t concurrent_request_count,
+      const size_t concurrent_request_count, const size_t exact_request_count,
       std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
       bool& is_stable);
 
@@ -363,8 +369,9 @@ class InferenceProfiler {
   /// threshold. \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const double request_rate, std::vector<PerfStatus>& perf_statuses,
-      bool& meets_threshold, bool& is_stable);
+      const double request_rate, const size_t exact_request_count,
+      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+      bool& is_stable);
 
   /// Measures throughput and latencies for custom load without controlling
   /// request rate nor concurrency. Requires load manager to be loaded with
@@ -375,8 +382,8 @@ class InferenceProfiler {
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
-      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
-      bool& is_stable);
+      const size_t exact_request_count, std::vector<PerfStatus>& perf_statuses,
+      bool& meets_threshold, bool& is_stable);
 
   /// A helper function for profiling functions.
   /// \param status_summary Returns the summary of the measurement.

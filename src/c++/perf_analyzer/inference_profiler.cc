@@ -533,7 +533,7 @@ InferenceProfiler::InferenceProfiler(
 
 cb::Error
 InferenceProfiler::Profile(
-    const size_t concurrent_request_count,
+    const size_t concurrent_request_count, const size_t exact_request_count,
     std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
@@ -546,7 +546,8 @@ InferenceProfiler::Profile(
   meets_threshold = true;
 
   RETURN_IF_ERROR(dynamic_cast<ConcurrencyManager*>(manager_.get())
-                      ->ChangeConcurrencyLevel(concurrent_request_count));
+                      ->ChangeConcurrencyLevel(
+                          concurrent_request_count, exact_request_count));
 
   err = ProfileHelper(perf_status, &is_stable);
   if (err.IsOk()) {
@@ -590,8 +591,9 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const double request_rate, std::vector<PerfStatus>& perf_statuses,
-    bool& meets_threshold, bool& is_stable)
+    const double request_rate, const size_t exact_request_count,
+    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+    bool& is_stable)
 {
   cb::Error err;
   PerfStatus perf_status{};
@@ -638,8 +640,8 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
-    bool& is_stable)
+    const size_t exact_request_count, std::vector<PerfStatus>& perf_statuses,
+    bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
   PerfStatus perf_status{};
