@@ -761,6 +761,12 @@ InferenceProfiler::ProfileHelper(
 
     *is_stable = DetermineStability(load_status);
 
+    // FIXME TKG -- need to know if fixed num mode
+    if (measurement_mode_ == MeasurementMode::COUNT_WINDOWS) {
+      *is_stable = true;
+      break;
+    }
+
     if (IsDoneProfiling(load_status, is_stable)) {
       break;
     }

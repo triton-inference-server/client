@@ -38,7 +38,9 @@ bool
 LoadWorker::ShouldExit()
 {
   return early_exit || !thread_stat_->cb_status_.IsOk() ||
-         !thread_stat_->status_.IsOk();
+         !thread_stat_->status_.IsOk() ||
+         (thread_stat_->max_requests_ &&
+          thread_stat_->num_sent_requests_ >= thread_stat_->max_requests_);
 }
 
 bool
@@ -47,6 +49,7 @@ LoadWorker::HandleExitConditions()
   if (ShouldExit()) {
     CompleteOngoingSequences();
     WaitForOngoingRequests();
+    thread_stat_->idle_timer.Start();
     return true;
   }
   return false;

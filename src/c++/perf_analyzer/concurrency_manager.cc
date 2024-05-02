@@ -138,6 +138,12 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     // and spread the remaining value
     size_t avg_concurrency = concurrent_request_count / threads_.size();
     size_t threads_add_one = concurrent_request_count % threads_.size();
+
+    // FIXME TKG -- ever possible to go down in concurrency??
+    size_t max_req_count = 17;
+    size_t avg_req_count = max_req_count / threads_.size();
+    size_t req_count_add_one = max_req_count % threads_.size();
+
     size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
     for (size_t i = 0; i < threads_stat_.size(); i++) {
@@ -145,6 +151,13 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
 
       threads_config_[i]->concurrency_ = concurrency;
       threads_config_[i]->seq_stat_index_offset_ = seq_stat_index_offset;
+
+      // FIXME TKG -- only if specific mode
+      size_t max_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
+      threads_stat_[i]->max_requests_ = max_reqs;
+      std::cout << "TKG -- thread " << i << " is getting max reqs of "
+                << max_reqs << std::endl;
+
       seq_stat_index_offset += concurrency;
 
       if (concurrency) {

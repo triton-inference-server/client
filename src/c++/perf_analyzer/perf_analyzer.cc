@@ -315,6 +315,7 @@ PerfAnalyzer::PrerunReport()
     std::cout << "  Measurement window: " << params_->measurement_window_ms
               << " msec" << std::endl;
   } else if (params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+    // FIXME TKG -- change based on new arg?
     std::cout << "  Minimum number of samples in each window: "
               << params_->measurement_request_count << std::endl;
   }
