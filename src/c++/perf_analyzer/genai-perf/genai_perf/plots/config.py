@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -39,10 +40,8 @@ class PlotType(Enum):
 @dataclass
 class ProfileRunData:
     name: str
-    x_key: str
-    y_key: str
-    x_metric: list[int | float]
-    y_metric: list[int | float]
+    x_metric: Sequence[int | float]
+    y_metric: Sequence[int | float]
 
 
 @dataclass

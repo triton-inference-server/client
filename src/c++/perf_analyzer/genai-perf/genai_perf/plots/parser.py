@@ -69,49 +69,71 @@ class PlotConfigParser:
         return [
             PlotConfig(
                 title="Time to First Token",
-                data=[],
+                data=[
+                    ProfileRunData(
+                        name=filename.stem,
+                        x_metric=[],
+                        y_metric=scaled_ttfts,
+                    )
+                ],
                 x_label="Time to First Token (seconds)",
                 y_label="",
                 type=PlotType.BOX,
                 output=Path(""),
             ),
             PlotConfig(
-                title="",
-                data=[],
-                x_label="",
+                title="Request Latency",
+                data=[
+                    ProfileRunData(
+                        name=filename.stem,
+                        x_metric=[],
+                        y_metric=scaled_req_latencies,
+                    )
+                ],
+                x_label="Request Latency (seconds)",
                 y_label="",
+                type=PlotType.BOX,
+                output=Path(""),
+            ),
+            PlotConfig(
+                title="Distribution of Input Tokens to Generated Tokens",
+                data=[
+                    ProfileRunData(
+                        name=filename.stem,
+                        x_metric=stats.metrics.data["num_input_tokens"],
+                        y_metric=stats.metrics.data["num_output_tokens"],
+                    )
+                ],
+                x_label="Number of Input Tokens Per Request",
+                y_label="Number of Generated Tokens Per Request",
+                type=PlotType.HEATMAP,
+                output=Path(""),
+            ),
+            PlotConfig(
+                title="Time to First Token vs Number of Input Tokens",
+                data=[
+                    ProfileRunData(
+                        name=filename.stem,
+                        x_metric=stats.metrics.data["num_input_tokens"],
+                        y_metric=scaled_ttfts,
+                    )
+                ],
+                x_label="Number of Input Tokens",
+                y_label="Time to First Token (seconds)",
                 type=PlotType.SCATTER,
                 output=Path(""),
             ),
             PlotConfig(
-                title="",
-                data=[],
-                x_label="",
-                y_label="",
-                type=PlotType.SCATTER,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="",
-                data=[],
-                x_label="",
-                y_label="",
-                type=PlotType.SCATTER,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="",
-                data=[],
-                x_label="",
-                y_label="",
-                type=PlotType.SCATTER,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="",
-                data=[],
-                x_label="",
-                y_label="",
+                title="Token-to-Token Latency vs Output Token Position",
+                data=[
+                    ProfileRunData(
+                        name=filename.stem,
+                        x_metric=token_positions,
+                        y_metric=scaled_itls,
+                    )
+                ],
+                x_label="Output Token Position",
+                y_label="Token-to-Token Latency (seconds)",
                 type=PlotType.SCATTER,
                 output=Path(""),
             ),
