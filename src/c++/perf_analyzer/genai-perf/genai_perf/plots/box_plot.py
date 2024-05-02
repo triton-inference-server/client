@@ -35,6 +35,7 @@ from genai_perf.llm_metrics import Statistics
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.utils import scale
 from plotly.graph_objects import Figure
+from genai_perf.plots.config import ProfileRunData
 
 
 class BoxPlot(BasePlot):
@@ -42,13 +43,11 @@ class BoxPlot(BasePlot):
     Generate a box plot in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        super().__init__(data)
 
     def create_plot(
         self,
-        x_key: str = "",
-        y_key: str = "",
         x_metric: str = "",
         y_metric: str = "",
         graph_title: str = "",
@@ -56,10 +55,9 @@ class BoxPlot(BasePlot):
         y_label: str = "",
         filename_root: str = "",
     ) -> None:
-        df = pd.DataFrame({y_metric: self._metrics_data[y_key]})
+        df = pd.DataFrame({self._profile_data[0].name: self._profile_data[0].y_metric})
         fig = px.box(
             df,
-            y=y_metric,
             points="all",
             title=graph_title,
         )
@@ -70,7 +68,7 @@ class BoxPlot(BasePlot):
 
         # create a copy to avoid annotations on html file
         fig_jpeg = copy.deepcopy(fig)
-        self._add_annotations(fig_jpeg, y_metric)
+        #self._add_annotations(fig_jpeg, y_metric)
 
         self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, filename_root + ".html", graph_title)

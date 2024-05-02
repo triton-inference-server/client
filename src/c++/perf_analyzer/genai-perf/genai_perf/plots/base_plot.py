@@ -34,6 +34,7 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
 from pandas import DataFrame
 from plotly.graph_objects import Figure
+from genai_perf.plots.config import ProfileRunData
 
 
 class BasePlot:
@@ -41,16 +42,11 @@ class BasePlot:
     Base class for plots
     """
 
-    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
-        self._stats = stats
-        self._metrics_data = deepcopy(stats.metrics.data)
-        if extra_data:
-            self._metrics_data = self._metrics_data | extra_data
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        self._profile_data = data
 
     def create_plot(
         self,
-        x_key: str,
-        y_key: str,
         x_metric: str,
         y_metric: str,
         graph_title: str,

@@ -31,6 +31,7 @@ import pandas as pd
 import plotly.express as px
 from genai_perf.llm_metrics import Statistics
 from genai_perf.plots.base_plot import BasePlot
+from genai_perf.plots.config import ProfileRunData
 
 
 class HeatMap(BasePlot):
@@ -38,13 +39,11 @@ class HeatMap(BasePlot):
     Generate a heat map in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        super().__init__(data)
 
     def create_plot(
         self,
-        x_key: str = "",
-        y_key: str = "",
         x_metric: str = "",
         y_metric: str = "",
         graph_title: str = "",
@@ -52,12 +51,10 @@ class HeatMap(BasePlot):
         y_label: str = "",
         filename_root: str = "",
     ) -> None:
-        x_values = self._metrics_data[x_key]
-        y_values = self._metrics_data[y_key]
         df = pd.DataFrame(
             {
-                x_metric: x_values,
-                y_metric: y_values,
+                x_metric: self._profile_data[0].x_metric,
+                y_metric: self._profile_data[0].y_metric,
             }
         )
         fig = px.density_heatmap(
