@@ -30,25 +30,78 @@ from pathlib import Path
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
-from genai_perf.llm_metrics import Statistics
+from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from genai_perf.utils import scale
 
 
 class PlotConfigParser:
     """Parses YAML configuration file to generate PlotConfigs."""
 
-    def __init__(self, filename: str | None = None) -> None:
-        if filename:
-            self._plot_configs = self._parse_config(filename)
+    def __init__(self, filename: Path) -> None:
+        self._filename = filename
 
-    def _parse_config(self, filename: str) -> list[PlotConfig]:
+    def parse(self) -> list[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
-        with open(filename) as f:
+        with open(self._filename) as f:
             configs = yaml.safe_load(f)
 
-        plot_configs: list[PlotConfig] = []
+        plot_configs = []
+        for _, config in configs.items():
+            # Collect all profile run data
+            profile_data: list[ProfileRunData] = []
+            # for filepath in config["paths"]:
+            #    profile_filepath = Path(filepath)
+            #    data_parser = LLMProfileDataParser(
+            #        filename=profile_filepath,
+            #        service_kind="",
+            #        output_format="",
+            #        tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
+            #    )
+            #    load_info = data_parser.get_profile_load_info()
+            #    infer_mode, load_level = load_info[0]  # length is always 1
+            #    stats = data_parser.get_statistics(infer_mode, load_level)
+
+            #    if profile_filepath.parent.name:
+            #        run_name = profile_filepath.parent.name + "/" + profile_filepath.stem
+            #    else:
+            #        run_name = profile_filepath.stem
+            #
+            #    profile_data.append(
+            #        ProfileRunData(
+            #            name=run_name,
+            #            x_metric=stats.metrics.data[config["x_metric"]],
+            #            y_metric=stats.metrics.data[config["y_metric"]],
+            #        )
+            #    )
+
+            plot_configs.append(
+                PlotConfig(
+                    title=config["title"],
+                    data=profile_data,
+                    x_label=config["x_label"],
+                    y_label=config["y_label"],
+                    type=self._get_plot_type(config["type"]),
+                    output=Path(config["output"]),
+                )
+            )
+
         return plot_configs
+
+    def _get_plot_type(self, plot_type: str) -> PlotType:
+        """Returns the plot type as PlotType object."""
+        if plot_type == "scatter":
+            return PlotType.SCATTER
+        elif plot_type == "box":
+            return PlotType.BOX
+        elif plot_type == "heatmap":
+            return PlotType.HEATMAP
+        else:
+            raise ValueError(
+                "Unknown plot type encountered while parsing YAML configuration. "
+                "Plot type must be either 'scatter', 'box', or 'heatmap'."
+            )
 
     @staticmethod
     def create_default_configs(stats: Statistics, filename: Path) -> list[PlotConfig]:
@@ -139,6 +192,3 @@ class PlotConfigParser:
                 output=Path(""),
             ),
         ]
-
-    def generate_configs(self):
-        pass

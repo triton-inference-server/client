@@ -29,6 +29,7 @@
 import csv
 import json
 from itertools import pairwise
+from pathlib import Path
 from typing import List
 
 import numpy as np
@@ -401,7 +402,7 @@ class ProfileDataParser:
     extract core metrics and calculate various performance statistics.
     """
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: Path) -> None:
         data = load_json(filename)
         self._parse_profile_data(data)
 
@@ -428,6 +429,10 @@ class ProfileDataParser:
         if (infer_mode, load_level) not in self._profile_results:
             raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
         return self._profile_results[(infer_mode, load_level)]
+
+    def get_profile_load_info(self) -> list[tuple[str, str]]:
+        """Return available (infer_mode, load_level) tuple keys."""
+        return [k for k, _ in self._profile_results.items()]
 
 
 class LLMProfileDataParser(ProfileDataParser):
@@ -458,7 +463,7 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def __init__(
         self,
-        filename: str,
+        filename: Path,
         service_kind: str,
         output_format: OutputFormat,
         tokenizer: Tokenizer,
