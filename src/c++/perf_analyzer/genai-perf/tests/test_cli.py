@@ -125,6 +125,10 @@ class TestCLIArguments:
             ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (
+                ["--input-file", "prompt.txt"],
+                {"input_file": Path("prompt.txt")},
+            ),
+            (
                 ["--synthetic-input-tokens-mean", "6"],
                 {"synthetic_input_tokens_mean": 6},
             ),
@@ -143,14 +147,6 @@ class TestCLIArguments:
             (
                 ["--output-tokens-mean", "6", "--output-tokens-mean-deterministic"],
                 {"output_tokens_mean_deterministic": True},
-            ),
-            (
-                ["--prompt-source", "synthetic"],
-                {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
-            ),
-            (
-                ["--prompt-source", "dataset"],
-                {"prompt_source": utils.get_enum_entry("dataset", PromptSource)},
             ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),

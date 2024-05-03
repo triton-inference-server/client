@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import os
 import random
 from copy import deepcopy
 from enum import Enum, auto
@@ -320,12 +321,18 @@ class LlmInputs:
 
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
+        cls.verify_file(input_filename)
         input_file_prompt = cls._get_prompt_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         dataset_json["rows"].append({"row": {"text_input": input_file_prompt}})
         return dataset_json
+
+    @classmethod
+    def verify_file(cls, input_filename: Path) -> None:
+        if not os.path.exists(input_filename):
+            raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
 
     @classmethod
     def _get_prompt_from_input_file(cls, input_filename: Path) -> str:

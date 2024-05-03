@@ -25,7 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -116,8 +115,6 @@ def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
         logger.info(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file is not None:
         args.prompt_source = PromptSource.FILE
-        if not os.path.exists(args.input_file):
-            raise FileNotFoundError(f"The file '{args.input_file}' does not exist.")
         logger.info(f"Input source is from the following file: {args.input_file}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC

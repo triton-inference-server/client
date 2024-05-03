@@ -41,7 +41,7 @@ class Profiler:
         cmd = [""]
         if args.service_kind == "triton":
             cmd += ["-i", "grpc", "--streaming"]
-            if "u" not in vars(args).keys():
+            if args.u is None:
                 cmd += ["-u", f"{DEFAULT_GRPC_URL}"]
             if args.output_format == OutputFormat.TENSORRTLLM:
                 cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
