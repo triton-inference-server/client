@@ -26,11 +26,9 @@
 
 from pathlib import Path
 
-import genai_perf.utils as utils
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
-from genai_perf.main import run
 
 
 class TestCLIArguments:
@@ -382,3 +380,45 @@ class TestCLIArguments:
             _ = parser.get_extra_inputs_as_dict(parsed_args)
 
         assert str(exc_info.value) == expected_error
+
+    @pytest.mark.parametrize(
+        "args, expected_prompt_source",
+        [
+            ([], PromptSource.SYNTHETIC),
+            (["--input-dataset", "openorca"], PromptSource.DATASET),
+            (["--input-file", "prompt.txt"], PromptSource.FILE),
+            (
+                ["--input-file", "prompt.txt", "--synthetic-input-tokens-mean", "10"],
+                PromptSource.FILE,
+            ),
+        ],
+    )
+    def test_inferred_prompt_source(self, monkeypatch, args, expected_prompt_source):
+        combined_args = ["genai-perf", "--model", "test_model"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.prompt_source == expected_prompt_source
+
+    def test_prompt_source_assertions(self, monkeypatch, capsys):
+        args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-dataset",
+            "openorca",
+            "--input-file",
+            "prompt.txt",
+        ]
+        monkeypatch.setattr("sys.argv", args)
+
+        expected_output = (
+            "argument --input-file: not allowed with argument --input-dataset"
+        )
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
