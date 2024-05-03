@@ -134,23 +134,17 @@ def _get_inference_request(
     if parameters:
         infer_request["parameters"] = parameters
 
-    request_body = json.dumps(infer_request)
-    json_size = len(request_body)
-    binary_data = None
+    request_json = json.dumps(infer_request)
+    json_size = len(request_json)
+
+    request_body = [request_json.encode()]
     for input_tensor in inputs:
         raw_data = input_tensor._get_binary_data()
         if raw_data is not None:
-            if binary_data is not None:
-                binary_data += raw_data
-            else:
-                binary_data = raw_data
+            request_body.append(raw_data)
 
-    if binary_data is not None:
-        request_body = struct.pack(
-            "{}s{}s".format(len(request_body), len(binary_data)),
-            request_body.encode(),
-            binary_data,
-        )
-        return request_body, json_size
-
-    return request_body.encode(), None
+    if len(request_body) == 1:
+        # The request body constitutes the whole request
+        return request_body[0], None
+    else:
+        return b"".join(request_body), json_size
