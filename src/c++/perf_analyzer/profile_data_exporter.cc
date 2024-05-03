@@ -270,9 +270,10 @@ ProfileDataExporter::AddServiceKind(cb::BackendKind& kind)
   }
 
   rapidjson::Value service_kind;
-  service_kind = rapidjson::StringRef(raw_service_kind.c_str());
+  service_kind.SetString(raw_service_kind.c_str(), document_.GetAllocator());
   document_.AddMember("service_kind", service_kind, document_.GetAllocator());
 }
+
 void
 ProfileDataExporter::AddEndpoint(std::string& raw_endpoint)
 {
