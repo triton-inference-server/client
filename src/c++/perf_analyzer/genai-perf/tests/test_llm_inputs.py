@@ -582,3 +582,7 @@ class TestLlmInputs:
                     assert False, f"Unsupported output format: {output_format}"
 
             os.remove(DEFAULT_INPUT_DATA_JSON)
+
+    def test_get_input_file_without_file_existing(self):
+        with pytest.raises(FileNotFoundError):
+            LlmInputs._get_input_dataset_from_file("prompt.txt")
