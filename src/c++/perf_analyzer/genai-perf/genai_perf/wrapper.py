@@ -91,6 +91,8 @@ class Profiler:
         for arg, value in vars(args).items():
             if arg in skip_args:
                 pass
+            elif value is None:
+                pass
             elif value is False:
                 pass
             elif value is True:

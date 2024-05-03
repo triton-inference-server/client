@@ -54,21 +54,23 @@ def create_artifacts_dirs(generate_plots: bool) -> None:
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
-    # TODO (TMA-1758): remove once file support is implemented
-    input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
     add_model_name = True
     try:
-        extra_input_dict = parser.get_extra_inputs_as_dict(args)
+        extra_input_dict = (
+            parser.get_extra_inputs_as_dict(args)
+            if args.extra_inputs is not None
+            else None
+        )
     except ValueError as e:
         raise GenAIPerfException(e)
 
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
         output_format=args.output_format,
-        dataset_name=args.input_dataset,
+        dataset_name=args.input_dataset if args.input_dataset is not None else "",
         model_name=args.model,
-        input_filename=input_file_name,
+        input_filename=args.input_file if args.input_file is not None else "",
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
         prompt_tokens_mean=args.synthetic_input_tokens_mean,

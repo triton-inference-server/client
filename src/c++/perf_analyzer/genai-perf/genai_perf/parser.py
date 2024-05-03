@@ -91,33 +91,7 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
-    # input source checks
-    if args.prompt_source == PromptSource.DATASET:
-        if (
-            args.synthetic_input_tokens_mean is not None
-            or args.synthetic_input_tokens_stddev is not None
-        ):
-            parser.error(
-                "The synthetic options: --synthetic-input-tokens-mean, "
-                "--synthetic-input-tokens-stddev are not valid when using --input-dataset."
-            )
-    elif args.prompt_source == PromptSource.FILE:
-        if (
-            args.synthetic_input_tokens_mean is not None
-            or args.synthetic_input_tokens_stddev is not None
-        ):
-            parser.error(
-                "The synthetic options: --synthetic-input-tokens-mean, "
-                "--synthetic-input-tokens-stddev are not valid when using --input-file."
-            )
     return args
-
-
-def _prune_args(args: argparse.Namespace) -> argparse.Namespace:
-    """
-    Prune the parsed arguments to remove args with None.
-    """
-    return argparse.Namespace(**{k: v for k, v in vars(args).items() if v is not None})
 
 
 def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -137,16 +111,16 @@ def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
-    if args.input_data is not None:
-        args["prompt_source"] = PromptSource.DATASET
-        logger.info(f"Input source is the following dataset: {args.input_data}")
+    if args.input_dataset is not None:
+        args.prompt_source = PromptSource.DATASET
+        logger.info(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file is not None:
-        args["prompt_source"] = PromptSource.FILE
+        args.prompt_source = PromptSource.FILE
         if not os.path.exists(args.input_file):
             raise FileNotFoundError(f"The file '{args.input_file}' does not exist.")
         logger.info(f"Input source is from the following file: {args.input_file}")
     else:
-        args["prompt_source"] = PromptSource.SYNTHETIC
+        args.prompt_source = PromptSource.SYNTHETIC
         logger.info("Input source is from synthetic data")
     return args
 
@@ -187,7 +161,7 @@ def _add_input_args(parser):
     prompt_source_group.add_argument(
         "--input-dataset",
         type=str.lower,
-        default=OPEN_ORCA,
+        default=None,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
         help="The HuggingFace dataset to use for prompts.",
@@ -196,7 +170,7 @@ def _add_input_args(parser):
     prompt_source_group.add_argument(
         "--input-file",
         type=Path,
-        default=Path("prompt.txt"),
+        default=None,
         required=False,
         help="The input file containing the single prompt to use for profiling.",
     )
@@ -497,6 +471,5 @@ def parse_args():
     args = _infer_prompt_source(args)
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]
