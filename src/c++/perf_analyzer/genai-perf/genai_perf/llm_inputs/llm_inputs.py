@@ -16,6 +16,7 @@ import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -77,7 +78,7 @@ class LlmInputs:
         output_format: OutputFormat,
         dataset_name: str = "",
         model_name: str = "",
-        input_filename: str = "",
+        input_filename: Path = Path(""),
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
         output_tokens_mean: int = DEFAULT_OUTPUT_TOKENS_MEAN,
@@ -162,12 +163,17 @@ class LlmInputs:
                 prompt_tokens_stddev,
                 num_of_output_prompts,
             )
-            generic_dataset_json = cls._convert_input_synthetic_dataset_to_generic_json(
-                synthetic_dataset
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    synthetic_dataset
+                )
             )
         else:
-            raise GenAIPerfException(
-                "Using a file to supply LLM Input is not supported at this time"
+            input_file_dataset = cls._get_input_dataset_from_file(input_filename)
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    input_file_dataset
+                )
             )
 
         if extra_inputs is None:
@@ -273,7 +279,7 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _convert_input_synthetic_dataset_to_generic_json(
+    def _convert_input_synthetic_or_file_dataset_to_generic_json(
         cls, dataset: Dict
     ) -> Dict[str, List[Dict]]:
         generic_dataset_json = cls._convert_dataset_to_generic_input_json(dataset)
@@ -311,6 +317,20 @@ class LlmInputs:
             generic_input_json["rows"].append(row["row"])
 
         return generic_input_json
+
+    @classmethod
+    def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
+        input_file_prompt = cls._get_prompt_from_input_file(input_filename)
+        dataset_json: Dict[str, Any] = {}
+        dataset_json["features"] = [{"name": "text_input"}]
+        dataset_json["rows"] = []
+        dataset_json["rows"].append({"row": {"text_input": input_file_prompt}})
+        return dataset_json
+
+    @classmethod
+    def _get_prompt_from_input_file(cls, input_filename: Path) -> str:
+        with open(input_filename, mode="r", newline=None) as file:
+            return file.read()
 
     @classmethod
     def _convert_generic_json_to_output_format(
@@ -528,6 +548,7 @@ class LlmInputs:
         text_input_headers: List[str] = []
 
         if "features" in dataset_json.keys():
+            # TODO (TPA-53) remove enumerate if index isnt useful
             for index, feature in enumerate(dataset_json["features"]):
                 if feature in SYSTEM_ROLE_LIST:
                     system_role_headers.append(feature)

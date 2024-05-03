@@ -70,7 +70,9 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         output_format=args.output_format,
         dataset_name=args.input_dataset if args.input_dataset is not None else "",
         model_name=args.model,
-        input_filename=args.input_file if args.input_file is not None else "",
+        input_filename=(
+            Path(args.input_file) if args.input_file is not None else Path("")
+        ),
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
         prompt_tokens_mean=args.synthetic_input_tokens_mean,
