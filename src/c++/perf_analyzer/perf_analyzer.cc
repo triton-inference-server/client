@@ -452,7 +452,7 @@ PerfAnalyzer::GenerateProfileExport()
   if (!params_->profile_export_file.empty()) {
     exporter_->Export(
         collector_->GetData(), collector_->GetVersion(),
-        params_->profile_export_file);
+        params_->profile_export_file, params_->kind, params_->endpoint);
   }
 }
 

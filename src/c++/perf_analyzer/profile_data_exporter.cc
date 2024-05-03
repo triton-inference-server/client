@@ -47,15 +47,17 @@ ProfileDataExporter::Create(std::shared_ptr<ProfileDataExporter>* exporter)
 void
 ProfileDataExporter::Export(
     const std::vector<Experiment>& raw_experiments, std::string& raw_version,
-    std::string& file_path)
+    std::string& file_path, cb::BackendKind& service_kind,
+    std::string& endpoint)
 {
-  ConvertToJson(raw_experiments, raw_version);
+  ConvertToJson(raw_experiments, raw_version, service_kind, endpoint);
   OutputToFile(file_path);
 }
 
 void
 ProfileDataExporter::ConvertToJson(
-    const std::vector<Experiment>& raw_experiments, std::string& raw_version)
+    const std::vector<Experiment>& raw_experiments, std::string& raw_version,
+    cb::BackendKind& service_kind, std::string& endpoint)
 {
   ClearDocument();
   rapidjson::Value experiments(rapidjson::kArrayType);
@@ -75,6 +77,8 @@ ProfileDataExporter::ConvertToJson(
 
   document_.AddMember("experiments", experiments, document_.GetAllocator());
   AddVersion(raw_version);
+  AddServiceKind(service_kind);
+  AddEndpoint(endpoint);
 }
 
 void
@@ -243,6 +247,38 @@ ProfileDataExporter::AddVersion(std::string& raw_version)
   rapidjson::Value version;
   version = rapidjson::StringRef(raw_version.c_str());
   document_.AddMember("version", version, document_.GetAllocator());
+}
+
+void
+ProfileDataExporter::AddServiceKind(cb::BackendKind& kind)
+{
+  std::string raw_service_kind{""};
+  if (kind == cb::BackendKind::TRITON) {
+    raw_service_kind = "triton";
+  } else if (kind == cb::BackendKind::TENSORFLOW_SERVING) {
+    raw_service_kind = "tfserving";
+  } else if (kind == cb::BackendKind::TORCHSERVE) {
+    raw_service_kind = "torchserve";
+  } else if (kind == cb::BackendKind::TRITON_C_API) {
+    raw_service_kind = "triton_c_api";
+  } else if (kind == cb::BackendKind::OPENAI) {
+    raw_service_kind = "openai";
+  } else {
+    std::cerr << "Unknown service kind detected. The 'service_kind' will not "
+                 "be specified."
+              << std::endl;
+  }
+
+  rapidjson::Value service_kind;
+  service_kind = rapidjson::StringRef(raw_service_kind.c_str());
+  document_.AddMember("service_kind", service_kind, document_.GetAllocator());
+}
+void
+ProfileDataExporter::AddEndpoint(std::string& raw_endpoint)
+{
+  rapidjson::Value endpoint;
+  endpoint = rapidjson::StringRef(raw_endpoint.c_str());
+  document_.AddMember("endpoint", endpoint, document_.GetAllocator());
 }
 
 void
