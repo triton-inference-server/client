@@ -284,9 +284,6 @@ def destroy_shared_memory_region(shm_handle):
     SharedMemoryException
         If unable to unlink the shared memory region.
     """
-
-    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
-
     shm_fd = c_int()
     offset = c_uint64()
     byte_size = c_uint64()
@@ -305,7 +302,7 @@ def destroy_shared_memory_region(shm_handle):
         )
     )
     mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
-
+    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
     return
 
 
