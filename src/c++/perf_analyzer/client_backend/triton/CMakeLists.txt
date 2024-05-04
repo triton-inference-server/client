@@ -46,6 +46,8 @@ target_link_libraries(
   triton-client-backend-library
   PUBLIC grpcclient_static
   PUBLIC httpclient_static
+  PUBLIC shm_utils_statics          # from repo-client
+  PUBLIC json_utils_static         # from repo-client
   PRIVATE CURL::libcurl
 )
 

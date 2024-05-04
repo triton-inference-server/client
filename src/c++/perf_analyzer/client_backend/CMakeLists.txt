@@ -26,6 +26,7 @@
 
 cmake_minimum_required (VERSION 3.18)
 
+find_package(CURL REQUIRED)
 # fixme
 add_definitions(-DCURL_STATICLIB)
 
@@ -86,7 +87,6 @@ add_library(
   ${CLIENT_BACKEND_SRCS}
   ${CLIENT_BACKEND_HDRS}
   $<TARGET_OBJECTS:triton-client-backend-library>
-  $<TARGET_OBJECTS:shm-utils-library>
   ${CAPI_LIBRARY}
   ${TFS_LIBRARY}
   ${TS_LIBRARY}
@@ -95,12 +95,13 @@ add_library(
 
 target_link_libraries(
   client-backend-library
-  PUBLIC triton-common-json        # from repo-common
-  PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
-  ${CAPI_TARGET_LINK_LIBRARY}
-  ${TFS_TARGET_LINK_LIBRARY}
-  ${TS_TARGET_LINK_LIBRARY}
-  ${OPENAI_TARGET_LINK_LIBRARY}
+    PUBLIC
+      triton-common-json        # from repo-common
+      $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
+      ${CAPI_TARGET_LINK_LIBRARY}
+      ${TFS_TARGET_LINK_LIBRARY}
+      ${TS_TARGET_LINK_LIBRARY}
+      ${OPENAI_TARGET_LINK_LIBRARY}
 )
 
 target_include_directories(

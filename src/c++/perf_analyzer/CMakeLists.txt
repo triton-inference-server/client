@@ -24,13 +24,63 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required(VERSION 3.17)
+
+project(perf-analyzer LANGUAGES C CXX)
+
+# Use C++17 standard as Triton's minimum required.
+set(TRITON_MIN_CXX_STANDARD 17 CACHE STRING "The minimum C++ standard which features are requested to build this target.")
+
+set(TRITON_VERSION "0.0.0" CACHE STRING "Version for the clients")
+set(PERF_ANALYZER_VERSION ${TRITON_VERSION} CACHE STRING "Build Version for Perf Analyzer")
+
+#
+# Client Options
+#
+option(TRITON_ENABLE_CC_HTTP "Build C++ HTTP client libraries" ON)
+option(TRITON_ENABLE_CC_GRPC "Build C++ GRPC client libraries" ON)
+option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
+
+#
+# Perf Analyzer Options
+#
+option(TRITON_ENABLE_PERF_ANALYZER_C_API "Enable Performance Analyzer C API" OFF)
+option(TRITON_ENABLE_PERF_ANALYZER_TFS "Enable TensorFlow Serving support for Performance Analyzer" OFF)
+option(TRITON_ENABLE_PERF_ANALYZER_TS "Enable TorchServe support for Performance Analyzer" OFF)
+option(TRITON_ENABLE_PERF_ANALYZER_OPENAI "Enable OpenAI support for Performance Analyzer" OFF)
+
+#
+# Github branch options
+#
+set(TRITON_REPO_ORGANIZATION "https://github.com/triton-inference-server" CACHE STRING "Git repository to pull from")
+set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
+set(TRITON_CORE_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/core repo")
+set(TRITON_CLIENT_REPO_TAG "fpetrini-migrate-pa" CACHE STRING "Tag for triton-inference-server/core repo")
+set(TRITON_THIRD_PARTY_SRC_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/third-party-src" CACHE STRING "Location of third-party source")
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
 if(WIN32)
-  message("perf_analyzer is not currently supported on Windows because "
+  message(FATAL_ERROR "perf_analyzer is not currently supported on Windows because "
           "is requires functionalities that are UNIX specific.")
-else()
+endif()
 
+if(NOT(${TRITON_ENABLE_CC_HTTP} AND ${TRITON_ENABLE_CC_GRPC}))
+  message(FATAL_ERROR "perf_analyzer requires both http and grpc client libraries.")
+endif()
+#
+# Dependencies
+#
+include(FetchContent)
+FetchContent_Declare(
+  repo-client
+  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/client.git
+  GIT_TAG ${TRITON_CLIENT_REPO_TAG}
+  GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(repo-client)
 add_subdirectory(client_backend)
 
 find_package(Git REQUIRED)
@@ -120,7 +170,6 @@ add_executable(
   main.cc
   ${PERF_ANALYZER_SRCS}
   ${PERF_ANALYZER_HDRS}
-  $<TARGET_OBJECTS:json-utils-library>
 )
 target_link_libraries(
   perf_analyzer
@@ -231,7 +280,6 @@ add_executable(
   test_ctx_id_tracker.cc
   test_profile_data_collector.cc
   test_profile_data_exporter.cc
-  $<TARGET_OBJECTS:json-utils-library>
 )
 
 # -Wno-write-strings is needed for the unit tests in order to statically create
@@ -259,4 +307,3 @@ install(
   RUNTIME DESTINATION bin
 )
 
-endif()

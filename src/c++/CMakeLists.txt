@@ -51,7 +51,7 @@ endif()
 # Dependencies
 #
 include(FetchContent)
-
+message("cc client depends: ${_cc_client_depends}")
 FetchContent_Declare(
   repo-common
   GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
@@ -69,7 +69,7 @@ if(TRITON_ENABLE_CC_GRPC)
   set(TRITON_COMMON_ENABLE_GRPC ON)
 endif() # TRITON_ENABLE_CC_GRPC
 
-if(TRITON_ENABLE_CC_HTTP AND NOT TRITON_ENABLE_EXAMPLES)
+if(NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_ENABLE_EXAMPLES)
   set(TRITON_COMMON_ENABLE_JSON OFF)
 endif()
 
