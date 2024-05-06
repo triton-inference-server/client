@@ -123,10 +123,6 @@ class TestCLIArguments:
             ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (
-                ["--input-file", "prompt.txt"],
-                {"input_file": Path("prompt.txt")},
-            ),
-            (
                 ["--synthetic-input-tokens-mean", "6"],
                 {"synthetic_input_tokens_mean": 6},
             ),
@@ -169,7 +165,7 @@ class TestCLIArguments:
             (["-u", "test_url"], {"u": "test_url"}),
         ],
     )
-    def test_all_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
+    def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
@@ -181,6 +177,21 @@ class TestCLIArguments:
         # Check that nothing was printed as a byproduct of parsing the arguments
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    def test_file_flags_parsed(self, monkeypatch, mocker):
+        mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        combined_args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-file",
+            "fakefile.txt",
+        ]
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+        assert (
+            args.input_file == mocked_open.return_value
+        ), "The file argument should be the mock object"
 
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
@@ -393,14 +404,18 @@ class TestCLIArguments:
             ),
         ],
     )
-    def test_inferred_prompt_source(self, monkeypatch, args, expected_prompt_source):
+    def test_inferred_prompt_source(
+        self, monkeypatch, mocker, args, expected_prompt_source
+    ):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
         combined_args = ["genai-perf", "--model", "test_model"] + args
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
         assert args.prompt_source == expected_prompt_source
 
-    def test_prompt_source_assertions(self, monkeypatch, capsys):
+    def test_prompt_source_assertions(self, monkeypatch, mocker, capsys):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
         args = [
             "genai-perf",
             "--model",

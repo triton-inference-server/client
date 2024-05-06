@@ -110,15 +110,15 @@ def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
 
 
 def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
-    if args.input_dataset is not None:
+    if args.input_dataset:
         args.prompt_source = PromptSource.DATASET
-        logger.info(f"Input source is the following dataset: {args.input_dataset}")
-    elif args.input_file is not None:
+        logger.debug(f"Input source is the following dataset: {args.input_dataset}")
+    elif args.input_file:
         args.prompt_source = PromptSource.FILE
-        logger.info(f"Input source is the following file: {args.input_file}")
+        logger.debug(f"Input source is the following file: {args.input_file.name}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC
-        logger.info("Input source is synthetic data")
+        logger.debug("Input source is synthetic data")
     return args
 
 
@@ -166,7 +166,7 @@ def _add_input_args(parser):
 
     prompt_source_group.add_argument(
         "--input-file",
-        type=Path,
+        type=argparse.FileType("r"),
         default=None,
         required=False,
         help="The input file containing the single prompt to use for profiling.",
@@ -399,7 +399,7 @@ def _add_other_args(parser):
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
-    if hasattr(args, "extra_inputs"):
+    if args.extra_inputs:
         for input_str in args.extra_inputs:
             semicolon_count = input_str.count(":")
             if semicolon_count != 1:

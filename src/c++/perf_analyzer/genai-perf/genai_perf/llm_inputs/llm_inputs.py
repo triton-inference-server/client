@@ -17,7 +17,7 @@ import random
 from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
@@ -78,7 +78,7 @@ class LlmInputs:
         output_format: OutputFormat,
         dataset_name: str = "",
         model_name: str = "",
-        input_filename: Path = Path(""),
+        input_filename: Optional[Path] = Path(""),
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
         output_tokens_mean: int = DEFAULT_OUTPUT_TOKENS_MEAN,
@@ -168,13 +168,16 @@ class LlmInputs:
                     synthetic_dataset
                 )
             )
-        else:
+        elif input_type == PromptSource.FILE:
+            input_filename = cast(Path, input_filename)
             input_file_dataset = cls._get_input_dataset_from_file(input_filename)
             generic_dataset_json = (
                 cls._convert_input_synthetic_or_file_dataset_to_generic_json(
                     input_file_dataset
                 )
             )
+        else:
+            raise GenAIPerfException("Input source is not recognized.")
 
         if extra_inputs is None:
             extra_inputs = {}
