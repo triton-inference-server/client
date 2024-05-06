@@ -28,6 +28,7 @@
 
 import json
 from io import StringIO
+from pathlib import Path
 from typing import Any, List
 
 import numpy as np
@@ -92,9 +93,7 @@ class TestLLMProfileDataParser:
 
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="triton_profile_export.json",
-            service_kind="triton",
-            output_format=OutputFormat.TENSORRTLLM,
+            filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -147,9 +146,7 @@ class TestLLMProfileDataParser:
         """
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="triton_profile_export.json",
-            service_kind="triton",
-            output_format=OutputFormat.TENSORRTLLM,
+            filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
         )
 
@@ -290,9 +287,7 @@ class TestLLMProfileDataParser:
         """
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="openai_profile_export.json",
-            service_kind="openai",
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
         )
 
@@ -380,6 +375,8 @@ class TestLLMProfileDataParser:
             metrics.get_base_name("hello1234")
 
     openai_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "v1/chat/completions",
         "experiments": [
             {
                 "experiment": {
@@ -445,6 +442,8 @@ class TestLLMProfileDataParser:
     }
 
     triton_profile_data = {
+        "service_kind": "triton",
+        "endpoint": "",
         "experiments": [
             {
                 "experiment": {

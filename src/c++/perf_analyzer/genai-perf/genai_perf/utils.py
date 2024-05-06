@@ -35,7 +35,7 @@ def remove_sse_prefix(msg: str) -> str:
 
 
 def load_json(filepath: Path) -> Dict[str, Any]:
-    with filepath.open(errors="ignore") as f:
+    with open(str(filepath), encoding="utf-8", errors="ignore") as f:
         return json.load(f)
 
 
