@@ -115,10 +115,10 @@ def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
         logger.info(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file is not None:
         args.prompt_source = PromptSource.FILE
-        logger.info(f"Input source is from the following file: {args.input_file}")
+        logger.info(f"Input source is the following file: {args.input_file}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC
-        logger.info("Input source is from synthetic data")
+        logger.info("Input source is synthetic data")
     return args
 
 

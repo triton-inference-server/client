@@ -68,7 +68,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
         output_format=args.output_format,
-        dataset_name=args.input_dataset if args.input_dataset is not None else "",
+        dataset_name=args.input_dataset or "",
         model_name=args.model,
         input_filename=(
             Path(args.input_file) if args.input_file is not None else Path("")

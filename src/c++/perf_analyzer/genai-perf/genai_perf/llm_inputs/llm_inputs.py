@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import os
 import random
 from copy import deepcopy
 from enum import Enum, auto
@@ -331,7 +330,7 @@ class LlmInputs:
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
-        if not os.path.exists(input_filename):
+        if not input_filename.exists():
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
 
     @classmethod

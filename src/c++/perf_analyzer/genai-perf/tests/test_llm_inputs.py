@@ -16,6 +16,7 @@ import json
 import os
 import random
 import statistics
+from pathlib import Path
 
 import pytest
 from genai_perf import tokenizer
@@ -585,4 +586,4 @@ class TestLlmInputs:
 
     def test_get_input_file_without_file_existing(self):
         with pytest.raises(FileNotFoundError):
-            LlmInputs._get_input_dataset_from_file("prompt.txt")
+            LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
