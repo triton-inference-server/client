@@ -477,16 +477,15 @@ def profile_handler(args, extra_args):
 
 
 def compare_handler(args: argparse.Namespace):
-    # TMA-1893: parse yaml file
+    """Handles `compare` subcommand workflow."""
+    if args.files:
+        PlotConfigParser.create_init_yaml_config(args.files, Path("."))
+        args.config = Path("config.yaml")
+
     config_parser = PlotConfigParser(args.config)
-    plot_configs = config_parser.parse()
+    plot_configs = config_parser.generate_configs()
 
-    # TODO: remove
-    from pprint import PrettyPrinter
-
-    pp = PrettyPrinter()
-    pp.pprint(plot_configs)
-
+    # TODO (harshini): plug-in configs to PlotManager
     # plot_manager = PlotManager(plot_configs)
     # plot_manager.generate_plots()
 

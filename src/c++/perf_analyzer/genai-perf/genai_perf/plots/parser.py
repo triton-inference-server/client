@@ -27,6 +27,8 @@
 
 from pathlib import Path
 
+import genai_perf.logging as logging
+
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
@@ -35,6 +37,8 @@ from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from genai_perf.utils import scale
 
+logger = logging.getLogger(__name__)
+
 
 class PlotConfigParser:
     """Parses YAML configuration file to generate PlotConfigs."""
@@ -42,39 +46,24 @@ class PlotConfigParser:
     def __init__(self, filename: Path) -> None:
         self._filename = filename
 
-    def parse(self) -> list[PlotConfig]:
+    def generate_configs(self) -> list[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
         with open(self._filename) as f:
             configs = yaml.safe_load(f)
 
         plot_configs = []
         for _, config in configs.items():
-            # Collect all profile run data
+            # Collect profile run data
             profile_data: list[ProfileRunData] = []
-            # for filepath in config["paths"]:
-            #    profile_filepath = Path(filepath)
-            #    data_parser = LLMProfileDataParser(
-            #        filename=profile_filepath,
-            #        service_kind="",
-            #        output_format="",
-            #        tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
-            #    )
-            #    load_info = data_parser.get_profile_load_info()
-            #    infer_mode, load_level = load_info[0]  # length is always 1
-            #    stats = data_parser.get_statistics(infer_mode, load_level)
-
-            #    if profile_filepath.parent.name:
-            #        run_name = profile_filepath.parent.name + "/" + profile_filepath.stem
-            #    else:
-            #        run_name = profile_filepath.stem
-            #
-            #    profile_data.append(
-            #        ProfileRunData(
-            #            name=run_name,
-            #            x_metric=stats.metrics.data[config["x_metric"]],
-            #            y_metric=stats.metrics.data[config["y_metric"]],
-            #        )
-            #    )
+            for filepath in config["paths"]:
+                stats = self._get_statistics(filepath)
+                profile_data.append(
+                    ProfileRunData(
+                        name=self._get_run_name(Path(filepath)),
+                        x_metric=self._get_metric(stats, config["x_metric"]),
+                        y_metric=self._get_metric(stats, config["y_metric"]),
+                    )
+                )
 
             plot_configs.append(
                 PlotConfig(
@@ -88,6 +77,50 @@ class PlotConfigParser:
             )
 
         return plot_configs
+
+    def _get_statistics(self, filepath: Path) -> Statistics:
+        """Extract a single profile run data."""
+        profile_filepath = Path(filepath)
+        data_parser = LLMProfileDataParser(
+            filename=profile_filepath,
+            tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
+        )
+        load_info = data_parser.get_profile_load_info()
+
+        # TMA-1904: Remove single experiment assumption
+        assert len(load_info) == 1
+        infer_mode, load_level = load_info[0]
+        stats = data_parser.get_statistics(infer_mode, load_level)
+        return stats
+
+    def _get_run_name(self, filepath: Path) -> str:
+        """Construct a profile run name."""
+        if filepath.parent.name:
+            return filepath.parent.name + "/" + filepath.stem
+        return filepath.stem
+
+    def _get_metric(self, stats: Statistics, name: str) -> list[int | float]:
+        if not name:  # no metric
+            return []
+        elif name == "inter_token_latencies":
+            # Flatten ITL since they are grouped by request
+            itl_flatten = []
+            for request_itls in stats.metrics.data[name]:
+                itl_flatten += request_itls
+            return [scale(x, (1 / 1e9)) for x in itl_flatten]  # ns to ms
+        elif name == "token_positions":
+            token_positions: list[int | float] = []
+            for request_itls in stats.metrics.data["inter_token_latencies"]:
+                token_positions += list(range(1, len(request_itls) + 1))
+            return token_positions
+        elif name == "time_to_first_tokens":
+            ttfts = stats.metrics.data[name]
+            return [scale(x, (1 / 1e9)) for x in ttfts]  # ns to ms
+        elif name == "request_latencies":
+            req_latencies = stats.metrics.data[name]
+            return [scale(x, (1 / 1e9)) for x in req_latencies]  # ns to ms
+
+        return stats.metrics.data[name]
 
     def _get_plot_type(self, plot_type: str) -> PlotType:
         """Returns the plot type as PlotType object."""
@@ -104,91 +137,61 @@ class PlotConfigParser:
             )
 
     @staticmethod
-    def create_default_configs(stats: Statistics, filename: Path) -> list[PlotConfig]:
-        """Creates a set of default plot configurations for single run plots."""
-        ttfts = stats.metrics.data["time_to_first_tokens"]
-        req_latencies = stats.metrics.data["request_latencies"]
+    def create_init_yaml_config(filenames: list[Path], output_dir: Path) -> None:
+        config_str = f"""
+        plot1:
+          title: Time to First Token
+          x_metric: ""
+          y_metric: time_to_first_tokens
+          x_label: Time to First Token (seconds)
+          y_label: ""
+          type: box
+          paths: {[str(f) for f in filenames]}
+          output: {output_dir}
 
-        itls = []
-        token_positions = []
-        for itls_per_req in stats.metrics.data["inter_token_latencies"]:
-            itls += itls_per_req
-            token_positions += list(range(1, len(itls_per_req) + 1))
+        plot2:
+          title: Request Latency
+          x_metric: ""
+          y_metric: request_latencies
+          x_label: Request Latency (seconds)
+          y_label: ""
+          type: box
+          paths: {[str(f) for f in filenames]}
+          output: {output_dir}
 
-        # scale to seconds
-        scaled_ttfts = [scale(x, (1 / 1e9)) for x in ttfts]
-        scaled_req_latencies = [scale(x, (1 / 1e9)) for x in req_latencies]
-        scaled_itls = [scale(x, (1 / 1e9)) for x in itls]
+        plot3:
+          title: Distribution of Input Tokens to Generated Tokens
+          x_metric: num_input_tokens
+          y_metric: num_output_tokens
+          x_label: Number of Input Tokens Per Request
+          y_label: Number of Generated Tokens Per Request
+          type: heatmap
+          paths: {[str(f) for f in filenames]}
+          output: {output_dir}
 
-        return [
-            PlotConfig(
-                title="Time to First Token",
-                data=[
-                    ProfileRunData(
-                        name=filename.stem,
-                        x_metric=[],
-                        y_metric=scaled_ttfts,
-                    )
-                ],
-                x_label="Time to First Token (seconds)",
-                y_label="",
-                type=PlotType.BOX,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="Request Latency",
-                data=[
-                    ProfileRunData(
-                        name=filename.stem,
-                        x_metric=[],
-                        y_metric=scaled_req_latencies,
-                    )
-                ],
-                x_label="Request Latency (seconds)",
-                y_label="",
-                type=PlotType.BOX,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="Distribution of Input Tokens to Generated Tokens",
-                data=[
-                    ProfileRunData(
-                        name=filename.stem,
-                        x_metric=stats.metrics.data["num_input_tokens"],
-                        y_metric=stats.metrics.data["num_output_tokens"],
-                    )
-                ],
-                x_label="Number of Input Tokens Per Request",
-                y_label="Number of Generated Tokens Per Request",
-                type=PlotType.HEATMAP,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="Time to First Token vs Number of Input Tokens",
-                data=[
-                    ProfileRunData(
-                        name=filename.stem,
-                        x_metric=stats.metrics.data["num_input_tokens"],
-                        y_metric=scaled_ttfts,
-                    )
-                ],
-                x_label="Number of Input Tokens",
-                y_label="Time to First Token (seconds)",
-                type=PlotType.SCATTER,
-                output=Path(""),
-            ),
-            PlotConfig(
-                title="Token-to-Token Latency vs Output Token Position",
-                data=[
-                    ProfileRunData(
-                        name=filename.stem,
-                        x_metric=token_positions,
-                        y_metric=scaled_itls,
-                    )
-                ],
-                x_label="Output Token Position",
-                y_label="Token-to-Token Latency (seconds)",
-                type=PlotType.SCATTER,
-                output=Path(""),
-            ),
-        ]
+        plot4:
+          title: Time to First Token vs Number of Input Tokens
+          x_metric: num_input_tokens
+          y_metric: time_to_first_tokens
+          x_label: Number of Input Tokens
+          y_label: Time to First Token (seconds)
+          type: scatter
+          paths: {[str(f) for f in filenames]}
+          output: {output_dir}
+
+        plot5:
+          title: Token-to-Token Latency vs Output Token Position
+          x_metric: token_positions
+          y_metric: inter_token_latencies
+          x_label: Output Token Position
+          y_label: Token-to-Token Latency (seconds)
+          type: scatter
+          paths: {[str(f) for f in filenames]}
+          output: {output_dir}
+        """
+
+        config = yaml.safe_load(config_str)
+        with open(output_dir / "config.yaml", "w") as f:
+            yaml.dump(config, f, sort_keys=False)
+
+        logger.info("Created an initial YAML configuration file @ config.yaml")

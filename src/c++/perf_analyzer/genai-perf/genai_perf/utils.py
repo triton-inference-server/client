@@ -34,8 +34,8 @@ def remove_sse_prefix(msg: str) -> str:
     return msg.removeprefix("data: ").strip()
 
 
-def load_json(filename: Path) -> Dict[str, Any]:
-    with open(filename, encoding="utf-8", errors="ignore") as f:
+def load_json(filepath: Path) -> Dict[str, Any]:
+    with filepath.open(errors="ignore") as f:
         return json.load(f)
 
 
