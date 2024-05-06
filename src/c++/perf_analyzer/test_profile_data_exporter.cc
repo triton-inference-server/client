@@ -253,75 +253,46 @@ TEST_CASE("profile_data_exporter: AddServiceKind")
   MockProfileDataExporter exporter{};
   exporter.ClearDocument();
 
+  cb::BackendKind service_kind;
+  std::string json{""};
+
   SUBCASE("Backend kind: TRITON")
   {
-    cb::BackendKind service_kind = cb::BackendKind::TRITON;
-    exporter.AddServiceKind(service_kind);
-
-    std::string json{R"({ "service_kind": "triton" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_kind{expected_document["service_kind"]};
-    const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
-    CHECK(actual_kind == expected_kind);
+    service_kind = cb::BackendKind::TRITON;
+    json = R"({ "service_kind": "triton" })";
   }
 
   SUBCASE("Backend kind: TENSORFLOW_SERVING")
   {
-    cb::BackendKind service_kind = cb::BackendKind::TENSORFLOW_SERVING;
-    exporter.AddServiceKind(service_kind);
-
-    std::string json{R"({ "service_kind": "tfserving" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_kind{expected_document["service_kind"]};
-    const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
-    CHECK(actual_kind == expected_kind);
+    service_kind = cb::BackendKind::TENSORFLOW_SERVING;
+    json = R"({ "service_kind": "tfserving" })";
   }
 
   SUBCASE("Backend kind: TORCHSERVE")
   {
-    cb::BackendKind service_kind = cb::BackendKind::TORCHSERVE;
-    exporter.AddServiceKind(service_kind);
-
-    std::string json{R"({ "service_kind": "torchserve" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_kind{expected_document["service_kind"]};
-    const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
-    CHECK(actual_kind == expected_kind);
+    service_kind = cb::BackendKind::TORCHSERVE;
+    json = R"({ "service_kind": "torchserve" })";
   }
 
   SUBCASE("Backend kind: TRITON_C_API")
   {
-    cb::BackendKind service_kind = cb::BackendKind::TRITON_C_API;
-    exporter.AddServiceKind(service_kind);
-
-    std::string json{R"({ "service_kind": "triton_c_api" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_kind{expected_document["service_kind"]};
-    const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
-    CHECK(actual_kind == expected_kind);
+    service_kind = cb::BackendKind::TRITON_C_API;
+    json = R"({ "service_kind": "triton_c_api" })";
   }
 
   SUBCASE("Backend kind: OPENAI")
   {
-    cb::BackendKind service_kind = cb::BackendKind::OPENAI;
-    exporter.AddServiceKind(service_kind);
-
-    std::string json{R"({ "service_kind": "openai" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_kind{expected_document["service_kind"]};
-    const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
-    CHECK(actual_kind == expected_kind);
+    service_kind = cb::BackendKind::OPENAI;
+    json = R"({ "service_kind": "openai" })";
   }
+
+  exporter.AddServiceKind(service_kind);
+  rapidjson::Document expected_document;
+  expected_document.Parse(json.c_str());
+
+  const rapidjson::Value& expected_kind{expected_document["service_kind"]};
+  const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
+  CHECK(actual_kind == expected_kind);
 }
 
 TEST_CASE("profile_data_exporter: AddEndpoint")
@@ -329,33 +300,28 @@ TEST_CASE("profile_data_exporter: AddEndpoint")
   MockProfileDataExporter exporter{};
   exporter.ClearDocument();
 
+  std::string endpoint{""};
+  std::string json{""};
+
   SUBCASE("Endpoint: OpenAI Chat Completions")
   {
-    std::string endpoint{"v1/chat/completions"};
-    exporter.AddEndpoint(endpoint);
-
-    std::string json{R"({ "endpoint": "v1/chat/completions" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_endpoint{expected_document["endpoint"]};
-    const rapidjson::Value& actual_endpoint{exporter.document_["endpoint"]};
-    CHECK(actual_endpoint == expected_endpoint);
+    endpoint = "v1/chat/completions";
+    json = R"({ "endpoint": "v1/chat/completions" })";
   }
 
   SUBCASE("Endpoint: OpenAI Completions")
   {
-    std::string endpoint{"v1/completions"};
-    exporter.AddEndpoint(endpoint);
-
-    std::string json{R"({ "endpoint": "v1/completions" })"};
-    rapidjson::Document expected_document;
-    expected_document.Parse(json.c_str());
-
-    const rapidjson::Value& expected_endpoint{expected_document["endpoint"]};
-    const rapidjson::Value& actual_endpoint{exporter.document_["endpoint"]};
-    CHECK(actual_endpoint == expected_endpoint);
+    endpoint = "v1/completions";
+    json = R"({ "endpoint": "v1/completions" })";
   }
+
+  exporter.AddEndpoint(endpoint);
+  rapidjson::Document expected_document;
+  expected_document.Parse(json.c_str());
+
+  const rapidjson::Value& expected_endpoint{expected_document["endpoint"]};
+  const rapidjson::Value& actual_endpoint{exporter.document_["endpoint"]};
+  CHECK(actual_endpoint == expected_endpoint);
 }
 
 }}  // namespace triton::perfanalyzer
