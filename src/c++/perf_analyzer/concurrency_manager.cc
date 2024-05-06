@@ -154,8 +154,6 @@ ConcurrencyManager::ReconfigThreads(
 
       size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
       threads_stat_[i]->max_requests_ = thread_num_reqs;
-      std::cout << "TKG -- thread " << i << " is getting max reqs of "
-                << thread_num_reqs << std::endl;
 
       seq_stat_index_offset += concurrency;
 
