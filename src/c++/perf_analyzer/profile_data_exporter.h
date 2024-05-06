@@ -49,9 +49,12 @@ class ProfileDataExporter {
   /// @param raw_version String containing the version number for the json
   /// output
   /// @param file_path File path to export profile data to.
+  /// @param service_kind Service that Perf Analyzer generates load for.
+  /// @param endpoint Endpoint to send the requests.
   void Export(
       const std::vector<Experiment>& raw_experiments, std::string& raw_version,
-      std::string& file_path);
+      std::string& file_path, cb::BackendKind& service_kind,
+      std::string& endpoint);
 
  private:
   ProfileDataExporter() = default;
@@ -60,8 +63,11 @@ class ProfileDataExporter {
   /// analyzer
   /// @param raw_version String containing the version number for the json
   /// output
+  /// @param service_kind Service that Perf Analyzer generates load for.
+  /// @param endpoint Endpoint to send the requests.
   virtual void ConvertToJson(
-      const std::vector<Experiment>& raw_experiments, std::string& raw_version);
+      const std::vector<Experiment>& raw_experiments, std::string& raw_version,
+      cb::BackendKind& service_kind, std::string& endpoint);
   virtual void OutputToFile(std::string& file_path);
   virtual void AddExperiment(
       rapidjson::Value& entry, rapidjson::Value& experiment,
@@ -83,6 +89,8 @@ class ProfileDataExporter {
       rapidjson::Value& entry, rapidjson::Value& window_boundaries,
       const Experiment& raw_experiment);
   void AddVersion(std::string& raw_version);
+  void AddServiceKind(cb::BackendKind& service_kind);
+  void AddEndpoint(std::string& endpoint);
   void ClearDocument();
 
   rapidjson::Document document_{};
