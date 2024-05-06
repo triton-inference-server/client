@@ -35,7 +35,7 @@ import yaml  # type: ignore
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
-from genai_perf.utils import scale
+from genai_perf.utils import load_yaml, scale
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,7 @@ class PlotConfigParser:
 
     def generate_configs(self) -> list[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
-        with open(self._filename) as f:
-            configs = yaml.safe_load(f)
+        configs = load_yaml(self._filename)
 
         plot_configs = []
         for _, config in configs.items():
