@@ -34,13 +34,15 @@ class NaggyMockProfileDataExporter : public ProfileDataExporter {
  public:
   NaggyMockProfileDataExporter()
   {
-    ON_CALL(*this, ConvertToJson(testing::_, testing::_))
+    ON_CALL(
+        *this, ConvertToJson(testing::_, testing::_, testing::_, testing::_))
         .WillByDefault(
             [this](
                 const std::vector<Experiment>& raw_experiments,
-                std::string& raw_version) -> void {
+                std::string& raw_version, cb::BackendKind& service_kind,
+                std::string& endpoint) -> void {
               return this->ProfileDataExporter::ConvertToJson(
-                  raw_experiments, raw_version);
+                  raw_experiments, raw_version, service_kind, endpoint);
             });
 
     ON_CALL(*this, OutputToFile(testing::_))
@@ -56,15 +58,34 @@ class NaggyMockProfileDataExporter : public ProfileDataExporter {
               this->ProfileDataExporter::AddExperiment(
                   entry, experiment, raw_experiment);
             });
+
+    ON_CALL(*this, AddServiceKind(testing::_))
+        .WillByDefault([this](cb::BackendKind& service_kind) -> void {
+          this->ProfileDataExporter::AddServiceKind(service_kind);
+        });
+
+    ON_CALL(*this, AddEndpoint(testing::_))
+        .WillByDefault([this](std::string& endpoint) -> void {
+          this->ProfileDataExporter::AddEndpoint(endpoint);
+        });
+
+    ON_CALL(*this, ClearDocument()).WillByDefault([this]() -> void {
+      this->ProfileDataExporter::ClearDocument();
+    });
   }
 
   MOCK_METHOD(
-      void, ConvertToJson, (const std::vector<Experiment>&, std::string&),
+      void, ConvertToJson,
+      (const std::vector<Experiment>&, std::string&, cb::BackendKind&,
+       std::string&),
       (override));
   MOCK_METHOD(
       void, AddExperiment,
       (rapidjson::Value&, rapidjson::Value&, const Experiment&), (override));
   MOCK_METHOD(void, OutputToFile, (std::string&), (override));
+  MOCK_METHOD(void, AddServiceKind, (cb::BackendKind&));
+  MOCK_METHOD(void, AddEndpoint, (std::string&));
+  MOCK_METHOD(void, ClearDocument, ());
 
   rapidjson::Document& document_{ProfileDataExporter::document_};
 };
