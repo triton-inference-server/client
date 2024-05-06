@@ -137,6 +137,7 @@ CLParser::Usage(const std::string& msg)
                "profiling>"
             << std::endl;
   std::cerr << "\t--percentile <percentile>" << std::endl;
+  std::cerr << "\t--fixed-num-requests <number of requests>" << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-t <number of concurrent requests>" << std::endl;
   std::cerr << "\t-c <maximum concurrency>" << std::endl;
@@ -461,6 +462,13 @@ CLParser::Usage(const std::string& msg)
              "latency will be used to determine stability. The percentile will "
              "also be reported in the results. The default is -1 indicating "
              "that the average latency is used to determine stability",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             " --fixed-num-requests: Specifies a fixed number of requests to "
+             "use for measurement. The default is 0, which means that there is "
+             "no fixed number and the measurement will proceed using windows.",
              18)
       << std::endl;
   std::cerr << FormatMessage(
@@ -879,6 +887,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"request-period", required_argument, 0, 59},
       {"request-parameter", required_argument, 0, 60},
       {"endpoint", required_argument, 0, 61},
+      {"fixed-num-requests", required_argument, 0, 62},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1225,9 +1234,6 @@ CLParser::ParseCommandLine(int argc, char** argv)
           std::string request_count{optarg};
           if (std::stoi(request_count) > 0) {
             params_->measurement_request_count = std::stoull(request_count);
-
-            // FIXME TKG -- need a different arg
-            params_->num_requests = params_->measurement_request_count;
           } else {
             Usage(
                 "Failed to parse --measurement-request-count. The value must "
@@ -1617,6 +1623,14 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->endpoint = optarg;
           break;
         }
+        case 62: {
+          if (std::stoi(optarg) < 0) {
+            Usage(
+                "Failed to parse --fixed-num-requests. The value must be > 0.");
+          }
+          params_->fixed_num_requests = std::stoi(optarg);
+          break;
+        }
         case 'v':
           params_->extra_verbose = params_->verbose;
           params_->verbose = true;
@@ -1707,6 +1721,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
   if (params_->using_custom_intervals) {
     // Will be using user-provided time intervals, hence no control variable.
     params_->search_mode = SearchMode::NONE;
+  }
+
+  // Override measurement mode to be count windows with a window size of the
+  // requested count
+  if (params_->fixed_num_requests) {
+    params_->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+    params_->measurement_request_count = params_->fixed_num_requests;
   }
 }
 

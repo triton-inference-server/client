@@ -384,7 +384,7 @@ PerfAnalyzer::Profile()
     err = profiler_->Profile<size_t>(
         params_->concurrency_range.start, params_->concurrency_range.end,
         params_->concurrency_range.step, params_->search_mode,
-        params_->num_requests, perf_statuses_);
+        params_->fixed_num_requests, perf_statuses_);
   } else if (params_->is_using_periodic_concurrency_mode) {
     err = profiler_->ProfilePeriodicConcurrencyMode();
   } else {
@@ -392,7 +392,7 @@ PerfAnalyzer::Profile()
         params_->request_rate_range[pa::SEARCH_RANGE::kSTART],
         params_->request_rate_range[pa::SEARCH_RANGE::kEND],
         params_->request_rate_range[pa::SEARCH_RANGE::kSTEP],
-        params_->search_mode, params_->num_requests, perf_statuses_);
+        params_->search_mode, params_->fixed_num_requests, perf_statuses_);
   }
 
   params_->mpi_driver->MPIBarrierWorld();
