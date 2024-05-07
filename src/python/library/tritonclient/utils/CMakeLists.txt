@@ -1,4 +1,4 @@
-# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,26 +24,34 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# FIXME: Windows client currently does not support GPU tensors.
+# For simplicity, we will override this option here.
+if(WIN32 AND TRITON_ENABLE_GPU)
+  message(FATAL_ERROR  "GPU shared memory is not currently supported by the Windows python client.")
+  set(TRITON_ENABLE_GPU OFF CACHE BOOL "GPU disabled" FORCE)
+endif()
+
 configure_file(__init__.py __init__.py COPYONLY)
 configure_file(_dlpack.py _dlpack.py COPYONLY)
 configure_file(_shared_memory_tensor.py _shared_memory_tensor.py COPYONLY)
 
-if(NOT WIN32)
-  file(COPY shared_memory DESTINATION .)
+file(COPY shared_memory DESTINATION .)
+#
+# libcshm.so / cshm.dll
+#
+add_library(cshm SHARED shared_memory/shared_memory.cc)
+if(${TRITON_ENABLE_GPU})
+  target_compile_definitions(cshm PUBLIC TRITON_ENABLE_GPU=1)
+  target_link_libraries(cshm PUBLIC CUDA::cudart)
+endif() # TRITON_ENABLE_GPU
 
-  #
-  # libcshm.so
-  #
-  add_library(cshm SHARED shared_memory/shared_memory.cc)
-  if(${TRITON_ENABLE_GPU})
-    target_compile_definitions(cshm PUBLIC TRITON_ENABLE_GPU=1)
-    target_link_libraries(cshm PUBLIC CUDA::cudart)
-  endif() # TRITON_ENABLE_GPU
+if(NOT WIN32)
   target_link_libraries(cshm PRIVATE rt)
-endif() # WIN32
+endif() # NOT WIN32
 
-if(NOT WIN32)
-  configure_file(shared_memory/__init__.py shared_memory/__init__.py COPYONLY)
+configure_file(shared_memory/__init__.py shared_memory/__init__.py COPYONLY)
+
+if(${TRITON_ENABLE_GPU})
   configure_file(cuda_shared_memory/__init__.py cuda_shared_memory/__init__.py COPYONLY)
   configure_file(cuda_shared_memory/_utils.py cuda_shared_memory/_utils.py COPYONLY)
-endif() # NOT WIN32
+endif() # TRITON_ENABLE_GPU

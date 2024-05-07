@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,9 +38,7 @@ if(${TRITON_ENABLE_PYTHON_HTTP})
   file(COPY tritonhttpclient DESTINATION .)
 endif() # TRITON_ENABLE_PYTHON_HTTP
 file(COPY tritonclientutils DESTINATION .)
-if (NOT WIN32)
-  file(COPY tritonshmutils DESTINATION .)
-endif() # NOT WIN32
+file(COPY tritonshmutils DESTINATION .)
 ####################################
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION ${TRITON_VERSION})
@@ -91,9 +89,37 @@ add_custom_target(
 )
 
 #
-# Linux specific Wheel file. Compatible with x86, x64 and aarch64
+# Windows-specific Wheel file.
 #
-if (NOT WIN32)
+if(WIN32)
+  set(WINDOWS_WHEEL_DEPENDS
+        cshm
+        ${WHEEL_DEPENDS}
+  )
+  if (${TRITON_ENABLE_PERF_ANALYZER})
+    set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
+  endif()
+  set(windows_wheel_stamp_file "windows_stamp.whl")
+  add_custom_command(
+    OUTPUT "${windows_wheel_stamp_file}"
+    COMMAND python3
+    ARGS
+      "${CMAKE_CURRENT_SOURCE_DIR}/build_wheel.py"
+      --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/windows"
+      --windows
+      ${perf_analyzer_arg}
+    DEPENDS ${WINDOWS_WHEEL_DEPENDS}
+  )
+
+  add_custom_target(
+    windows-client-wheel ALL
+    DEPENDS
+      "${windows_wheel_stamp_file}"
+  )
+else()
+  #
+  # Linux specific Wheel file. Compatible with x86, x64 and aarch64
+  #
   # Can generate linux specific wheel file on linux systems only.
   set(LINUX_WHEEL_DEPENDS
         cshm
@@ -102,7 +128,10 @@ if (NOT WIN32)
 
   if (${TRITON_ENABLE_PERF_ANALYZER})
     set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
-  endif()
+  endif() # TRITON_ENABLE_PERF_ANALYZER
+  if (${TRITON_ENABLE_GPU})
+    set(gpu_arg --include-gpu-libs)
+  endif() # TRITON_ENABLE_GPU
   set(linux_wheel_stamp_file "linux_stamp.whl")
   add_custom_command(
     OUTPUT "${linux_wheel_stamp_file}"
@@ -112,6 +141,7 @@ if (NOT WIN32)
       --dest-dir "${CMAKE_CURRENT_BINARY_DIR}/linux"
       --linux
       ${perf_analyzer_arg}
+      ${gpu_arg}
     DEPENDS ${LINUX_WHEEL_DEPENDS}
   )
 
@@ -120,7 +150,7 @@ if (NOT WIN32)
     DEPENDS
       "${linux_wheel_stamp_file}"
   )
-endif() # NOT WIN32
+endif() # WIN32
 
 if(${TRITON_ENABLE_PYTHON_GRPC})
   add_dependencies(
@@ -128,12 +158,17 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
     grpc-service-py-library proto-py-library
   )
 
-  if (NOT WIN32)
+  if (WIN32)
+    add_dependencies(
+      windows-client-wheel
+      grpc-service-py-library proto-py-library
+    )
+  else()
     add_dependencies(
       linux-client-wheel
       grpc-service-py-library proto-py-library
-  )
-  endif() # NOT WIN32
+    )
+  endif() # WIN32
 
   file(
     GLOB generated-py
@@ -147,14 +182,22 @@ if(${TRITON_ENABLE_PYTHON_GRPC})
   )
 endif() # TRITON_ENABLE_PYTHON_GRPC
 
+# Generic Wheel
+set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/generic")
 install(
-  CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/generic/triton*.whl\")"
+  CODE "file(GLOB _Wheel \"${WHEEL_DIR}/triton*.whl\")"
   CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
 )
 
-if (NOT WIN32)
-  install(
-    CODE "file(GLOB _Wheel \"${CMAKE_CURRENT_BINARY_DIR}/linux/triton*.whl\")"
-    CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
-  )
-endif() # NOT WIN32
+# Platform-specific wheels
+if(WIN32)
+  set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/windows")
+else()
+  set(WHEEL_DIR "${CMAKE_CURRENT_BINARY_DIR}/linux")
+endif() # WIN32
+
+install(
+  CODE "file(GLOB _Wheel \"${WHEEL_DIR}/triton*.whl\")"
+  CODE "file(INSTALL \${_Wheel} DESTINATION \"${CMAKE_INSTALL_PREFIX}/python\")"
+)
+

@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2024, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,26 +25,27 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
-#include <fcntl.h>
-#include <stddef.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifdef _WIN32
+#define TRITONCLIENT_DECLSPEC __declspec(dllexport)
+#else
+#define TRITONCLIENT_DECLSPEC
+#endif
+
 //==============================================================================
 // SharedMemoryControlContext
-int SharedMemoryRegionCreate(
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionCreate(
     const char* triton_shm_name, const char* shm_key, size_t byte_size,
     void** shm_handle);
-int SharedMemoryRegionSet(
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionSet(
     void* shm_handle, size_t offset, size_t byte_size, const void* data);
-int GetSharedMemoryHandleInfo(
-    void* shm_handle, char** shm_addr, const char** shm_key, int* shm_fd,
+TRITONCLIENT_DECLSPEC int GetSharedMemoryHandleInfo(
+    void* shm_handle, char** shm_addr, const char** shm_key, void* shm_file,
     size_t* offset, size_t* byte_size);
-int SharedMemoryRegionDestroy(void* shm_handle);
+TRITONCLIENT_DECLSPEC int SharedMemoryRegionDestroy(void* shm_handle);
 
 //==============================================================================
 

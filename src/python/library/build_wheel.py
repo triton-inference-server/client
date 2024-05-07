@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 import argparse
 import os
 import pathlib
+import platform
 import re
 import shutil
 import subprocess
@@ -77,11 +78,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dest-dir", type=str, required=True, help="Destination directory."
     )
-    parser.add_argument(
+    platform_group = parser.add_mutually_exclusive_group()
+    platform_group.add_argument(
         "--linux",
         action="store_true",
         required=False,
         help="Include linux specific artifacts.",
+    )
+    platform_group.add_argument(
+        "--windows",
+        action="store_true",
+        required=False,
+        help="Include windows specific artifacts.",
+    )
+    parser.add_argument(
+        "--include-gpu-libs",
+        action="store_true",
+        required=False,
+        help="Include gpu specific libraries",
     )
     parser.add_argument(
         "--perf-analyzer",
@@ -118,7 +132,7 @@ if __name__ == "__main__":
         cpdir("tritonhttpclient", os.path.join(FLAGS.whl_dir, "tritonhttpclient"))
     if os.path.isdir("tritongrpcclient"):
         cpdir("tritongrpcclient", os.path.join(FLAGS.whl_dir, "tritongrpcclient"))
-    if FLAGS.linux:
+    if FLAGS.linux or FLAGS.windows:
         if os.path.isdir("tritonshmutils"):
             cpdir("tritonshmutils", os.path.join(FLAGS.whl_dir, "tritonshmutils"))
 
@@ -178,10 +192,11 @@ if __name__ == "__main__":
             "tritonclient/utils/libcshm.so",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/libcshm.so"),
         )
-        cpdir(
-            "tritonclient/utils/cuda_shared_memory",
-            os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
-        )
+        if FLAGS.include_gpu_libs:
+            cpdir(
+                "tritonclient/utils/cuda_shared_memory",
+                os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+            )
 
         # Copy the pre-compiled perf_analyzer binary
         if FLAGS.perf_analyzer is not None:
@@ -193,6 +208,22 @@ if __name__ == "__main__":
             # Create a symbolic link for backwards compatibility
             if not os.path.exists(os.path.join(FLAGS.whl_dir, "perf_client")):
                 os.symlink("perf_analyzer", os.path.join(FLAGS.whl_dir, "perf_client"))
+
+    if FLAGS.windows:
+        cpdir(
+            "tritonclient/utils/shared_memory",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
+        )
+        shutil.copyfile(
+            "tritonclient/utils/Release/cshm.dll",
+            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/cshm.dll"),
+        )
+        # FIXME: Enable when Windows supports GPU tensors DLIS-4169
+        # if FLAGS.include_gpu_libs:
+        #     cpdir(
+        #         "tritonclient/utils/cuda_shared_memory",
+        #         os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
+        #     )
 
     shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
     shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))
@@ -207,6 +238,9 @@ if __name__ == "__main__":
             platform_name = "manylinux2014_ppc64le"
         else:
             platform_name = "manylinux1_x86_64"
+        args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
+    elif FLAGS.windows and platform.uname().machine == "AMD64":
+        platform_name = "win_amd64"
         args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
     else:
         args = ["python3", "setup.py", "bdist_wheel"]

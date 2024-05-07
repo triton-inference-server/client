@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2024, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -30,15 +30,29 @@
 #include <cuda_runtime_api.h>
 #endif  // TRITON_ENABLE_GPU
 
+#ifdef _WIN32
+#include <windows.h>
+#endif  // _WIN32
+#include <memory>
+
+struct ShmFile {
+#ifdef _WIN32
+  HANDLE backing_file_handle_;
+  HANDLE shm_mapping_handle_;
+  ShmFile(HANDLE backing_file_handle, HANDLE shm_mapping_handle)
+      : backing_file_handle_(backing_file_handle),
+        shm_mapping_handle_(shm_mapping_handle){};
+#else
+  int shm_fd_;
+  ShmFile(int shm_fd) : shm_fd_(shm_fd){};
+#endif  // _WIN32
+};
+
 struct SharedMemoryHandle {
   std::string triton_shm_name_;
   std::string shm_key_;
-#ifdef TRITON_ENABLE_GPU
-  cudaIpcMemHandle_t cuda_shm_handle_;
-  int device_id_;
-#endif  // TRITON_ENABLE_GPU
   void* base_addr_;
-  int shm_fd_;
+  std::unique_ptr<ShmFile> platform_handle_;
   size_t offset_;
   size_t byte_size_;
 };
