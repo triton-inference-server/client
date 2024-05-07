@@ -27,11 +27,12 @@
 
 
 import copy
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
-from genai_perf.plots.config import ProfileRunData
+from genai_perf.plots.plot_config import ProfileRunData
 from genai_perf.utils import scale
 from plotly.graph_objects import Figure
 
@@ -52,6 +53,7 @@ class BoxPlot(BasePlot):
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
+        output_dir: Path = Path(""),
     ) -> None:
         fig = go.Figure()
         for pd in self._profile_data:
@@ -76,8 +78,8 @@ class BoxPlot(BasePlot):
         # self._add_annotations(fig_jpeg, y_metric)
         # self._generate_parquet(df, filename_root)
 
-        self._generate_graph_file(fig, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig_jpeg, filename_root + ".jpeg", graph_title)
+        self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig_jpeg, output_dir, filename_root + ".jpeg", graph_title)
 
     # def _add_annotations(self, fig: Figure, y_metric: str) -> None:
     #    """

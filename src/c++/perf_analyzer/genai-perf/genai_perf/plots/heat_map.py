@@ -25,10 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from pathlib import Path
+
 import pandas as pd
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
-from genai_perf.plots.config import ProfileRunData
+from genai_perf.plots.plot_config import ProfileRunData
 from plotly.subplots import make_subplots
 
 
@@ -48,6 +50,7 @@ class HeatMap(BasePlot):
         x_label: str = "",
         y_label: str = "",
         filename_root: str = "",
+        output_dir: Path = Path(""),
     ) -> None:
         N = len(self._profile_data)
         n_rows = (N + 2) // 3
@@ -71,5 +74,5 @@ class HeatMap(BasePlot):
         )
 
         # self._generate_parquet(df, filename_root)
-        self._generate_graph_file(fig, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)
+        self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg", graph_title)

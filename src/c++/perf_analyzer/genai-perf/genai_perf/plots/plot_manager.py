@@ -31,7 +31,7 @@ from genai_perf.plots.box_plot import BoxPlot
 from genai_perf.plots.heat_map import HeatMap
 from genai_perf.plots.scatter_plot import ScatterPlot
 from genai_perf.utils import scale
-from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
+from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
 
 
 class PlotManager:
@@ -46,14 +46,15 @@ class PlotManager:
         filename = "_".join(title.lower().split())
         return filename
 
-    def create_default_plots(self) -> None:
+    def generate_plots(self) -> None:
         for plot_config in self._plot_configs:
             if plot_config.type == PlotType.BOX:
                 bp = BoxPlot(plot_config.data)
                 bp.create_plot(
                     graph_title=plot_config.title,
-                    filename_root=self._generate_filename(plot_config.title),
                     x_label=plot_config.x_label,
+                    filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
                 )
 
             elif plot_config.type == PlotType.HEATMAP:
@@ -65,6 +66,7 @@ class PlotManager:
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
                     filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
                 )
 
             elif plot_config.type == PlotType.SCATTER:
@@ -76,4 +78,5 @@ class PlotManager:
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
                     filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
                 )

@@ -146,8 +146,8 @@ def run():
         else:
             create_artifacts_dirs(args.generate_plots)
             tokenizer = get_tokenizer(args.tokenizer)
-            #generate_inputs(args, tokenizer)
-            #args.func(args, extra_args)
+            generate_inputs(args, tokenizer)
+            args.func(args, extra_args)
             data_parser = calculate_metrics(args, tokenizer)
             report_output(data_parser, args)
             finalize(args.profile_export_file)

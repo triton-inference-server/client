@@ -28,13 +28,14 @@
 
 from copy import deepcopy
 from typing import Dict
+from pathlib import Path
 
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
 from pandas import DataFrame
 from plotly.graph_objects import Figure
-from genai_perf.plots.config import ProfileRunData
+from genai_perf.plots.plot_config import ProfileRunData
 
 
 class BasePlot:
@@ -53,24 +54,26 @@ class BasePlot:
         x_label: str,
         y_label: str,
         filename_root: str,
+        output_dir: Path,
     ) -> None:
         """
         Create plot for specific graph type
         """
         raise NotImplementedError
 
-    def _generate_parquet(self, dataframe: DataFrame, file: str) -> None:
-        dataframe.to_parquet(
-            f"{DEFAULT_ARTIFACT_DIR}/data/{file}.gzip", compression="gzip"
-        )
+    def _generate_parquet(self, df: DataFrame, output_dir: Path, file: str) -> None:
+        filepath = output_dir / f"{file}.gzip"
+        df.to_parquet(filepath, compression="gzip")
 
-    def _generate_graph_file(self, fig: Figure, file: str, title: str) -> None:
+    def _generate_graph_file(self, fig: Figure, output_dir: Path, file: str, title: str) -> None:
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
-            fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
+            filepath = output_dir / f"{file}.jpeg"
+            fig.write_image(filepath)
         elif file.endswith("html"):
             print(f"Generating '{title}' html")
-            fig.write_html(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
+            filepath = output_dir / f"{file}.html"
+            fig.write_html(filepath)
         else:
             extension = file.split(".")[-1]
             raise GenAIPerfException(f"image file type {extension} is not supported")

@@ -141,7 +141,7 @@ class PlotConfigParser:
           title: Time to First Token
           x_metric: ""
           y_metric: time_to_first_tokens
-          x_label: Time to First Token (seconds)
+          x_label: Time to First Token (ms)
           y_label: ""
           type: box
           paths: {[str(f) for f in filenames]}
@@ -151,7 +151,7 @@ class PlotConfigParser:
           title: Request Latency
           x_metric: ""
           y_metric: request_latencies
-          x_label: Request Latency (seconds)
+          x_label: Request Latency (ms)
           y_label: ""
           type: box
           paths: {[str(f) for f in filenames]}
@@ -172,7 +172,7 @@ class PlotConfigParser:
           x_metric: num_input_tokens
           y_metric: time_to_first_tokens
           x_label: Number of Input Tokens
-          y_label: Time to First Token (seconds)
+          y_label: Time to First Token (ms)
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -182,7 +182,7 @@ class PlotConfigParser:
           x_metric: token_positions
           y_metric: inter_token_latencies
           x_label: Output Token Position
-          y_label: Token-to-Token Latency (seconds)
+          y_label: Token-to-Token Latency (ms)
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
