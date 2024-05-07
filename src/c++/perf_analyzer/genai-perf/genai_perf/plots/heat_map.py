@@ -72,6 +72,10 @@ class HeatMap(BasePlot):
                 "x": 0.5,
             },
         )
+        
+        # Save dataframe as parquet file
+        df = self._create_dataframe(x_label, y_label)
+        self._generate_parquet(df, output_dir, filename_root)
 
         # self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)

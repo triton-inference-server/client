@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import pandas as pd
 
 from copy import deepcopy
 from typing import Dict
@@ -33,7 +34,6 @@ from pathlib import Path
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_metrics import Statistics
-from pandas import DataFrame
 from plotly.graph_objects import Figure
 from genai_perf.plots.plot_config import ProfileRunData
 
@@ -61,18 +61,25 @@ class BasePlot:
         """
         raise NotImplementedError
 
-    def _generate_parquet(self, df: DataFrame, output_dir: Path, file: str) -> None:
+    def _create_dataframe(self, x_label: str, y_label: str) -> pd.DataFrame:
+        return pd.DataFrame({
+            x_label: [prd.x_metric for prd in self._profile_data],
+            y_label: [prd.y_metric for prd in self._profile_data],
+            "Run Name": [prd.name for prd in self._profile_data],
+        })
+
+    def _generate_parquet(self, df: pd.DataFrame, output_dir: Path, file: str) -> None:
         filepath = output_dir / f"{file}.gzip"
         df.to_parquet(filepath, compression="gzip")
 
     def _generate_graph_file(self, fig: Figure, output_dir: Path, file: str, title: str) -> None:
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
-            filepath = output_dir / f"{file}.jpeg"
+            filepath = output_dir / f"{file}"
             fig.write_image(filepath)
         elif file.endswith("html"):
             print(f"Generating '{title}' html")
-            filepath = output_dir / f"{file}.html"
+            filepath = output_dir / f"{file}"
             fig.write_html(filepath)
         else:
             extension = file.split(".")[-1]

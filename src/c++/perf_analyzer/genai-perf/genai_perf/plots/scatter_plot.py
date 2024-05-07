@@ -72,7 +72,9 @@ class ScatterPlot(BasePlot):
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")
 
-        # TODO: Generate Parquet
-        # self._generate_parquet(df, filename_root)
+        # Save dataframe as parquet file
+        df = self._create_dataframe(x_label, y_label)
+        self._generate_parquet(df, output_dir, filename_root)
+
         self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
         self._generate_graph_file(fig, output_dir, filename_root + ".jpeg", graph_title)
