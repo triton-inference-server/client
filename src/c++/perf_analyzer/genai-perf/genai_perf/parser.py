@@ -32,6 +32,8 @@ import genai_perf.logging as logging
 import genai_perf.utils as utils
 from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.plots.plot_config_parser import PlotConfigParser
+from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
@@ -488,8 +490,17 @@ def profile_handler(args, extra_args):
 
 
 def compare_handler(args: argparse.Namespace):
-    # TMA-1893: parse yaml file
-    pass
+    """Handles `compare` subcommand workflow."""
+    if args.files:
+        PlotConfigParser.create_init_yaml_config(args.files, Path("."))
+        args.config = Path("config.yaml")
+
+    config_parser = PlotConfigParser(args.config)
+    plot_configs = config_parser.generate_configs()
+
+    # TODO (harshini): plug-in configs to PlotManager
+    # plot_manager = PlotManager(plot_configs)
+    # plot_manager.generate_plots()
 
 
 ### Entrypoint ###
