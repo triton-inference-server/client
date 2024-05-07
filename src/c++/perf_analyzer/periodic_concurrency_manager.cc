@@ -65,8 +65,10 @@ void
 PeriodicConcurrencyManager::AddConcurrentRequest(size_t seq_stat_index_offset)
 {
   threads_stat_.emplace_back(std::make_shared<ThreadStat>());
-  threads_config_.emplace_back(std::make_shared<ThreadConfig>(
-      threads_config_.size(), 1, seq_stat_index_offset));
+  threads_config_.emplace_back(
+      std::make_shared<ThreadConfig>(threads_config_.size()));
+  threads_config_.back()->concurrency_ = 1;
+  threads_config_.back()->seq_stat_index_offset_ = seq_stat_index_offset;
   workers_.emplace_back(
       MakeWorker(threads_stat_.back(), threads_config_.back()));
   threads_.emplace_back(&IWorker::Infer, workers_.back());
