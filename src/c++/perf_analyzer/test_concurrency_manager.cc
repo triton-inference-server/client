@@ -60,7 +60,7 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
 
@@ -80,11 +80,10 @@ class TestConcurrencyManager : public TestLoadManagerBase,
 
 
   void TestReconfigThreads(
-      const size_t concurrent_request_count,
-      std::vector<ConcurrencyWorker::ThreadConfig>& expected_configs)
+      const size_t concurrent_request_count, const size_t num_requests,
+      std::vector<ThreadConfig>& expected_configs)
   {
-    // FIXME TKG! don't hardcode, and add new tests
-    ConcurrencyManager::ReconfigThreads(concurrent_request_count, 0);
+    ConcurrencyManager::ReconfigThreads(concurrent_request_count, num_requests);
 
     auto expected_size = expected_configs.size();
 
@@ -100,6 +99,9 @@ class TestConcurrencyManager : public TestLoadManagerBase,
       CHECK(
           threads_config_[i]->seq_stat_index_offset_ ==
           expected_configs[i].seq_stat_index_offset_);
+      CHECK(
+          threads_config_[i]->num_requests_ ==
+          expected_configs[i].num_requests_);
     }
   }
 
@@ -462,8 +464,8 @@ TEST_CASE("concurrency_free_ctx_ids")
   tcm.stats_->SetDelays({50, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5});
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
-      std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
   thread_config->concurrency_ = 4;
 
   std::shared_ptr<IWorker> worker{tcm.MakeWorker(thread_stat, thread_config)};
@@ -566,8 +568,8 @@ TEST_CASE("Concurrency - shared memory infer input calls")
           mip.mock_model_parser_, tcm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config{
-      std::make_shared<ConcurrencyWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
   thread_config->concurrency_ = 1;
 
   tcm.parser_ = mip.mock_model_parser_;
@@ -873,45 +875,66 @@ TEST_CASE(
         "configured properly"))
 {
   PerfAnalyzerParameters params{};
-  std::vector<ConcurrencyWorker::ThreadConfig> expected_config_values;
+  std::vector<ThreadConfig> expected_config_values;
   std::vector<size_t> expected_concurrencies;
   std::vector<size_t> expected_seq_stat_index_offsets;
+  std::vector<size_t> expected_num_requests;
+
   size_t target_concurrency = 0;
+  size_t target_num_requests = 0;
 
   SUBCASE("normal")
   {
     params.max_threads = 10;
     target_concurrency = 5;
+    target_num_requests = 15;
 
     expected_concurrencies = {1, 1, 1, 1, 1};
     expected_seq_stat_index_offsets = {0, 1, 2, 3, 4};
+    expected_num_requests = {3, 3, 3, 3, 3};
   }
   SUBCASE("thread_limited")
   {
     params.max_threads = 5;
     target_concurrency = 10;
+    target_num_requests = 20;
 
     expected_concurrencies = {2, 2, 2, 2, 2};
     expected_seq_stat_index_offsets = {0, 2, 4, 6, 8};
+    expected_num_requests = {4, 4, 4, 4, 4};
   }
   SUBCASE("unbalanced")
   {
     params.max_threads = 6;
     target_concurrency = 14;
+    target_num_requests = 15;
 
     expected_concurrencies = {3, 3, 2, 2, 2, 2};
     expected_seq_stat_index_offsets = {0, 3, 6, 8, 10, 12};
+    expected_num_requests = {3, 3, 3, 2, 2, 2};
+  }
+  SUBCASE("no requests specified")
+  {
+    params.max_threads = 2;
+    target_concurrency = 14;
+    target_num_requests = 0;
+
+    expected_concurrencies = {7, 7};
+    expected_seq_stat_index_offsets = {0, 7};
+    expected_num_requests = {0, 0};
   }
 
   for (auto i = 0; i < expected_concurrencies.size(); i++) {
-    ConcurrencyWorker::ThreadConfig tc(i);
+    ThreadConfig tc(i);
     tc.concurrency_ = expected_concurrencies[i];
     tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    tc.num_requests_ = expected_num_requests[i];
     expected_config_values.push_back(tc);
   }
 
   TestConcurrencyManager tcm(params);
-  tcm.TestReconfigThreads(target_concurrency, expected_config_values);
+  tcm.TestReconfigThreads(
+      target_concurrency, target_num_requests, expected_config_values);
 }
 
 

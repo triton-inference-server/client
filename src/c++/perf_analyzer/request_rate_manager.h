@@ -102,9 +102,8 @@ class RequestRateManager : public LoadManager {
   /// \param request_rate The rate at which requests must be issued to the
   /// server.
   /// \return cb::Error object indicating success or failure.
-  // FIXME TKG -- no default(?)
   cb::Error ChangeRequestRate(
-      const double target_request_rate, const size_t num_of_requests = 0);
+      const double target_request_rate, const size_t num_of_requests);
 
  protected:
   RequestRateManager(
@@ -140,7 +139,6 @@ class RequestRateManager : public LoadManager {
   // Pauses the worker threads
   void PauseWorkers();
 
-  // FIXME TKG -- no default(?)
   void ConfigureThreads(const size_t num_of_requests = 0);
 
   // Resets the counters and resumes the worker threads
@@ -148,12 +146,11 @@ class RequestRateManager : public LoadManager {
 
   // Makes a new worker
   virtual std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat>,
-      std::shared_ptr<RequestRateWorker::ThreadConfig>);
+      std::shared_ptr<ThreadStat>, std::shared_ptr<ThreadConfig>);
 
   size_t DetermineNumThreads();
 
-  std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
   Distribution request_distribution_;

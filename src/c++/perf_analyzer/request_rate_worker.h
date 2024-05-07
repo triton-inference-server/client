@@ -31,6 +31,7 @@
 #include "load_worker.h"
 #include "model_parser.h"
 #include "sequence_manager.h"
+#include "thread_config.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -50,21 +51,6 @@ class TestCustomLoadManager;
 ///
 class RequestRateWorker : public LoadWorker, public IScheduler {
  public:
-  struct ThreadConfig {
-    ThreadConfig(uint32_t index)
-        : id_(index), seq_stat_index_offset_(0), is_paused_(false),
-          num_sequences_(1)
-    {
-    }
-
-    uint32_t id_;
-
-    // The starting sequence stat index for this worker
-    size_t seq_stat_index_offset_;
-    uint32_t num_sequences_;
-    bool is_paused_;
-  };
-
   RequestRateWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
@@ -80,11 +66,12 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
-            id, thread_stat, parser, data_loader, factory, on_sequence_model,
-            async, streaming, batch_size, using_json_data, wake_signal,
-            wake_mutex, execute, infer_data_manager, sequence_manager),
-        thread_config_(thread_config), num_threads_(num_threads),
-        start_time_(start_time), serial_sequences_(serial_sequences)
+            id, thread_stat, thread_config, parser, data_loader, factory,
+            on_sequence_model, async, streaming, batch_size, using_json_data,
+            wake_signal, wake_mutex, execute, infer_data_manager,
+            sequence_manager),
+        num_threads_(num_threads), start_time_(start_time),
+        serial_sequences_(serial_sequences)
   {
   }
 
@@ -100,8 +87,6 @@ class RequestRateWorker : public LoadWorker, public IScheduler {
   const size_t num_threads_;
   const bool serial_sequences_;
   std::chrono::steady_clock::time_point& start_time_;
-
-  std::shared_ptr<ThreadConfig> thread_config_;
 
   void CreateCtxIdTracker();
 

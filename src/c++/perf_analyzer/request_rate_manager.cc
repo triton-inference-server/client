@@ -237,8 +237,7 @@ RequestRateManager::ConfigureThreads(const size_t num_of_requests)
     while (workers_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
-      threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(workers_.size()));
+      threads_config_.emplace_back(new ThreadConfig(workers_.size()));
 
       workers_.push_back(
           MakeWorker(threads_stat_.back(), threads_config_.back()));
@@ -260,7 +259,7 @@ RequestRateManager::ConfigureThreads(const size_t num_of_requests)
       seq_offset += num_of_seq;
 
       size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
-      threads_stat_[i]->max_requests_ = thread_num_reqs;
+      threads_config_[i]->num_requests_ = thread_num_reqs;
 
       threads_.emplace_back(&IWorker::Infer, workers_[i]);
     }
@@ -281,7 +280,7 @@ RequestRateManager::ResumeWorkers()
 std::shared_ptr<IWorker>
 RequestRateManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   size_t id = workers_.size();
   size_t num_of_threads = DetermineNumThreads();

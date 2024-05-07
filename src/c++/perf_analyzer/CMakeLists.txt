@@ -112,6 +112,7 @@ set(
   profile_data_exporter.h
   periodic_concurrency_manager.h
   periodic_concurrency_worker.h
+  thread_config.h
 )
 
 add_executable(

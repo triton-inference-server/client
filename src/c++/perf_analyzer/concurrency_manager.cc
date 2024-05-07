@@ -122,8 +122,7 @@ ConcurrencyManager::ReconfigThreads(
          (threads_.size() < max_threads_)) {
     // Launch new thread for inferencing
     threads_stat_.emplace_back(new ThreadStat());
-    threads_config_.emplace_back(
-        new ConcurrencyWorker::ThreadConfig(threads_config_.size()));
+    threads_config_.emplace_back(new ThreadConfig(threads_config_.size()));
 
     workers_.push_back(
         MakeWorker(threads_stat_.back(), threads_config_.back()));
@@ -140,7 +139,6 @@ ConcurrencyManager::ReconfigThreads(
     size_t avg_concurrency = concurrent_request_count / threads_.size();
     size_t threads_add_one = concurrent_request_count % threads_.size();
 
-    // FIXME TKG -- ever possible to go down in concurrency??
     size_t avg_req_count = num_of_requests / threads_.size();
     size_t req_count_add_one = num_of_requests % threads_.size();
 
@@ -153,7 +151,7 @@ ConcurrencyManager::ReconfigThreads(
       threads_config_[i]->seq_stat_index_offset_ = seq_stat_index_offset;
 
       size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
-      threads_stat_[i]->max_requests_ = thread_num_reqs;
+      threads_config_[i]->num_requests_ = thread_num_reqs;
 
       seq_stat_index_offset += concurrency;
 
@@ -181,7 +179,7 @@ ConcurrencyManager::ResumeSequenceWorkers()
 std::shared_ptr<IWorker>
 ConcurrencyManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   uint32_t id = workers_.size();
 

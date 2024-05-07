@@ -29,6 +29,7 @@
 
 #include "load_worker.h"
 #include "sequence_manager.h"
+#include "thread_config.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -49,28 +50,6 @@ class NaggyMockConcurrencyWorker;
 ///
 class ConcurrencyWorker : public LoadWorker {
  public:
-  struct ThreadConfig {
-    ThreadConfig(
-        size_t thread_id, size_t concurrency = 0,
-        size_t seq_stat_index_offset = 0)
-        : thread_id_(thread_id), concurrency_(concurrency),
-          seq_stat_index_offset_(seq_stat_index_offset), is_paused_(false)
-    {
-    }
-
-    // ID of corresponding worker thread
-    size_t thread_id_;
-
-    // The concurrency level that the worker should produce
-    size_t concurrency_;
-
-    // The starting sequence stat index for this worker
-    size_t seq_stat_index_offset_;
-
-    // Whether or not the thread is issuing new inference requests
-    bool is_paused_;
-  };
-
   ConcurrencyWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
       std::shared_ptr<ThreadConfig> thread_config,
@@ -85,11 +64,11 @@ class ConcurrencyWorker : public LoadWorker {
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
       : LoadWorker(
-            id, thread_stat, parser, data_loader, factory, on_sequence_model,
-            async, streaming, batch_size, using_json_data, wake_signal,
-            wake_mutex, execute, infer_data_manager, sequence_manager),
-        thread_config_(thread_config), max_concurrency_(max_concurrency),
-        active_threads_(active_threads)
+            id, thread_stat, thread_config, parser, data_loader, factory,
+            on_sequence_model, async, streaming, batch_size, using_json_data,
+            wake_signal, wake_mutex, execute, infer_data_manager,
+            sequence_manager),
+        max_concurrency_(max_concurrency), active_threads_(active_threads)
   {
   }
 
@@ -108,8 +87,6 @@ class ConcurrencyWorker : public LoadWorker {
   // TODO REFACTOR TMA-1020 can we decouple this thread from the total count of
   // threads?
   size_t& active_threads_;
-
-  std::shared_ptr<ThreadConfig> thread_config_;
 
   // Handle the case where execute_ is false
   void HandleExecuteOff();
