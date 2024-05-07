@@ -262,7 +262,7 @@ TEST_CASE("Testing PerfAnalyzerParameters")
   CHECK(params->max_threads_specified == false);
   CHECK(params->sequence_length == 20);
   CHECK(params->percentile == -1);
-  CHECK(params->fixed_num_requests == 0);
+  CHECK(params->request_count == 0);
   CHECK(params->user_data.size() == 0);
   CHECK_STRING("endpoint", params->endpoint, "");
   CHECK(params->input_shapes.size() == 0);
@@ -1470,42 +1470,40 @@ TEST_CASE("Testing Command Line Parser")
     }
   }
 
-  SUBCASE("Option : --fixed-num-requests")
+  SUBCASE("Option : --request-count")
   {
     SUBCASE("valid value")
     {
       int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--fixed-num-requests", "500"};
+      char* argv[argc] = {app_name, "-m", model_name, "--request-count", "500"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      exp->fixed_num_requests = 500;
+      exp->request_count = 500;
       exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
       exp->measurement_request_count = 500;
     }
     SUBCASE("negative value")
     {
       int argc = 5;
-      char* argv[argc] = {
-          app_name, "-m", model_name, "--fixed-num-requests", "-2"};
+      char* argv[argc] = {app_name, "-m", model_name, "--request-count", "-2"};
 
       expected_msg =
-          CreateUsageMessage("--fixed-num-requests", "The value must be > 0.");
+          CreateUsageMessage("--request-count", "The value must be > 0.");
       CHECK_THROWS_WITH_AS(
           act = parser.Parse(argc, argv), expected_msg.c_str(),
           PerfAnalyzerException);
       check_params = false;
     }
-    SUBCASE("mode and count are overwritten with non-zero fixed-num-requests")
+    SUBCASE("mode and count are overwritten with non-zero request-count")
     {
       int argc = 9;
       char* argv[argc] = {
           app_name,
           "-m",
           model_name,
-          "--fixed-num-requests",
+          "--request-count",
           "2000",
           "--measurement-mode",
           "time_windows",
@@ -1515,22 +1513,21 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      exp->fixed_num_requests = 2000;
+      exp->request_count = 2000;
       exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
       exp->measurement_request_count = 2000;
     }
     SUBCASE("zero value (no override to measurement mode)")
     {
       int argc = 7;
-      char* argv[argc] = {app_name,      "-m",
-                          model_name,    "--fixed-num-requests",
-                          "0",           "--measurement-mode",
+      char* argv[argc] = {app_name,          "-m", model_name,
+                          "--request-count", "0",  "--measurement-mode",
                           "time_windows"};
 
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      exp->fixed_num_requests = 0;
+      exp->request_count = 0;
       exp->measurement_mode = MeasurementMode::TIME_WINDOWS;
     }
     SUBCASE("zero value (no override to measurement request count)")
@@ -1540,7 +1537,7 @@ TEST_CASE("Testing Command Line Parser")
           app_name,
           "-m",
           model_name,
-          "--fixed-num-requests",
+          "--request-count",
           "0",
           "--measurement-mode",
           "count_windows",
@@ -1550,7 +1547,7 @@ TEST_CASE("Testing Command Line Parser")
       REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
       CHECK(!parser.UsageCalled());
 
-      exp->fixed_num_requests = 0;
+      exp->request_count = 0;
       exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
       exp->measurement_request_count = 50;
     }
