@@ -54,9 +54,8 @@ def create_artifacts_dirs(generate_plots: bool) -> None:
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
-    # TODO (TMA-1758): remove once file support is implemented
-    input_file_name = ""
     # TODO (TMA-1759): review if add_model_name is always true
+    input_filename = Path(args.input_file.name) if args.input_file else None
     add_model_name = True
     try:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)
@@ -68,7 +67,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         output_format=args.output_format,
         dataset_name=args.input_dataset,
         model_name=args.model,
-        input_filename=input_file_name,
+        input_filename=input_filename,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
         prompt_tokens_mean=args.synthetic_input_tokens_mean,

@@ -160,7 +160,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -207,9 +206,9 @@ When the dataset is synthetic, you can specify the following options:
 * `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
   >= 1.
 * `--synthetic-input-tokens-mean <int>`: The mean of number of tokens in the
-  generated prompts when prompt-source is synthetic, >= 1.
+  generated prompts when using synthetic data, >= 1.
 * `--synthetic-input-tokens-stddev <int>`: The standard deviation of number of
-  tokens in the generated prompts when prompt-source is synthetic, >= 0.
+  tokens in the generated prompts when using synthetic data, >= 0.
 * `--random-seed <int>`: The seed used to generate random values, >= 0.
 
 When the dataset is coming from HuggingFace, you can specify the following
@@ -218,6 +217,11 @@ options:
   benchmarking.
 * `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
   >= 1.
+
+When the dataset is coming from a file, you can specify the following
+options:
+* `--input-file <path>`: The input file containing the single prompt to
+  use for benchmarking.
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
@@ -303,8 +307,12 @@ flag for multiple inputs. Inputs should be in an input_name:value format.
 
 ##### `--input-dataset {openorca,cnn_dailymail}`
 
-The HuggingFace dataset to use for prompts when prompt-source is dataset.
+The HuggingFace dataset to use for prompts.
 (default: `openorca`)
+
+##### `--input-file <path>`
+
+The input file containing the single prompt to use for profiling.
 
 ##### `--num-prompts <int>`
 
@@ -329,23 +337,19 @@ tokens. (default: `False`)
 The standard deviation of the number of tokens in each output. This is only used
 when `--output-tokens-mean` is provided. (default: `0`)
 
-##### `--prompt-source {synthetic,dataset}`
-
-The source of the input prompts. (default: `synthetic`)
-
 ##### `--random-seed <int>`
 
 The seed used to generate random values. (default: `0`)
 
 ##### `--synthetic-input-tokens-mean <int>`
 
-The mean of number of tokens in the generated prompts when `--prompt-source` is
-`synthetic`. (default: `550`)
+The mean of number of tokens in the generated prompts when using synthetic
+data. (default: `550`)
 
 ##### `--synthetic-input-tokens-stddev <int>`
 
 The standard deviation of number of tokens in the generated prompts when
-`--prompt-source` is `synthetic`. (default: `0`)
+using synthetic data. (default: `0`)
 
 ## Profiling Options
 
