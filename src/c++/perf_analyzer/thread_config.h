@@ -29,34 +29,26 @@ namespace triton { namespace perfanalyzer {
 
 // FIXME document
 struct ThreadConfig {
-  ThreadConfig(
-      size_t thread_id, size_t concurrency = 0, size_t num_sequences = 0,
-      size_t seq_stat_index_offset = 0, size_t num_requests = 0)
-      : thread_id_(thread_id), concurrency_(concurrency),
-        num_sequences_(num_sequences),
-        seq_stat_index_offset_(seq_stat_index_offset),
-        num_requests_(num_requests), is_paused_(false)
-  {
-  }
+  ThreadConfig(size_t thread_id) : thread_id_(thread_id) {}
 
   // ID of corresponding worker thread
-  size_t thread_id_;
+  size_t thread_id_{0};
 
   // The concurrency level that the worker should produce
   // FIXME TKG: Only used for concurrency mode
-  size_t concurrency_;
+  size_t concurrency_{0};
 
   // FIXME TKG: Only used for request rate
-  uint32_t num_sequences_;
+  uint32_t num_sequences_{1};
 
   // How many requests to generate before stopping. If 0, generate indefinitely
-  size_t num_requests_;
+  size_t num_requests_{0};
 
   // The starting sequence stat index for this worker
-  size_t seq_stat_index_offset_;
+  size_t seq_stat_index_offset_{0};
 
   // Whether or not the thread is issuing new inference requests
-  bool is_paused_;
+  bool is_paused_{false};
 };
 
 
