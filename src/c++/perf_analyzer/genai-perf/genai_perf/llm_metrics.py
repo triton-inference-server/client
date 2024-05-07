@@ -418,7 +418,18 @@ class ProfileDataParser:
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
             else:
-                raise ValueError(f"Unknown OpenAI endpoint: {data['endpoint']}")
+                # TPA-66: add PA metadata to handle this case
+                # When endpoint field is either empty or custom endpoint, fall
+                # back to parsing the response to extract the response format.
+                request = data["experiments"][0]["requests"][0]
+                response = request["response_outputs"][0]["response"]
+                if "chat.completion" in response:
+                    self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+                elif "text_completion" in response:
+                    self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+                else:
+                    raise RuntimeError("Unknown OpenAI response format.")
+
         elif self._service_kind == "triton":
             self._response_format = ResponseFormat.TRITON
         else:
