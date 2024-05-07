@@ -25,16 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-import copy
 from pathlib import Path
 
-import pandas as pd
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.plots.plot_config import ProfileRunData
-from genai_perf.utils import scale
-from plotly.graph_objects import Figure
 
 
 class BoxPlot(BasePlot):
@@ -47,8 +42,6 @@ class BoxPlot(BasePlot):
 
     def create_plot(
         self,
-        x_metric: str = "",
-        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
@@ -71,67 +64,9 @@ class BoxPlot(BasePlot):
         fig.update_xaxes(title_text=x_label)
         fig.update_yaxes(title_text=y_label)
 
-        # create a copy to avoid annotations on html file
-        fig_jpeg = copy.deepcopy(fig)
-
-        # TODO: Support annotations and generate parquet file
-        # self._add_annotations(fig_jpeg, y_metric)
-        
         # Save dataframe as parquet file
         df = self._create_dataframe(x_label, y_label)
         self._generate_parquet(df, output_dir, filename_root)
 
         self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig_jpeg, output_dir, filename_root + ".jpeg", graph_title)
-
-    # def _add_annotations(self, fig: Figure, y_metric: str) -> None:
-    #    """
-    #    Add annotations to the non html version of the box plot
-    #    to replace the missing hovertext
-    #    """
-    #    stat_root_name = self._stats.metrics.get_base_name(y_metric)
-
-    #    val = scale(self._stats.data[f"max_{stat_root_name}"], (1 / 1e9))
-    #    fig.add_annotation(
-    #        x=0.5,
-    #        y=val,
-    #        text=f"max: {round(val, 2)}",
-    #        showarrow=False,
-    #        yshift=10,
-    #    )
-
-    #    val = scale(self._stats.data[f"p75_{stat_root_name}"], (1 / 1e9))
-    #    fig.add_annotation(
-    #        x=0.5,
-    #        y=val,
-    #        text=f"q3: {round(val, 2)}",
-    #        showarrow=False,
-    #        yshift=10,
-    #    )
-
-    #    val = scale(self._stats.data[f"p50_{stat_root_name}"], (1 / 1e9))
-    #    fig.add_annotation(
-    #        x=0.5,
-    #        y=val,
-    #        text=f"median: {round(val, 2)}",
-    #        showarrow=False,
-    #        yshift=10,
-    #    )
-
-    #    val = scale(self._stats.data[f"p25_{stat_root_name}"], (1 / 1e9))
-    #    fig.add_annotation(
-    #        x=0.5,
-    #        y=val,
-    #        text=f"q1: {round(val, 2)}",
-    #        showarrow=False,
-    #        yshift=10,
-    #    )
-
-    #    val = scale(self._stats.data[f"min_{stat_root_name}"], (1 / 1e9))
-    #    fig.add_annotation(
-    #        x=0.5,
-    #        y=val,
-    #        text=f"min: {round(val, 2)}",
-    #        showarrow=False,
-    #        yshift=10,
-    #    )
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg", graph_title)

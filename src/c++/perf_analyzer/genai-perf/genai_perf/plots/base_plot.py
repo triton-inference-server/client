@@ -27,13 +27,9 @@
 
 import pandas as pd
 
-from copy import deepcopy
-from typing import Dict
 from pathlib import Path
 
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_metrics import Statistics
 from plotly.graph_objects import Figure
 from genai_perf.plots.plot_config import ProfileRunData
 
@@ -48,8 +44,6 @@ class BasePlot:
 
     def create_plot(
         self,
-        x_metric: str,
-        y_metric: str,
         graph_title: str,
         x_label: str,
         y_label: str,

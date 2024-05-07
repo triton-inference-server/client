@@ -27,7 +27,6 @@
 
 from pathlib import Path
 
-import pandas as pd
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.plots.plot_config import ProfileRunData
@@ -44,8 +43,6 @@ class HeatMap(BasePlot):
 
     def create_plot(
         self,
-        x_metric: str = "",
-        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
@@ -53,12 +50,26 @@ class HeatMap(BasePlot):
         output_dir: Path = Path(""),
     ) -> None:
         N = len(self._profile_data)
-        n_rows = (N + 2) // 3
-        n_cols = 3
-        fig = make_subplots(rows=n_rows, cols=n_cols, x_title=x_label, y_title=y_label)
+        
+        if N <= 3:
+            n_rows, n_cols = 1, N
+        else:
+            n_rows = (N + 2) // 3
+            n_cols = 3
+
+        fig = make_subplots(
+            rows=n_rows,
+            cols=n_cols,
+            x_title=x_label,
+            y_title=y_label,
+        )
 
         for index, prd in enumerate(self._profile_data):
-            hm = go.Histogram2d(x=prd.x_metric, y=prd.y_metric)
+            hm = go.Histogram2d(
+                x=prd.x_metric,
+                y=prd.y_metric,
+                coloraxis = "coloraxis",
+            )
 
             # Calculate the location where the figure should be added in the subplot
             c_row = int(index / n_cols) + 1

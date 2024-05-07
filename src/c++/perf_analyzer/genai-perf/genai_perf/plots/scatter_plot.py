@@ -27,7 +27,6 @@
 
 from pathlib import Path
 
-import pandas as pd
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.plots.plot_config import ProfileRunData
@@ -43,8 +42,6 @@ class ScatterPlot(BasePlot):
 
     def create_plot(
         self,
-        x_metric: str = "",
-        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
