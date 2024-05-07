@@ -29,10 +29,13 @@
 import csv
 import json
 from itertools import pairwise
+from typing import List
 
 import numpy as np
+import pandas as pd
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
@@ -71,8 +74,8 @@ class Metrics:
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
     ) -> None:
         self.request_throughputs = request_throughputs
         self.request_latencies = request_latencies
@@ -106,14 +109,14 @@ class LLMMetrics(Metrics):
 
     def __init__(
         self,
-        request_throughputs: list[float] = [],
-        request_latencies: list[int] = [],
-        time_to_first_tokens: list[int] = [],
-        inter_token_latencies: list[list[int]] = [[]],
-        output_token_throughputs: list[float] = [],
-        output_token_throughputs_per_request: list[int] = [],
-        num_output_tokens: list[int] = [],
-        num_input_tokens: list[int] = [],
+        request_throughputs: List[float] = [],
+        request_latencies: List[int] = [],
+        time_to_first_tokens: List[int] = [],
+        inter_token_latencies: List[list[int]] = [[]],
+        output_token_throughputs: List[float] = [],
+        output_token_throughputs_per_request: List[int] = [],
+        num_output_tokens: List[int] = [],
+        num_input_tokens: List[int] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -174,11 +177,11 @@ class Statistics:
             new_data = data
         return new_data
 
-    def _calculate_mean(self, data: list[int | float], attr: str):
+    def _calculate_mean(self, data: list[int | float], attr: str) -> None:
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int | float], attr: str):
+    def _calculate_percentiles(self, data: list[int | float], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -188,16 +191,16 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int | float], attr: str):
+    def _calculate_minmax(self, data: list[int | float], attr: str) -> None:
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int | float], attr: str):
+    def _calculate_std(self, data: list[int | float], attr: str) -> None:
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         attr_strs = []
         for k, v in self.__dict__.items():
             if not k.startswith("_"):
@@ -214,17 +217,17 @@ class Statistics:
         """Return the underlying metrics used to calculate the statistics."""
         return self._metrics
 
-    def _is_throughput_field(self, field: str):
+    def _is_throughput_field(self, field: str) -> bool:
         return field in Metrics.throughput_fields
 
-    def _is_time_field(self, field: str):
+    def _is_time_field(self, field: str) -> bool:
         return field in Metrics.time_fields
 
-    def pretty_print(self):
+    def pretty_print(self) -> None:
         """Prints the statistics in a tabular format."""
 
         singular_metric_rows = []
-        table = Table(title="PA LLM Metrics")
+        table = Table(title="LLM Metrics")
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
         stats = ["avg", "min", "max", "p99", "p90", "p75"]
@@ -285,7 +288,7 @@ class Statistics:
         for row in singular_metric_rows:
             print(row)
 
-    def export_to_csv(self, csv_filename: str):
+    def export_to_csv(self, csv_filename: str) -> None:
         """Exports the statistics to a CSV file."""
 
         multiple_metric_header = [
@@ -370,6 +373,28 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
+    def export_parquet(self, parquet_filename: str) -> None:
+        max_length = -1
+        col_index = 0
+        filler_list = []
+        df = pd.DataFrame()
+        # Data frames require all columns of the same length
+        # find the max length column
+        for key, value in self._metrics.data.items():
+            max_length = max(max_length, len(value))
+        # Insert None for shorter columns to match longest column
+        for key, value in self._metrics.data.items():
+            if len(value) < max_length:
+                diff = max_length - len(value)
+                filler_list = [None] * diff
+            df.insert(col_index, key, value + filler_list)
+            diff = 0
+            filler_list = []
+            col_index = col_index + 1
+        df.to_parquet(
+            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
+        )
+
 
 class ProfileDataParser:
     """Base profile data parser class that reads the profile data JSON file to
@@ -436,7 +461,7 @@ class LLMProfileDataParser(ProfileDataParser):
         filename: str,
         service_kind: str,
         output_format: OutputFormat,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
     ) -> None:
         self._tokenizer = tokenizer
         self._service_kind = service_kind
@@ -522,23 +547,34 @@ class LLMProfileDataParser(ProfileDataParser):
     ) -> None:
         """Helper function to preprocess responses of a request."""
         if self._service_kind == "openai":
-            # remove the null final response in streaming mode
-            last_response = res_outputs[-1]["response"]
-            last_response = remove_sse_prefix(last_response)
-            if last_response == "[DONE]":
+            # PA sometimes receives multiple SSE responses at once (as a single
+            # response). Handle these responses by merging into a single response.
+            for i in range(len(res_outputs)):
+                response = res_outputs[i]["response"]
+                responses = response.strip().split("\n\n")
+                if len(responses) > 1:
+                    merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    for r in responses[1:]:
+                        text = self._extract_openai_text_output(r)
+                        merged_response["choices"][0]["delta"]["content"] += text
+
+                    res_outputs[i] = {"response": json.dumps(merged_response)}
+
+            # Remove responses without any content
+            # These are only observed to happen at the start or end
+            while res_outputs[0] and self._is_openai_empty_response(
+                res_outputs[0]["response"]
+            ):
+                res_timestamps.pop(0)
+                res_outputs.pop(0)
+
+            while res_outputs[-1] and self._is_openai_empty_response(
+                res_outputs[-1]["response"]
+            ):
                 res_timestamps.pop()
                 res_outputs.pop()
 
-            # after removing the final null response, check if the last response
-            # of the remaining responses is missing text/content and remove it
-            # if it is an empty response.
-            last_response = res_outputs[-1]["response"]
-            text_output = self._extract_openai_text_output(last_response)
-            if text_output == "":
-                res_timestamps.pop()
-                res_outputs.pop()
-
-    def _tokenize_request_inputs(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_request_inputs(self, req_inputs: dict) -> list[int]:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_request_input(req_inputs)
@@ -547,22 +583,24 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the Triton request input texts."""
-        return self._tokenizer(req_inputs["text_input"])["input_ids"]
+        encodings = self._tokenizer(req_inputs["text_input"])
+        return encodings.data["input_ids"]
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[list[int]]:
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._output_format == _OPENAI_CHAT_COMPLETIONS:
             input_text = payload["messages"][0]["content"]
         elif self._output_format == _OPENAI_COMPLETIONS:
-            input_text = payload["prompt"][0]
+            input_text = payload["prompt"]
         else:
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
             )
-        return self._tokenizer(input_text)["input_ids"]
+        encodings = self._tokenizer(input_text)
+        return encodings.data["input_ids"]
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
         """Deserialize the response output and return tokenized outputs."""
@@ -578,7 +616,7 @@ class LLMProfileDataParser(ProfileDataParser):
         output_texts = []
         for output in res_outputs:
             output_texts.append(output["text_output"])
-        return self._tokenizer(output_texts)["input_ids"]
+        return self._run_tokenizer(output_texts)
 
     def _tokenize_openai_response_output(self, res_outputs: dict) -> list[list[int]]:
         """Tokenize the OpenAI response output texts."""
@@ -586,22 +624,47 @@ class LLMProfileDataParser(ProfileDataParser):
         for output in res_outputs:
             text = self._extract_openai_text_output(output["response"])
             output_texts.append(text)
-        return self._tokenizer(output_texts)["input_ids"]
+        return self._run_tokenizer(output_texts)
+
+    def _run_tokenizer(self, output_texts: list[str]) -> list[list[int]]:
+        # exclamation mark trick forces the llama tokenization to consistently
+        # start each output with a specific token which allows us to safely skip
+        # the first token of every tokenized output and get only the ones that
+        # are returned by the model
+        output_texts = ["!" + txt for txt in output_texts]
+        encodings = self._tokenizer(output_texts)
+        return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
         response = remove_sse_prefix(response)
+
+        if response == "[DONE]":
+            return ""
+
         data = json.loads(response)
         completions = data["choices"][0]
 
         text_output = ""
-        if data["object"] == "text_completion":  # legacy
+        if "object" not in data:
+            # FIXME: TPA-47 workaround for vLLM not following OpenAI Completions
+            # API specification when streaming, missing 'object' field:
+            # https://platform.openai.com/docs/api-reference/completions
+            text_output = completions.get("text", "")
+        elif data["object"] == "text_completion":  # legacy
             text_output = completions.get("text", "")
         elif data["object"] == "chat.completion":  # non-streaming
-            text_output = completions["message"]["content"]
+            text_output = completions["message"].get("content", "")
         elif data["object"] == "chat.completion.chunk":  # streaming
             text_output = completions["delta"].get("content", "")
         else:
             obj_type = data["object"]
             raise ValueError(f"Unknown OpenAI response object type '{obj_type}'.")
         return text_output
+
+    def _is_openai_empty_response(self, response: str) -> bool:
+        """Returns true if the response is an openai response with no content (or empty content)"""
+        text = self._extract_openai_text_output(response)
+        if text:
+            return False
+        return True

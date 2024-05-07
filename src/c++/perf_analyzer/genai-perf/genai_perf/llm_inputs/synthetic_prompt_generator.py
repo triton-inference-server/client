@@ -12,25 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-import io
+import itertools
 import math
 import pathlib
 import random
-from typing import List, Tuple
+import re
+from typing import List
 
-from genai_perf.tokenizer import AutoTokenizer
+from genai_perf.tokenizer import Tokenizer
 
 
 class SyntheticPromptGenerator:
     @classmethod
     def create_synthetic_prompt(
         cls,
-        tokenizer: AutoTokenizer,
+        tokenizer: Tokenizer,
         prompt_tokens_mean: int = 550,
         prompt_tokens_stddev: int = 250,
-        expected_output_tokens: int = 150,
-    ) -> Tuple[str, int]:
+    ) -> str:
         """
         Generate a prompt that randomly samples lines from
         Washington's farewell address at farewell.txt.
@@ -40,58 +39,21 @@ class SyntheticPromptGenerator:
                 The mean length of the prompt to generate
             prompt_tokens_stddev:
                 The standard deviation of the length of the prompt to generate
-            expected_output_tokens:
-                The number of tokens to expect in the output. This is used to
-                determine the length of the prompt. The prompt will be generated such that the output
-                will be approximately this many tokens.
 
         Returns:
-            A tuple of the prompt and the length of the prompt.
+            The prompt.
         """
 
-        prompt = (
-            "Randomly stream lines from the following text "
-            f"with {expected_output_tokens} output tokens. "
-            "Don't generate eos tokens:\n\n"
+        num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
+            prompt_tokens_mean, prompt_tokens_stddev
         )
-
-        prompt_token_length = SyntheticPromptGenerator._get_prompt_token_length(
-            prompt, tokenizer
-        )
-        num_prompt_tokens = SyntheticPromptGenerator._get_num_prompt_tokens(
-            prompt_tokens_mean, prompt_tokens_stddev, prompt_token_length
-        )
-        remaining_prompt_tokens = num_prompt_tokens - prompt_token_length
 
         farewell_lines = SyntheticPromptGenerator._create_farewell_lines()
-        prompt = SyntheticPromptGenerator._create_prompt_from_farewell_lines(
-            prompt, remaining_prompt_tokens, farewell_lines, tokenizer
+        prompt = SyntheticPromptGenerator._create_prompt_from_lines(
+            num_prompt_tokens, farewell_lines, tokenizer
         )
 
-        return (prompt, num_prompt_tokens)
-
-    @classmethod
-    def _get_prompt_token_length(cls, prompt: str, tokenizer: AutoTokenizer) -> int:
-        get_token_length = lambda text: len(tokenizer.encode(text))
-
-        prompt_token_length = get_token_length(prompt)
-
-        return prompt_token_length
-
-    @classmethod
-    def _get_num_prompt_tokens(
-        cls, mean: int, stddev: int, prompt_token_length: int
-    ) -> int:
-        num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
-            mean, stddev
-        )
-        # Ensure prompt length is at least as long as the base
-        while num_prompt_tokens < prompt_token_length:
-            num_prompt_tokens = SyntheticPromptGenerator._sample_random_positive_int(
-                prompt_tokens_mean, prompt_tokens_stddev
-            )
-
-        return num_prompt_tokens
+        return prompt
 
     @classmethod
     def _create_farewell_lines(cls) -> List[str]:
@@ -103,28 +65,54 @@ class SyntheticPromptGenerator:
         return farewell_lines
 
     @classmethod
-    def _create_prompt_from_farewell_lines(
+    def _create_prompt_from_lines(
         cls,
-        prompt: str,
-        remaining_prompt_tokens: int,
-        farewell_lines: List[str],
-        tokenizer: AutoTokenizer,
+        requested_prompt_tokens: int,
+        source_lines: List[str],
+        tokenizer: Tokenizer,
     ) -> str:
         get_token_length = lambda text: len(tokenizer.encode(text))
 
-        sampling_lines = True
-        while sampling_lines:
-            for line in farewell_lines:
-                line_to_add = line
-                if remaining_prompt_tokens - get_token_length(line_to_add) < 0:
-                    # This will cut off a line in the middle of a word, but that's ok since an
-                    # llm should be able to handle that.
-                    line_to_add = line_to_add[: int(math.ceil(remaining_prompt_tokens))]
-                    sampling_lines = False
-                    prompt += line_to_add
-                    break
-                prompt += line_to_add
-                remaining_prompt_tokens -= get_token_length(line_to_add)
+        line_iterator = itertools.cycle(source_lines)
+
+        def word_generator():
+            while True:
+                next_line = next(line_iterator)
+                words = re.split("[ \n]+", next_line)
+                for word in words:
+                    yield word
+
+        word_iterator = word_generator()
+
+        # Fast add lines
+        remaining_tokens = requested_prompt_tokens
+        prompt = ""
+        num_tokens_in_avg_line = get_token_length(source_lines[0] + source_lines[1]) / 2
+        num_lines_to_add_fast = math.floor(
+            0.5 * requested_prompt_tokens / num_tokens_in_avg_line
+        )
+        while num_lines_to_add_fast:
+            for _ in range(num_lines_to_add_fast):
+                next_line = next(line_iterator)
+                prompt = prompt + next_line
+
+            curr_tokens = get_token_length(prompt)
+            remaining_tokens = requested_prompt_tokens - curr_tokens
+            num_lines_to_add_fast = math.floor(
+                0.5 * remaining_tokens / num_tokens_in_avg_line
+            )
+
+        # Fast add words
+        final_line = ""
+        while get_token_length(final_line) < remaining_tokens - 3:
+            next_word = next(word_iterator)
+            final_line += next_word + " "
+        prompt += final_line
+
+        # Final tweaks
+        diff = requested_prompt_tokens - get_token_length(prompt)
+        for _ in range(diff):
+            prompt = "hi " + prompt
 
         return prompt
 

@@ -103,10 +103,10 @@ ChatCompletionClient::ResponseHeaderHandler(
   std::transform(hdr.begin(), hdr.end(), hdr.begin(), [](unsigned char c) {
     return std::tolower(c);
   });
-  if (hdr.find("content-type") != std::string::npos) {
-    request->is_stream_ = (hdr.find("text/event-stream") != std::string::npos);
+  if (hdr.find("content-type") != std::string::npos &&
+      hdr.find("text/event-stream") != std::string::npos) {
+    request->is_stream_ = true;
   }
-
   return byte_size;
 }
 
@@ -159,7 +159,8 @@ ChatCompletionClient::ResponseHandler(
 Error
 ChatCompletionClient::AsyncInfer(
     std::function<void(InferResult*)> callback,
-    std::string& serialized_request_body, const std::string& request_id)
+    std::string& serialized_request_body, const std::string& request_id,
+    const Headers& headers)
 {
   if (callback == nullptr) {
     return Error(
@@ -186,7 +187,7 @@ ChatCompletionClient::AsyncInfer(
       serialized_request_body.size());
 
   CURL* multi_easy_handle = curl_easy_init();
-  Error err = PreRunProcessing(multi_easy_handle, raw_request);
+  Error err = PreRunProcessing(multi_easy_handle, raw_request, headers);
   if (!err.IsOk()) {
     curl_easy_cleanup(multi_easy_handle);
     return err;
@@ -200,7 +201,7 @@ ChatCompletionClient::AsyncInfer(
 
 Error
 ChatCompletionClient::PreRunProcessing(
-    CURL* curl, ChatCompletionRequest* request)
+    CURL* curl, ChatCompletionRequest* request, const Headers& headers)
 {
   curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
@@ -235,6 +236,12 @@ ChatCompletionClient::PreRunProcessing(
   struct curl_slist* list = nullptr;
   list = curl_slist_append(list, "Expect:");
   list = curl_slist_append(list, "Content-Type: application/json");
+
+  for (const auto& pr : headers) {
+    std::string hdr = pr.first + ": " + pr.second;
+    list = curl_slist_append(list, hdr.c_str());
+  }
+
   curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
 
   // The list will be freed when the request is destructed

@@ -25,25 +25,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
+import os
+import shutil
 import sys
-from argparse import ArgumentParser
+import traceback
+from argparse import Namespace
+from pathlib import Path
 
+import genai_perf.logging as logging
 from genai_perf import parser
-from genai_perf.constants import LOGGER_NAME
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_metrics import LLMProfileDataParser
-from genai_perf.tokenizer import AutoTokenizer, get_tokenizer
-
-logging.basicConfig(level=logging.INFO, format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(LOGGER_NAME)
+from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
+from genai_perf.plots.plot_manager import PlotManager
+from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
-def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
-    # TODO (TMA-1758): remove once file support is implemented
-    input_file_name = ""
+def init_logging() -> None:
+    logging.init_logging()
+
+
+def create_artifacts_dirs(generate_plots: bool) -> None:
+    if not os.path.exists(f"{DEFAULT_ARTIFACT_DIR}"):
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
+        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/plots")
+
+
+def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     # TODO (TMA-1759): review if add_model_name is always true
+    input_filename = Path(args.input_file.name) if args.input_file else None
     add_model_name = True
     try:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)
@@ -55,12 +67,14 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
         output_format=args.output_format,
         dataset_name=args.input_dataset,
         model_name=args.model,
-        input_filename=input_file_name,
+        input_filename=input_filename,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
-        prompt_tokens_mean=args.synthetic_tokens_mean,
-        prompt_tokens_stddev=args.synthetic_tokens_stddev,
-        expected_output_tokens=args.synthetic_requested_output_tokens,
+        prompt_tokens_mean=args.synthetic_input_tokens_mean,
+        prompt_tokens_stddev=args.synthetic_input_tokens_stddev,
+        output_tokens_mean=args.output_tokens_mean,
+        output_tokens_stddev=args.output_tokens_stddev,
+        output_tokens_deterministic=args.output_tokens_mean_deterministic,
         random_seed=args.random_seed,
         num_of_output_prompts=args.num_prompts,
         add_model_name=add_model_name,
@@ -70,9 +84,7 @@ def generate_inputs(args: ArgumentParser, tokenizer: AutoTokenizer) -> None:
     )
 
 
-def calculate_metrics(
-    args: ArgumentParser, tokenizer: AutoTokenizer
-) -> LLMProfileDataParser:
+def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
         service_kind=args.service_kind,
@@ -81,31 +93,57 @@ def calculate_metrics(
     )
 
 
-def report_output(metrics: LLMProfileDataParser, args):
+def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     if "concurrency_range" in args:
         infer_mode = "concurrency"
         load_level = args.concurrency_range
     elif "request_rate_range" in args:
         infer_mode = "request_rate"
         load_level = args.request_rate_range
-    stats = metrics.get_statistics(infer_mode, load_level)
+    else:
+        raise GenAIPerfException("No valid infer mode specified")
+
+    stats = data_parser.get_statistics(infer_mode, load_level)
     export_csv_name = args.profile_export_file.with_name(
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
+    stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
+    if args.generate_plots:
+        create_plots(stats)
+
+
+def create_plots(stats: Statistics) -> None:
+    plot_manager = PlotManager(stats)
+    plot_manager.create_default_plots()
+
+
+def finalize(profile_export_file: Path):
+    shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
+    shutil.move(
+        profile_export_file, f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file}"
+    )
+    profile_export_file_csv = profile_export_file.stem + "_genai_perf.csv"
+    shutil.move(
+        profile_export_file_csv,
+        f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file_csv}",
+    )
 
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
 def run():
     try:
+        init_logging()
         args, extra_args = parser.parse_args()
+        create_artifacts_dirs(args.generate_plots)
         tokenizer = get_tokenizer(args.tokenizer)
         generate_inputs(args, tokenizer)
         args.func(args, extra_args)
-        metrics = calculate_metrics(args, tokenizer)
-        report_output(metrics, args)
+        data_parser = calculate_metrics(args, tokenizer)
+        report_output(data_parser, args)
+        finalize(args.profile_export_file)
     except Exception as e:
         raise GenAIPerfException(e)
 
@@ -115,7 +153,9 @@ def main():
     try:
         run()
     except Exception as e:
-        logger.error(f"{e}")
+        traceback.print_exc()
+        logger = logging.getLogger(__name__)
+        logger.error(e)
         return 1
 
     return 0

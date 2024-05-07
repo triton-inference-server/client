@@ -40,6 +40,7 @@ main(int argc, char* argv[])
     analyzer.Run();
   }
   catch (pa::PerfAnalyzerException& e) {
+    std::cerr << e.what() << std::endl;
     return e.GetError();
   }
 

@@ -28,11 +28,13 @@
 
 import json
 from io import StringIO
+from typing import Any, List
 
 import numpy as np
 import pytest
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from transformers import AutoTokenizer
 
 
@@ -43,7 +45,7 @@ def ns_to_sec(ns: int) -> int | float:
 
 class TestLLMProfileDataParser:
     @pytest.fixture
-    def mock_read_write(self, monkeypatch) -> None:
+    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[str]:
         """
         This function will mock the open function for specific files:
 
@@ -61,8 +63,9 @@ class TestLLMProfileDataParser:
         original_open = open
 
         def custom_open(filename, *args, **kwargs):
-            def write(content):
+            def write(self: Any, content: str) -> int:
                 written_data.append(content)
+                return len(content)
 
             if filename == "triton_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.triton_profile_data))
@@ -72,7 +75,7 @@ class TestLLMProfileDataParser:
                 return tmp_file
             elif filename == "profile_export.csv":
                 tmp_file = StringIO()
-                tmp_file.write = write
+                tmp_file.write = write.__get__(tmp_file)
                 return tmp_file
             else:
                 return original_open(filename, *args, **kwargs)
@@ -81,17 +84,17 @@ class TestLLMProfileDataParser:
 
         return written_data
 
-    def test_csv_output(self, mock_read_write) -> None:
+    def test_csv_output(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """
         Collect LLM metrics from profile export data and confirm correct values are
         printed in csv.
         """
 
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             tokenizer=tokenizer,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -99,13 +102,13 @@ class TestLLMProfileDataParser:
         expected_content = [
             "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
             "Time To First Token (ns),2,2,2,2,2,2,2,2,2\r\n",
-            "Inter Token Latency (ns),2,2,3,3,3,3,2,2,2\r\n",
+            "Inter Token Latency (ns),2,1,3,3,3,3,2,2,2\r\n",
             "Request Latency (ns),8,7,9,9,9,9,8,8,8\r\n",
-            "Num Output Token,4,3,5,5,5,5,4,4,4\r\n",
+            "Num Output Token,4,3,6,6,6,6,5,4,4\r\n",
             "Num Input Token,4,3,4,4,4,4,4,4,3\r\n",
             "\r\n",
             "Metric,Value\r\n",
-            "Output Token Throughput (per sec),800000000.00\r\n",
+            "Output Token Throughput (per sec),900000000.00\r\n",
             "Request Throughput (per sec),200000000.00\r\n",
         ]
 
@@ -115,7 +118,7 @@ class TestLLMProfileDataParser:
 
         assert returned_data == expected_content
 
-    def test_triton_llm_profile_data(self, mock_read_write) -> None:
+    def test_triton_llm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
@@ -123,164 +126,169 @@ class TestLLMProfileDataParser:
             - experiment 1: [3 - 1, 4 - 2] = [2, 2]
             - experiment 2: [7 - 5, 6 - 3] = [2, 3]
         * inter token latencies
-            - experiment 1: [[(5 - 3)/1, (8 - 5)/1], [(7 - 4)/2, (11 - 7)/2]]
-                          : [[2, 3], [3/2, 2]]
-                          : [[2, 3], [2, 2]]  # rounded up
+            - experiment 1: [[(5 - 3)/1, (8 - 5)/1], [(7 - 4)/3, (11 - 7)/2]]
+                          : [[2, 3], [3/3, 2]]
+                          : [[2, 3], [1, 2]]
             - experiment 2: [[(8 - 7)/1, (13 - 8)/1, (18 - 13)/1], [(8 - 6)/1, (11 - 8)/2]]
                           : [[1, 5, 5], [2, 3/2]]
-                          : [[1, 5, 5], [2, 2]]  # rounded up
+                          : [[1, 5, 5], [2, 2]]  # rounded
         * output token throughputs per request
-            - experiment 1: [3/(8 - 1), 5/(11 - 2)] = [3/7, 5/9]
-            - experiment 2: [4/(18 - 5), 5/(11 - 3)] = [4/13, 5/8]
+            - experiment 1: [3/(8 - 1), 6/(11 - 2)] = [3/7, 6/9]
+            - experiment 2: [4/(18 - 5), 6/(11 - 3)] = [4/13, 6/8]
         * output token throughputs
-            - experiment 1: [(3 + 5)/(11 - 1)] = [8/10]
-            - experiment 2: [(4 + 5)/(18 - 3)] = [3/5]
+            - experiment 1: [(3 + 6)/(11 - 1)] = [9/10]
+            - experiment 2: [(4 + 6)/(18 - 3)] = [2/3]
         * num output tokens
-            - experiment 1: [3, 5]
-            - experiment 2: [4, 5]
+            - experiment 1: [3, 6]
+            - experiment 2: [4, 6]
         * num input tokens
             - experiment 1: [3, 4]
             - experiment 2: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
             filename="triton_profile_export.json",
             service_kind="triton",
-            output_format=OutputFormat.TRTLLM,
+            output_format=OutputFormat.TENSORRTLLM,
             tokenizer=tokenizer,
         )
 
         # experiment 1 metrics & statistics
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
         metrics = stat.metrics
+        assert isinstance(metrics, LLMMetrics)
 
         assert metrics.time_to_first_tokens == [2, 2]
-        assert metrics.inter_token_latencies == [[2, 3], [2, 2]]
-        ottpr = [3 / ns_to_sec(7), 5 / ns_to_sec(9)]
+        assert metrics.inter_token_latencies == [[2, 3], [1, 2]]
+        ottpr = [3 / ns_to_sec(7), 6 / ns_to_sec(9)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [8 / ns_to_sec(10)]
+        ott = [9 / ns_to_sec(10)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
-        assert metrics.num_output_tokens == [3, 5]
+        assert metrics.num_output_tokens == [3, 6]
         assert metrics.num_input_tokens == [3, 4]
 
-        assert stat.avg_time_to_first_token == 2
-        assert stat.avg_inter_token_latency == 2.25
-        avg_ottpr = 31 / ns_to_sec(63)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
-        assert stat.avg_num_output_token == 4
-        assert stat.avg_num_input_token == 3.5
-
-        assert stat.p50_time_to_first_token == 2
-        assert stat.p50_inter_token_latency == 2
-        p50_ottpr = 31 / ns_to_sec(63)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
-        assert stat.p50_num_output_token == 4
-        assert stat.p50_num_input_token == 3.5
-
-        assert stat.min_time_to_first_token == 2
-        assert stat.min_inter_token_latency == 2
-        min_ottpr = 3 / ns_to_sec(7)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
-        assert stat.min_num_output_token == 3
-        assert stat.min_num_input_token == 3
-
-        assert stat.max_time_to_first_token == 2
-        assert stat.max_inter_token_latency == 3
-        max_ottpr = 5 / ns_to_sec(9)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
-        assert stat.max_num_output_token == 5
-        assert stat.max_num_input_token == 4
-
-        assert stat.std_time_to_first_token == np.std([2, 2])
-        assert stat.std_inter_token_latency == np.std([2, 3, 2, 2])
-        ottpr1 = 3 / ns_to_sec(7)
-        ottpr2 = 5 / ns_to_sec(9)
-        assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([ottpr1, ottpr2])
+        # Disable Pylance warnings for dynamically set attributes due to Statistics
+        # not having strict attributes listed.
+        assert stat.avg_time_to_first_token == 2  # type: ignore
+        assert stat.avg_inter_token_latency == 2  # type: ignore
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.mean(ottpr)
         )
-        assert stat.std_num_output_token == np.std([3, 5])
-        assert stat.std_num_input_token == np.std([3, 4])
+        assert stat.avg_num_output_token == 4.5  # type: ignore
+        assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        oott = 8 / ns_to_sec(10)
-        assert stat.avg_output_token_throughput == pytest.approx(oott)
+        assert stat.p50_time_to_first_token == 2  # type: ignore
+        assert stat.p50_inter_token_latency == 2  # type: ignore
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.percentile(ottpr, 50)
+        )
+        assert stat.p50_num_output_token == 4.5  # type: ignore
+        assert stat.p50_num_input_token == 3.5  # type: ignore
+
+        assert stat.min_time_to_first_token == 2  # type: ignore
+        assert stat.min_inter_token_latency == 1  # type: ignore
+        min_ottpr = 3 / ns_to_sec(7)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
+        assert stat.min_num_output_token == 3  # type: ignore
+        assert stat.min_num_input_token == 3  # type: ignore
+
+        assert stat.max_time_to_first_token == 2  # type: ignore
+        assert stat.max_inter_token_latency == 3  # type: ignore
+        max_ottpr = 6 / ns_to_sec(9)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
+        assert stat.max_num_output_token == 6  # type: ignore
+        assert stat.max_num_input_token == 4  # type: ignore
+
+        assert stat.std_time_to_first_token == np.std([2, 2])  # type: ignore
+        assert stat.std_inter_token_latency == np.std([2, 3, 1, 2])  # type: ignore
+        assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.std(ottpr)
+        )
+        assert stat.std_num_output_token == np.std([3, 6])  # type: ignore
+        assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
+
+        oott = 9 / ns_to_sec(10)
+        assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # experiment 2 statistics
         stat = pd.get_statistics(infer_mode="request_rate", load_level="2.0")
         metrics = stat.metrics
+        assert isinstance(metrics, LLMMetrics)
 
         assert metrics.time_to_first_tokens == [2, 3]
         assert metrics.inter_token_latencies == [[1, 5, 5], [2, 2]]
-        ottpr = [4 / ns_to_sec(13), 5 / ns_to_sec(8)]
+        ottpr = [4 / ns_to_sec(13), 6 / ns_to_sec(8)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [3 / ns_to_sec(5)]
+        ott = [2 / ns_to_sec(3)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
-        assert metrics.num_output_tokens == [4, 5]
+        assert metrics.num_output_tokens == [4, 6]
         assert metrics.num_input_tokens == [3, 4]
 
-        assert stat.avg_time_to_first_token == 2.5
-        assert stat.avg_inter_token_latency == 3
-        avg_ottpr = 97 / ns_to_sec(208)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
-        assert stat.avg_num_output_token == 4.5
-        assert stat.avg_num_input_token == 3.5
-
-        assert stat.p50_time_to_first_token == 2.5
-        assert stat.p50_inter_token_latency == 2
-        p50_ottpr = 97 / ns_to_sec(208)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
-        assert stat.p50_num_output_token == 4.5
-        assert stat.p50_num_input_token == 3.5
-
-        assert stat.min_time_to_first_token == 2
-        assert stat.min_inter_token_latency == 1
-        min_ottpr = 4 / ns_to_sec(13)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
-        assert stat.min_num_output_token == 4
-        assert stat.min_num_input_token == 3
-
-        assert stat.max_time_to_first_token == 3
-        assert stat.max_inter_token_latency == 5
-        max_ottpr = 5 / ns_to_sec(8)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
-        assert stat.max_num_output_token == 5
-        assert stat.max_num_input_token == 4
-
-        assert stat.std_time_to_first_token == np.std([2, 3])
-        assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 2])
-        ottpr1 = 4 / ns_to_sec(13)
-        ottpr2 = 5 / ns_to_sec(8)
-        assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([ottpr1, ottpr2])
+        assert stat.avg_time_to_first_token == 2.5  # type: ignore
+        assert stat.avg_inter_token_latency == 3  # type: ignore
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.mean(ottpr)
         )
-        assert stat.std_num_output_token == np.std([4, 5])
-        assert stat.std_num_input_token == np.std([3, 4])
+        assert stat.avg_num_output_token == 5  # type: ignore
+        assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        oott = 6 / ns_to_sec(10)
-        assert stat.avg_output_token_throughput == pytest.approx(oott)
+        assert stat.p50_time_to_first_token == 2.5  # type: ignore
+        assert stat.p50_inter_token_latency == 2  # type: ignore
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.percentile(ottpr, 50)
+        )
+        assert stat.p50_num_output_token == 5  # type: ignore
+        assert stat.p50_num_input_token == 3.5  # type: ignore
+
+        assert stat.min_time_to_first_token == 2  # type: ignore
+        assert stat.min_inter_token_latency == 1  # type: ignore
+        min_ottpr = 4 / ns_to_sec(13)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
+        assert stat.min_num_output_token == 4  # type: ignore
+        assert stat.min_num_input_token == 3  # type: ignore
+
+        assert stat.max_time_to_first_token == 3  # type: ignore
+        assert stat.max_inter_token_latency == 5  # type: ignore
+        max_ottpr = 6 / ns_to_sec(8)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
+        assert stat.max_num_output_token == 6  # type: ignore
+        assert stat.max_num_input_token == 4  # type: ignore
+
+        assert stat.std_time_to_first_token == np.std([2, 3])  # type: ignore
+        assert stat.std_inter_token_latency == np.std([1, 5, 5, 2, 2])  # type: ignore
+        assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.std(ottpr)
+        )
+        assert stat.std_num_output_token == np.std([4, 6])  # type: ignore
+        assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
+
+        oott = 2 / ns_to_sec(3)
+        assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # check non-existing profile data
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="30")
 
-    def test_openai_llm_profile_data(self, mock_read_write) -> None:
+    def test_openai_llm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """Collect LLM metrics from profile export data and check values.
 
         Metrics
         * time to first tokens
-            - experiment 1: [3 - 1, 4 - 2] = [2, 2]
+            - experiment 1: [5 - 1, 7 - 2] = [4, 5]
         * inter token latencies
-            - experiment 1: [[(5 - 3)/1, (8 - 5)/1, (12 - 8)/1], [(7 - 4)/1, (11 - 7)/2, (15 - 11)/2]]
-                          : [[2, 3, 4], [3, 2, 2]]
+            - experiment 1: [[(8 - 5)/1, (12 - 8)/1], [(11 - 7)/3, (15 - 11)/2]]
+                          : [[3, 4], [4/3, 2]]
+                          : [[3, 4], [1, 2]]  # rounded
         * output token throughputs per request
-            - experiment 1: [3/(12 - 1), 5/(15 - 2)] = [3/11, 5/13]
+            - experiment 1: [3/(12 - 1), 6/(15 - 2)] = [3/11, 6/13]
         * output token throughputs
-            - experiment 1: [(3 + 5)/(15 - 1)] = [4/7]
+            - experiment 1: [(3 + 6)/(15 - 1)] = [9/14]
         * num output tokens
-            - experiment 1: [3, 5]
+            - experiment 1: [3, 6]
         * num input tokens
             - experiment 1: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
             filename="openai_profile_export.json",
             service_kind="openai",
@@ -291,60 +299,90 @@ class TestLLMProfileDataParser:
         # experiment 1 statistics
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
         metrics = stat.metrics
+        assert isinstance(metrics, LLMMetrics)
 
-        assert metrics.time_to_first_tokens == [2, 2]
-        assert metrics.inter_token_latencies == [[2, 3, 4], [3, 2, 2]]
-        ottpr = [3 / ns_to_sec(11), 5 / ns_to_sec(13)]
+        assert metrics.time_to_first_tokens == [4, 5]
+        assert metrics.inter_token_latencies == [[3, 4], [1, 2]]
+        ottpr = [3 / ns_to_sec(11), 6 / ns_to_sec(13)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [4 / ns_to_sec(7)]
+        ott = [9 / ns_to_sec(14)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
-        assert metrics.num_output_tokens == [3, 5]
+        assert metrics.num_output_tokens == [3, 6]
         assert metrics.num_input_tokens == [3, 4]
 
-        assert stat.avg_time_to_first_token == 2
-        assert stat.avg_inter_token_latency == 8 / 3
-        avg_ottpr = 47 / ns_to_sec(143)
-        assert stat.avg_output_token_throughput_per_request == pytest.approx(avg_ottpr)
-        assert stat.avg_num_output_token == 4
-        assert stat.avg_num_input_token == 3.5
-
-        assert stat.p50_time_to_first_token == 2
-        assert stat.p50_inter_token_latency == 2.5
-        p50_ottpr = 47 / ns_to_sec(143)
-        assert stat.p50_output_token_throughput_per_request == pytest.approx(p50_ottpr)
-        assert stat.p50_num_output_token == 4
-        assert stat.p50_num_input_token == 3.5
-
-        assert stat.min_time_to_first_token == 2
-        assert stat.min_inter_token_latency == 2
-        min_ottpr = 3 / ns_to_sec(11)
-        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)
-        assert stat.min_num_output_token == 3
-        assert stat.min_num_input_token == 3
-
-        assert stat.max_time_to_first_token == 2
-        assert stat.max_inter_token_latency == 4
-        max_ottpr = 5 / ns_to_sec(13)
-        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)
-        assert stat.max_num_output_token == 5
-        assert stat.max_num_input_token == 4
-
-        assert stat.std_time_to_first_token == np.std([2, 2])
-        assert stat.std_inter_token_latency == np.std([2, 3, 4, 3, 2, 2])
-        ottpr1 = 3 / ns_to_sec(11)
-        ottpr2 = 5 / ns_to_sec(13)
-        assert stat.std_output_token_throughput_per_request == pytest.approx(
-            np.std([ottpr1, ottpr2])
+        assert stat.avg_time_to_first_token == 4.5  # type: ignore
+        assert stat.avg_inter_token_latency == 2.5  # type: ignore
+        assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.mean(ottpr)
         )
-        assert stat.std_num_output_token == np.std([3, 5])
-        assert stat.std_num_input_token == np.std([3, 4])
+        assert stat.avg_num_output_token == 4.5  # type: ignore
+        assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        oott = 4 / ns_to_sec(7)
-        assert stat.avg_output_token_throughput == pytest.approx(oott)
+        assert stat.p50_time_to_first_token == 4.5  # type: ignore
+        assert stat.p50_inter_token_latency == 2.5  # type: ignore
+        assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.percentile(ottpr, 50)
+        )
+        assert stat.p50_num_output_token == 4.5  # type: ignore
+        assert stat.p50_num_input_token == 3.5  # type: ignore
+
+        assert stat.min_time_to_first_token == 4  # type: ignore
+        assert stat.min_inter_token_latency == 1  # type: ignore
+        min_ottpr = 3 / ns_to_sec(11)
+        assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
+        assert stat.min_num_output_token == 3  # type: ignore
+        assert stat.min_num_input_token == 3  # type: ignore
+
+        assert stat.max_time_to_first_token == 5  # type: ignore
+        assert stat.max_inter_token_latency == 4  # type: ignore
+        max_ottpr = 6 / ns_to_sec(13)
+        assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
+        assert stat.max_num_output_token == 6  # type: ignore
+        assert stat.max_num_input_token == 4  # type: ignore
+
+        assert stat.std_time_to_first_token == np.std([4, 5])  # type: ignore
+        assert stat.std_inter_token_latency == np.std([3, 4, 1, 2])  # type: ignore
+        assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
+            np.std(ottpr)
+        )
+        assert stat.std_num_output_token == np.std([3, 6])  # type: ignore
+        assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
+
+        oott = 9 / ns_to_sec(14)
+        assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # check non-existing profile data
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="40")
+
+    def test_merged_sse_response(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Test merging the multiple sse response."""
+        res_timestamps = [0, 1, 2, 3]
+        res_outputs = [
+            {
+                "response": 'data: {"choices":[{"delta":{"content":"aaa"}}],"object":"chat.completion.chunk"}\n\n'
+            },
+            {
+                "response": (
+                    'data: {"choices":[{"delta":{"content":"abc"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"1234"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"helloworld"}}],"object":"chat.completion.chunk"}\n\n'
+                )
+            },
+            {"response": "data: [DONE]\n\n"},
+        ]
+        expected_response = '{"choices": [{"delta": {"content": "abc1234helloworld"}}], "object": "chat.completion.chunk"}'
+
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+        pd = LLMProfileDataParser(
+            filename="openai_profile_export.json",
+            service_kind="openai",
+            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            tokenizer=tokenizer,
+        )
+
+        pd._preprocess_response(res_timestamps, res_outputs)
+        assert res_outputs[1]["response"] == expected_response
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
@@ -353,7 +391,7 @@ class TestLLMProfileDataParser:
             request_throughputs=[10.12, 11.33],
             request_latencies=[3, 44],
             time_to_first_tokens=[1, 2, 3],
-            inter_token_latencies=[4, 5],
+            inter_token_latencies=[[4, 5]],
             output_token_throughputs=[22.13, 9423.02],
             output_token_throughputs_per_request=[7, 8, 9],
             num_output_tokens=[3, 4],
@@ -383,20 +421,20 @@ class TestLLMProfileDataParser:
                         "request_inputs": {
                             "payload": '{"messages":[{"role":"user","content":"This is test"}],"model":"llama-2-7b","stream":true}',
                         },
-                        # last two empty/null responses will be ignored
+                        # the first, and the last two responses will be ignored because they have no "content"
                         "response_timestamps": [3, 5, 8, 12, 13, 14],
                         "response_outputs": [
                             {
                                 "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"dogs"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"are"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":" like"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cool"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":" dogs"},"finish_reason":null}]}\n\n'
                             },
                             {
                                 "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
@@ -409,7 +447,7 @@ class TestLLMProfileDataParser:
                         "request_inputs": {
                             "payload": '{"messages":[{"role":"user","content":"This is test too"}],"model":"llama-2-7b","stream":true}',
                         },
-                        # last two empty/null responses will be ignored
+                        # the first, and the last two responses will be ignored because they have no "content"
                         "response_timestamps": [4, 7, 11, 15, 18, 19],
                         "response_outputs": [
                             {
@@ -448,9 +486,9 @@ class TestLLMProfileDataParser:
                         "request_inputs": {"text_input": "This is test"},
                         "response_timestamps": [3, 5, 8],
                         "response_outputs": [
-                            {"text_output": "dogs"},
-                            {"text_output": "are"},
-                            {"text_output": "cool"},
+                            {"text_output": "I"},
+                            {"text_output": " like"},
+                            {"text_output": " dogs"},
                         ],
                     },
                     {
@@ -459,8 +497,8 @@ class TestLLMProfileDataParser:
                         "response_timestamps": [4, 7, 11],
                         "response_outputs": [
                             {"text_output": "I"},
-                            {"text_output": "don't"},
-                            {"text_output": "cook food"},
+                            {"text_output": " don't"},
+                            {"text_output": " cook food"},
                         ],
                     },
                 ],
@@ -476,10 +514,10 @@ class TestLLMProfileDataParser:
                         "request_inputs": {"text_input": "This is test"},
                         "response_timestamps": [7, 8, 13, 18],
                         "response_outputs": [
-                            {"text_output": "cats"},
-                            {"text_output": "are"},
-                            {"text_output": "cool"},
-                            {"text_output": "too"},
+                            {"text_output": "cat"},
+                            {"text_output": " is"},
+                            {"text_output": " cool"},
+                            {"text_output": " too"},
                         ],
                     },
                     {
@@ -488,8 +526,8 @@ class TestLLMProfileDataParser:
                         "response_timestamps": [6, 8, 11],
                         "response_outputs": [
                             {"text_output": "it's"},
-                            {"text_output": "very"},
-                            {"text_output": "simple work"},
+                            {"text_output": " very"},
+                            {"text_output": " simple work"},
                         ],
                     },
                 ],
