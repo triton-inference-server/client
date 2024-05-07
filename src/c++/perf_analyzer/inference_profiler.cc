@@ -549,7 +549,7 @@ InferenceProfiler::Profile(
       dynamic_cast<ConcurrencyManager*>(manager_.get())
           ->ChangeConcurrencyLevel(concurrent_request_count, num_of_requests));
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, num_of_requests, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -608,7 +608,7 @@ InferenceProfiler::Profile(
   std::cout << "Request Rate: " << request_rate
             << " inference requests per seconds" << std::endl;
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, num_of_requests, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -654,7 +654,7 @@ InferenceProfiler::Profile(
   is_stable = false;
   meets_threshold = true;
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, num_of_requests, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -686,7 +686,7 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::ProfileHelper(
-    PerfStatus& experiment_perf_status, bool* is_stable)
+    PerfStatus& experiment_perf_status, size_t num_of_requests, bool* is_stable)
 {
   // Start measurement
   LoadStatus load_status;
@@ -761,13 +761,13 @@ InferenceProfiler::ProfileHelper(
       }
     }
 
-    *is_stable = DetermineStability(load_status);
-
-    // FIXME TKG -- need to know if fixed num mode
-    if (measurement_mode_ == MeasurementMode::COUNT_WINDOWS) {
+    // If num of requests is specified, then only measure one window and exit
+    if (num_of_requests != 0) {
       *is_stable = true;
       break;
     }
+
+    *is_stable = DetermineStability(load_status);
 
     if (IsDoneProfiling(load_status, is_stable)) {
       break;
