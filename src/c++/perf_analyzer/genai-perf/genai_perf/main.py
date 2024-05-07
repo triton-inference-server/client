@@ -119,7 +119,7 @@ def create_plots(filename: Path) -> None:
     config_parser = PlotConfigParser(output_dir / "config.yaml")
     plot_configs = config_parser.generate_configs()
     plot_manager = PlotManager(plot_configs)
-    plot_manager.create_default_plots()
+    plot_manager.generate_plots()
 
 
 def finalize(profile_export_file: Path):
