@@ -38,6 +38,7 @@ from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
+from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
@@ -87,8 +88,6 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
-        service_kind=args.service_kind,
-        output_format=args.output_format,
         tokenizer=tokenizer,
     )
 
@@ -111,12 +110,18 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     stats.export_parquet(DEFAULT_PARQUET_FILE)
     stats.pretty_print()
     if args.generate_plots:
-        create_plots(stats)
+        create_plots(args.profile_export_file)
 
 
-def create_plots(stats: Statistics) -> None:
-    plot_manager = PlotManager(stats)
-    plot_manager.create_default_plots()
+def create_plots(filename: Path) -> None:
+    output_dir = Path(f"{DEFAULT_ARTIFACT_DIR}/plots")
+    PlotConfigParser.create_init_yaml_config([filename], output_dir)
+    config_parser = PlotConfigParser(output_dir / "config.yaml")
+    plot_configs = config_parser.generate_configs()
+
+    # TODO (harshini): plug-in configs to plot manager
+    # plot_manager = PlotManager(stats)
+    # plot_manager.create_default_plots()
 
 
 def finalize(profile_export_file: Path):
