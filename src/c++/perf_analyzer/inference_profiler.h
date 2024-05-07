@@ -389,7 +389,8 @@ class InferenceProfiler {
   /// \param status_summary Returns the summary of the measurement.
   /// \param is_stable Returns whether the measurement stabilized or not.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ProfileHelper(PerfStatus& status_summary, bool* is_stable);
+  cb::Error ProfileHelper(
+      PerfStatus& status_summary, size_t num_of_requests, bool* is_stable);
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
