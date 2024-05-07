@@ -68,7 +68,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
     auto worker = std::make_shared<MockRequestRateWorker>(
@@ -85,8 +85,16 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return worker;
   }
 
-  void TestConfigureThreads(
-      std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
+  // This function exists to make testing the common case easier
+  // (num_requests==0)
+  cb::Error ChangeRequestRate(const double target_request_rate)
+  {
+    size_t num_requests = 0;
+    return RequestRateManager::ChangeRequestRate(
+        target_request_rate, num_requests);
+  }
+
+  void TestConfigureThreads(std::vector<ThreadConfig>& expected_configs)
   {
     RequestRateManager::ConfigureThreads();
 
@@ -401,8 +409,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
   cb::Error CustomDataTestSendRequests(size_t num_requests)
   {
     std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+    std::shared_ptr<ThreadConfig> thread_config{
+        std::make_shared<ThreadConfig>(0)};
     std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
 
     auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
@@ -948,8 +956,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   schedule->duration = nanoseconds{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
   trrm.InitManager(
@@ -1698,8 +1706,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
           mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   trrm.parser_ = mip.mock_model_parser_;
   trrm.data_loader_ = mip.mock_data_loader_;
@@ -1947,7 +1955,7 @@ TEST_CASE(
 TEST_CASE("request rate manager - Configure threads")
 {
   PerfAnalyzerParameters params{};
-  std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
+  std::vector<ThreadConfig> expected_config_values;
   std::vector<size_t> expected_number_of_sequences_owned_by_thread;
   std::vector<size_t> expected_seq_stat_index_offsets;
   bool is_sequence_model = true;
@@ -1992,7 +2000,7 @@ TEST_CASE("request rate manager - Configure threads")
 
   for (auto i = 0; i < expected_number_of_sequences_owned_by_thread.size();
        i++) {
-    RequestRateWorker::ThreadConfig tc(i);
+    ThreadConfig tc(i);
     tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
     tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
     expected_config_values.push_back(tc);

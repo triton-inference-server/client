@@ -39,7 +39,7 @@ PeriodicConcurrencyManager::RunExperiment()
 std::shared_ptr<IWorker>
 PeriodicConcurrencyManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   uint32_t id = workers_.size();
   auto worker = std::make_shared<PeriodicConcurrencyWorker>(
@@ -65,9 +65,8 @@ void
 PeriodicConcurrencyManager::AddConcurrentRequest(size_t seq_stat_index_offset)
 {
   threads_stat_.emplace_back(std::make_shared<ThreadStat>());
-  threads_config_.emplace_back(
-      std::make_shared<ConcurrencyWorker::ThreadConfig>(
-          threads_config_.size(), 1, seq_stat_index_offset));
+  threads_config_.emplace_back(std::make_shared<ThreadConfig>(
+      threads_config_.size(), 1, seq_stat_index_offset));
   workers_.emplace_back(
       MakeWorker(threads_stat_.back(), threads_config_.back()));
   threads_.emplace_back(&IWorker::Infer, workers_.back());

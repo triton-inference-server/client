@@ -96,8 +96,7 @@ class ConcurrencyManager : public LoadManager {
  protected:
   // Makes a new worker
   virtual std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat>,
-      std::shared_ptr<ConcurrencyWorker::ThreadConfig>);
+      std::shared_ptr<ThreadStat>, std::shared_ptr<ThreadConfig>);
 
   ConcurrencyManager(
       const bool async, const bool streaming, const int32_t batch_size,
@@ -115,7 +114,7 @@ class ConcurrencyManager : public LoadManager {
 
   size_t max_concurrency_;
 
-  std::vector<std::shared_ptr<ConcurrencyWorker::ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
 
  private:
   void InitManagerFinalize() override;
@@ -127,8 +126,7 @@ class ConcurrencyManager : public LoadManager {
   // Create new threads (if necessary), and then reconfigure all worker threads
   // to handle the new concurrent request count
   //
-  void ReconfigThreads(
-      size_t concurrent_request_count, size_t num_of_requests = 0);
+  void ReconfigThreads(size_t concurrent_request_count, size_t num_of_requests);
 
   // Restart all worker threads that were working on sequences
   //

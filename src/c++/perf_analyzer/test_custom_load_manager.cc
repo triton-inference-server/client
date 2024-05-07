@@ -70,7 +70,7 @@ class TestCustomLoadManager : public TestLoadManagerBase,
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
     auto worker = std::make_shared<MockRequestRateWorker>(

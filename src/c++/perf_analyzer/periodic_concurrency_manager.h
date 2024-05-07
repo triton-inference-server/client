@@ -61,8 +61,7 @@ class PeriodicConcurrencyManager : public ConcurrencyManager {
  private:
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
-      override;
+      std::shared_ptr<ThreadConfig> thread_config) override;
 
   void AddConcurrentRequests(uint64_t num_concurrent_requests);
 

@@ -39,8 +39,8 @@ LoadWorker::ShouldExit()
 {
   return early_exit || !thread_stat_->cb_status_.IsOk() ||
          !thread_stat_->status_.IsOk() ||
-         (thread_stat_->max_requests_ &&
-          thread_stat_->num_sent_requests_ >= thread_stat_->max_requests_);
+         (thread_config_->num_requests_ &&
+          thread_stat_->num_sent_requests_ >= thread_config_->num_requests_);
 }
 
 bool
