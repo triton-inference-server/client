@@ -33,7 +33,7 @@ import genai_perf.logging as logging
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
-from genai_perf.plots.config import PlotConfig, PlotType, ProfileRunData
+from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from genai_perf.utils import load_yaml, scale
 
@@ -77,11 +77,10 @@ class PlotConfigParser:
 
         return plot_configs
 
-    def _get_statistics(self, filepath: Path) -> Statistics:
+    def _get_statistics(self, filepath: str) -> Statistics:
         """Extract a single profile run data."""
-        profile_filepath = Path(filepath)
         data_parser = LLMProfileDataParser(
-            filename=profile_filepath,
+            filename=Path(filepath),
             tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
         )
         load_info = data_parser.get_profile_load_info()
@@ -106,7 +105,7 @@ class PlotConfigParser:
             itl_flatten = []
             for request_itls in stats.metrics.data[name]:
                 itl_flatten += request_itls
-            return [scale(x, (1 / 1e9)) for x in itl_flatten]  # ns to ms
+            return [scale(x, (1 / 1e6)) for x in itl_flatten]  # ns to ms
         elif name == "token_positions":
             token_positions: list[int | float] = []
             for request_itls in stats.metrics.data["inter_token_latencies"]:
@@ -114,10 +113,10 @@ class PlotConfigParser:
             return token_positions
         elif name == "time_to_first_tokens":
             ttfts = stats.metrics.data[name]
-            return [scale(x, (1 / 1e9)) for x in ttfts]  # ns to ms
+            return [scale(x, (1 / 1e6)) for x in ttfts]  # ns to ms
         elif name == "request_latencies":
             req_latencies = stats.metrics.data[name]
-            return [scale(x, (1 / 1e9)) for x in req_latencies]  # ns to ms
+            return [scale(x, (1 / 1e6)) for x in req_latencies]  # ns to ms
 
         return stats.metrics.data[name]
 

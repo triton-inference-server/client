@@ -32,7 +32,7 @@ import genai_perf.logging as logging
 import genai_perf.utils as utils
 from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
-from genai_perf.plots.parser import PlotConfigParser
+from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 

@@ -29,8 +29,8 @@ from pathlib import Path
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
-from genai_perf.plots.config import PlotType
-from genai_perf.plots.parser import PlotConfigParser
+from genai_perf.plots.plot_config import PlotType
+from genai_perf.plots.plot_config_parser import PlotConfigParser
 
 
 class TestPlotConfigParser:
@@ -62,7 +62,7 @@ class TestPlotConfigParser:
 
     def test_generate_configs(self, monkeypatch) -> None:
         monkeypatch.setattr(
-            "genai_perf.plots.parser.load_yaml",
+            "genai_perf.plots.plot_config_parser.load_yaml",
             lambda _: yaml.safe_load(self.yaml_config),
         )
         monkeypatch.setattr(PlotConfigParser, "_get_statistics", lambda *_: {})
