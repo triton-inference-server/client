@@ -25,14 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Dict, Optional
-
 import pandas as pd
-import plotly.express as px
-from genai_perf.llm_metrics import Statistics
+import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.plots.config import ProfileRunData
-import plotly.graph_objects as go
 
 
 class ScatterPlot(BasePlot):
@@ -52,26 +48,15 @@ class ScatterPlot(BasePlot):
         y_label: str = "",
         filename_root: str = "",
     ) -> None:
-        
-        # df = pd.DataFrame(
-        #     {
-        #         x_metric: self._profile_data[0].x_metric,
-        #         y_metric: self._profile_data[0].y_metric,
-        #     }
-        # )
-
-        # fig = px.scatter(
-        #     df,
-        #     x=x_metric,
-        #     y=y_metric,
-        #     trendline="ols",
-        # )
-
         fig = go.Figure()
         for pd in self._profile_data:
-            fig.add_trace(go.Scatter(x=pd.x_metric, y=pd.y_metric,
-                      mode='lines',
-                      name=pd.name)
+            fig.add_trace(
+                go.Scatter(
+                    x=pd.x_metric,
+                    y=pd.y_metric,
+                    mode="markers",
+                    name=pd.name,
+                )
             )
 
         fig.update_layout(
@@ -84,7 +69,7 @@ class ScatterPlot(BasePlot):
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")
 
-        #TODO: Generate Parquet
-        #self._generate_parquet(df, filename_root)
+        # TODO: Generate Parquet
+        # self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
         self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)
