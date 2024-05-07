@@ -370,7 +370,7 @@ class TestLLMProfileDataParser:
 
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="openai_profile_export.json",
+            filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
         )
 

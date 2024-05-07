@@ -29,9 +29,9 @@
 from genai_perf.llm_metrics import Statistics
 from genai_perf.plots.box_plot import BoxPlot
 from genai_perf.plots.heat_map import HeatMap
+from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
 from genai_perf.plots.scatter_plot import ScatterPlot
 from genai_perf.utils import scale
-from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
 
 
 class PlotManager:

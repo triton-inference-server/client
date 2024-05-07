@@ -25,13 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import pandas as pd
-
 from pathlib import Path
 
+import pandas as pd
 from genai_perf.exceptions import GenAIPerfException
-from plotly.graph_objects import Figure
 from genai_perf.plots.plot_config import ProfileRunData
+from plotly.graph_objects import Figure
 
 
 class BasePlot:
@@ -56,17 +55,21 @@ class BasePlot:
         raise NotImplementedError
 
     def _create_dataframe(self, x_label: str, y_label: str) -> pd.DataFrame:
-        return pd.DataFrame({
-            x_label: [prd.x_metric for prd in self._profile_data],
-            y_label: [prd.y_metric for prd in self._profile_data],
-            "Run Name": [prd.name for prd in self._profile_data],
-        })
+        return pd.DataFrame(
+            {
+                x_label: [prd.x_metric for prd in self._profile_data],
+                y_label: [prd.y_metric for prd in self._profile_data],
+                "Run Name": [prd.name for prd in self._profile_data],
+            }
+        )
 
     def _generate_parquet(self, df: pd.DataFrame, output_dir: Path, file: str) -> None:
         filepath = output_dir / f"{file}.gzip"
         df.to_parquet(filepath, compression="gzip")
 
-    def _generate_graph_file(self, fig: Figure, output_dir: Path, file: str, title: str) -> None:
+    def _generate_graph_file(
+        self, fig: Figure, output_dir: Path, file: str, title: str
+    ) -> None:
         if file.endswith("jpeg"):
             print(f"Generating '{title}' jpeg")
             filepath = output_dir / f"{file}"

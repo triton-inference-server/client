@@ -50,7 +50,7 @@ class HeatMap(BasePlot):
         output_dir: Path = Path(""),
     ) -> None:
         N = len(self._profile_data)
-        
+
         if N <= 3:
             n_rows, n_cols = 1, N
         else:
@@ -68,7 +68,7 @@ class HeatMap(BasePlot):
             hm = go.Histogram2d(
                 x=prd.x_metric,
                 y=prd.y_metric,
-                coloraxis = "coloraxis",
+                coloraxis="coloraxis",
             )
 
             # Calculate the location where the figure should be added in the subplot
@@ -83,7 +83,7 @@ class HeatMap(BasePlot):
                 "x": 0.5,
             },
         )
-        
+
         # Save dataframe as parquet file
         df = self._create_dataframe(x_label, y_label)
         self._generate_parquet(df, output_dir, filename_root)

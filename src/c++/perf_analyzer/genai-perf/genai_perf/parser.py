@@ -24,19 +24,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
 import argparse
+import os
 import sys
 from pathlib import Path
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_COMPARE_DIR, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
-from genai_perf.constants import DEFAULT_COMPARE_DIR
 
 from . import __version__
 
@@ -483,6 +482,7 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
 
 
 ### Handlers ###
+
 
 def create_compare_dir() -> None:
     if not os.path.exists(DEFAULT_COMPARE_DIR):
