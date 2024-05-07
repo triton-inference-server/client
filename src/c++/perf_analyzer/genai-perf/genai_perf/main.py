@@ -118,10 +118,8 @@ def create_plots(filename: Path) -> None:
     PlotConfigParser.create_init_yaml_config([filename], output_dir)
     config_parser = PlotConfigParser(output_dir / "config.yaml")
     plot_configs = config_parser.generate_configs()
-
-    # TODO (harshini): plug-in configs to plot manager
-    # plot_manager = PlotManager(stats)
-    # plot_manager.create_default_plots()
+    plot_manager = PlotManager(plot_configs)
+    plot_manager.create_default_plots()
 
 
 def finalize(profile_export_file: Path):
@@ -148,8 +146,8 @@ def run():
         else:
             create_artifacts_dirs(args.generate_plots)
             tokenizer = get_tokenizer(args.tokenizer)
-            generate_inputs(args, tokenizer)
-            args.func(args, extra_args)
+            #generate_inputs(args, tokenizer)
+            #args.func(args, extra_args)
             data_parser = calculate_metrics(args, tokenizer)
             report_output(data_parser, args)
             finalize(args.profile_export_file)

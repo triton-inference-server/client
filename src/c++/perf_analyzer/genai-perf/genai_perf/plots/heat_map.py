@@ -32,6 +32,10 @@ import plotly.express as px
 from genai_perf.llm_metrics import Statistics
 from genai_perf.plots.base_plot import BasePlot
 from genai_perf.plots.config import ProfileRunData
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from collections import defaultdict
+
 
 
 class HeatMap(BasePlot):
@@ -51,17 +55,48 @@ class HeatMap(BasePlot):
         y_label: str = "",
         filename_root: str = "",
     ) -> None:
-        df = pd.DataFrame(
-            {
-                x_metric: self._profile_data[0].x_metric,
-                y_metric: self._profile_data[0].y_metric,
-            }
-        )
-        fig = px.density_heatmap(
-            df,
-            x=x_metric,
-            y=y_metric,
-        )
+        # df = pd.DataFrame(
+        #     {
+        #         x_metric: self._profile_data[0].x_metric,
+        #         y_metric: self._profile_data[0].y_metric,
+        #     }
+        # )
+        # fig = px.density_heatmap(
+        #     df,
+        #     x=x_metric,
+        #     y=y_metric,
+        # )
+
+        N = len(self._profile_data)
+        n_rows = (N + 2) // 3
+        n_cols = 3
+        fig = make_subplots(rows=n_rows, cols=n_cols)
+
+        for index,prd in enumerate(self._profile_data):
+            x_range = list(range(min(prd.x_metric), max(prd.x_metric)+1))
+            y_range = list(range(min(prd.y_metric), max(prd.y_metric)+1))
+            
+            # Count occurrences of (x,y) pairs
+            counts = defaultdict(int)
+            for x, y in zip(prd.x_metric, prd.y_metric):
+                counts[(x, y)] += 1
+            
+
+            # Generate 2D histogram
+            histogram = []
+            for y in y_range:
+                row = []
+                for x in x_range:
+                    row.append(counts[(x, y)])
+                histogram.append(row)
+
+            hm = go.Heatmap(z=histogram,x=x_range, y=y_range)
+
+            # Calculate the location where the figure should be added in the subplot 
+            c_row = int(index/n_cols) + 1
+            c_col = index % n_cols + 1
+            fig.add_trace(hm, c_row, c_col)
+
         fig.update_layout(
             title={
                 "text": graph_title,
@@ -72,6 +107,6 @@ class HeatMap(BasePlot):
         fig.update_xaxes(title_text=x_label)
         fig.update_yaxes(title_text=y_label)
 
-        self._generate_parquet(df, filename_root)
+        #self._generate_parquet(df, filename_root)
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
         self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)

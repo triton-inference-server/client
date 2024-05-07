@@ -42,52 +42,38 @@ class PlotManager:
     def __init__(self, plot_configs: list[PlotConfig]) -> None:
         self._plot_configs = plot_configs
 
-    def create_default_plots(self):
-        bp_ttft = BoxPlot(self._plot_configs[0].data)
-        bp_ttft.create_plot(
-            #y_metric=y_metric,
-            graph_title=self._plot_configs[0].title,
-            filename_root="time_to_first_token",
-            x_label=self._plot_configs[0].x_label,
-        )
+    def _generate_filename(self, title: str) -> str:
+        filename = "_".join(title.lower().split())
+        return filename
 
-        bp_req_lat = BoxPlot(self._plot_configs[1].data)
-        bp_req_lat.create_plot(
-            graph_title=self._plot_configs[1].title,
-            filename_root="request_latency",
-            x_label=self._plot_configs[1].x_label,
-        )
+    def create_default_plots(self) -> None:
+        for plot_config in self._plot_configs:
+            if plot_config.type == PlotType.BOX:
+                bp = BoxPlot(plot_config.data)
+                bp.create_plot(
+                    graph_title=plot_config.title,
+                    filename_root=self._generate_filename(plot_config.title),
+                    x_label=plot_config.x_label,
+                )
 
-        hm = HeatMap(self._plot_configs[2].data)
-        hm.create_plot(
-            x_metric="input_tokens",
-            y_metric="generated_tokens",
-            graph_title=self._plot_configs[2].title,
-            x_label=self._plot_configs[2].x_label,
-            y_label=self._plot_configs[2].y_label,
-            filename_root="input_tokens_vs_generated_tokens",
-        )
+            elif plot_config.type == PlotType.HEATMAP:
+                hm = HeatMap(plot_config.data)
+                hm.create_plot(
+                    # x_metric=plot_config.x_metric,
+                    # y_metric=plot_config.y_metric,
+                    graph_title=plot_config.title,
+                    x_label=plot_config.x_label,
+                    y_label=plot_config.y_label,
+                    filename_root=self._generate_filename(plot_config.title),
+                )
 
-        x_metric = "num_input_tokens"
-        y_metric = "time_to_first_tokens"
-        sp_ttft_vs_input_tokens = ScatterPlot(self._plot_configs[3].data)
-        sp_ttft_vs_input_tokens.create_plot(
-            x_metric=x_metric,
-            y_metric=y_metric,
-            graph_title=self._plot_configs[3].title,
-            x_label=self._plot_configs[3].x_label,
-            y_label=self._plot_configs[3].y_label,
-            filename_root="ttft_vs_input_tokens",
-        )
-
-        x_metric = "token_position"
-        y_metric = "inter_token_latency"
-        sp_tot_v_tok_pos = ScatterPlot(self._plot_configs[4].data)
-        sp_tot_v_tok_pos.create_plot(
-            x_metric=x_metric,
-            y_metric=y_metric,
-            graph_title=self._plot_configs[4].title,
-            x_label=self._plot_configs[4].x_label,
-            y_label=self._plot_configs[4].y_label,
-            filename_root="token_to_token_vs_output_position",
-        )
+            elif plot_config.type == PlotType.SCATTER:
+                sp = ScatterPlot(plot_config.data)
+                sp.create_plot(
+                    # x_metric=plot_config.x_metric,
+                    # y_metric=plot_config.y_metric,
+                    graph_title=plot_config.title,
+                    x_label=plot_config.x_label,
+                    y_label=plot_config.y_label,
+                    filename_root=self._generate_filename(plot_config.title),
+                )

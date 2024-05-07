@@ -36,6 +36,7 @@ from genai_perf.plots.base_plot import BasePlot
 from genai_perf.utils import scale
 from plotly.graph_objects import Figure
 from genai_perf.plots.config import ProfileRunData
+import plotly.graph_objects as go
 
 
 class BoxPlot(BasePlot):
@@ -55,22 +56,40 @@ class BoxPlot(BasePlot):
         y_label: str = "",
         filename_root: str = "",
     ) -> None:
-        df = pd.DataFrame({self._profile_data[0].name: self._profile_data[0].y_metric})
-        fig = px.box(
-            df,
-            points="all",
-            title=graph_title,
-        )
-        fig.update_layout(title_x=0.5)
-        fig.update_xaxes(title_text=x_label)
+        # df = pd.DataFrame({self._profile_data[0].name: self._profile_data[0].y_metric})
+        # fig = px.box(
+        #     df,
+        #     points="all",
+        #     title=graph_title,
+        # )
+        # fig.update_layout(title_x=0.5)
+        # fig.update_xaxes(title_text=x_label)
 
-        fig.update_yaxes(title_text="")
+        # fig.update_yaxes(title_text="")
+
+        fig = go.Figure()
+        for pd in self._profile_data:
+            fig.add_trace(go.Box(y=pd.y_metric,name=pd.name))
+
+        # Update layout and axis labels
+        fig.update_layout(
+            title={
+                "text": f"{graph_title}",
+                "xanchor": "center",
+                "x": 0.5,
+            }
+        )
+        fig.update_traces(boxpoints='all', jitter=0)
+        fig.update_xaxes(title_text=x_label)
+        fig.update_yaxes(title_text=y_label)
 
         # create a copy to avoid annotations on html file
         fig_jpeg = copy.deepcopy(fig)
-        #self._add_annotations(fig_jpeg, y_metric)
 
-        self._generate_parquet(df, filename_root)
+        #TODO: Support annotations and generate parquet file
+        #self._add_annotations(fig_jpeg, y_metric)
+        #self._generate_parquet(df, filename_root)
+
         self._generate_graph_file(fig, filename_root + ".html", graph_title)
         self._generate_graph_file(fig_jpeg, filename_root + ".jpeg", graph_title)
 
