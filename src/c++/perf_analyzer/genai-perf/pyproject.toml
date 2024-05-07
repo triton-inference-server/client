@@ -57,6 +57,7 @@ dependencies = [
   "pyarrow",
   "fastparquet",
   "pytest-mock",
+  "pyyaml",
 ]
 
 # CLI Entrypoint
