@@ -45,8 +45,6 @@ class LlmInputs:
     A library of methods that control the generation of LLM Inputs
     """
 
-    OUTPUT_FILENAME = DEFAULT_INPUT_DATA_JSON
-
     OPEN_ORCA_URL = "https://datasets-server.huggingface.co/rows?dataset=Open-Orca%2FOpenOrca&config=default&split=train"
     CNN_DAILYMAIL_URL = "https://datasets-server.huggingface.co/rows?dataset=cnn_dailymail&config=1.0.0&split=train"
 
@@ -92,6 +90,7 @@ class LlmInputs:
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
+        output_dir: Path = Path(""),
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -193,7 +192,7 @@ class LlmInputs:
             output_tokens_deterministic,
             model_name,
         )
-        cls._write_json_to_file(json_in_pa_format)
+        cls._write_json_to_file(json_in_pa_format, output_dir)
 
         return json_in_pa_format
 
@@ -540,8 +539,9 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _write_json_to_file(cls, json_in_pa_format: Dict) -> None:
-        with open(DEFAULT_INPUT_DATA_JSON, "w") as f:
+    def _write_json_to_file(cls, json_in_pa_format: Dict, output_dir: Path) -> None:
+        filename = output_dir / DEFAULT_INPUT_DATA_JSON
+        with open(str(filename), "w") as f:
             f.write(json.dumps(json_in_pa_format, indent=2))
 
     @classmethod

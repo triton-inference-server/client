@@ -35,7 +35,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
@@ -377,15 +376,17 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
-    def export_parquet(self, parquet_filename: str) -> None:
+    def export_parquet(self, artifact_dir: Path, filename: str) -> None:
         max_length = -1
         col_index = 0
         filler_list = []
         df = pd.DataFrame()
+
         # Data frames require all columns of the same length
         # find the max length column
         for key, value in self._metrics.data.items():
             max_length = max(max_length, len(value))
+
         # Insert None for shorter columns to match longest column
         for key, value in self._metrics.data.items():
             if len(value) < max_length:
@@ -395,9 +396,9 @@ class Statistics:
             diff = 0
             filler_list = []
             col_index = col_index + 1
-        df.to_parquet(
-            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
-        )
+
+        filepath = artifact_dir / f"{filename}.gzip"
+        df.to_parquet(filepath, compression="gzip")
 
 
 class ProfileDataParser:
