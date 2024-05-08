@@ -1,0 +1,315 @@
+=== Running /opt/tritonserver/bin/tritonserver --model-repository=/opt/tritonserver/qa/L0_perf_analyzer_report/models --response-cache-byte-size=8192
+================================================================
+[PERMUTATION] Protocol=http Model=simple_onnx_float32_float32_float32_cache_enabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 6032.21 infer/sec. Avg latency: 157 usec (std 9 usec). 
+  Pass [2] throughput: 6059.67 infer/sec. Avg latency: 154 usec (std 62 usec). 
+  Pass [3] throughput: 6116.57 infer/sec. Avg latency: 154 usec (std 79 usec). 
+  Client: 
+    Request count: 112481
+    Throughput: 6069.94 infer/sec
+    Avg client overhead: 9.68%
+    Avg latency: 155 usec (standard deviation 59 usec)
+    p50 latency: 153 usec
+    p90 latency: 163 usec
+    p95 latency: 165 usec
+    p99 latency: 178 usec
+    Avg HTTP time: 143 usec (send 39 usec + response wait 104 usec + receive 0 usec)
+  Server: 
+    Inference count: 1
+    Execution count: 1
+    Cache hit count: 112482
+    Cache miss count: 1
+    Successful request count: 112483
+    Avg request latency: 3 usec
+      Average Cache Hit Latency: 2 usec
+      Average Cache Miss Latency: 155 usec 
+
+  Composing models: 
+  onnx_float32_float32_float32_cache_enabled, version: 3
+      Inference count: 1
+      Execution count: 1
+      Cache hit count: 0
+      Cache miss count: 1
+      Successful request count: 1
+      Avg request latency: 272 usec (overhead 85 usec + queue 38 usec + cache hit/miss 149 usec)
+          Average Cache Hit Latency: 0 usec
+          Average Cache Miss Latency: 148 usec (cache lookup/insertion 12 usec + compute input 29 usec + compute infer 90 usec + compute output 16 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 6069.94 infer/sec, latency 155 usec
+================================================================
+[PERMUTATION] Protocol=http Model=simple_onnx_float32_float32_float32_cache_disabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 4524.13 infer/sec. Avg latency: 213 usec (std 10 usec). 
+  Pass [2] throughput: 4674.08 infer/sec. Avg latency: 203 usec (std 54 usec). 
+  Pass [3] throughput: 4724.14 infer/sec. Avg latency: 202 usec (std 58 usec). 
+  Client: 
+    Request count: 85172
+    Throughput: 4641.85 infer/sec
+    Avg client overhead: 7.28%
+    Avg latency: 206 usec (standard deviation 47 usec)
+    p50 latency: 206 usec
+    p90 latency: 218 usec
+    p95 latency: 223 usec
+    p99 latency: 240 usec
+    Avg HTTP time: 194 usec (send 39 usec + response wait 155 usec + receive 0 usec)
+  Server: 
+    Inference count: 85173
+    Execution count: 85173
+    Successful request count: 85173
+    Avg request latency: 54 usec (overhead 29 usec + queue 9 usec + compute 16 usec)
+
+  Composing models: 
+  onnx_float32_float32_float32_cache_disabled, version: 3
+      Inference count: 85173
+      Execution count: 85173
+      Successful request count: 85173
+      Avg request latency: 46 usec (overhead 21 usec + queue 9 usec + compute input 4 usec + compute infer 7 usec + compute output 5 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 4641.85 infer/sec, latency 206 usec
+================================================================
+[PERMUTATION] Protocol=http Model=onnx_float32_float32_float32_cache_enabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 5468.55 infer/sec. Avg latency: 175 usec (std 28 usec). 
+  Pass [2] throughput: 5862.68 infer/sec. Avg latency: 160 usec (std 65 usec). 
+  Pass [3] throughput: 5897.57 infer/sec. Avg latency: 160 usec (std 68 usec). 
+  Client: 
+    Request count: 106070
+    Throughput: 5746.32 infer/sec
+    Avg client overhead: 9.17%
+    Avg latency: 164 usec (standard deviation 58 usec)
+    p50 latency: 159 usec
+    p90 latency: 193 usec
+    p95 latency: 216 usec
+    p99 latency: 220 usec
+    Avg HTTP time: 152 usec (send 39 usec + response wait 113 usec + receive 0 usec)
+  Server: 
+    Inference count: 0
+    Execution count: 0
+    Cache hit count: 106071
+    Cache miss count: 0
+    Successful request count: 106071
+    Avg request latency: 4 usec (overhead 1 usec + queue 1 usec + cache hit/miss 2 usec)
+      Average Cache Hit Latency: 2 usec
+      Average Cache Miss Latency: 0 usec (cache lookup/insertion 0 usec + compute input 0 usec + compute infer 0 usec + compute output 0 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 5746.32 infer/sec, latency 164 usec
+================================================================
+[PERMUTATION] Protocol=http Model=onnx_float32_float32_float32_cache_disabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 5129.72 infer/sec. Avg latency: 187 usec (std 7 usec). 
+  Pass [2] throughput: 5055.36 infer/sec. Avg latency: 187 usec (std 68 usec). 
+  Pass [3] throughput: 5299.07 infer/sec. Avg latency: 179 usec (std 75 usec). 
+  Client: 
+    Request count: 94988
+    Throughput: 5161.62 infer/sec
+    Avg client overhead: 8.16%
+    Avg latency: 184 usec (standard deviation 59 usec)
+    p50 latency: 183 usec
+    p90 latency: 205 usec
+    p95 latency: 208 usec
+    p99 latency: 242 usec
+    Avg HTTP time: 172 usec (send 38 usec + response wait 134 usec + receive 0 usec)
+  Server: 
+    Inference count: 94989
+    Execution count: 94989
+    Successful request count: 94989
+    Avg request latency: 34 usec (overhead 12 usec + queue 8 usec + compute input 4 usec + compute infer 6 usec + compute output 4 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 5161.62 infer/sec, latency 184 usec
+================================================================
+[PERMUTATION] Protocol=grpc Model=simple_onnx_float32_float32_float32_cache_enabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 3759.39 infer/sec. Avg latency: 257 usec (std 22 usec). 
+  Pass [2] throughput: 3729.59 infer/sec. Avg latency: 257 usec (std 78 usec). 
+  Pass [3] throughput: 3771.5 infer/sec. Avg latency: 255 usec (std 74 usec). 
+  Client: 
+    Request count: 68755
+    Throughput: 3753.4 infer/sec
+    Avg client overhead: 6.69%
+    Avg latency: 256 usec (standard deviation 64 usec)
+    p50 latency: 255 usec
+    p90 latency: 267 usec
+    p95 latency: 272 usec
+    p99 latency: 287 usec
+    Avg gRPC time: 228 usec (marshal 6 usec + response wait 218 usec + unmarshal 4 usec)
+  Server: 
+    Inference count: 0
+    Execution count: 0
+    Cache hit count: 68756
+    Cache miss count: 0
+    Successful request count: 68756
+    Avg request latency: 4 usec
+      Average Cache Hit Latency: 2 usec
+      Average Cache Miss Latency: 0 usec 
+
+  Composing models: 
+  onnx_float32_float32_float32_cache_enabled, version: -1
+      Request count: 0
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 3753.4 infer/sec, latency 256 usec
+================================================================
+[PERMUTATION] Protocol=grpc Model=simple_onnx_float32_float32_float32_cache_disabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 3265.46 infer/sec. Avg latency: 298 usec (std 15 usec). 
+  Pass [2] throughput: 3276.89 infer/sec. Avg latency: 294 usec (std 54 usec). 
+  Pass [3] throughput: 3283.64 infer/sec. Avg latency: 294 usec (std 62 usec). 
+  Client: 
+    Request count: 59896
+    Throughput: 3275.4 infer/sec
+    Avg client overhead: 5.91%
+    Avg latency: 295 usec (standard deviation 48 usec)
+    p50 latency: 293 usec
+    p90 latency: 309 usec
+    p95 latency: 316 usec
+    p99 latency: 337 usec
+    Avg gRPC time: 266 usec (marshal 6 usec + response wait 257 usec + unmarshal 3 usec)
+  Server: 
+    Inference count: 59897
+    Execution count: 59897
+    Successful request count: 59897
+    Avg request latency: 68 usec (overhead 45 usec + queue 7 usec + compute 16 usec)
+
+  Composing models: 
+  onnx_float32_float32_float32_cache_disabled, version: 3
+      Inference count: 59897
+      Execution count: 59897
+      Successful request count: 59897
+      Avg request latency: 60 usec (overhead 37 usec + queue 7 usec + compute input 4 usec + compute infer 7 usec + compute output 5 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 3275.4 infer/sec, latency 295 usec
+================================================================
+[PERMUTATION] Protocol=grpc Model=onnx_float32_float32_float32_cache_enabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 3318.66 infer/sec. Avg latency: 292 usec (std 24 usec). 
+  Pass [2] throughput: 3251.83 infer/sec. Avg latency: 296 usec (std 71 usec). 
+  Pass [3] throughput: 3826.72 infer/sec. Avg latency: 251 usec (std 64 usec). 
+  Pass [4] throughput: 3594.57 infer/sec. Avg latency: 268 usec (std 56 usec). 
+  Pass [5] throughput: 3823.21 infer/sec. Avg latency: 252 usec (std 50 usec). 
+  Client: 
+    Request count: 68816
+    Throughput: 3748.18 infer/sec
+    Avg client overhead: 7.13%
+    Avg latency: 257 usec (standard deviation 57 usec)
+    p50 latency: 254 usec
+    p90 latency: 272 usec
+    p95 latency: 280 usec
+    p99 latency: 304 usec
+    Avg gRPC time: 228 usec (marshal 6 usec + response wait 218 usec + unmarshal 4 usec)
+  Server: 
+    Inference count: 0
+    Execution count: 0
+    Cache hit count: 68816
+    Cache miss count: 0
+    Successful request count: 68816
+    Avg request latency: 4 usec (overhead 1 usec + queue 1 usec + cache hit/miss 2 usec)
+      Average Cache Hit Latency: 2 usec
+      Average Cache Miss Latency: 0 usec (cache lookup/insertion 0 usec + compute input 0 usec + compute infer 0 usec + compute output 0 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 3748.18 infer/sec, latency 257 usec
+================================================================
+[PERMUTATION] Protocol=grpc Model=onnx_float32_float32_float32_cache_disabled
+================================================================
+*** Measurement Settings ***
+  Batch size: 1
+  Service Kind: Triton
+  Using "time_windows" mode for stabilization
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+  Stabilizing using average latency
+
+Request concurrency: 1
+  Pass [1] throughput: 3533.6 infer/sec. Avg latency: 274 usec (std 14 usec). 
+  Pass [2] throughput: 3545.32 infer/sec. Avg latency: 271 usec (std 76 usec). 
+  Pass [3] throughput: 3614.68 infer/sec. Avg latency: 266 usec (std 61 usec). 
+  Client: 
+    Request count: 65191
+    Throughput: 3564.74 infer/sec
+    Avg client overhead: 6.16%
+    Avg latency: 271 usec (standard deviation 57 usec)
+    p50 latency: 267 usec
+    p90 latency: 289 usec
+    p95 latency: 298 usec
+    p99 latency: 316 usec
+    Avg gRPC time: 243 usec (marshal 6 usec + response wait 233 usec + unmarshal 4 usec)
+  Server: 
+    Inference count: 65193
+    Execution count: 65193
+    Successful request count: 65193
+    Avg request latency: 50 usec (overhead 28 usec + queue 7 usec + compute input 4 usec + compute infer 7 usec + compute output 4 usec)
+
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 1, throughput: 3564.74 infer/sec, latency 271 usec
+
+***
+*** Test Passed
+***

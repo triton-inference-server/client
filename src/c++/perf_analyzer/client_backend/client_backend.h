@@ -191,6 +191,26 @@ struct ModelStatistics {
   uint64_t compute_output_time_ns_;
   uint64_t cache_hit_time_ns_;
   uint64_t cache_miss_time_ns_;
+
+  void Initialize()
+  {
+    inference_count_ = 0;
+    execution_count_ = 0;
+    success_count_ = 0;
+    queue_count_ = 0;
+    compute_input_count_ = 0;
+    compute_infer_count_ = 0;
+    compute_output_count_ = 0;
+    cumm_time_ns_ = 0;
+    queue_time_ns_ = 0;
+    compute_input_time_ns_ = 0;
+    compute_infer_time_ns_ = 0;
+    compute_output_time_ns_ = 0;
+    cache_hit_count_ = 0;
+    cache_hit_time_ns_ = 0;
+    cache_miss_count_ = 0;
+    cache_miss_time_ns_ = 0;
+  }
 };
 
 ///
