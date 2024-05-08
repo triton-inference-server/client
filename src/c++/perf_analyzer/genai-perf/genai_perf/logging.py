@@ -70,6 +70,16 @@ def init_logging() -> None:
                 "level": "DEBUG",
                 "propagate": False,
             },
+            "genai_perf.plots.plot_config_parser": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
+            "genai_perf.plots.plot_manager": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
         },
     }
     logging.config.dictConfig(LOGGING_CONFIG)

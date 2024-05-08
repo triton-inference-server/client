@@ -25,14 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from pathlib import Path
 
-from copy import deepcopy
-from typing import Dict
-
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
+import pandas as pd
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_metrics import Statistics
-from pandas import DataFrame
+from genai_perf.plots.plot_config import ProfileRunData
 from plotly.graph_objects import Figure
 
 
@@ -41,40 +38,44 @@ class BasePlot:
     Base class for plots
     """
 
-    def __init__(self, stats: Statistics, extra_data: Dict | None = None) -> None:
-        self._stats = stats
-        self._metrics_data = deepcopy(stats.metrics.data)
-        if extra_data:
-            self._metrics_data = self._metrics_data | extra_data
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        self._profile_data = data
 
     def create_plot(
         self,
-        x_key: str,
-        y_key: str,
-        x_metric: str,
-        y_metric: str,
         graph_title: str,
         x_label: str,
         y_label: str,
+        width: int,
+        height: int,
         filename_root: str,
+        output_dir: Path,
     ) -> None:
         """
         Create plot for specific graph type
         """
         raise NotImplementedError
 
-    def _generate_parquet(self, dataframe: DataFrame, file: str) -> None:
-        dataframe.to_parquet(
-            f"{DEFAULT_ARTIFACT_DIR}/data/{file}.gzip", compression="gzip"
+    def _create_dataframe(self, x_label: str, y_label: str) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                x_label: [prd.x_metric for prd in self._profile_data],
+                y_label: [prd.y_metric for prd in self._profile_data],
+                "Run Name": [prd.name for prd in self._profile_data],
+            }
         )
 
-    def _generate_graph_file(self, fig: Figure, file: str, title: str) -> None:
+    def _generate_parquet(self, df: pd.DataFrame, output_dir: Path, file: str) -> None:
+        filepath = output_dir / f"{file}.gzip"
+        df.to_parquet(filepath, compression="gzip")
+
+    def _generate_graph_file(self, fig: Figure, output_dir: Path, file: str) -> None:
         if file.endswith("jpeg"):
-            print(f"Generating '{title}' jpeg")
-            fig.write_image(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
+            filepath = output_dir / f"{file}"
+            fig.write_image(filepath)
         elif file.endswith("html"):
-            print(f"Generating '{title}' html")
-            fig.write_html(f"{DEFAULT_ARTIFACT_DIR}/plots/{file}")
+            filepath = output_dir / f"{file}"
+            fig.write_html(filepath)
         else:
             extension = file.split(".")[-1]
             raise GenAIPerfException(f"image file type {extension} is not supported")
