@@ -27,7 +27,7 @@
 
 namespace triton { namespace perfanalyzer {
 
-// FIXME document
+// Holds the configuration for a worker thread
 struct ThreadConfig {
   ThreadConfig(size_t thread_id) : thread_id_(thread_id) {}
 
@@ -35,10 +35,13 @@ struct ThreadConfig {
   size_t thread_id_{0};
 
   // The concurrency level that the worker should produce
-  // FIXME TKG: Only used for concurrency mode
+  // TPA-69: This is only used in concurrency mode and shouldn't be visible in
+  // other modes
   size_t concurrency_{0};
 
-  // FIXME TKG: Only used for request rate
+  // The number of sequences owned by this worker
+  // TPA-69: This is only used in request-rate mode and shouldn't be visible in
+  // other modes
   uint32_t num_sequences_{1};
 
   // How many requests to generate before stopping. If 0, generate indefinitely
