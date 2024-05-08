@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 class Profiler:
     @staticmethod
-    def add_protocol_args(args: Namespace):
-        cmd = [""]
+    def add_protocol_args(args: Namespace) -> list[str]:
+        cmd = []
         if args.service_kind == "triton":
             cmd += ["-i", "grpc", "--streaming"]
             if args.u is None:  # url
@@ -47,6 +47,15 @@ class Profiler:
                 cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
         elif args.service_kind == "openai":
             cmd += ["-i", "http"]
+        return cmd
+
+    @staticmethod
+    def add_inference_load_args(args: Namespace) -> list[str]:
+        cmd = []
+        if args.concurrency:
+            cmd += ["--concurrency-range", f"{args.concurrency}"]
+        elif args.request_rate:
+            cmd += ["--request-rate-range", f"{args.request_rate}"]
         return cmd
 
     @staticmethod
@@ -77,6 +86,9 @@ class Profiler:
             "endpoint_type",
             "generate_plots",
             "subcommand",
+            "concurrency",
+            "request_rate",
+            "artifact_dir",
         ]
 
         utils.remove_file(args.profile_export_file)
@@ -87,7 +99,7 @@ class Profiler:
             f"{args.model}",
             f"--async",
             f"--input-data",
-            f"{DEFAULT_INPUT_DATA_JSON}",
+            f"{args.artifact_dir / DEFAULT_INPUT_DATA_JSON}",
         ]
         for arg, value in vars(args).items():
             if arg in skip_args:
@@ -109,6 +121,7 @@ class Profiler:
                     cmd += [f"--{arg}", f"{value}"]
 
         cmd += Profiler.add_protocol_args(args)
+        cmd += Profiler.add_inference_load_args(args)
 
         if extra_args is not None:
             for arg in extra_args:
