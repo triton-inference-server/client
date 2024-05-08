@@ -110,7 +110,7 @@ ConcurrencyManager::PauseSequenceWorkers()
 
 void
 ConcurrencyManager::ReconfigThreads(
-    const size_t concurrent_request_count, const size_t num_of_requests)
+    size_t concurrent_request_count, size_t num_of_requests)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   //
@@ -133,6 +133,13 @@ ConcurrencyManager::ReconfigThreads(
   {
     // Make sure all threads are reconfigured before they are woken up
     std::lock_guard<std::mutex> lock(wake_mutex_);
+
+    // Corner case: If requested to have concurrency of 5 but asked for less
+    // than that many total requests, then clamp the concurrency value to the
+    // request count
+    if (num_of_requests > 0 && concurrent_request_count > num_of_requests) {
+      concurrent_request_count = num_of_requests;
+    }
 
     // Compute the new concurrency level for each thread (take floor)
     // and spread the remaining value
