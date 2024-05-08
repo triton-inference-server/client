@@ -25,12 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Dict, Optional
+from pathlib import Path
 
-import pandas as pd
-import plotly.express as px
-from genai_perf.llm_metrics import Statistics
+import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
+from genai_perf.plots.plot_config import ProfileRunData
 
 
 class ScatterPlot(BasePlot):
@@ -38,47 +37,45 @@ class ScatterPlot(BasePlot):
     Generate a scatter plot in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        super().__init__(data)
 
     def create_plot(
         self,
-        x_key: str = "",
-        y_key: str = "",
-        x_metric: str = "",
-        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
+        width: int = 700,
+        height: int = 450,
         filename_root: str = "",
+        output_dir: Path = Path(""),
     ) -> None:
-        x_values = self._metrics_data[x_key]
-        y_values = self._metrics_data[y_key]
-
-        df = pd.DataFrame(
-            {
-                x_key: x_values,
-                y_key: y_values,
-            }
-        )
-
-        fig = px.scatter(
-            df,
-            x=x_key,
-            y=y_key,
-            trendline="ols",
-        )
+        fig = go.Figure()
+        for pd in self._profile_data:
+            fig.add_trace(
+                go.Scatter(
+                    x=pd.x_metric,
+                    y=pd.y_metric,
+                    mode="markers",
+                    name=pd.name,
+                )
+            )
 
         fig.update_layout(
             title={
                 "text": f"{graph_title}",
                 "xanchor": "center",
                 "x": 0.5,
-            }
+            },
+            width=width,
+            height=height,
         )
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")
 
-        self._generate_parquet(df, filename_root)
-        self._generate_graph_file(fig, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)
+        # Save dataframe as parquet file
+        df = self._create_dataframe(x_label, y_label)
+        self._generate_parquet(df, output_dir, filename_root)
+
+        self._generate_graph_file(fig, output_dir, filename_root + ".html")
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")

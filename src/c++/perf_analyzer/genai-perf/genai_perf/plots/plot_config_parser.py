@@ -48,6 +48,10 @@ class PlotConfigParser:
 
     def generate_configs(self) -> list[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
+        logger.info(
+            f"Generating plot configurations by parsing {self._filename}. "
+            "This may take a few seconds.",
+        )
         configs = load_yaml(self._filename)
 
         plot_configs = []
@@ -70,6 +74,8 @@ class PlotConfigParser:
                     data=profile_data,
                     x_label=config["x_label"],
                     y_label=config["y_label"],
+                    width=config["width"],
+                    height=config["height"],
                     type=self._get_plot_type(config["type"]),
                     output=Path(config["output"]),
                 )
@@ -141,8 +147,10 @@ class PlotConfigParser:
           title: Time to First Token
           x_metric: ""
           y_metric: time_to_first_tokens
-          x_label: Time to First Token (seconds)
+          x_label: Time to First Token (ms)
           y_label: ""
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: box
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -151,8 +159,10 @@ class PlotConfigParser:
           title: Request Latency
           x_metric: ""
           y_metric: request_latencies
-          x_label: Request Latency (seconds)
+          x_label: Request Latency (ms)
           y_label: ""
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: box
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -163,6 +173,8 @@ class PlotConfigParser:
           y_metric: num_output_tokens
           x_label: Number of Input Tokens Per Request
           y_label: Number of Generated Tokens Per Request
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: heatmap
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -172,7 +184,9 @@ class PlotConfigParser:
           x_metric: num_input_tokens
           y_metric: time_to_first_tokens
           x_label: Number of Input Tokens
-          y_label: Time to First Token (seconds)
+          y_label: Time to First Token (ms)
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -182,14 +196,16 @@ class PlotConfigParser:
           x_metric: token_positions
           y_metric: inter_token_latencies
           x_label: Output Token Position
-          y_label: Token-to-Token Latency (seconds)
+          y_label: Token-to-Token Latency (ms)
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
         """
 
+        filepath = output_dir / "config.yaml"
+        logger.info(f"Creating initial YAML configuration file to {filepath}")
         config = yaml.safe_load(config_str)
-        with open(output_dir / "config.yaml", "w") as f:
+        with open(str(filepath), "w") as f:
             yaml.dump(config, f, sort_keys=False)
-
-        logger.info("Created an initial YAML configuration file @ config.yaml")
