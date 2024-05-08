@@ -295,30 +295,39 @@ PerfAnalyzer::PrerunReport()
   if (params_->kind == cb::BackendKind::TRITON || params_->using_batch_size) {
     std::cout << "  Batch size: " << params_->batch_size << std::endl;
   }
-  if (params_->kind == cb::BackendKind::TRITON_C_API) {
-    std::cout << "  Service Kind: Triton C-API" << std::endl;
-  } else if (params_->kind == cb::BackendKind::TRITON) {
-    std::cout << "  Service Kind: Triton" << std::endl;
-  } else if (params_->kind == cb::BackendKind::TORCHSERVE) {
-    std::cout << "  Service Kind: TorchServe" << std::endl;
-  } else if (params_->kind == cb::BackendKind::TENSORFLOW_SERVING) {
-    std::cout << "  Service Kind: TensorFlow Serving" << std::endl;
+
+  std::cout << "  Service Kind: " << BackendKindToString(params_->kind)
+            << std::endl;
+
+  if (params_->request_count != 0) {
+    std::cout << "  Sending a total of " << params_->request_count
+              << " requests" << std::endl;
+  } else {
+    if (params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+      std::cout << "  Using \"count_windows\" mode for stabilization"
+                << std::endl;
+    } else {
+      std::cout << "  Using \"time_windows\" mode for stabilization"
+                << std::endl;
+    }
+
+    if (params_->percentile == -1) {
+      std::cout << "  Stabilizing using average latency" << std::endl;
+    } else {
+      std::cout << "  Stabilizing using p" << params_->percentile << " latency"
+                << std::endl;
+    }
+
+    if (params_->measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
+      std::cout << "  Measurement window: " << params_->measurement_window_ms
+                << " msec" << std::endl;
+    } else if (
+        params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
+      std::cout << "  Minimum number of samples in each window: "
+                << params_->measurement_request_count << std::endl;
+    }
   }
 
-  if (params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
-    std::cout << "  Using \"count_windows\" mode for stabilization"
-              << std::endl;
-  } else {
-    std::cout << "  Using \"time_windows\" mode for stabilization" << std::endl;
-  }
-  if (params_->measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
-    std::cout << "  Measurement window: " << params_->measurement_window_ms
-              << " msec" << std::endl;
-  } else if (params_->measurement_mode == pa::MeasurementMode::COUNT_WINDOWS) {
-    // FIXME TKG -- change based on new arg?
-    std::cout << "  Minimum number of samples in each window: "
-              << params_->measurement_request_count << std::endl;
-  }
   if (params_->concurrency_range.end != 1) {
     std::cout << "  Latency limit: " << params_->latency_threshold_ms << " msec"
               << std::endl;
@@ -365,12 +374,6 @@ PerfAnalyzer::PrerunReport()
               << std::endl;
   }
 
-  if (params_->percentile == -1) {
-    std::cout << "  Stabilizing using average latency" << std::endl;
-  } else {
-    std::cout << "  Stabilizing using p" << params_->percentile << " latency"
-              << std::endl;
-  }
   std::cout << std::endl;
 }
 
