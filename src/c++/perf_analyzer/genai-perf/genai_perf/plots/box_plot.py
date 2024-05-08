@@ -61,7 +61,7 @@ class BoxPlot(BasePlot):
             }
         )
         fig.update_traces(boxpoints="all")
-        fig.update_xaxes(title_text=x_label)
+        fig.update_xaxes(title_text=x_label, showticklabels=False)
         fig.update_yaxes(title_text=y_label)
 
         # Save dataframe as parquet file
