@@ -138,11 +138,8 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     """
     Set paths for all the artifacts.
     """
-    args.artifact_dir = args.artifact_dir / args.model  # add model to path
-
-    # Set profile export file path
-    if args.profile_export_file.name == "":  # not specified
-        name = []
+    if args.artifact_dir == Path(DEFAULT_ARTIFACT_DIR):
+        name = [f"{args.model}"]
         if args.service_kind == "openai":
             name += [f"{args.service_kind}-{args.endpoint_type}"]
         elif args.service_kind == "triton":
@@ -159,9 +156,9 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
             name += [f"concurrency{args.concurrency}"]
         elif args.request_rate:
             name += [f"request_rate{args.request_rate}"]
-        args.profile_export_file = Path("-".join(name) + ".json")
+        args.artifact_dir = args.artifact_dir / Path("-".join(name))
 
-    elif args.profile_export_file.parent != Path(""):
+    if args.profile_export_file.parent != Path(""):
         raise ValueError(
             "Please use --artifact-dir option to define intermediary paths to "
             "the profile export file."
@@ -412,7 +409,7 @@ def _add_output_args(parser):
     output_group.add_argument(
         "--profile-export-file",
         type=Path,
-        default="",
+        default=Path("profile_export.json"),
         help="The path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
         "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "

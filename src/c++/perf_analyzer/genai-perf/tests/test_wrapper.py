@@ -55,14 +55,17 @@ class TestWrapper:
     @pytest.mark.parametrize(
         "arg, expected_filepath",
         [
-            ([], "artifacts/test_model/triton-tensorrtllm-concurrency1.json"),
+            (
+                [],
+                "artifacts/test_model-triton-tensorrtllm-concurrency1/profile_export.json",
+            ),
             (
                 ["--artifact-dir", "test_dir"],
-                "test_dir/test_model/triton-tensorrtllm-concurrency1.json",
+                "test_dir/profile_export.json",
             ),
             (
                 ["--artifact-dir", "test_dir", "--profile-export-file", "test.json"],
-                "test_dir/test_model/test.json",
+                "test_dir/test.json",
             ),
         ],
     )

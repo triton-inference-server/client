@@ -150,7 +150,11 @@ class TestCLIArguments:
             (["--num-prompts", "101"], {"num_prompts": 101}),
             (
                 ["--profile-export-file", "test.json"],
-                {"profile_export_file": Path("artifacts/test_model/test.json")},
+                {
+                    "profile_export_file": Path(
+                        "artifacts/test_model-triton-tensorrtllm-concurrency1/test.json"
+                    )
+                },
             ),
             (["--random-seed", "8"], {"random_seed": 8}),
             (["--request-rate", "9.0"], {"request_rate": 9.0}),
@@ -168,7 +172,7 @@ class TestCLIArguments:
             (["-u", "test_url"], {"u": "test_url"}),
             (
                 ["--artifact-dir", "test_artifact_dir"],
-                {"artifact_dir": Path("test_artifact_dir/test_model")},
+                {"artifact_dir": Path("test_artifact_dir")},
             ),
         ],
     )
@@ -205,19 +209,19 @@ class TestCLIArguments:
         [
             (
                 ["--service-kind", "openai", "--endpoint-type", "chat"],
-                "artifacts/test_model/openai-chat-concurrency1.json",
+                "artifacts/test_model-openai-chat-concurrency1",
             ),
             (
                 ["--service-kind", "openai", "--endpoint-type", "completions"],
-                "artifacts/test_model/openai-completions-concurrency1.json",
+                "artifacts/test_model-openai-completions-concurrency1",
             ),
             (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],
-                "artifacts/test_model/triton-tensorrtllm-concurrency1.json",
+                "artifacts/test_model-triton-tensorrtllm-concurrency1",
             ),
             (
                 ["--service-kind", "triton", "--backend", "vllm"],
-                "artifacts/test_model/triton-vllm-concurrency1.json",
+                "artifacts/test_model-triton-vllm-concurrency1",
             ),
             (
                 [
@@ -228,7 +232,7 @@ class TestCLIArguments:
                     "--concurrency",
                     "32",
                 ],
-                "artifacts/test_model/triton-vllm-concurrency32.json",
+                "artifacts/test_model-triton-vllm-concurrency32",
             ),
         ],
     )
@@ -239,7 +243,7 @@ class TestCLIArguments:
         monkeypatch.setattr("sys.argv", combined_args)
         args, extra_args = parser.parse_args()
 
-        assert args.profile_export_file == Path(expected_path)
+        assert args.artifact_dir == Path(expected_path)
         captured = capsys.readouterr()
         assert captured.out == ""
 
