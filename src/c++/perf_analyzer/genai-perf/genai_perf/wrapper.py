@@ -99,7 +99,7 @@ class Profiler:
             f"{args.model}",
             f"--async",
             f"--input-data",
-            f"{DEFAULT_INPUT_DATA_JSON}",
+            f"{args.artifact_dir / DEFAULT_INPUT_DATA_JSON}",
         ]
         for arg, value in vars(args).items():
             if arg in skip_args:
