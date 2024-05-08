@@ -43,8 +43,10 @@ from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
 def create_artifacts_dirs(args: Namespace) -> None:
+    # TMA-1911: support plots CLI option
+    plot_dir = args.artifact_dir / "plots" / args.profile_export_file.stem
     os.makedirs(args.artifact_dir, exist_ok=True)
-    os.makedirs(args.artifact_dir / "plots", exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -108,7 +110,8 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
 
 
 def create_plots(args: Namespace) -> None:
-    plot_dir = args.artifact_dir / "plots"
+    # TMA-1911: support plots CLI option
+    plot_dir = args.artifact_dir / "plots" / args.profile_export_file.stem
     PlotConfigParser.create_init_yaml_config(
         filenames=[args.profile_export_file],  # single run
         output_dir=plot_dir,
