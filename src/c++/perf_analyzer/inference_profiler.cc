@@ -1520,7 +1520,7 @@ InferenceProfiler::DetermineStatsModelVersion(
   // In case of ensemble models, if top level response caching is enabled,
   // the composing models versions are unavailable in case of a cache hit.
   // This is due to the scheduler sends cache response and composing models do
-  // not get executed.
+  // not get executed. It's a valid scenario and shouldn't throw error.
   bool is_model_version_specified =
       *status_model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
   if (!is_model_version_specified) {
@@ -1612,7 +1612,7 @@ InferenceProfiler::SummarizeServerStatsHelper(
     // In case of ensemble models, if top level response caching is enabled,
     // the composing models statistics are unavailable in case of a cache hit.
     // This is due to the scheduler sends cache response and composing models do
-    // not get executed.
+    // not get executed. It's a valid scenario and shouldn't throw error.
     bool stats_found =
         model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
     if (!stats_found) {
