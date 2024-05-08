@@ -50,7 +50,7 @@ class PlotConfigParser:
         """Load YAML configuration file and convert to PlotConfigs."""
         logger.info(
             f"Generating plot configurations by parsing {self._filename}. "
-            "This may take few seconds.",
+            "This may take a few seconds.",
         )
         configs = load_yaml(self._filename)
 
