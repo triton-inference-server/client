@@ -89,6 +89,8 @@ class ConcurrencyManager : public LoadManager {
   /// Adjusts the number of concurrent requests to be the same as
   /// 'concurrent_request_count' (by creating or pausing threads)
   /// \param concurent_request_count The number of concurrent requests.
+  /// \param request_count The number of requests to generate. If 0, then
+  /// there is no limit, and it will generate until told to stop.
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeConcurrencyLevel(
       const size_t concurrent_request_count, const size_t request_count = 0);

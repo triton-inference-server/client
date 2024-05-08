@@ -88,6 +88,8 @@ class CustomLoadManager : public RequestRateManager {
 
   /// Initializes the load manager with the provided file containing request
   /// intervals
+  /// \param request_count The number of requests to generate. If 0, then
+  /// there is no limit, and it will generate until told to stop.
   /// \return cb::Error object indicating success or failure.
   cb::Error InitCustomIntervals(const size_t request_count);
 

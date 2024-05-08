@@ -248,8 +248,10 @@ class InferenceProfiler {
   /// \param step The step size to move along the search range in linear search
   /// or the precision in binary search.
   /// \param search_mode The search algorithm to be applied.
-  /// \param summary Returns the trace of the measurement along the search
-  /// path.
+  /// \param request_count The number of requests to generate in each
+  /// experiment. If 0, then there is no limit, and it will generate until
+  /// stable.
+  /// \param summary Returns the trace of the measurement along the search path.
   /// \return cb::Error object indicating success or failure.
   template <typename T>
   cb::Error Profile(
@@ -352,7 +354,10 @@ class InferenceProfiler {
   /// request and right after the last request in the measurement window).
   /// \param concurrent_request_count The concurrency level for the measurement.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the setting meets the
+  /// list.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
+  /// \param meets_threshold Returns whether the setting meets the
   /// threshold.
   /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
@@ -364,9 +369,13 @@ class InferenceProfiler {
   /// Similar to above function, but instead of setting the concurrency, it
   /// sets the specified request rate for measurements.
   /// \param request_rate The request rate for inferences.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the setting meets the
-  /// threshold. \param is_stable Returns whether the measurement is stable.
+  /// list.
+  /// \param meets_threshold Returns whether the setting meets the
+  /// threshold.
+  /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
       const double request_rate, const size_t request_count,
@@ -376,9 +385,13 @@ class InferenceProfiler {
   /// Measures throughput and latencies for custom load without controlling
   /// request rate nor concurrency. Requires load manager to be loaded with
   /// a file specifying the time intervals.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the measurement met the
-  /// threshold. \param is_stable Returns whether the measurement is stable.
+  /// list.
+  /// \param meets_threshold Returns whether the measurement met the
+  /// threshold.
+  /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
@@ -387,6 +400,8 @@ class InferenceProfiler {
 
   /// A helper function for profiling functions.
   /// \param status_summary Returns the summary of the measurement.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param is_stable Returns whether the measurement stabilized or not.
   /// \return cb::Error object indicating success or failure.
   cb::Error ProfileHelper(
