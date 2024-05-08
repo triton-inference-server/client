@@ -85,15 +85,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
     return worker;
   }
 
-  // This function exists to make testing the common case easier
-  // (num_requests==0)
-  cb::Error ChangeRequestRate(const double target_request_rate)
-  {
-    size_t num_requests = 0;
-    return RequestRateManager::ChangeRequestRate(
-        target_request_rate, num_requests);
-  }
-
   void TestConfigureThreads(
       std::vector<ThreadConfig>& expected_configs, size_t request_count)
   {

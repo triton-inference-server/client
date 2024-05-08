@@ -103,7 +103,7 @@ class RequestRateManager : public LoadManager {
   /// server.
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeRequestRate(
-      const double target_request_rate, const size_t request_count);
+      const double target_request_rate, const size_t request_count = 0);
 
  protected:
   RequestRateManager(

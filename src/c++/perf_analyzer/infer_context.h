@@ -61,7 +61,6 @@ struct ThreadStat {
   std::vector<RequestRecord> request_records_;
   // A lock to protect thread data
   std::mutex mu_;
-
   // The number of sent requests by this thread.
   std::atomic<size_t> num_sent_requests_{0};
 };

@@ -1723,8 +1723,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
     params_->search_mode = SearchMode::NONE;
   }
 
-  // Override measurement mode to be count windows with a window size of the
-  // requested count
+  // When the request-count feature is enabled, override the measurement mode to
+  // be count windows with a window size of the requested count
   if (params_->request_count) {
     params_->measurement_mode = MeasurementMode::COUNT_WINDOWS;
     params_->measurement_request_count = params_->request_count;

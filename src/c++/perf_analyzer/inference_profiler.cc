@@ -761,7 +761,7 @@ InferenceProfiler::ProfileHelper(
       }
     }
 
-    // If num of requests is specified, then only measure one window and exit
+    // If request-count is specified, then only measure one window and exit
     if (request_count != 0) {
       *is_stable = true;
       break;

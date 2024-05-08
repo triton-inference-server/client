@@ -134,13 +134,6 @@ ConcurrencyManager::ReconfigThreads(
     // Make sure all threads are reconfigured before they are woken up
     std::lock_guard<std::mutex> lock(wake_mutex_);
 
-    // Corner case: If requested to have concurrency of 5 but asked for less
-    // than that many total requests, then clamp the concurrency value to the
-    // request count
-    if (request_count > 0 && concurrent_request_count > request_count) {
-      concurrent_request_count = request_count;
-    }
-
     // Compute the new concurrency level for each thread (take floor)
     // and spread the remaining value
     size_t avg_concurrency = concurrent_request_count / threads_.size();
