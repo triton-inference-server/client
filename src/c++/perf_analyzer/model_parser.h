@@ -156,7 +156,6 @@ class ModelParser {
   /// Returns whether or not top level request caching is enabled for this model
   /// \return the truth value of whether top level request caching is enabled
   /// for this model
-
   bool TopLevelResponseCachingEnabled() const
   {
     return top_level_response_caching_enabled_;

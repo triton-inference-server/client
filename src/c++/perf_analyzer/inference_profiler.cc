@@ -1517,8 +1517,13 @@ InferenceProfiler::DetermineStatsModelVersion(
     }
   }
 
-  if (*status_model_version == -1 &&
-      (parser_ == nullptr || !parser_->TopLevelResponseCachingEnabled())) {
+  // In case of ensemble models, if top level response caching is enabled,
+  // the composing models versions are unavailable in case of a cache hit.
+  // This is due to the scheduler sends cache response and composing models do
+  // not get executed.
+  bool is_model_version_specified =
+      *status_model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
+  if (!is_model_version_specified) {
     return cb::Error(
         "failed to find the requested model version", pa::GENERIC_ERROR);
   }
@@ -1542,7 +1547,7 @@ InferenceProfiler::SetTopLevelResponseCaching(
 {
   parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
   if (parser_ == nullptr) {
-    return cb::Error("Null Pointer Exception");
+    return cb::Error("Failed to initialize ModelParser");
   }
   parser_->SetTopLevelResponseCaching(enable_top_level_response_caching);
   return cb::Error::Success;
@@ -1604,7 +1609,13 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    if (parser_ == nullptr || !parser_->TopLevelResponseCachingEnabled()) {
+    // In case of ensemble models, if top level response caching is enabled,
+    // the composing models statistics are unavailable in case of a cache hit.
+    // This is due to the scheduler sends cache response and composing models do
+    // not get executed.
+    bool stats_found =
+        model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
+    if (!stats_found) {
       return cb::Error(
           "missing statistics for requested model", pa::GENERIC_ERROR);
     } else {

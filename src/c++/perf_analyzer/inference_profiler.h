@@ -120,7 +120,9 @@ struct ServerSideStats {
   uint64_t cache_miss_time_ns;
 
   std::map<cb::ModelIdentifier, ServerSideStats> composing_models_stat;
-  // function to set server stats as 0
+  // This function sets composing model server stats to 0 in case of a cache hit
+  // when top level response cache is enabled, since composing models are not
+  // executed and do not have any stats
   void Reset()
   {
     inference_count = 0;
@@ -557,11 +559,6 @@ class InferenceProfiler {
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
-
-  // This function sets composing model server stats to 0 in case of a cache hit
-  // when top level response cache is enabled, since composing models are not
-  // executed and do not have any stats
-  void ResetServerStats(ServerSideStats* server_stats);
 
 #ifndef DOCTEST_CONFIG_DISABLE
   cb::Error SetTopLevelResponseCaching(bool enable_top_level_request_caching);
