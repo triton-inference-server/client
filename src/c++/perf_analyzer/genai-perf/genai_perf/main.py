@@ -118,10 +118,8 @@ def create_plots(filename: Path) -> None:
     PlotConfigParser.create_init_yaml_config([filename], output_dir)
     config_parser = PlotConfigParser(output_dir / "config.yaml")
     plot_configs = config_parser.generate_configs()
-
-    # TODO (harshini): plug-in configs to plot manager
-    # plot_manager = PlotManager(stats)
-    # plot_manager.create_default_plots()
+    plot_manager = PlotManager(plot_configs)
+    plot_manager.generate_plots()
 
 
 def finalize(profile_export_file: Path):

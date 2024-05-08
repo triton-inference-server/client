@@ -25,12 +25,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_COMPARE_DIR, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
@@ -483,6 +484,11 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
 ### Handlers ###
 
 
+def create_compare_dir() -> None:
+    if not os.path.exists(DEFAULT_COMPARE_DIR):
+        os.mkdir(DEFAULT_COMPARE_DIR)
+
+
 def profile_handler(args, extra_args):
     from genai_perf.wrapper import Profiler
 
@@ -492,15 +498,15 @@ def profile_handler(args, extra_args):
 def compare_handler(args: argparse.Namespace):
     """Handles `compare` subcommand workflow."""
     if args.files:
-        PlotConfigParser.create_init_yaml_config(args.files, Path("."))
-        args.config = Path("config.yaml")
+        create_compare_dir()
+        output_dir = Path(f"{DEFAULT_COMPARE_DIR}")
+        PlotConfigParser.create_init_yaml_config(args.files, output_dir)
+        args.config = output_dir / "config.yaml"
 
     config_parser = PlotConfigParser(args.config)
     plot_configs = config_parser.generate_configs()
-
-    # TODO (harshini): plug-in configs to PlotManager
-    # plot_manager = PlotManager(plot_configs)
-    # plot_manager.generate_plots()
+    plot_manager = PlotManager(plot_configs)
+    plot_manager.generate_plots()
 
 
 ### Entrypoint ###
