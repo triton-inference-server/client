@@ -93,13 +93,6 @@ def _check_conditional_args(
     return args
 
 
-def _prune_args(args: argparse.Namespace) -> argparse.Namespace:
-    """
-    Prune the parsed arguments to remove args with None.
-    """
-    return argparse.Namespace(**{k: v for k, v in vars(args).items() if v is not None})
-
-
 def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
     """
     Update genai-perf load manager attributes to PA format
@@ -113,6 +106,19 @@ def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
 
     # If no concurrency or request rate is set, default to 1
     setattr(args, "concurrency_range", "1")
+    return args
+
+
+def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
+    if args.input_dataset:
+        args.prompt_source = PromptSource.DATASET
+        logger.debug(f"Input source is the following dataset: {args.input_dataset}")
+    elif args.input_file:
+        args.prompt_source = PromptSource.FILE
+        logger.debug(f"Input source is the following file: {args.input_file.name}")
+    else:
+        args.prompt_source = PromptSource.SYNTHETIC
+        logger.debug("Input source is synthetic data")
     return args
 
 
@@ -148,13 +154,22 @@ def _add_input_args(parser):
         "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
     )
 
-    input_group.add_argument(
+    prompt_source_group = input_group.add_mutually_exclusive_group(required=False)
+    prompt_source_group.add_argument(
         "--input-dataset",
         type=str.lower,
-        default=OPEN_ORCA,
+        default=None,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
-        help="The HuggingFace dataset to use for prompts when prompt-source is dataset.",
+        help="The HuggingFace dataset to use for prompts.",
+    )
+
+    prompt_source_group.add_argument(
+        "--input-file",
+        type=argparse.FileType("r"),
+        default=None,
+        required=False,
+        help="The input file containing the single prompt to use for profiling.",
     )
 
     input_group.add_argument(
@@ -197,15 +212,6 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--prompt-source",
-        type=str,
-        choices=utils.get_enum_names(PromptSource),
-        default="synthetic",
-        required=False,
-        help=f"The source of the input prompts.",
-    )
-
-    input_group.add_argument(
         "--random-seed",
         type=int,
         default=LlmInputs.DEFAULT_RANDOM_SEED,
@@ -218,7 +224,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
-        help=f"The mean of number of tokens in the generated prompts when --prompt-source is synthetic.",
+        help=f"The mean of number of tokens in the generated prompts when using synthetic data.",
     )
 
     input_group.add_argument(
@@ -226,7 +232,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
-        help=f"The standard deviation of number of tokens in the generated prompts when --prompt-source is synthetic.",
+        help=f"The standard deviation of number of tokens in the generated prompts when using synthetic data.",
     )
 
 
@@ -393,7 +399,7 @@ def _add_other_args(parser):
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
-    if hasattr(args, "extra_inputs"):
+    if args.extra_inputs:
         for input_str in args.extra_inputs:
             semicolon_count = input_str.count(":")
             if semicolon_count != 1:
@@ -459,9 +465,8 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    args = _infer_prompt_source(args)
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _convert_str_to_enum_entry(args, "prompt_source", PromptSource)
-    args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]

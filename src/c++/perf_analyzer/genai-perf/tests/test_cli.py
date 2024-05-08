@@ -26,11 +26,9 @@
 
 from pathlib import Path
 
-import genai_perf.utils as utils
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
-from genai_perf.main import run
 
 
 class TestCLIArguments:
@@ -144,14 +142,6 @@ class TestCLIArguments:
                 ["--output-tokens-mean", "6", "--output-tokens-mean-deterministic"],
                 {"output_tokens_mean_deterministic": True},
             ),
-            (
-                ["--prompt-source", "synthetic"],
-                {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
-            ),
-            (
-                ["--prompt-source", "dataset"],
-                {"prompt_source": utils.get_enum_entry("dataset", PromptSource)},
-            ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
             (["--num-prompts", "101"], {"num_prompts": 101}),
@@ -175,7 +165,7 @@ class TestCLIArguments:
             (["-u", "test_url"], {"u": "test_url"}),
         ],
     )
-    def test_all_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
+    def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
@@ -187,6 +177,21 @@ class TestCLIArguments:
         # Check that nothing was printed as a byproduct of parsing the arguments
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    def test_file_flags_parsed(self, monkeypatch, mocker):
+        mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        combined_args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-file",
+            "fakefile.txt",
+        ]
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+        assert (
+            args.input_file == mocked_open.return_value
+        ), "The file argument should be the mock object"
 
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
@@ -386,3 +391,49 @@ class TestCLIArguments:
             _ = parser.get_extra_inputs_as_dict(parsed_args)
 
         assert str(exc_info.value) == expected_error
+
+    @pytest.mark.parametrize(
+        "args, expected_prompt_source",
+        [
+            ([], PromptSource.SYNTHETIC),
+            (["--input-dataset", "openorca"], PromptSource.DATASET),
+            (["--input-file", "prompt.txt"], PromptSource.FILE),
+            (
+                ["--input-file", "prompt.txt", "--synthetic-input-tokens-mean", "10"],
+                PromptSource.FILE,
+            ),
+        ],
+    )
+    def test_inferred_prompt_source(
+        self, monkeypatch, mocker, args, expected_prompt_source
+    ):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        combined_args = ["genai-perf", "--model", "test_model"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.prompt_source == expected_prompt_source
+
+    def test_prompt_source_assertions(self, monkeypatch, mocker, capsys):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-dataset",
+            "openorca",
+            "--input-file",
+            "prompt.txt",
+        ]
+        monkeypatch.setattr("sys.argv", args)
+
+        expected_output = (
+            "argument --input-file: not allowed with argument --input-dataset"
+        )
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
