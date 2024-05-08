@@ -25,12 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Dict, Optional
+from pathlib import Path
 
-import pandas as pd
-import plotly.express as px
-from genai_perf.llm_metrics import Statistics
+import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
+from genai_perf.plots.plot_config import ProfileRunData
+from plotly.subplots import make_subplots
 
 
 class HeatMap(BasePlot):
@@ -38,43 +38,62 @@ class HeatMap(BasePlot):
     Generate a heat map in jpeg and html format.
     """
 
-    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
-        super().__init__(stats, extra_data)
+    def __init__(self, data: list[ProfileRunData]) -> None:
+        super().__init__(data)
 
     def create_plot(
         self,
-        x_key: str = "",
-        y_key: str = "",
-        x_metric: str = "",
-        y_metric: str = "",
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
+        width: int = 700,
+        height: int = 450,
         filename_root: str = "",
+        output_dir: Path = Path(""),
     ) -> None:
-        x_values = self._metrics_data[x_key]
-        y_values = self._metrics_data[y_key]
-        df = pd.DataFrame(
-            {
-                x_metric: x_values,
-                y_metric: y_values,
-            }
+        N = len(self._profile_data)
+
+        if N <= 3:
+            n_rows, n_cols = 1, N
+        else:
+            n_rows = (N + 2) // 3
+            n_cols = 3
+
+        fig = make_subplots(
+            rows=n_rows,
+            cols=n_cols,
+            x_title=x_label,
+            y_title=y_label,
+            subplot_titles=[prd.name for prd in self._profile_data],
         )
-        fig = px.density_heatmap(
-            df,
-            x=x_metric,
-            y=y_metric,
-        )
+
+        for index, prd in enumerate(self._profile_data):
+            hm = go.Histogram2d(
+                x=prd.x_metric,
+                y=prd.y_metric,
+                coloraxis="coloraxis",
+                name=prd.name,
+            )
+
+            # Calculate the location where the figure should be added in the subplot
+            c_row = int(index / n_cols) + 1
+            c_col = index % n_cols + 1
+            fig.add_trace(hm, c_row, c_col)
+
         fig.update_layout(
             title={
                 "text": graph_title,
                 "xanchor": "center",
                 "x": 0.5,
-            }
+            },
+            width=width,
+            height=height,
         )
-        fig.update_xaxes(title_text=x_label)
-        fig.update_yaxes(title_text=y_label)
 
-        self._generate_parquet(df, filename_root)
-        self._generate_graph_file(fig, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)
+        # Save dataframe as parquet file
+        df = self._create_dataframe(x_label, y_label)
+        self._generate_parquet(df, output_dir, filename_root)
+
+        # self._generate_parquet(df, filename_root)
+        self._generate_graph_file(fig, output_dir, filename_root + ".html")
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")
