@@ -90,10 +90,10 @@ RequestRateManager::InitManagerFinalize()
 
 cb::Error
 RequestRateManager::ChangeRequestRate(
-    const double request_rate, const size_t num_of_requests)
+    const double request_rate, const size_t request_count)
 {
   PauseWorkers();
-  ConfigureThreads(num_of_requests);
+  ConfigureThreads(request_count);
   // Can safely update the schedule
   GenerateSchedule(request_rate);
   ResumeWorkers();
@@ -230,7 +230,7 @@ RequestRateManager::PauseWorkers()
 }
 
 void
-RequestRateManager::ConfigureThreads(const size_t num_of_requests)
+RequestRateManager::ConfigureThreads(const size_t request_count)
 {
   if (threads_.empty()) {
     size_t num_of_threads = DetermineNumThreads();
@@ -248,8 +248,8 @@ RequestRateManager::ConfigureThreads(const size_t num_of_requests)
     size_t num_seqs_add_one = num_of_sequences_ % workers_.size();
     size_t seq_offset = 0;
 
-    size_t avg_req_count = num_of_requests / workers_.size();
-    size_t req_count_add_one = num_of_requests % workers_.size();
+    size_t avg_req_count = request_count / workers_.size();
+    size_t req_count_add_one = request_count % workers_.size();
 
 
     for (size_t i = 0; i < workers_.size(); i++) {

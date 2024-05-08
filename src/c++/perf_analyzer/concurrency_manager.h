@@ -91,7 +91,7 @@ class ConcurrencyManager : public LoadManager {
   /// \param concurent_request_count The number of concurrent requests.
   /// \return cb::Error object indicating success or failure.
   cb::Error ChangeConcurrencyLevel(
-      const size_t concurrent_request_count, const size_t num_of_requests = 0);
+      const size_t concurrent_request_count, const size_t request_count = 0);
 
  protected:
   // Makes a new worker
@@ -126,7 +126,7 @@ class ConcurrencyManager : public LoadManager {
   // Create new threads (if necessary), and then reconfigure all worker threads
   // to handle the new concurrent request count
   //
-  void ReconfigThreads(size_t concurrent_request_count, size_t num_of_requests);
+  void ReconfigThreads(size_t concurrent_request_count, size_t request_count);
 
   // Restart all worker threads that were working on sequences
   //

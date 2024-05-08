@@ -78,12 +78,12 @@ LoadManager::SwapRequestRecords(std::vector<RequestRecord>& new_request_records)
 uint64_t
 LoadManager::CountCollectedRequests()
 {
-  uint64_t num_of_requests = 0;
+  uint64_t request_count = 0;
   for (auto& thread_stat : threads_stat_) {
     std::lock_guard<std::mutex> lock(thread_stat->mu_);
-    num_of_requests += thread_stat->request_records_.size();
+    request_count += thread_stat->request_records_.size();
   }
-  return num_of_requests;
+  return request_count;
 }
 
 cb::Error

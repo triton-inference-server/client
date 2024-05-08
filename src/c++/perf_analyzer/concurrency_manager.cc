@@ -84,10 +84,10 @@ ConcurrencyManager::InitManagerFinalize()
 
 cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
-    const size_t concurrent_request_count, const size_t num_of_requests)
+    const size_t concurrent_request_count, const size_t request_count)
 {
   PauseSequenceWorkers();
-  ReconfigThreads(concurrent_request_count, num_of_requests);
+  ReconfigThreads(concurrent_request_count, request_count);
   ResumeSequenceWorkers();
 
   std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
@@ -110,7 +110,7 @@ ConcurrencyManager::PauseSequenceWorkers()
 
 void
 ConcurrencyManager::ReconfigThreads(
-    size_t concurrent_request_count, size_t num_of_requests)
+    size_t concurrent_request_count, size_t request_count)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   //
@@ -137,8 +137,8 @@ ConcurrencyManager::ReconfigThreads(
     // Corner case: If requested to have concurrency of 5 but asked for less
     // than that many total requests, then clamp the concurrency value to the
     // request count
-    if (num_of_requests > 0 && concurrent_request_count > num_of_requests) {
-      concurrent_request_count = num_of_requests;
+    if (request_count > 0 && concurrent_request_count > request_count) {
+      concurrent_request_count = request_count;
     }
 
     // Compute the new concurrency level for each thread (take floor)
@@ -146,8 +146,8 @@ ConcurrencyManager::ReconfigThreads(
     size_t avg_concurrency = concurrent_request_count / threads_.size();
     size_t threads_add_one = concurrent_request_count % threads_.size();
 
-    size_t avg_req_count = num_of_requests / threads_.size();
-    size_t req_count_add_one = num_of_requests % threads_.size();
+    size_t avg_req_count = request_count / threads_.size();
+    size_t req_count_add_one = request_count % threads_.size();
 
     size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
