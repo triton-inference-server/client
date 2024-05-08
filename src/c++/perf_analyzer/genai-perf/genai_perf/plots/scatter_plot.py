@@ -64,7 +64,7 @@ class ScatterPlot(BasePlot):
                 "text": f"{graph_title}",
                 "xanchor": "center",
                 "x": 0.5,
-            }
+            },
         )
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")
@@ -73,5 +73,5 @@ class ScatterPlot(BasePlot):
         df = self._create_dataframe(x_label, y_label)
         self._generate_parquet(df, output_dir, filename_root)
 
-        self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg", graph_title)
+        self._generate_graph_file(fig, output_dir, filename_root + ".html")
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")

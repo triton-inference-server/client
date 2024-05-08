@@ -48,6 +48,10 @@ class PlotConfigParser:
 
     def generate_configs(self) -> list[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
+        logger.info(
+            f"Generating plot configurations by parsing {self._filename}. "
+            "This may take few seconds.",
+        )
         configs = load_yaml(self._filename)
 
         plot_configs = []
@@ -188,8 +192,8 @@ class PlotConfigParser:
           output: {output_dir}
         """
 
+        filepath = output_dir / "config.yaml"
+        logger.info(f"Creating initial YAML configuration file to {filepath}")
         config = yaml.safe_load(config_str)
-        with open(output_dir / "config.yaml", "w") as f:
+        with open(str(filepath), "w") as f:
             yaml.dump(config, f, sort_keys=False)
-
-        logger.info("Created an initial YAML configuration file @ config.yaml")

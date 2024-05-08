@@ -62,6 +62,7 @@ class HeatMap(BasePlot):
             cols=n_cols,
             x_title=x_label,
             y_title=y_label,
+            subplot_titles=[prd.name for prd in self._profile_data],
         )
 
         for index, prd in enumerate(self._profile_data):
@@ -69,6 +70,7 @@ class HeatMap(BasePlot):
                 x=prd.x_metric,
                 y=prd.y_metric,
                 coloraxis="coloraxis",
+                name=prd.name,
             )
 
             # Calculate the location where the figure should be added in the subplot
@@ -89,5 +91,5 @@ class HeatMap(BasePlot):
         self._generate_parquet(df, output_dir, filename_root)
 
         # self._generate_parquet(df, filename_root)
-        self._generate_graph_file(fig, output_dir, filename_root + ".html", graph_title)
-        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg", graph_title)
+        self._generate_graph_file(fig, output_dir, filename_root + ".html")
+        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")

@@ -67,15 +67,11 @@ class BasePlot:
         filepath = output_dir / f"{file}.gzip"
         df.to_parquet(filepath, compression="gzip")
 
-    def _generate_graph_file(
-        self, fig: Figure, output_dir: Path, file: str, title: str
-    ) -> None:
+    def _generate_graph_file(self, fig: Figure, output_dir: Path, file: str) -> None:
         if file.endswith("jpeg"):
-            print(f"Generating '{title}' jpeg")
             filepath = output_dir / f"{file}"
             fig.write_image(filepath)
         elif file.endswith("html"):
-            print(f"Generating '{title}' html")
             filepath = output_dir / f"{file}"
             fig.write_html(filepath)
         else:

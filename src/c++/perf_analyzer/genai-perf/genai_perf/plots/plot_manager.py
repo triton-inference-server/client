@@ -25,13 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-from genai_perf.llm_metrics import Statistics
+import genai_perf.logging as logging
 from genai_perf.plots.box_plot import BoxPlot
 from genai_perf.plots.heat_map import HeatMap
 from genai_perf.plots.plot_config import PlotConfig, PlotType
 from genai_perf.plots.scatter_plot import ScatterPlot
-from genai_perf.utils import scale
+
+logger = logging.getLogger(__name__)
 
 
 class PlotManager:
@@ -48,6 +48,7 @@ class PlotManager:
 
     def generate_plots(self) -> None:
         for plot_config in self._plot_configs:
+            logger.info(f"Generating '{plot_config.title}' plot")
             if plot_config.type == PlotType.BOX:
                 bp = BoxPlot(plot_config.data)
                 bp.create_plot(
