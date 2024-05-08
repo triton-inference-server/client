@@ -69,7 +69,7 @@ class TestCLIArguments:
     @pytest.mark.parametrize(
         "arg, expected_attributes",
         [
-            (["--concurrency", "3"], {"concurrency_range": "3"}),
+            (["--concurrency", "3"], {"concurrency": 3}),
             (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
@@ -149,11 +149,15 @@ class TestCLIArguments:
             (["-p", "100"], {"measurement_interval": 100}),
             (["--num-prompts", "101"], {"num_prompts": 101}),
             (
-                ["--profile-export-file", "text.txt"],
-                {"profile_export_file": Path("text.txt")},
+                ["--profile-export-file", "test.json"],
+                {
+                    "profile_export_file": Path(
+                        "artifacts/test_model-triton-tensorrtllm-concurrency1/test.json"
+                    )
+                },
             ),
             (["--random-seed", "8"], {"random_seed": 8}),
-            (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
+            (["--request-rate", "9.0"], {"request_rate": 9.0}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
                 ["--service-kind", "openai", "--endpoint-type", "chat"],
@@ -166,6 +170,10 @@ class TestCLIArguments:
             (["-v"], {"verbose": True}),
             (["--url", "test_url"], {"u": "test_url"}),
             (["-u", "test_url"], {"u": "test_url"}),
+            (
+                ["--artifact-dir", "test_artifact_dir"],
+                {"artifact_dir": Path("test_artifact_dir")},
+            ),
         ],
     )
     def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
@@ -196,10 +204,53 @@ class TestCLIArguments:
             args.input_file == mocked_open.return_value
         ), "The file argument should be the mock object"
 
+    @pytest.mark.parametrize(
+        "arg, expected_path",
+        [
+            (
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
+                "artifacts/test_model-openai-chat-concurrency1",
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint-type", "completions"],
+                "artifacts/test_model-openai-completions-concurrency1",
+            ),
+            (
+                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                "artifacts/test_model-triton-tensorrtllm-concurrency1",
+            ),
+            (
+                ["--service-kind", "triton", "--backend", "vllm"],
+                "artifacts/test_model-triton-vllm-concurrency1",
+            ),
+            (
+                [
+                    "--service-kind",
+                    "triton",
+                    "--backend",
+                    "vllm",
+                    "--concurrency",
+                    "32",
+                ],
+                "artifacts/test_model-triton-vllm-concurrency32",
+            ),
+        ],
+    )
+    def test_default_profile_export_filepath(
+        self, monkeypatch, arg, expected_path, capsys
+    ):
+        combined_args = ["genai-perf", "--model", "test_model"] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, extra_args = parser.parse_args()
+
+        assert args.artifact_dir == Path(expected_path)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
         args, extra_args = parser.parse_args()
-        assert getattr(args, "concurrency_range") == "1"
+        assert args.concurrency == 1
         captured = capsys.readouterr()
         assert captured.out == ""
 
