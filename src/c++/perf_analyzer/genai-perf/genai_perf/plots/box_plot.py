@@ -45,6 +45,8 @@ class BoxPlot(BasePlot):
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
+        width: int = 700,
+        height: int = 450,
         filename_root: str = "",
         output_dir: Path = Path(""),
     ) -> None:
@@ -58,7 +60,9 @@ class BoxPlot(BasePlot):
                 "text": f"{graph_title}",
                 "xanchor": "center",
                 "x": 0.5,
-            }
+            },
+            width=width,
+            height=height,
         )
         fig.update_traces(boxpoints="all")
         fig.update_xaxes(title_text=x_label, showticklabels=False)

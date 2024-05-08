@@ -45,6 +45,8 @@ class ScatterPlot(BasePlot):
         graph_title: str = "",
         x_label: str = "",
         y_label: str = "",
+        width: int = 700,
+        height: int = 450,
         filename_root: str = "",
         output_dir: Path = Path(""),
     ) -> None:
@@ -65,6 +67,8 @@ class ScatterPlot(BasePlot):
                 "xanchor": "center",
                 "x": 0.5,
             },
+            width=width,
+            height=height,
         )
         fig.update_xaxes(title_text=f"{x_label}")
         fig.update_yaxes(title_text=f"{y_label}")

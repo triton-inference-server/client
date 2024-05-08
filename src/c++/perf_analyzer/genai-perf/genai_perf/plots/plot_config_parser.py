@@ -74,6 +74,8 @@ class PlotConfigParser:
                     data=profile_data,
                     x_label=config["x_label"],
                     y_label=config["y_label"],
+                    width=config["width"],
+                    height=config["height"],
                     type=self._get_plot_type(config["type"]),
                     output=Path(config["output"]),
                 )
@@ -147,6 +149,8 @@ class PlotConfigParser:
           y_metric: time_to_first_tokens
           x_label: Time to First Token (ms)
           y_label: ""
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: box
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -157,6 +161,8 @@ class PlotConfigParser:
           y_metric: request_latencies
           x_label: Request Latency (ms)
           y_label: ""
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: box
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -167,6 +173,8 @@ class PlotConfigParser:
           y_metric: num_output_tokens
           x_label: Number of Input Tokens Per Request
           y_label: Number of Generated Tokens Per Request
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: heatmap
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -177,6 +185,8 @@ class PlotConfigParser:
           y_metric: time_to_first_tokens
           x_label: Number of Input Tokens
           y_label: Time to First Token (ms)
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}
@@ -187,6 +197,8 @@ class PlotConfigParser:
           y_metric: inter_token_latencies
           x_label: Output Token Position
           y_label: Token-to-Token Latency (ms)
+          width: {1200 if len(filenames) > 1 else 700}
+          height: 450
           type: scatter
           paths: {[str(f) for f in filenames]}
           output: {output_dir}

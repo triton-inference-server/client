@@ -54,6 +54,8 @@ class PlotManager:
                 bp.create_plot(
                     graph_title=plot_config.title,
                     x_label=plot_config.x_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
                     filename_root=self._generate_filename(plot_config.title),
                     output_dir=plot_config.output,
                 )
@@ -64,6 +66,8 @@ class PlotManager:
                     graph_title=plot_config.title,
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
                     filename_root=self._generate_filename(plot_config.title),
                     output_dir=plot_config.output,
                 )
@@ -74,6 +78,8 @@ class PlotManager:
                     graph_title=plot_config.title,
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
                     filename_root=self._generate_filename(plot_config.title),
                     output_dir=plot_config.output,
                 )

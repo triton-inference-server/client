@@ -46,6 +46,8 @@ class BasePlot:
         graph_title: str,
         x_label: str,
         y_label: str,
+        width: int,
+        height: int,
         filename_root: str,
         output_dir: Path,
     ) -> None:
