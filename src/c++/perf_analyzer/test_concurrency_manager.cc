@@ -923,22 +923,6 @@ TEST_CASE(
     expected_seq_stat_index_offsets = {0, 7};
     expected_num_requests = {0, 0};
   }
-  SUBCASE("more concurrency than num_requests (corner case)")
-  {
-    params.max_threads = 4;
-    target_concurrency = 4;
-    target_num_requests = 2;
-
-    // Despite a request for concurrency of 4, we only need to generate 2
-    // requests, so only 2 threads should have a concurrency
-    //
-    // The last two seq stat index offsets can effectively be ignored, but
-    // are equal to 2 just due to how the code is arranged
-    //
-    expected_concurrencies = {1, 1, 0, 0};
-    expected_seq_stat_index_offsets = {0, 1, 2, 2};
-    expected_num_requests = {1, 1, 0, 0};
-  }
 
   for (auto i = 0; i < expected_concurrencies.size(); i++) {
     ThreadConfig tc(i);

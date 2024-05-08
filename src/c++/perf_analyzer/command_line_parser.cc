@@ -1898,6 +1898,18 @@ CLParser::VerifyOptions()
         "binary search mode.");
   }
 
+  if (params_->request_count != 0) {
+    if (params_->using_concurrency_range &&
+        params_->request_count < params_->concurrency_range.start) {
+      Usage("request-count can not be less than concurrency");
+    }
+    if (params_->using_request_rate_range &&
+        params_->request_count <
+            static_cast<int>(params_->request_rate_range[0])) {
+      Usage("request-count can not be less than request-rate");
+    }
+  }
+
   if (params_->kind == cb::TENSORFLOW_SERVING) {
     if (params_->protocol != cb::ProtocolType::GRPC) {
       Usage(
