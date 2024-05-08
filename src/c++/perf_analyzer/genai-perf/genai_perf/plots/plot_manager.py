@@ -60,8 +60,6 @@ class PlotManager:
             elif plot_config.type == PlotType.HEATMAP:
                 hm = HeatMap(plot_config.data)
                 hm.create_plot(
-                    # x_metric=plot_config.x_metric,
-                    # y_metric=plot_config.y_metric,
                     graph_title=plot_config.title,
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
@@ -72,8 +70,6 @@ class PlotManager:
             elif plot_config.type == PlotType.SCATTER:
                 sp = ScatterPlot(plot_config.data)
                 sp.create_plot(
-                    # x_metric=plot_config.x_metric,
-                    # y_metric=plot_config.y_metric,
                     graph_title=plot_config.title,
                     x_label=plot_config.x_label,
                     y_label=plot_config.y_label,
