@@ -143,12 +143,7 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
         if args.service_kind == "openai":
             name += [f"{args.service_kind}-{args.endpoint_type}"]
         elif args.service_kind == "triton":
-            if args.backend == OutputFormat.TENSORRTLLM:
-                name += [f"{args.service_kind}-tensorrtllm"]
-            elif args.backend == OutputFormat.VLLM:
-                name += [f"{args.service_kind}-vllm"]
-            else:
-                raise ValueError(f"Unknown backend '{args.backend}'.")
+            name += [f"{args.service_kind}-{args.backend.to_lowercase()}"]
         else:
             raise ValueError(f"Unknown service kind '{args.service_kind}'.")
 

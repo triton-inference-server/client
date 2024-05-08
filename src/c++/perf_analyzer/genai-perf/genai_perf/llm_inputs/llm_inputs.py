@@ -39,6 +39,9 @@ class OutputFormat(Enum):
     TENSORRTLLM = auto()
     VLLM = auto()
 
+    def to_lowercase(self):
+        return self.name.lower()
+
 
 class LlmInputs:
     """
