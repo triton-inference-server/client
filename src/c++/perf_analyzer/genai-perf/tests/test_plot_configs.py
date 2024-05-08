@@ -41,6 +41,8 @@ class TestPlotConfigParser:
       y_metric: inter_token_latencies
       x_label: TTFT (ms)
       y_label: ITL (ms)
+      width: 1000
+      height: 3000
       type: box
       paths:
         - run1/concurrency32.json
@@ -54,6 +56,8 @@ class TestPlotConfigParser:
       y_metric: num_output_tokens
       x_label: Input Tokens
       y_label: Output Tokens
+      width: 1234
+      height: 5678
       type: scatter
       paths:
         - run4/concurrency1.json
@@ -78,6 +82,8 @@ class TestPlotConfigParser:
         assert pc1.title == "TTFT vs ITL"
         assert pc1.x_label == "TTFT (ms)"
         assert pc1.y_label == "ITL (ms)"
+        assert pc1.width == 1000
+        assert pc1.height == 3000
         assert pc1.type == PlotType.BOX
         assert pc1.output == Path("test_output_1")
 
@@ -94,6 +100,8 @@ class TestPlotConfigParser:
         assert pc2.title == "Num Input Token vs Num Output Token"
         assert pc2.x_label == "Input Tokens"
         assert pc2.y_label == "Output Tokens"
+        assert pc2.width == 1234
+        assert pc2.height == 5678
         assert pc2.type == PlotType.SCATTER
         assert pc2.output == Path("test_output_2")
 
