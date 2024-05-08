@@ -53,6 +53,30 @@ class TestWrapper:
         assert number_of_url_args == 1
 
     @pytest.mark.parametrize(
+        "arg, expected_filepath",
+        [
+            ([], "artifacts/test_model/triton-tensorrtllm-concurrency1.json"),
+            (
+                ["--artifact-dir", "test_dir"],
+                "test_dir/test_model/triton-tensorrtllm-concurrency1.json",
+            ),
+            (
+                ["--artifact-dir", "test_dir", "--profile-export-file", "test.json"],
+                "test_dir/test_model/test.json",
+            ),
+        ],
+    )
+    def test_profile_export_filepath(self, monkeypatch, arg, expected_filepath):
+        args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
+        monkeypatch.setattr("sys.argv", args)
+        args, extra_args = parser.parse_args()
+        cmd = Profiler.build_cmd(args, extra_args)
+        cmd_string = " ".join(cmd)
+
+        expected_pattern = f"--profile-export-file {expected_filepath}"
+        assert expected_pattern in cmd_string
+
+    @pytest.mark.parametrize(
         "arg",
         [
             (["--backend", "tensorrtllm"]),
