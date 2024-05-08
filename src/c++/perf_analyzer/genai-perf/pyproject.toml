@@ -49,7 +49,14 @@ dependencies = [
   "numpy",
   "pytest",
   "rich",
-  "transformers"
+  "transformers",
+  "plotly",
+  "pandas",
+  "kaleido",
+  "statsmodels",
+  "pyarrow",
+  "fastparquet",
+  "pytest-mock",
 ]
 
 # CLI Entrypoint

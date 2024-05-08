@@ -25,54 +25,75 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import logging
 import sys
 from pathlib import Path
 
+import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, LOGGER_NAME, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
-logger = logging.getLogger(LOGGER_NAME)
+logger = logging.getLogger(__name__)
+
+_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
 
 
 def _check_conditional_args(
-    parser: argparse.ArgumentParser, args: argparse.ArgumentParser
-) -> argparse.ArgumentParser:
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
     """
     Check for conditional args and raise an error if they are not set.
     """
+
+    # Endpoint and output format checks
     if args.service_kind == "openai":
-        if args.endpoint is None:
+        if args.endpoint_type is None:
             parser.error(
-                "The --endpoint option is required when using the 'openai' service-kind."
+                "The --endpoint-type option is required when using the 'openai' service-kind."
             )
-        if args.endpoint == "v1/chat/completions":
-            args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-        elif args.endpoint == "v1/completions":
-            args.output_format = OutputFormat.OPENAI_COMPLETIONS
-    elif args.endpoint is not None:
+        else:
+            if args.endpoint_type == "chat":
+                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+            elif args.endpoint_type == "completions":
+                args.output_format = OutputFormat.OPENAI_COMPLETIONS
+
+            if args.endpoint is not None:
+                args.endpoint = args.endpoint.lstrip(" /")
+            else:
+                args.endpoint = _endpoint_type_map[args.endpoint_type]
+    elif args.endpoint_type is not None:
         parser.error(
-            "The --endpoint option should only be used when using the 'openai' service-kind."
+            "The --endpoint-type option should only be used when using the 'openai' service-kind."
         )
+
     if args.service_kind == "triton":
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
 
+    # Output token distribution checks
+    if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
+        if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
+            parser.error(
+                "The --output-tokens-mean option is required when using --output-tokens-stddev."
+            )
+        if args.output_tokens_mean_deterministic:
+            parser.error(
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic."
+            )
+
+    if args.service_kind != "triton":
+        if args.output_tokens_mean_deterministic:
+            parser.error(
+                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+            )
+
     return args
 
 
-def _prune_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    """
-    Prune the parsed arguments to remove args with None.
-    """
-    return argparse.Namespace(**{k: v for k, v in vars(args).items() if v is not None})
-
-
-def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
     """
     Update genai-perf load manager attributes to PA format
     """
@@ -85,6 +106,19 @@ def _update_load_manager_args(args: argparse.ArgumentParser) -> argparse.Argumen
 
     # If no concurrency or request rate is set, default to 1
     setattr(args, "concurrency_range", "1")
+    return args
+
+
+def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
+    if args.input_dataset:
+        args.prompt_source = PromptSource.DATASET
+        logger.debug(f"Input source is the following dataset: {args.input_dataset}")
+    elif args.input_file:
+        args.prompt_source = PromptSource.FILE
+        logger.debug(f"Input source is the following file: {args.input_file.name}")
+    else:
+        args.prompt_source = PromptSource.SYNTHETIC
+        logger.debug("Input source is synthetic data")
     return args
 
 
@@ -120,13 +154,22 @@ def _add_input_args(parser):
         "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
     )
 
-    input_group.add_argument(
+    prompt_source_group = input_group.add_mutually_exclusive_group(required=False)
+    prompt_source_group.add_argument(
         "--input-dataset",
         type=str.lower,
-        default=OPEN_ORCA,
+        default=None,
         choices=[OPEN_ORCA, CNN_DAILY_MAIL],
         required=False,
-        help="The HuggingFace dataset to use for prompts when prompt-source is dataset.",
+        help="The HuggingFace dataset to use for prompts.",
+    )
+
+    prompt_source_group.add_argument(
+        "--input-file",
+        type=argparse.FileType("r"),
+        default=None,
+        required=False,
+        help="The input file containing the single prompt to use for profiling.",
     )
 
     input_group.add_argument(
@@ -138,12 +181,34 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--prompt-source",
-        type=str,
-        choices=utils.get_enum_names(PromptSource),
-        default="synthetic",
+        "--output-tokens-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
-        help=f"The source of the input prompts.",
+        help=f"The mean number of tokens in each output. "
+        "Ensure the --tokenizer value is set correctly. ",
+    )
+
+    input_group.add_argument(
+        "--output-tokens-mean-deterministic",
+        action="store_true",
+        required=False,
+        help=f"When using --output-tokens-mean, this flag can be set to "
+        "improve precision by setting the minimum number of tokens "
+        "equal to the requested number of tokens. This is currently "
+        "supported with the Triton service-kind. "
+        "Note that there is still some variability in the requested number "
+        "of output tokens, but GenAi-Perf attempts its best effort with your "
+        "model to get the right number of output tokens. ",
+    )
+
+    input_group.add_argument(
+        "--output-tokens-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+        required=False,
+        help=f"The standard deviation of the number of tokens in each output. "
+        "This is only used when --output-tokens-mean is provided.",
     )
 
     input_group.add_argument(
@@ -155,27 +220,19 @@ def _add_input_args(parser):
     )
 
     input_group.add_argument(
-        "--synthetic-requested-output-tokens",
-        type=int,
-        default=LlmInputs.DEFAULT_REQUESTED_OUTPUT_TOKENS,
-        required=False,
-        help="The number of tokens to request in the output. This is used when prompt-source is synthetic to tell the LLM how many output tokens to generate in each response.",
-    )
-
-    input_group.add_argument(
-        "--synthetic-tokens-mean",
+        "--synthetic-input-tokens-mean",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
-        help=f"The mean of number of tokens in the generated prompts when prompt-source is synthetic.",
+        help=f"The mean of number of tokens in the generated prompts when using synthetic data.",
     )
 
     input_group.add_argument(
-        "--synthetic-tokens-stddev",
+        "--synthetic-input-tokens-stddev",
         type=int,
         default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
-        help=f"The standard deviation of number of tokens in the generated prompts when prompt-source is synthetic.",
+        help=f"The standard deviation of number of tokens in the generated prompts when using synthetic data.",
     )
 
 
@@ -196,17 +253,16 @@ def _add_profile_args(parser):
         type=int,
         default="10000",
         required=False,
-        help="The time interval used "
-        "for each measurement in milliseconds. The perf analyzer will "
-        "sample a time interval specified and take measurement over "
-        "the requests completed within that time interval.",
+        help="The time interval used for each measurement in milliseconds. "
+        "Perf Analyzer will sample a time interval specified and take "
+        "measurement over the requests completed within that time interval.",
     )
 
     load_management_group.add_argument(
         "--request-rate",
         type=float,
         required=False,
-        help="Sets the request rate for the load generated by PA. ",
+        help="Sets the request rate for the load generated by PA.",
     )
 
     profile_group.add_argument(
@@ -238,19 +294,29 @@ def _add_endpoint_args(parser):
         "--backend",
         type=str,
         choices=utils.get_enum_names(OutputFormat)[2:],
-        default="trtllm",
+        default="tensorrtllm",
         required=False,
         help=f'When using the "triton" service-kind, '
-        "this is the backend of the model. ",
+        "this is the backend of the model. "
+        "For the TENSORRT-LLM backend, you currently must set "
+        "'exclude_input_in_output' to true in the model config to "
+        "not echo the input tokens in the output.",
     )
 
     endpoint_group.add_argument(
         "--endpoint",
         type=str,
-        choices=["v1/chat/completions", "v1/completions"],
         required=False,
-        help=f"The endpoint to send requests to on the "
-        'server. This is only used with the "openai" service-kind. ',
+        help=f"Set a custom endpoint that differs from the OpenAI defaults.",
+    )
+
+    endpoint_group.add_argument(
+        "--endpoint-type",
+        type=str,
+        choices=["chat", "completions"],
+        required=False,
+        help=f"The endpoint-type to send requests to on the "
+        'server. This is only used with the "openai" service-kind.',
     )
 
     endpoint_group.add_argument(
@@ -261,7 +327,7 @@ def _add_endpoint_args(parser):
         required=False,
         help="The kind of service perf_analyzer will "
         'generate load for. In order to use "openai", '
-        "you must specify an endpoint via --endpoint.",
+        "you must specify an api via --endpoint-type.",
     )
 
     endpoint_group.add_argument(
@@ -286,6 +352,13 @@ def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
 
     output_group.add_argument(
+        "--generate-plots",
+        action="store_true",
+        required=False,
+        help="An option to enable the generation of plots.",
+    )
+
+    output_group.add_argument(
         "--profile-export-file",
         type=Path,
         default="profile_export.json",
@@ -298,17 +371,17 @@ def _add_output_args(parser):
 
 
 def _add_other_args(parser):
-    output_group = parser.add_argument_group("Other")
+    other_group = parser.add_argument_group("Other")
 
-    output_group.add_argument(
+    other_group.add_argument(
         "--tokenizer",
         type=str,
         default=DEFAULT_TOKENIZER,
         required=False,
-        help="The HuggingFace tokenizer to use to interpret token metrics from prompts and responses",
+        help="The HuggingFace tokenizer to use to interpret token metrics from prompts and responses.",
     )
 
-    output_group.add_argument(
+    other_group.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -316,7 +389,7 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
-    output_group.add_argument(
+    other_group.add_argument(
         "--version",
         action="version",
         version="%(prog)s " + __version__,
@@ -324,9 +397,9 @@ def _add_other_args(parser):
     )
 
 
-def get_extra_inputs_as_dict(args: argparse.ArgumentParser) -> dict:
+def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
-    if hasattr(args, "extra_inputs"):
+    if args.extra_inputs:
         for input_str in args.extra_inputs:
             semicolon_count = input_str.count(":")
             if semicolon_count != 1:
@@ -392,9 +465,8 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    args = _infer_prompt_source(args)
     args = _check_conditional_args(parser, args)
     args = _update_load_manager_args(args)
-    args = _convert_str_to_enum_entry(args, "prompt_source", PromptSource)
-    args = _prune_args(args)
 
     return args, argv[passthrough_index + 1 :]

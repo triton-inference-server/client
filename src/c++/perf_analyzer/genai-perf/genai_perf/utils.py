@@ -25,19 +25,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 def remove_sse_prefix(msg: str) -> str:
     return msg.removeprefix("data: ").strip()
 
 
-def load_json(filename: str):
+def load_json(filename: str) -> Dict[str, Any]:
     with open(filename, encoding="utf-8", errors="ignore") as f:
         return json.load(f)
 
 
-def remove_file(file: Path):
+def remove_file(file: Path) -> None:
     if file.is_file():
         file.unlink()
 
@@ -46,15 +48,19 @@ def convert_option_name(name: str) -> str:
     return name.replace("_", "-")
 
 
-def get_enum_names(enum):
+def get_enum_names(enum: type[Enum]) -> List:
     names = []
     for e in enum:
         names.append(e.name.lower())
     return names
 
 
-def get_enum_entry(name, enum):
+def get_enum_entry(name: str, enum: type[Enum]) -> Optional[Enum]:
     for e in enum:
         if e.name.lower() == name.lower():
             return e
     return None
+
+
+def scale(value, factor):
+    return value * factor

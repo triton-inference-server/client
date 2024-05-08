@@ -5,7 +5,7 @@ import sys
 
 # How to run:
 #   test_end_to_end.py <target>
-#     Where target is "nim_chat" or "nim_completions" or "vllm_openai" or "triton_trtllm"
+#     Where target is "nim_chat" or "nim_completions" or "vllm_openai" or "triton_tensorrtllm"
 #
 # For all cases but vllm_openai, it assumes that the server will be on port 9999
 #
@@ -20,10 +20,10 @@ testing_matrix = [
 ]
 
 base_commands = {
-    "nim_chat": "genai-perf -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999 --service-kind openai --endpoint v1/chat/completions",
-    "nim_completions": "genai-perf -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --service-kind openai --endpoint v1/completions",
-    "vllm_openai": "genai-perf -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --service-kind openai --endpoint v1/chat/completions",
-    "triton_trtllm": "genai-perf -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --backend trtllm",
+    "nim_chat": "genai-perf -s 999 -p 20000 -m llama-2-7b-chat -u http://localhost:9999 --service-kind openai --endpoint-type chat",
+    "nim_completions": "genai-perf -s 999 -p 20000 -m llama-2-7b -u http://localhost:9999 --service-kind openai --endpoint-type completions",
+    "vllm_openai": "genai-perf -s 999 -p 20000 -m mistralai/Mistral-7B-v0.1 --service-kind openai --endpoint-type chat",
+    "triton_tensorrtllm": "genai-perf -s 999 -p 20000 -m llama-2-7b -u 0.0.0.0:9999 --service-kind triton --backend tensorrtllm",
     "triton_vllm": "genai-perf -s 999 -p 20000 -m gpt2_vllm --service-kind triton --backend vllm",
 }
 testname = ""
@@ -39,7 +39,7 @@ else:
 base_command = base_commands[testname]
 
 
-def rename_files(files: list, substr: str):
+def rename_files(files: list, substr: str) -> None:
     for f in files:
         name, ext = f.rsplit(".", 1)
         # Insert the substring and reassemble the filename

@@ -14,6 +14,7 @@
 
 import contextlib
 import io
+from typing import Union
 
 from genai_perf.exceptions import GenAIPerfException
 
@@ -21,22 +22,35 @@ from genai_perf.exceptions import GenAIPerfException
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from transformers import AutoTokenizer
+    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
     from transformers import logging as token_logger
 
     token_logger.set_verbosity_error()
 
-
+Tokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 DEFAULT_TOKENIZER = "hf-internal-testing/llama-tokenizer"
 
 
-def get_tokenizer(tokenizer_model: str) -> AutoTokenizer:
+def get_tokenizer(
+    tokenizer_model: str,
+) -> Tokenizer:
     """
     Download the tokenizer from Huggingface.co
     """
     try:
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
+        # Silence tokenizer warning on first use
+        with contextlib.redirect_stdout(
+            io.StringIO()
+        ) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
     except Exception as e:
         raise GenAIPerfException(e)
+
+    # Disable add_bos_token so that llama tokenizer does not add bos token
+    # (aka. beginning-of-sentence) to the beginning of every response
+    # outputs, increasing the token count by 1 for each output response.
+    # Note: The type is being ignored here, because not all tokenizers have
+    # an add_bos_token variable.
+    tokenizer.add_bos_token = False  # type: ignore
 
     return tokenizer

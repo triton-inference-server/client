@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,14 +25,60 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_HTTP_URL = "localhost:8000"
-DEFAULT_GRPC_URL = "localhost:8001"
+from typing import Dict, Optional
+
+import pandas as pd
+import plotly.express as px
+from genai_perf.llm_metrics import Statistics
+from genai_perf.plots.base_plot import BasePlot
 
 
-OPEN_ORCA = "openorca"
-CNN_DAILY_MAIL = "cnn_dailymail"
-DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
+class ScatterPlot(BasePlot):
+    """
+    Generate a scatter plot in jpeg and html format.
+    """
 
+    def __init__(self, stats: Statistics, extra_data: Optional[Dict] = None) -> None:
+        super().__init__(stats, extra_data)
 
-DEFAULT_ARTIFACT_DIR = "artifacts"
-DEFAULT_PARQUET_FILE = "all_data"
+    def create_plot(
+        self,
+        x_key: str = "",
+        y_key: str = "",
+        x_metric: str = "",
+        y_metric: str = "",
+        graph_title: str = "",
+        x_label: str = "",
+        y_label: str = "",
+        filename_root: str = "",
+    ) -> None:
+        x_values = self._metrics_data[x_key]
+        y_values = self._metrics_data[y_key]
+
+        df = pd.DataFrame(
+            {
+                x_key: x_values,
+                y_key: y_values,
+            }
+        )
+
+        fig = px.scatter(
+            df,
+            x=x_key,
+            y=y_key,
+            trendline="ols",
+        )
+
+        fig.update_layout(
+            title={
+                "text": f"{graph_title}",
+                "xanchor": "center",
+                "x": 0.5,
+            }
+        )
+        fig.update_xaxes(title_text=f"{x_label}")
+        fig.update_yaxes(title_text=f"{y_label}")
+
+        self._generate_parquet(df, filename_root)
+        self._generate_graph_file(fig, filename_root + ".html", graph_title)
+        self._generate_graph_file(fig, filename_root + ".jpeg", graph_title)

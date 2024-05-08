@@ -26,11 +26,9 @@
 
 from pathlib import Path
 
-import genai_perf.utils as utils
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
-from genai_perf.main import run
 
 
 class TestCLIArguments:
@@ -70,12 +68,45 @@ class TestCLIArguments:
         [
             (["--concurrency", "3"], {"concurrency_range": "3"}),
             (
-                ["--endpoint", "v1/completions", "--service-kind", "openai"],
+                ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
             ),
             (
-                ["--endpoint", "v1/chat/completions", "--service-kind", "openai"],
+                ["--endpoint-type", "chat", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "chat",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "   /custom/address",
+                ],
+                {"endpoint": "custom/address"},
+            ),
+            (
+                [
+                    "--endpoint-type",
+                    "completions",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                {"endpoint": "custom/address"},
             ),
             (
                 ["--extra-inputs", "test_key:test_value"],
@@ -90,20 +121,26 @@ class TestCLIArguments:
                 ],
                 {"extra_inputs": ["test_key:5", "another_test_key:6"]},
             ),
-            (
-                ["--synthetic-requested-output-tokens", "5"],
-                {"synthetic_requested_output_tokens": 5},
-            ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
-            (["--synthetic-tokens-mean", "6"], {"synthetic_tokens_mean": 6}),
-            (["--synthetic-tokens-stddev", "7"], {"synthetic_tokens_stddev": 7}),
             (
-                ["--prompt-source", "synthetic"],
-                {"prompt_source": utils.get_enum_entry("synthetic", PromptSource)},
+                ["--synthetic-input-tokens-mean", "6"],
+                {"synthetic_input_tokens_mean": 6},
             ),
             (
-                ["--prompt-source", "dataset"],
-                {"prompt_source": utils.get_enum_entry("dataset", PromptSource)},
+                ["--synthetic-input-tokens-stddev", "7"],
+                {"synthetic_input_tokens_stddev": 7},
+            ),
+            (
+                ["--output-tokens-mean", "6"],
+                {"output_tokens_mean": 6},
+            ),
+            (
+                ["--output-tokens-mean", "6", "--output-tokens-stddev", "7"],
+                {"output_tokens_stddev": 7},
+            ),
+            (
+                ["--output-tokens-mean", "6", "--output-tokens-mean-deterministic"],
+                {"output_tokens_mean_deterministic": True},
             ),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
@@ -116,7 +153,7 @@ class TestCLIArguments:
             (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
@@ -128,7 +165,7 @@ class TestCLIArguments:
             (["-u", "test_url"], {"u": "test_url"}),
         ],
     )
-    def test_all_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
+    def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
@@ -140,6 +177,21 @@ class TestCLIArguments:
         # Check that nothing was printed as a byproduct of parsing the arguments
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    def test_file_flags_parsed(self, monkeypatch, mocker):
+        mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        combined_args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-file",
+            "fakefile.txt",
+        ]
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+        assert (
+            args.input_file == mocked_open.return_value
+        ), "The file argument should be the mock object"
 
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
@@ -201,12 +253,66 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert expected_output in captured.err
 
-    def test_service_openai_no_endpoint(self, monkeypatch, capsys):
-        args = ["genai-perf", "-m", "test_model", "--service-kind", "openai"]
+    @pytest.mark.parametrize(
+        "args, expected_output",
+        [
+            (
+                ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                "The --endpoint-type option is required when using the 'openai' service-kind.",
+            ),
+            (
+                ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
+                "The --output-tokens-mean option is required when using --output-tokens-stddev.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic.",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "chat",
+                    "--output-tokens-mean",
+                    "100",
+                    "--output-tokens-mean-deterministic",
+                ],
+                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind",
+            ),
+        ],
+    )
+    def test_conditional_errors(self, args, expected_output, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", args)
-        expected_output = (
-            "The --endpoint option is required when using the 'openai' service-kind."
-        )
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
@@ -219,14 +325,28 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--endpoint", "v1/chat/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--endpoint", "v1/completions"],
+                ["--service-kind", "openai", "--endpoint-type", "completions"],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
-            (["--service-kind", "triton", "--backend", "trtllm"], OutputFormat.TRTLLM),
+            (
+                [
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "completions",
+                    "--endpoint",
+                    "custom/address",
+                ],
+                OutputFormat.OPENAI_COMPLETIONS,
+            ),
+            (
+                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                OutputFormat.TENSORRTLLM,
+            ),
             (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
         ],
     )
@@ -271,3 +391,49 @@ class TestCLIArguments:
             _ = parser.get_extra_inputs_as_dict(parsed_args)
 
         assert str(exc_info.value) == expected_error
+
+    @pytest.mark.parametrize(
+        "args, expected_prompt_source",
+        [
+            ([], PromptSource.SYNTHETIC),
+            (["--input-dataset", "openorca"], PromptSource.DATASET),
+            (["--input-file", "prompt.txt"], PromptSource.FILE),
+            (
+                ["--input-file", "prompt.txt", "--synthetic-input-tokens-mean", "10"],
+                PromptSource.FILE,
+            ),
+        ],
+    )
+    def test_inferred_prompt_source(
+        self, monkeypatch, mocker, args, expected_prompt_source
+    ):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        combined_args = ["genai-perf", "--model", "test_model"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.prompt_source == expected_prompt_source
+
+    def test_prompt_source_assertions(self, monkeypatch, mocker, capsys):
+        _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        args = [
+            "genai-perf",
+            "--model",
+            "test_model",
+            "--input-dataset",
+            "openorca",
+            "--input-file",
+            "prompt.txt",
+        ]
+        monkeypatch.setattr("sys.argv", args)
+
+        expected_output = (
+            "argument --input-file: not allowed with argument --input-dataset"
+        )
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err

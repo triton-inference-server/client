@@ -24,35 +24,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import logging
 import subprocess
+from argparse import Namespace
 
+import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON, LOGGER_NAME
+from genai_perf.constants import DEFAULT_GRPC_URL, DEFAULT_INPUT_DATA_JSON
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 
-logger = logging.getLogger(LOGGER_NAME)
+logger = logging.getLogger(__name__)
 
 
 class Profiler:
     @staticmethod
-    def add_protocol_args(args):
-        cmd = ""
+    def add_protocol_args(args: Namespace):
+        cmd = [""]
         if args.service_kind == "triton":
-            cmd += f"-i grpc --streaming "
-            if "u" not in vars(args).keys():
-                cmd += f"-u {DEFAULT_GRPC_URL} "
-            if args.output_format == OutputFormat.TRTLLM:
-                cmd += f"--shape max_tokens:1 --shape text_input:1 "
+            cmd += ["-i", "grpc", "--streaming"]
+            if args.u is None:  # url
+                cmd += ["-u", f"{DEFAULT_GRPC_URL}"]
+            if args.output_format == OutputFormat.TENSORRTLLM:
+                cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
         elif args.service_kind == "openai":
-            cmd += f"-i http "
+            cmd += ["-i", "http"]
         return cmd
 
     @staticmethod
-    def build_cmd(args, extra_args):
+    def build_cmd(args: Namespace, extra_args: list[str] | None = None) -> list[str]:
         skip_args = [
             "func",
             "input_dataset",
+            "input_file",
             "prompt_source",
             "input_format",
             "model",
@@ -64,46 +66,59 @@ class Profiler:
             # 'streaming' that PA takes, which means something else (and is
             # required for decoupled models into triton).
             "streaming",
-            "synthetic_tokens_mean",
-            "synthetic_tokens_stddev",
-            "synthetic_requested_output_tokens",
+            "synthetic_input_tokens_mean",
+            "synthetic_input_tokens_stddev",
+            "output_tokens_mean",
+            "output_tokens_stddev",
+            "output_tokens_mean_deterministic",
             "num_prompts",
             "random_seed",
             "tokenizer",
+            "endpoint_type",
+            "generate_plots",
         ]
 
         utils.remove_file(args.profile_export_file)
 
-        cmd = f"perf_analyzer -m {args.model} --async --input-data {DEFAULT_INPUT_DATA_JSON} "
+        cmd = [
+            f"perf_analyzer",
+            f"-m",
+            f"{args.model}",
+            f"--async",
+            f"--input-data",
+            f"{DEFAULT_INPUT_DATA_JSON}",
+        ]
         for arg, value in vars(args).items():
             if arg in skip_args:
+                pass
+            elif value is None:
                 pass
             elif value is False:
                 pass
             elif value is True:
                 if len(arg) == 1:
-                    cmd += f"-{arg} "
+                    cmd += [f"-{arg}"]
                 else:
-                    cmd += f"--{arg} "
+                    cmd += [f"--{arg}"]
             else:
                 if len(arg) == 1:
-                    cmd += f"-{arg} {value} "
+                    cmd += [f"-{arg}", f"{value}"]
                 else:
                     arg = utils.convert_option_name(arg)
-                    cmd += f"--{arg} {value} "
+                    cmd += [f"--{arg}", f"{value}"]
 
         cmd += Profiler.add_protocol_args(args)
 
         if extra_args is not None:
             for arg in extra_args:
-                cmd += f"{arg} "
+                cmd += [f"{arg}"]
         return cmd
 
     @staticmethod
-    def run(args=None, extra_args=None):
+    def run(args: Namespace, extra_args: list[str] | None) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
-        logger.info(f"Running Perf Analyzer : '{cmd}'")
-        if args.verbose:
-            subprocess.run(cmd, shell=True, check=True, stdout=None)
+        logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
+        if args and args.verbose:
+            subprocess.run(cmd, check=True, stdout=None)
         else:
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL)
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
