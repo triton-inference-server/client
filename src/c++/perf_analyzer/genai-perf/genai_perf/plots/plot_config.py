@@ -50,5 +50,7 @@ class PlotConfig:
     data: list[ProfileRunData]
     x_label: str
     y_label: str
+    width: int
+    height: int
     type: PlotType
     output: Path

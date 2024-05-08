@@ -34,4 +34,5 @@ DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
 
 
 DEFAULT_ARTIFACT_DIR = "artifacts"
+DEFAULT_COMPARE_DIR = "compare"
 DEFAULT_PARQUET_FILE = "all_data"
