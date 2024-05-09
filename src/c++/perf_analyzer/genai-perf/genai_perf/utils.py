@@ -35,7 +35,10 @@ import yaml  # type: ignore
 
 
 def remove_sse_prefix(msg: str) -> str:
-    return msg.removeprefix("data: ").strip()
+    prefix = "data: "
+    if msg.startswith(prefix):
+        return msg[len(prefix) :].strip()
+    return msg.strip()
 
 
 def load_yaml(filepath: Path) -> Dict[str, Any]:
