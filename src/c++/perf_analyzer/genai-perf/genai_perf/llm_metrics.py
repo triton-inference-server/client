@@ -29,7 +29,7 @@
 import csv
 import json
 from enum import Enum, auto
-from itertools import pairwise
+from itertools import tee
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
@@ -547,7 +547,9 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # inter token latency
             itl_per_request = []
-            for (t1, _), (t2, n2) in pairwise(zip(res_timestamps, num_output_tokens)):
+            for (t1, _), (t2, n2) in self._pairwise(
+                zip(res_timestamps, num_output_tokens)
+            ):
                 # TMA-1676: handle empty first/last responses
                 # if the latter response has zero token (e.g. empty string),
                 # then set it default to one for the sake of inter token latency
@@ -571,6 +573,12 @@ class LLMProfileDataParser(ProfileDataParser):
             num_generated_tokens,
             num_input_tokens,
         )
+
+    def _pairwise(self, iterable):
+        """Generate pairs of consecutive elements from the given iterable."""
+        a, b = tee(iterable)
+        next(b, None)
+        return zip(a, b)
 
     def _preprocess_response(
         self, res_timestamps: List[int], res_outputs: List[Dict[str, str]]
