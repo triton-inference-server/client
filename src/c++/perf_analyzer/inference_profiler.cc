@@ -107,12 +107,14 @@ EnsembleDurations
 GetTotalEnsembleDurations(const ServerSideStats& stats)
 {
   EnsembleDurations result;
-  const uint64_t cache_hit_cnt = stats.cache_hit_count;
-  const uint64_t cache_miss_cnt = stats.cache_miss_count;
+  // Calculate avg cache hit latency and cache miss latency for ensemble model
+  // in case top level response caching is enabled.
+  const uint64_t ensemble_cache_hit_cnt = stats.cache_hit_count;
+  const uint64_t ensemble_cache_miss_cnt = stats.cache_miss_count;
   result.total_cache_hit_time_avg_us +=
-      AverageDurationInUs(stats.cache_hit_time_ns, cache_hit_cnt);
+      AverageDurationInUs(stats.cache_hit_time_ns, ensemble_cache_hit_cnt);
   result.total_cache_miss_time_avg_us +=
-      AverageDurationInUs(stats.cache_miss_time_ns, cache_miss_cnt);
+      AverageDurationInUs(stats.cache_miss_time_ns, ensemble_cache_miss_cnt);
   for (const auto& model_stats : stats.composing_models_stat) {
     if (model_stats.second.composing_models_stat.empty()) {
       // Cache hit count covers cache hits, not related to compute times
