@@ -288,6 +288,8 @@ ReportServerSideStats(
       const uint64_t overhead_avg_us = GetOverheadDuration(
           cumm_avg_us, ensemble_times.total_queue_time_avg_us,
           ensemble_times.total_combined_cache_compute_time_avg_us);
+      // FIXME - Refactor these calculations in case of ensemble top level
+      // response cache is enabled
       if (!parser->TopLevelResponseCachingEnabled()) {
         std::cout << " (overhead " << overhead_avg_us << " usec + "
                   << "queue " << ensemble_times.total_queue_time_avg_us
@@ -1525,10 +1527,12 @@ InferenceProfiler::DetermineStatsModelVersion(
       *status_model_version = std::stoll(model_identifier.second);
     }
   }
-  // In case of ensemble models, if top level response caching is enabled,
-  // the composing models versions are unavailable in case of a cache hit.
-  // This is due to the scheduler sends cache response and composing models do
-  // not get executed. It's a valid scenario and shouldn't throw error.
+  // FIXME - Investigate why composing model version is -1 in case of ensemlble
+  //
+  // cache hit. In case of ensemble models, if top level response caching is
+  // enabled, the composing models versions are unavailable in case of a cache
+  // hit. This is due to the scheduler sends cache response and composing models
+  // do not get executed. It's a valid scenario and shouldn't throw error.
   bool model_version_unspecified_and_invalid =
       *status_model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
   if (model_version_unspecified_and_invalid) {
