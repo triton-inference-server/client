@@ -132,7 +132,7 @@ pip install \
 3. Download model:
 
 ```bash
-triton import -m gpt2 --backend tensorrtllm
+triton import -m gpt2 --backend trtllm
 ```
 
 4. Run server:
