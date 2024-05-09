@@ -1524,6 +1524,39 @@ TEST_CASE("Testing Command Line Parser")
           PerfAnalyzerException);
       check_params = false;
     }
+    SUBCASE("multiple request rate")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "20",       "--request-rate-range",
+                          "5:6:1"};
+
+      expected_msg =
+          "request-count not supported with multiple request-rate values in "
+          "one run";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+    SUBCASE("multiple concurrency")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "20",       "--concurrency-range",
+                          "5:6:1"};
+
+      expected_msg =
+          "request-count not supported with multiple concurrency values in "
+          "one run";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+
     SUBCASE("mode and count are overwritten with non-zero request-count")
     {
       int argc = 9;

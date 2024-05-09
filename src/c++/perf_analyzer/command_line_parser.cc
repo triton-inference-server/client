@@ -1899,14 +1899,27 @@ CLParser::VerifyOptions()
   }
 
   if (params_->request_count != 0) {
-    if (params_->using_concurrency_range &&
-        params_->request_count < params_->concurrency_range.start) {
-      Usage("request-count can not be less than concurrency");
+    if (params_->using_concurrency_range) {
+      if (params_->request_count < params_->concurrency_range.start) {
+        Usage("request-count can not be less than concurrency");
+      }
+      if (params_->concurrency_range.start < params_->concurrency_range.end) {
+        Usage(
+            "request-count not supported with multiple concurrency values in "
+            "one run");
+      }
     }
-    if (params_->using_request_rate_range &&
-        params_->request_count <
-            static_cast<int>(params_->request_rate_range[0])) {
-      Usage("request-count can not be less than request-rate");
+    if (params_->using_request_rate_range) {
+      if (params_->request_count <
+          static_cast<int>(params_->request_rate_range[0])) {
+        Usage("request-count can not be less than request-rate");
+      }
+      if (params_->request_rate_range[SEARCH_RANGE::kSTART] <
+          params_->request_rate_range[SEARCH_RANGE::kEND]) {
+        Usage(
+            "request-count not supported with multiple request-rate values in "
+            "one run");
+      }
     }
   }
 
