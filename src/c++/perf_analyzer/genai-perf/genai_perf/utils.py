@@ -65,7 +65,7 @@ def get_enum_names(enum: Type[Enum]) -> List:
     return names
 
 
-def get_enum_entry(name: str, enum: type[Enum]) -> Optional[Enum]:
+def get_enum_entry(name: str, enum: Type[Enum]) -> Optional[Enum]:
     for e in enum:
         if e.name.lower() == name.lower():
             return e
