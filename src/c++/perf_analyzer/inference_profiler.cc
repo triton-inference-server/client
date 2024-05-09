@@ -107,6 +107,14 @@ EnsembleDurations
 GetTotalEnsembleDurations(const ServerSideStats& stats)
 {
   EnsembleDurations result;
+  // Calculate avg cache hit latency and cache miss latency for ensemble model
+  // in case top level response caching is enabled.
+  const uint64_t ensemble_cache_hit_cnt = stats.cache_hit_count;
+  const uint64_t ensemble_cache_miss_cnt = stats.cache_miss_count;
+  result.total_cache_hit_time_avg_us +=
+      AverageDurationInUs(stats.cache_hit_time_ns, ensemble_cache_hit_cnt);
+  result.total_cache_miss_time_avg_us +=
+      AverageDurationInUs(stats.cache_miss_time_ns, ensemble_cache_miss_cnt);
   for (const auto& model_stats : stats.composing_models_stat) {
     if (model_stats.second.composing_models_stat.empty()) {
       // Cache hit count covers cache hits, not related to compute times
@@ -238,7 +246,6 @@ ReportServerSideStats(
     if (parser->ResponseCacheEnabled()) {
       const uint64_t overhead_avg_us = GetOverheadDuration(
           cumm_avg_us, queue_avg_us, combined_cache_compute_avg_us);
-
       std::cout << " (overhead " << overhead_avg_us << " usec + "
                 << "queue " << queue_avg_us << " usec + "
                 << "cache hit/miss " << combined_cache_compute_avg_us
@@ -283,12 +290,18 @@ ReportServerSideStats(
       const uint64_t overhead_avg_us = GetOverheadDuration(
           cumm_avg_us, ensemble_times.total_queue_time_avg_us,
           ensemble_times.total_combined_cache_compute_time_avg_us);
-      std::cout << " (overhead " << overhead_avg_us << " usec + "
-                << "queue " << ensemble_times.total_queue_time_avg_us
-                << " usec + "
-                << "cache hit/miss "
-                << ensemble_times.total_combined_cache_compute_time_avg_us
-                << " usec)" << std::endl;
+      // FIXME - Refactor these calculations in case of ensemble top level
+      // response cache is enabled
+      if (!parser->TopLevelResponseCachingEnabled()) {
+        std::cout << " (overhead " << overhead_avg_us << " usec + "
+                  << "queue " << ensemble_times.total_queue_time_avg_us
+                  << " usec + "
+                  << "cache hit/miss "
+                  << ensemble_times.total_combined_cache_compute_time_avg_us
+                  << " usec)" << std::endl;
+      } else {
+        std::cout << std::endl;
+      }
       std::cout << ident << ident << "  Average Cache Hit Latency: "
                 << ensemble_times.total_cache_hit_time_avg_us << " usec"
                 << std::endl;
@@ -1550,6 +1563,21 @@ InferenceProfiler::DetermineStatsModelVersion(
   return cb::Error::Success;
 }
 
+// Only for unit-testing
+#ifndef DOCTEST_CONFIG_DISABLE
+cb::Error
+InferenceProfiler::SetTopLevelResponseCaching(
+    bool enable_top_level_response_caching)
+{
+  parser_ = std::make_shared<ModelParser>(cb::BackendKind::TRITON);
+  if (parser_ == nullptr) {
+    return cb::Error("Failed to initialize ModelParser");
+  }
+  parser_->SetTopLevelResponseCaching(enable_top_level_response_caching);
+  return cb::Error::Success;
+}
+#endif
+
 cb::Error
 InferenceProfiler::SummarizeServerStats(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
@@ -1605,8 +1633,20 @@ InferenceProfiler::SummarizeServerStatsHelper(
 
   const auto& end_itr = end_status.find(this_id);
   if (end_itr == end_status.end()) {
-    return cb::Error(
-        "missing statistics for requested model", pa::GENERIC_ERROR);
+    // In case of ensemble models, if top level response caching is enabled,
+    // the composing models statistics are unavailable in case of a cache hit.
+    // This is due to the scheduler sends cache response and composing models do
+    // not get executed. It's a valid scenario and shouldn't throw error.
+    bool stats_not_found_and_invalid =
+        model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
+    if (stats_not_found_and_invalid) {
+      return cb::Error(
+          "missing statistics for requested model", pa::GENERIC_ERROR);
+    } else {
+      // Setting server stats 0 for composing model in case of ensemble request
+      // cache hit since the composing model will not be executed
+      server_stats->Reset();
+    }
   } else {
     uint64_t start_infer_cnt = 0;
     uint64_t start_exec_cnt = 0;
