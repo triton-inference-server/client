@@ -31,7 +31,7 @@ import json
 from enum import Enum, auto
 from itertools import pairwise
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -115,7 +115,7 @@ class LLMMetrics(Metrics):
         request_throughputs: List[float] = [],
         request_latencies: List[int] = [],
         time_to_first_tokens: List[int] = [],
-        inter_token_latencies: List[list[int]] = [[]],
+        inter_token_latencies: List[List[int]] = [[]],
         output_token_throughputs: List[float] = [],
         output_token_throughputs_per_request: List[int] = [],
         num_output_tokens: List[int] = [],
@@ -170,7 +170,7 @@ class Statistics:
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
 
-    def _preprocess_data(self, data: list, attr: str) -> list[int | float]:
+    def _preprocess_data(self, data: List, attr: str) -> List[Union[int, float]]:
         new_data = []
         if attr == "inter_token_latency":
             # flatten inter token latencies to 1D
@@ -180,11 +180,11 @@ class Statistics:
             new_data = data
         return new_data
 
-    def _calculate_mean(self, data: list[int | float], attr: str) -> None:
+    def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
 
-    def _calculate_percentiles(self, data: list[int | float], attr: str) -> None:
+    def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
         setattr(self, "p25_" + attr, p25)
@@ -194,12 +194,12 @@ class Statistics:
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
 
-    def _calculate_minmax(self, data: list[int | float], attr: str) -> None:
+    def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
-    def _calculate_std(self, data: list[int | float], attr: str) -> None:
+    def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
         setattr(self, "std_" + attr, std)
 
@@ -460,7 +460,7 @@ class ProfileDataParser:
             raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
         return self._profile_results[(infer_mode, load_level)]
 
-    def get_profile_load_info(self) -> list[tuple[str, str]]:
+    def get_profile_load_info(self) -> List[Tuple[str, str]]:
         """Return available (infer_mode, load_level) tuple keys."""
         return [k for k, _ in self._profile_results.items()]
 
@@ -573,7 +573,7 @@ class LLMProfileDataParser(ProfileDataParser):
         )
 
     def _preprocess_response(
-        self, res_timestamps: list[int], res_outputs: list[dict[str, str]]
+        self, res_timestamps: List[int], res_outputs: List[Dict[str, str]]
     ) -> None:
         """Helper function to preprocess responses of a request."""
         if self._service_kind == "openai":
@@ -604,7 +604,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 res_timestamps.pop()
                 res_outputs.pop()
 
-    def _tokenize_request_inputs(self, req_inputs: dict) -> list[int]:
+    def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_request_input(req_inputs)
@@ -613,12 +613,12 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> list[int]:
+    def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the Triton request input texts."""
         encodings = self._tokenizer(req_inputs["text_input"])
         return encodings.data["input_ids"]
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> list[int]:
+    def _tokenize_openai_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._response_format == ResponseFormat.OPENAI_CHAT_COMPLETIONS:
@@ -632,7 +632,7 @@ class LLMProfileDataParser(ProfileDataParser):
         encodings = self._tokenizer(input_text)
         return encodings.data["input_ids"]
 
-    def _tokenize_response_outputs(self, res_outputs: dict) -> list[list[int]]:
+    def _tokenize_response_outputs(self, res_outputs: dict) -> List[List[int]]:
         """Deserialize the response output and return tokenized outputs."""
         if self._service_kind == "triton":
             return self._tokenize_triton_response_output(res_outputs)
@@ -641,14 +641,14 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_response_output(self, res_outputs: dict) -> list[list[int]]:
+    def _tokenize_triton_response_output(self, res_outputs: dict) -> List[List[int]]:
         """Tokenize the Triton response output texts."""
         output_texts = []
         for output in res_outputs:
             output_texts.append(output["text_output"])
         return self._run_tokenizer(output_texts)
 
-    def _tokenize_openai_response_output(self, res_outputs: dict) -> list[list[int]]:
+    def _tokenize_openai_response_output(self, res_outputs: dict) -> List[List[int]]:
         """Tokenize the OpenAI response output texts."""
         output_texts = []
         for output in res_outputs:
@@ -656,7 +656,7 @@ class LLMProfileDataParser(ProfileDataParser):
             output_texts.append(text)
         return self._run_tokenizer(output_texts)
 
-    def _run_tokenizer(self, output_texts: list[str]) -> list[list[int]]:
+    def _run_tokenizer(self, output_texts: List[str]) -> List[List[int]]:
         # exclamation mark trick forces the llama tokenization to consistently
         # start each output with a specific token which allows us to safely skip
         # the first token of every tokenized output and get only the ones that

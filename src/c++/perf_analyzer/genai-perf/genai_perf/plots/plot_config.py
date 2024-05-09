@@ -29,6 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
+from typing import List, Union
 
 
 class PlotType(Enum):
@@ -40,14 +41,14 @@ class PlotType(Enum):
 @dataclass
 class ProfileRunData:
     name: str
-    x_metric: Sequence[int | float]
-    y_metric: Sequence[int | float]
+    x_metric: Sequence[Union[int, float]]
+    y_metric: Sequence[Union[int, float]]
 
 
 @dataclass
 class PlotConfig:
     title: str
-    data: list[ProfileRunData]
+    data: List[ProfileRunData]
     x_label: str
     y_label: str
     width: int

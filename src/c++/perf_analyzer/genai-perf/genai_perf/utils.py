@@ -27,7 +27,7 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
@@ -58,7 +58,7 @@ def convert_option_name(name: str) -> str:
     return name.replace("_", "-")
 
 
-def get_enum_names(enum: type[Enum]) -> List:
+def get_enum_names(enum: Type[Enum]) -> List:
     names = []
     for e in enum:
         names.append(e.name.lower())

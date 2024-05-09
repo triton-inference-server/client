@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from pathlib import Path
+from typing import List, Union
 
 import genai_perf.logging as logging
 
@@ -46,7 +47,7 @@ class PlotConfigParser:
     def __init__(self, filename: Path) -> None:
         self._filename = filename
 
-    def generate_configs(self) -> list[PlotConfig]:
+    def generate_configs(self) -> List[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
         logger.info(
             f"Generating plot configurations by parsing {self._filename}. "
@@ -57,7 +58,7 @@ class PlotConfigParser:
         plot_configs = []
         for _, config in configs.items():
             # Collect profile run data
-            profile_data: list[ProfileRunData] = []
+            profile_data: List[ProfileRunData] = []
             for filepath in config["paths"]:
                 stats = self._get_statistics(filepath)
                 profile_data.append(
@@ -103,7 +104,7 @@ class PlotConfigParser:
             return filepath.parent.name + "/" + filepath.stem
         return filepath.stem
 
-    def _get_metric(self, stats: Statistics, name: str) -> list[int | float]:
+    def _get_metric(self, stats: Statistics, name: str) -> List[Union[int, float]]:
         if not name:  # no metric
             return []
         elif name == "inter_token_latencies":
@@ -113,7 +114,7 @@ class PlotConfigParser:
                 itl_flatten += request_itls
             return [scale(x, (1 / 1e6)) for x in itl_flatten]  # ns to ms
         elif name == "token_positions":
-            token_positions: list[int | float] = []
+            token_positions: List[Union[int, float]] = []
             for request_itls in stats.metrics.data["inter_token_latencies"]:
                 token_positions += list(range(1, len(request_itls) + 1))
             return token_positions
@@ -141,7 +142,7 @@ class PlotConfigParser:
             )
 
     @staticmethod
-    def create_init_yaml_config(filenames: list[Path], output_dir: Path) -> None:
+    def create_init_yaml_config(filenames: List[Path], output_dir: Path) -> None:
         config_str = f"""
         plot1:
           title: Time to First Token

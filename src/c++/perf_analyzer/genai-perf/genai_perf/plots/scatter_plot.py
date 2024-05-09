@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from pathlib import Path
+from typing import List
 
 import plotly.graph_objects as go
 from genai_perf.plots.base_plot import BasePlot
@@ -37,7 +38,7 @@ class ScatterPlot(BasePlot):
     Generate a scatter plot in jpeg and html format.
     """
 
-    def __init__(self, data: list[ProfileRunData]) -> None:
+    def __init__(self, data: List[ProfileRunData]) -> None:
         super().__init__(data)
 
     def create_plot(
