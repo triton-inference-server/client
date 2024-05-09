@@ -29,7 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Union
+from typing import List, Sequence, Union
 
 
 class PlotType(Enum):
