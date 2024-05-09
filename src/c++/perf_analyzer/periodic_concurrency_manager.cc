@@ -1,4 +1,4 @@
-// Copyright (c) 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ PeriodicConcurrencyManager::RunExperiment()
 std::shared_ptr<IWorker>
 PeriodicConcurrencyManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<PeriodicConcurrencyWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   uint32_t id = workers_.size();
   auto worker = std::make_shared<PeriodicConcurrencyWorker>(
@@ -66,8 +66,9 @@ PeriodicConcurrencyManager::AddConcurrentRequest(size_t seq_stat_index_offset)
 {
   threads_stat_.emplace_back(std::make_shared<ThreadStat>());
   threads_config_.emplace_back(
-      std::make_shared<ConcurrencyWorker::ThreadConfig>(
-          threads_config_.size(), 1, seq_stat_index_offset));
+      std::make_shared<ThreadConfig>(threads_config_.size()));
+  threads_config_.back()->concurrency_ = 1;
+  threads_config_.back()->seq_stat_index_offset_ = seq_stat_index_offset;
   workers_.emplace_back(
       MakeWorker(threads_stat_.back(), threads_config_.back()));
   threads_.emplace_back(&IWorker::Infer, workers_.back());

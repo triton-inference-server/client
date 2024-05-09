@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -248,25 +248,29 @@ class InferenceProfiler {
   /// \param step The step size to move along the search range in linear search
   /// or the precision in binary search.
   /// \param search_mode The search algorithm to be applied.
-  /// \param summary Returns the trace of the measurement along the search
-  /// path.
+  /// \param request_count The number of requests to generate in each
+  /// experiment. If 0, then there is no limit, and it will generate until
+  /// stable.
+  /// \param summary Returns the trace of the measurement along the search path.
   /// \return cb::Error object indicating success or failure.
   template <typename T>
   cb::Error Profile(
       const T start, const T end, const T step, const SearchMode search_mode,
-      std::vector<PerfStatus>& perf_statuses)
+      const size_t request_count, std::vector<PerfStatus>& perf_statuses)
   {
     cb::Error err;
     bool meets_threshold, is_stable;
     if (search_mode == SearchMode::NONE) {
-      err = Profile(perf_statuses, meets_threshold, is_stable);
+      err = Profile(request_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk()) {
         return err;
       }
     } else if (search_mode == SearchMode::LINEAR) {
       T current_value = start;
       do {
-        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
+        err = Profile(
+            current_value, request_count, perf_statuses, meets_threshold,
+            is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -280,11 +284,13 @@ class InferenceProfiler {
             "Failed to obtain stable measurement.", pa::STABILITY_ERROR);
       }
     } else {
-      err = Profile(start, perf_statuses, meets_threshold, is_stable);
+      err = Profile(
+          start, request_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (!meets_threshold)) {
         return err;
       }
-      err = Profile(end, perf_statuses, meets_threshold, is_stable);
+      err = Profile(
+          end, request_count, perf_statuses, meets_threshold, is_stable);
       if (!err.IsOk() || (meets_threshold)) {
         return err;
       }
@@ -293,7 +299,9 @@ class InferenceProfiler {
       T this_end = end;
       while ((this_end - this_start) > step) {
         T current_value = (this_end + this_start) / 2;
-        err = Profile(current_value, perf_statuses, meets_threshold, is_stable);
+        err = Profile(
+            current_value, request_count, perf_statuses, meets_threshold,
+            is_stable);
         if (!err.IsOk()) {
           return err;
         }
@@ -346,43 +354,58 @@ class InferenceProfiler {
   /// request and right after the last request in the measurement window).
   /// \param concurrent_request_count The concurrency level for the measurement.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the setting meets the
+  /// list.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
+  /// \param meets_threshold Returns whether the setting meets the
   /// threshold.
   /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const size_t concurrent_request_count,
+      const size_t concurrent_request_count, const size_t request_count,
       std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
       bool& is_stable);
 
   /// Similar to above function, but instead of setting the concurrency, it
   /// sets the specified request rate for measurements.
   /// \param request_rate The request rate for inferences.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the setting meets the
-  /// threshold. \param is_stable Returns whether the measurement is stable.
+  /// list.
+  /// \param meets_threshold Returns whether the setting meets the
+  /// threshold.
+  /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success or failure.
   cb::Error Profile(
-      const double request_rate, std::vector<PerfStatus>& perf_statuses,
-      bool& meets_threshold, bool& is_stable);
+      const double request_rate, const size_t request_count,
+      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+      bool& is_stable);
 
   /// Measures throughput and latencies for custom load without controlling
   /// request rate nor concurrency. Requires load manager to be loaded with
   /// a file specifying the time intervals.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param perf_statuses Appends the measurements summary at the end of this
-  /// list. \param meets_threshold Returns whether the measurement met the
-  /// threshold. \param is_stable Returns whether the measurement is stable.
+  /// list.
+  /// \param meets_threshold Returns whether the measurement met the
+  /// threshold.
+  /// \param is_stable Returns whether the measurement is stable.
   /// \return cb::Error object indicating success
   /// or failure.
   cb::Error Profile(
-      std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
-      bool& is_stable);
+      const size_t request_count, std::vector<PerfStatus>& perf_statuses,
+      bool& meets_threshold, bool& is_stable);
 
   /// A helper function for profiling functions.
   /// \param status_summary Returns the summary of the measurement.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until stable.
   /// \param is_stable Returns whether the measurement stabilized or not.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ProfileHelper(PerfStatus& status_summary, bool* is_stable);
+  cb::Error ProfileHelper(
+      PerfStatus& status_summary, size_t request_count, bool* is_stable);
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
