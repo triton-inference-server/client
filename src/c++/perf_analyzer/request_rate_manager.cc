@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -89,10 +89,11 @@ RequestRateManager::InitManagerFinalize()
 }
 
 cb::Error
-RequestRateManager::ChangeRequestRate(const double request_rate)
+RequestRateManager::ChangeRequestRate(
+    const double request_rate, const size_t request_count)
 {
   PauseWorkers();
-  ConfigureThreads();
+  ConfigureThreads(request_count);
   // Can safely update the schedule
   GenerateSchedule(request_rate);
   ResumeWorkers();
@@ -229,15 +230,14 @@ RequestRateManager::PauseWorkers()
 }
 
 void
-RequestRateManager::ConfigureThreads()
+RequestRateManager::ConfigureThreads(const size_t request_count)
 {
   if (threads_.empty()) {
     size_t num_of_threads = DetermineNumThreads();
     while (workers_.size() < num_of_threads) {
       // Launch new thread for inferencing
       threads_stat_.emplace_back(new ThreadStat());
-      threads_config_.emplace_back(
-          new RequestRateWorker::ThreadConfig(workers_.size()));
+      threads_config_.emplace_back(new ThreadConfig(workers_.size()));
 
       workers_.push_back(
           MakeWorker(threads_stat_.back(), threads_config_.back()));
@@ -247,11 +247,20 @@ RequestRateManager::ConfigureThreads()
     size_t avg_num_seqs = num_of_sequences_ / workers_.size();
     size_t num_seqs_add_one = num_of_sequences_ % workers_.size();
     size_t seq_offset = 0;
+
+    size_t avg_req_count = request_count / workers_.size();
+    size_t req_count_add_one = request_count % workers_.size();
+
+
     for (size_t i = 0; i < workers_.size(); i++) {
       size_t num_of_seq = avg_num_seqs + (i < num_seqs_add_one ? 1 : 0);
       threads_config_[i]->num_sequences_ = num_of_seq;
       threads_config_[i]->seq_stat_index_offset_ = seq_offset;
       seq_offset += num_of_seq;
+
+      size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
+      threads_config_[i]->num_requests_ = thread_num_reqs;
+
       threads_.emplace_back(&IWorker::Infer, workers_[i]);
     }
   }
@@ -271,7 +280,7 @@ RequestRateManager::ResumeWorkers()
 std::shared_ptr<IWorker>
 RequestRateManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   size_t id = workers_.size();
   size_t num_of_threads = DetermineNumThreads();

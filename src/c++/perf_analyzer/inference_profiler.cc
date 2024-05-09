@@ -533,7 +533,7 @@ InferenceProfiler::InferenceProfiler(
 
 cb::Error
 InferenceProfiler::Profile(
-    const size_t concurrent_request_count,
+    const size_t concurrent_request_count, const size_t request_count,
     std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
     bool& is_stable)
 {
@@ -545,10 +545,11 @@ InferenceProfiler::Profile(
   is_stable = false;
   meets_threshold = true;
 
-  RETURN_IF_ERROR(dynamic_cast<ConcurrencyManager*>(manager_.get())
-                      ->ChangeConcurrencyLevel(concurrent_request_count));
+  RETURN_IF_ERROR(
+      dynamic_cast<ConcurrencyManager*>(manager_.get())
+          ->ChangeConcurrencyLevel(concurrent_request_count, request_count));
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, request_count, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -590,8 +591,9 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    const double request_rate, std::vector<PerfStatus>& perf_statuses,
-    bool& meets_threshold, bool& is_stable)
+    const double request_rate, const size_t request_count,
+    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
+    bool& is_stable)
 {
   cb::Error err;
   PerfStatus perf_status{};
@@ -602,11 +604,11 @@ InferenceProfiler::Profile(
   meets_threshold = true;
 
   RETURN_IF_ERROR(dynamic_cast<RequestRateManager*>(manager_.get())
-                      ->ChangeRequestRate(request_rate));
+                      ->ChangeRequestRate(request_rate, request_count));
   std::cout << "Request Rate: " << request_rate
             << " inference requests per seconds" << std::endl;
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, request_count, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -638,21 +640,21 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::Profile(
-    std::vector<PerfStatus>& perf_statuses, bool& meets_threshold,
-    bool& is_stable)
+    const size_t request_count, std::vector<PerfStatus>& perf_statuses,
+    bool& meets_threshold, bool& is_stable)
 {
   cb::Error err;
   PerfStatus perf_status{};
 
-  RETURN_IF_ERROR(
-      dynamic_cast<CustomLoadManager*>(manager_.get())->InitCustomIntervals());
+  RETURN_IF_ERROR(dynamic_cast<CustomLoadManager*>(manager_.get())
+                      ->InitCustomIntervals(request_count));
   RETURN_IF_ERROR(dynamic_cast<CustomLoadManager*>(manager_.get())
                       ->GetCustomRequestRate(&perf_status.request_rate));
 
   is_stable = false;
   meets_threshold = true;
 
-  err = ProfileHelper(perf_status, &is_stable);
+  err = ProfileHelper(perf_status, request_count, &is_stable);
   if (err.IsOk()) {
     uint64_t stabilizing_latency_ms =
         perf_status.stabilizing_latency_ns / NANOS_PER_MILLIS;
@@ -684,7 +686,7 @@ InferenceProfiler::Profile(
 
 cb::Error
 InferenceProfiler::ProfileHelper(
-    PerfStatus& experiment_perf_status, bool* is_stable)
+    PerfStatus& experiment_perf_status, size_t request_count, bool* is_stable)
 {
   // Start measurement
   LoadStatus load_status;
@@ -757,6 +759,12 @@ InferenceProfiler::ProfileHelper(
         std::cout << "  Pass [" << (completed_trials + 1)
                   << "] cb::Error: " << error.back().Message() << std::endl;
       }
+    }
+
+    // If request-count is specified, then only measure one window and exit
+    if (request_count != 0) {
+      *is_stable = true;
+      break;
     }
 
     *is_stable = DetermineStability(load_status);

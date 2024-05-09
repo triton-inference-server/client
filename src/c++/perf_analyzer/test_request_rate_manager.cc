@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -68,7 +68,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
     auto worker = std::make_shared<MockRequestRateWorker>(
@@ -86,9 +86,9 @@ class TestRequestRateManager : public TestLoadManagerBase,
   }
 
   void TestConfigureThreads(
-      std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
+      std::vector<ThreadConfig>& expected_configs, size_t request_count)
   {
-    RequestRateManager::ConfigureThreads();
+    RequestRateManager::ConfigureThreads(request_count);
 
     auto expected_size = expected_configs.size();
 
@@ -105,6 +105,9 @@ class TestRequestRateManager : public TestLoadManagerBase,
       CHECK(
           threads_config_[i]->seq_stat_index_offset_ ==
           expected_configs[i].seq_stat_index_offset_);
+      CHECK(
+          threads_config_[i]->num_requests_ ==
+          expected_configs[i].num_requests_);
     }
   }
 
@@ -401,8 +404,8 @@ class TestRequestRateManager : public TestLoadManagerBase,
   cb::Error CustomDataTestSendRequests(size_t num_requests)
   {
     std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+    std::shared_ptr<ThreadConfig> thread_config{
+        std::make_shared<ThreadConfig>(0)};
     std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
 
     auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
@@ -948,8 +951,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   schedule->duration = nanoseconds{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
   trrm.InitManager(
@@ -1698,8 +1701,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
           mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   trrm.parser_ = mip.mock_model_parser_;
   trrm.data_loader_ = mip.mock_data_loader_;
@@ -1947,59 +1950,71 @@ TEST_CASE(
 TEST_CASE("request rate manager - Configure threads")
 {
   PerfAnalyzerParameters params{};
-  std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
+  std::vector<ThreadConfig> expected_config_values;
   std::vector<size_t> expected_number_of_sequences_owned_by_thread;
   std::vector<size_t> expected_seq_stat_index_offsets;
+  std::vector<size_t> expected_num_requests;
   bool is_sequence_model = true;
   bool is_decoupled_model = false;
   bool use_mock_infer = true;
+  size_t target_num_requests = 0;
 
   SUBCASE("normal")
   {
     params.max_threads = 4;
     params.num_of_sequences = 4;
+    target_num_requests = 0;
 
     expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
     expected_seq_stat_index_offsets = {0, 1, 2, 3};
+    expected_num_requests = {0, 0, 0, 0};
   }
 
   SUBCASE("max_threads > num_seqs")
   {
     params.max_threads = 10;
     params.num_of_sequences = 4;
+    target_num_requests = 8;
 
     expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
     expected_seq_stat_index_offsets = {0, 1, 2, 3};
+    expected_num_requests = {2, 2, 2, 2};
   }
 
   SUBCASE("num_seqs > max_threads")
   {
     params.max_threads = 4;
     params.num_of_sequences = 10;
+    target_num_requests = 20;
 
     expected_number_of_sequences_owned_by_thread = {3, 3, 2, 2};
     expected_seq_stat_index_offsets = {0, 3, 6, 8};
+    expected_num_requests = {5, 5, 5, 5};
   }
 
   SUBCASE("not divisible")
   {
     params.max_threads = 4;
     params.num_of_sequences = 7;
+    target_num_requests = 13;
 
     expected_number_of_sequences_owned_by_thread = {2, 2, 2, 1};
     expected_seq_stat_index_offsets = {0, 2, 4, 6};
+    expected_num_requests = {4, 3, 3, 3};
   }
 
   for (auto i = 0; i < expected_number_of_sequences_owned_by_thread.size();
        i++) {
-    RequestRateWorker::ThreadConfig tc(i);
+    ThreadConfig tc(i);
     tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
     tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    tc.num_requests_ = expected_num_requests[i];
+
     expected_config_values.push_back(tc);
   }
   TestRequestRateManager trrm(
       params, is_sequence_model, is_decoupled_model, use_mock_infer);
-  trrm.TestConfigureThreads(expected_config_values);
+  trrm.TestConfigureThreads(expected_config_values, target_num_requests);
 }
 
 TEST_CASE("request rate manager - Calculate thread ids")
