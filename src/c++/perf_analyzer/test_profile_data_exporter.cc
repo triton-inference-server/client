@@ -102,8 +102,10 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
   std::vector<Experiment> experiments{experiment};
 
   std::string version{"1.2.3"};
+  cb::BackendKind service_kind = cb::BackendKind::TRITON;
+  std::string endpoint{""};
 
-  exporter.ConvertToJson(experiments, version);
+  exporter.ConvertToJson(experiments, version, service_kind, endpoint);
 
   std::string json{R"(
       {
@@ -125,7 +127,9 @@ TEST_CASE("profile_data_exporter: ConvertToJson")
             "window_boundaries" : [ 1, 5, 6 ]
           }
         ],
-        "version" : "1.2.3"
+        "version" : "1.2.3",
+        "service_kind": "triton",
+        "endpoint": ""
       }
       )"};
 
@@ -242,6 +246,82 @@ TEST_CASE("profile_data_exporter: OutputToFile")
     std::remove(file_path.c_str());
     CHECK(!IsFile(file_path));
   }
+}
+
+TEST_CASE("profile_data_exporter: AddServiceKind")
+{
+  MockProfileDataExporter exporter{};
+  exporter.ClearDocument();
+
+  cb::BackendKind service_kind;
+  std::string json{""};
+
+  SUBCASE("Backend kind: TRITON")
+  {
+    service_kind = cb::BackendKind::TRITON;
+    json = R"({ "service_kind": "triton" })";
+  }
+
+  SUBCASE("Backend kind: TENSORFLOW_SERVING")
+  {
+    service_kind = cb::BackendKind::TENSORFLOW_SERVING;
+    json = R"({ "service_kind": "tfserving" })";
+  }
+
+  SUBCASE("Backend kind: TORCHSERVE")
+  {
+    service_kind = cb::BackendKind::TORCHSERVE;
+    json = R"({ "service_kind": "torchserve" })";
+  }
+
+  SUBCASE("Backend kind: TRITON_C_API")
+  {
+    service_kind = cb::BackendKind::TRITON_C_API;
+    json = R"({ "service_kind": "triton_c_api" })";
+  }
+
+  SUBCASE("Backend kind: OPENAI")
+  {
+    service_kind = cb::BackendKind::OPENAI;
+    json = R"({ "service_kind": "openai" })";
+  }
+
+  exporter.AddServiceKind(service_kind);
+  rapidjson::Document expected_document;
+  expected_document.Parse(json.c_str());
+
+  const rapidjson::Value& expected_kind{expected_document["service_kind"]};
+  const rapidjson::Value& actual_kind{exporter.document_["service_kind"]};
+  CHECK(actual_kind == expected_kind);
+}
+
+TEST_CASE("profile_data_exporter: AddEndpoint")
+{
+  MockProfileDataExporter exporter{};
+  exporter.ClearDocument();
+
+  std::string endpoint{""};
+  std::string json{""};
+
+  SUBCASE("Endpoint: OpenAI Chat Completions")
+  {
+    endpoint = "v1/chat/completions";
+    json = R"({ "endpoint": "v1/chat/completions" })";
+  }
+
+  SUBCASE("Endpoint: OpenAI Completions")
+  {
+    endpoint = "v1/completions";
+    json = R"({ "endpoint": "v1/completions" })";
+  }
+
+  exporter.AddEndpoint(endpoint);
+  rapidjson::Document expected_document;
+  expected_document.Parse(json.c_str());
+
+  const rapidjson::Value& expected_endpoint{expected_document["endpoint"]};
+  const rapidjson::Value& actual_endpoint{exporter.document_["endpoint"]};
+  CHECK(actual_endpoint == expected_endpoint);
 }
 
 }}  // namespace triton::perfanalyzer

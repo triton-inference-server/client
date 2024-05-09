@@ -28,20 +28,23 @@
 
 import csv
 import json
+from enum import Enum, auto
 from itertools import pairwise
+from pathlib import Path
 from typing import List
 
 import numpy as np
 import pandas as pd
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
 from rich.table import Table
 
-_OPENAI_CHAT_COMPLETIONS = OutputFormat.OPENAI_CHAT_COMPLETIONS
-_OPENAI_COMPLETIONS = OutputFormat.OPENAI_COMPLETIONS
+
+class ResponseFormat(Enum):
+    OPENAI_CHAT_COMPLETIONS = auto()
+    OPENAI_COMPLETIONS = auto()
+    TRITON = auto()
 
 
 class Metrics:
@@ -373,15 +376,17 @@ class Statistics:
             for row in singular_metric_rows:
                 csv_writer.writerow(row)
 
-    def export_parquet(self, parquet_filename: str) -> None:
+    def export_parquet(self, artifact_dir: Path, filename: str) -> None:
         max_length = -1
         col_index = 0
         filler_list = []
         df = pd.DataFrame()
+
         # Data frames require all columns of the same length
         # find the max length column
         for key, value in self._metrics.data.items():
             max_length = max(max_length, len(value))
+
         # Insert None for shorter columns to match longest column
         for key, value in self._metrics.data.items():
             if len(value) < max_length:
@@ -391,9 +396,9 @@ class Statistics:
             diff = 0
             filler_list = []
             col_index = col_index + 1
-        df.to_parquet(
-            f"{DEFAULT_ARTIFACT_DIR}/data/{parquet_filename}.gzip", compression="gzip"
-        )
+
+        filepath = artifact_dir / f"{filename}.gzip"
+        df.to_parquet(filepath, compression="gzip")
 
 
 class ProfileDataParser:
@@ -401,9 +406,35 @@ class ProfileDataParser:
     extract core metrics and calculate various performance statistics.
     """
 
-    def __init__(self, filename: str) -> None:
+    def __init__(self, filename: Path) -> None:
         data = load_json(filename)
+        self._get_profile_metadata(data)
         self._parse_profile_data(data)
+
+    def _get_profile_metadata(self, data: dict) -> None:
+        self._service_kind = data["service_kind"]
+        if self._service_kind == "openai":
+            if data["endpoint"] == "v1/chat/completions":
+                self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+            elif data["endpoint"] == "v1/completions":
+                self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+            else:
+                # TPA-66: add PA metadata to handle this case
+                # When endpoint field is either empty or custom endpoint, fall
+                # back to parsing the response to extract the response format.
+                request = data["experiments"][0]["requests"][0]
+                response = request["response_outputs"][0]["response"]
+                if "chat.completion" in response:
+                    self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+                elif "text_completion" in response:
+                    self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+                else:
+                    raise RuntimeError("Unknown OpenAI response format.")
+
+        elif self._service_kind == "triton":
+            self._response_format = ResponseFormat.TRITON
+        else:
+            raise ValueError(f"Unknown service kind: {self._service_kind}")
 
     def _parse_profile_data(self, data: dict) -> None:
         """Parse through the entire profile data to collect statistics."""
@@ -429,6 +460,10 @@ class ProfileDataParser:
             raise KeyError(f"Profile with {infer_mode}={load_level} does not exist.")
         return self._profile_results[(infer_mode, load_level)]
 
+    def get_profile_load_info(self) -> list[tuple[str, str]]:
+        """Return available (infer_mode, load_level) tuple keys."""
+        return [k for k, _ in self._profile_results.items()]
+
 
 class LLMProfileDataParser(ProfileDataParser):
     """A class that calculates and aggregates all the LLM performance statistics
@@ -447,7 +482,6 @@ class LLMProfileDataParser(ProfileDataParser):
       >>> tokenizer = AutoTokenizer.from_pretrained("gpt2")
       >>> pd = LLMProfileDataParser(
       >>>     filename="profile_export.json",
-      >>>     service_kind="triton",
       >>>     tokenizer=tokenizer,
       >>> )
       >>> stats = pd.get_statistics(infer_mode="concurrency", level=10)
@@ -458,14 +492,10 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def __init__(
         self,
-        filename: str,
-        service_kind: str,
-        output_format: OutputFormat,
+        filename: Path,
         tokenizer: Tokenizer,
     ) -> None:
         self._tokenizer = tokenizer
-        self._service_kind = service_kind
-        self._output_format = output_format
         super().__init__(filename)
 
     def _parse_requests(self, requests: dict) -> LLMMetrics:
@@ -591,9 +621,9 @@ class LLMProfileDataParser(ProfileDataParser):
     def _tokenize_openai_request_input(self, req_inputs: dict) -> list[int]:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
-        if self._output_format == _OPENAI_CHAT_COMPLETIONS:
+        if self._response_format == ResponseFormat.OPENAI_CHAT_COMPLETIONS:
             input_text = payload["messages"][0]["content"]
-        elif self._output_format == _OPENAI_COMPLETIONS:
+        elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
             input_text = payload["prompt"]
         else:
             raise ValueError(

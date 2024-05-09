@@ -25,52 +25,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 
-import plotly.graph_objects as go
-from genai_perf.plots.base_plot import BasePlot
-from genai_perf.plots.plot_config import ProfileRunData
+
+class PlotType(Enum):
+    SCATTER = auto()
+    BOX = auto()
+    HEATMAP = auto()
 
 
-class BoxPlot(BasePlot):
-    """
-    Generate a box plot in jpeg and html format.
-    """
+@dataclass
+class ProfileRunData:
+    name: str
+    x_metric: Sequence[int | float]
+    y_metric: Sequence[int | float]
 
-    def __init__(self, data: list[ProfileRunData]) -> None:
-        super().__init__(data)
 
-    def create_plot(
-        self,
-        graph_title: str = "",
-        x_label: str = "",
-        y_label: str = "",
-        width: int = 700,
-        height: int = 450,
-        filename_root: str = "",
-        output_dir: Path = Path(""),
-    ) -> None:
-        fig = go.Figure()
-        for pd in self._profile_data:
-            fig.add_trace(go.Box(y=pd.y_metric, name=pd.name))
-
-        # Update layout and axis labels
-        fig.update_layout(
-            title={
-                "text": f"{graph_title}",
-                "xanchor": "center",
-                "x": 0.5,
-            },
-            width=width,
-            height=height,
-        )
-        fig.update_traces(boxpoints="all")
-        fig.update_xaxes(title_text=x_label, showticklabels=False)
-        fig.update_yaxes(title_text=y_label)
-
-        # Save dataframe as parquet file
-        df = self._create_dataframe(x_label, y_label)
-        self._generate_parquet(df, output_dir, filename_root)
-
-        self._generate_graph_file(fig, output_dir, filename_root + ".html")
-        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")
+@dataclass
+class PlotConfig:
+    title: str
+    data: list[ProfileRunData]
+    x_label: str
+    y_label: str
+    width: int
+    height: int
+    type: PlotType
+    output: Path

@@ -29,13 +29,23 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Skip type checking to avoid mypy error
+# Issue: https://github.com/python/mypy/issues/10632
+import yaml  # type: ignore
+
 
 def remove_sse_prefix(msg: str) -> str:
     return msg.removeprefix("data: ").strip()
 
 
-def load_json(filename: str) -> Dict[str, Any]:
-    with open(filename, encoding="utf-8", errors="ignore") as f:
+def load_yaml(filepath: Path) -> Dict[str, Any]:
+    with open(str(filepath)) as f:
+        configs = yaml.safe_load(f)
+    return configs
+
+
+def load_json(filepath: Path) -> Dict[str, Any]:
+    with open(str(filepath), encoding="utf-8", errors="ignore") as f:
         return json.load(f)
 
 

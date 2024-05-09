@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import shutil
 import sys
 import traceback
 from argparse import Namespace
@@ -34,23 +33,20 @@ from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR, DEFAULT_PARQUET_FILE
+from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
+from genai_perf.llm_metrics import LLMProfileDataParser
+from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
-def init_logging() -> None:
-    logging.init_logging()
-
-
-def create_artifacts_dirs(generate_plots: bool) -> None:
-    if not os.path.exists(f"{DEFAULT_ARTIFACT_DIR}"):
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}")
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/data")
-        os.mkdir(f"{DEFAULT_ARTIFACT_DIR}/plots")
+def create_artifacts_dirs(args: Namespace) -> None:
+    # TMA-1911: support plots CLI option
+    plot_dir = args.artifact_dir / "plots"
+    os.makedirs(args.artifact_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -81,25 +77,24 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         add_stream=args.streaming,
         tokenizer=tokenizer,
         extra_inputs=extra_input_dict,
+        output_dir=args.artifact_dir,
     )
 
 
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
-        service_kind=args.service_kind,
-        output_format=args.output_format,
         tokenizer=tokenizer,
     )
 
 
 def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
-    if "concurrency_range" in args:
+    if args.concurrency:
         infer_mode = "concurrency"
-        load_level = args.concurrency_range
-    elif "request_rate_range" in args:
+        load_level = f"{args.concurrency}"
+    elif args.request_rate:
         infer_mode = "request_rate"
-        load_level = args.request_rate_range
+        load_level = f"{args.request_rate}"
     else:
         raise GenAIPerfException("No valid infer mode specified")
 
@@ -108,48 +103,48 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
         args.profile_export_file.stem + "_genai_perf.csv"
     )
     stats.export_to_csv(export_csv_name)
-    stats.export_parquet(DEFAULT_PARQUET_FILE)
+    stats.export_parquet(args.artifact_dir, DEFAULT_PARQUET_FILE)
     stats.pretty_print()
     if args.generate_plots:
-        create_plots(stats)
+        create_plots(args)
 
 
-def create_plots(stats: Statistics) -> None:
-    plot_manager = PlotManager(stats)
-    plot_manager.create_default_plots()
-
-
-def finalize(profile_export_file: Path):
-    shutil.move("llm_inputs.json", f"{DEFAULT_ARTIFACT_DIR}/data/llm_inputs.json")
-    shutil.move(
-        profile_export_file, f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file}"
+def create_plots(args: Namespace) -> None:
+    # TMA-1911: support plots CLI option
+    plot_dir = args.artifact_dir / "plots"
+    PlotConfigParser.create_init_yaml_config(
+        filenames=[args.profile_export_file],  # single run
+        output_dir=plot_dir,
     )
-    profile_export_file_csv = profile_export_file.stem + "_genai_perf.csv"
-    shutil.move(
-        profile_export_file_csv,
-        f"{DEFAULT_ARTIFACT_DIR}/data/{profile_export_file_csv}",
-    )
+    config_parser = PlotConfigParser(plot_dir / "config.yaml")
+    plot_configs = config_parser.generate_configs()
+    plot_manager = PlotManager(plot_configs)
+    plot_manager.generate_plots()
 
 
 # Separate function that can raise exceptions used for testing
 # to assert correct errors and messages.
 def run():
     try:
-        init_logging()
+        # TMA-1900: refactor CLI handler
+        logging.init_logging()
         args, extra_args = parser.parse_args()
-        create_artifacts_dirs(args.generate_plots)
-        tokenizer = get_tokenizer(args.tokenizer)
-        generate_inputs(args, tokenizer)
-        args.func(args, extra_args)
-        data_parser = calculate_metrics(args, tokenizer)
-        report_output(data_parser, args)
-        finalize(args.profile_export_file)
+        if args.subcommand == "compare":
+            args.func(args)
+        else:
+            create_artifacts_dirs(args)
+            tokenizer = get_tokenizer(args.tokenizer)
+            generate_inputs(args, tokenizer)
+            args.func(args, extra_args)
+            data_parser = calculate_metrics(args, tokenizer)
+            report_output(data_parser, args)
     except Exception as e:
         raise GenAIPerfException(e)
 
 
 def main():
-    # Interactive use will catch exceptions and log formatted errors rather than tracebacks.
+    # Interactive use will catch exceptions and log formatted errors rather than
+    # tracebacks.
     try:
         run()
     except Exception as e:
