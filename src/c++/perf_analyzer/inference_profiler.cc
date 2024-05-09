@@ -1529,9 +1529,10 @@ InferenceProfiler::DetermineStatsModelVersion(
       *status_model_version = std::stoll(model_identifier.second);
     }
   }
-  // FIXME - Investigate why composing model version is -1 in case of ensemlble
+  // FIXME - Investigate why composing model version is -1 in case of ensemble
+  // cache hit.
   //
-  // cache hit. In case of ensemble models, if top level response caching is
+  // In case of ensemble models, if top level response caching is
   // enabled, the composing models versions are unavailable in case of a cache
   // hit. This is due to the scheduler sends cache response and composing models
   // do not get executed. It's a valid scenario and shouldn't throw error.
