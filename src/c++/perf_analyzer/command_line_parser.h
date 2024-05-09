@@ -62,6 +62,7 @@ struct PerfAnalyzerParameters {
   uint64_t latency_threshold_ms = NO_LIMIT;
   double stability_threshold = 0.1;
   size_t max_trials = 10;
+  size_t request_count = 0;
   bool zero_input = false;
   size_t string_length = 128;
   std::string string_data;
