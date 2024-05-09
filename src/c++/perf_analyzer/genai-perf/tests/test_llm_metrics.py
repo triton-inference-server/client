@@ -33,15 +33,13 @@ from typing import Any, List
 
 import numpy as np
 import pytest
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
-from transformers import AutoTokenizer
 
 
-def ns_to_sec(ns: int) -> int | float:
-    """Convert from nanosecond to second."""
-    return ns / 1e9
+def ms_to_sec(ms: int) -> int | float:
+    """Convert from millisecond to second."""
+    return ms / 1e3
 
 
 class TestLLMProfileDataParser:
@@ -100,15 +98,15 @@ class TestLLMProfileDataParser:
 
         expected_content = [
             "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
-            "Time To First Token (ns),2,2,2,2,2,2,2,2,2\r\n",
-            "Inter Token Latency (ns),2,1,3,3,3,3,2,2,2\r\n",
-            "Request Latency (ns),8,7,9,9,9,9,8,8,8\r\n",
+            "Time To First Token (ms),2,2,2,2,2,2,2,2,2\r\n",
+            "Inter Token Latency (ms),2,1,3,3,3,3,2,2,2\r\n",
+            "Request Latency (ms),8,7,9,9,9,9,8,8,8\r\n",
             "Num Output Token,4,3,6,6,6,6,5,4,4\r\n",
             "Num Input Token,4,3,4,4,4,4,4,4,3\r\n",
             "\r\n",
             "Metric,Value\r\n",
-            "Output Token Throughput (per sec),900000000.00\r\n",
-            "Request Throughput (per sec),200000000.00\r\n",
+            "Output Token Throughput (per sec),900.00\r\n",
+            "Request Throughput (per sec),200.00\r\n",
         ]
 
         stat.export_to_csv("profile_export.csv")
@@ -157,9 +155,9 @@ class TestLLMProfileDataParser:
 
         assert metrics.time_to_first_tokens == [2, 2]
         assert metrics.inter_token_latencies == [[2, 3], [1, 2]]
-        ottpr = [3 / ns_to_sec(7), 6 / ns_to_sec(9)]
+        ottpr = [3 / ms_to_sec(7), 6 / ms_to_sec(9)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [9 / ns_to_sec(10)]
+        ott = [9 / ms_to_sec(10)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [3, 6]
         assert metrics.num_input_tokens == [3, 4]
@@ -184,14 +182,14 @@ class TestLLMProfileDataParser:
 
         assert stat.min_time_to_first_token == 2  # type: ignore
         assert stat.min_inter_token_latency == 1  # type: ignore
-        min_ottpr = 3 / ns_to_sec(7)
+        min_ottpr = 3 / ms_to_sec(7)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 3  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
         assert stat.max_time_to_first_token == 2  # type: ignore
         assert stat.max_inter_token_latency == 3  # type: ignore
-        max_ottpr = 6 / ns_to_sec(9)
+        max_ottpr = 6 / ms_to_sec(9)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
@@ -204,7 +202,7 @@ class TestLLMProfileDataParser:
         assert stat.std_num_output_token == np.std([3, 6])  # type: ignore
         assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
 
-        oott = 9 / ns_to_sec(10)
+        oott = 9 / ms_to_sec(10)
         assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # experiment 2 statistics
@@ -214,9 +212,9 @@ class TestLLMProfileDataParser:
 
         assert metrics.time_to_first_tokens == [2, 3]
         assert metrics.inter_token_latencies == [[1, 5, 5], [2, 2]]
-        ottpr = [4 / ns_to_sec(13), 6 / ns_to_sec(8)]
+        ottpr = [4 / ms_to_sec(13), 6 / ms_to_sec(8)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [2 / ns_to_sec(3)]
+        ott = [2 / ms_to_sec(3)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [4, 6]
         assert metrics.num_input_tokens == [3, 4]
@@ -239,14 +237,14 @@ class TestLLMProfileDataParser:
 
         assert stat.min_time_to_first_token == 2  # type: ignore
         assert stat.min_inter_token_latency == 1  # type: ignore
-        min_ottpr = 4 / ns_to_sec(13)
+        min_ottpr = 4 / ms_to_sec(13)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 4  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
         assert stat.max_time_to_first_token == 3  # type: ignore
         assert stat.max_inter_token_latency == 5  # type: ignore
-        max_ottpr = 6 / ns_to_sec(8)
+        max_ottpr = 6 / ms_to_sec(8)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
@@ -259,7 +257,7 @@ class TestLLMProfileDataParser:
         assert stat.std_num_output_token == np.std([4, 6])  # type: ignore
         assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
 
-        oott = 2 / ns_to_sec(3)
+        oott = 2 / ms_to_sec(3)
         assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # check non-existing profile data
@@ -298,9 +296,9 @@ class TestLLMProfileDataParser:
 
         assert metrics.time_to_first_tokens == [4, 5]
         assert metrics.inter_token_latencies == [[3, 4], [1, 2]]
-        ottpr = [3 / ns_to_sec(11), 6 / ns_to_sec(13)]
+        ottpr = [3 / ms_to_sec(11), 6 / ms_to_sec(13)]
         assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
-        ott = [9 / ns_to_sec(14)]
+        ott = [9 / ms_to_sec(14)]
         assert metrics.output_token_throughputs == pytest.approx(ott)
         assert metrics.num_output_tokens == [3, 6]
         assert metrics.num_input_tokens == [3, 4]
@@ -323,14 +321,14 @@ class TestLLMProfileDataParser:
 
         assert stat.min_time_to_first_token == 4  # type: ignore
         assert stat.min_inter_token_latency == 1  # type: ignore
-        min_ottpr = 3 / ns_to_sec(11)
+        min_ottpr = 3 / ms_to_sec(11)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 3  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
         assert stat.max_time_to_first_token == 5  # type: ignore
         assert stat.max_inter_token_latency == 4  # type: ignore
-        max_ottpr = 6 / ns_to_sec(13)
+        max_ottpr = 6 / ms_to_sec(13)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
@@ -343,7 +341,7 @@ class TestLLMProfileDataParser:
         assert stat.std_num_output_token == np.std([3, 6])  # type: ignore
         assert stat.std_num_input_token == np.std([3, 4])  # type: ignore
 
-        oott = 9 / ns_to_sec(14)
+        oott = 9 / ms_to_sec(14)
         assert stat.avg_output_token_throughput == pytest.approx(oott)  # type: ignore
 
         # check non-existing profile data
@@ -412,12 +410,12 @@ class TestLLMProfileDataParser:
                 },
                 "requests": [
                     {
-                        "timestamp": 1,
+                        "timestamp": 1e6,
                         "request_inputs": {
                             "payload": '{"messages":[{"role":"user","content":"This is test"}],"model":"llama-2-7b","stream":true}',
                         },
                         # the first, and the last two responses will be ignored because they have no "content"
-                        "response_timestamps": [3, 5, 8, 12, 13, 14],
+                        "response_timestamps": [3e6, 5e6, 8e6, 12e6, 13e6, 14e6],
                         "response_outputs": [
                             {
                                 "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
@@ -438,12 +436,12 @@ class TestLLMProfileDataParser:
                         ],
                     },
                     {
-                        "timestamp": 2,
+                        "timestamp": 2e6,
                         "request_inputs": {
                             "payload": '{"messages":[{"role":"user","content":"This is test too"}],"model":"llama-2-7b","stream":true}',
                         },
                         # the first, and the last two responses will be ignored because they have no "content"
-                        "response_timestamps": [4, 7, 11, 15, 18, 19],
+                        "response_timestamps": [4e6, 7e6, 11e6, 15e6, 18e6, 19e6],
                         "response_outputs": [
                             {
                                 "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
@@ -479,9 +477,9 @@ class TestLLMProfileDataParser:
                 },
                 "requests": [
                     {
-                        "timestamp": 1,
+                        "timestamp": 1e6,
                         "request_inputs": {"text_input": "This is test"},
-                        "response_timestamps": [3, 5, 8],
+                        "response_timestamps": [3e6, 5e6, 8e6],
                         "response_outputs": [
                             {"text_output": "I"},
                             {"text_output": " like"},
@@ -489,9 +487,9 @@ class TestLLMProfileDataParser:
                         ],
                     },
                     {
-                        "timestamp": 2,
+                        "timestamp": 2e6,
                         "request_inputs": {"text_input": "This is test too"},
-                        "response_timestamps": [4, 7, 11],
+                        "response_timestamps": [4e6, 7e6, 11e6],
                         "response_outputs": [
                             {"text_output": "I"},
                             {"text_output": " don't"},
@@ -507,9 +505,9 @@ class TestLLMProfileDataParser:
                 },
                 "requests": [
                     {
-                        "timestamp": 5,
+                        "timestamp": 5e6,
                         "request_inputs": {"text_input": "This is test"},
-                        "response_timestamps": [7, 8, 13, 18],
+                        "response_timestamps": [7e6, 8e6, 13e6, 18e6],
                         "response_outputs": [
                             {"text_output": "cat"},
                             {"text_output": " is"},
@@ -518,9 +516,9 @@ class TestLLMProfileDataParser:
                         ],
                     },
                     {
-                        "timestamp": 3,
+                        "timestamp": 3e6,
                         "request_inputs": {"text_input": "This is test too"},
-                        "response_timestamps": [6, 8, 11],
+                        "response_timestamps": [6e6, 8e6, 11e6],
                         "response_outputs": [
                             {"text_output": "it's"},
                             {"text_output": " very"},

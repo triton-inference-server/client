@@ -111,7 +111,7 @@ class PlotConfigParser:
             itl_flatten = []
             for request_itls in stats.metrics.data[name]:
                 itl_flatten += request_itls
-            return [scale(x, (1 / 1e6)) for x in itl_flatten]  # ns to ms
+            return itl_flatten
         elif name == "token_positions":
             token_positions: list[int | float] = []
             for request_itls in stats.metrics.data["inter_token_latencies"]:
@@ -119,10 +119,10 @@ class PlotConfigParser:
             return token_positions
         elif name == "time_to_first_tokens":
             ttfts = stats.metrics.data[name]
-            return [scale(x, (1 / 1e6)) for x in ttfts]  # ns to ms
+            return ttfts
         elif name == "request_latencies":
             req_latencies = stats.metrics.data[name]
-            return [scale(x, (1 / 1e6)) for x in req_latencies]  # ns to ms
+            return req_latencies
 
         return stats.metrics.data[name]
 

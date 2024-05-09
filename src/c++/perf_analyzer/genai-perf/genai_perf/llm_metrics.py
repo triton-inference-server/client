@@ -36,7 +36,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 from genai_perf.tokenizer import Tokenizer
-from genai_perf.utils import load_json, remove_sse_prefix
+from genai_perf.utils import load_json, remove_sse_prefix, scale
 from rich.console import Console
 from rich.table import Table
 
@@ -259,7 +259,7 @@ class Statistics:
 
             is_time_field = self._is_time_field(metric)
             if is_time_field:
-                formatted_metric += " (ns)"
+                formatted_metric += " (ms)"
 
             row_values = [formatted_metric]
 
@@ -325,7 +325,7 @@ class Statistics:
                 is_time_field = self._is_time_field(metric)
 
                 if is_time_field:
-                    formatted_metric += " (ns)"
+                    formatted_metric += " (ms)"
                 elif is_throughput_field:
                     formatted_metric += " (per sec)"
                 # TODO (TMA-1712): need to decide if we need this metric. Do not
@@ -513,6 +513,10 @@ class LLMProfileDataParser(ProfileDataParser):
             res_timestamps = request["response_timestamps"]
             res_outputs = request["response_outputs"]
 
+            req_timestamp, res_timestamps = self._scale_timestamps(
+                req_timestamp, res_timestamps
+            )
+
             self._preprocess_response(res_timestamps, res_outputs)
 
             # Skip requests with empty response. This happens sometimes when the
@@ -526,8 +530,8 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # request latencies
             req_latency = res_timestamps[-1] - req_timestamp
-            request_latencies.append(req_latency)  # nanosec
-            req_latency = req_latency / 1e9  # sec
+            request_latencies.append(req_latency)  # ms
+            req_latency = scale(req_latency, (1 / 1e3))  # ms -> s
 
             # time to first token
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
@@ -557,7 +561,9 @@ class LLMProfileDataParser(ProfileDataParser):
             inter_token_latencies.append(itl_per_request)
 
         # request & output token throughput
-        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
+        benchmark_duration = scale(
+            (max_res_timestamp - min_req_timestamp), (1 / 1e3)
+        )  # ms -> s
         request_throughputs = [len(requests) / benchmark_duration]
         output_token_throughputs = [sum(num_generated_tokens) / benchmark_duration]
 
@@ -571,6 +577,17 @@ class LLMProfileDataParser(ProfileDataParser):
             num_generated_tokens,
             num_input_tokens,
         )
+
+    def _scale_timestamps(
+        self, req_timestamp: int, res_timestamps: list[int]
+    ) -> tuple[int, list[int]]:
+        """
+        Scale timestamps from nanoseconds to milliseconds
+        """
+        scale_factor = 1 / 1e6
+        scaled_req_timestamp = scale(req_timestamp, scale_factor)
+        scaled_res_timestamp = [scale(x, scale_factor) for x in res_timestamps]
+        return scaled_req_timestamp, scaled_res_timestamp
 
     def _preprocess_response(
         self, res_timestamps: list[int], res_outputs: list[dict[str, str]]
