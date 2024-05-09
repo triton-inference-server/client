@@ -137,6 +137,7 @@ CLParser::Usage(const std::string& msg)
                "profiling>"
             << std::endl;
   std::cerr << "\t--percentile <percentile>" << std::endl;
+  std::cerr << "\t--request-count <number of requests>" << std::endl;
   std::cerr << "\tDEPRECATED OPTIONS" << std::endl;
   std::cerr << "\t-t <number of concurrent requests>" << std::endl;
   std::cerr << "\t-c <maximum concurrency>" << std::endl;
@@ -461,6 +462,14 @@ CLParser::Usage(const std::string& msg)
              "latency will be used to determine stability. The percentile will "
              "also be reported in the results. The default is -1 indicating "
              "that the average latency is used to determine stability",
+             18)
+      << std::endl;
+  std::cerr
+      << FormatMessage(
+             " --request-count: Specifies a total number of requests to "
+             "use for measurement. The default is 0, which means that there is "
+             "no request count and the measurement will proceed using windows "
+             "until stabilization is detected.",
              18)
       << std::endl;
   std::cerr << FormatMessage(
@@ -879,6 +888,7 @@ CLParser::ParseCommandLine(int argc, char** argv)
       {"request-period", required_argument, 0, 59},
       {"request-parameter", required_argument, 0, 60},
       {"endpoint", required_argument, 0, 61},
+      {"request-count", required_argument, 0, 62},
       {0, 0, 0, 0}};
 
   // Parse commandline...
@@ -1614,6 +1624,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
           params_->endpoint = optarg;
           break;
         }
+        case 62: {
+          if (std::stoi(optarg) < 0) {
+            Usage("Failed to parse --request-count. The value must be > 0.");
+          }
+          params_->request_count = std::stoi(optarg);
+          break;
+        }
         case 'v':
           params_->extra_verbose = params_->verbose;
           params_->verbose = true;
@@ -1704,6 +1721,13 @@ CLParser::ParseCommandLine(int argc, char** argv)
   if (params_->using_custom_intervals) {
     // Will be using user-provided time intervals, hence no control variable.
     params_->search_mode = SearchMode::NONE;
+  }
+
+  // When the request-count feature is enabled, override the measurement mode to
+  // be count windows with a window size of the requested count
+  if (params_->request_count) {
+    params_->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+    params_->measurement_request_count = params_->request_count;
   }
 }
 
@@ -1872,6 +1896,31 @@ CLParser::VerifyOptions()
     Usage(
         "The end of the range can not be less than start of the range for "
         "binary search mode.");
+  }
+
+  if (params_->request_count != 0) {
+    if (params_->using_concurrency_range) {
+      if (params_->request_count < params_->concurrency_range.start) {
+        Usage("request-count can not be less than concurrency");
+      }
+      if (params_->concurrency_range.start < params_->concurrency_range.end) {
+        Usage(
+            "request-count not supported with multiple concurrency values in "
+            "one run");
+      }
+    }
+    if (params_->using_request_rate_range) {
+      if (params_->request_count <
+          static_cast<int>(params_->request_rate_range[0])) {
+        Usage("request-count can not be less than request-rate");
+      }
+      if (params_->request_rate_range[SEARCH_RANGE::kSTART] <
+          params_->request_rate_range[SEARCH_RANGE::kEND]) {
+        Usage(
+            "request-count not supported with multiple request-rate values in "
+            "one run");
+      }
+    }
   }
 
   if (params_->kind == cb::TENSORFLOW_SERVING) {

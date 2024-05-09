@@ -138,6 +138,8 @@ enum BackendKind {
   TRITON_C_API = 3,
   OPENAI = 4
 };
+std::string BackendKindToString(const BackendKind kind);
+
 enum ProtocolType { HTTP = 0, GRPC = 1, UNKNOWN = 2 };
 enum GrpcCompressionAlgorithm {
   COMPRESS_NONE = 0,

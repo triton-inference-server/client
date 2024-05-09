@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -37,8 +37,14 @@ namespace triton { namespace perfanalyzer {
 bool
 LoadWorker::ShouldExit()
 {
-  return early_exit || !thread_stat_->cb_status_.IsOk() ||
-         !thread_stat_->status_.IsOk();
+  bool bad_status =
+      !thread_stat_->cb_status_.IsOk() || !thread_stat_->status_.IsOk();
+
+  bool done_with_request_count =
+      thread_config_->num_requests_ != 0 &&
+      thread_stat_->num_sent_requests_ >= thread_config_->num_requests_;
+
+  return early_exit || bad_status || done_with_request_count;
 }
 
 bool
@@ -46,6 +52,7 @@ LoadWorker::HandleExitConditions()
 {
   if (ShouldExit()) {
     CompleteOngoingSequences();
+    thread_stat_->idle_timer.Start();
     WaitForOngoingRequests();
     return true;
   }

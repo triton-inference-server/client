@@ -262,6 +262,7 @@ TEST_CASE("Testing PerfAnalyzerParameters")
   CHECK(params->max_threads_specified == false);
   CHECK(params->sequence_length == 20);
   CHECK(params->percentile == -1);
+  CHECK(params->request_count == 0);
   CHECK(params->user_data.size() == 0);
   CHECK_STRING("endpoint", params->endpoint, "");
   CHECK(params->input_shapes.size() == 0);
@@ -1466,6 +1467,150 @@ TEST_CASE("Testing Command Line Parser")
           PerfAnalyzerException);
 
       check_params = false;
+    }
+  }
+
+  SUBCASE("Option : --request-count")
+  {
+    SUBCASE("valid value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--request-count", "500"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->request_count = 500;
+      exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+      exp->measurement_request_count = 500;
+    }
+    SUBCASE("negative value")
+    {
+      int argc = 5;
+      char* argv[argc] = {app_name, "-m", model_name, "--request-count", "-2"};
+
+      expected_msg =
+          CreateUsageMessage("--request-count", "The value must be > 0.");
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+    SUBCASE("less than request rate")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "2",        "--request-rate-range",
+                          "5"};
+
+      expected_msg = "request-count can not be less than request-rate";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+    SUBCASE("less than concurrency")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "2",        "--concurrency-range",
+                          "5"};
+
+      expected_msg = "request-count can not be less than concurrency";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+    SUBCASE("multiple request rate")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "20",       "--request-rate-range",
+                          "5:6:1"};
+
+      expected_msg =
+          "request-count not supported with multiple request-rate values in "
+          "one run";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+    SUBCASE("multiple concurrency")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,   "-m",
+                          model_name, "--request-count",
+                          "20",       "--concurrency-range",
+                          "5:6:1"};
+
+      expected_msg =
+          "request-count not supported with multiple concurrency values in "
+          "one run";
+      CHECK_THROWS_WITH_AS(
+          act = parser.Parse(argc, argv), expected_msg.c_str(),
+          PerfAnalyzerException);
+      check_params = false;
+    }
+
+    SUBCASE("mode and count are overwritten with non-zero request-count")
+    {
+      int argc = 9;
+      char* argv[argc] = {
+          app_name,
+          "-m",
+          model_name,
+          "--request-count",
+          "2000",
+          "--measurement-mode",
+          "time_windows",
+          "measurement-request-count",
+          "30"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->request_count = 2000;
+      exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+      exp->measurement_request_count = 2000;
+    }
+    SUBCASE("zero value (no override to measurement mode)")
+    {
+      int argc = 7;
+      char* argv[argc] = {app_name,          "-m", model_name,
+                          "--request-count", "0",  "--measurement-mode",
+                          "time_windows"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->request_count = 0;
+      exp->measurement_mode = MeasurementMode::TIME_WINDOWS;
+    }
+    SUBCASE("zero value (no override to measurement request count)")
+    {
+      int argc = 9;
+      char* argv[argc] = {
+          app_name,
+          "-m",
+          model_name,
+          "--request-count",
+          "0",
+          "--measurement-mode",
+          "count_windows",
+          "--measurement-request-count",
+          "50"};
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->request_count = 0;
+      exp->measurement_mode = MeasurementMode::COUNT_WINDOWS;
+      exp->measurement_request_count = 50;
     }
   }
 

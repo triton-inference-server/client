@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 #include "iworker.h"
 #include "model_parser.h"
 #include "sequence_manager.h"
+#include "thread_config.h"
 
 namespace triton { namespace perfanalyzer {
 
@@ -45,6 +46,7 @@ class LoadWorker : public IWorker {
  protected:
   LoadWorker(
       uint32_t id, std::shared_ptr<ThreadStat> thread_stat,
+      std::shared_ptr<ThreadConfig> thread_config,
       const std::shared_ptr<ModelParser> parser,
       std::shared_ptr<DataLoader> data_loader,
       const std::shared_ptr<cb::ClientBackendFactory> factory,
@@ -54,8 +56,8 @@ class LoadWorker : public IWorker {
       bool& execute,
       const std::shared_ptr<IInferDataManager>& infer_data_manager,
       std::shared_ptr<SequenceManager> sequence_manager)
-      : id_(id), thread_stat_(thread_stat), parser_(parser),
-        data_loader_(data_loader), factory_(factory),
+      : id_(id), thread_stat_(thread_stat), thread_config_(thread_config),
+        parser_(parser), data_loader_(data_loader), factory_(factory),
         on_sequence_model_(on_sequence_model), async_(async),
         streaming_(streaming), batch_size_(batch_size),
         using_json_data_(using_json_data), wake_signal_(wake_signal),
@@ -137,6 +139,8 @@ class LoadWorker : public IWorker {
 
   // Stats for this thread
   std::shared_ptr<ThreadStat> thread_stat_;
+  // Configuration for this thread
+  std::shared_ptr<ThreadConfig> thread_config_;
 
   std::shared_ptr<DataLoader> data_loader_;
   const std::shared_ptr<ModelParser> parser_;
