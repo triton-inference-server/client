@@ -26,6 +26,7 @@
 
 from pathlib import Path
 
+import genai_perf.logging as logging
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
@@ -248,11 +249,15 @@ class TestCLIArguments:
         assert captured.out == ""
 
     @pytest.mark.parametrize(
-        "arg, expected_path",
+        "arg, expected_path, expected_output",
         [
             (
                 ["--model", "strange/test_model"],
                 "artifacts/strange_test_model-triton-tensorrtllm-concurrency1",
+                (
+                    "Model name 'strange/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'strange_test_model' will be used"
+                ),
             ),
             (
                 [
@@ -264,17 +269,24 @@ class TestCLIArguments:
                     "chat",
                 ],
                 "artifacts/hello_world_test_model-openai-chat-concurrency1",
+                (
+                    "Model name 'hello/world/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'hello_world_model' will be used"
+                ),
             ),
         ],
     )
-    def test_model_name_artifact_path(self, monkeypatch, arg, expected_path, capsys):
+    def test_model_name_artifact_path(
+        self, monkeypatch, arg, expected_path, expected_output, capsys
+    ):
+        logging.init_logging()
         combined_args = ["genai-perf"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, extra_args = parser.parse_args()
 
         assert args.artifact_dir == Path(expected_path)
         captured = capsys.readouterr()
-        assert captured.out == ""
+        assert expected_output in captured.out
 
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
