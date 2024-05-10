@@ -251,19 +251,19 @@ class TestCLIArguments:
         "arg, expected_path",
         [
             (
-                ["--model", "company/test_model"],
-                "artifacts/test_model-triton-tensorrtllm-concurrency1",
+                ["--model", "strange/test_model"],
+                "artifacts/strange_test_model-triton-tensorrtllm-concurrency1",
             ),
             (
                 [
                     "--model",
-                    "company/test_model",
+                    "hello/world/test_model",
                     "--service-kind",
                     "openai",
                     "--endpoint-type",
                     "chat",
                 ],
-                "artifacts/test_model-openai-chat-concurrency1",
+                "artifacts/hello_world_test_model-openai-chat-concurrency1",
             ),
         ],
     )
