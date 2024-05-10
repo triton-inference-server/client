@@ -247,6 +247,35 @@ class TestCLIArguments:
         captured = capsys.readouterr()
         assert captured.out == ""
 
+    @pytest.mark.parametrize(
+        "arg, expected_path",
+        [
+            (
+                ["--model", "company/test_model"],
+                "artifacts/test_model-triton-tensorrtllm-concurrency1",
+            ),
+            (
+                [
+                    "--model",
+                    "company/test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "chat",
+                ],
+                "artifacts/test_model-openai-chat-concurrency1",
+            ),
+        ],
+    )
+    def test_model_name_artifact_path(self, monkeypatch, arg, expected_path, capsys):
+        combined_args = ["genai-perf"] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, extra_args = parser.parse_args()
+
+        assert args.artifact_dir == Path(expected_path)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
         args, extra_args = parser.parse_args()
