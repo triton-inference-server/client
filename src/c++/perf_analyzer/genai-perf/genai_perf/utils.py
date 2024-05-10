@@ -27,15 +27,28 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
+
+# Skip type checking to avoid mypy error
+# Issue: https://github.com/python/mypy/issues/10632
+import yaml  # type: ignore
 
 
 def remove_sse_prefix(msg: str) -> str:
-    return msg.removeprefix("data: ").strip()
+    prefix = "data: "
+    if msg.startswith(prefix):
+        return msg[len(prefix) :].strip()
+    return msg.strip()
 
 
-def load_json(filename: str) -> Dict[str, Any]:
-    with open(filename, encoding="utf-8", errors="ignore") as f:
+def load_yaml(filepath: Path) -> Dict[str, Any]:
+    with open(str(filepath)) as f:
+        configs = yaml.safe_load(f)
+    return configs
+
+
+def load_json(filepath: Path) -> Dict[str, Any]:
+    with open(str(filepath), encoding="utf-8", errors="ignore") as f:
         return json.load(f)
 
 
@@ -48,14 +61,14 @@ def convert_option_name(name: str) -> str:
     return name.replace("_", "-")
 
 
-def get_enum_names(enum: type[Enum]) -> List:
+def get_enum_names(enum: Type[Enum]) -> List:
     names = []
     for e in enum:
         names.append(e.name.lower())
     return names
 
 
-def get_enum_entry(name: str, enum: type[Enum]) -> Optional[Enum]:
+def get_enum_entry(name: str, enum: Type[Enum]) -> Optional[Enum]:
     for e in enum:
         if e.name.lower() == name.lower():
             return e

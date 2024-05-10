@@ -25,58 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
-from typing import List
-
-import plotly.graph_objects as go
-from genai_perf.plots.base_plot import BasePlot
-from genai_perf.plots.plot_config import ProfileRunData
+from typing import List, Sequence, Union
 
 
-class ScatterPlot(BasePlot):
-    """
-    Generate a scatter plot in jpeg and html format.
-    """
+class PlotType(Enum):
+    SCATTER = auto()
+    BOX = auto()
+    HEATMAP = auto()
 
-    def __init__(self, data: List[ProfileRunData]) -> None:
-        super().__init__(data)
 
-    def create_plot(
-        self,
-        graph_title: str = "",
-        x_label: str = "",
-        y_label: str = "",
-        width: int = 700,
-        height: int = 450,
-        filename_root: str = "",
-        output_dir: Path = Path(""),
-    ) -> None:
-        fig = go.Figure()
-        for pd in self._profile_data:
-            fig.add_trace(
-                go.Scatter(
-                    x=pd.x_metric,
-                    y=pd.y_metric,
-                    mode="markers",
-                    name=pd.name,
-                )
-            )
+@dataclass
+class ProfileRunData:
+    name: str
+    x_metric: Sequence[Union[int, float]]
+    y_metric: Sequence[Union[int, float]]
 
-        fig.update_layout(
-            title={
-                "text": f"{graph_title}",
-                "xanchor": "center",
-                "x": 0.5,
-            },
-            width=width,
-            height=height,
-        )
-        fig.update_xaxes(title_text=f"{x_label}")
-        fig.update_yaxes(title_text=f"{y_label}")
 
-        # Save dataframe as parquet file
-        df = self._create_dataframe(x_label, y_label)
-        self._generate_parquet(df, output_dir, filename_root)
-
-        self._generate_graph_file(fig, output_dir, filename_root + ".html")
-        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")
+@dataclass
+class PlotConfig:
+    title: str
+    data: List[ProfileRunData]
+    x_label: str
+    y_label: str
+    width: int
+    height: int
+    type: PlotType
+    output: Path

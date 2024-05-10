@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -84,10 +84,10 @@ ConcurrencyManager::InitManagerFinalize()
 
 cb::Error
 ConcurrencyManager::ChangeConcurrencyLevel(
-    const size_t concurrent_request_count)
+    const size_t concurrent_request_count, const size_t request_count)
 {
   PauseSequenceWorkers();
-  ReconfigThreads(concurrent_request_count);
+  ReconfigThreads(concurrent_request_count, request_count);
   ResumeSequenceWorkers();
 
   std::cout << "Request concurrency: " << concurrent_request_count << std::endl;
@@ -109,7 +109,8 @@ ConcurrencyManager::PauseSequenceWorkers()
 }
 
 void
-ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
+ConcurrencyManager::ReconfigThreads(
+    size_t concurrent_request_count, size_t request_count)
 {
   // Always prefer to create new threads if the maximum limit has not been met
   //
@@ -121,8 +122,7 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
          (threads_.size() < max_threads_)) {
     // Launch new thread for inferencing
     threads_stat_.emplace_back(new ThreadStat());
-    threads_config_.emplace_back(
-        new ConcurrencyWorker::ThreadConfig(threads_config_.size()));
+    threads_config_.emplace_back(new ThreadConfig(threads_config_.size()));
 
     workers_.push_back(
         MakeWorker(threads_stat_.back(), threads_config_.back()));
@@ -138,6 +138,10 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
     // and spread the remaining value
     size_t avg_concurrency = concurrent_request_count / threads_.size();
     size_t threads_add_one = concurrent_request_count % threads_.size();
+
+    size_t avg_req_count = request_count / threads_.size();
+    size_t req_count_add_one = request_count % threads_.size();
+
     size_t seq_stat_index_offset = 0;
     active_threads_ = 0;
     for (size_t i = 0; i < threads_stat_.size(); i++) {
@@ -145,6 +149,10 @@ ConcurrencyManager::ReconfigThreads(const size_t concurrent_request_count)
 
       threads_config_[i]->concurrency_ = concurrency;
       threads_config_[i]->seq_stat_index_offset_ = seq_stat_index_offset;
+
+      size_t thread_num_reqs = avg_req_count + (i < req_count_add_one ? 1 : 0);
+      threads_config_[i]->num_requests_ = thread_num_reqs;
+
       seq_stat_index_offset += concurrency;
 
       if (concurrency) {
@@ -171,7 +179,7 @@ ConcurrencyManager::ResumeSequenceWorkers()
 std::shared_ptr<IWorker>
 ConcurrencyManager::MakeWorker(
     std::shared_ptr<ThreadStat> thread_stat,
-    std::shared_ptr<ConcurrencyWorker::ThreadConfig> thread_config)
+    std::shared_ptr<ThreadConfig> thread_config)
 {
   uint32_t id = workers_.size();
 

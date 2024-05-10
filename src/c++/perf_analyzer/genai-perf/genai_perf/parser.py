@@ -25,13 +25,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import (
+    CNN_DAILY_MAIL,
+    DEFAULT_ARTIFACT_DIR,
+    DEFAULT_COMPARE_DIR,
+    OPEN_ORCA,
+)
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.plots.plot_config_parser import PlotConfigParser
+from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
@@ -39,6 +47,29 @@ from . import __version__
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+
+
+def _check_model_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Check if model name is provided.
+    """
+    if not args.subcommand and not args.model:
+        parser.error("The -m/--model option is required and cannot be empty.")
+    return args
+
+
+def _check_compare_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Check compare subcommand args
+    """
+    if args.subcommand == "compare":
+        if not args.config and not args.files:
+            parser.error("Either the --config or --files option must be specified.")
+    return args
 
 
 def _check_conditional_args(
@@ -93,19 +124,52 @@ def _check_conditional_args(
     return args
 
 
-def _update_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
+def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
     """
-    Update genai-perf load manager attributes to PA format
+    Check inference load args
     """
-    for attr_key in ["concurrency", "request_rate"]:
-        attr_val = getattr(args, attr_key)
-        if attr_val is not None:
-            setattr(args, f"{attr_key}_range", f"{attr_val}")
-            delattr(args, attr_key)
-            return args
-
     # If no concurrency or request rate is set, default to 1
-    setattr(args, "concurrency_range", "1")
+    if not args.concurrency and not args.request_rate:
+        args.concurrency = 1
+    return args
+
+
+def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    Set paths for all the artifacts.
+    """
+    if args.artifact_dir == Path(DEFAULT_ARTIFACT_DIR):
+        # Preprocess Huggingface model names that include '/' in their model name.
+        if (args.model is not None) and ("/" in args.model):
+            filtered_name = "_".join(args.model.split("/"))
+            logger.info(
+                f"Model name '{args.model}' cannot be used to create artifact "
+                f"directory. Instead, '{filtered_name}' will be used."
+            )
+            name = [f"{filtered_name}"]
+        else:
+            name = [f"{args.model}"]
+
+        if args.service_kind == "openai":
+            name += [f"{args.service_kind}-{args.endpoint_type}"]
+        elif args.service_kind == "triton":
+            name += [f"{args.service_kind}-{args.backend.to_lowercase()}"]
+        else:
+            raise ValueError(f"Unknown service kind '{args.service_kind}'.")
+
+        if args.concurrency:
+            name += [f"concurrency{args.concurrency}"]
+        elif args.request_rate:
+            name += [f"request_rate{args.request_rate}"]
+        args.artifact_dir = args.artifact_dir / Path("-".join(name))
+
+    if args.profile_export_file.parent != Path(""):
+        raise ValueError(
+            "Please use --artifact-dir option to define intermediary paths to "
+            "the profile export file."
+        )
+
+    args.profile_export_file = args.artifact_dir / args.profile_export_file
     return args
 
 
@@ -130,15 +194,6 @@ def _convert_str_to_enum_entry(args, option, enum):
     if attr_val is not None:
         setattr(args, f"{option}", utils.get_enum_entry(attr_val, enum))
     return args
-
-
-### Handlers ###
-
-
-def handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
 
 
 ### Parsers ###
@@ -286,7 +341,7 @@ def _add_endpoint_args(parser):
         "-m",
         "--model",
         type=str,
-        required=True,
+        default=None,
         help=f"The name of the model to benchmark.",
     )
 
@@ -350,23 +405,28 @@ def _add_endpoint_args(parser):
 
 def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
-
     output_group.add_argument(
         "--generate-plots",
         action="store_true",
         required=False,
         help="An option to enable the generation of plots.",
     )
-
     output_group.add_argument(
         "--profile-export-file",
         type=Path,
-        default="profile_export.json",
+        default=Path("profile_export.json"),
         help="The path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
         "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
         "For example, if the profile export file is profile_export.json, the genai-perf file will be "
         "exported to profile_export_genai_perf.csv.",
+    )
+    output_group.add_argument(
+        "--artifact-dir",
+        type=Path,
+        default=Path(DEFAULT_ARTIFACT_DIR),
+        help="The directory to store all the (output) artifacts generated by "
+        "GenAI-Perf and Perf Analyzer.",
     )
 
 
@@ -437,6 +497,61 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     return request_inputs
 
 
+def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
+    compare = subparsers.add_parser(
+        "compare",
+        description="Subcommand to generate plots that compare multiple profile runs.",
+    )
+    compare_group = compare.add_argument_group("Compare")
+    mx_group = compare_group.add_mutually_exclusive_group(required=False)
+    mx_group.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="The path to the YAML file that specifies plot configurations for "
+        "comparing multiple runs.",
+    )
+    mx_group.add_argument(
+        "-f",
+        "--files",
+        nargs="+",
+        default=[],
+        help="List of paths to the profile export JSON files. Users can specify "
+        "this option instead of the `--config` option if they would like "
+        "GenAI-Perf to generate default plots as well as initial YAML config file.",
+    )
+    compare.set_defaults(func=compare_handler)
+    return compare
+
+
+### Handlers ###
+
+
+def create_compare_dir() -> None:
+    if not os.path.exists(DEFAULT_COMPARE_DIR):
+        os.mkdir(DEFAULT_COMPARE_DIR)
+
+
+def profile_handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
+
+
+def compare_handler(args: argparse.Namespace):
+    """Handles `compare` subcommand workflow."""
+    if args.files:
+        create_compare_dir()
+        output_dir = Path(f"{DEFAULT_COMPARE_DIR}")
+        PlotConfigParser.create_init_yaml_config(args.files, output_dir)
+        args.config = output_dir / "config.yaml"
+
+    config_parser = PlotConfigParser(args.config)
+    plot_configs = config_parser.generate_configs()
+    plot_manager = PlotManager(plot_configs)
+    plot_manager.generate_plots()
+
+
 ### Entrypoint ###
 
 
@@ -448,7 +563,7 @@ def parse_args():
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.set_defaults(func=handler)
+    parser.set_defaults(func=profile_handler)
 
     # Conceptually group args for easier visualization
     _add_endpoint_args(parser)
@@ -456,6 +571,12 @@ def parse_args():
     _add_profile_args(parser)
     _add_output_args(parser)
     _add_other_args(parser)
+
+    # Add subcommands
+    subparsers = parser.add_subparsers(
+        help="List of subparser commands.", dest="subcommand"
+    )
+    compare_parser = _parse_compare_args(subparsers)
 
     # Check for passthrough args
     if "--" in argv:
@@ -466,7 +587,10 @@ def parse_args():
 
     args = parser.parse_args(argv[1:passthrough_index])
     args = _infer_prompt_source(args)
+    args = _check_model_args(parser, args)
     args = _check_conditional_args(parser, args)
-    args = _update_load_manager_args(args)
+    args = _check_compare_args(compare_parser, args)
+    args = _check_load_manager_args(args)
+    args = _set_artifact_paths(args)
 
     return args, argv[passthrough_index + 1 :]

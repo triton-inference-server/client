@@ -26,12 +26,16 @@
 
 from pathlib import Path
 
+import genai_perf.logging as logging
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
 
 
 class TestCLIArguments:
+    # ================================================
+    # GENAI-PERF COMMAND
+    # ================================================
     expected_help_output = (
         "CLI to profile LLMs and Generative AI models with Perf Analyzer"
     )
@@ -66,7 +70,7 @@ class TestCLIArguments:
     @pytest.mark.parametrize(
         "arg, expected_attributes",
         [
-            (["--concurrency", "3"], {"concurrency_range": "3"}),
+            (["--concurrency", "3"], {"concurrency": 3}),
             (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
@@ -146,11 +150,15 @@ class TestCLIArguments:
             (["-p", "100"], {"measurement_interval": 100}),
             (["--num-prompts", "101"], {"num_prompts": 101}),
             (
-                ["--profile-export-file", "text.txt"],
-                {"profile_export_file": Path("text.txt")},
+                ["--profile-export-file", "test.json"],
+                {
+                    "profile_export_file": Path(
+                        "artifacts/test_model-triton-tensorrtllm-concurrency1/test.json"
+                    )
+                },
             ),
             (["--random-seed", "8"], {"random_seed": 8}),
-            (["--request-rate", "9.0"], {"request_rate_range": "9.0"}),
+            (["--request-rate", "9.0"], {"request_rate": 9.0}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
                 ["--service-kind", "openai", "--endpoint-type", "chat"],
@@ -163,6 +171,10 @@ class TestCLIArguments:
             (["-v"], {"verbose": True}),
             (["--url", "test_url"], {"u": "test_url"}),
             (["-u", "test_url"], {"u": "test_url"}),
+            (
+                ["--artifact-dir", "test_artifact_dir"],
+                {"artifact_dir": Path("test_artifact_dir")},
+            ),
         ],
     )
     def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
@@ -193,10 +205,93 @@ class TestCLIArguments:
             args.input_file == mocked_open.return_value
         ), "The file argument should be the mock object"
 
+    @pytest.mark.parametrize(
+        "arg, expected_path",
+        [
+            (
+                ["--service-kind", "openai", "--endpoint-type", "chat"],
+                "artifacts/test_model-openai-chat-concurrency1",
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint-type", "completions"],
+                "artifacts/test_model-openai-completions-concurrency1",
+            ),
+            (
+                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                "artifacts/test_model-triton-tensorrtllm-concurrency1",
+            ),
+            (
+                ["--service-kind", "triton", "--backend", "vllm"],
+                "artifacts/test_model-triton-vllm-concurrency1",
+            ),
+            (
+                [
+                    "--service-kind",
+                    "triton",
+                    "--backend",
+                    "vllm",
+                    "--concurrency",
+                    "32",
+                ],
+                "artifacts/test_model-triton-vllm-concurrency32",
+            ),
+        ],
+    )
+    def test_default_profile_export_filepath(
+        self, monkeypatch, arg, expected_path, capsys
+    ):
+        combined_args = ["genai-perf", "--model", "test_model"] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, extra_args = parser.parse_args()
+
+        assert args.artifact_dir == Path(expected_path)
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    @pytest.mark.parametrize(
+        "arg, expected_path, expected_output",
+        [
+            (
+                ["--model", "strange/test_model"],
+                "artifacts/strange_test_model-triton-tensorrtllm-concurrency1",
+                (
+                    "Model name 'strange/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'strange_test_model' will be used"
+                ),
+            ),
+            (
+                [
+                    "--model",
+                    "hello/world/test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "chat",
+                ],
+                "artifacts/hello_world_test_model-openai-chat-concurrency1",
+                (
+                    "Model name 'hello/world/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'hello_world_test_model' will be used"
+                ),
+            ),
+        ],
+    )
+    def test_model_name_artifact_path(
+        self, monkeypatch, arg, expected_path, expected_output, capsys
+    ):
+        logging.init_logging()
+        combined_args = ["genai-perf"] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, extra_args = parser.parse_args()
+
+        assert args.artifact_dir == Path(expected_path)
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
+
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
         args, extra_args = parser.parse_args()
-        assert getattr(args, "concurrency_range") == "1"
+        assert args.concurrency == 1
         captured = capsys.readouterr()
         assert captured.out == ""
 
@@ -217,7 +312,7 @@ class TestCLIArguments:
 
     def test_model_not_provided(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf"])
-        expected_output = "the following arguments are required: -m/--model"
+        expected_output = "The -m/--model option is required and cannot be empty."
 
         with pytest.raises(SystemExit) as excinfo:
             parser.parse_args()
@@ -437,3 +532,70 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    # ================================================
+    # COMPARE SUBCOMMAND
+    # ================================================
+    expected_compare_help_output = (
+        "Subcommand to generate plots that compare multiple profile runs."
+    )
+
+    @pytest.mark.parametrize(
+        "args, expected_output",
+        [
+            (["-h"], expected_compare_help_output),
+            (["--help"], expected_compare_help_output),
+        ],
+    )
+    def test_compare_help_arguments_output_and_exit(
+        self, monkeypatch, args, expected_output, capsys
+    ):
+        monkeypatch.setattr("sys.argv", ["genai-perf", "compare"] + args)
+
+        with pytest.raises(SystemExit) as excinfo:
+            _ = parser.parse_args()
+
+        # Check that the exit was successful
+        assert excinfo.value.code == 0
+
+        # Capture that the correct message was displayed
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
+
+    def test_compare_mutually_exclusive(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare", "--config", "hello", "--files", "a", "b", "c"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "argument -f/--files: not allowed with argument --config"
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    def test_compare_not_provided(self, monkeypatch, capsys):
+        args = ["genai-perf", "compare"]
+        monkeypatch.setattr("sys.argv", args)
+        expected_output = "Either the --config or --files option must be specified."
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
+
+        assert excinfo.value.code != 0
+        captured = capsys.readouterr()
+        assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args, expected_model",
+        [
+            (["--files", "profile1.json", "profile2.json", "profile3.json"], None),
+            (["--config", "config.yaml"], None),
+        ],
+    )
+    def test_compare_model_arg(self, monkeypatch, args, expected_model):
+        combined_args = ["genai-perf", "compare"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.model == expected_model

@@ -26,6 +26,7 @@
 
 import subprocess
 from argparse import Namespace
+from typing import List, Optional
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
@@ -37,8 +38,8 @@ logger = logging.getLogger(__name__)
 
 class Profiler:
     @staticmethod
-    def add_protocol_args(args: Namespace):
-        cmd = [""]
+    def add_protocol_args(args: Namespace) -> List[str]:
+        cmd = []
         if args.service_kind == "triton":
             cmd += ["-i", "grpc", "--streaming"]
             if args.u is None:  # url
@@ -50,7 +51,16 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def build_cmd(args: Namespace, extra_args: list[str] | None = None) -> list[str]:
+    def add_inference_load_args(args: Namespace) -> List[str]:
+        cmd = []
+        if args.concurrency:
+            cmd += ["--concurrency-range", f"{args.concurrency}"]
+        elif args.request_rate:
+            cmd += ["--request-rate-range", f"{args.request_rate}"]
+        return cmd
+
+    @staticmethod
+    def build_cmd(args: Namespace, extra_args: Optional[List[str]] = None) -> List[str]:
         skip_args = [
             "func",
             "input_dataset",
@@ -76,6 +86,10 @@ class Profiler:
             "tokenizer",
             "endpoint_type",
             "generate_plots",
+            "subcommand",
+            "concurrency",
+            "request_rate",
+            "artifact_dir",
         ]
 
         utils.remove_file(args.profile_export_file)
@@ -86,7 +100,7 @@ class Profiler:
             f"{args.model}",
             f"--async",
             f"--input-data",
-            f"{DEFAULT_INPUT_DATA_JSON}",
+            f"{args.artifact_dir / DEFAULT_INPUT_DATA_JSON}",
         ]
         for arg, value in vars(args).items():
             if arg in skip_args:
@@ -108,6 +122,7 @@ class Profiler:
                     cmd += [f"--{arg}", f"{value}"]
 
         cmd += Profiler.add_protocol_args(args)
+        cmd += Profiler.add_inference_load_args(args)
 
         if extra_args is not None:
             for arg in extra_args:
@@ -115,7 +130,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def run(args: Namespace, extra_args: list[str] | None) -> None:
+    def run(args: Namespace, extra_args: Optional[List[str]]) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
         logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
         if args and args.verbose:
