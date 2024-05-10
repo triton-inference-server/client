@@ -141,7 +141,7 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     if args.artifact_dir == Path(DEFAULT_ARTIFACT_DIR):
         # Preprocess Huggingface model names that include '/' in their model name.
         if (args.model is not None) and ("/" in args.model):
-            filtered_name = args.model.split("/")[-1]
+            filtered_name = "_".join(args.model.split("/"))
             logger.info(
                 f"Model name '{args.model}' cannot be used to create artifact "
                 f"directory. Instead, '{filtered_name}' will be used."
