@@ -26,6 +26,7 @@
 
 import subprocess
 from argparse import Namespace
+from typing import List, Optional
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
@@ -37,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class Profiler:
     @staticmethod
-    def add_protocol_args(args: Namespace) -> list[str]:
+    def add_protocol_args(args: Namespace) -> List[str]:
         cmd = []
         if args.service_kind == "triton":
             cmd += ["-i", "grpc", "--streaming"]
@@ -50,7 +51,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def add_inference_load_args(args: Namespace) -> list[str]:
+    def add_inference_load_args(args: Namespace) -> List[str]:
         cmd = []
         if args.concurrency:
             cmd += ["--concurrency-range", f"{args.concurrency}"]
@@ -59,7 +60,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def build_cmd(args: Namespace, extra_args: list[str] | None = None) -> list[str]:
+    def build_cmd(args: Namespace, extra_args: Optional[List[str]] = None) -> List[str]:
         skip_args = [
             "func",
             "input_dataset",
@@ -129,7 +130,7 @@ class Profiler:
         return cmd
 
     @staticmethod
-    def run(args: Namespace, extra_args: list[str] | None) -> None:
+    def run(args: Namespace, extra_args: Optional[List[str]]) -> None:
         cmd = Profiler.build_cmd(args, extra_args)
         logger.info(f"Running Perf Analyzer : '{' '.join(cmd)}'")
         if args and args.verbose:

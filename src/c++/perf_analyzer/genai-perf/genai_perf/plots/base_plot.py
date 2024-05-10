@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from pathlib import Path
+from typing import List
 
 import pandas as pd
 from genai_perf.exceptions import GenAIPerfException
@@ -38,7 +39,7 @@ class BasePlot:
     Base class for plots
     """
 
-    def __init__(self, data: list[ProfileRunData]) -> None:
+    def __init__(self, data: List[ProfileRunData]) -> None:
         self._profile_data = data
 
     def create_plot(
