@@ -29,7 +29,7 @@
 import json
 from io import StringIO
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Union
 
 import numpy as np
 import pytest
@@ -39,7 +39,7 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from transformers import AutoTokenizer
 
 
-def ns_to_sec(ns: int) -> int | float:
+def ns_to_sec(ns: int) -> Union[int, float]:
     """Convert from nanosecond to second."""
     return ns / 1e9
 

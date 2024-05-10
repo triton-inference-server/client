@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import List
+
 import genai_perf.logging as logging
 from genai_perf.plots.box_plot import BoxPlot
 from genai_perf.plots.heat_map import HeatMap
@@ -39,7 +41,7 @@ class PlotManager:
     Manage details around plots generated
     """
 
-    def __init__(self, plot_configs: list[PlotConfig]) -> None:
+    def __init__(self, plot_configs: List[PlotConfig]) -> None:
         self._plot_configs = plot_configs
 
     def _generate_filename(self, title: str) -> str:
