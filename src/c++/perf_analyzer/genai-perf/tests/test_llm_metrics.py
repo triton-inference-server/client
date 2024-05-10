@@ -409,7 +409,7 @@ class TestLLMProfileDataParser:
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
 
         # Should not throw error
-        pd = LLMProfileDataParser(
+        _ = LLMProfileDataParser(
             filename=Path("empty_profile_export.json"),
             tokenizer=tokenizer,
         )
