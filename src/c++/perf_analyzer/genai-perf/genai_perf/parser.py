@@ -139,7 +139,17 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     Set paths for all the artifacts.
     """
     if args.artifact_dir == Path(DEFAULT_ARTIFACT_DIR):
-        name = [f"{args.model}"]
+        # Preprocess Huggingface model names that include '/' in their model name.
+        if "/" in args.model:
+            filtered_name = args.model.split("/")[-1]
+            logger.info(
+                f"Model name '{args.model}' cannot be used to create artifact "
+                f"directory. Instead, '{filtered_name}' will be used."
+            )
+            name = [f"{filtered_name}"]
+        else:
+            name = [f"{args.model}"]
+
         if args.service_kind == "openai":
             name += [f"{args.service_kind}-{args.endpoint_type}"]
         elif args.service_kind == "triton":
