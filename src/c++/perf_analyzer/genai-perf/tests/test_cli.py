@@ -271,7 +271,7 @@ class TestCLIArguments:
                 "artifacts/hello_world_test_model-openai-chat-concurrency1",
                 (
                     "Model name 'hello/world/test_model' cannot be used to create "
-                    "artifact directory. Instead, 'hello_world_model' will be used"
+                    "artifact directory. Instead, 'hello_world_test_model' will be used"
                 ),
             ),
         ],
