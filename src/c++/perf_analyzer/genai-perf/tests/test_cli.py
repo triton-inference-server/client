@@ -573,3 +573,17 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args, expected_model",
+        [
+            (["--files", "profile1.json", "profile2.json", "profile3.json"], None),
+            (["--config", "config.yaml"], None),
+        ],
+    )
+    def test_compare_model_arg(self, monkeypatch, args, expected_model):
+        combined_args = ["genai-perf", "compare"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.model == expected_model
