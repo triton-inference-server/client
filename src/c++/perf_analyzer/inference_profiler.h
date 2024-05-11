@@ -52,7 +52,6 @@ namespace triton { namespace perfanalyzer {
 #ifndef DOCTEST_CONFIG_DISABLE
 class NaggyMockInferenceProfiler;
 class TestInferenceProfiler;
-class ModelParser;
 #endif
 
 /// Constant parameters that determine the whether stopping criteria has met
@@ -120,28 +119,6 @@ struct ServerSideStats {
   uint64_t cache_miss_time_ns;
 
   std::map<cb::ModelIdentifier, ServerSideStats> composing_models_stat;
-  // This function sets composing model server stats to 0 in case of a cache hit
-  // when top level response cache is enabled, since composing models are not
-  // executed and do not have any stats
-  void Reset()
-  {
-    inference_count = 0;
-    execution_count = 0;
-    success_count = 0;
-    queue_count = 0;
-    compute_input_count = 0;
-    compute_infer_count = 0;
-    compute_output_count = 0;
-    cumm_time_ns = 0;
-    queue_time_ns = 0;
-    compute_input_time_ns = 0;
-    compute_infer_time_ns = 0;
-    compute_output_time_ns = 0;
-    cache_hit_count = 0;
-    cache_hit_time_ns = 0;
-    cache_miss_count = 0;
-    cache_miss_time_ns = 0;
-  }
 };
 
 /// Holds the statistics recorded at the client side.
@@ -553,16 +530,11 @@ class InferenceProfiler {
   ///  measurement
   /// \param end_stats The stats for all models at the end of the measurement
   /// \param model_version The determined model version
-
   cb::Error DetermineStatsModelVersion(
       const cb::ModelIdentifier& model_identifier,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_stats,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_stats,
       int64_t* model_version);
-
-#ifndef DOCTEST_CONFIG_DISABLE
-  cb::Error SetTopLevelResponseCaching(bool enable_top_level_request_caching);
-#endif
 
   /// \param start_status The model status at the start of the measurement.
   /// \param end_status The model status at the end of the measurement.
@@ -766,7 +738,6 @@ class InferenceProfiler {
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;
   friend TestInferenceProfiler;
-  friend ModelParser;
 
  public:
   InferenceProfiler() = default;

@@ -35,7 +35,6 @@ namespace triton { namespace perfanalyzer {
 #ifndef DOCTEST_CONFIG_DISABLE
 class TestModelParser;
 class MockModelParser;
-class InferenceProfiler;
 #endif
 
 struct ModelTensor {
@@ -74,8 +73,7 @@ class ModelParser {
         outputs_(std::make_shared<ModelTensorMap>()),
         composing_models_map_(std::make_shared<ComposingModelMap>()),
         scheduler_type_(NONE), max_batch_size_(0), is_decoupled_(false),
-        response_cache_enabled_(false),
-        top_level_response_caching_enabled_(false)
+        response_cache_enabled_(false)
   {
   }
 
@@ -153,22 +151,6 @@ class ModelParser {
   /// model
   bool ResponseCacheEnabled() const { return response_cache_enabled_; }
 
-  /// Returns whether or not top level request caching is enabled for this model
-  /// \return the truth value of whether top level request caching is enabled
-  /// for this model
-  bool TopLevelResponseCachingEnabled() const
-  {
-    return top_level_response_caching_enabled_;
-  }
-
-/// Only for testing
-#ifndef DOCTEST_CONFIG_DISABLE
-  void SetTopLevelResponseCaching(bool enable_top_level_response_caching)
-  {
-    top_level_response_caching_enabled_ = enable_top_level_response_caching;
-  }
-#endif
-
   /// Get the details about the model inputs.
   /// \return The map with tensor_name and the tensor details
   /// stored as key-value pair.
@@ -186,7 +168,6 @@ class ModelParser {
   {
     return composing_models_map_;
   }
-
 
  protected:
   ModelSchedulerType scheduler_type_;
@@ -239,12 +220,10 @@ class ModelParser {
   std::string model_signature_name_;
   size_t max_batch_size_;
   bool response_cache_enabled_;
-  bool top_level_response_caching_enabled_;
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend TestModelParser;
   friend MockModelParser;
-  friend InferenceProfiler;
 
  public:
   ModelParser() = default;
