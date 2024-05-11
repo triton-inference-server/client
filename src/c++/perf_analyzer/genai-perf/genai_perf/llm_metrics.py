@@ -600,13 +600,13 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # Remove responses without any content
             # These are only observed to happen at the start or end
-            while res_outputs[0] and self._is_openai_empty_response(
+            while res_outputs and self._is_openai_empty_response(
                 res_outputs[0]["response"]
             ):
                 res_timestamps.pop(0)
                 res_outputs.pop(0)
 
-            while res_outputs[-1] and self._is_openai_empty_response(
+            while res_outputs and self._is_openai_empty_response(
                 res_outputs[-1]["response"]
             ):
                 res_timestamps.pop()
