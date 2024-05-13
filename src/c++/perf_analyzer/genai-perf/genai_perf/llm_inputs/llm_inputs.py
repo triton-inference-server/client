@@ -236,15 +236,17 @@ class LlmInputs:
         num_of_output_prompts: int,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
-        dataset_json["features"] = [{"name": "text_input"}]
+        # dataset_json["features"] = [{"name": "text_input"}]
+        dataset_json["features"] = [{"name": "input_ids"}, {"name": "input_lengths"}]
         dataset_json["rows"] = []
         for _ in range(num_of_output_prompts):
-            synthetic_prompt = cls._create_synthetic_prompt(
+            synthetic_prompt, prompt_tokens = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
             )
-            dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+            # dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+            dataset_json["rows"].append({"row": {"input_ids": prompt_tokens, "input_lengths": len(prompt_tokens)}})
 
         return dataset_json
 
@@ -733,20 +735,20 @@ class LlmInputs:
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"].append({"text_input": [""]})
+            pa_json["data"].append({"input_ids": entry['input_ids'], "input_lengths":  entry['input_lengths']})
 
-            for header, content in entry.items():
-                new_text_input = cls._create_new_text_input(
-                    header,
-                    system_role_headers,
-                    user_role_headers,
-                    text_input_headers,
-                    content,
-                )
+            # for header, content in entry.items():
+            #     new_text_input = cls._create_new_text_input(
+            #         header,
+            #         system_role_headers,
+            #         user_role_headers,
+            #         text_input_headers,
+            #         content,
+            #     )
 
-                pa_json = cls._add_new_text_input_to_json(
-                    pa_json, index, new_text_input
-                )
+            #     pa_json = cls._add_new_text_input_to_json(
+            #         pa_json, index, new_text_input
+            #     )
 
             pa_json = cls._add_required_tags_to_trtllm_json(
                 pa_json, index, default_max_tokens
@@ -975,7 +977,8 @@ class LlmInputs:
             )
             if output_tokens_deterministic:
                 row["min_length"] = [number_of_tokens]
-            row["max_tokens"] = [number_of_tokens]
+            row["input_lengths"] = [2000]
+            row["request_output_len"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]
 
@@ -990,7 +993,7 @@ class LlmInputs:
     ) -> Dict:
         row = pa_json["data"][index]
         if default_max_tokens:
-            row["max_tokens"] = [cls.DEFAULT_TENSORRTLLM_MAX_TOKENS]
+            row["request_output_len"] = [cls.DEFAULT_TENSORRTLLM_MAX_TOKENS]
 
         return pa_json
 

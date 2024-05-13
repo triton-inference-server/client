@@ -53,7 +53,7 @@ class SyntheticPromptGenerator:
             num_prompt_tokens, farewell_lines, tokenizer
         )
 
-        return prompt
+        return prompt, tokenizer.encode(prompt)
 
     @classmethod
     def _create_farewell_lines(cls) -> List[str]:

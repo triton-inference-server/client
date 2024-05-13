@@ -145,13 +145,12 @@ def run():
 def main():
     # Interactive use will catch exceptions and log formatted errors rather than
     # tracebacks.
-    try:
-        run()
-    except Exception as e:
-        traceback.print_exc()
-        logger = logging.getLogger(__name__)
-        logger.error(e)
-        return 1
+    run()
+    # except Exception as e:
+    #     traceback.print_exc()
+    #     logger = logging.getLogger(__name__)
+    #     logger.error(e)
+    #     return 1
 
     return 0
 
