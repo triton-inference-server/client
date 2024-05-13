@@ -1537,7 +1537,8 @@ InferenceProfiler::DetermineStatsModelVersion(
   // hit. This is due to the scheduler sends cache response and composing models
   // do not get executed. It's a valid scenario and shouldn't throw error.
   bool model_version_unspecified_and_invalid =
-      *status_model_version == -1 && !parser_->TopLevelResponseCachingEnabled();
+      *status_model_version == -1 &&
+      (parser_ == nullptr || !parser_->TopLevelResponseCachingEnabled());
   if (model_version_unspecified_and_invalid) {
     return cb::Error(
         "failed to find the requested model version", pa::GENERIC_ERROR);
