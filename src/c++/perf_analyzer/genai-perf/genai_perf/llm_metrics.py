@@ -533,8 +533,9 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # number of input tokens
-            input_tokens = self._tokenize_request_inputs(req_inputs)
-            num_input_tokens.append(len(input_tokens))
+            # input_tokens = self._tokenize_request_inputs(req_inputs)
+            len_input_tokens = self._tokenize_request_inputs(req_inputs)
+            num_input_tokens.append(len_input_tokens)
 
             # output token throughput per request
             output_tokens = self._tokenize_response_outputs(res_outputs)
@@ -623,8 +624,9 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the Triton request input texts."""
-        encodings = self._tokenizer(req_inputs["text_input"])
-        return encodings.data["input_ids"]
+        return req_inputs['input_lengths']
+        # encodings = self._tokenizer(req_inputs["text_input"])
+        # return encodings.data["input_ids"]
 
     def _tokenize_openai_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the OpenAI request input texts."""
@@ -653,8 +655,8 @@ class LLMProfileDataParser(ProfileDataParser):
         """Tokenize the Triton response output texts."""
         output_texts = []
         for output in res_outputs:
-            output_texts.append(output["text_output"])
-        return self._run_tokenizer(output_texts)
+            output_texts.append([output["output_ids"]])
+        return output_texts
 
     def _tokenize_openai_response_output(self, res_outputs: dict) -> List[List[int]]:
         """Tokenize the OpenAI response output texts."""
