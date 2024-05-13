@@ -429,8 +429,6 @@ class ProfileDataParser:
                     self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
                 elif "text_completion" in response:
                     self._response_format = ResponseFormat.OPENAI_COMPLETIONS
-                elif "input_ids" in response:
-                    self._response_format = ResponseFormat.OPENAI_COMPLETIONS
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 
@@ -538,7 +536,6 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # number of input tokens
-            # input_tokens = self._tokenize_request_inputs(req_inputs)
             len_input_tokens = self._tokenize_request_inputs(req_inputs)
             num_input_tokens.append(len_input_tokens)
 
