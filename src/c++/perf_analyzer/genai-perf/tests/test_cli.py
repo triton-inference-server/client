@@ -26,6 +26,7 @@
 
 from pathlib import Path
 
+import genai_perf.logging as logging
 import pytest
 from genai_perf import __version__, parser
 from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
@@ -246,6 +247,46 @@ class TestCLIArguments:
         assert args.artifact_dir == Path(expected_path)
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    @pytest.mark.parametrize(
+        "arg, expected_path, expected_output",
+        [
+            (
+                ["--model", "strange/test_model"],
+                "artifacts/strange_test_model-triton-tensorrtllm-concurrency1",
+                (
+                    "Model name 'strange/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'strange_test_model' will be used"
+                ),
+            ),
+            (
+                [
+                    "--model",
+                    "hello/world/test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "chat",
+                ],
+                "artifacts/hello_world_test_model-openai-chat-concurrency1",
+                (
+                    "Model name 'hello/world/test_model' cannot be used to create "
+                    "artifact directory. Instead, 'hello_world_test_model' will be used"
+                ),
+            ),
+        ],
+    )
+    def test_model_name_artifact_path(
+        self, monkeypatch, arg, expected_path, expected_output, capsys
+    ):
+        logging.init_logging()
+        combined_args = ["genai-perf"] + arg
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, extra_args = parser.parse_args()
+
+        assert args.artifact_dir == Path(expected_path)
+        captured = capsys.readouterr()
+        assert expected_output in captured.out
 
     def test_default_load_level(self, monkeypatch, capsys):
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
@@ -544,3 +585,17 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args, expected_model",
+        [
+            (["--files", "profile1.json", "profile2.json", "profile3.json"], None),
+            (["--config", "config.yaml"], None),
+        ],
+    )
+    def test_compare_model_arg(self, monkeypatch, args, expected_model):
+        combined_args = ["genai-perf", "compare"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        assert args.model == expected_model

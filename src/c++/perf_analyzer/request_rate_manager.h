@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -99,10 +99,13 @@ class RequestRateManager : public LoadManager {
           request_parameters);
 
   /// Adjusts the rate of issuing requests to be the same as 'request_rate'
-  /// \param request_rate The rate at which requests must be issued to the
-  /// server.
+  /// \param target_request_rate The rate at which requests must be issued to
+  /// the server.
+  /// \param request_count The number of requests to generate when profiling. If
+  /// 0, then there is no limit, and it will generate until told to stop.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ChangeRequestRate(const double target_request_rate);
+  cb::Error ChangeRequestRate(
+      const double target_request_rate, const size_t request_count = 0);
 
  protected:
   RequestRateManager(
@@ -138,19 +141,18 @@ class RequestRateManager : public LoadManager {
   // Pauses the worker threads
   void PauseWorkers();
 
-  void ConfigureThreads();
+  void ConfigureThreads(const size_t request_count = 0);
 
   // Resets the counters and resumes the worker threads
   void ResumeWorkers();
 
   // Makes a new worker
   virtual std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat>,
-      std::shared_ptr<RequestRateWorker::ThreadConfig>);
+      std::shared_ptr<ThreadStat>, std::shared_ptr<ThreadConfig>);
 
   size_t DetermineNumThreads();
 
-  std::vector<std::shared_ptr<RequestRateWorker::ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
 
   std::shared_ptr<std::chrono::nanoseconds> gen_duration_;
   Distribution request_distribution_;

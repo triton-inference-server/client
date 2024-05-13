@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -89,14 +89,16 @@ class ConcurrencyManager : public LoadManager {
   /// Adjusts the number of concurrent requests to be the same as
   /// 'concurrent_request_count' (by creating or pausing threads)
   /// \param concurent_request_count The number of concurrent requests.
+  /// \param request_count The number of requests to generate. If 0, then
+  /// there is no limit, and it will generate until told to stop.
   /// \return cb::Error object indicating success or failure.
-  cb::Error ChangeConcurrencyLevel(const size_t concurrent_request_count);
+  cb::Error ChangeConcurrencyLevel(
+      const size_t concurrent_request_count, const size_t request_count = 0);
 
  protected:
   // Makes a new worker
   virtual std::shared_ptr<IWorker> MakeWorker(
-      std::shared_ptr<ThreadStat>,
-      std::shared_ptr<ConcurrencyWorker::ThreadConfig>);
+      std::shared_ptr<ThreadStat>, std::shared_ptr<ThreadConfig>);
 
   ConcurrencyManager(
       const bool async, const bool streaming, const int32_t batch_size,
@@ -114,7 +116,7 @@ class ConcurrencyManager : public LoadManager {
 
   size_t max_concurrency_;
 
-  std::vector<std::shared_ptr<ConcurrencyWorker::ThreadConfig>> threads_config_;
+  std::vector<std::shared_ptr<ThreadConfig>> threads_config_;
 
  private:
   void InitManagerFinalize() override;
@@ -126,7 +128,7 @@ class ConcurrencyManager : public LoadManager {
   // Create new threads (if necessary), and then reconfigure all worker threads
   // to handle the new concurrent request count
   //
-  void ReconfigThreads(size_t concurrent_request_count);
+  void ReconfigThreads(size_t concurrent_request_count, size_t request_count);
 
   // Restart all worker threads that were working on sequences
   //
