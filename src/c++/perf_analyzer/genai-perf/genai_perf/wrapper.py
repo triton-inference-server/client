@@ -45,8 +45,9 @@ class Profiler:
             if args.u is None:  # url
                 cmd += ["-u", f"{DEFAULT_GRPC_URL}"]
             if args.output_format == OutputFormat.TENSORRTLLM:
+                cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
+            elif args.output_format == OutputFormat.TENSORRTLLM_BACKEND:
                 cmd += ["--shape", "input_lengths:1", "--shape", "request_output_len:1"]
-                # cmd += ["--shape", "max_tokens:1", "--shape", "text_input:1"]
         elif args.service_kind == "openai":
             cmd += ["-i", "http"]
         return cmd
