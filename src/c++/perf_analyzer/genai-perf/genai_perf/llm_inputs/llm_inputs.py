@@ -246,7 +246,7 @@ class LlmInputs:
                 prompt_tokens_stddev,
             )
             # dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
-            dataset_json["rows"].append({"row": {"input_ids": prompt_tokens, "input_lengths": len(prompt_tokens)}})
+            dataset_json["rows"].append({"row": {"input_ids": {"content": prompt_tokens, "shape": [len(prompt_tokens)]}, "input_lengths": [len(prompt_tokens)]}})
 
         return dataset_json
 
@@ -970,7 +970,7 @@ class LlmInputs:
         if add_model_name:
             row["model"] = model_name
         if add_stream:
-            row["stream"] = [True]
+            row["streaming"] = [True]
         if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
             number_of_tokens = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
