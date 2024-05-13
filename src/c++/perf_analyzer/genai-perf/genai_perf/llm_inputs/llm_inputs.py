@@ -37,6 +37,7 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     TENSORRTLLM = auto()
+    TENSORRTLLM_BACKEND = auto()
     VLLM = auto()
 
     def to_lowercase(self):
@@ -160,6 +161,7 @@ class LlmInputs:
         elif input_type == PromptSource.SYNTHETIC:
             random.seed(random_seed)
             synthetic_dataset = cls._get_input_dataset_from_synthetic(
+                output_format,
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
@@ -230,14 +232,17 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_synthetic(
         cls,
+        output_format,
         tokenizer: Tokenizer,
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
-        # dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["features"] = [{"name": "input_ids"}, {"name": "input_lengths"}]
+        if output_format != OutputFormat.TENSORRTLLM_BACKEND:
+            dataset_json["features"] = [{"name": "text_input"}]
+        else:
+            dataset_json["features"] = [{"name": "input_ids"}, {"name": "input_lengths"}]
         dataset_json["rows"] = []
         for _ in range(num_of_output_prompts):
             synthetic_prompt, prompt_tokens = cls._create_synthetic_prompt(
@@ -245,8 +250,10 @@ class LlmInputs:
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
             )
-            # dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
-            dataset_json["rows"].append({"row": {"input_ids": {"content": prompt_tokens, "shape": [len(prompt_tokens)]}, "input_lengths": [len(prompt_tokens)]}})
+            if output_format != OutputFormat.TENSORRTLLM_BACKEND:
+                dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+            else:
+                dataset_json["rows"].append({"row": {"input_ids": {"content": prompt_tokens, "shape": [len(prompt_tokens)]}, "input_lengths": [len(prompt_tokens)]}})
 
         return dataset_json
 
@@ -402,6 +409,17 @@ class LlmInputs:
                 output_tokens_deterministic,
                 model_name,
             )
+        elif output_format == OutputFormat.TENSORRTLLM_BACKEND:
+            output_json = cls._convert_generic_json_to_trtllm_backend_format(
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+            )
         else:
             raise GenAIPerfException(
                 f"Output format {output_format} is not currently supported"
@@ -511,6 +529,40 @@ class LlmInputs:
 
     @classmethod
     def _convert_generic_json_to_trtllm_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: str = "",
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = cls._determine_json_feature_roles(dataset_json)
+
+        pa_json = cls._populate_trtllm_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+            add_model_name,
+            add_stream,
+            extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            output_tokens_deterministic,
+            model_name,
+        )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_trtllm_backend_format(
         cls,
         dataset_json: Dict,
         add_model_name: bool,
@@ -735,25 +787,65 @@ class LlmInputs:
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
-            pa_json["data"].append({"input_ids": entry['input_ids'], "input_lengths":  entry['input_lengths']})
+            pa_json["data"].append({"text_input": [""]})
 
-            # for header, content in entry.items():
-            #     new_text_input = cls._create_new_text_input(
-            #         header,
-            #         system_role_headers,
-            #         user_role_headers,
-            #         text_input_headers,
-            #         content,
-            #     )
+            for header, content in entry.items():
+                new_text_input = cls._create_new_text_input(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
+                )
 
-            #     pa_json = cls._add_new_text_input_to_json(
-            #         pa_json, index, new_text_input
-            #     )
+                pa_json = cls._add_new_text_input_to_json(
+                    pa_json, index, new_text_input
+                )
 
             pa_json = cls._add_required_tags_to_trtllm_json(
                 pa_json, index, default_max_tokens
             )
             pa_json = cls._add_optional_tags_to_trtllm_json(
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+            )
+
+        return pa_json
+
+   @classmethod
+    def _populate_trtllm_backend_output_json(
+        cls,
+        dataset_json: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: str = "",
+    ) -> Dict:
+        pa_json = cls._create_empty_trtllm_pa_json()
+        default_max_tokens = (
+            "max_tokens" not in extra_inputs
+            or output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN
+        )
+
+        for index, entry in enumerate(dataset_json["rows"]):
+            pa_json["data"].append({"input_ids": entry['input_ids'], "input_lengths":  entry['input_lengths']})
+            pa_json = cls._add_required_tags_to_trtllm_backend_json(
+                pa_json, index, default_max_tokens
+            )
+            pa_json = cls._add_optional_tags_to_trtllm_backend_json(
                 pa_json,
                 index,
                 add_model_name,
@@ -970,15 +1062,14 @@ class LlmInputs:
         if add_model_name:
             row["model"] = model_name
         if add_stream:
-            row["streaming"] = [True]
+            row["stream"] = [True]
         if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
             number_of_tokens = int(
                 random.gauss(output_tokens_mean, output_tokens_stddev)
             )
             if output_tokens_deterministic:
                 row["min_length"] = [number_of_tokens]
-            row["input_lengths"] = [2000]
-            row["request_output_len"] = [number_of_tokens]
+            row["max_tokens"] = [number_of_tokens]
         for key, value in extra_inputs.items():
             row[key] = [value]
 
@@ -986,6 +1077,49 @@ class LlmInputs:
 
     @classmethod
     def _add_required_tags_to_trtllm_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+        default_max_tokens: bool,
+    ) -> Dict:
+        row = pa_json["data"][index]
+        if default_max_tokens:
+            row["max_tokens"] = [cls.DEFAULT_TENSORRTLLM_MAX_TOKENS]
+
+        return pa_json
+
+    @classmethod
+    def _add_optional_tags_to_trtllm_backend_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: str = "",
+    ) -> Dict:
+        row = pa_json["data"][index]
+        if add_model_name:
+            row["model"] = model_name
+        if add_stream:
+            row["streaming"] = [True]
+        if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
+            number_of_tokens = int(
+                random.gauss(output_tokens_mean, output_tokens_stddev)
+            )
+            if output_tokens_deterministic:
+                row["min_length"] = [number_of_tokens]
+            row["request_output_len"] = [number_of_tokens]
+        for key, value in extra_inputs.items():
+            row[key] = [value]
+
+        return pa_json
+
+    @classmethod
+    def _add_required_tags_to_trtllm_backend_json(
         cls,
         pa_json: Dict,
         index: int,
