@@ -652,7 +652,7 @@ class LLMProfileDataParser(ProfileDataParser):
     def _tokenize_response_outputs(self, res_outputs: dict) -> List[List[int]]:
         """Deserialize the response output and return tokenized outputs."""
         if self._service_kind == "triton" and self._response_format == ResponseFormat.TENSORRTLLM_BACKEND:
-            return self._tokenize_trtllm_response_output(req_inputs)
+            return self._tokenize_trtllm_response_output(res_outputs)
         elif self._service_kind == "triton":
             return self._tokenize_triton_response_output(res_outputs)
         elif self._service_kind == "openai":
