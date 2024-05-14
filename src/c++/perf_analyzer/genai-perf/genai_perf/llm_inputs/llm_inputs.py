@@ -579,7 +579,7 @@ class LlmInputs:
             text_input_headers,
         ) = cls._determine_json_feature_roles(dataset_json)
 
-        pa_json = cls._populate_trtllm_output_json(
+        pa_json = cls._populate_trtllm_backend_output_json(
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -819,7 +819,7 @@ class LlmInputs:
 
         return pa_json
 
-   @classmethod
+    @classmethod
     def _populate_trtllm_backend_output_json(
         cls,
         dataset_json: Dict,
