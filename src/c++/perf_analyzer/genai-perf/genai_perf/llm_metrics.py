@@ -45,6 +45,7 @@ class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     TRITON = auto()
+    TENSORRTLLM_BACKEND = auto()
 
 
 class Metrics:
@@ -433,6 +434,8 @@ class ProfileDataParser:
 
         elif self._service_kind == "triton":
             self._response_format = ResponseFormat.TRITON
+            if "input_ids" in data["experiments"][0]["requests"][0]['request_inputs']:
+                self._response_format = ResponseFormat.TENSORRTLLM_BACKEND
         else:
             raise ValueError(f"Unknown service kind: {self._service_kind}")
 
@@ -533,8 +536,8 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
 
             # number of input tokens
-            input_tokens = self._tokenize_request_inputs(req_inputs)
-            num_input_tokens.append(len(input_tokens))
+            len_input_tokens = self._tokenize_request_inputs(req_inputs)
+            num_input_tokens.append(len_input_tokens)
 
             # output token throughput per request
             output_tokens = self._tokenize_response_outputs(res_outputs)
@@ -614,12 +617,18 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
         """Deserialize the request input and return tokenized inputs."""
-        if self._service_kind == "triton":
-            return self._tokenize_triton_request_input(req_inputs)
+        if self._service_kind == "triton" and self._response_format == ResponseFormat.TENSORRTLLM_BACKEND:
+            return self._tokenize_trtllm_request_input(req_inputs)
+        elif self._service_kind == "triton":
+            return len(self._tokenize_triton_request_input(req_inputs))
         elif self._service_kind == "openai":
-            return self._tokenize_openai_request_input(req_inputs)
+            return len(self._tokenize_openai_request_input(req_inputs))
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
+
+    def _tokenize_trtllm_request_input(self, req_inputs: dict) -> List[int]:
+        """Retrieve the token lengths of the input."""
+        return req_inputs['input_lengths']
 
     def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the Triton request input texts."""
@@ -642,16 +651,24 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> List[List[int]]:
         """Deserialize the response output and return tokenized outputs."""
-        if self._service_kind == "triton":
+        if self._service_kind == "triton" and self._response_format == ResponseFormat.TENSORRTLLM_BACKEND:
+            return self._tokenize_trtllm_response_output(res_outputs)
+        elif self._service_kind == "triton":
             return self._tokenize_triton_response_output(res_outputs)
         elif self._service_kind == "openai":
             return self._tokenize_openai_response_output(res_outputs)
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_response_output(self, res_outputs: dict) -> List[List[int]]:
+    def _tokenize_trtllm_response_output(self, res_outputs: dict) -> List[List[int]]:
         """Tokenize the Triton response output texts."""
         output_texts = []
+        for output in res_outputs:
+            output_texts.append([output["output_ids"]])
+        return output_texts
+
+    def _tokenize_triton_response_output(self, res_outputs: dict) -> List[List[int]]:
+        """Tokenize the Triton response output texts."""
         for output in res_outputs:
             output_texts.append(output["text_output"])
         return self._run_tokenizer(output_texts)
