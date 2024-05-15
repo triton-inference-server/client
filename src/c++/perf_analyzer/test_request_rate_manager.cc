@@ -330,6 +330,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// Helper function that will setup and run a case to verify custom data
   /// behavior
   /// \param num_requests Integer number of requests to send during the test
+  /// \param num_threads Number of worker threads to create
   /// \param tensors Vector of input ModelTensors
   /// \param json_str The custom data json text
   /// \param expected_values Vector of expected input values for each inference
@@ -427,7 +428,6 @@ class TestRequestRateManager : public TestLoadManagerBase,
       }
     }
 
-    // FIXME TKG -- only 0's status? Can we OR them together?
     return thread_stats[0]->status_;
   }
 
