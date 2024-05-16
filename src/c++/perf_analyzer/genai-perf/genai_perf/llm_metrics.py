@@ -161,14 +161,18 @@ class Statistics:
     def __init__(self, metrics: Metrics):
         # iterate through Metrics to calculate statistics and set attributes
         self._metrics = metrics
+        self._stats_dict: Dict = {}
         for attr, data in metrics.data.items():
             attr = metrics.get_base_name(attr)
+            self._stats_dict[attr] = {}
+            self._add_units(attr)
             data = self._preprocess_data(data, attr)
             if data:
                 self._calculate_mean(data, attr)
-                self._calculate_percentiles(data, attr)
-                self._calculate_minmax(data, attr)
-                self._calculate_std(data, attr)
+                if not self._is_throughput_field(attr):
+                    self._calculate_percentiles(data, attr)
+                    self._calculate_minmax(data, attr)
+                    self._calculate_std(data, attr)
 
     def _preprocess_data(self, data: List, attr: str) -> List[Union[int, float]]:
         new_data = []
@@ -182,11 +186,18 @@ class Statistics:
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
+        self._stats_dict[attr]["avg"] = str(avg)
         setattr(self, "avg_" + attr, avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
+        self._stats_dict[attr]["p99"] = str(p99)
+        self._stats_dict[attr]["p95"] = str(p95)
+        self._stats_dict[attr]["p90"] = str(p90)
+        self._stats_dict[attr]["p75"] = str(p75)
+        self._stats_dict[attr]["p50"] = str(p50)
+        self._stats_dict[attr]["p25"] = str(p25)
         setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
         setattr(self, "p75_" + attr, p75)
@@ -196,12 +207,29 @@ class Statistics:
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
+        self._stats_dict[attr]["max"] = str(max)
+        self._stats_dict[attr]["min"] = str(min)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
+        self._stats_dict[attr]["std"] = str(std)
         setattr(self, "std_" + attr, std)
+
+    def _add_units(self, key) -> None:
+        # for k, _ in self._stats_dict.items():
+        if self._is_time_field(key):
+            self._stats_dict[key]["unit"] = "ns"
+        if key == "request_throughput":
+            self._stats_dict[key]["unit"] = "request per sec"
+        if (
+            key == "output_token_throughput"
+            or key == "output_token_throughput_per_request"
+        ):
+            self._stats_dict[key]["unit"] = "tokens per sec"
+        if key == "num_input_token" or key == "num_output_token":
+            self._stats_dict[key]["unit"] = "tokens"
 
     def __repr__(self) -> str:
         attr_strs = []
@@ -219,6 +247,10 @@ class Statistics:
     def metrics(self) -> Metrics:
         """Return the underlying metrics used to calculate the statistics."""
         return self._metrics
+
+    @property
+    def stats_dict(self) -> Dict:
+        return self._stats_dict
 
     def _is_throughput_field(self, field: str) -> bool:
         return field in Metrics.throughput_fields
