@@ -31,4 +31,4 @@ from typing import Protocol
 
 class FileExporter(Protocol):
     def export_to_file(self, file: Path):
-        ...
+        pass

@@ -28,8 +28,6 @@ name: "CodeQL"
 
 on:
   pull_request:
-    paths-ignore:
-    - src/c++/perf_analyzer/genai-perf/genai_perf/export_data/file_exporter.py
 
 jobs:
   analyze:
@@ -84,5 +82,4 @@ jobs:
       uses: github/codeql-action/analyze@v2
       with:
         category: "/language:${{matrix.language}}"
-
 
