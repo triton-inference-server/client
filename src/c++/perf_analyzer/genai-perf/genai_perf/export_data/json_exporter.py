@@ -28,11 +28,10 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 from genai_perf.constants import DEFAULT_OUTPUT_DATA_JSON
 from genai_perf.export_data.file_exporter import FileExporter
-from genai_perf.parser import get_extra_inputs_as_dict
 
 
 class JsonExporter(FileExporter):
@@ -40,16 +39,15 @@ class JsonExporter(FileExporter):
     A file exporter class that adheres to the FileExporter protocol
     """
 
-    def __init__(self, stats: Dict, args: Dict, extra_inputs: dict, extra_args: List):
+    def __init__(self, stats: Dict, args: Dict, extra_inputs: Dict):
         self._stats = stats
-        self._args = args
+        self._args = dict(args)
         self._extra_inputs = extra_inputs
-        self._extra_args = extra_args
         self._stats_and_args: Dict = {}
-
-    def export_to_file(self, output_dir: Path) -> None:
         self._prepare_args_for_export()
         self._merge_stats_and_args()
+
+    def export_to_file(self, output_dir: Path) -> None:
         filename = output_dir / DEFAULT_OUTPUT_DATA_JSON
         with open(str(filename), "w") as f:
             f.write(json.dumps(self._stats_and_args, indent=2))

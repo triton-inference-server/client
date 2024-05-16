@@ -89,9 +89,7 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
     )
 
 
-def report_output(
-    data_parser: LLMProfileDataParser, args: Namespace, extra_args: list
-) -> None:
+def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     if args.concurrency:
         infer_mode = "concurrency"
         load_level = f"{args.concurrency}"
@@ -111,9 +109,7 @@ def report_output(
     if args.generate_plots:
         create_plots(args)
     extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
-    json_exporter = JsonExporter(
-        stats.stats_dict, vars(args), extra_inputs_dict, extra_args
-    )
+    json_exporter = JsonExporter(stats.stats_dict, vars(args), extra_inputs_dict)
     json_exporter.export_to_file(args.artifact_dir)
 
 
@@ -143,9 +139,9 @@ def run():
             create_artifacts_dirs(args)
             tokenizer = get_tokenizer(args.tokenizer)
             generate_inputs(args, tokenizer)
-            args.func(args, extra_args)
+            # args.func(args, extra_args)
             data_parser = calculate_metrics(args, tokenizer)
-            report_output(data_parser, args, extra_args)
+            report_output(data_parser, args)
     except Exception as e:
         raise GenAIPerfException(e)
 
