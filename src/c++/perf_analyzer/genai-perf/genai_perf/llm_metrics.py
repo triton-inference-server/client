@@ -218,7 +218,6 @@ class Statistics:
         setattr(self, "std_" + attr, std)
 
     def _add_units(self, key) -> None:
-        # for k, _ in self._stats_dict.items():
         if self._is_time_field(key):
             self._stats_dict[key]["unit"] = "ns"
         if key == "request_throughput":

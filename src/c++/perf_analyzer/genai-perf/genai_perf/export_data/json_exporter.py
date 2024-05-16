@@ -50,7 +50,6 @@ class JsonExporter(FileExporter):
     def export_to_file(self, output_dir: Path) -> None:
         self._prepare_args_for_export()
         self._merge_stats_and_args()
-        print(self._extra_args)
         filename = output_dir / DEFAULT_OUTPUT_DATA_JSON
         with open(str(filename), "w") as f:
             f.write(json.dumps(self._stats_and_args, indent=2))
