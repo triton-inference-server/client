@@ -35,6 +35,7 @@ import genai_perf.logging as logging
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.export_data.json_exporter import JsonExporter
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.plots.plot_config_parser import PlotConfigParser
@@ -88,7 +89,9 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
     )
 
 
-def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
+def report_output(
+    data_parser: LLMProfileDataParser, args: Namespace, extra_args: list
+) -> None:
     if args.concurrency:
         infer_mode = "concurrency"
         load_level = f"{args.concurrency}"
@@ -107,6 +110,11 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     stats.pretty_print()
     if args.generate_plots:
         create_plots(args)
+    extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
+    json_exporter = JsonExporter(
+        stats.stats_dict, vars(args), extra_inputs_dict, extra_args
+    )
+    json_exporter.export_to_file(args.artifact_dir)
 
 
 def create_plots(args: Namespace) -> None:
@@ -137,7 +145,7 @@ def run():
             generate_inputs(args, tokenizer)
             args.func(args, extra_args)
             data_parser = calculate_metrics(args, tokenizer)
-            report_output(data_parser, args)
+            report_output(data_parser, args, extra_args)
     except Exception as e:
         raise GenAIPerfException(e)
 
