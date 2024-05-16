@@ -240,8 +240,7 @@ inputs, or from the HuggingFace
 specified using the `--input-dataset` CLI option.
 
 When the dataset is synthetic, you can specify the following options:
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
 * `--synthetic-input-tokens-mean <int>`: The mean of number of tokens in the
   generated prompts when using synthetic data, >= 1.
 * `--synthetic-input-tokens-stddev <int>`: The standard deviation of number of
@@ -252,8 +251,7 @@ When the dataset is coming from HuggingFace, you can specify the following
 options:
 * `--input-dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
   benchmarking.
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
 
 When the dataset is coming from a file, you can specify the following
 options:
