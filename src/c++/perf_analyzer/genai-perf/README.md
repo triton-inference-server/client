@@ -194,6 +194,43 @@ Request throughput (per sec): 4.44
 
 See [Tutorial](docs/tutorial.md) for additional examples.
 
+
+# Compare Subcommand
+
+The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
+profile runs and visualizing the differences through plots.
+
+## Usage
+Assuming the user possesses two profile export JSON files,
+namely `profile1.json` and `profile2.json`,
+they can execute the `compare` subcommand using the `--files` option:
+
+```
+genai-perf compare --files profile1.json profile2.json
+```
+
+Executing the above command will create following files under `compare` directory:
+1. Automatically generate a default set of plots
+(e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
+2. Generate a YAML configuration file (e.g. `config.yaml`) containing the
+metadata for each plot generated during the comparison process.
+
+## Customization
+Users have the flexibility to iteratively modify the generated YAML configuration
+file to suit their specific requirements.
+They can make alterations to the plots according to their preferences and execute
+the command with the `--config` option followed by the path to the modified
+configuration file:
+
+```
+genai-perf compare --config compare/config.yaml
+```
+
+This command will regenerate the plots based on the updated configuration settings,
+enabling users to refine the visual representation of the comparison results as
+per their needs.
+
+
 # Model Inputs
 
 GenAI-Perf supports model input prompts from either synthetically generated
