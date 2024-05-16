@@ -219,7 +219,7 @@ HttpClient::AsyncTransfer()
     if (mc == CURLM_OK) {
       // Wait for activity. If there are no descriptors in the multi_handle_
       // then curl_multi_wait will return immediately
-      mc = curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
+      mc = curl_multi_wait(multi_handle_, NULL, 0, 50, &numfds);
       if (mc == CURLM_OK) {
         while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
           uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
@@ -270,6 +270,9 @@ HttpClient::AsyncTransfer()
     for (auto& this_request : request_list) {
       this_request->completion_callback_(this_request.get());
     }
+
+    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   } while (!exiting_);
 }
 
