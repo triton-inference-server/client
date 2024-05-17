@@ -194,6 +194,31 @@ Request throughput (per sec): 4.44
 
 See [Tutorial](docs/tutorial.md) for additional examples.
 
+</br>
+
+# Visualization
+
+GenAI-Perf can also generate various plots that visualize the performance of the
+current profile run. This is disabled by default but users can easily enabled it
+by passing the `--generate-plots` option when running the benchmark:
+
+```bash
+genai-perf \
+  -m gpt2 \
+  --service-kind triton \
+  --backend tensorrtllm \
+  --streaming \
+  --concurrency 1 \
+  --generate-plots
+```
+
+This will generate a [set of default plots](docs/compare.md#example-plots) such as:
+- Time to first token (TTFT) analysis
+- Request latency analysis
+- TTFT vs Number of input tokens
+- Inter token latencies vs Token positions
+- Number of input tokens vs Number of output tokens
+
 
 ## Using `compare` Subcommand to Visualize Multiple Runs
 

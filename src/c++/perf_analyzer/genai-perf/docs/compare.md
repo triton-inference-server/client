@@ -42,16 +42,9 @@ set of default plots as well as a pre-filled YAML config file for the plots.
 genai-perf compare --files profile1.json profile2.json profile3.json
 ```
 
-The command will generate the following default plots and compare across the
-three runs:
-- Time to first token (TTFT) analysis
-- Request latency analysis
-- TTFT vs Number of input tokens
-- Inter token latencies vs Token positions
-- Number of input tokens vs Number of output tokens
-
+This will generate the default plots and compare across the three runs.
 GenAI-Perf will also generate an initial YAML configuration file `config.yaml`
-that is pre-filled with plot configurations.
+that is pre-filled with plot configurations as following:
 
 ```yaml
 plot1:
