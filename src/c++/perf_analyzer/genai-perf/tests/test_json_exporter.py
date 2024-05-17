@@ -25,11 +25,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-from argparse import Namespace
 
 import genai_perf.parser as parser
 from genai_perf.export_data.json_exporter import JsonExporter
-from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
 
 
 class TestJsonExporter:
