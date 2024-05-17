@@ -186,18 +186,18 @@ class Statistics:
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
-        self._stats_dict[attr]["avg"] = str(avg)
+        self._stats_dict[attr]["avg"] = float(avg)
         setattr(self, "avg_" + attr, avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
-        self._stats_dict[attr]["p99"] = str(p99)
-        self._stats_dict[attr]["p95"] = str(p95)
-        self._stats_dict[attr]["p90"] = str(p90)
-        self._stats_dict[attr]["p75"] = str(p75)
-        self._stats_dict[attr]["p50"] = str(p50)
-        self._stats_dict[attr]["p25"] = str(p25)
+        self._stats_dict[attr]["p99"] = float(p99)
+        self._stats_dict[attr]["p95"] = float(p95)
+        self._stats_dict[attr]["p90"] = float(p90)
+        self._stats_dict[attr]["p75"] = float(p75)
+        self._stats_dict[attr]["p50"] = float(p50)
+        self._stats_dict[attr]["p25"] = float(p25)
         setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
         setattr(self, "p75_" + attr, p75)
@@ -207,14 +207,14 @@ class Statistics:
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
-        self._stats_dict[attr]["max"] = str(max)
-        self._stats_dict[attr]["min"] = str(min)
+        self._stats_dict[attr]["max"] = float(max)
+        self._stats_dict[attr]["min"] = float(min)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
-        self._stats_dict[attr]["std"] = str(std)
+        self._stats_dict[attr]["std"] = float(std)
         setattr(self, "std_" + attr, std)
 
     def _add_units(self, key) -> None:
