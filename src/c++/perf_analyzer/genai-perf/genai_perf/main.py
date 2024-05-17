@@ -109,7 +109,7 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     if args.generate_plots:
         create_plots(args)
     extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
-    json_exporter = JsonExporter(stats.stats_dict, vars(args), extra_inputs_dict)
+    json_exporter = JsonExporter(stats.stats_dict, args, extra_inputs_dict)
     json_exporter.export_to_file(args.artifact_dir)
 
 

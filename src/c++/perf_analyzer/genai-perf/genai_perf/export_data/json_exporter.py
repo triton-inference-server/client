@@ -26,22 +26,22 @@
 
 
 import json
+from argparse import Namespace
 from enum import Enum
 from pathlib import Path
 from typing import Dict
 
 from genai_perf.constants import DEFAULT_OUTPUT_DATA_JSON
-from genai_perf.export_data.file_exporter import FileExporter
 
 
-class JsonExporter(FileExporter):
+class JsonExporter:
     """
-    A file exporter class that adheres to the FileExporter protocol
+    A class to export the statistics and arg values in a json format.
     """
 
-    def __init__(self, stats: Dict, args: Dict, extra_inputs: Dict):
+    def __init__(self, stats: Dict, args: Namespace, extra_inputs: Dict):
         self._stats = stats
-        self._args = dict(args)
+        self._args = dict(vars(args))
         self._extra_inputs = extra_inputs
         self._stats_and_args: Dict = {}
         self._prepare_args_for_export()

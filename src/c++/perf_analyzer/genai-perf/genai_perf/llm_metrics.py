@@ -28,6 +28,7 @@
 
 import csv
 import json
+from collections import defaultdict
 from enum import Enum, auto
 from itertools import tee
 from pathlib import Path
@@ -161,10 +162,9 @@ class Statistics:
     def __init__(self, metrics: Metrics):
         # iterate through Metrics to calculate statistics and set attributes
         self._metrics = metrics
-        self._stats_dict: Dict = {}
+        self._stats_dict: Dict = defaultdict(dict)
         for attr, data in metrics.data.items():
             attr = metrics.get_base_name(attr)
-            self._stats_dict[attr] = {}
             self._add_units(attr)
             data = self._preprocess_data(data, attr)
             if data:
@@ -221,12 +221,9 @@ class Statistics:
         if self._is_time_field(key):
             self._stats_dict[key]["unit"] = "ns"
         if key == "request_throughput":
-            self._stats_dict[key]["unit"] = "request per sec"
-        if (
-            key == "output_token_throughput"
-            or key == "output_token_throughput_per_request"
-        ):
-            self._stats_dict[key]["unit"] = "tokens per sec"
+            self._stats_dict[key]["unit"] = "requests/sec"
+        if key.startswith("output_token_throughput"):
+            self._stats_dict[key]["unit"] = "tokens/sec"
         if key == "num_input_token" or key == "num_output_token":
             self._stats_dict[key]["unit"] = "tokens"
 
