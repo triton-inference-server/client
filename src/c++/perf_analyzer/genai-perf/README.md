@@ -320,6 +320,7 @@ per their needs.
 
 See [Compare documentation](docs/compare.md) for more details.
 
+</br>
 
 # Model Inputs
 
@@ -365,6 +366,8 @@ You can optionally set additional model inputs with the following option:
   model with a singular value, such as `stream:true` or `max_tokens:5`. This
   flag can be repeated to supply multiple extra inputs.
 
+</br>
+
 # Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
@@ -378,6 +381,8 @@ the inference server.
 | Number of Output Tokens | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="output_token_throughput_metric">Output Token Throughput</span> | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
 | <span id="request_throughput_metric">Request Throughput</span> | Number of final responses from benchmark divided by benchmark duration | None–one value per benchmark |
+
+</br>
 
 # Command Line Options
 
