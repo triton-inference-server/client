@@ -38,7 +38,7 @@ If the user does not have YAML configuration file,
 they can run the `compare` subcommand with the `--files` option to generate a
 set of default plots as well as a pre-filled YAML config file for the plots.
 
-```
+```bash
 genai-perf compare --files profile1.json profile2.json profile3.json
 ```
 
@@ -54,43 +54,82 @@ that is pre-filled with plot configurations.
 
 ```yaml
 plot1:
-  title: Time to first token Analysis
-  x_metric: ""
+  title: Time to First Token
+  x_metric: ''
   y_metric: time_to_first_tokens
-  x_label: Time to first token
-  y_label: ""
+  x_label: Time to First Token (ms)
+  y_label: ''
   width: 1200
-  height: 450
+  height: 700
   type: box
   paths:
-    - profile1.json
-    - profile2.json
-    - profile3.json
+  - profile1.json
+  - profile2.json
+  - profile3.json
   output: compare
-
 plot2:
   title: Request Latency
-  x_metric: ""
+  x_metric: ''
   y_metric: request_latencies
   x_label: Request Latency (ms)
-  y_label: ""
+  y_label: ''
   width: 1200
-  height: 450
+  height: 700
   type: box
   paths:
-    - profile1.json
-    - profile2.json
-    - profile3.json
+  - profile1.json
+  - profile2.json
+  - profile3.json
   output: compare
-
-...
+plot3:
+  title: Distribution of Input Tokens to Generated Tokens
+  x_metric: num_input_tokens
+  y_metric: num_output_tokens
+  x_label: Number of Input Tokens Per Request
+  y_label: Number of Generated Tokens Per Request
+  width: 1200
+  height: 450
+  type: heatmap
+  paths:
+  - profile1.json
+  - profile2.json
+  - profile3.json
+  output: compare
+plot4:
+  title: Time to First Token vs Number of Input Tokens
+  x_metric: num_input_tokens
+  y_metric: time_to_first_tokens
+  x_label: Number of Input Tokens
+  y_label: Time to First Token (ms)
+  width: 1200
+  height: 700
+  type: scatter
+  paths:
+  - profile1.json
+  - profile2.json
+  - profile3.json
+  output: compare
+plot5:
+  title: Token-to-Token Latency vs Output Token Position
+  x_metric: token_positions
+  y_metric: inter_token_latencies
+  x_label: Output Token Position
+  y_label: Token-to-Token Latency (ms)
+  width: 1200
+  height: 700
+  type: scatter
+  paths:
+  - profile1.json
+  - profile2.json
+  - profile3.json
+  output: compare
 ```
 
 Once the user has the YAML configuration file,
 they can repeat the process of editing the config file and running with
 `--config` option to re-generate the plots iteratively.
 
-```
+```bash
 # edit
 vi config.yaml
 
@@ -126,7 +165,7 @@ plot1:
 After adding the lines, the user can run the following command to generate the
 plots specified in the configuration file (in this case, `config.yaml`):
 
-```
+```bash
 genai-perf compare --config config.yaml
 ```
 
@@ -171,7 +210,7 @@ plot2:
     - ...
   output: [str]
 
-...
+# add more plots
 ```
 
 The user can add as many plots they would like to generate by adding the plot
