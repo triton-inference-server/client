@@ -212,7 +212,7 @@ genai-perf compare --files profile1.json profile2.json
 Executing the above command will create following files under `compare` directory:
 1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
 metadata for each plot generated during the comparison process.
-2. Automatically generate a default set of plots
+2. Automatically generate the [default set of plots](docs/compare.md#example-plots)
 (e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
 
 ```

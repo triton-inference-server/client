@@ -42,7 +42,8 @@ set of default plots as well as a pre-filled YAML config file for the plots.
 genai-perf compare --files profile1.json profile2.json profile3.json
 ```
 
-This will generate the following default plots and compare across the three runs:
+The command will generate the following default plots and compare across the
+three runs:
 - Time to first token (TTFT) analysis
 - Request latency analysis
 - TTFT vs Number of input tokens
@@ -237,4 +238,21 @@ configuration file.
 
 # Example Plots
 
+Here are the list of sample plots that gets created by default from running the
+`compare` subcommand:
+
+### Distribution of Input Tokens to Generated Tokens
+<img src="assets/distribution_of_input_tokens_to_generated_tokens.jpeg" width="400" />
+
+### Request Latency Analysis
+<img src="assets/request_latency.jpeg" width="400" />
+
+### Time to First Token Analysis
+<img src="assets/time_to_first_token.jpeg" width="400" />
+
+### Time to First Token vs. Number of Input Tokens
+<img src="assets/time_to_first_token_vs_number_of_input_tokens.jpeg" width="400" />
+
+### Token-to-Token Latency vs. Output Token Position
+<img src="assets/token-to-token_latency_vs_output_token_position.jpeg" width="400" />
 
