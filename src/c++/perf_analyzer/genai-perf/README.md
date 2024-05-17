@@ -195,6 +195,8 @@ Request throughput (per sec): 4.44
 See [Tutorial](docs/tutorial.md) for additional examples.
 
 
+</br>
+
 # Compare Subcommand
 
 The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
@@ -210,10 +212,96 @@ genai-perf compare --files profile1.json profile2.json
 ```
 
 Executing the above command will create following files under `compare` directory:
-1. Automatically generate a default set of plots
-(e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
-2. Generate a YAML configuration file (e.g. `config.yaml`) containing the
+1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
 metadata for each plot generated during the comparison process.
+2. Automatically generate a default set of plots
+(e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
+
+<details>
+<summary>See created files</summary>
+
+Running the command above creates a YAML configuration file called `config.yaml`
+and the corresponding plots under `compare` directory:
+
+```
+compare
+├── config.yaml
+├── distribution_of_input_tokens_to_generated_tokens.jpeg
+├── request_latency.jpeg
+├── time_to_first_token.jpeg
+├── time_to_first_token_vs_number_of_input_tokens.jpeg
+└── token-to-token_latency_vs_output_token_position.jpeg
+```
+
+And the pre-filled YAML configuration file will look like the following:
+```
+plot1:
+  title: Time to First Token
+  x_metric: ''
+  y_metric: time_to_first_tokens
+  x_label: Time to First Token (ms)
+  y_label: ''
+  width: 1200
+  height: 700
+  type: box
+  paths:
+  - profile1.json
+  - profile2.json
+  output: compare
+plot2:
+  title: Request Latency
+  x_metric: ''
+  y_metric: request_latencies
+  x_label: Request Latency (ms)
+  y_label: ''
+  width: 1200
+  height: 700
+  type: box
+  paths:
+  - profile1.json
+  - profile2.json
+  output: compare
+plot3:
+  title: Distribution of Input Tokens to Generated Tokens
+  x_metric: num_input_tokens
+  y_metric: num_output_tokens
+  x_label: Number of Input Tokens Per Request
+  y_label: Number of Generated Tokens Per Request
+  width: 1200
+  height: 450
+  type: heatmap
+  paths:
+  - profile1.json
+  - profile2.json
+  output: compare
+plot4:
+  title: Time to First Token vs Number of Input Tokens
+  x_metric: num_input_tokens
+  y_metric: time_to_first_tokens
+  x_label: Number of Input Tokens
+  y_label: Time to First Token (ms)
+  width: 1200
+  height: 700
+  type: scatter
+  paths:
+  - profile1.json
+  - profile2.json
+  output: compare
+plot5:
+  title: Token-to-Token Latency vs Output Token Position
+  x_metric: token_positions
+  y_metric: inter_token_latencies
+  x_label: Output Token Position
+  y_label: Token-to-Token Latency (ms)
+  width: 1200
+  height: 700
+  type: scatter
+  paths:
+  - profile1.json
+  - profile2.json
+  output: compare
+```
+</details>
 
 ## Customization
 Users have the flexibility to iteratively modify the generated YAML configuration
@@ -229,6 +317,8 @@ genai-perf compare --config compare/config.yaml
 This command will regenerate the plots based on the updated configuration settings,
 enabling users to refine the visual representation of the comparison results as
 per their needs.
+
+See [Compare documentation](docs/compare.md) for more details.
 
 
 # Model Inputs
