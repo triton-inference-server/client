@@ -340,9 +340,9 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "-m",
         "--model",
-        type=str,
-        default=None,
-        help=f"The name of the model to benchmark.",
+        nargs='+',
+        default=[],
+        help=f"The name of the model(s) to benchmark.",
     )
 
     endpoint_group.add_argument(

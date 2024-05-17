@@ -78,7 +78,7 @@ class LlmInputs:
         input_type: PromptSource,
         output_format: OutputFormat,
         dataset_name: str = "",
-        model_name: str = "",
+        model_name: Union[str, list] = "",
         input_filename: Optional[Path] = Path(""),
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
@@ -354,7 +354,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
@@ -417,7 +417,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
@@ -450,7 +450,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -483,7 +483,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -517,7 +517,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -578,6 +578,17 @@ class LlmInputs:
         return system_role_headers, user_role_headers, text_input_headers
 
     @classmethod
+    def _select_model_name(cls, model_name, index):
+        if isinstance(model_name, str):
+            return model_name
+        elif isinstance(model_name, list):
+            return model_name[index % len(model_name)]
+        else:
+            raise GenAIPerfException(
+                "Model incorrectly formatted"
+            )
+
+    @classmethod
     def _populate_openai_chat_completions_output_json(
         cls,
         dataset_json: Dict,
@@ -589,11 +600,12 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(model_name, index)
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"messages": []})
 
@@ -613,7 +625,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -631,11 +643,12 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(model_name, index)
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"prompt": ""})
 
@@ -659,7 +672,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -677,11 +690,12 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         pa_json = cls._create_empty_vllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(model_name, index)
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
@@ -706,7 +720,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -724,7 +738,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: Union[str, list] = "",
     ) -> Dict:
         pa_json = cls._create_empty_trtllm_pa_json()
         default_max_tokens = (
@@ -733,6 +747,7 @@ class LlmInputs:
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(model_name, index)
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
@@ -760,7 +775,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
