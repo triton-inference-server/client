@@ -628,17 +628,14 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # Remove responses without any content
             # These are only observed to happen at the start or end
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[0]["response"]
-            ):
-                res_timestamps.pop(0)
-                res_outputs.pop(0)
-
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[-1]["response"]
-            ):
-                res_timestamps.pop()
-                res_outputs.pop()
+            indices_to_remove = []
+            for idx, out in enumerate(res_outputs):
+                if self._is_openai_empty_response(out["response"]):
+                    indices_to_remove.append(idx)
+            indices_to_remove.sort(reverse=True)
+            for index in indices_to_remove:
+                res_timestamps.pop(index)
+                res_outputs.pop(index)
 
     def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
         """Deserialize the request input and return tokenized inputs."""
