@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 
 def import_heavy_modules():
-    global DEFAULT_PARQUET_FILE, JsonExporter, LlmInputs, LLMProfileDataParser, PlotConfigParser, PlotManager, get_tokenizer
+    global parser, DEFAULT_PARQUET_FILE, JsonExporter, LlmInputs, LLMProfileDataParser, PlotConfigParser, PlotManager, get_tokenizer
     from genai_perf import parser
     from genai_perf.constants import DEFAULT_PARQUET_FILE
     from genai_perf.export_data.json_exporter import JsonExporter
