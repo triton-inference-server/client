@@ -1,4 +1,4 @@
-# Copyright 2021-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,33 +27,44 @@
 cmake_minimum_required (VERSION 3.18)
 
 set(
-    TRITON_C_API_CLIENT_BACKEND_SRCS
-    triton_c_api_backend.cc
-    shared_library.cc
-    triton_loader.cc
-    shared_memory_manager.cc
-    scoped_defer.cc
+    TS_CLIENT_BACKEND_SRCS
+    torchserve_client_backend.cc
+    torchserve_infer_input.cc
+    torchserve_http_client.cc
 )
 
 set(
-    TRITON_C_API_CLIENT_BACKEND_HDRS
-    triton_c_api_backend.h
-    shared_library.h
-    shared_memory_manager.h
-    triton_loader.h
-    c_api_infer_results.h
-    scoped_defer.h
+    TS_CLIENT_BACKEND_HDRS
+    torchserve_client_backend.h
+    torchserve_infer_input.h
+    torchserve_http_client.h
 )
 
 add_library(
-    triton-c-api-backend-library  EXCLUDE_FROM_ALL OBJECT
-    ${TRITON_C_API_CLIENT_BACKEND_SRCS}
-    ${TRITON_C_API_CLIENT_BACKEND_HDRS}
+    ts-client-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${TS_CLIENT_BACKEND_SRCS}
+    ${TS_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-  triton-c-api-backend-library
-  grpcclient_static
-  httpclient_static
-  triton-core-serverapi   # from repo-core
+  ts-client-backend-library
+  PUBLIC CURL::libcurl
+  PUBLIC httpclient_static
 )
+
+if(${TRITON_ENABLE_GPU})
+  target_include_directories(ts-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
+  target_link_libraries(
+    ts-client-backend-library
+    PRIVATE ${CUDA_LIBRARIES}
+    PRIVATE CUDA::cudart
+  )
+  
+  # Need to enable this compilation flag, otherwise, ipc.h
+  # will select mock-struct as opposed to the correct cuda
+  # runtime header file.
+  target_compile_definitions(
+    ts-client-backend-library
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
+endif() # TRITON_ENABLE_GPU

@@ -82,7 +82,7 @@ if PLATFORM_FLAG != "any":
 data_files = [
     ("", ["LICENSE.txt"]),
 ]
-if (PLATFORM_FLAG != "any") and ("@TRITON_ENABLE_PERF_ANALYZER@" == "ON"):
+if (PLATFORM_FLAG != "any") and ("@TRITON_PACKAGE_PERF_ANALYZER@" == "ON"):
     data_files += [("bin", ["perf_analyzer", "perf_client"])]
 
 setup(

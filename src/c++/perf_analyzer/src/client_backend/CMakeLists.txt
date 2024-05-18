@@ -27,8 +27,26 @@
 cmake_minimum_required (VERSION 3.18)
 
 find_package(CURL REQUIRED)
+
 # fixme
 add_definitions(-DCURL_STATICLIB)
+
+#
+# Dependencies
+#
+include(FetchContent)
+
+FetchContent_Declare(
+  repo-common
+  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
+  GIT_TAG ${TRITON_COMMON_REPO_TAG}
+  GIT_SHALLOW ON
+)
+
+set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+set(TRITON_COMMON_ENABLE_GRPC ON)
+
+FetchContent_MakeAvailable(repo-common)
 
 add_subdirectory(triton)
 
@@ -95,9 +113,10 @@ add_library(
 
 target_link_libraries(
   client-backend-library
-    PUBLIC
+    PUBLIC 
       triton-common-json        # from repo-common
-      $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
+      triton-client-backend-library
+      json_utils_static
       ${CAPI_TARGET_LINK_LIBRARY}
       ${TFS_TARGET_LINK_LIBRARY}
       ${TS_TARGET_LINK_LIBRARY}
@@ -106,9 +125,11 @@ target_link_libraries(
 
 target_include_directories(
   client-backend-library
-  PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
-  ${CAPI_TARGET_INCLUDE_DIRECTORY}
-  ${TFS_TARGET_INCLUDE_DIRECTORY}
-  ${TS_TARGET_INCLUDE_DIRECTORY}
-  ${OPENAI_TARGET_INCLUDE_DIRECTORY}
+  PUBLIC 
+    $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
+    ${CAPI_TARGET_INCLUDE_DIRECTORY}
+    ${TFS_TARGET_INCLUDE_DIRECTORY}
+    ${TS_TARGET_INCLUDE_DIRECTORY}
+    ${OPENAI_TARGET_INCLUDE_DIRECTORY}
 )
+

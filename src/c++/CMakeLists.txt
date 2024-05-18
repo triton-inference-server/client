@@ -51,7 +51,6 @@ endif()
 # Dependencies
 #
 include(FetchContent)
-message("cc client depends: ${_cc_client_depends}")
 FetchContent_Declare(
   repo-common
   GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git

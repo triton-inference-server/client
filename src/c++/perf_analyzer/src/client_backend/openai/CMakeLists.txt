@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,32 +27,47 @@
 cmake_minimum_required (VERSION 3.18)
 
 set(
-    TS_CLIENT_BACKEND_SRCS
-    torchserve_client_backend.cc
-    torchserve_infer_input.cc
-    torchserve_http_client.cc
+    OPENAI_CLIENT_BACKEND_SRCS
+    http_client.cc
+    openai_client_backend.cc
+    openai_client.cc
+    openai_infer_input.cc
 )
 
 set(
-    TS_CLIENT_BACKEND_HDRS
-    torchserve_client_backend.h
-    torchserve_infer_input.h
-    torchserve_http_client.h
+    OPENAI_CLIENT_BACKEND_HDRS
+    http_client.h
+    openai_client_backend.h
+    openai_client.h
+    openai_infer_input.h
 )
 
 add_library(
-    ts-client-backend-library  EXCLUDE_FROM_ALL OBJECT
-    ${TS_CLIENT_BACKEND_SRCS}
-    ${TS_CLIENT_BACKEND_HDRS}
+    openai-client-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${OPENAI_CLIENT_BACKEND_SRCS}
+    ${OPENAI_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-  ts-client-backend-library
+  openai-client-backend-library
   PUBLIC CURL::libcurl
   PUBLIC httpclient_static
 )
 
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(ts-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(ts-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+  target_include_directories(openai-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
+  target_link_libraries(
+    openai-client-backend-library
+    PRIVATE ${CUDA_LIBRARIES}
+    PRIVATE CUDA::cudart
+  )
+  
+  # Need to enable this compilation flag, otherwise, ipc.h
+  # will select mock-struct as opposed to the correct cuda
+  # runtime header file.
+  target_compile_definitions(
+    openai-client-backend-library
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
 endif() # TRITON_ENABLE_GPU
+

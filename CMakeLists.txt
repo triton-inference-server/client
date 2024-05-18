@@ -45,6 +45,9 @@ option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
 option(TRITON_ENABLE_ZLIB "Include ZLIB library in build" ON)
 
+# Install Perf Analyzer with the Python Client -- PA binary must exist
+option(TRITON_PACKAGE_PERF_ANALYZER "Include Perf Analyzer in pip wheel" OFF)
+
 set(TRITON_REPO_ORGANIZATION "https://github.com/triton-inference-server" CACHE STRING "Git repository to pull from")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/third_party repo")
@@ -164,9 +167,6 @@ if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
   if(${TRITON_ENABLE_PYTHON_GRPC})
     set(_py_client_depends ${_py_client_depends} grpc protobuf)
   endif() # TRITON_ENABLE_PYTHON_GRPC
-  # if(${TRITON_ENABLE_PERF_ANALYZER})
-  #   set(_py_client_depends ${_py_client_depends} cc-clients)
-  # endif() # TRITON_ENABLE_PERF_ANALYZER
 
   ExternalProject_Add(python-clients
     PREFIX python-clients
@@ -189,6 +189,7 @@ if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
       -DTRITON_ENABLE_PYTHON_GRPC:BOOL=${TRITON_ENABLE_PYTHON_GRPC}
       -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
       -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+      -DTRITON_PACKAGE_PERF_ANALYZER:BOOL=${TRITON_PACKAGE_PERF_ANALYZER}
       -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
