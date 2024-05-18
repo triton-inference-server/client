@@ -37,7 +37,7 @@ set(PERF_ANALYZER_VERSION ${TRITON_VERSION} CACHE STRING "Build Version for Perf
 #
 # Perf Analyzer Options
 #
-option(TRITON_PACKAGE_PERF_ANALYZER "Include Perf Analyzer in pip wheel" ON)
+option(TRITON_PACKAGE_PERF_ANALYZER "Include Perf Analyzer in pip wheel" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER_C_API "Enable Performance Analyzer C API" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER_TFS "Enable TensorFlow Serving support for Performance Analyzer" OFF)
 option(TRITON_ENABLE_PERF_ANALYZER_TS "Enable TorchServe support for Performance Analyzer" OFF)
@@ -131,6 +131,12 @@ ExternalProject_Add(
   DEPENDS cc_clients
 )
 
+# FIXME: This is a WAR for now. We shouldn't have to re-clone the client repo
+# Everything to build the wheel should be present in the cc_clients folder.
+# PA needs to have its own build_wheel.py script.
+
+# Build python client after perf_analyzer has been installed to a known location
+# so that it can be packaged in the python client pip wheel.
 if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
   ExternalProject_Add(
     python_clients

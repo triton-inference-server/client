@@ -101,7 +101,7 @@ if (NOT WIN32)
   )
 
   if (${TRITON_PACKAGE_PERF_ANALYZER})
-    set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
+    set(perf_analyzer_arg --perf-analyzer /usr/local/bin/perf_analyzer)
   endif()
   set(linux_wheel_stamp_file "linux_stamp.whl")
   add_custom_command(
