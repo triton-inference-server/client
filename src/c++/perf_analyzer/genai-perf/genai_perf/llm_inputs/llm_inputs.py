@@ -597,11 +597,18 @@ class LlmInputs:
         return system_role_headers, user_role_headers, text_input_headers
 
     @classmethod
-    def _select_model_name(cls, model_name, index):
+    def _select_model_name(cls, model_name, index, model_selection_strategy):
         if isinstance(model_name, str):
             return model_name
         elif isinstance(model_name, list):
-            return model_name[index % len(model_name)]
+            if model_selection_strategy == ModelSelectionStrategy.ROUND_ROBIN:
+                return model_name[index % len(model_name)]
+            elif model_selection_strategy == ModelSelectionStrategy.RANDOM:
+                return random.choice(model_name)
+            else:
+                raise GenAIPerfException(
+                    "Model Selection incorrectly formatted"
+                )
         else:
             raise GenAIPerfException(
                 "Model incorrectly formatted"
@@ -625,7 +632,7 @@ class LlmInputs:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(model_name, index)
+            iter_model_name = cls._select_model_name(model_name, index, model_selection_strategy)
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"messages": []})
 
@@ -669,7 +676,7 @@ class LlmInputs:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(model_name, index)
+            iter_model_name = cls._select_model_name(model_name, index, model_selection_strategy)
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"prompt": ""})
 
@@ -717,7 +724,7 @@ class LlmInputs:
         pa_json = cls._create_empty_vllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(model_name, index)
+            iter_model_name = cls._select_model_name(model_name, index, model_selection_strategy)
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
@@ -770,7 +777,7 @@ class LlmInputs:
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(model_name, index)
+            iter_model_name = cls._select_model_name(model_name, index, model_selection_strategy)
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
