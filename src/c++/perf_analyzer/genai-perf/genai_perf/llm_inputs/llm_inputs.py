@@ -17,7 +17,7 @@ import random
 from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
@@ -361,7 +361,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
@@ -429,7 +429,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
@@ -464,7 +464,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -499,7 +499,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -535,7 +535,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         (
             system_role_headers,
@@ -627,7 +627,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
@@ -671,7 +671,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
@@ -719,7 +719,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_vllm_pa_json()
 
@@ -768,7 +768,7 @@ class LlmInputs:
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
         model_name: Union[str, list] = "",
-        model_selection_strategy: str,
+        model_selection_strategy: str = "",
     ) -> Dict:
         pa_json = cls._create_empty_trtllm_pa_json()
         default_max_tokens = (

@@ -96,8 +96,6 @@ class Profiler:
 
         cmd = [
             f"perf_analyzer",
-            f"-m",
-            f"{args.model}",
             f"--async",
             f"--input-data",
             f"{args.artifact_dir / DEFAULT_INPUT_DATA_JSON}",

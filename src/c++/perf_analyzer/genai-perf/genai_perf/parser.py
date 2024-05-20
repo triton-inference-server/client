@@ -57,6 +57,7 @@ def _check_model_args(
     """
     if not args.subcommand and not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
+    args = _convert_str_to_enum_entry(args, "model_selection_strategy", ModelSelectionStrategy)
     return args
 
 
