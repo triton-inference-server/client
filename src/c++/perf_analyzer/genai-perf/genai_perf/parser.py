@@ -37,7 +37,7 @@ from genai_perf.constants import (
     DEFAULT_COMPARE_DIR,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.llm_inputs.llm_inputs import LlmInputs, ModelSelectionStrategy, OutputFormat, PromptSource
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
@@ -343,6 +343,17 @@ def _add_endpoint_args(parser):
         nargs='+',
         default=[],
         help=f"The name of the model(s) to benchmark.",
+    )
+    endpoint_group.add_argument(
+        "--model-selection-strategy",
+        type=str,
+        choices=utils.get_enum_names(ModelSelectionStrategy),
+        default=ModelSelectionStrategy.ROUND_ROBIN,
+        required=False,
+        help=f"When multiple model are specified, this is how a specific model "
+        "should be assigned to a prompt.  round_robin means that ith prompt in the "
+        "list gets assigned to i % len(models).  random means that assignment is "
+        "uniformly random"
     )
 
     endpoint_group.add_argument(
