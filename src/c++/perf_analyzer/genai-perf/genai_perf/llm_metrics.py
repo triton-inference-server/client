@@ -627,7 +627,6 @@ class LLMProfileDataParser(ProfileDataParser):
                     res_outputs[i] = {"response": json.dumps(merged_response)}
 
             # Remove responses without any content
-            # These are only observed to happen at the start or end
             indices_to_remove = []
             for idx, out in enumerate(res_outputs):
                 if self._is_openai_empty_response(out["response"]):
