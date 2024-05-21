@@ -647,7 +647,9 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the Triton request input texts."""
-        encodings = self._tokenizer.encode(req_inputs["text_input"], add_special_tokens=False)
+        encodings = self._tokenizer.encode(
+            req_inputs["text_input"], add_special_tokens=False
+        )
         return encodings
 
     def _tokenize_openai_request_input(self, req_inputs: dict) -> List[int]:
