@@ -282,26 +282,6 @@ class MockClientStats {
               rhs.num_unmap_shared_memory_calls) {
         return true;
       }
-      std::cout << (this->num_unregister_all_shared_memory_calls ==
-              rhs.num_unregister_all_shared_memory_calls) << " " <<
-          (this->num_register_system_shared_memory_calls ==
-              rhs.num_register_system_shared_memory_calls) << " " <<
-          (this->num_register_cuda_shared_memory_calls ==
-              rhs.num_register_cuda_shared_memory_calls) << " " <<
-          (this->num_register_cuda_memory_calls ==
-              rhs.num_register_cuda_memory_calls) << " " <<
-          (this->num_register_system_memory_calls ==
-              rhs.num_register_system_memory_calls) << " " <<
-          (this->num_create_shared_memory_region_calls ==
-              rhs.num_create_shared_memory_region_calls) << " " <<
-          (this->num_map_shared_memory_calls ==
-              rhs.num_map_shared_memory_calls) << " " <<
-          (this->num_close_shared_memory_calls ==
-              rhs.num_close_shared_memory_calls) << " " <<
-          (this->num_unlink_shared_memory_region_calls ==
-              rhs.num_unlink_shared_memory_region_calls) << " " <<
-          (this->num_unmap_shared_memory_calls ==
-              rhs.num_unmap_shared_memory_calls) << std::endl;
       return false;
     }
   };

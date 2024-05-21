@@ -123,7 +123,7 @@ if(${TRITON_ENABLE_GPU})
     tfs-client-backend-library
     PRIVATE ${CUDA_LIBRARIES}
     PRIVATE CUDA::cudart
-  )  
+  )
 
   # Need to enable this compilation flag, otherwise, ipc.h
   # will select mock-struct as opposed to the correct cuda

@@ -33,17 +33,24 @@ set(TRITON_THIRD_PARTY_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/third-party-i
 # Add third party installation to the search path
 set(CMAKE_PREFIX_PATH ${TRITON_THIRD_PARTY_INSTALL_PREFIX} ${CMAKE_PREFIX_PATH})
 
-if(${TRITON_ENABLE_GPU})
-  find_package(CUDAToolkit REQUIRED)
-  message(STATUS "Using CUDA ${CUDA_VERSION}")
-endif()
-find_package(gRPC CONFIG REQUIRED)
-
-add_subdirectory(client_backend)
-
 #
 # Dependencies
 #
+if(${TRITON_ENABLE_GPU})
+  find_package(CUDAToolkit REQUIRED)
+  message(STATUS "Using CUDA ${CUDA_VERSION}")
+endif() # TRITON_ENABLE_GPU
+
+find_package(gRPC CONFIG REQUIRED)
+include_directories($<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
+
+set(protobuf_MODULE_COMPATIBLE TRUE CACHE BOOL "protobuf_MODULE_COMPATIBLE" FORCE)
+find_package(Protobuf CONFIG REQUIRED)
+message(STATUS "Using protobuf ${Protobuf_VERSION}")
+include_directories(${Protobuf_INCLUDE_DIRS})
+
+add_subdirectory(client_backend)
+
 include(FetchContent)
 FetchContent_Declare(
   googletest
@@ -181,35 +188,35 @@ if(TRITON_ENABLE_GPU)
     perf_analyzer
     PRIVATE CUDA::cudart
   )
-endif()
+endif() # TRITON_ENABLE_GPU
 
 if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   target_compile_definitions(
     client-backend-library
     PUBLIC TRITON_ENABLE_PERF_ANALYZER_C_API=1
   )
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_C_API
 
 if(TRITON_ENABLE_PERF_ANALYZER_TFS)
   target_compile_definitions(
     client-backend-library
     PUBLIC TRITON_ENABLE_PERF_ANALYZER_TFS=1
   )
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TFS
 
 if(TRITON_ENABLE_PERF_ANALYZER_TS)
   target_compile_definitions(
     client-backend-library
     PUBLIC TRITON_ENABLE_PERF_ANALYZER_TS=1
   )
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TS
 
 if(TRITON_ENABLE_PERF_ANALYZER_OPENAI)
   target_compile_definitions(
     client-backend-library
     PUBLIC TRITON_ENABLE_PERF_ANALYZER_OPENAI=1
   )
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_OPENAI
 
 install(
   TARGETS perf_analyzer

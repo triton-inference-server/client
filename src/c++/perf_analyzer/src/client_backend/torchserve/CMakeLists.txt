@@ -59,7 +59,7 @@ if(${TRITON_ENABLE_GPU})
     PRIVATE ${CUDA_LIBRARIES}
     PRIVATE CUDA::cudart
   )
-  
+
   # Need to enable this compilation flag, otherwise, ipc.h
   # will select mock-struct as opposed to the correct cuda
   # runtime header file.
