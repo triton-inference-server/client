@@ -14,16 +14,21 @@
 
 import contextlib
 import io
-from typing import TYPE_CHECKING, Union
+from typing import Union
 
 from genai_perf.exceptions import GenAIPerfException
 
-Tokenizer = Union["PreTrainedTokenizer", "PreTrainedTokenizerFast"]
+# Silence tokenizer warning on import
+with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
+    io.StringIO()
+) as stderr:
+    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
+    from transformers import logging as token_logger
+
+    token_logger.set_verbosity_error()
+
+Tokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 DEFAULT_TOKENIZER = "hf-internal-testing/llama-tokenizer"
-
-
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 
 def get_tokenizer(
@@ -37,10 +42,6 @@ def get_tokenizer(
         with contextlib.redirect_stdout(
             io.StringIO()
         ) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
-            from transformers import AutoTokenizer
-            from transformers import logging as token_logger
-
-            token_logger.set_verbosity_error()
             tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
     except Exception as e:
         raise GenAIPerfException(e)
