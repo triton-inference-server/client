@@ -620,6 +620,11 @@ class LLMProfileDataParser(ProfileDataParser):
                 responses = response.strip().split("\n\n")
                 if len(responses) > 1:
                     merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    if (
+                        merged_response["choices"][0]["delta"].get("content", None)
+                        is None
+                    ):
+                        merged_response["choices"][0]["delta"]["content"] = ""
                     for r in responses[1:]:
                         text = self._extract_openai_text_output(r)
                         merged_response["choices"][0]["delta"]["content"] += text
