@@ -34,7 +34,7 @@ with `--files` option
 
 ## Running initially with `--files` option
 
-If the user does not have YAML configuration file,
+If the user does not have a YAML configuration file,
 they can run the `compare` subcommand with the `--files` option to generate a
 set of default plots as well as a pre-filled YAML config file for the plots.
 

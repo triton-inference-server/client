@@ -199,7 +199,7 @@ See [Tutorial](docs/tutorial.md) for additional examples.
 # Visualization
 
 GenAI-Perf can also generate various plots that visualize the performance of the
-current profile run. This is disabled by default but users can easily enabled it
+current profile run. This is disabled by default but users can easily enable it
 by passing the `--generate-plots` option when running the benchmark:
 
 ```bash
@@ -234,7 +234,8 @@ they can execute the `compare` subcommand using the `--files` option:
 genai-perf compare --files profile1.json profile2.json
 ```
 
-Executing the above command will create following files under `compare` directory:
+Executing the above command will perform the following actions under the
+`compare` directory:
 1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
 metadata for each plot generated during the comparison process.
 2. Automatically generate the [default set of plots](docs/compare.md#example-plots)
