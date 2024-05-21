@@ -647,8 +647,8 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the Triton request input texts."""
-        encodings = self._tokenizer(req_inputs["text_input"])
-        return encodings.data["input_ids"]
+        encodings = self._tokenizer.encode(req_inputs["text_input"], add_special_tokens=False)
+        return encodings
 
     def _tokenize_openai_request_input(self, req_inputs: dict) -> List[int]:
         """Tokenize the OpenAI request input texts."""
@@ -661,8 +661,8 @@ class LLMProfileDataParser(ProfileDataParser):
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
             )
-        encodings = self._tokenizer(input_text)
-        return encodings.data["input_ids"]
+        encodings = self._tokenizer.encode(input_text, add_special_tokens=False)
+        return encodings
 
     def _tokenize_response_outputs(self, res_outputs: dict) -> List[List[int]]:
         """Deserialize the response output and return tokenized outputs."""
@@ -694,8 +694,8 @@ class LLMProfileDataParser(ProfileDataParser):
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
         output_texts = ["!" + txt for txt in output_texts]
-        encodings = self._tokenizer(output_texts)
-        return [out[1:] for out in encodings.data["input_ids"]]
+        encodings = self._tokenizer.encode(output_texts, add_special_tokens=False)
+        return [out[1:] for out in encodings]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
