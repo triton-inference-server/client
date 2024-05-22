@@ -37,7 +37,12 @@ from genai_perf.constants import (
     DEFAULT_COMPARE_DIR,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import LlmInputs, ModelSelectionStrategy, OutputFormat, PromptSource
+from genai_perf.llm_inputs.llm_inputs import (
+    LlmInputs,
+    ModelSelectionStrategy,
+    OutputFormat,
+    PromptSource,
+)
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
@@ -57,7 +62,9 @@ def _check_model_args(
     """
     if not args.subcommand and not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
-    args = _convert_str_to_enum_entry(args, "model_selection_strategy", ModelSelectionStrategy)
+    args = _convert_str_to_enum_entry(
+        args, "model_selection_strategy", ModelSelectionStrategy
+    )
     return args
 
 
@@ -341,7 +348,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "-m",
         "--model",
-        nargs='+',
+        nargs="+",
         default=[],
         help=f"The name of the model(s) to benchmark.",
     )
@@ -349,12 +356,12 @@ def _add_endpoint_args(parser):
         "--model-selection-strategy",
         type=str,
         choices=utils.get_enum_names(ModelSelectionStrategy),
-        default=ModelSelectionStrategy.ROUND_ROBIN,
+        default="round_robin",
         required=False,
         help=f"When multiple model are specified, this is how a specific model "
         "should be assigned to a prompt.  round_robin means that ith prompt in the "
-        "list gets assigned to i % len(models).  random means that assignment is "
-        "uniformly random"
+        "list gets assigned to i mod len(models).  random means that assignment is "
+        "uniformly random",
     )
 
     endpoint_group.add_argument(
