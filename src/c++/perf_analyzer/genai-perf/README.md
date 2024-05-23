@@ -342,7 +342,7 @@ Show the help message and exit.
 
 ## Endpoint Options:
 
-##### `-m <str>`
+##### `-m <list>`
 ##### `--model <list>`
 
 The name of the model to benchmark. (default: `None`)
