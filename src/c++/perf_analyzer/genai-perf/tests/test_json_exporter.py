@@ -206,7 +206,9 @@ class TestJsonExporter:
               "std": 60
           },
         "input_config": {
-          "model": "gpt2_vllm",
+          "model": ["gpt2_vllm"],
+          "formatted_model_name": "gpt2_vllm",
+          "model_selection_strategy": "round_robin",
           "backend": "vllm",
           "endpoint": null,
           "endpoint_type": null,
