@@ -28,17 +28,18 @@
 
 import json
 from io import StringIO
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Union
 
 import numpy as np
 import pytest
 from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
-from genai_perf.tokenizer import DEFAULT_TOKENIZER
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from transformers import AutoTokenizer
 
 
-def ns_to_sec(ns: int) -> int | float:
+def ns_to_sec(ns: int) -> Union[int, float]:
     """Convert from nanosecond to second."""
     return ns / 1e9
 
@@ -73,6 +74,9 @@ class TestLLMProfileDataParser:
             elif filename == "openai_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.openai_profile_data))
                 return tmp_file
+            elif filename == "empty_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.empty_profile_data))
+                return tmp_file
             elif filename == "profile_export.csv":
                 tmp_file = StringIO()
                 tmp_file.write = write.__get__(tmp_file)
@@ -90,11 +94,9 @@ class TestLLMProfileDataParser:
         printed in csv.
         """
 
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="triton_profile_export.json",
-            service_kind="triton",
-            output_format=OutputFormat.TENSORRTLLM,
+            filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -145,11 +147,9 @@ class TestLLMProfileDataParser:
             - experiment 1: [3, 4]
             - experiment 2: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="triton_profile_export.json",
-            service_kind="triton",
-            output_format=OutputFormat.TENSORRTLLM,
+            filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
         )
 
@@ -288,11 +288,9 @@ class TestLLMProfileDataParser:
         * num input tokens
             - experiment 1: [3, 4]
         """
-        tokenizer = AutoTokenizer.from_pretrained(DEFAULT_TOKENIZER)
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
-            filename="openai_profile_export.json",
-            service_kind="openai",
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
         )
 
@@ -355,6 +353,33 @@ class TestLLMProfileDataParser:
         with pytest.raises(KeyError):
             pd.get_statistics(infer_mode="concurrency", load_level="40")
 
+    def test_merged_sse_response(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Test merging the multiple sse response."""
+        res_timestamps = [0, 1, 2, 3]
+        res_outputs = [
+            {
+                "response": 'data: {"choices":[{"delta":{"content":"aaa"}}],"object":"chat.completion.chunk"}\n\n'
+            },
+            {
+                "response": (
+                    'data: {"choices":[{"delta":{"content":"abc"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"1234"}}],"object":"chat.completion.chunk"}\n\n'
+                    'data: {"choices":[{"delta":{"content":"helloworld"}}],"object":"chat.completion.chunk"}\n\n'
+                )
+            },
+            {"response": "data: [DONE]\n\n"},
+        ]
+        expected_response = '{"choices": [{"delta": {"content": "abc1234helloworld"}}], "object": "chat.completion.chunk"}'
+
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+        pd = LLMProfileDataParser(
+            filename=Path("openai_profile_export.json"),
+            tokenizer=tokenizer,
+        )
+
+        pd._preprocess_response(res_timestamps, res_outputs)
+        assert res_outputs[1]["response"] == expected_response
+
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
         # initialize with dummy values
@@ -379,7 +404,50 @@ class TestLLMProfileDataParser:
         with pytest.raises(KeyError):
             metrics.get_base_name("hello1234")
 
+    def test_empty_response(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Check if it handles all empty responses."""
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+
+        # Should not throw error
+        _ = LLMProfileDataParser(
+            filename=Path("empty_profile_export.json"),
+            tokenizer=tokenizer,
+        )
+
+    empty_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "v1/chat/completions",
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "request_inputs": {
+                            "payload": '{"messages":[{"role":"user","content":"This is test"}],"model":"llama-2-7b","stream":true}',
+                        },
+                        "response_timestamps": [3, 5, 8],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":""},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
     openai_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "v1/chat/completions",
         "experiments": [
             {
                 "experiment": {
@@ -445,6 +513,8 @@ class TestLLMProfileDataParser:
     }
 
     triton_profile_data = {
+        "service_kind": "triton",
+        "endpoint": "",
         "experiments": [
             {
                 "experiment": {

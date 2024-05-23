@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -68,7 +68,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
 
   std::shared_ptr<IWorker> MakeWorker(
       std::shared_ptr<ThreadStat> thread_stat,
-      std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config) override
+      std::shared_ptr<ThreadConfig> thread_config) override
   {
     size_t id = workers_.size();
     auto worker = std::make_shared<MockRequestRateWorker>(
@@ -86,9 +86,9 @@ class TestRequestRateManager : public TestLoadManagerBase,
   }
 
   void TestConfigureThreads(
-      std::vector<RequestRateWorker::ThreadConfig>& expected_configs)
+      std::vector<ThreadConfig>& expected_configs, size_t request_count)
   {
-    RequestRateManager::ConfigureThreads();
+    RequestRateManager::ConfigureThreads(request_count);
 
     auto expected_size = expected_configs.size();
 
@@ -105,6 +105,9 @@ class TestRequestRateManager : public TestLoadManagerBase,
       CHECK(
           threads_config_[i]->seq_stat_index_offset_ ==
           expected_configs[i].seq_stat_index_offset_);
+      CHECK(
+          threads_config_[i]->num_requests_ ==
+          expected_configs[i].num_requests_);
     }
   }
 
@@ -327,6 +330,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// Helper function that will setup and run a case to verify custom data
   /// behavior
   /// \param num_requests Integer number of requests to send during the test
+  /// \param num_threads Number of worker threads to create
   /// \param tensors Vector of input ModelTensors
   /// \param json_str The custom data json text
   /// \param expected_values Vector of expected input values for each inference
@@ -335,24 +339,24 @@ class TestRequestRateManager : public TestLoadManagerBase,
   /// \param expect_thread_failure True if the thread is expected to have
   /// an error
   void TestCustomData(
-      size_t num_requests, std::vector<ModelTensor>& tensors,
-      const std::string json_str,
+      size_t num_requests, size_t num_threads,
+      std::vector<ModelTensor>& tensors, const std::string json_str,
       std::vector<std::vector<int32_t>>& expected_values,
       bool expect_init_failure, bool expect_thread_failure)
   {
-    CustomDataTestSetup(tensors, json_str, expect_init_failure);
+    CustomDataTestSetup(tensors, json_str, expect_init_failure, num_threads);
     if (expect_init_failure) {
       // The rest of the test is invalid if init failed
       return;
     }
-    auto thread_status = CustomDataTestSendRequests(num_requests);
+    auto thread_status = CustomDataTestSendRequests(num_requests, num_threads);
     CustomDataTestCheckResults(
         thread_status, expect_thread_failure, expected_values);
   }
 
   void CustomDataTestSetup(
       std::vector<ModelTensor>& tensors, const std::string json_str,
-      bool expect_init_failure)
+      bool expect_init_failure, size_t num_threads)
   {
     params_.user_data = {json_str};
 
@@ -376,7 +380,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
     data_loader_ = mdl;
     using_json_data_ = true;
     execute_ = true;
-    max_threads_ = 1;
+    max_threads_ = num_threads;
 
     if (expect_init_failure) {
       REQUIRE_THROWS_AS(
@@ -398,22 +402,33 @@ class TestRequestRateManager : public TestLoadManagerBase,
     }
   }
 
-  cb::Error CustomDataTestSendRequests(size_t num_requests)
+  cb::Error CustomDataTestSendRequests(size_t num_requests, size_t num_threads)
   {
-    std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-    std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-        std::make_shared<RequestRateWorker::ThreadConfig>(0)};
-    std::shared_ptr<IWorker> worker{MakeWorker(thread_stat, thread_config)};
+    std::vector<std::shared_ptr<MockRequestRateWorker>> workers;
+    std::vector<std::shared_ptr<ThreadStat>> thread_stats;
 
-    auto mock_worker = std::dynamic_pointer_cast<MockRequestRateWorker>(worker);
+    for (auto i = 0; i < num_threads; i++) {
+      std::shared_ptr<ThreadStat> ts{std::make_shared<ThreadStat>()};
+      thread_stats.push_back(ts);
+      std::shared_ptr<ThreadConfig> tc{std::make_shared<ThreadConfig>(i)};
+      std::shared_ptr<IWorker> worker{MakeWorker(ts, tc)};
+      workers_.push_back(worker);
 
-    mock_worker->CreateContext();
+      workers.push_back(
+          std::dynamic_pointer_cast<MockRequestRateWorker>(worker));
 
-    for (size_t i = 0; i < num_requests; i++) {
-      mock_worker->SendInferRequest();
+      workers[i]->CreateContext();
     }
 
-    return thread_stat->status_;
+    size_t sent_requests = 0;
+    while (sent_requests < num_requests) {
+      for (auto i = 0; i < workers.size(); i++) {
+        workers[i]->SendInferRequest();
+        sent_requests++;
+      }
+    }
+
+    return thread_stats[0]->status_;
   }
 
   void CustomDataTestCheckResults(
@@ -950,8 +965,8 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   schedule->duration = nanoseconds{1};
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   TestRequestRateManager trrm(params, is_sequence, is_decoupled);
   trrm.InitManager(
@@ -1005,6 +1020,7 @@ TEST_CASE(
    ]})"};
 
   size_t num_requests = 4;
+  size_t num_threads = 1;
 
   const auto& ParameterizeTensors{[&]() {
     SUBCASE("one tensor")
@@ -1088,13 +1104,26 @@ TEST_CASE(
     }
   }};
 
-  ParameterizeSharedMemory();
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+      ParameterizeSharedMemory();
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+      ParameterizeSharedMemory();
+    }
+  }};
+
+  ParameterizeNumThreads();
 
   TestRequestRateManager trrm(params, is_sequence_model);
 
   trrm.TestCustomData(
-      num_requests, tensors, json_str, expected_results, expect_init_failure,
-      expect_thread_failure);
+      num_requests, num_threads, tensors, json_str, expected_results,
+      expect_init_failure, expect_thread_failure);
 }
 
 TEST_CASE("custom_json_data: handling is_shape_tensor")
@@ -1131,7 +1160,7 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
   model_tensor2.is_optional_ = true;
 
   size_t num_requests = 4;
-
+  size_t num_threads = 1;
 
   const auto& ParameterizeBatch{[&]() {
     SUBCASE("batch 1")
@@ -1155,30 +1184,43 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
     }
   }};
 
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+      ParameterizeBatch();
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+      ParameterizeBatch();
+    }
+  }};
+
   // Being optional should have no impact
   SUBCASE("optional = 0,0")
   {
     model_tensor1.is_optional_ = false;
     model_tensor2.is_optional_ = false;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
   }
   SUBCASE("optional = 0,1")
   {
     model_tensor1.is_optional_ = false;
     model_tensor2.is_optional_ = true;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
   }
   SUBCASE("optional = 1,0")
   {
     model_tensor1.is_optional_ = true;
     model_tensor2.is_optional_ = false;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
   }
   SUBCASE("optional = 1,1")
   {
     model_tensor1.is_optional_ = true;
     model_tensor2.is_optional_ = true;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
   }
 
 
@@ -1188,8 +1230,8 @@ TEST_CASE("custom_json_data: handling is_shape_tensor")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      num_requests, tensors, json_str, expected_results, expect_init_failure,
-      expect_thread_failure);
+      num_requests, num_threads, tensors, json_str, expected_results,
+      expect_init_failure, expect_thread_failure);
 }
 
 TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
@@ -1226,6 +1268,7 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
 
 
   size_t num_requests = 4;
+  size_t num_threads = 1;
 
   const auto& ParameterizeBatch{[&]() {
     SUBCASE("batch 1")
@@ -1249,21 +1292,34 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
     }
   }};
 
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+      ParameterizeBatch();
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+      ParameterizeBatch();
+    }
+  }};
+
   SUBCASE("no shm")
   {
     params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
   }
   SUBCASE("system shm")
   {
     params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
     expect_init_failure = true;
   }
   SUBCASE("cuda shm")
   {
     params.shared_memory_type = SharedMemoryType::CUDA_SHARED_MEMORY;
-    ParameterizeBatch();
+    ParameterizeNumThreads();
     expect_init_failure = true;
   }
 
@@ -1273,8 +1329,8 @@ TEST_CASE("custom_json_data: handling missing optional is_shape_tensor")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      num_requests, tensors, json_str, expected_results, expect_init_failure,
-      expect_thread_failure);
+      num_requests, num_threads, tensors, json_str, expected_results,
+      expect_init_failure, expect_thread_failure);
 }
 
 TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
@@ -1299,6 +1355,7 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   model_tensor2.name_ = "INPUT2";
 
   size_t num_requests = 4;
+  size_t num_threads = 1;
 
   std::string json_str;
 
@@ -1325,25 +1382,37 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
     }
   }};
 
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+      ParameterizeJson();
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+      ParameterizeJson();
+    }
+  }};
 
   SUBCASE("no batching is ok")
   {
     params.batch_size = 1;
-    ParameterizeJson();
+    ParameterizeNumThreads();
   }
   SUBCASE("batching - no shm")
   {
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::NO_SHARED_MEMORY;
     expect_init_failure = true;
-    ParameterizeJson();
+    ParameterizeNumThreads();
   }
   SUBCASE("batching - shm")
   {
     params.batch_size = 2;
     params.shared_memory_type = SharedMemoryType::SYSTEM_SHARED_MEMORY;
     expect_init_failure = true;
-    ParameterizeJson();
+    ParameterizeNumThreads();
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1352,8 +1421,8 @@ TEST_CASE("custom_json_data: handling invalid is_shape_tensor")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      num_requests, tensors, json_str, expected_results, expect_init_failure,
-      expect_thread_failure);
+      num_requests, num_threads, tensors, json_str, expected_results,
+      expect_init_failure, expect_thread_failure);
 }
 
 
@@ -1386,17 +1455,31 @@ TEST_CASE("custom_json_data: handling of optional tensors")
   ]})"};
 
   size_t num_requests = 4;
+  size_t num_threads = 1;
+
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+    }
+  }};
 
   SUBCASE("normal")
   {
     model_tensor2.is_optional_ = true;
     params.batch_size = 1;
     expected_results = {{1}, {2, 22}, {3}, {1}};
+    ParameterizeNumThreads();
   }
   SUBCASE("tensor not optional -- expect parsing fail")
   {
     model_tensor2.is_optional_ = false;
     expect_init_failure = true;
+    ParameterizeNumThreads();
   }
   SUBCASE("shared memory not supported")
   {
@@ -1405,6 +1488,7 @@ TEST_CASE("custom_json_data: handling of optional tensors")
     // FIXME: TMA-765 - Shared memory mode does not support optional inputs,
     // currently, and will be implemented in the associated story.
     expect_init_failure = true;
+    ParameterizeNumThreads();
   }
   SUBCASE("batching with mismatching data")
   {
@@ -1414,6 +1498,7 @@ TEST_CASE("custom_json_data: handling of optional tensors")
     // must be specified for each batch. You cannot use different
     // set of optional inputs for each individual batch.
     expect_init_failure = true;
+    ParameterizeNumThreads();
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1422,8 +1507,8 @@ TEST_CASE("custom_json_data: handling of optional tensors")
   tensors.push_back(model_tensor2);
 
   trrm.TestCustomData(
-      num_requests, tensors, json_str, expected_results, expect_init_failure,
-      expect_thread_failure);
+      num_requests, num_threads, tensors, json_str, expected_results,
+      expect_init_failure, expect_thread_failure);
 }
 
 TEST_CASE("custom_json_data: multiple streams")
@@ -1459,6 +1544,7 @@ TEST_CASE("custom_json_data: multiple streams")
   ]]})"};
 
   size_t num_requests = 10;
+  size_t num_threads = 1;
 
   const auto& ParameterizeMemory{[&]() {
     SUBCASE("No shared memory")
@@ -1475,6 +1561,19 @@ TEST_CASE("custom_json_data: multiple streams")
     }
   }};
 
+  const auto& ParameterizeNumThreads{[&]() {
+    SUBCASE("1 thread")
+    {
+      num_threads = 1;
+      ParameterizeMemory();
+    }
+    SUBCASE("2 threads")
+    {
+      num_threads = 2;
+      ParameterizeMemory();
+    }
+  }};
+
   SUBCASE("yes sequence")
   {
     // Sequences will randomly pick among all streams
@@ -1484,7 +1583,7 @@ TEST_CASE("custom_json_data: multiple streams")
     expected_results = {{201, 221}, {202, 222}, {201, 221}, {202, 222},
                         {1, 21},    {2, 22},    {3, 23},    {1, 21},
                         {2, 22},    {3, 23}};
-    ParameterizeMemory();
+    ParameterizeNumThreads();
   }
   SUBCASE("no sequence")
   {
@@ -1493,7 +1592,7 @@ TEST_CASE("custom_json_data: multiple streams")
     is_sequence_model = false;
     expected_results = {{1, 21}, {2, 22}, {3, 23}, {1, 21}, {2, 22},
                         {3, 23}, {1, 21}, {2, 22}, {3, 23}, {1, 21}};
-    ParameterizeMemory();
+    ParameterizeNumThreads();
   }
 
   TestRequestRateManager trrm(params, is_sequence_model);
@@ -1501,7 +1600,7 @@ TEST_CASE("custom_json_data: multiple streams")
   tensors.push_back(model_tensor1);
   tensors.push_back(model_tensor2);
 
-  trrm.CustomDataTestSetup(tensors, json_str, expect_init_failure);
+  trrm.CustomDataTestSetup(tensors, json_str, expect_init_failure, num_threads);
 
   if (is_sequence_model) {
     // Force GetNewDataStreamId to return 1 twice and 0 every time after
@@ -1518,7 +1617,8 @@ TEST_CASE("custom_json_data: multiple streams")
         GetNewDataStreamId())
         .Times(0);
   }
-  auto thread_status = trrm.CustomDataTestSendRequests(num_requests);
+  auto thread_status =
+      trrm.CustomDataTestSendRequests(num_requests, num_threads);
   trrm.CustomDataTestCheckResults(
       thread_status, expect_thread_failure, expected_results);
 }
@@ -1702,8 +1802,8 @@ TEST_CASE("Request rate - Shared memory infer input calls")
           mip.mock_model_parser_, trrm.factory_, mip.mock_data_loader_);
 
   std::shared_ptr<ThreadStat> thread_stat{std::make_shared<ThreadStat>()};
-  std::shared_ptr<RequestRateWorker::ThreadConfig> thread_config{
-      std::make_shared<RequestRateWorker::ThreadConfig>(0)};
+  std::shared_ptr<ThreadConfig> thread_config{
+      std::make_shared<ThreadConfig>(0)};
 
   trrm.parser_ = mip.mock_model_parser_;
   trrm.data_loader_ = mip.mock_data_loader_;
@@ -1951,59 +2051,71 @@ TEST_CASE(
 TEST_CASE("request rate manager - Configure threads")
 {
   PerfAnalyzerParameters params{};
-  std::vector<RequestRateWorker::ThreadConfig> expected_config_values;
+  std::vector<ThreadConfig> expected_config_values;
   std::vector<size_t> expected_number_of_sequences_owned_by_thread;
   std::vector<size_t> expected_seq_stat_index_offsets;
+  std::vector<size_t> expected_num_requests;
   bool is_sequence_model = true;
   bool is_decoupled_model = false;
   bool use_mock_infer = true;
+  size_t target_num_requests = 0;
 
   SUBCASE("normal")
   {
     params.max_threads = 4;
     params.num_of_sequences = 4;
+    target_num_requests = 0;
 
     expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
     expected_seq_stat_index_offsets = {0, 1, 2, 3};
+    expected_num_requests = {0, 0, 0, 0};
   }
 
   SUBCASE("max_threads > num_seqs")
   {
     params.max_threads = 10;
     params.num_of_sequences = 4;
+    target_num_requests = 8;
 
     expected_number_of_sequences_owned_by_thread = {1, 1, 1, 1};
     expected_seq_stat_index_offsets = {0, 1, 2, 3};
+    expected_num_requests = {2, 2, 2, 2};
   }
 
   SUBCASE("num_seqs > max_threads")
   {
     params.max_threads = 4;
     params.num_of_sequences = 10;
+    target_num_requests = 20;
 
     expected_number_of_sequences_owned_by_thread = {3, 3, 2, 2};
     expected_seq_stat_index_offsets = {0, 3, 6, 8};
+    expected_num_requests = {5, 5, 5, 5};
   }
 
   SUBCASE("not divisible")
   {
     params.max_threads = 4;
     params.num_of_sequences = 7;
+    target_num_requests = 13;
 
     expected_number_of_sequences_owned_by_thread = {2, 2, 2, 1};
     expected_seq_stat_index_offsets = {0, 2, 4, 6};
+    expected_num_requests = {4, 3, 3, 3};
   }
 
   for (auto i = 0; i < expected_number_of_sequences_owned_by_thread.size();
        i++) {
-    RequestRateWorker::ThreadConfig tc(i);
+    ThreadConfig tc(i);
     tc.num_sequences_ = expected_number_of_sequences_owned_by_thread[i];
     tc.seq_stat_index_offset_ = expected_seq_stat_index_offsets[i];
+    tc.num_requests_ = expected_num_requests[i];
+
     expected_config_values.push_back(tc);
   }
   TestRequestRateManager trrm(
       params, is_sequence_model, is_decoupled_model, use_mock_infer);
-  trrm.TestConfigureThreads(expected_config_values);
+  trrm.TestConfigureThreads(expected_config_values, target_num_requests);
 }
 
 TEST_CASE("request rate manager - Calculate thread ids")

@@ -46,4 +46,11 @@ def get_tokenizer(
     except Exception as e:
         raise GenAIPerfException(e)
 
+    # Disable add_bos_token so that llama tokenizer does not add bos token
+    # (aka. beginning-of-sentence) to the beginning of every response
+    # outputs, increasing the token count by 1 for each output response.
+    # Note: The type is being ignored here, because not all tokenizers have
+    # an add_bos_token variable.
+    tokenizer.add_bos_token = False  # type: ignore
+
     return tokenizer

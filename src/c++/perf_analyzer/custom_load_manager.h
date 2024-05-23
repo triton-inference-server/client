@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -88,8 +88,10 @@ class CustomLoadManager : public RequestRateManager {
 
   /// Initializes the load manager with the provided file containing request
   /// intervals
+  /// \param request_count The number of requests to generate. If 0, then
+  /// there is no limit, and it will generate until told to stop.
   /// \return cb::Error object indicating success or failure.
-  cb::Error InitCustomIntervals();
+  cb::Error InitCustomIntervals(const size_t request_count);
 
   /// Computes the request rate from the time interval file. Fails with an error
   /// if the file is not present or is empty.

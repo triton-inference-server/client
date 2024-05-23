@@ -33,6 +33,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <memory>
 
 #include "shared_memory_handle.h"
 
@@ -132,8 +133,8 @@ GetSharedMemoryHandleInfo(
 int
 SharedMemoryRegionDestroy(void* shm_handle)
 {
-  SharedMemoryHandle* handle =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle);
+  std::unique_ptr<SharedMemoryHandle> handle(
+      reinterpret_cast<SharedMemoryHandle*>(shm_handle));
   void* shm_addr = reinterpret_cast<char*>(handle->base_addr_);
   int status = munmap(shm_addr, handle->byte_size_);
   if (status == -1) {
@@ -144,7 +145,6 @@ SharedMemoryRegionDestroy(void* shm_handle)
   if (shm_fd == -1) {
     return -5;
   }
-
   return 0;
 }
 

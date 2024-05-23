@@ -25,12 +25,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import List
 
-from genai_perf.llm_metrics import Statistics
+import genai_perf.logging as logging
 from genai_perf.plots.box_plot import BoxPlot
 from genai_perf.plots.heat_map import HeatMap
+from genai_perf.plots.plot_config import PlotConfig, PlotType
 from genai_perf.plots.scatter_plot import ScatterPlot
-from genai_perf.utils import scale
+
+logger = logging.getLogger(__name__)
 
 
 class PlotManager:
@@ -38,81 +41,47 @@ class PlotManager:
     Manage details around plots generated
     """
 
-    def __init__(self, stats: Statistics) -> None:
-        self._stats = stats
+    def __init__(self, plot_configs: List[PlotConfig]) -> None:
+        self._plot_configs = plot_configs
 
-    def create_default_plots(self):
-        y_metric = "time_to_first_tokens"
-        y_key = "time_to_first_tokens_scaled"
-        scaled_data = [scale(x, (1 / 1e9)) for x in self._stats.metrics.data[y_metric]]
-        extra_data = {y_key: scaled_data}
-        bp_ttft = BoxPlot(self._stats, extra_data)
-        bp_ttft.create_plot(
-            y_key=y_key,
-            y_metric=y_metric,
-            graph_title="Time to First Token",
-            filename_root="time_to_first_token",
-            x_label="Time to First Token (seconds)",
-        )
+    def _generate_filename(self, title: str) -> str:
+        filename = "_".join(title.lower().split())
+        return filename
 
-        y_metric = "request_latencies"
-        y_key = "request_latencies_scaled"
-        scaled_data = [scale(x, (1 / 1e9)) for x in self._stats.metrics.data[y_metric]]
-        extra_data = {y_key: scaled_data}
-        bp_req_lat = BoxPlot(self._stats, extra_data)
-        bp_req_lat.create_plot(
-            y_key=y_key,
-            y_metric=y_metric,
-            graph_title="Request Latency",
-            filename_root="request_latency",
-            x_label="Request Latency (seconds)",
-        )
+    def generate_plots(self) -> None:
+        for plot_config in self._plot_configs:
+            logger.info(f"Generating '{plot_config.title}' plot")
+            if plot_config.type == PlotType.BOX:
+                bp = BoxPlot(plot_config.data)
+                bp.create_plot(
+                    graph_title=plot_config.title,
+                    x_label=plot_config.x_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
+                    filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
+                )
 
-        hm = HeatMap(self._stats)
-        hm.create_plot(
-            x_key="num_input_tokens",
-            y_key="num_output_tokens",
-            x_metric="input_tokens",
-            y_metric="generated_tokens",
-            graph_title="Distribution of Input Tokens to Generated Tokens",
-            x_label="Number of Input Tokens Per Request",
-            y_label="Number of Generated Tokens Per Request",
-            filename_root="input_tokens_vs_generated_tokens",
-        )
+            elif plot_config.type == PlotType.HEATMAP:
+                hm = HeatMap(plot_config.data)
+                hm.create_plot(
+                    graph_title=plot_config.title,
+                    x_label=plot_config.x_label,
+                    y_label=plot_config.y_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
+                    filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
+                )
 
-        x_metric = "num_input_tokens"
-        y_metric = "time_to_first_tokens"
-        y_key = "time_to_first_tokens_scaled"
-        scaled_data = [scale(x, (1 / 1e9)) for x in self._stats.metrics.data[y_metric]]
-        extra_data = {y_key: scaled_data}
-        sp_ttft_vs_input_tokens = ScatterPlot(self._stats, extra_data)
-        sp_ttft_vs_input_tokens.create_plot(
-            x_key=x_metric,
-            y_key=y_key,
-            x_metric=x_metric,
-            y_metric=y_metric,
-            graph_title="Time to First Token vs Number of Input Tokens",
-            x_label="Number of Input Tokens",
-            y_label="Time to First Token (seconds)",
-            filename_root="ttft_vs_input_tokens",
-        )
-
-        itl_latencies = self._stats.metrics.data["inter_token_latencies"]
-        x_data = []
-        y_data = []
-        for itl_latency_list in itl_latencies:
-            for index, latency in enumerate(itl_latency_list):
-                x_data.append(index + 1)
-                y_data.append(latency / 1e9)
-        x_key = "token_position"
-        y_key = "inter_token_latency"
-        extra_data = {x_key: x_data, y_key: y_data}
-        sp_tot_v_tok_pos = ScatterPlot(self._stats, extra_data)
-        sp_tot_v_tok_pos.create_plot(
-            x_key=x_key,
-            y_key=y_key,
-            graph_title="Token-to-Token Latency vs Output Token Position",
-            x_label="Output Token Position",
-            y_label="Token-to-Token Latency (seconds)",
-            filename_root="token_to_token_vs_output_position",
-        )
+            elif plot_config.type == PlotType.SCATTER:
+                sp = ScatterPlot(plot_config.data)
+                sp.create_plot(
+                    graph_title=plot_config.title,
+                    x_label=plot_config.x_label,
+                    y_label=plot_config.y_label,
+                    width=plot_config.width,
+                    height=plot_config.height,
+                    filename_root=self._generate_filename(plot_config.title),
+                    output_dir=plot_config.output,
+                )

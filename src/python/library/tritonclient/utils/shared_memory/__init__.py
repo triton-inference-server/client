@@ -284,9 +284,6 @@ def destroy_shared_memory_region(shm_handle):
     SharedMemoryException
         If unable to unlink the shared memory region.
     """
-
-    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
-
     shm_fd = c_int()
     offset = c_uint64()
     byte_size = c_uint64()
@@ -304,8 +301,13 @@ def destroy_shared_memory_region(shm_handle):
             )
         )
     )
+    # It is safer to remove the shared memory key from the list before
+    # deleting the shared memory region because if the deletion should
+    # fail, a re-attempt could result in a segfault. Secondarily, if we
+    # fail to delete a region, we should not report it back to the user
+    # as a valid memory region.
     mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
-
+    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
     return
 
 

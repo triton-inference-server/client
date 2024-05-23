@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -76,10 +76,10 @@ CustomLoadManager::CustomLoadManager(
 }
 
 cb::Error
-CustomLoadManager::InitCustomIntervals()
+CustomLoadManager::InitCustomIntervals(const size_t request_count)
 {
   PauseWorkers();
-  ConfigureThreads();
+  ConfigureThreads(request_count);
   auto status = GenerateSchedule();
   ResumeWorkers();
   return status;

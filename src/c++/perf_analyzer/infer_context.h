@@ -86,7 +86,7 @@ class InferContext {
         on_sequence_model_(on_sequence_model),
         using_json_data_(using_json_data), batch_size_(batch_size),
         thread_stat_(thread_stat), data_loader_(data_loader), parser_(parser),
-        factory_(factory), data_step_id_(id), execute_(execute),
+        factory_(factory), data_step_id_(thread_id), execute_(execute),
         infer_data_manager_(infer_data_manager),
         sequence_manager_(sequence_manager)
   {

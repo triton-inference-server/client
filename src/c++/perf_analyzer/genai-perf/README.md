@@ -160,7 +160,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -195,6 +194,83 @@ Request throughput (per sec): 4.44
 
 See [Tutorial](docs/tutorial.md) for additional examples.
 
+</br>
+
+# Visualization
+
+GenAI-Perf can also generate various plots that visualize the performance of the
+current profile run. This is disabled by default but users can easily enable it
+by passing the `--generate-plots` option when running the benchmark:
+
+```bash
+genai-perf \
+  -m gpt2 \
+  --service-kind triton \
+  --backend tensorrtllm \
+  --streaming \
+  --concurrency 1 \
+  --generate-plots
+```
+
+This will generate a [set of default plots](docs/compare.md#example-plots) such as:
+- Time to first token (TTFT) analysis
+- Request latency analysis
+- TTFT vs Number of input tokens
+- Inter token latencies vs Token positions
+- Number of input tokens vs Number of output tokens
+
+
+## Using `compare` Subcommand to Visualize Multiple Runs
+
+The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
+profile runs and visualizing the differences through plots.
+
+### Usage
+Assuming the user possesses two profile export JSON files,
+namely `profile1.json` and `profile2.json`,
+they can execute the `compare` subcommand using the `--files` option:
+
+```bash
+genai-perf compare --files profile1.json profile2.json
+```
+
+Executing the above command will perform the following actions under the
+`compare` directory:
+1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
+metadata for each plot generated during the comparison process.
+2. Automatically generate the [default set of plots](docs/compare.md#example-plots)
+(e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
+
+```
+compare
+├── config.yaml
+├── distribution_of_input_tokens_to_generated_tokens.jpeg
+├── request_latency.jpeg
+├── time_to_first_token.jpeg
+├── time_to_first_token_vs_number_of_input_tokens.jpeg
+├── token-to-token_latency_vs_output_token_position.jpeg
+└── ...
+```
+
+### Customization
+Users have the flexibility to iteratively modify the generated YAML configuration
+file to suit their specific requirements.
+They can make alterations to the plots according to their preferences and execute
+the command with the `--config` option followed by the path to the modified
+configuration file:
+
+```bash
+genai-perf compare --config compare/config.yaml
+```
+
+This command will regenerate the plots based on the updated configuration settings,
+enabling users to refine the visual representation of the comparison results as
+per their needs.
+
+See [Compare documentation](docs/compare.md) for more details.
+
+</br>
+
 # Model Inputs
 
 GenAI-Perf supports model input prompts from either synthetically generated
@@ -204,20 +280,23 @@ inputs, or from the HuggingFace
 specified using the `--input-dataset` CLI option.
 
 When the dataset is synthetic, you can specify the following options:
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
 * `--synthetic-input-tokens-mean <int>`: The mean of number of tokens in the
-  generated prompts when prompt-source is synthetic, >= 1.
+  generated prompts when using synthetic data, >= 1.
 * `--synthetic-input-tokens-stddev <int>`: The standard deviation of number of
-  tokens in the generated prompts when prompt-source is synthetic, >= 0.
+  tokens in the generated prompts when using synthetic data, >= 0.
 * `--random-seed <int>`: The seed used to generate random values, >= 0.
 
 When the dataset is coming from HuggingFace, you can specify the following
 options:
-* `--dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
+* `--input-dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
   benchmarking.
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
+
+When the dataset is coming from a file, you can specify the following
+options:
+* `--input-file <path>`: The input file containing the single prompt to
+  use for benchmarking.
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
@@ -236,6 +315,8 @@ You can optionally set additional model inputs with the following option:
   model with a singular value, such as `stream:true` or `max_tokens:5`. This
   flag can be repeated to supply multiple extra inputs.
 
+</br>
+
 # Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
@@ -249,6 +330,8 @@ the inference server.
 | Number of Output Tokens | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="output_token_throughput_metric">Output Token Throughput</span> | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
 | <span id="request_throughput_metric">Request Throughput</span> | Number of final responses from benchmark divided by benchmark duration | None–one value per benchmark |
+
+</br>
 
 # Command Line Options
 
@@ -268,7 +351,7 @@ The name of the model to benchmark. (default: `None`)
 
 When using the "triton" service-kind, this is the backend of the model. For the
 TRT-LLM backend, you currently must set `exclude_input_in_output` to true in the
-model config to not echo the input tokens in the output. (default: trtllm)
+model config to not echo the input tokens in the output. (default: tensorrtllm)
 
 ##### `--endpoint <str>`
 
@@ -303,8 +386,12 @@ flag for multiple inputs. Inputs should be in an input_name:value format.
 
 ##### `--input-dataset {openorca,cnn_dailymail}`
 
-The HuggingFace dataset to use for prompts when prompt-source is dataset.
+The HuggingFace dataset to use for prompts.
 (default: `openorca`)
+
+##### `--input-file <path>`
+
+The input file containing the single prompt to use for profiling.
 
 ##### `--num-prompts <int>`
 
@@ -329,23 +416,19 @@ tokens. (default: `False`)
 The standard deviation of the number of tokens in each output. This is only used
 when `--output-tokens-mean` is provided. (default: `0`)
 
-##### `--prompt-source {synthetic,dataset}`
-
-The source of the input prompts. (default: `synthetic`)
-
 ##### `--random-seed <int>`
 
 The seed used to generate random values. (default: `0`)
 
 ##### `--synthetic-input-tokens-mean <int>`
 
-The mean of number of tokens in the generated prompts when `--prompt-source` is
-`synthetic`. (default: `550`)
+The mean of number of tokens in the generated prompts when using synthetic
+data. (default: `550`)
 
 ##### `--synthetic-input-tokens-stddev <int>`
 
 The standard deviation of number of tokens in the generated prompts when
-`--prompt-source` is `synthetic`. (default: `0`)
+using synthetic data. (default: `0`)
 
 ## Profiling Options
 
@@ -373,6 +456,10 @@ the recent 3 measurements is within (stability percentage) in terms of both
 infer per second and latency. (default: `999`)
 
 ## Output Options
+
+##### `--generate-plots`
+
+An option to enable the generation of plots. (default: False)
 
 ##### `--profile-export-file <path>`
 

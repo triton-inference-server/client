@@ -24,4 +24,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.0.3dev"
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions for GenAI-Perf.
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python package (GenAI-Perf)
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-22.04"]
+        python-version: ["3.8", "3.10"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        cd src/c++/perf_analyzer/genai-perf/
+        python -m pip install --upgrade pip
+        python -m pip install -e .
+        python -c "import genai_perf; print(genai_perf.__version__)"
+    - name: Test with pytest
+      run: |
+        pip install pytest pytest-timeout pytest-cov psutil
+        cd src/c++/perf_analyzer/genai-perf/tests
+        pytest --doctest-modules --junitxml=junit/test-results.xml --cov=genai_perf --cov-report=xml --cov-report=html --ignore-glob=test_models

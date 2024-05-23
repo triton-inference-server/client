@@ -86,7 +86,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 genai-perf \
   -m gpt2 \
   --service-kind triton \
-  --backend trtllm \
+  --backend tensorrtllm \
   --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
@@ -227,7 +227,9 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:24.03-py3-sdk
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+
+docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
 
 2. Run GenAI-Perf:
@@ -290,7 +292,9 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:24.03-py3-sdk
+export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+
+docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
 
 2. Run GenAI-Perf:

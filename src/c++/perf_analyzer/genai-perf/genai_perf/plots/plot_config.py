@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,4 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.0.3dev"
+from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import Enum, auto
+from pathlib import Path
+from typing import List, Sequence, Union
+
+
+class PlotType(Enum):
+    SCATTER = auto()
+    BOX = auto()
+    HEATMAP = auto()
+
+
+@dataclass
+class ProfileRunData:
+    name: str
+    x_metric: Sequence[Union[int, float]]
+    y_metric: Sequence[Union[int, float]]
+
+
+@dataclass
+class PlotConfig:
+    title: str
+    data: List[ProfileRunData]
+    x_label: str
+    y_label: str
+    width: int
+    height: int
+    type: PlotType
+    output: Path

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,58 +24,48 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
+import json
+from argparse import Namespace
+from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import Dict
 
-import plotly.graph_objects as go
-from genai_perf.plots.base_plot import BasePlot
-from genai_perf.plots.plot_config import ProfileRunData
+from genai_perf.constants import DEFAULT_OUTPUT_DATA_JSON
 
 
-class ScatterPlot(BasePlot):
+class JsonExporter:
     """
-    Generate a scatter plot in jpeg and html format.
+    A class to export the statistics and arg values in a json format.
     """
 
-    def __init__(self, data: List[ProfileRunData]) -> None:
-        super().__init__(data)
+    def __init__(self, stats: Dict, args: Namespace, extra_inputs: Dict):
+        self._stats = stats
+        self._args = dict(vars(args))
+        self._extra_inputs = extra_inputs
+        self._stats_and_args: Dict = {}
+        self._prepare_args_for_export()
+        self._merge_stats_and_args()
 
-    def create_plot(
-        self,
-        graph_title: str = "",
-        x_label: str = "",
-        y_label: str = "",
-        width: int = 700,
-        height: int = 450,
-        filename_root: str = "",
-        output_dir: Path = Path(""),
-    ) -> None:
-        fig = go.Figure()
-        for pd in self._profile_data:
-            fig.add_trace(
-                go.Scatter(
-                    x=pd.x_metric,
-                    y=pd.y_metric,
-                    mode="markers",
-                    name=pd.name,
-                )
-            )
+    def export_to_file(self, output_dir: Path) -> None:
+        filename = output_dir / DEFAULT_OUTPUT_DATA_JSON
+        with open(str(filename), "w") as f:
+            f.write(json.dumps(self._stats_and_args, indent=2))
 
-        fig.update_layout(
-            title={
-                "text": f"{graph_title}",
-                "xanchor": "center",
-                "x": 0.5,
-            },
-            width=width,
-            height=height,
-        )
-        fig.update_xaxes(title_text=f"{x_label}")
-        fig.update_yaxes(title_text=f"{y_label}")
+    def _prepare_args_for_export(self) -> None:
+        del self._args["func"]
+        del self._args["output_format"]
+        self._args["profile_export_file"] = str(self._args["profile_export_file"])
+        self._args["artifact_dir"] = str(self._args["artifact_dir"])
+        for k, v in self._args.items():
+            if isinstance(v, Enum):
+                self._args[k] = v.name.lower()
+        self._add_extra_inputs_to_args()
 
-        # Save dataframe as parquet file
-        df = self._create_dataframe(x_label, y_label)
-        self._generate_parquet(df, output_dir, filename_root)
+    def _add_extra_inputs_to_args(self) -> None:
+        del self._args["extra_inputs"]
+        self._args.update({"extra_inputs": self._extra_inputs})
 
-        self._generate_graph_file(fig, output_dir, filename_root + ".html")
-        self._generate_graph_file(fig, output_dir, filename_root + ".jpeg")
+    def _merge_stats_and_args(self) -> None:
+        self._stats_and_args = dict(self._stats)
+        self._stats_and_args.update({"input_config": self._args})
