@@ -620,6 +620,11 @@ class LLMProfileDataParser(ProfileDataParser):
                 responses = response.strip().split("\n\n")
                 if len(responses) > 1:
                     merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    if (
+                        merged_response["choices"][0]["delta"].get("content", None)
+                        is None
+                    ):
+                        merged_response["choices"][0]["delta"]["content"] = ""
                     for r in responses[1:]:
                         text = self._extract_openai_text_output(r)
                         merged_response["choices"][0]["delta"]["content"] += text
@@ -627,18 +632,14 @@ class LLMProfileDataParser(ProfileDataParser):
                     res_outputs[i] = {"response": json.dumps(merged_response)}
 
             # Remove responses without any content
-            # These are only observed to happen at the start or end
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[0]["response"]
-            ):
-                res_timestamps.pop(0)
-                res_outputs.pop(0)
-
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[-1]["response"]
-            ):
-                res_timestamps.pop()
-                res_outputs.pop()
+            indices_to_remove = []
+            for idx, out in enumerate(res_outputs):
+                if self._is_openai_empty_response(out["response"]):
+                    indices_to_remove.append(idx)
+            indices_to_remove.sort(reverse=True)
+            for index in indices_to_remove:
+                res_timestamps.pop(index)
+                res_outputs.pop(index)
 
     def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
         """Deserialize the request input and return tokenized inputs."""
