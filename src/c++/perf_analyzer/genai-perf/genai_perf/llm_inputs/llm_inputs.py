@@ -17,7 +17,7 @@ import random
 from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
