@@ -248,12 +248,12 @@ LoadManager::InitManagerInputs(
 void
 LoadManager::StopWorkerThreads()
 {
-  early_exit = true;
   // wake up all threads
   wake_signal_.notify_all();
 
   size_t cnt = 0;
   for (auto& thread : threads_) {
+    workers_[cnt]->Exit();
     thread.join();
     if (!threads_stat_[cnt]->status_.IsOk()) {
       std::cerr << "Thread [" << cnt

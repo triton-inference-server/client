@@ -68,6 +68,8 @@ class TestLoadManagerBase {
 
   ~TestLoadManagerBase()
   {
+    // FIXME TKG
+
     // Reset early_exit in case any test sets it to true during execution.
     early_exit = false;
   }

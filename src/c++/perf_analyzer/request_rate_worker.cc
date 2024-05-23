@@ -119,7 +119,7 @@ RequestRateWorker::HandleExecuteOff()
     // Wait if no request should be sent and it is not exiting
     thread_config_->is_paused_ = true;
     std::unique_lock<std::mutex> lock(wake_mutex_);
-    wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+    wake_signal_.wait(lock, [this]() { return exiting_ || execute_; });
   }
 
   thread_config_->is_paused_ = false;
@@ -155,7 +155,7 @@ RequestRateWorker::WaitForFreeCtx()
     std::unique_lock<std::mutex> lk(cb_mtx_);
     thread_stat_->idle_timer.Start();
     cb_cv_.wait(lk, [this] {
-      if (notified_) {
+      if (notified_ || exiting_) {
         notified_ = false;
         return true;
       }

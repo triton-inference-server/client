@@ -63,7 +63,7 @@ InferContext::SendSequenceInferRequest(uint32_t seq_stat_index, bool delayed)
   // This also helps in reporting the realistic latencies.
   std::lock_guard<std::mutex> guard(
       sequence_manager_->GetMutex(seq_stat_index));
-  if (!early_exit && execute_) {
+  if (!exiting_ && execute_) {
     sequence_manager_->SetInferSequenceOptions(
         seq_stat_index, infer_data_.options_);
 
@@ -298,6 +298,10 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
     // Add the request record to thread request records vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+    if (exiting_) {
+      return;
+    }
+
     thread_stat_->cb_status_ = result_ptr->RequestStatus();
     if (thread_stat_->cb_status_.IsOk()) {
       std::string request_id;
