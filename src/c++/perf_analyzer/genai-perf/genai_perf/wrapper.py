@@ -62,15 +62,27 @@ class Profiler:
     @staticmethod
     def build_cmd(args: Namespace, extra_args: Optional[List[str]] = None) -> List[str]:
         skip_args = [
+            "artifact_dir",
+            "backend",
+            "concurrency",
+            "endpoint_type",
+            "extra_inputs",
+            "formatted_model_name",
             "func",
+            "generate_plots",
             "input_dataset",
             "input_file",
-            "prompt_source",
             "input_format",
             "model",
-            "backend",
-            "extra_inputs",
+            "model_selection_strategy",
+            "num_prompts",
             "output_format",
+            "output_tokens_mean_deterministic",
+            "output_tokens_mean",
+            "output_tokens_stddev",
+            "prompt_source",
+            "random_seed",
+            "request_rate",
             # The 'streaming' passed in to this script is to determine if the
             # LLM response should be streaming. That is different than the
             # 'streaming' that PA takes, which means something else (and is
@@ -78,19 +90,8 @@ class Profiler:
             "streaming",
             "synthetic_input_tokens_mean",
             "synthetic_input_tokens_stddev",
-            "output_tokens_mean",
-            "output_tokens_stddev",
-            "output_tokens_mean_deterministic",
-            "num_prompts",
-            "random_seed",
-            "tokenizer",
-            "endpoint_type",
-            "generate_plots",
             "subcommand",
-            "concurrency",
-            "request_rate",
-            "artifact_dir",
-            "formatted_model_name",
+            "tokenizer",
         ]
 
         utils.remove_file(args.profile_export_file)
