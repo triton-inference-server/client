@@ -22,7 +22,12 @@ import pytest
 from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.llm_inputs.llm_inputs import (
+    LlmInputs,
+    ModelSelectionStrategy,
+    OutputFormat,
+    PromptSource,
+)
 from genai_perf.tokenizer import Tokenizer
 
 
@@ -179,6 +184,7 @@ class TestLlmInputs:
             output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
             output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
             output_tokens_deterministic=False,
+            model_name=["test_model_A"],
         )
 
         assert pa_json is not None
@@ -192,6 +198,7 @@ class TestLlmInputs:
             input_type=PromptSource.DATASET,
             dataset_name=CNN_DAILY_MAIL,
             output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -229,6 +236,7 @@ class TestLlmInputs:
             dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -246,6 +254,7 @@ class TestLlmInputs:
             dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -267,6 +276,7 @@ class TestLlmInputs:
             dataset_name=OPEN_ORCA,
             add_model_name=False,
             add_stream=True,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -335,6 +345,7 @@ class TestLlmInputs:
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
             random_seed=5,
+            model_name=["test_model_A"],
         )
 
         inputs_seed5_b = LlmInputs.create_llm_inputs(
@@ -345,6 +356,7 @@ class TestLlmInputs:
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
             random_seed=5,
+            model_name=["test_model_A"],
         )
 
         inputs_seed10 = LlmInputs.create_llm_inputs(
@@ -355,6 +367,7 @@ class TestLlmInputs:
             prompt_tokens_stddev=20,
             num_of_output_prompts=5,
             random_seed=10,
+            model_name=["test_model_A"],
         )
 
         assert inputs_seed5_a == inputs_seed5_b
@@ -371,6 +384,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=True,
             tokenizer=default_tokenizer,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -389,6 +403,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=True,
             tokenizer=default_tokenizer,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -407,6 +422,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=True,
             tokenizer=default_tokenizer,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -425,6 +441,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=True,
             tokenizer=default_tokenizer,
+            model_name=["test_model_A"],
         )
 
         os.remove(DEFAULT_INPUT_DATA_JSON)
@@ -451,6 +468,7 @@ class TestLlmInputs:
             add_stream=True,
             tokenizer=default_tokenizer,
             extra_inputs=request_inputs,
+            model_name=["test_model_A"],
         )
 
         assert len(pa_json["data"]) == 5
@@ -494,6 +512,7 @@ class TestLlmInputs:
             add_model_name=False,
             add_stream=True,
             tokenizer=default_tokenizer,
+            model_name=["test_model_A"],
         )
 
         assert len(pa_json["data"]) == 5
@@ -529,6 +548,7 @@ class TestLlmInputs:
                 output_tokens_mean=output_tokens_mean,
                 output_tokens_stddev=output_tokens_stddev,
                 output_tokens_deterministic=deterministic,
+                model_name=["test_model_A"],
             )
 
             assert os.path.exists(
@@ -587,3 +607,77 @@ class TestLlmInputs:
     def test_get_input_file_without_file_existing(self):
         with pytest.raises(FileNotFoundError):
             LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
+
+    @pytest.mark.parametrize(
+        "seed, model_name_list, index,model_selection_strategy,expected_model",
+        [
+            (
+                1,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                0,
+                ModelSelectionStrategy.ROUND_ROBIN,
+                "test_model_A",
+            ),
+            (
+                1,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                1,
+                ModelSelectionStrategy.ROUND_ROBIN,
+                "test_model_B",
+            ),
+            (
+                1,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                2,
+                ModelSelectionStrategy.ROUND_ROBIN,
+                "test_model_C",
+            ),
+            (
+                1,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                3,
+                ModelSelectionStrategy.ROUND_ROBIN,
+                "test_model_A",
+            ),
+            (
+                100,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                0,
+                ModelSelectionStrategy.RANDOM,
+                "test_model_A",
+            ),
+            (
+                100,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                1,
+                ModelSelectionStrategy.RANDOM,
+                "test_model_A",
+            ),
+            (
+                1652,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                0,
+                ModelSelectionStrategy.RANDOM,
+                "test_model_B",
+            ),
+            (
+                95,
+                ["test_model_A", "test_model_B", "test_model_C"],
+                0,
+                ModelSelectionStrategy.RANDOM,
+                "test_model_C",
+            ),
+        ],
+    )
+    def test_select_model_name(
+        self, seed, model_name_list, index, model_selection_strategy, expected_model
+    ):
+        """
+        Test that model selection strategy controls the model selected
+        """
+        random.seed(seed)
+
+        actual_model = LlmInputs._select_model_name(
+            model_name_list, index, model_selection_strategy
+        )
+        assert actual_model == expected_model
