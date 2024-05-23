@@ -604,7 +604,9 @@ class LlmInputs:
         elif model_selection_strategy == ModelSelectionStrategy.RANDOM:
             return random.choice(model_name)
         else:
-            raise GenAIPerfException("Model Selection incorrectly formatted")
+            raise GenAIPerfException(
+                f"Model selection strategy '{model_selection_strategy}' is unsupported"
+            )
 
     @classmethod
     def _populate_openai_chat_completions_output_json(
