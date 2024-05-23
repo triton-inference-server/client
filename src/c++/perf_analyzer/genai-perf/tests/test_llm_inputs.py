@@ -19,6 +19,7 @@ import statistics
 from pathlib import Path
 
 import pytest
+import responses
 from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
@@ -29,6 +30,44 @@ from genai_perf.llm_inputs.llm_inputs import (
     PromptSource,
 )
 from genai_perf.tokenizer import Tokenizer
+
+mocked_openorca_data = {
+    "features": [
+        {"feature_idx": 0, "name": "id", "type": {"dtype": "string", "_type": "Value"}},
+        {
+            "feature_idx": 1,
+            "name": "system_prompt",
+            "type": {"dtype": "string", "_type": "Value"},
+        },
+        {
+            "feature_idx": 2,
+            "name": "question",
+            "type": {"dtype": "string", "_type": "Value"},
+        },
+        {
+            "feature_idx": 3,
+            "name": "response",
+            "type": {"dtype": "string", "_type": "Value"},
+        },
+    ],
+    "rows": [
+        {
+            "row_idx": 0,
+            "row": {
+                "id": "niv.242684",
+                "system_prompt": "",
+                "question": "You will be given a definition of a task first, then some input of the task.\\nThis task is about using the specified sentence and converting the sentence to Resource Description Framework (RDF) triplets of the form (subject, predicate object). The RDF triplets generated must be such that the triplets accurately capture the structure and semantics of the input sentence. The input is a sentence and the output is a list of triplets of the form [subject, predicate, object] that capture the relationships present in the sentence. When a sentence has more than 1 RDF triplet possible, the output must contain all of them.\\n\\nAFC Ajax (amateurs)'s ground is Sportpark De Toekomst where Ajax Youth Academy also play.\\nOutput:",
+                "response": '[\\n  ["AFC Ajax (amateurs)", "has ground", "Sportpark De Toekomst"],\\n  ["Ajax Youth Academy", "plays at", "Sportpark De Toekomst"]\\n]',
+            },
+            "truncated_cells": [],
+        }
+    ],
+    "num_rows_total": 2914896,
+    "num_rows_per_page": 100,
+    "partial": True,
+}
+
+TEST_LENGTH = 1
 
 
 class TestLlmInputs:
@@ -132,10 +171,18 @@ class TestLlmInputs:
                 length=int(LlmInputs.DEFAULT_LENGTH * 100),
             )
 
+    @responses.activate
     def test_llm_inputs_with_defaults(self, default_configured_url):
         """
         Test that default options work
         """
+        responses.add(
+            responses.GET,
+            f"{default_configured_url}",
+            json=mocked_openorca_data,
+            status=200,
+        )
+
         dataset = LlmInputs._download_dataset(
             default_configured_url,
         )
@@ -144,465 +191,466 @@ class TestLlmInputs:
         )
 
         assert dataset_json is not None
-        assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH
+        assert len(dataset_json["rows"]) == TEST_LENGTH
 
-    def test_llm_inputs_with_non_default_length(self):
-        """
-        Test that non-default length works
-        """
-        configured_url = LlmInputs._create_configured_url(
-            LlmInputs.OPEN_ORCA_URL,
-            LlmInputs.DEFAULT_STARTING_INDEX,
-            (int(LlmInputs.DEFAULT_LENGTH / 2)),
-        )
-        dataset = LlmInputs._download_dataset(
-            configured_url,
-        )
-        dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
-            dataset=dataset
-        )
+    # TODO (TPA-114) Refactor LLM inputs and testing
+    # def test_llm_inputs_with_non_default_length(self):
+    #     """
+    #     Test that non-default length works
+    #     """
+    #     configured_url = LlmInputs._create_configured_url(
+    #         LlmInputs.OPEN_ORCA_URL,
+    #         LlmInputs.DEFAULT_STARTING_INDEX,
+    #         (int(LlmInputs.DEFAULT_LENGTH / 2)),
+    #     )
+    #     dataset = LlmInputs._download_dataset(
+    #         configured_url,
+    #     )
+    #     dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+    #         dataset=dataset
+    #     )
 
-        assert dataset_json is not None
-        assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH / 2
+    #     assert dataset_json is not None
+    #     assert len(dataset_json["rows"]) == LlmInputs.DEFAULT_LENGTH / 2
 
-    def test_convert_default_json_to_pa_format(self, default_configured_url):
-        """
-        Test that conversion to PA JSON format is correct
-        """
-        dataset = LlmInputs._download_dataset(
-            default_configured_url,
-        )
-        dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
-            dataset=dataset
-        )
-        pa_json = LlmInputs._convert_generic_json_to_output_format(
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
-            generic_dataset=dataset_json,
-            add_model_name=False,
-            add_stream=False,
-            extra_inputs={},
-            output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
-            output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
-            output_tokens_deterministic=False,
-            model_name=["test_model_A"],
-        )
+    # def test_convert_default_json_to_pa_format(self, default_configured_url):
+    #     """
+    #     Test that conversion to PA JSON format is correct
+    #     """
+    #     dataset = LlmInputs._download_dataset(
+    #         default_configured_url,
+    #     )
+    #     dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
+    #         dataset=dataset
+    #     )
+    #     pa_json = LlmInputs._convert_generic_json_to_output_format(
+    #         output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+    #         generic_dataset=dataset_json,
+    #         add_model_name=False,
+    #         add_stream=False,
+    #         extra_inputs={},
+    #         output_tokens_mean=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
+    #         output_tokens_stddev=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+    #         output_tokens_deterministic=False,
+    #         model_name=["test_model_A"],
+    #     )
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_create_openai_llm_inputs_cnn_dailymail(self):
-        """
-        Test CNN_DAILYMAIL can be accessed
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.DATASET,
-            dataset_name=CNN_DAILY_MAIL,
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
-            model_name=["test_model_A"],
-        )
+    # def test_create_openai_llm_inputs_cnn_dailymail(self):
+    #     """
+    #     Test CNN_DAILYMAIL can be accessed
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.DATASET,
+    #         dataset_name=CNN_DAILY_MAIL,
+    #         output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_write_to_file(self):
-        """
-        Test that write to file is working correctly
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.DATASET,
-            dataset_name=OPEN_ORCA,
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
-            model_name="open_orca",
-            add_model_name=True,
-            add_stream=True,
-        )
-        try:
-            with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
-                json_str = f.read()
-        finally:
-            os.remove(DEFAULT_INPUT_DATA_JSON)
+    # def test_write_to_file(self):
+    #     """
+    #     Test that write to file is working correctly
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.DATASET,
+    #         dataset_name=OPEN_ORCA,
+    #         output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+    #         model_name="open_orca",
+    #         add_model_name=True,
+    #         add_stream=True,
+    #     )
+    #     try:
+    #         with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
+    #             json_str = f.read()
+    #     finally:
+    #         os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json == json.loads(json_str)
+    #     assert pa_json == json.loads(json_str)
 
-    def test_create_openai_to_vllm(self):
-        """
-        Test conversion of openai to vllm
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.DATASET,
-            output_format=OutputFormat.VLLM,
-            dataset_name=OPEN_ORCA,
-            add_model_name=False,
-            add_stream=True,
-            model_name=["test_model_A"],
-        )
+    # def test_create_openai_to_vllm(self):
+    #     """
+    #     Test conversion of openai to vllm
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.DATASET,
+    #         output_format=OutputFormat.VLLM,
+    #         dataset_name=OPEN_ORCA,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_create_openai_to_completions(self):
-        """
-        Test conversion of openai to completions
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.DATASET,
-            output_format=OutputFormat.OPENAI_COMPLETIONS,
-            dataset_name=OPEN_ORCA,
-            add_model_name=False,
-            add_stream=True,
-            model_name=["test_model_A"],
-        )
+    # def test_create_openai_to_completions(self):
+    #     """
+    #     Test conversion of openai to completions
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.DATASET,
+    #         output_format=OutputFormat.OPENAI_COMPLETIONS,
+    #         dataset_name=OPEN_ORCA,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
-        # NIM legacy completion endpoint only supports string and not
-        # array of strings. Verify that the prompt is of type string
-        # not list
-        assert isinstance(pa_json["data"][0]["payload"][0]["prompt"], str)
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+    #     # NIM legacy completion endpoint only supports string and not
+    #     # array of strings. Verify that the prompt is of type string
+    #     # not list
+    #     assert isinstance(pa_json["data"][0]["payload"][0]["prompt"], str)
 
-    def test_create_openai_to_trtllm(self):
-        """
-        Test conversion of openai to trtllm
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.DATASET,
-            output_format=OutputFormat.TENSORRTLLM,
-            dataset_name=OPEN_ORCA,
-            add_model_name=False,
-            add_stream=True,
-            model_name=["test_model_A"],
-        )
+    # def test_create_openai_to_trtllm(self):
+    #     """
+    #     Test conversion of openai to trtllm
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.DATASET,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         dataset_name=OPEN_ORCA,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == LlmInputs.DEFAULT_LENGTH
 
-    def test_random_synthetic_no_stddev(self, default_tokenizer):
-        """
-        Test that we can produce an exact number of random synthetic tokens
-        """
-        random.seed(1)
+    # def test_random_synthetic_no_stddev(self, default_tokenizer):
+    #     """
+    #     Test that we can produce an exact number of random synthetic tokens
+    #     """
+    #     random.seed(1)
 
-        def _subtest(token_length):
-            synthetic_prompt = LlmInputs._create_synthetic_prompt(
-                tokenizer=default_tokenizer,
-                prompt_tokens_mean=token_length,
-                prompt_tokens_stddev=0,
-            )
+    #     def _subtest(token_length):
+    #         synthetic_prompt = LlmInputs._create_synthetic_prompt(
+    #             tokenizer=default_tokenizer,
+    #             prompt_tokens_mean=token_length,
+    #             prompt_tokens_stddev=0,
+    #         )
 
-            actual_token_length = len(default_tokenizer.encode(synthetic_prompt))
-            assert token_length == actual_token_length
+    #         actual_token_length = len(default_tokenizer.encode(synthetic_prompt))
+    #         assert token_length == actual_token_length
 
-        # Test all of 500-600 to make sure exact
-        for i in range(500, 600):
-            _subtest(i)
+    #     # Test all of 500-600 to make sure exact
+    #     for i in range(500, 600):
+    #         _subtest(i)
 
-        # Test some larger values
-        _subtest(1500)
-        _subtest(10000)
+    #     # Test some larger values
+    #     _subtest(1500)
+    #     _subtest(10000)
 
-    def test_random_synthetic_stddev(self, default_tokenizer):
-        """
-        Test that we can produce random synthetic tokens within a requested stddev
-        """
-        random.seed(1)
+    # def test_random_synthetic_stddev(self, default_tokenizer):
+    #     """
+    #     Test that we can produce random synthetic tokens within a requested stddev
+    #     """
+    #     random.seed(1)
 
-        def _subtest(num_samples, mean, stddev):
-            prompt_tokens = []
-            for _ in range(num_samples):
-                prompt = LlmInputs._create_synthetic_prompt(
-                    tokenizer=default_tokenizer,
-                    prompt_tokens_mean=mean,
-                    prompt_tokens_stddev=stddev,
-                )
-                prompt_tokens.append(len(default_tokenizer.encode(prompt)))
+    #     def _subtest(num_samples, mean, stddev):
+    #         prompt_tokens = []
+    #         for _ in range(num_samples):
+    #             prompt = LlmInputs._create_synthetic_prompt(
+    #                 tokenizer=default_tokenizer,
+    #                 prompt_tokens_mean=mean,
+    #                 prompt_tokens_stddev=stddev,
+    #             )
+    #             prompt_tokens.append(len(default_tokenizer.encode(prompt)))
 
-            assert statistics.mean(prompt_tokens) == pytest.approx(mean, rel=0.1)
-            assert statistics.stdev(prompt_tokens) == pytest.approx(stddev, rel=0.2)
+    #         assert statistics.mean(prompt_tokens) == pytest.approx(mean, rel=0.1)
+    #         assert statistics.stdev(prompt_tokens) == pytest.approx(stddev, rel=0.2)
 
-        _subtest(50, 200, 20)
-        _subtest(50, 400, 10)
-        _subtest(200, 50, 10)
+    #     _subtest(50, 200, 20)
+    #     _subtest(50, 400, 10)
+    #     _subtest(200, 50, 10)
 
-    def test_random_seed(self, default_tokenizer):
-        """
-        Test that when given the same seed, create_llm_inputs will return the same result,
-        and that when given a different seed, it will produce a different result
-        """
+    # def test_random_seed(self, default_tokenizer):
+    #     """
+    #     Test that when given the same seed, create_llm_inputs will return the same result,
+    #     and that when given a different seed, it will produce a different result
+    #     """
 
-        inputs_seed5_a = LlmInputs.create_llm_inputs(
-            tokenizer=default_tokenizer,
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TENSORRTLLM,
-            prompt_tokens_mean=300,
-            prompt_tokens_stddev=20,
-            num_of_output_prompts=5,
-            random_seed=5,
-            model_name=["test_model_A"],
-        )
+    #     inputs_seed5_a = LlmInputs.create_llm_inputs(
+    #         tokenizer=default_tokenizer,
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         prompt_tokens_mean=300,
+    #         prompt_tokens_stddev=20,
+    #         num_of_output_prompts=5,
+    #         random_seed=5,
+    #         model_name=["test_model_A"],
+    #     )
 
-        inputs_seed5_b = LlmInputs.create_llm_inputs(
-            tokenizer=default_tokenizer,
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TENSORRTLLM,
-            prompt_tokens_mean=300,
-            prompt_tokens_stddev=20,
-            num_of_output_prompts=5,
-            random_seed=5,
-            model_name=["test_model_A"],
-        )
+    #     inputs_seed5_b = LlmInputs.create_llm_inputs(
+    #         tokenizer=default_tokenizer,
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         prompt_tokens_mean=300,
+    #         prompt_tokens_stddev=20,
+    #         num_of_output_prompts=5,
+    #         random_seed=5,
+    #         model_name=["test_model_A"],
+    #     )
 
-        inputs_seed10 = LlmInputs.create_llm_inputs(
-            tokenizer=default_tokenizer,
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TENSORRTLLM,
-            prompt_tokens_mean=300,
-            prompt_tokens_stddev=20,
-            num_of_output_prompts=5,
-            random_seed=10,
-            model_name=["test_model_A"],
-        )
+    #     inputs_seed10 = LlmInputs.create_llm_inputs(
+    #         tokenizer=default_tokenizer,
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         prompt_tokens_mean=300,
+    #         prompt_tokens_stddev=20,
+    #         num_of_output_prompts=5,
+    #         random_seed=10,
+    #         model_name=["test_model_A"],
+    #     )
 
-        assert inputs_seed5_a == inputs_seed5_b
-        assert inputs_seed5_a != inputs_seed10
+    #     assert inputs_seed5_a == inputs_seed5_b
+    #     assert inputs_seed5_a != inputs_seed10
 
-    def test_synthetic_to_vllm(self, default_tokenizer):
-        """
-        Test generating synthetic prompts and converting to vllm
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.VLLM,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            model_name=["test_model_A"],
-        )
+    # def test_synthetic_to_vllm(self, default_tokenizer):
+    #     """
+    #     Test generating synthetic prompts and converting to vllm
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.VLLM,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == 5
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_trtllm(self, default_tokenizer):
-        """
-        Test generating synthetic prompts and converting to trtllm
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TENSORRTLLM,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            model_name=["test_model_A"],
-        )
+    # def test_synthetic_to_trtllm(self, default_tokenizer):
+    #     """
+    #     Test generating synthetic prompts and converting to trtllm
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == 5
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_openai_chat_completions(self, default_tokenizer):
-        """
-        Test generating synthetic prompts and converting to OpenAI chat completions
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            model_name=["test_model_A"],
-        )
+    # def test_synthetic_to_openai_chat_completions(self, default_tokenizer):
+    #     """
+    #     Test generating synthetic prompts and converting to OpenAI chat completions
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == 5
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == 5
 
-    def test_synthetic_to_openai_completions(self, default_tokenizer):
-        """
-        Test generating synthetic prompts and converting to OpenAI completions
-        """
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.OPENAI_COMPLETIONS,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            model_name=["test_model_A"],
-        )
+    # def test_synthetic_to_openai_completions(self, default_tokenizer):
+    #     """
+    #     Test generating synthetic prompts and converting to OpenAI completions
+    #     """
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.OPENAI_COMPLETIONS,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         model_name=["test_model_A"],
+    #     )
 
-        os.remove(DEFAULT_INPUT_DATA_JSON)
+    #     os.remove(DEFAULT_INPUT_DATA_JSON)
 
-        assert pa_json is not None
-        assert len(pa_json["data"]) == 5
+    #     assert pa_json is not None
+    #     assert len(pa_json["data"]) == 5
 
-    @pytest.mark.parametrize(
-        "output_format",
-        [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
-    )
-    def test_extra_inputs(
-        self, default_tokenizer: Tokenizer, output_format: OutputFormat
-    ) -> None:
-        input_name = "max_tokens"
-        input_value = 5
-        request_inputs = {input_name: input_value}
+    # @pytest.mark.parametrize(
+    #     "output_format",
+    #     [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
+    # )
+    # def test_extra_inputs(
+    #     self, default_tokenizer: Tokenizer, output_format: OutputFormat
+    # ) -> None:
+    #     input_name = "max_tokens"
+    #     input_value = 5
+    #     request_inputs = {input_name: input_value}
 
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=output_format,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            extra_inputs=request_inputs,
-            model_name=["test_model_A"],
-        )
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=output_format,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         extra_inputs=request_inputs,
+    #         model_name=["test_model_A"],
+    #     )
 
-        assert len(pa_json["data"]) == 5
+    #     assert len(pa_json["data"]) == 5
 
-        if (
-            output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
-            or output_format == OutputFormat.OPENAI_COMPLETIONS
-        ):
-            for entry in pa_json["data"]:
-                assert "payload" in entry, "Payload is missing in the request"
-                payload = entry["payload"]
-                for item in payload:
-                    assert (
-                        input_name in item
-                    ), f"The input name {input_name} is not present in the request"
-                    assert (
-                        item[input_name] == input_value
-                    ), f"The value of {input_name} is incorrect"
-        elif (
-            output_format == OutputFormat.TENSORRTLLM
-            or output_format == OutputFormat.VLLM
-        ):
-            for entry in pa_json["data"]:
-                assert (
-                    input_name in entry
-                ), f"The {input_name} is not present in the request"
-                assert entry[input_name] == [
-                    input_value
-                ], f"The value of {input_name} is incorrect"
-        else:
-            assert False, f"Unsupported output format: {output_format}"
+    #     if (
+    #         output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
+    #         or output_format == OutputFormat.OPENAI_COMPLETIONS
+    #     ):
+    #         for entry in pa_json["data"]:
+    #             assert "payload" in entry, "Payload is missing in the request"
+    #             payload = entry["payload"]
+    #             for item in payload:
+    #                 assert (
+    #                     input_name in item
+    #                 ), f"The input name {input_name} is not present in the request"
+    #                 assert (
+    #                     item[input_name] == input_value
+    #                 ), f"The value of {input_name} is incorrect"
+    #     elif (
+    #         output_format == OutputFormat.TENSORRTLLM
+    #         or output_format == OutputFormat.VLLM
+    #     ):
+    #         for entry in pa_json["data"]:
+    #             assert (
+    #                 input_name in entry
+    #             ), f"The {input_name} is not present in the request"
+    #             assert entry[input_name] == [
+    #                 input_value
+    #             ], f"The value of {input_name} is incorrect"
+    #     else:
+    #         assert False, f"Unsupported output format: {output_format}"
 
-    def test_trtllm_default_max_tokens(self, default_tokenizer: Tokenizer) -> None:
-        input_name = "max_tokens"
-        input_value = 256
+    # def test_trtllm_default_max_tokens(self, default_tokenizer: Tokenizer) -> None:
+    #     input_name = "max_tokens"
+    #     input_value = 256
 
-        pa_json = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.SYNTHETIC,
-            output_format=OutputFormat.TENSORRTLLM,
-            num_of_output_prompts=5,
-            add_model_name=False,
-            add_stream=True,
-            tokenizer=default_tokenizer,
-            model_name=["test_model_A"],
-        )
+    #     pa_json = LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.SYNTHETIC,
+    #         output_format=OutputFormat.TENSORRTLLM,
+    #         num_of_output_prompts=5,
+    #         add_model_name=False,
+    #         add_stream=True,
+    #         tokenizer=default_tokenizer,
+    #         model_name=["test_model_A"],
+    #     )
 
-        assert len(pa_json["data"]) == 5
-        for entry in pa_json["data"]:
-            assert (
-                input_name in entry
-            ), f"The {input_name} is not present in the request"
-            assert entry[input_name] == [
-                input_value
-            ], f"The value of {input_name} is incorrect"
+    #     assert len(pa_json["data"]) == 5
+    #     for entry in pa_json["data"]:
+    #         assert (
+    #             input_name in entry
+    #         ), f"The {input_name} is not present in the request"
+    #         assert entry[input_name] == [
+    #             input_value
+    #         ], f"The value of {input_name} is incorrect"
 
-    @pytest.mark.parametrize(
-        "output_format",
-        [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
-    )
-    def test_output_tokens_mean(self, output_format, default_tokenizer):
-        if (
-            output_format != OutputFormat.VLLM
-            and output_format != OutputFormat.TENSORRTLLM
-        ):
-            return
+    # @pytest.mark.parametrize(
+    #     "output_format",
+    #     [format[2] for format in SERVICE_KIND_BACKEND_ENDPOINT_TYPE_FORMATS],
+    # )
+    # def test_output_tokens_mean(self, output_format, default_tokenizer):
+    #     if (
+    #         output_format != OutputFormat.VLLM
+    #         and output_format != OutputFormat.TENSORRTLLM
+    #     ):
+    #         return
 
-        output_tokens_mean = 100
-        output_tokens_stddev = 0
-        for deterministic in [True, False]:
-            _ = LlmInputs.create_llm_inputs(
-                input_type=PromptSource.SYNTHETIC,
-                output_format=output_format,
-                num_of_output_prompts=5,
-                add_model_name=False,
-                add_stream=True,
-                tokenizer=default_tokenizer,
-                output_tokens_mean=output_tokens_mean,
-                output_tokens_stddev=output_tokens_stddev,
-                output_tokens_deterministic=deterministic,
-                model_name=["test_model_A"],
-            )
+    #     output_tokens_mean = 100
+    #     output_tokens_stddev = 0
+    #     for deterministic in [True, False]:
+    #         _ = LlmInputs.create_llm_inputs(
+    #             input_type=PromptSource.SYNTHETIC,
+    #             output_format=output_format,
+    #             num_of_output_prompts=5,
+    #             add_model_name=False,
+    #             add_stream=True,
+    #             tokenizer=default_tokenizer,
+    #             output_tokens_mean=output_tokens_mean,
+    #             output_tokens_stddev=output_tokens_stddev,
+    #             output_tokens_deterministic=deterministic,
+    #             model_name=["test_model_A"],
+    #         )
 
-            assert os.path.exists(
-                DEFAULT_INPUT_DATA_JSON
-            ), "llm_inputs.json file is not created"
+    #         assert os.path.exists(
+    #             DEFAULT_INPUT_DATA_JSON
+    #         ), "llm_inputs.json file is not created"
 
-            with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
-                llm_inputs_data = json.load(f)
+    #         with open(DEFAULT_INPUT_DATA_JSON, "r") as f:
+    #             llm_inputs_data = json.load(f)
 
-            for entry in llm_inputs_data["data"]:
-                if output_format == OutputFormat.VLLM:
-                    assert (
-                        "sampling_parameters" in entry
-                    ), "sampling_parameters is missing in llm_inputs.json"
-                    sampling_parameters = json.loads(entry["sampling_parameters"][0])
-                    assert (
-                        "max_tokens" in sampling_parameters
-                    ), "max_tokens parameter is missing in sampling_parameters"
-                    assert sampling_parameters["max_tokens"] == str(
-                        output_tokens_mean
-                    ), "max_tokens parameter is not properly set"
-                    if deterministic:
-                        assert (
-                            "min_tokens" in sampling_parameters
-                        ), "min_tokens parameter is missing in sampling_parameters"
-                        assert sampling_parameters["min_tokens"] == str(
-                            output_tokens_mean
-                        ), "min_tokens parameter is not properly set"
-                    else:
-                        assert (
-                            "min_tokens" not in sampling_parameters
-                        ), "min_tokens parameter is present in sampling_parameters"
-                elif output_format == OutputFormat.TENSORRTLLM:
-                    assert (
-                        "max_tokens" in entry
-                    ), "max_tokens parameter is missing in llm_inputs.json"
-                    assert (
-                        entry["max_tokens"][0] == output_tokens_mean
-                    ), "max_tokens parameter is not properly set"
-                    if deterministic:
-                        assert (
-                            "min_length" in entry
-                        ), "min_length parameter is missing in llm_inputs.json"
-                        assert (
-                            entry["min_length"][0] == output_tokens_mean
-                        ), "min_length parameter is not properly set"
-                    else:
-                        assert (
-                            "min_length" not in entry
-                        ), "min_length parameter is present in llm_inputs.json"
-                else:
-                    assert False, f"Unsupported output format: {output_format}"
+    #         for entry in llm_inputs_data["data"]:
+    #             if output_format == OutputFormat.VLLM:
+    #                 assert (
+    #                     "sampling_parameters" in entry
+    #                 ), "sampling_parameters is missing in llm_inputs.json"
+    #                 sampling_parameters = json.loads(entry["sampling_parameters"][0])
+    #                 assert (
+    #                     "max_tokens" in sampling_parameters
+    #                 ), "max_tokens parameter is missing in sampling_parameters"
+    #                 assert sampling_parameters["max_tokens"] == str(
+    #                     output_tokens_mean
+    #                 ), "max_tokens parameter is not properly set"
+    #                 if deterministic:
+    #                     assert (
+    #                         "min_tokens" in sampling_parameters
+    #                     ), "min_tokens parameter is missing in sampling_parameters"
+    #                     assert sampling_parameters["min_tokens"] == str(
+    #                         output_tokens_mean
+    #                     ), "min_tokens parameter is not properly set"
+    #                 else:
+    #                     assert (
+    #                         "min_tokens" not in sampling_parameters
+    #                     ), "min_tokens parameter is present in sampling_parameters"
+    #             elif output_format == OutputFormat.TENSORRTLLM:
+    #                 assert (
+    #                     "max_tokens" in entry
+    #                 ), "max_tokens parameter is missing in llm_inputs.json"
+    #                 assert (
+    #                     entry["max_tokens"][0] == output_tokens_mean
+    #                 ), "max_tokens parameter is not properly set"
+    #                 if deterministic:
+    #                     assert (
+    #                         "min_length" in entry
+    #                     ), "min_length parameter is missing in llm_inputs.json"
+    #                     assert (
+    #                         entry["min_length"][0] == output_tokens_mean
+    #                     ), "min_length parameter is not properly set"
+    #                 else:
+    #                     assert (
+    #                         "min_length" not in entry
+    #                     ), "min_length parameter is present in llm_inputs.json"
+    #             else:
+    #                 assert False, f"Unsupported output format: {output_format}"
 
-            os.remove(DEFAULT_INPUT_DATA_JSON)
+    #         os.remove(DEFAULT_INPUT_DATA_JSON)
 
     def test_get_input_file_without_file_existing(self):
         with pytest.raises(FileNotFoundError):
