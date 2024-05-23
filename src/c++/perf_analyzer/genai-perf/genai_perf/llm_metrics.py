@@ -28,6 +28,7 @@
 
 import csv
 import json
+from collections import defaultdict
 from enum import Enum, auto
 from itertools import tee
 from pathlib import Path
@@ -161,14 +162,17 @@ class Statistics:
     def __init__(self, metrics: Metrics):
         # iterate through Metrics to calculate statistics and set attributes
         self._metrics = metrics
+        self._stats_dict: Dict = defaultdict(dict)
         for attr, data in metrics.data.items():
             attr = metrics.get_base_name(attr)
+            self._add_units(attr)
             data = self._preprocess_data(data, attr)
             if data:
                 self._calculate_mean(data, attr)
-                self._calculate_percentiles(data, attr)
-                self._calculate_minmax(data, attr)
-                self._calculate_std(data, attr)
+                if not self._is_throughput_field(attr):
+                    self._calculate_percentiles(data, attr)
+                    self._calculate_minmax(data, attr)
+                    self._calculate_std(data, attr)
 
     def _preprocess_data(self, data: List, attr: str) -> List[Union[int, float]]:
         new_data = []
@@ -182,11 +186,18 @@ class Statistics:
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
+        self._stats_dict[attr]["avg"] = float(avg)
         setattr(self, "avg_" + attr, avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
+        self._stats_dict[attr]["p99"] = float(p99)
+        self._stats_dict[attr]["p95"] = float(p95)
+        self._stats_dict[attr]["p90"] = float(p90)
+        self._stats_dict[attr]["p75"] = float(p75)
+        self._stats_dict[attr]["p50"] = float(p50)
+        self._stats_dict[attr]["p25"] = float(p25)
         setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
         setattr(self, "p75_" + attr, p75)
@@ -196,12 +207,25 @@ class Statistics:
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
+        self._stats_dict[attr]["max"] = float(max)
+        self._stats_dict[attr]["min"] = float(min)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
+        self._stats_dict[attr]["std"] = float(std)
         setattr(self, "std_" + attr, std)
+
+    def _add_units(self, key) -> None:
+        if self._is_time_field(key):
+            self._stats_dict[key]["unit"] = "ns"
+        if key == "request_throughput":
+            self._stats_dict[key]["unit"] = "requests/sec"
+        if key.startswith("output_token_throughput"):
+            self._stats_dict[key]["unit"] = "tokens/sec"
+        if key == "num_input_token" or key == "num_output_token":
+            self._stats_dict[key]["unit"] = "tokens"
 
     def __repr__(self) -> str:
         attr_strs = []
@@ -219,6 +243,10 @@ class Statistics:
     def metrics(self) -> Metrics:
         """Return the underlying metrics used to calculate the statistics."""
         return self._metrics
+
+    @property
+    def stats_dict(self) -> Dict:
+        return self._stats_dict
 
     def _is_throughput_field(self, field: str) -> bool:
         return field in Metrics.throughput_fields
@@ -592,6 +620,11 @@ class LLMProfileDataParser(ProfileDataParser):
                 responses = response.strip().split("\n\n")
                 if len(responses) > 1:
                     merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    if (
+                        merged_response["choices"][0]["delta"].get("content", None)
+                        is None
+                    ):
+                        merged_response["choices"][0]["delta"]["content"] = ""
                     for r in responses[1:]:
                         text = self._extract_openai_text_output(r)
                         merged_response["choices"][0]["delta"]["content"] += text
@@ -599,18 +632,14 @@ class LLMProfileDataParser(ProfileDataParser):
                     res_outputs[i] = {"response": json.dumps(merged_response)}
 
             # Remove responses without any content
-            # These are only observed to happen at the start or end
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[0]["response"]
-            ):
-                res_timestamps.pop(0)
-                res_outputs.pop(0)
-
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[-1]["response"]
-            ):
-                res_timestamps.pop()
-                res_outputs.pop()
+            indices_to_remove = []
+            for idx, out in enumerate(res_outputs):
+                if self._is_openai_empty_response(out["response"]):
+                    indices_to_remove.append(idx)
+            indices_to_remove.sort(reverse=True)
+            for index in indices_to_remove:
+                res_timestamps.pop(index)
+                res_outputs.pop(index)
 
     def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
         """Deserialize the request input and return tokenized inputs."""

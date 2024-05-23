@@ -178,6 +178,7 @@ class TestCLIArguments:
         ],
     )
     def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
+        logging.init_logging()
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
@@ -240,9 +241,10 @@ class TestCLIArguments:
     def test_default_profile_export_filepath(
         self, monkeypatch, arg, expected_path, capsys
     ):
+        logging.init_logging()
         combined_args = ["genai-perf", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
-        args, extra_args = parser.parse_args()
+        args, _ = parser.parse_args()
 
         assert args.artifact_dir == Path(expected_path)
         captured = capsys.readouterr()
@@ -282,15 +284,16 @@ class TestCLIArguments:
         logging.init_logging()
         combined_args = ["genai-perf"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
-        args, extra_args = parser.parse_args()
+        args, _ = parser.parse_args()
 
         assert args.artifact_dir == Path(expected_path)
         captured = capsys.readouterr()
         assert expected_output in captured.out
 
     def test_default_load_level(self, monkeypatch, capsys):
+        logging.init_logging()
         monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
-        args, extra_args = parser.parse_args()
+        args, _ = parser.parse_args()
         assert args.concurrency == 1
         captured = capsys.readouterr()
         assert captured.out == ""
@@ -550,6 +553,7 @@ class TestCLIArguments:
     def test_compare_help_arguments_output_and_exit(
         self, monkeypatch, args, expected_output, capsys
     ):
+        logging.init_logging()
         monkeypatch.setattr("sys.argv", ["genai-perf", "compare"] + args)
 
         with pytest.raises(SystemExit) as excinfo:
