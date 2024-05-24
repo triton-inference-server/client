@@ -42,8 +42,8 @@ assigned to prompts using the `--model-selection-strategy` option:
 
 ```bash
 genai-perf \
--m lora_adapter1 lora_adapter2 lora_adapter3 \
---model-selection-strategy round_robin
+    -m lora_adapter1 lora_adapter2 lora_adapter3 \
+    --model-selection-strategy round_robin
 ```
 
 This setup will cycle through the lora_adapter1, lora_adapter2, and
