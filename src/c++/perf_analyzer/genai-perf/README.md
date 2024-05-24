@@ -345,14 +345,16 @@ Show the help message and exit.
 ##### `-m <list>`
 ##### `--model <list>`
 
-The name of the model to benchmark. (default: `None`)
+The names of the models to benchmark.
+A single model is recommended, unless you are
+[profiling multiple LoRA adapters](docs/lora.md). (default: `None`)
 
 ##### `--model-selection-strategy {round_robin, random}`
 
-When multiple model are specified, this is how a specific model
-should be assigned to a prompt.  round_robin means that ith prompt in the
-list gets assigned to i mod len(models).  random means that assignment is
-uniformly random (default: `round_robin`)
+When multiple models are specified, this is how a specific model
+is assigned to a prompt. Round robin means that each model receives
+a request in order. Random means that assignment is uniformly random
+(default: `round_robin`)
 
 ##### `--backend {tensorrtllm,vllm}`
 
