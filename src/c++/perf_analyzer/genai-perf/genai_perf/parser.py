@@ -37,7 +37,12 @@ from genai_perf.constants import (
     DEFAULT_COMPARE_DIR,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat, PromptSource
+from genai_perf.llm_inputs.llm_inputs import (
+    LlmInputs,
+    ModelSelectionStrategy,
+    OutputFormat,
+    PromptSource,
+)
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
@@ -57,7 +62,21 @@ def _check_model_args(
     """
     if not args.subcommand and not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
+    args = _convert_str_to_enum_entry(
+        args, "model_selection_strategy", ModelSelectionStrategy
+    )
+    _generate_formatted_model_name(args)
     return args
+
+
+def _generate_formatted_model_name(args: argparse.Namespace) -> None:
+    if len(args.model) == 1:
+        args.formatted_model_name = args.model[0]
+    elif len(args.model) == 0:
+        args.model = None
+        args.formatted_model_name = None
+    else:
+        args.formatted_model_name = args.model[0] + "_multi"
 
 
 def _check_compare_args(
@@ -140,15 +159,17 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     """
     if args.artifact_dir == Path(DEFAULT_ARTIFACT_DIR):
         # Preprocess Huggingface model names that include '/' in their model name.
-        if (args.model is not None) and ("/" in args.model):
-            filtered_name = "_".join(args.model.split("/"))
+        if (args.formatted_model_name is not None) and (
+            "/" in args.formatted_model_name
+        ):
+            filtered_name = "_".join(args.formatted_model_name.split("/"))
             logger.info(
-                f"Model name '{args.model}' cannot be used to create artifact "
+                f"Model name '{args.formatted_model_name}' cannot be used to create artifact "
                 f"directory. Instead, '{filtered_name}' will be used."
             )
             name = [f"{filtered_name}"]
         else:
-            name = [f"{args.model}"]
+            name = [f"{args.formatted_model_name}"]
 
         if args.service_kind == "openai":
             name += [f"{args.service_kind}-{args.endpoint_type}"]
@@ -340,9 +361,20 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "-m",
         "--model",
+        nargs="+",
+        default=[],
+        help=f"The name of the model(s) to benchmark.",
+    )
+    endpoint_group.add_argument(
+        "--model-selection-strategy",
         type=str,
-        default=None,
-        help=f"The name of the model to benchmark.",
+        choices=utils.get_enum_names(ModelSelectionStrategy),
+        default="round_robin",
+        required=False,
+        help=f"When multiple model are specified, this is how a specific model "
+        "should be assigned to a prompt.  round_robin means that ith prompt in the "
+        "list gets assigned to i mod len(models).  random means that assignment is "
+        "uniformly random",
     )
 
     endpoint_group.add_argument(

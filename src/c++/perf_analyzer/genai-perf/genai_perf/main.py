@@ -64,6 +64,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         output_format=args.output_format,
         dataset_name=args.input_dataset,
         model_name=args.model,
+        model_selection_strategy=args.model_selection_strategy,
         input_filename=input_filename,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
