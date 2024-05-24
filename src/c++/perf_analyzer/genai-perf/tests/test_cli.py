@@ -29,7 +29,11 @@ from pathlib import Path
 import genai_perf.logging as logging
 import pytest
 from genai_perf import __version__, parser
-from genai_perf.llm_inputs.llm_inputs import OutputFormat, PromptSource
+from genai_perf.llm_inputs.llm_inputs import (
+    ModelSelectionStrategy,
+    OutputFormat,
+    PromptSource,
+)
 
 
 class TestCLIArguments:
@@ -70,6 +74,10 @@ class TestCLIArguments:
     @pytest.mark.parametrize(
         "arg, expected_attributes",
         [
+            (
+                ["--artifact-dir", "test_artifact_dir"],
+                {"artifact_dir": Path("test_artifact_dir")},
+            ),
             (["--concurrency", "3"], {"concurrency": 3}),
             (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
@@ -126,14 +134,12 @@ class TestCLIArguments:
                 {"extra_inputs": ["test_key:5", "another_test_key:6"]},
             ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
+            (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (
-                ["--synthetic-input-tokens-mean", "6"],
-                {"synthetic_input_tokens_mean": 6},
+                ["--model-selection-strategy", "random"],
+                {"model_selection_strategy": ModelSelectionStrategy.RANDOM},
             ),
-            (
-                ["--synthetic-input-tokens-stddev", "7"],
-                {"synthetic_input_tokens_stddev": 7},
-            ),
+            (["--num-prompts", "101"], {"num_prompts": 101}),
             (
                 ["--output-tokens-mean", "6"],
                 {"output_tokens_mean": 6},
@@ -146,9 +152,7 @@ class TestCLIArguments:
                 ["--output-tokens-mean", "6", "--output-tokens-mean-deterministic"],
                 {"output_tokens_mean_deterministic": True},
             ),
-            (["--measurement-interval", "100"], {"measurement_interval": 100}),
             (["-p", "100"], {"measurement_interval": 100}),
-            (["--num-prompts", "101"], {"num_prompts": 101}),
             (
                 ["--profile-export-file", "test.json"],
                 {
@@ -159,22 +163,26 @@ class TestCLIArguments:
             ),
             (["--random-seed", "8"], {"random_seed": 8}),
             (["--request-rate", "9.0"], {"request_rate": 9.0}),
+            (["-s", "99.5"], {"stability_percentage": 99.5}),
             (["--service-kind", "triton"], {"service_kind": "triton"}),
             (
                 ["--service-kind", "openai", "--endpoint-type", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
-            (["-s", "99.5"], {"stability_percentage": 99.5}),
             (["--streaming"], {"streaming": True}),
-            (["--verbose"], {"verbose": True}),
-            (["-v"], {"verbose": True}),
-            (["--url", "test_url"], {"u": "test_url"}),
-            (["-u", "test_url"], {"u": "test_url"}),
             (
-                ["--artifact-dir", "test_artifact_dir"],
-                {"artifact_dir": Path("test_artifact_dir")},
+                ["--synthetic-input-tokens-mean", "6"],
+                {"synthetic_input_tokens_mean": 6},
             ),
+            (
+                ["--synthetic-input-tokens-stddev", "7"],
+                {"synthetic_input_tokens_stddev": 7},
+            ),
+            (["-v"], {"verbose": True}),
+            (["--verbose"], {"verbose": True}),
+            (["-u", "test_url"], {"u": "test_url"}),
+            (["--url", "test_url"], {"u": "test_url"}),
         ],
     )
     def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
@@ -185,6 +193,51 @@ class TestCLIArguments:
 
         # Check that the attributes are set correctly
         for key, value in expected_attributes.items():
+            assert getattr(args, key) == value
+
+        # Check that nothing was printed as a byproduct of parsing the arguments
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    @pytest.mark.parametrize(
+        "models, expected_model_list, formatted_name",
+        [
+            (
+                ["--model", "test_model_A"],
+                {"model": ["test_model_A"]},
+                {"formatted_model_name": "test_model_A"},
+            ),
+            (
+                ["--model", "test_model_A", "test_model_B"],
+                {"model": ["test_model_A", "test_model_B"]},
+                {"formatted_model_name": "test_model_A_multi"},
+            ),
+            (
+                ["--model", "test_model_A", "test_model_B", "test_model_C"],
+                {"model": ["test_model_A", "test_model_B", "test_model_C"]},
+                {"formatted_model_name": "test_model_A_multi"},
+            ),
+            (
+                ["--model", "test_model_A:math", "test_model_B:embedding"],
+                {"model": ["test_model_A:math", "test_model_B:embedding"]},
+                {"formatted_model_name": "test_model_A:math_multi"},
+            ),
+        ],
+    )
+    def test_multiple_model_args(
+        self, monkeypatch, models, expected_model_list, formatted_name, capsys
+    ):
+        logging.init_logging()
+        combined_args = ["genai-perf"] + models
+        monkeypatch.setattr("sys.argv", combined_args)
+        args, _ = parser.parse_args()
+
+        # Check that models are handled correctly
+        for key, value in expected_model_list.items():
+            assert getattr(args, key) == value
+
+        # Check that the formatted_model_name is correctly generated
+        for key, value in formatted_name.items():
             assert getattr(args, key) == value
 
         # Check that nothing was printed as a byproduct of parsing the arguments

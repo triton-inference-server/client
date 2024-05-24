@@ -27,6 +27,11 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from requests import Response
 
 
+class ModelSelectionStrategy(Enum):
+    ROUND_ROBIN = auto()
+    RANDOM = auto()
+
+
 class PromptSource(Enum):
     SYNTHETIC = auto()
     DATASET = auto()
@@ -78,7 +83,8 @@ class LlmInputs:
         input_type: PromptSource,
         output_format: OutputFormat,
         dataset_name: str = "",
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
         input_filename: Optional[Path] = Path(""),
         starting_index: int = DEFAULT_STARTING_INDEX,
         length: int = DEFAULT_LENGTH,
@@ -194,6 +200,7 @@ class LlmInputs:
             output_tokens_stddev,
             output_tokens_deterministic,
             model_name,
+            model_selection_strategy,
         )
         cls._write_json_to_file(json_in_pa_format, output_dir)
 
@@ -354,7 +361,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
@@ -366,6 +374,7 @@ class LlmInputs:
                 output_tokens_stddev,
                 output_tokens_deterministic,
                 model_name,
+                model_selection_strategy,
             )
         elif output_format == OutputFormat.OPENAI_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_completions_format(
@@ -377,6 +386,7 @@ class LlmInputs:
                 output_tokens_stddev,
                 output_tokens_deterministic,
                 model_name,
+                model_selection_strategy,
             )
         elif output_format == OutputFormat.VLLM:
             output_json = cls._convert_generic_json_to_vllm_format(
@@ -388,6 +398,7 @@ class LlmInputs:
                 output_tokens_stddev,
                 output_tokens_deterministic,
                 model_name,
+                model_selection_strategy,
             )
         elif output_format == OutputFormat.TENSORRTLLM:
             output_json = cls._convert_generic_json_to_trtllm_format(
@@ -399,6 +410,7 @@ class LlmInputs:
                 output_tokens_stddev,
                 output_tokens_deterministic,
                 model_name,
+                model_selection_strategy,
             )
         else:
             raise GenAIPerfException(
@@ -417,7 +429,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         # TODO (TMA-1757): Implement a way to select a role for `text_input`
         (
@@ -436,6 +449,7 @@ class LlmInputs:
             output_tokens_stddev,
             output_tokens_deterministic,
             model_name,
+            model_selection_strategy,
         )
 
         return pa_json
@@ -450,7 +464,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         (
             system_role_headers,
@@ -469,6 +484,7 @@ class LlmInputs:
             output_tokens_stddev,
             output_tokens_deterministic,
             model_name,
+            model_selection_strategy,
         )
 
         return pa_json
@@ -483,7 +499,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         (
             system_role_headers,
@@ -503,6 +520,7 @@ class LlmInputs:
             output_tokens_stddev,
             output_tokens_deterministic,
             model_name,
+            model_selection_strategy,
         )
 
         return pa_json
@@ -517,7 +535,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         (
             system_role_headers,
@@ -537,6 +556,7 @@ class LlmInputs:
             output_tokens_stddev,
             output_tokens_deterministic,
             model_name,
+            model_selection_strategy,
         )
 
         return pa_json
@@ -578,6 +598,17 @@ class LlmInputs:
         return system_role_headers, user_role_headers, text_input_headers
 
     @classmethod
+    def _select_model_name(cls, model_name, index, model_selection_strategy):
+        if model_selection_strategy == ModelSelectionStrategy.ROUND_ROBIN:
+            return model_name[index % len(model_name)]
+        elif model_selection_strategy == ModelSelectionStrategy.RANDOM:
+            return random.choice(model_name)
+        else:
+            raise GenAIPerfException(
+                f"Model selection strategy '{model_selection_strategy}' is unsupported"
+            )
+
+    @classmethod
     def _populate_openai_chat_completions_output_json(
         cls,
         dataset_json: Dict,
@@ -589,11 +620,15 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"messages": []})
 
@@ -613,7 +648,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -631,11 +666,15 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
             pa_json["data"].append({"payload": []})
             pa_json["data"][index]["payload"].append({"prompt": ""})
 
@@ -659,7 +698,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -677,11 +716,15 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json = cls._create_empty_vllm_pa_json()
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
@@ -706,7 +749,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
@@ -724,7 +767,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json = cls._create_empty_trtllm_pa_json()
         default_max_tokens = (
@@ -733,6 +777,9 @@ class LlmInputs:
         )
 
         for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
             pa_json["data"].append({"text_input": [""]})
 
             for header, content in entry.items():
@@ -760,7 +807,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json

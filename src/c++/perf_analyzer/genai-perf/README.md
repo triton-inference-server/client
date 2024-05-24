@@ -342,10 +342,17 @@ Show the help message and exit.
 
 ## Endpoint Options:
 
-##### `-m <str>`
-##### `--model <str>`
+##### `-m <list>`
+##### `--model <list>`
 
 The name of the model to benchmark. (default: `None`)
+
+##### `--model-selection-strategy {round_robin, random}`
+
+When multiple model are specified, this is how a specific model
+should be assigned to a prompt.  round_robin means that ith prompt in the
+list gets assigned to i mod len(models).  random means that assignment is
+uniformly random (default: `round_robin`)
 
 ##### `--backend {tensorrtllm,vllm}`
 

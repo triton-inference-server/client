@@ -58,6 +58,7 @@ dependencies = [
   "fastparquet",
   "pytest-mock",
   "pyyaml",
+  "responses",
 ]
 
 # CLI Entrypoint
