@@ -474,7 +474,7 @@ TEST_CASE("concurrency_free_ctx_ids")
 
   std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
-  early_exit = true;
+  worker->Exit();
   infer_future.get();
 
   // The first sequence should only be called two times, once at the very start,
@@ -590,7 +590,7 @@ TEST_CASE("Concurrency - shared memory infer input calls")
 
   std::this_thread::sleep_for(std::chrono::milliseconds(18));
 
-  early_exit = true;
+  worker->Exit();
   infer_future.get();
 
   const auto& actual_append_raw_calls{tcm.stats_->num_append_raw_calls};
