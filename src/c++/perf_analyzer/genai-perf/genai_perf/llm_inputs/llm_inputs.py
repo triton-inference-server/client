@@ -41,6 +41,7 @@ class PromptSource(Enum):
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    TRITON_GENERATE = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -364,7 +365,18 @@ class LlmInputs:
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
-        if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
+        if output_format == OutputFormat.TRITON_GENERATE:
+            output_json = cls._convert_generic_json_to_generate_format(
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+            )
+        elif output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
                 generic_dataset,
                 add_model_name,
@@ -453,6 +465,43 @@ class LlmInputs:
         )
 
         return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_generate_format(
+            cls,
+            dataset_json: Dict,
+            add_model_name: bool,
+            add_stream: bool,
+            extra_inputs: Dict,
+            output_tokens_mean: int,
+            output_tokens_stddev: int,
+            output_tokens_deterministic: bool,
+            model_name: str = "",
+    ) -> Dict:
+
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = cls._determine_json_feature_roles(dataset_json)
+
+
+        pa_json = cls._populate_triton_generate_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+            add_model_name,
+            add_stream,
+            extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            output_tokens_deterministic,
+            model_name,
+        )
+
+        return pa_json
+
 
     @classmethod
     def _convert_generic_json_to_openai_completions_format(
@@ -652,6 +701,59 @@ class LlmInputs:
             )
 
         return pa_json
+    
+    @classmethod
+    def _populate_triton_generate_output_json(
+            cls,
+            dataset: Dict,
+            system_role_headers: List[str],
+            user_role_headers: List[str],
+            text_input_headers: List[str],
+            add_model_name: bool,
+            add_stream: bool,
+            extra_inputs: Dict,
+            output_tokens_mean: int,
+            output_tokens_stddev: int,
+            output_tokens_deterministic: bool,
+            model_name: str = "",
+    ) -> Dict:
+        number_of_rows = len(dataset["rows"])
+        pa_json = cls._create_empty_trtllm_pa_json()
+
+        default_max_tokens = (
+            "max_tokens" not in extra_inputs
+            or output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN
+        )
+
+        pa_json = {"data":[{"payload":[{}]} for _ in dataset["rows"]]}
+
+        for index, entry in enumerate(dataset["rows"]):
+        
+            for header, content in entry.items():
+                new_text_input = cls._create_new_text_input(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
+                )
+                pa_json["data"][index]["payload"][0]["text_input"] = new_text_input
+                
+            pa_json = cls._add_optional_tags_to_openai_json(
+                pa_json,
+                index,
+                False,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+            )
+
+        return pa_json
+
+            
 
     @classmethod
     def _populate_openai_completions_output_json(

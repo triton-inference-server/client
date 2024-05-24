@@ -127,6 +127,7 @@ class ChatCompletionRequest : public HttpRequest {
   // The timers for infer request.
   triton::client::RequestTimers timer_;
   const std::string request_id_;
+  bool final_response_sent_{false};
 };
 
 class ChatCompletionClient : public HttpClient {
@@ -172,7 +173,7 @@ class ChatCompletionClient : public HttpClient {
       void* contents, size_t size, size_t nmemb, void* userp);
   static size_t ResponseHeaderHandler(
       void* contents, size_t size, size_t nmemb, void* userp);
-
+  
   Error UpdateInferStat(const triton::client::RequestTimers& timer);
   InferStat infer_stat_;
 };

@@ -51,7 +51,7 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions", "generate":"v2/models/{MODEL_NAME}/generate"}
 
 
 def _check_model_args(
@@ -109,11 +109,13 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
             elif args.endpoint_type == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
+            elif args.endpoint_type == "generate":
+                args.output_format = OutputFormat.TRITON_GENERATE
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
             else:
-                args.endpoint = _endpoint_type_map[args.endpoint_type]
+                args.endpoint = _endpoint_type_map[args.endpoint_type].format(MODEL_NAME=args.model)
     elif args.endpoint_type is not None:
         parser.error(
             "The --endpoint-type option should only be used when using the 'openai' service-kind."
@@ -400,7 +402,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions"],
+        choices=["chat", "completions", "generate"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',

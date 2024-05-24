@@ -46,6 +46,7 @@ class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     TRITON = auto()
+    TRITON_GENERATE = auto()
 
 
 class Metrics:
@@ -446,6 +447,8 @@ class ProfileDataParser:
                 self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+            elif "generate" in data["endpoint"]:
+                self._response_format = ResponseFormat.TRITON_GENERATE
             else:
                 # TPA-66: add PA metadata to handle this case
                 # When endpoint field is either empty or custom endpoint, fall
@@ -662,6 +665,8 @@ class LLMProfileDataParser(ProfileDataParser):
             input_text = payload["messages"][0]["content"]
         elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
             input_text = payload["prompt"]
+        elif self._response_format == ResponseFormat.TRITON_GENERATE:
+            input_text = payload["text_input"]
         else:
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
@@ -689,7 +694,10 @@ class LLMProfileDataParser(ProfileDataParser):
         """Tokenize the OpenAI response output texts."""
         output_texts = []
         for output in res_outputs:
-            text = self._extract_openai_text_output(output["response"])
+            if self._response_format == ResponseFormat.TRITON_GENERATE:
+                text = self._extract_generate_text_output(output["response"])
+            else:
+                text = self._extract_openai_text_output(output["response"])
             output_texts.append(text)
         return self._run_tokenizer(output_texts)
 
@@ -701,6 +709,16 @@ class LLMProfileDataParser(ProfileDataParser):
         output_texts = ["!" + txt for txt in output_texts]
         encodings = self._tokenizer(output_texts)
         return [out[1:] for out in encodings.data["input_ids"]]
+
+    def _extract_generate_text_output(self, response: str) -> str:
+
+        response = remove_sse_prefix(response)
+
+        if response == "":
+            return response
+
+        data = json.loads(response)
+        return data["text_output"]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
@@ -731,7 +749,10 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _is_openai_empty_response(self, response: str) -> bool:
         """Returns true if the response is an openai response with no content (or empty content)"""
-        text = self._extract_openai_text_output(response)
+        if self._response_format == ResponseFormat.TRITON_GENERATE:
+            text = self._extract_generate_text_output(response)
+        else:
+            text = self._extract_openai_text_output(response)
         if text:
             return False
         return True
