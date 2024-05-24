@@ -248,12 +248,18 @@ LoadManager::InitManagerInputs(
 void
 LoadManager::StopWorkerThreads()
 {
-  // wake up all threads
-  wake_signal_.notify_all();
+  // FIXME do I need to acquire the lock first?
+  for (auto& worker : workers_) {
+    worker->Exit();
+  }
+
+  {
+    std::unique_lock<std::mutex> lock(wake_mutex_);
+    wake_signal_.notify_all();
+  }
 
   size_t cnt = 0;
   for (auto& thread : threads_) {
-    workers_[cnt]->Exit();
     thread.join();
     if (!threads_stat_[cnt]->status_.IsOk()) {
       std::cerr << "Thread [" << cnt

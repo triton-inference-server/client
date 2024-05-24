@@ -66,6 +66,7 @@ bool
 LoadWorker::HandleExitConditions()
 {
   if (ShouldExit()) {
+    CompleteOngoingSequences();
     return true;
   }
   return false;
