@@ -98,33 +98,25 @@ def _check_conditional_args(
     Check for conditional args and raise an error if they are not set.
     """
 
-    # Endpoint and output format checks
-    if args.service_kind == "openai":
-        if args.endpoint_type is None:
-            parser.error(
-                "The --endpoint-type option is required when using the 'openai' service-kind."
-            )
-        else:
-            if args.endpoint_type == "chat":
-                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-            elif args.endpoint_type == "completions":
-                args.output_format = OutputFormat.OPENAI_COMPLETIONS
-            elif args.endpoint_type == "generate":
-                args.output_format = OutputFormat.TRITON_GENERATE
-
-            if args.endpoint is not None:
-                args.endpoint = args.endpoint.lstrip(" /")
-            else:
-                args.endpoint = _endpoint_type_map[args.endpoint_type].format(MODEL_NAME=args.model)
-    elif args.endpoint_type is not None:
-        parser.error(
-            "The --endpoint-type option should only be used when using the 'openai' service-kind."
-        )
-
-    if args.service_kind == "triton":
+    if args.endpoint_type == "chat":
+        args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "completions":
+        args.output_format = OutputFormat.OPENAI_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "generate":
+        args.output_format = OutputFormat.TRITON_GENERATE
+        args.service_kind = "openai"
+    elif args.endpoint_type == "kserve":
+        args.service_kind = "triton"
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
 
+    if args.endpoint is not None:
+        args.endpoint = args.endpoint.lstrip(" /")
+    else:
+        args.endpoint = _endpoint_type_map[args.endpoint_type].format(MODEL_NAME=args.model)
+   
     # Output token distribution checks
     if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
         if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
@@ -402,23 +394,12 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "generate"],
+        choices=["chat", "completions", "generate", "kserve"],
+        default="kserve",
         required=False,
-        help=f"The endpoint-type to send requests to on the "
-        'server. This is only used with the "openai" service-kind.',
+        help=f"The endpoint-type for requests. Inputs will be formatted according to endpoint-type.",
     )
-
-    endpoint_group.add_argument(
-        "--service-kind",
-        type=str,
-        choices=["triton", "openai"],
-        default="triton",
-        required=False,
-        help="The kind of service perf_analyzer will "
-        'generate load for. In order to use "openai", '
-        "you must specify an api via --endpoint-type.",
-    )
-
+    
     endpoint_group.add_argument(
         "--streaming",
         action="store_true",
