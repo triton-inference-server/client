@@ -183,17 +183,23 @@ HttpClient::SetSSLCurlOptions(CURL* curl_handle)
 void
 HttpClient::Send(CURL* handle, std::unique_ptr<HttpRequest>&& request)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
 
-  auto insert_result = ongoing_async_requests_.emplace(
-      std::make_pair(reinterpret_cast<uintptr_t>(handle), std::move(request)));
-  if (!insert_result.second) {
-    curl_easy_cleanup(handle);
-    throw std::runtime_error(
-        "Failed to insert new asynchronous request context.");
+    auto insert_result = ongoing_async_requests_.emplace(std::make_pair(
+        reinterpret_cast<uintptr_t>(handle), std::move(request)));
+    if (!insert_result.second) {
+      curl_easy_cleanup(handle);
+      throw std::runtime_error(
+          "Failed to insert new asynchronous request context.");
+    }
+    curl_multi_add_handle(multi_handle_, handle);
   }
-  curl_multi_add_handle(multi_handle_, handle);
+
   cv_.notify_all();
+
+  // Wake up the async transfer thread to handle new requests immediately
+  curl_multi_wakeup(multi_handle_);
 }
 
 void
@@ -201,76 +207,78 @@ HttpClient::AsyncTransfer()
 {
   int place_holder = 0;
   CURLMsg* msg = nullptr;
-  do {
+
+  while (!exiting_) {
     std::vector<std::unique_ptr<HttpRequest>> request_list;
 
-    // sleep if no work is available
+    // Lock the mutex to check for work and wait if necessary
     std::unique_lock<std::mutex> lock(mutex_);
     cv_.wait(lock, [this] {
-      if (this->exiting_) {
-        return true;
-      }
-      // wake up if an async request has been generated
-      return !this->ongoing_async_requests_.empty();
+      return this->exiting_ || !this->ongoing_async_requests_.empty();
     });
 
+    if (exiting_) {
+      break;
+    }
+
+    lock.unlock();  // Release the mutex before waiting on network activity
+
+    // Perform any pending transfers
     CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
-    int numfds;
-    if (mc == CURLM_OK) {
-      // Wait for activity. If there are no descriptors in the multi_handle_
-      // then curl_multi_wait will return immediately
-      mc = curl_multi_wait(multi_handle_, NULL, 0, INT_MAX, &numfds);
-      if (mc == CURLM_OK) {
-        while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
-          uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
-          auto itr = ongoing_async_requests_.find(identifier);
-          // This shouldn't happen
-          if (itr == ongoing_async_requests_.end()) {
-            std::cerr
-                << "Unexpected error: received completed request that is not "
-                   "in the list of asynchronous requests"
+    if (mc != CURLM_OK) {
+      std::cerr << "Unexpected error: curl_multi_perform failed. Code:" << mc
                 << std::endl;
-            curl_multi_remove_handle(multi_handle_, msg->easy_handle);
-            curl_easy_cleanup(msg->easy_handle);
-            continue;
-          }
+      continue;
+    }
 
-          uint32_t http_code = 400;
-          if (msg->data.result == CURLE_OK) {
-            curl_easy_getinfo(
-                msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
-          } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-            http_code = 499;
-          }
+    // Wait for activity on the multi_handle_
+    int numfds;
+    mc = curl_multi_poll(multi_handle_, NULL, 0, 1000, &numfds);
+    if (mc != CURLM_OK) {
+      std::cerr << "Unexpected error: curl_multi_poll failed. Code:" << mc
+                << std::endl;
+      continue;
+    }
 
-          request_list.emplace_back(std::move(itr->second));
-          ongoing_async_requests_.erase(itr);
-          curl_multi_remove_handle(multi_handle_, msg->easy_handle);
-          curl_easy_cleanup(msg->easy_handle);
+    lock.lock();  // Re-acquire the mutex before processing responses
+    while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
+      uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
+      auto itr = ongoing_async_requests_.find(identifier);
+      // This shouldn't happen
+      if (itr == ongoing_async_requests_.end()) {
+        std::cerr << "Unexpected error: received completed request that is not "
+                  << "in the list of asynchronous requests" << std::endl;
+        curl_multi_remove_handle(multi_handle_, msg->easy_handle);
+        curl_easy_cleanup(msg->easy_handle);
+        continue;
+      }
 
-          std::unique_ptr<HttpRequest>& async_request = request_list.back();
-          async_request->http_code_ = http_code;
+      uint32_t http_code = 400;
+      if (msg->data.result == CURLE_OK) {
+        curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
+      } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+        http_code = 499;
+      }
 
-          if (msg->msg != CURLMSG_DONE) {
-            // Something wrong happened.
-            std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
-                      << std::endl;
-          }
-        }
-      } else {
-        std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
+      request_list.emplace_back(std::move(itr->second));
+      ongoing_async_requests_.erase(itr);
+      curl_multi_remove_handle(multi_handle_, msg->easy_handle);
+      curl_easy_cleanup(msg->easy_handle);
+
+      std::unique_ptr<HttpRequest>& async_request = request_list.back();
+      async_request->http_code_ = http_code;
+
+      if (msg->msg != CURLMSG_DONE) {
+        std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
                   << std::endl;
       }
-    } else {
-      std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
-                << std::endl;
     }
-    lock.unlock();
+    lock.unlock();  // Release the mutex after processing responses
 
     for (auto& this_request : request_list) {
       this_request->completion_callback_(this_request.get());
     }
-  } while (!exiting_);
+  }
 }
 
 }}}}  // namespace triton::perfanalyzer::clientbackend::openai
