@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -86,38 +84,6 @@ class TestLLMProfileDataParser:
 
         return written_data
 
-    def test_csv_output(self, mock_read_write: pytest.MonkeyPatch) -> None:
-        """
-        Collect LLM metrics from profile export data and confirm correct values are
-        printed in csv.
-        """
-
-        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
-        pd = LLMProfileDataParser(
-            filename=Path("triton_profile_export.json"),
-            tokenizer=tokenizer,
-        )
-        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
-
-        expected_content = [
-            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
-            "Time To First Token (ns),2,2,2,2,2,2,2,2,2\r\n",
-            "Inter Token Latency (ns),2,1,2,2,2,2,2,2,1\r\n",
-            "Request Latency (ns),8,7,9,9,9,9,8,8,8\r\n",
-            "Num Output Token,4,3,6,6,6,6,5,4,4\r\n",
-            "Num Input Token,4,3,4,4,4,4,4,4,3\r\n",
-            "\r\n",
-            "Metric,Value\r\n",
-            "Output Token Throughput (per sec),900000000.00\r\n",
-            "Request Throughput (per sec),200000000.00\r\n",
-        ]
-
-        stat.export_to_csv("profile_export.csv")
-
-        returned_data = mock_read_write
-
-        assert returned_data == expected_content
-
     def test_triton_llm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
         """Collect LLM metrics from profile export data and check values.
 
@@ -154,6 +120,7 @@ class TestLLMProfileDataParser:
         # experiment 1 metrics & statistics
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
         metrics = stat.metrics
+
         assert isinstance(metrics, LLMMetrics)
 
         assert metrics.time_to_first_tokens == [2, 2]
@@ -167,38 +134,38 @@ class TestLLMProfileDataParser:
 
         # Disable Pylance warnings for dynamically set attributes due to Statistics
         # not having strict attributes listed.
-        assert stat.avg_time_to_first_token == 2  # type: ignore
-        assert stat.avg_inter_token_latency == 1.5  # type: ignore
+        assert stat.avg_time_to_first_token == 2e-6  # type: ignore
+        assert stat.avg_inter_token_latency == 1.5e-6  # type: ignore
         assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.mean(ottpr)
         )
         assert stat.avg_num_output_token == 4.5  # type: ignore
         assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        assert stat.p50_time_to_first_token == 2  # type: ignore
-        assert stat.p50_inter_token_latency == 1.5  # type: ignore
+        assert stat.p50_time_to_first_token == 2e-6  # type: ignore
+        assert stat.p50_inter_token_latency == 1.5e-6  # type: ignore
         assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.percentile(ottpr, 50)
         )
         assert stat.p50_num_output_token == 4.5  # type: ignore
         assert stat.p50_num_input_token == 3.5  # type: ignore
 
-        assert stat.min_time_to_first_token == 2  # type: ignore
-        assert stat.min_inter_token_latency == 1  # type: ignore
+        assert stat.min_time_to_first_token == 2e-6  # type: ignore
+        assert stat.min_inter_token_latency == 1e-6  # type: ignore
         min_ottpr = 3 / ns_to_sec(7)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 3  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
-        assert stat.max_time_to_first_token == 2  # type: ignore
-        assert stat.max_inter_token_latency == 2  # type: ignore
+        assert stat.max_time_to_first_token == 2e-6  # type: ignore
+        assert stat.max_inter_token_latency == 2e-6  # type: ignore
         max_ottpr = 6 / ns_to_sec(9)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
 
-        assert stat.std_time_to_first_token == np.std([2, 2])  # type: ignore
-        assert stat.std_inter_token_latency == np.std([2, 1])  # type: ignore
+        assert stat.std_time_to_first_token == np.std([2e-6, 2e-6])  # type: ignore
+        assert stat.std_inter_token_latency == np.std([2e-6, 1e-6])  # type: ignore
         assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.std(ottpr)
         )
@@ -222,38 +189,38 @@ class TestLLMProfileDataParser:
         assert metrics.num_output_tokens == [4, 6]
         assert metrics.num_input_tokens == [3, 4]
 
-        assert stat.avg_time_to_first_token == 2.5  # type: ignore
-        assert stat.avg_inter_token_latency == 2.5  # type: ignore
+        assert stat.avg_time_to_first_token == pytest.approx(2.5e-6)  # type: ignore
+        assert stat.avg_inter_token_latency == pytest.approx(2.5e-6)  # type: ignore
         assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.mean(ottpr)
         )
         assert stat.avg_num_output_token == 5  # type: ignore
         assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        assert stat.p50_time_to_first_token == 2.5  # type: ignore
-        assert stat.p50_inter_token_latency == 2.5  # type: ignore
+        assert stat.p50_time_to_first_token == pytest.approx(2.5e-6)  # type: ignore
+        assert stat.p50_inter_token_latency == pytest.approx(2.5e-6)  # type: ignore
         assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.percentile(ottpr, 50)
         )
         assert stat.p50_num_output_token == 5  # type: ignore
         assert stat.p50_num_input_token == 3.5  # type: ignore
 
-        assert stat.min_time_to_first_token == 2  # type: ignore
-        assert stat.min_inter_token_latency == 1  # type: ignore
+        assert stat.min_time_to_first_token == pytest.approx(2e-6)  # type: ignore
+        assert stat.min_inter_token_latency == pytest.approx(1e-6)  # type: ignore
         min_ottpr = 4 / ns_to_sec(13)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 4  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
-        assert stat.max_time_to_first_token == 3  # type: ignore
-        assert stat.max_inter_token_latency == 4  # type: ignore
+        assert stat.max_time_to_first_token == pytest.approx(3e-6)  # type: ignore
+        assert stat.max_inter_token_latency == pytest.approx(4e-6)  # type: ignore
         max_ottpr = 6 / ns_to_sec(8)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
 
-        assert stat.std_time_to_first_token == np.std([2, 3])  # type: ignore
-        assert stat.std_inter_token_latency == np.std([4, 1])  # type: ignore
+        assert stat.std_time_to_first_token == np.std([2, 3]) * (1e-6)  # type: ignore
+        assert stat.std_inter_token_latency == np.std([4, 1]) * (1e-6)  # type: ignore
         assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.std(ottpr)
         )
@@ -306,38 +273,38 @@ class TestLLMProfileDataParser:
         assert metrics.num_output_tokens == [3, 6]
         assert metrics.num_input_tokens == [3, 4]
 
-        assert stat.avg_time_to_first_token == 4.5  # type: ignore
-        assert stat.avg_inter_token_latency == 3  # type: ignore
+        assert stat.avg_time_to_first_token == pytest.approx(4.5e-6)  # type: ignore
+        assert stat.avg_inter_token_latency == pytest.approx(3e-6)  # type: ignore
         assert stat.avg_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.mean(ottpr)
         )
         assert stat.avg_num_output_token == 4.5  # type: ignore
         assert stat.avg_num_input_token == 3.5  # type: ignore
 
-        assert stat.p50_time_to_first_token == 4.5  # type: ignore
-        assert stat.p50_inter_token_latency == 3  # type: ignore
+        assert stat.p50_time_to_first_token == pytest.approx(4.5e-6)  # type: ignore
+        assert stat.p50_inter_token_latency == pytest.approx(3e-6)  # type: ignore
         assert stat.p50_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.percentile(ottpr, 50)
         )
         assert stat.p50_num_output_token == 4.5  # type: ignore
         assert stat.p50_num_input_token == 3.5  # type: ignore
 
-        assert stat.min_time_to_first_token == 4  # type: ignore
-        assert stat.min_inter_token_latency == 2  # type: ignore
+        assert stat.min_time_to_first_token == pytest.approx(4e-6)  # type: ignore
+        assert stat.min_inter_token_latency == pytest.approx(2e-6)  # type: ignore
         min_ottpr = 3 / ns_to_sec(11)
         assert stat.min_output_token_throughput_per_request == pytest.approx(min_ottpr)  # type: ignore
         assert stat.min_num_output_token == 3  # type: ignore
         assert stat.min_num_input_token == 3  # type: ignore
 
-        assert stat.max_time_to_first_token == 5  # type: ignore
-        assert stat.max_inter_token_latency == 4  # type: ignore
+        assert stat.max_time_to_first_token == pytest.approx(5e-6)  # type: ignore
+        assert stat.max_inter_token_latency == pytest.approx(4e-6)  # type: ignore
         max_ottpr = 6 / ns_to_sec(13)
         assert stat.max_output_token_throughput_per_request == pytest.approx(max_ottpr)  # type: ignore
         assert stat.max_num_output_token == 6  # type: ignore
         assert stat.max_num_input_token == 4  # type: ignore
 
-        assert stat.std_time_to_first_token == np.std([4, 5])  # type: ignore
-        assert stat.std_inter_token_latency == np.std([4, 2])  # type: ignore
+        assert stat.std_time_to_first_token == np.std([4, 5]) * (1e-6)  # type: ignore
+        assert stat.std_inter_token_latency == np.std([4, 2]) * (1e-6)  # type: ignore
         assert stat.std_output_token_throughput_per_request == pytest.approx(  # type: ignore
             np.std(ottpr)
         )

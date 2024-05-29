@@ -24,15 +24,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_HTTP_URL = "localhost:8000"
-DEFAULT_GRPC_URL = "localhost:8001"
+from enum import Enum
+from typing import Any, Dict, cast
+
+from genai_perf.exceptions import GenAIPerfException
+from genai_perf.export_data.console_exporter import ConsoleExporter
+from genai_perf.export_data.csv_exporter import CsvExporter
+from genai_perf.export_data.data_exporter_interface import DataExporterInterface
+from genai_perf.export_data.json_exporter import JsonExporter
 
 
-OPEN_ORCA = "openorca"
-CNN_DAILY_MAIL = "cnn_dailymail"
-DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
+class DataExporterType(str, Enum):
+    JSON = "json_exporter"
+    CSV = "csv_exporter"
+    CONSOLE = "console_exporter"
 
 
-DEFAULT_ARTIFACT_DIR = "artifacts"
-DEFAULT_COMPARE_DIR = "compare"
-DEFAULT_PARQUET_FILE = "all_data"
+DataExporterMapping = {
+    DataExporterType.JSON: JsonExporter,
+    DataExporterType.CSV: CsvExporter,
+    DataExporterType.CONSOLE: ConsoleExporter,
+}
+
+
+class DataExporterFactory:
+    def create_data_exporter(self, config: Dict[str, Any]) -> DataExporterInterface:
+        if config.get("type") is None:
+            raise GenAIPerfException("No exporter type specified")
+        exporter_class = DataExporterMapping[config["type"]]
+        return cast(DataExporterInterface, exporter_class(config))

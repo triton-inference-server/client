@@ -27,6 +27,7 @@
 import json
 
 import genai_perf.parser as parser
+from genai_perf.export_data.data_exporter_factory import DataExporterType
 from genai_perf.export_data.json_exporter import JsonExporter
 
 
@@ -34,7 +35,7 @@ class TestJsonExporter:
     stats = {
         "request_throughput": {"unit": "requests/sec", "avg": "7"},
         "request_latency": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 1,
             "p99": 2,
             "p95": 3,
@@ -47,7 +48,7 @@ class TestJsonExporter:
             "std": 0,
         },
         "time_to_first_token": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 11,
             "p99": 12,
             "p95": 13,
@@ -60,7 +61,7 @@ class TestJsonExporter:
             "std": 10,
         },
         "inter_token_latency": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 21,
             "p99": 22,
             "p95": 23,
@@ -124,7 +125,7 @@ class TestJsonExporter:
           "avg": "7"
           },
           "request_latency": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 1,
               "p99": 2,
               "p95": 3,
@@ -137,7 +138,7 @@ class TestJsonExporter:
               "std": 0
           },
           "time_to_first_token": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 11,
               "p99": 12,
               "p95": 13,
@@ -150,7 +151,7 @@ class TestJsonExporter:
               "std": 10
           },
           "inter_token_latency": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 21,
               "p99": 22,
               "p95": 23,
@@ -258,6 +259,12 @@ class TestJsonExporter:
         ]
         monkeypatch.setattr("sys.argv", cli_cmd)
         args, _ = parser.parse_args()
-        extra_inputs = parser.get_extra_inputs_as_dict(args)
-        json_exporter = JsonExporter(self.stats, args, extra_inputs)
+        config = {
+            "type": DataExporterType.JSON,
+            "stats": self.stats,
+            "args": args,
+            "extra_inputs": parser.get_extra_inputs_as_dict(args),
+            "artifact_dir": args.artifact_dir,
+        }
+        json_exporter = JsonExporter(config)
         assert json_exporter._stats_and_args == json.loads(self.expected_json_output)

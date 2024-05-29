@@ -35,7 +35,7 @@ import genai_perf.logging as logging
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.export_data.json_exporter import JsonExporter
+from genai_perf.export_data.report_output import ReportOutput
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.plots.plot_config_parser import PlotConfigParser
@@ -91,27 +91,10 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
 
 
 def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
-    if args.concurrency:
-        infer_mode = "concurrency"
-        load_level = f"{args.concurrency}"
-    elif args.request_rate:
-        infer_mode = "request_rate"
-        load_level = f"{args.request_rate}"
-    else:
-        raise GenAIPerfException("No valid infer mode specified")
-
-    stats = data_parser.get_statistics(infer_mode, load_level)
-    export_csv_name = args.profile_export_file.with_name(
-        args.profile_export_file.stem + "_genai_perf.csv"
-    )
-    stats.export_to_csv(export_csv_name)
-    stats.export_parquet(args.artifact_dir, DEFAULT_PARQUET_FILE)
-    stats.pretty_print()
+    reporter = ReportOutput(data_parser, args)
+    reporter.report_output()
     if args.generate_plots:
         create_plots(args)
-    extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
-    json_exporter = JsonExporter(stats.stats_dict, args, extra_inputs_dict)
-    json_exporter.export_to_file(args.artifact_dir)
 
 
 def create_plots(args: Namespace) -> None:
