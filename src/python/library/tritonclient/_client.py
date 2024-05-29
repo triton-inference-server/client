@@ -83,3 +83,8 @@ class InferenceServerClientBase:
             raise_error("No plugin has been registered.")
 
         self._plugin = None
+
+
+class Client(InferenceServerClientBase):
+    def __init__(self) -> None:
+        super().__init__()
