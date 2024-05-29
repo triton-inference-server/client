@@ -26,7 +26,6 @@
 
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
