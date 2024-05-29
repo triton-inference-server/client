@@ -85,6 +85,6 @@ class InferenceServerClientBase:
         self._plugin = None
 
 
-class Client:
+class Client(InferenceServerClientBase):
     def __init__(self) -> None:
-        pass
+        super().__init__()
