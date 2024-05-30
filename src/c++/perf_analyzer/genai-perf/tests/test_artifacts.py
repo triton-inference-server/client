@@ -26,21 +26,24 @@
 
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.main import create_artifacts_dirs
 
 
-def test_create_artifacts_dirs(mocker):
-    mock_makedirs = mocker.patch("os.makedirs")
+@pytest.fixture
+def mock_makedirs(mocker):
+    return mocker.patch("os.makedirs")
+
+
+def test_create_artifacts_dirs(mock_makedirs):
     mock_args = Namespace(artifact_dir=Path(DEFAULT_ARTIFACT_DIR))
     create_artifacts_dirs(mock_args)
     mock_makedirs.assert_any_call(
         Path(DEFAULT_ARTIFACT_DIR), exist_ok=True
     ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR} and exist_ok=True"
     mock_makedirs.assert_any_call(
-        Path(Path(DEFAULT_ARTIFACT_DIR)) / "plots", exist_ok=True
+        Path(DEFAULT_ARTIFACT_DIR) / "plots", exist_ok=True
     ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR}/plots and exist_ok=True"
     assert mock_makedirs.call_count == 2
