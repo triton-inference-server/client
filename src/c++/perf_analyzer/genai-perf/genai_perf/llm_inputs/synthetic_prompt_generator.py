@@ -71,7 +71,9 @@ class SyntheticPromptGenerator:
         source_lines: List[str],
         tokenizer: Tokenizer,
     ) -> str:
-        get_token_length = lambda text: len(tokenizer.encode(text))
+        get_token_length = lambda text: len(
+            tokenizer.encode(text, add_special_tokens=False)
+        )
 
         line_iterator = itertools.cycle(source_lines)
 

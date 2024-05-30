@@ -33,10 +33,8 @@ from typing import Any, List, Union
 
 import numpy as np
 import pytest
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
-from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser
+from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser, ResponseFormat
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
-from transformers import AutoTokenizer
 
 
 def ns_to_sec(ns: int) -> Union[int, float]:
@@ -379,6 +377,42 @@ class TestLLMProfileDataParser:
 
         pd._preprocess_response(res_timestamps, res_outputs)
         assert res_outputs[1]["response"] == expected_response
+
+    def test_no_special_tokens(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Test special tokens are not included when counting input/output tokens."""
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+        pd = LLMProfileDataParser(
+            filename=Path("openai_profile_export.json"),
+            tokenizer=tokenizer,
+        )
+
+        # There are 3 special tokens in the default tokenizer
+        #  - unk: 0  (unknown)
+        #  - bos: 1  (beginning of sentence)
+        #  - eos: 2  (end of sentence)
+        special_tokens = list(tokenizer.added_tokens_encoder.values())
+
+        # Check if special tokens are present in request input
+        req_input = {"text_input": "This is test input."}
+        tokens = pd._tokenize_triton_request_input(req_input)
+        assert all([s not in tokens for s in special_tokens])
+
+        pd._response_format = ResponseFormat.OPENAI_COMPLETIONS
+        req_input = {"payload": '{"prompt":"This is test input."}'}
+        tokens = pd._tokenize_openai_request_input(req_input)
+        assert all([s not in tokens for s in special_tokens])
+
+        pd._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+        req_input = {"payload": '{"messages":[{"content":"This is test input."}]}'}
+        tokens = pd._tokenize_openai_request_input(req_input)
+        assert all([s not in tokens for s in special_tokens])
+
+        # Check if special tokens are present in the responses
+        res_outputs = ["This", "is", "test", "input."]
+        tokens = []
+        for t in pd._run_tokenizer(res_outputs):
+            tokens += t
+        assert all([s not in tokens for s in special_tokens])
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
