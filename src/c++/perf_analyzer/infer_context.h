@@ -105,7 +105,11 @@ class InferContext {
   void Init();
 
   // Signal to the context to stop working and exit
-  void Exit() { exiting_ = true; }
+  void Exit(bool fast_exit)
+  {
+    exiting_ = true;
+    fast_exit_ = fast_exit;
+  }
 
   // Send a single inference request to the server
   void SendInferRequest(bool delayed = false);
@@ -196,6 +200,7 @@ class InferContext {
   const uint32_t id_{0};
   const size_t thread_id_{0};
   bool exiting_{false};
+  bool fast_exit_{false};
 
   size_t GetNumActiveThreads() { return num_active_threads_; }
 

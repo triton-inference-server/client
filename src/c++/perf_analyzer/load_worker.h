@@ -69,7 +69,7 @@ class LoadWorker : public IWorker {
 
   virtual ~LoadWorker() = default;
 
-  virtual void Exit() override;
+  virtual void Exit(bool fast_exit) override;
 
  protected:
   // Return the total number of async requests that have started and not
@@ -120,6 +120,7 @@ class LoadWorker : public IWorker {
   void AsyncCallbackFinalize(uint32_t ctx_id);
 
   bool exiting_ = false;
+  bool fast_exit_ = false;
 
   uint32_t id_;
 

@@ -164,8 +164,8 @@ LoadManager::LoadManager(
     const std::unordered_map<std::string, cb::RequestParameter>&
         request_parameters)
     : async_(async), streaming_(streaming), batch_size_(batch_size),
-      max_threads_(max_threads), parser_(parser), factory_(factory),
-      using_json_data_(false)
+      max_threads_(max_threads), shared_memory_type_{shared_memory_type},
+      parser_(parser), factory_(factory), using_json_data_(false)
 {
   on_sequence_model_ =
       ((parser_->SchedulerType() == ModelParser::SEQUENCE) ||
@@ -248,9 +248,11 @@ LoadManager::InitManagerInputs(
 void
 LoadManager::StopWorkerThreads()
 {
+  bool fast_exit = shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY;
+
   // FIXME do I need to acquire the lock first?
   for (auto& worker : workers_) {
-    worker->Exit();
+    worker->Exit(fast_exit);
   }
 
   {

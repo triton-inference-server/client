@@ -33,7 +33,7 @@ namespace triton { namespace perfanalyzer {
 class IWorker {
  public:
   virtual void Infer() = 0;
-  virtual void Exit() = 0;
+  virtual void Exit(bool fast_exit) = 0;
 };
 
 }}  // namespace triton::perfanalyzer

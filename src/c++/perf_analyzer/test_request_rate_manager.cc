@@ -975,7 +975,7 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
   std::dynamic_pointer_cast<IScheduler>(worker)->SetSchedule(schedule);
   std::future<void> infer_future{std::async(&IWorker::Infer, worker)};
 
-  worker->Exit();
+  worker->Exit(false);
   infer_future.get();
 
   CHECK(
@@ -1825,7 +1825,7 @@ TEST_CASE("Request rate - Shared memory infer input calls")
 
   std::this_thread::sleep_for(milliseconds(18));
 
-  worker->Exit();
+  worker->Exit(false);
   infer_future.get();
 
   const auto& actual_append_raw_calls{trrm.stats_->num_append_raw_calls};
