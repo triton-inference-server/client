@@ -298,6 +298,9 @@ InferContext::AsyncCallbackFuncImpl(cb::InferResult* result)
     // Add the request record to thread request records vector with
     // proper locking
     std::lock_guard<std::mutex> lock(thread_stat_->mu_);
+
+    // If we are fast exiting, do not handle the request and instead exit
+    // immediately
     if (exiting_ && fast_exit_) {
       return;
     }

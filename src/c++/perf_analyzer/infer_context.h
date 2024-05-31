@@ -105,6 +105,9 @@ class InferContext {
   void Init();
 
   // Signal to the context to stop working and exit
+  // If fast exit is true, everything should be immediately dropped
+  // If fast exit is false, the context should still handle outstanding requests
+  // before exiting
   void Exit(bool fast_exit)
   {
     exiting_ = true;

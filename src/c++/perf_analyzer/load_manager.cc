@@ -250,7 +250,6 @@ LoadManager::StopWorkerThreads()
 {
   bool fast_exit = shared_memory_type_ == SharedMemoryType::NO_SHARED_MEMORY;
 
-  // FIXME do I need to acquire the lock first?
   for (auto& worker : workers_) {
     worker->Exit(fast_exit);
   }

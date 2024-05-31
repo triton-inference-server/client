@@ -133,7 +133,7 @@ ConcurrencyWorker::HandleNoConcurrency()
     wake_signal_.wait(lock, [this]() {
       return exiting_ || (thread_config_->concurrency_ > 0);
     });
-    // Stop executing if concurrency is 0 and early exit is requested
+    // Stop executing if concurrency is 0 and we are exiting
     if (exiting_ && thread_config_->concurrency_ == 0) {
       return true;
     }
@@ -181,7 +181,7 @@ ConcurrencyWorker::WaitForResponses()
       std::unique_lock<std::mutex> lk(cb_mtx_);
       thread_stat_->idle_timer.Start();
       cb_cv_.wait(lk, [this] {
-        if (notified_ || exiting_) {
+        if (notified_ || (exiting_ && fast_exit_)) {
           notified_ = false;
           return true;
         }

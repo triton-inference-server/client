@@ -41,8 +41,8 @@ LoadWorker::Exit(bool fast_exit)
     ctx->Exit(fast_exit);
   }
 
-  exiting_ = true;
   fast_exit_ = fast_exit;
+  exiting_ = true;
 
   {
     std::lock_guard<std::mutex> lk(cb_mtx_);
@@ -68,9 +68,8 @@ LoadWorker::HandleExitConditions()
 {
   if (ShouldExit()) {
     CompleteOngoingSequences();
-    if (!fast_exit_) {
-      WaitForOngoingRequests();
-    }
+    thread_stat_->idle_timer.Start();
+    WaitForOngoingRequests();
     return true;
   }
   return false;
@@ -90,7 +89,7 @@ LoadWorker::CompleteOngoingSequences()
 void
 LoadWorker::WaitForOngoingRequests()
 {
-  while (GetNumOngoingRequests() != 0 && !fast_exit_) {
+  while (GetNumOngoingRequests() != 0 && !(exiting_ && fast_exit_)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 }

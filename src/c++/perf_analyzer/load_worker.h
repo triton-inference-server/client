@@ -69,6 +69,10 @@ class LoadWorker : public IWorker {
 
   virtual ~LoadWorker() = default;
 
+  // Tell the worker thread to stop issuing new requests and to exit
+  // If fast_exit is true, the worker thread should exit as fast as possible. If
+  // it is false, it should still wait for all outstanding requests before
+  // exiting
   virtual void Exit(bool fast_exit) override;
 
  protected:
