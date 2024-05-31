@@ -1,33 +1,23 @@
-# Copyright (c) 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-cmake_minimum_required (VERSION 3.18)
+cmake_minimum_required(VERSION 3.18)
 
 find_package(Threads REQUIRED)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+
+if(TRITON_ENABLE_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
+  set(BOOST_ROOT /usr/local)  # Ensure this is set to the correct Boost installation path
+  set(Boost_NO_SYSTEM_PATHS ON)
+  set(Boost_INCLUDE_DIR /usr/local/include)  # Path to Boost headers
+  set(Boost_LIBRARY_DIRS /usr/local/lib)  # Path to Boost libraries
+
+  find_package(Boost 1.85 REQUIRED COMPONENTS system filesystem thread chrono)
+  if(Boost_FOUND)
+    message(STATUS "Using Boost ${Boost_VERSION}")
+    include_directories(${Boost_INCLUDE_DIRS})
+    link_directories(${Boost_LIBRARY_DIRS})
+  else()
+    message(FATAL_ERROR "Could not find Boost. Please set BOOST_ROOT to the Boost installation directory.")
+  endif()
+endif()
 
 #
 # common
@@ -124,6 +114,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE gRPC::grpc
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
+      PUBLIC ${Boost_LIBRARIES}
   )
 
   # libgrpcclient.so
@@ -152,6 +143,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE gRPC::grpc
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
+      PUBLIC ${Boost_LIBRARIES}
   )
 
   foreach(_client_target grpc-client-library grpcclient_static grpcclient)
@@ -178,6 +170,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
         $<TARGET_PROPERTY:grpc-service-library,INCLUDE_DIRECTORIES>
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}  # Ensure Boost include directories are added
     )
 
     if(TRITON_ENABLE_GPU)
@@ -303,6 +296,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE triton-common-json
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
+      PUBLIC ${Boost_LIBRARIES}
   )
 
   if(${TRITON_ENABLE_ZLIB})
@@ -335,7 +329,15 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE triton-common-json
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
+      PUBLIC ${Boost_LIBRARIES}
   )
+
+  if(${TRITON_ENABLE_ZLIB})
+    target_link_libraries(
+      httpclient
+      PRIVATE ZLIB::ZLIB
+    )
+  endif() # TRITON_ENABLE_ZLIB
 
   foreach(_client_target http-client-library httpclient_static httpclient)
     target_compile_features(${_client_target} PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
@@ -360,6 +362,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
         $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
     )
 
     target_compile_definitions(
@@ -471,4 +474,4 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
 
   export(PACKAGE TritonClient)
 
-endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
+endif()

@@ -1,31 +1,7 @@
-// Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-//  * Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-//  * Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-//  * Neither the name of NVIDIA CORPORATION nor the names of its
-//    contributors may be used to endorse or promote products derived
-//    from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 #include "http_client.h"
 
+#include <boost/thread.hpp>
+#include <boost/unordered/concurrent_flat_map.hpp>
 #include <functional>
 #include <iostream>
 
@@ -49,7 +25,7 @@ HttpRequest::~HttpRequest()
 void
 HttpRequest::AddInput(uint8_t* buf, size_t byte_size)
 {
-  data_buffers_.push_back(std::pair<uint8_t*, size_t>(buf, byte_size));
+  data_buffers_.emplace_back(buf, byte_size);
   total_input_byte_size_ += byte_size;
 }
 
@@ -76,22 +52,15 @@ HttpRequest::GetNextInput(uint8_t* buf, size_t size, size_t* input_bytes)
   }
 }
 
-std::mutex HttpClient::curl_init_mtx_{};
+boost::mutex HttpClient::curl_init_mtx_{};
+
 HttpClient::HttpClient(
     const std::string& server_url, bool verbose,
     const HttpSslOptions& ssl_options)
     : url_(server_url), verbose_(verbose), ssl_options_(ssl_options)
 {
-  // [TODO TMA-1670] uncomment below and remove class-wise mutex once confirm
-  // curl >= 7.84.0 will always be used
-  // auto* ver = curl_version_info(CURLVERSION_NOW);
-  // if (ver->features & CURL_VERSION_THREADSAFE == 0) {
-  //   throw std::runtime_error(
-  //       "HTTP client has dependency on CURL library to have thread-safe "
-  //       "support (CURL_VERSION_THREADSAFE set)");
-  // }
   {
-    std::lock_guard<std::mutex> lk(curl_init_mtx_);
+    boost::lock_guard<boost::mutex> lk(curl_init_mtx_);
     if (curl_global_init(CURL_GLOBAL_ALL) != 0) {
       throw std::runtime_error("CURL global initialization failed");
     }
@@ -99,29 +68,27 @@ HttpClient::HttpClient(
 
   multi_handle_ = curl_multi_init();
 
-  worker_ = std::thread(&HttpClient::AsyncTransfer, this);
+  worker_ = boost::thread(&HttpClient::AsyncTransfer, this);
 }
 
 HttpClient::~HttpClient()
 {
   exiting_ = true;
 
-  // thread not joinable if AsyncInfer() is not called
-  // (it is default constructed thread before the first AsyncInfer() call)
   if (worker_.joinable()) {
     cv_.notify_all();
     worker_.join();
   }
 
-  for (auto& request : ongoing_async_requests_) {
-    CURL* easy_handle = reinterpret_cast<CURL*>(request.first);
+  ongoing_async_requests_.visit_all([this](auto& request) {
+    CURL* easy_handle = reinterpret_cast<CURL*>(request.second.get());
     curl_multi_remove_handle(multi_handle_, easy_handle);
     curl_easy_cleanup(easy_handle);
-  }
+  });
   curl_multi_cleanup(multi_handle_);
 
   {
-    std::lock_guard<std::mutex> lk(curl_init_mtx_);
+    boost::lock_guard<boost::mutex> lk(curl_init_mtx_);
     curl_global_cleanup();
   }
 }
@@ -132,9 +99,9 @@ HttpClient::ParseSslCertType(HttpSslOptions::CERTTYPE cert_type)
   static std::string pem_str{"PEM"};
   static std::string der_str{"DER"};
   switch (cert_type) {
-    case HttpSslOptions::CERTTYPE::CERT_PEM:
+    case HttpSslOptions::CERT_PEM:
       return pem_str;
-    case HttpSslOptions::CERTTYPE::CERT_DER:
+    case HttpSslOptions::CERT_DER:
       return der_str;
   }
   throw std::runtime_error(
@@ -148,9 +115,9 @@ HttpClient::ParseSslKeyType(HttpSslOptions::KEYTYPE key_type)
   static std::string pem_str{"PEM"};
   static std::string der_str{"DER"};
   switch (key_type) {
-    case HttpSslOptions::KEYTYPE::KEY_PEM:
+    case HttpSslOptions::KEY_PEM:
       return pem_str;
-    case HttpSslOptions::KEYTYPE::KEY_DER:
+    case HttpSslOptions::KEY_DER:
       return der_str;
   }
   throw std::runtime_error(
@@ -183,22 +150,13 @@ HttpClient::SetSSLCurlOptions(CURL* curl_handle)
 void
 HttpClient::Send(CURL* handle, std::unique_ptr<HttpRequest>&& request)
 {
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
+  ongoing_async_requests_.emplace(
+      reinterpret_cast<uintptr_t>(handle), std::move(request));
 
-    auto insert_result = ongoing_async_requests_.emplace(std::make_pair(
-        reinterpret_cast<uintptr_t>(handle), std::move(request)));
-    if (!insert_result.second) {
-      curl_easy_cleanup(handle);
-      throw std::runtime_error(
-          "Failed to insert new asynchronous request context.");
-    }
-    curl_multi_add_handle(multi_handle_, handle);
-  }
+  curl_multi_add_handle(multi_handle_, handle);
 
   cv_.notify_all();
 
-  // Wake up the async transfer thread to handle new requests immediately
   curl_multi_wakeup(multi_handle_);
 }
 
@@ -211,69 +169,68 @@ HttpClient::AsyncTransfer()
   while (!exiting_) {
     std::vector<std::unique_ptr<HttpRequest>> request_list;
 
-    // Lock the mutex to check for work and wait if necessary
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [this] {
-      return this->exiting_ || !this->ongoing_async_requests_.empty();
-    });
+    {
+      boost::unique_lock<boost::mutex> lock(mutex_);
+      cv_.wait(lock, [this] {
+        return this->exiting_ || !this->ongoing_async_requests_.empty();
+      });
 
-    if (exiting_) {
-      break;
+      if (exiting_) {
+        break;
+      }
     }
 
-    lock.unlock();  // Release the mutex before waiting on network activity
+    CURLMcode mc;
+    mc = curl_multi_perform(multi_handle_, &place_holder);
 
-    // Perform any pending transfers
-    CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
     if (mc != CURLM_OK) {
       std::cerr << "Unexpected error: curl_multi_perform failed. Code:" << mc
                 << std::endl;
       continue;
     }
 
-    // Wait for activity on the multi_handle_
     int numfds;
     mc = curl_multi_poll(multi_handle_, NULL, 0, 1000, &numfds);
+
     if (mc != CURLM_OK) {
       std::cerr << "Unexpected error: curl_multi_poll failed. Code:" << mc
                 << std::endl;
       continue;
     }
 
-    lock.lock();  // Re-acquire the mutex before processing responses
-    while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
+    while (true) {
+      {
+        boost::lock_guard<boost::mutex> lock(mutex_);
+        msg = curl_multi_info_read(multi_handle_, &place_holder);
+      }
+
+      if (msg == nullptr) {
+        break;
+      }
+
       uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
-      auto itr = ongoing_async_requests_.find(identifier);
-      // This shouldn't happen
-      if (itr == ongoing_async_requests_.end()) {
-        std::cerr << "Unexpected error: received completed request that is not "
-                  << "in the list of asynchronous requests" << std::endl;
+      ongoing_async_requests_.visit(identifier, [&](auto& request) {
+        uint32_t http_code = 400;
+        if (msg->data.result == CURLE_OK) {
+          curl_easy_getinfo(
+              msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
+        } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
+          http_code = 499;
+        }
+
+        request_list.emplace_back(std::move(request.second));
+        ongoing_async_requests_.erase(identifier);
         curl_multi_remove_handle(multi_handle_, msg->easy_handle);
         curl_easy_cleanup(msg->easy_handle);
-        continue;
-      }
 
-      uint32_t http_code = 400;
-      if (msg->data.result == CURLE_OK) {
-        curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
-      } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-        http_code = 499;
-      }
+        request_list.back()->http_code_ = http_code;
 
-      request_list.emplace_back(std::move(itr->second));
-      ongoing_async_requests_.erase(itr);
-      curl_multi_remove_handle(multi_handle_, msg->easy_handle);
-      curl_easy_cleanup(msg->easy_handle);
-
-      std::unique_ptr<HttpRequest>& async_request = request_list.back();
-      async_request->http_code_ = http_code;
-
-      if (msg->msg != CURLMSG_DONE) {
-        std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
-                  << std::endl;
-      }
+        if (msg->msg != CURLMSG_DONE) {
+          std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
+                    << std::endl;
+        }
+      });
     }
-    lock.unlock();  // Release the mutex after processing responses
 
     for (auto& this_request : request_list) {
       this_request->completion_callback_(this_request.get());
