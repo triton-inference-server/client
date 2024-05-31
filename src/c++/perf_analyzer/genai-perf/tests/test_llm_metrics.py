@@ -387,32 +387,32 @@ class TestLLMProfileDataParser:
         )
 
         # There are 3 special tokens in the default tokenizer
-        #  - unk: 0  (unknown)
-        #  - bos: 1  (beginning of sentence)
-        #  - eos: 2  (end of sentence)
-        special_tokens = list(tokenizer.added_tokens_encoder.values())
+        #  - <unk>: 0  (unknown)
+        #  - <s>: 1  (beginning of sentence)
+        #  - </s>: 2  (end of sentence)
+        special_token_ids = list(tokenizer._tokenizer.added_tokens_encoder.values())
 
         # Check if special tokens are present in request input
         req_input = {"text_input": "This is test input."}
         tokens = pd._tokenize_triton_request_input(req_input)
-        assert all([s not in tokens for s in special_tokens])
+        assert all([s not in tokens for s in special_token_ids])
 
         pd._response_format = ResponseFormat.OPENAI_COMPLETIONS
         req_input = {"payload": '{"prompt":"This is test input."}'}
         tokens = pd._tokenize_openai_request_input(req_input)
-        assert all([s not in tokens for s in special_tokens])
+        assert all([s not in tokens for s in special_token_ids])
 
         pd._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
         req_input = {"payload": '{"messages":[{"content":"This is test input."}]}'}
         tokens = pd._tokenize_openai_request_input(req_input)
-        assert all([s not in tokens for s in special_tokens])
+        assert all([s not in tokens for s in special_token_ids])
 
         # Check if special tokens are present in the responses
         res_outputs = ["This", "is", "test", "input."]
         tokens = []
         for t in pd._run_tokenizer(res_outputs):
             tokens += t
-        assert all([s not in tokens for s in special_tokens])
+        assert all([s not in tokens for s in special_token_ids])
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
