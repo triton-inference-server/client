@@ -219,7 +219,7 @@ HttpClient::AsyncTransfer()
     int numfds;
     if (mc == CURLM_OK) {
       // Wait for activity. If there are no descriptors in the multi_handle_
-      // then curl_multi_wait will return immediately
+      // then curl_multi_poll will return immediately
       mc = curl_multi_poll(multi_handle_, NULL, 0, INT_MAX, &numfds);
       if (mc == CURLM_OK) {
         while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
