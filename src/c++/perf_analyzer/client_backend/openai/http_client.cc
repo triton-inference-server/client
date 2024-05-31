@@ -99,9 +99,9 @@ HttpClient::ParseSslCertType(HttpSslOptions::CERTTYPE cert_type)
   static std::string pem_str{"PEM"};
   static std::string der_str{"DER"};
   switch (cert_type) {
-    case HttpSslOptions::CERT_PEM:
+    case HttpSslOptions::CERTTYPE::CERT_PEM:
       return pem_str;
-    case HttpSslOptions::CERT_DER:
+    case HttpSslOptions::CERTTYPE::CERT_DER:
       return der_str;
   }
   throw std::runtime_error(
@@ -115,9 +115,9 @@ HttpClient::ParseSslKeyType(HttpSslOptions::KEYTYPE key_type)
   static std::string pem_str{"PEM"};
   static std::string der_str{"DER"};
   switch (key_type) {
-    case HttpSslOptions::KEY_PEM:
+    case HttpSslOptions::KEYTYPE::KEY_PEM:
       return pem_str;
-    case HttpSslOptions::KEY_DER:
+    case HttpSslOptions::KEYTYPE::KEY_DER:
       return der_str;
   }
   throw std::runtime_error(
@@ -168,6 +168,7 @@ HttpClient::AsyncTransfer()
 
   while (!exiting_) {
     std::vector<std::unique_ptr<HttpRequest>> request_list;
+    std::vector<uintptr_t> identifiers_to_erase;
 
     {
       boost::unique_lock<boost::mutex> lock(mutex_);
@@ -219,7 +220,7 @@ HttpClient::AsyncTransfer()
         }
 
         request_list.emplace_back(std::move(request.second));
-        ongoing_async_requests_.erase(identifier);
+        identifiers_to_erase.push_back(identifier);
         curl_multi_remove_handle(multi_handle_, msg->easy_handle);
         curl_easy_cleanup(msg->easy_handle);
 
@@ -230,6 +231,14 @@ HttpClient::AsyncTransfer()
                     << std::endl;
         }
       });
+    }
+
+    // Perform bulk erase outside the visit loop to minimize lock contention
+    if (!identifiers_to_erase.empty()) {
+      boost::lock_guard<boost::mutex> lock(mutex_);
+      for (auto identifier : identifiers_to_erase) {
+        ongoing_async_requests_.erase(identifier);
+      }
     }
 
     for (auto& this_request : request_list) {

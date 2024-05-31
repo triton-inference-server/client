@@ -5,15 +5,27 @@
 #include <boost/thread.hpp>
 #include <boost/unordered/concurrent_flat_map.hpp>
 #include <deque>
+// Probably no longer need below
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <thread>
 
 namespace triton { namespace perfanalyzer { namespace clientbackend {
 namespace openai {
 
 struct HttpSslOptions {
   enum CERTTYPE { CERT_PEM = 0, CERT_DER = 1 };
-  enum KEYTYPE { KEY_PEM = 0, KEY_DER = 1 };
+  enum KEYTYPE {
+    KEY_PEM = 0,
+    KEY_DER = 1
+    // TODO TMA-1645: Support loading private key from crypto engine
+    // KEY_ENG = 2
+  };
   explicit HttpSslOptions()
-      : verify_peer(1), verify_host(2), cert_type(CERT_PEM), key_type(KEY_PEM)
+      : verify_peer(1), verify_host(2), cert_type(CERTTYPE::CERT_PEM),
+        key_type(KEYTYPE::KEY_PEM)
   {
   }
 

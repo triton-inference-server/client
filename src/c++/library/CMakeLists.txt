@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 
 find_package(Threads REQUIRED)
+find_package(TBB REQUIRED)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 
 if(TRITON_ENABLE_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
@@ -114,7 +115,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE gRPC::grpc
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
-      PUBLIC ${Boost_LIBRARIES}
   )
 
   # libgrpcclient.so
@@ -143,7 +143,6 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       PRIVATE gRPC::grpc
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
-      PUBLIC ${Boost_LIBRARIES}
   )
 
   foreach(_client_target grpc-client-library grpcclient_static grpcclient)
@@ -297,6 +296,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
       PUBLIC ${Boost_LIBRARIES}
+      PUBLIC TBB::tbb
   )
 
   if(${TRITON_ENABLE_ZLIB})
@@ -330,14 +330,8 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
       PUBLIC ${Boost_LIBRARIES}
+      PUBLIC TBB::tbb
   )
-
-  if(${TRITON_ENABLE_ZLIB})
-    target_link_libraries(
-      httpclient
-      PRIVATE ZLIB::ZLIB
-    )
-  endif() # TRITON_ENABLE_ZLIB
 
   foreach(_client_target http-client-library httpclient_static httpclient)
     target_compile_features(${_client_target} PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
