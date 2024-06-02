@@ -294,7 +294,6 @@ HttpClient::AsyncTransfer()
 
   for (auto& request : new_async_requests_) {
     CURL* easy_handle = reinterpret_cast<CURL*>(request.first);
-    curl_multi_remove_handle(multi_handle_, easy_handle);
     curl_easy_cleanup(easy_handle);
   }
 }
