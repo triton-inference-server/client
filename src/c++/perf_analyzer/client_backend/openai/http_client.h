@@ -149,7 +149,6 @@ class HttpClient {
 
   std::thread worker_;
   std::mutex mutex_;
-  std::condition_variable cv_;
 
   // The server url
   const std::string url_;
@@ -158,10 +157,10 @@ class HttpClient {
 
   using AsyncReqMap = std::map<uintptr_t, std::unique_ptr<HttpRequest>>;
   // curl multi handle for processing asynchronous requests
-  void* multi_handle_;
+    void* multi_handle_;
   // map to record ongoing asynchronous requests with pointer to easy handle
   // or tag id as key
-  AsyncReqMap ongoing_async_requests_;
+  AsyncReqMap new_async_requests_;
 
   bool verbose_;
 
