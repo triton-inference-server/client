@@ -104,18 +104,16 @@ HttpClient::HttpClient(
 
 HttpClient::~HttpClient()
 {
-  printf("exiting!\n");
   {
-    std::lock_guard<std::mutex> lock(mutex_);  
+    std::lock_guard<std::mutex> lock(mutex_);
     exiting_ = true;
   }
-  
+
   curl_multi_wakeup(multi_handle_);
 
   // thread not joinable if AsyncInfer() is not called
   // (it is default constructed thread before the first AsyncInfer() call)
   if (worker_.joinable()) {
-    //   cv_.notify_all();
     worker_.join();
   }
 
@@ -191,115 +189,103 @@ HttpClient::Send(CURL* handle, std::unique_ptr<HttpRequest>&& request)
       return;
     }
 
-    auto insert_result = new_async_requests_.emplace(
-						     std::make_pair(reinterpret_cast<uintptr_t>(handle), std::move(request)));
+    auto insert_result = new_async_requests_.emplace(std::make_pair(
+        reinterpret_cast<uintptr_t>(handle), std::move(request)));
     if (!insert_result.second) {
       curl_easy_cleanup(handle);
       throw std::runtime_error(
-			       "Failed to insert new asynchronous request context.");
+          "Failed to insert new asynchronous request context.");
     }
   }
-  //  curl_multi_add_handle(multi_handle_, handle);
-  //cv_.notify_all();
   curl_multi_wakeup(multi_handle_);
 }
 
 void
 HttpClient::AsyncTransfer()
 {
-  int place_holder = 0;
+  int messages_in_queue = 0;
+  int still_running = 0;
   int numfds = 0;
   CURLMsg* msg = nullptr;
   AsyncReqMap ongoing_async_requests;
 
   do {
-    //    std::vector<std::unique_ptr<HttpRequest>> completed_request_list;
     {
+      // Check for new requests and add them to ongoing requests
+
       std::lock_guard<std::mutex> lock(mutex_);
-      
+
       for (auto& pair : new_async_requests_) {
-	curl_multi_add_handle(multi_handle_, reinterpret_cast<CURL*>(pair.first));
-	
-	ongoing_async_requests[pair.first] = std::move(pair.second);
+        curl_multi_add_handle(
+            multi_handle_, reinterpret_cast<CURL*>(pair.first));
+
+        ongoing_async_requests[pair.first] = std::move(pair.second);
       }
       new_async_requests_.clear();
     }
-    
-    // sleep if no work is available
-    //    std::unique_lock<std::mutex> lock(mutex_);
-    // cv_.wait(lock, [this] {
-    // if (this->exiting_) {
-    //   return true;
-    // }
-      // wake up if an async request has been generated
-    //  return !this->ongoing_async_requests_.empty();
-    //});
 
-    printf("performing\n");
-    CURLMcode mc = curl_multi_perform(multi_handle_, &place_holder);
-    
-    if (mc != CURLM_OK) {
-      std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
-                << std::endl;
-      continue;
-    }
-    
-    // Wait for activity. If there are no descriptors in the multi_handle_
-    // then curl_multi_wait will return immediately
-    printf("polling\n");
-    
-    mc = curl_multi_poll(multi_handle_, NULL, 0, INT_MAX, &numfds);
-
-    printf("polling done\n");
+    CURLMcode mc = curl_multi_perform(multi_handle_, &still_running);
 
     if (mc != CURLM_OK) {
       std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
                 << std::endl;
       continue;
     }
-    
-    while ((msg = curl_multi_info_read(multi_handle_, &place_holder))) {
 
+    while ((msg = curl_multi_info_read(multi_handle_, &messages_in_queue))) {
       if (msg->msg != CURLMSG_DONE) {
-	// Something wrong happened.
-	std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
-		  << std::endl;
-	continue;
+        // Something wrong happened.
+        std::cerr << "Unexpected error: received CURLMsg=" << msg->msg
+                  << std::endl;
+        continue;
       }
 
       uintptr_t identifier = reinterpret_cast<uintptr_t>(msg->easy_handle);
       auto itr = ongoing_async_requests.find(identifier);
       // This shouldn't happen
       if (itr == ongoing_async_requests.end()) {
-	std::cerr
-	  << "Unexpected error: received completed request that is not "
-	  "in the list of asynchronous requests"
-	  << std::endl;
-	curl_multi_remove_handle(multi_handle_, msg->easy_handle);
-	curl_easy_cleanup(msg->easy_handle);
-	continue;
+        std::cerr << "Unexpected error: received completed request that is not "
+                     "in the list of asynchronous requests"
+                  << std::endl;
+        curl_multi_remove_handle(multi_handle_, msg->easy_handle);
+        curl_easy_cleanup(msg->easy_handle);
+        continue;
       }
 
       uint32_t http_code = 400;
       if (msg->data.result == CURLE_OK) {
-	curl_easy_getinfo(
-			  msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
+        curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
       } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
-	http_code = 499;
+        http_code = 499;
       }
 
-      //          completed_request_list.emplace_back(std::move(itr->second));
       itr->second->http_code_ = http_code;
-      //      printf("completion callback!\n");
       itr->second->completion_callback_(itr->second.get());
       ongoing_async_requests.erase(itr);
       curl_multi_remove_handle(multi_handle_, msg->easy_handle);
       curl_easy_cleanup(msg->easy_handle);
-      //          std::unique_ptr<HttpRequest>& async_request = request_list.back(); 
     }
+
+
+    // Wait for activity on existing requests or
+    // explicit curl_multi_wakeup call
+    //
+    // If there are no descriptors in the multi_handle_
+    // then curl_multi_poll will wait until curl_multi_wakeup
+    // is called
+    //
+    // curl_multi_wakeup is called when adding a new request
+    // or exiting
+
+    mc = curl_multi_poll(multi_handle_, NULL, 0, INT_MAX, &numfds);
+
+    if (mc != CURLM_OK) {
+      std::cerr << "Unexpected error: curl_multi failed. Code:" << mc
+                << std::endl;
+    }
+
   } while (!exiting_);
 
-  printf("exiting!\n");
   for (auto& request : ongoing_async_requests) {
     CURL* easy_handle = reinterpret_cast<CURL*>(request.first);
     curl_multi_remove_handle(multi_handle_, easy_handle);
@@ -308,7 +294,6 @@ HttpClient::AsyncTransfer()
 
   for (auto& request : new_async_requests_) {
     CURL* easy_handle = reinterpret_cast<CURL*>(request.first);
-    curl_multi_remove_handle(multi_handle_, easy_handle);
     curl_easy_cleanup(easy_handle);
   }
 }
