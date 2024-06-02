@@ -114,7 +114,6 @@ HttpClient::~HttpClient()
   // thread not joinable if AsyncInfer() is not called
   // (it is default constructed thread before the first AsyncInfer() call)
   if (worker_.joinable()) {
-    //   cv_.notify_all();
     worker_.join();
   }
 
