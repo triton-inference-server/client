@@ -157,8 +157,8 @@ class HttpClient {
 
   using AsyncReqMap = std::map<uintptr_t, std::unique_ptr<HttpRequest>>;
   // curl multi handle for processing asynchronous requests
-    void* multi_handle_;
-  // map to record ongoing asynchronous requests with pointer to easy handle
+  void* multi_handle_;
+  // map to record new asynchronous requests with pointer to easy handle
   // or tag id as key
   AsyncReqMap new_async_requests_;
 
