@@ -108,16 +108,15 @@ class PlotConfigParser:
         if not name:  # no metric
             return []
         elif name == "inter_token_latencies":
-            # Flatten ITL since they are grouped by request
-            itl_flatten = []
-            for request_itls in stats.metrics.data[name]:
-                itl_flatten += request_itls
-            return [scale(x, (1 / 1e6)) for x in itl_flatten]  # ns to ms
+            itls = stats.metrics.data[name]
+            return [scale(x, (1 / 1e6)) for x in itls]  # ns to ms
         elif name == "token_positions":
-            token_positions: List[Union[int, float]] = []
-            for request_itls in stats.metrics.data["inter_token_latencies"]:
-                token_positions += list(range(1, len(request_itls) + 1))
-            return token_positions
+            # TODO: we no longer calculate token level ITLs.
+            # token_positions: List[Union[int, float]] = []
+            # for request_itls in stats.metrics.data["inter_token_latencies"]:
+            #    token_positions += list(range(1, len(request_itls) + 1))
+            # return token_positions
+            return []
         elif name == "time_to_first_tokens":
             ttfts = stats.metrics.data[name]
             return [scale(x, (1 / 1e6)) for x in ttfts]  # ns to ms
