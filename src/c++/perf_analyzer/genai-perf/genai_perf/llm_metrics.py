@@ -562,7 +562,7 @@ class LLMProfileDataParser(ProfileDataParser):
 
             # inter token latencies
             inter_token_latency = (req_latency_ns - ttft) / (output_token_count - 1)
-            inter_token_latencies.append(inter_token_latency)
+            inter_token_latencies.append(round(inter_token_latency))
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
