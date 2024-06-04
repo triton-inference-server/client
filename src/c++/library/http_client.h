@@ -643,9 +643,9 @@ class InferenceServerHttpClient : public InferenceServerClient {
   void* easy_handle_;
   // curl multi handle for processing asynchronous requests
   void* multi_handle_;
-  // map to record ongoing asynchronous requests with pointer to easy handle
+  // map to record new asynchronous requests with pointer to easy handle
   // or tag id as key
-  AsyncReqMap ongoing_async_requests_;
+  AsyncReqMap new_async_requests_;
 };
 
 }}  // namespace triton::client
