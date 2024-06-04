@@ -468,23 +468,21 @@ class LlmInputs:
 
     @classmethod
     def _convert_generic_json_to_generate_format(
-            cls,
-            dataset_json: Dict,
-            add_model_name: bool,
-            add_stream: bool,
-            extra_inputs: Dict,
-            output_tokens_mean: int,
-            output_tokens_stddev: int,
-            output_tokens_deterministic: bool,
-            model_name: str = "",
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: str = "",
     ) -> Dict:
-
         (
             system_role_headers,
             user_role_headers,
             text_input_headers,
         ) = cls._determine_json_feature_roles(dataset_json)
-
 
         pa_json = cls._populate_triton_generate_output_json(
             dataset_json,
@@ -501,7 +499,6 @@ class LlmInputs:
         )
 
         return pa_json
-
 
     @classmethod
     def _convert_generic_json_to_openai_completions_format(
@@ -701,26 +698,25 @@ class LlmInputs:
             )
 
         return pa_json
-    
+
     @classmethod
     def _populate_triton_generate_output_json(
-            cls,
-            dataset: Dict,
-            system_role_headers: List[str],
-            user_role_headers: List[str],
-            text_input_headers: List[str],
-            add_model_name: bool,
-            add_stream: bool,
-            extra_inputs: Dict,
-            output_tokens_mean: int,
-            output_tokens_stddev: int,
-            output_tokens_deterministic: bool,
-            model_name: str = "",
+        cls,
+        dataset: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: str = "",
     ) -> Dict:
+        pa_json: dict = {"data": [{"payload": [{}]} for _ in dataset["rows"]]}
 
-        pa_json = {"data":[{"payload":[{}]} for _ in dataset["rows"]]}
-
-        for index, entry in enumerate(dataset["rows"]):       
+        for index, entry in enumerate(dataset["rows"]):
             for header, content in entry.items():
                 new_text_input = cls._create_new_text_input(
                     header,
@@ -744,8 +740,6 @@ class LlmInputs:
             )
 
         return pa_json
-
-            
 
     @classmethod
     def _populate_openai_completions_output_json(

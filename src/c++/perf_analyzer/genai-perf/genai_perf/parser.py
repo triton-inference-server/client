@@ -51,7 +51,11 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions", "generate":"v2/models/{MODEL_NAME}/generate"}
+_endpoint_type_map = {
+    "chat": "v1/chat/completions",
+    "completions": "v1/completions",
+    "generate": "v2/models/{MODEL_NAME}/generate",
+}
 
 
 def _check_model_args(
@@ -115,8 +119,10 @@ def _check_conditional_args(
     if args.endpoint is not None:
         args.endpoint = args.endpoint.lstrip(" /")
     else:
-        args.endpoint = _endpoint_type_map[args.endpoint_type].format(MODEL_NAME=args.model)
-   
+        args.endpoint = _endpoint_type_map[args.endpoint_type].format(
+            MODEL_NAME=args.model
+        )
+
     # Output token distribution checks
     if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
         if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
@@ -399,7 +405,7 @@ def _add_endpoint_args(parser):
         required=False,
         help=f"The endpoint-type for requests. Inputs will be formatted according to endpoint-type.",
     )
-    
+
     endpoint_group.add_argument(
         "--streaming",
         action="store_true",

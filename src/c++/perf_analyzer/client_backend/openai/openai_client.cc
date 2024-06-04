@@ -115,7 +115,7 @@ ChatCompletionClient::ResponseHeaderHandler(
       hdr.find("text/event-stream") != std::string::npos) {
     request->is_stream_ = true;
   }
-  
+
   return byte_size;
 }
 
@@ -123,7 +123,6 @@ size_t
 ChatCompletionClient::ResponseHandler(
     void* contents, size_t size, size_t nmemb, void* userp)
 {
-  
   // [TODO TMA-1666] verify if the SSE responses received are complete, or the
   // response need to be stitched first. To verify, print out the received
   // responses from SendResponse() to make sure the OpenAI server doesn't chunk
@@ -161,7 +160,7 @@ ChatCompletionClient::ResponseHandler(
   // RECV_END so that we always have the time of the last.
   request->timer_.CaptureTimestamp(
       triton::client::RequestTimers::Kind::RECV_END);
-  
+
   return result_bytes;
 }
 
@@ -172,8 +171,6 @@ ChatCompletionClient::AsyncInfer(
     std::string& serialized_request_body, const std::string& request_id,
     const Headers& headers)
 {
-  
-  
   if (callback == nullptr) {
     return Error(
         "Callback function must be provided along with AsyncInfer() call.");
@@ -189,7 +186,7 @@ ChatCompletionClient::AsyncInfer(
     // will only send the first final response
     //
     // if (!request->is_stream_) {
-    //   
+    //
     request->SendResponse(true /* is_final */, false /* is_null */);
     // }
   };
@@ -202,7 +199,7 @@ ChatCompletionClient::AsyncInfer(
   request->AddInput(
       reinterpret_cast<uint8_t*>(serialized_request_body.data()),
       serialized_request_body.size());
-  
+
   CURL* multi_easy_handle = curl_easy_init();
   Error err = PreRunProcessing(multi_easy_handle, raw_request, headers);
   if (!err.IsOk()) {
@@ -243,7 +240,7 @@ ChatCompletionClient::PreRunProcessing(
 
   // response data handled by ResponseHandler()
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ResponseHandler);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, request);  
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, request);
 
   const curl_off_t post_byte_size = request->total_input_byte_size_;
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, post_byte_size);

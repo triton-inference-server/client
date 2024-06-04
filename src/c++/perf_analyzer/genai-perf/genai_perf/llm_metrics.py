@@ -711,7 +711,6 @@ class LLMProfileDataParser(ProfileDataParser):
         return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_generate_text_output(self, response: str) -> str:
-
         response = remove_sse_prefix(response)
 
         if response == "":
