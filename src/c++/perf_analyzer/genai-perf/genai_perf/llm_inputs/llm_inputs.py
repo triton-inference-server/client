@@ -717,18 +717,10 @@ class LlmInputs:
             output_tokens_deterministic: bool,
             model_name: str = "",
     ) -> Dict:
-        number_of_rows = len(dataset["rows"])
-        pa_json = cls._create_empty_trtllm_pa_json()
-
-        default_max_tokens = (
-            "max_tokens" not in extra_inputs
-            or output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN
-        )
 
         pa_json = {"data":[{"payload":[{}]} for _ in dataset["rows"]]}
 
-        for index, entry in enumerate(dataset["rows"]):
-        
+        for index, entry in enumerate(dataset["rows"]):       
             for header, content in entry.items():
                 new_text_input = cls._create_new_text_input(
                     header,
@@ -738,7 +730,7 @@ class LlmInputs:
                     content,
                 )
                 pa_json["data"][index]["payload"][0]["text_input"] = new_text_input
-                
+
             pa_json = cls._add_optional_tags_to_openai_json(
                 pa_json,
                 index,
