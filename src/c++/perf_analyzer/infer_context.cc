@@ -260,11 +260,13 @@ InferContext::ValidateOutputs(const cb::InferResult* result_ptr)
 {
   // Validate output if set
   if (!infer_data_.expected_outputs_.empty()) {
-    for (size_t i = 0; i < infer_data_.outputs_.size(); ++i) {
+    for (const auto& expected_output : infer_data_.expected_outputs_) {
       const uint8_t* buf = nullptr;
       size_t byte_size = 0;
-      result_ptr->RawData(infer_data_.outputs_[i]->Name(), &buf, &byte_size);
-      for (const auto& expected : infer_data_.expected_outputs_[i]) {
+      // Explicitly request the output for comparison by name, because the
+      // indices of outputs and expected_outputs may not be ordered the same.
+      result_ptr->RawData(expected_output->Name(), &buf, &byte_size);
+      for (const auto& expected : expected_output) {
         if (!expected.is_valid) {
           return cb::Error(
               "Expected output can't be invalid", pa::GENERIC_ERROR);
