@@ -433,8 +433,9 @@ class InferenceProfiler {
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \param check_latency Whether to check latency for stability
   /// \return Returns if the threshold and latencies are stable.
-  bool DetermineStability(LoadStatus& load_status);
+  bool DetermineStability(LoadStatus& load_status, bool check_latency = true);
 
   /// Check if latency at index idx is within the latency threshold
   /// \param idx index in latency vector
@@ -453,8 +454,10 @@ class InferenceProfiler {
   /// for a single window starting at idx
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
+  /// \param check_latency Whether to check latency for stability
   /// \return Returns whether inference and latency are stable
-  bool CheckWindowForStability(size_t idx, LoadStatus& load_status);
+  bool CheckWindowForStability(
+      size_t idx, LoadStatus& load_status, bool check_latency);
 
   /// Check if observed inferences are within threshold
   /// for a single window starting at idx

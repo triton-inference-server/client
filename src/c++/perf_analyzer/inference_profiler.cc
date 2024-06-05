@@ -792,6 +792,14 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
+  // For async requests, print a warning if the latency threshold is not met.
+  if (async_mode_ && !*is_stable && DetermineStability(load_status, false)) {
+    std::cerr << "Warning: Request latency is not stabilizing. "
+                 "Please try lowering the request rate."
+              << std::endl;
+    *is_stable = true;
+  }
+
   if (should_collect_metrics_) {
     metrics_manager_->StopQueryingMetrics();
   }
@@ -819,7 +827,8 @@ InferenceProfiler::ProfileHelper(
 }
 
 bool
-InferenceProfiler::DetermineStability(LoadStatus& load_status)
+InferenceProfiler::DetermineStability(
+    LoadStatus& load_status, bool check_latency)
 {
   bool stable = false;
   if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
@@ -833,16 +842,17 @@ InferenceProfiler::DetermineStability(LoadStatus& load_status)
       }
     }
 
-    stable = stable && CheckWindowForStability(idx, load_status);
+    stable = stable && CheckWindowForStability(idx, load_status, check_latency);
   }
   return stable;
 }
 
 bool
-InferenceProfiler::CheckWindowForStability(size_t idx, LoadStatus& load_status)
+InferenceProfiler::CheckWindowForStability(
+    size_t idx, LoadStatus& load_status, bool check_latency)
 {
   return IsInferWindowStable(idx, load_status) &&
-         (async_mode_ == true || IsLatencyWindowStable(idx, load_status));
+         (!check_latency || IsLatencyWindowStable(idx, load_status));
 }
 
 bool
@@ -869,6 +879,8 @@ InferenceProfiler::IsLatencyWindowStable(size_t idx, LoadStatus& load_status)
   double max_latency = *latencies_per_sec_measurements.second;
   double min_latency = *latencies_per_sec_measurements.first;
 
+  auto is_stable =
+      max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
   return max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
 }
 

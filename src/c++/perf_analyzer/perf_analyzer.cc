@@ -311,11 +311,16 @@ PerfAnalyzer::PrerunReport()
                 << std::endl;
     }
 
+    std::string stabilization_metric = "latency and throughput";
+    if (params_->async) {
+      stabilization_metric = "throughput";
+    }
     if (params_->percentile == -1) {
-      std::cout << "  Stabilizing using average latency" << std::endl;
-    } else {
-      std::cout << "  Stabilizing using p" << params_->percentile << " latency"
+      std::cout << "  Stabilizing using average " << stabilization_metric
                 << std::endl;
+    } else {
+      std::cout << "  Stabilizing using p" << params_->percentile
+                << stabilization_metric << std::endl;
     }
 
     if (params_->measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {
