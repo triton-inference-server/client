@@ -62,7 +62,7 @@ Available starting with the 24.03 release of the
 Run the Triton Inference Server SDK docker container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -85,7 +85,7 @@ Analyzer from source, see
 [here](../docs/install.md#build-from-source).
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
 ```
@@ -111,7 +111,7 @@ genai-perf --help
 1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
@@ -148,7 +148,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
