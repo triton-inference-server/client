@@ -260,6 +260,7 @@ class InferenceProfiler {
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
       const bool should_collect_metrics, const double overhead_pct_threshold,
+      const bool async_mode,
       const std::shared_ptr<ProfileDataCollector> collector,
       const bool should_collect_profile_data);
 
@@ -363,7 +364,7 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold,
+      const double overhead_pct_threshold, const bool async_mode,
       const std::shared_ptr<ProfileDataCollector> collector,
       const bool should_collect_profile_data);
 
@@ -785,6 +786,9 @@ class InferenceProfiler {
 
   // Whether to collect profile data.
   bool should_collect_profile_data_{false};
+
+  // Whether the client is operating in async mode.
+  const bool async_mode_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;

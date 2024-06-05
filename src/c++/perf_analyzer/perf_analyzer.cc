@@ -284,7 +284,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->measurement_request_count, params_->measurement_mode,
           params_->mpi_driver, params_->metrics_interval_ms,
           params_->should_collect_metrics, params_->overhead_pct_threshold,
-          collector_, !params_->profile_export_file.empty()),
+          params_->async, collector_, !params_->profile_export_file.empty()),
       "failed to create profiler");
 }
 
