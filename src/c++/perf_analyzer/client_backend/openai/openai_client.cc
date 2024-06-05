@@ -181,13 +181,10 @@ ChatCompletionClient::AsyncInfer(
         triton::client::RequestTimers::Kind::REQUEST_END);
     UpdateInferStat(request->timer_);
 
-    // Updated to be ok to call multiple times
-    // will only send the first final response
-    //
-    // if (!request->is_stream_) {
-    //
+    // Send Response checks if a final
+    // response has already been sent
+    // (in the case of seeing [DONE] in streaming case)
     request->SendResponse(true /* is_final */, false /* is_null */);
-    // }
   };
   std::unique_ptr<HttpRequest> request(new ChatCompletionRequest(
       std::move(completion_callback), std::move(callback), request_id,
