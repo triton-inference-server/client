@@ -475,7 +475,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         (
             system_role_headers,
@@ -711,7 +712,8 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
-        model_name: str = "",
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json: dict = {"data": [{"payload": [{}]} for _ in dataset["rows"]]}
 
@@ -726,6 +728,9 @@ class LlmInputs:
                 )
                 pa_json["data"][index]["payload"][0]["text_input"] = new_text_input
 
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
             pa_json = cls._add_optional_tags_to_openai_json(
                 pa_json,
                 index,
@@ -735,7 +740,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
+                iter_model_name,
             )
 
         return pa_json
