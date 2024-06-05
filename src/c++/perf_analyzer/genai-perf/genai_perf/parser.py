@@ -120,8 +120,12 @@ def _check_conditional_args(
     if args.endpoint is not None:
         args.endpoint = args.endpoint.lstrip(" /")
     else:
+        if args.model:
+            model_name = args.model[0]
+        else:
+            model_name = ""
         args.endpoint = _endpoint_type_map[args.endpoint_type].format(
-            MODEL_NAME=args.model
+            MODEL_NAME=model_name
         )
 
     # Output token distribution checks
