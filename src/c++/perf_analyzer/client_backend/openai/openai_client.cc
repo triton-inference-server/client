@@ -115,7 +115,6 @@ ChatCompletionClient::ResponseHeaderHandler(
       hdr.find("text/event-stream") != std::string::npos) {
     request->is_stream_ = true;
   }
-
   return byte_size;
 }
 
