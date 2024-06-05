@@ -51,7 +51,12 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {
+    "chat": "v1/chat/completions",
+    "completions": "v1/completions",
+    "generate": "v2/models/{MODEL_NAME}/generate",
+    "kserve": "v2/models/{MODEL_NAME}/infer",
+}
 
 
 def _check_model_args(
@@ -98,30 +103,30 @@ def _check_conditional_args(
     Check for conditional args and raise an error if they are not set.
     """
 
-    # Endpoint and output format checks
-    if args.service_kind == "openai":
-        if args.endpoint_type is None:
-            parser.error(
-                "The --endpoint-type option is required when using the 'openai' service-kind."
-            )
-        else:
-            if args.endpoint_type == "chat":
-                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-            elif args.endpoint_type == "completions":
-                args.output_format = OutputFormat.OPENAI_COMPLETIONS
-
-            if args.endpoint is not None:
-                args.endpoint = args.endpoint.lstrip(" /")
-            else:
-                args.endpoint = _endpoint_type_map[args.endpoint_type]
-    elif args.endpoint_type is not None:
-        parser.error(
-            "The --endpoint-type option should only be used when using the 'openai' service-kind."
-        )
-
-    if args.service_kind == "triton":
+    if args.endpoint_type == "chat":
+        args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "completions":
+        args.output_format = OutputFormat.OPENAI_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "generate":
+        args.output_format = OutputFormat.TRITON_GENERATE
+        args.service_kind = "openai"
+    elif args.endpoint_type == "kserve":
+        args.service_kind = "triton"
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
+
+    if args.endpoint is not None:
+        args.endpoint = args.endpoint.lstrip(" /")
+    else:
+        if args.model:
+            model_name = args.model[0]
+        else:
+            model_name = ""
+        args.endpoint = _endpoint_type_map[args.endpoint_type].format(
+            MODEL_NAME=model_name
+        )
 
     # Output token distribution checks
     if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
@@ -137,7 +142,7 @@ def _check_conditional_args(
     if args.service_kind != "triton":
         if args.output_tokens_mean_deterministic:
             parser.error(
-                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+                "The --output-tokens-mean-deterministic option is only supported with the kserve endpoint type."
             )
 
     return args
@@ -272,7 +277,7 @@ def _add_input_args(parser):
         help=f"When using --output-tokens-mean, this flag can be set to "
         "improve precision by setting the minimum number of tokens "
         "equal to the requested number of tokens. This is currently "
-        "supported with the Triton service-kind. "
+        "supported with the kserve endpoint type. "
         "Note that there is still some variability in the requested number "
         "of output tokens, but GenAi-Perf attempts its best effort with your "
         "model to get the right number of output tokens. ",
@@ -380,10 +385,10 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--backend",
         type=str,
-        choices=utils.get_enum_names(OutputFormat)[2:],
+        choices=["tensorrtllm", "vllm"],
         default="tensorrtllm",
         required=False,
-        help=f'When using the "triton" service-kind, '
+        help=f'When using the "kserve" endpoint type, '
         "this is the backend of the model. "
         "For the TENSORRT-LLM backend, you currently must set "
         "'exclude_input_in_output' to true in the model config to "
@@ -400,21 +405,10 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions"],
+        choices=["chat", "completions", "generate", "kserve"],
+        default="kserve",
         required=False,
-        help=f"The endpoint-type to send requests to on the "
-        'server. This is only used with the "openai" service-kind.',
-    )
-
-    endpoint_group.add_argument(
-        "--service-kind",
-        type=str,
-        choices=["triton", "openai"],
-        default="triton",
-        required=False,
-        help="The kind of service perf_analyzer will "
-        'generate load for. In order to use "openai", '
-        "you must specify an api via --endpoint-type.",
+        help=f"The endpoint-type for requests. Inputs will be formatted according to endpoint-type.",
     )
 
     endpoint_group.add_argument(

@@ -63,6 +63,14 @@ namespace openai {
 void
 ChatCompletionRequest::SendResponse(bool is_final, bool is_null)
 {
+  // if final response has already been sent
+  // due to detecting the [DONE]
+  // ignore final response due to request completion
+  if (final_response_sent_) {
+    return;
+  }
+
+  final_response_sent_ = is_final;
   response_callback_(new ChatCompletionResult(
       http_code_, std::move(response_buffer_), is_final, is_null, request_id_));
 }
@@ -172,9 +180,11 @@ ChatCompletionClient::AsyncInfer(
     request->timer_.CaptureTimestamp(
         triton::client::RequestTimers::Kind::REQUEST_END);
     UpdateInferStat(request->timer_);
-    if (!request->is_stream_) {
-      request->SendResponse(true /* is_final */, false /* is_null */);
-    }
+
+    // Send Response checks if a final
+    // response has already been sent
+    // (in the case of seeing [DONE] in streaming case)
+    request->SendResponse(true /* is_final */, false /* is_null */);
   };
   std::unique_ptr<HttpRequest> request(new ChatCompletionRequest(
       std::move(completion_callback), std::move(callback), request_id,

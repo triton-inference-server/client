@@ -127,6 +127,7 @@ class ChatCompletionRequest : public HttpRequest {
   // The timers for infer request.
   triton::client::RequestTimers timer_;
   const std::string request_id_;
+  bool final_response_sent_{false};
 };
 
 class ChatCompletionClient : public HttpClient {

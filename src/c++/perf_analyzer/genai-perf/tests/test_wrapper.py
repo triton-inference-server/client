@@ -43,7 +43,7 @@ class TestWrapper:
         ],
     )
     def test_url_exactly_once_triton(self, monkeypatch, arg):
-        args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
+        args = ["genai-perf", "-m", "test_model", "--endpoint-type", "kserve"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
         cmd = Profiler.build_cmd(args, extra_args)
@@ -70,7 +70,7 @@ class TestWrapper:
         ],
     )
     def test_profile_export_filepath(self, monkeypatch, arg, expected_filepath):
-        args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
+        args = ["genai-perf", "-m", "test_model", "--endpoint-type", "kserve"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
         cmd = Profiler.build_cmd(args, extra_args)
@@ -87,7 +87,7 @@ class TestWrapper:
         ],
     )
     def test_service_triton(self, monkeypatch, arg):
-        args = ["genai-perf", "-m", "test_model", "--service-kind", "triton"] + arg
+        args = ["genai-perf", "-m", "test_model", "--endpoint-type", "kserve"] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
         cmd = Profiler.build_cmd(args, extra_args)
@@ -113,8 +113,6 @@ class TestWrapper:
             "genai-perf",
             "-m",
             "test_model",
-            "--service-kind",
-            "openai",
         ] + arg
         monkeypatch.setattr("sys.argv", args)
         args, extra_args = parser.parse_args()
