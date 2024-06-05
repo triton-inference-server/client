@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
@@ -75,7 +75,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -130,7 +130,7 @@ Request throughput (per sec): 4.44
 1. Run Triton Inference Server with vLLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
 ```
@@ -160,7 +160,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -227,7 +227,7 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -292,7 +292,7 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
