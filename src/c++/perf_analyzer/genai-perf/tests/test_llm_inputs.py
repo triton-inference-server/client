@@ -189,7 +189,6 @@ class TestLlmInputs:
         dataset_json = LlmInputs._convert_input_url_dataset_to_generic_json(
             dataset=dataset
         )
-        random.seed(1)
 
         assert dataset_json is not None
         assert len(dataset_json["rows"]) == TEST_LENGTH
