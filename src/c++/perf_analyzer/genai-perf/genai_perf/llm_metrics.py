@@ -30,6 +30,7 @@ import csv
 import json
 from collections import defaultdict
 from enum import Enum, auto
+from itertools import tee
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
@@ -120,6 +121,7 @@ class LLMMetrics(Metrics):
         output_token_throughputs_per_request: List[int] = [],
         num_output_tokens: List[int] = [],
         num_input_tokens: List[int] = [],
+        old_inter_token_latencies: List[List[int]] = [[]],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -128,6 +130,9 @@ class LLMMetrics(Metrics):
         self.output_token_throughputs_per_request = output_token_throughputs_per_request
         self.num_output_tokens = num_output_tokens
         self.num_input_tokens = num_input_tokens
+
+        # Keeping old ITL as a WAR to preserve visualization. Excluded from data.
+        self._old_inter_token_latencies = old_inter_token_latencies
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
@@ -523,6 +528,8 @@ class LLMProfileDataParser(ProfileDataParser):
         output_token_throughputs_per_request = []
         num_input_tokens = []
         num_output_tokens = []
+        old_inter_token_latencies = []
+
         for request in requests:
             req_timestamp = request["timestamp"]
             req_inputs = request["request_inputs"]
@@ -554,15 +561,32 @@ class LLMProfileDataParser(ProfileDataParser):
             num_input_tokens.append(input_token_count)
 
             # output token throughput per request
-            output_token_count = self._get_output_token_count(res_outputs)
+            output_token_counts = self._get_output_token_counts(res_outputs)
+            total_output_token = sum(output_token_counts)
             output_token_throughputs_per_request.append(
-                output_token_count / req_latency_s
+                total_output_token / req_latency_s
             )
-            num_output_tokens.append(output_token_count)
+            num_output_tokens.append(total_output_token)
 
             # inter token latencies
-            inter_token_latency = (req_latency_ns - ttft) / (output_token_count - 1)
+            inter_token_latency = (req_latency_ns - ttft) / (total_output_token - 1)
             inter_token_latencies.append(round(inter_token_latency))
+
+            # The new ITL calculation above loses all token-level ITL information
+            # and as a result breaks ITL vs token position visualization. Keep
+            # the old version of inter token latency as a WAR to preserve the
+            # visualization.
+            old_inter_token_latency = []
+            for (t1, _), (t2, n2) in self._pairwise(
+                zip(res_timestamps, output_token_counts)
+            ):
+                # TMA-1676: handle empty first/last responses
+                # if the latter response has zero token (e.g. empty string),
+                # then set it default to one for the sake of inter token latency
+                # calculation and to avoid divide by zero.
+                num_token = 1 if n2 == 0 else n2
+                old_inter_token_latency.append(round((t2 - t1) / num_token))
+            old_inter_token_latencies.append(old_inter_token_latency)
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
@@ -578,7 +602,14 @@ class LLMProfileDataParser(ProfileDataParser):
             output_token_throughputs_per_request,
             num_output_tokens,
             num_input_tokens,
+            old_inter_token_latencies,
         )
+
+    def _pairwise(self, iterable):
+        """Generate pairs of consecutive elements from the given iterable."""
+        a, b = tee(iterable)
+        next(b, None)
+        return zip(a, b)
 
     def _preprocess_response(
         self, res_timestamps: List[int], res_outputs: List[Dict[str, str]]
@@ -636,28 +667,38 @@ class LLMProfileDataParser(ProfileDataParser):
                 "Failed to parse OpenAI request input in profile export file."
             )
 
-    def _get_output_token_count(self, res_outputs: dict) -> int:
+    def _get_output_token_counts(self, res_outputs: dict) -> List[int]:
         """Deserialize the response output and return tokenized outputs."""
         if self._service_kind == "triton":
-            output_text = self._get_triton_output_text(res_outputs)
+            output_tokens = self._get_triton_output_tokens(res_outputs)
         elif self._service_kind == "openai":
-            output_text = self._get_openai_output_text(res_outputs)
+            output_tokens = self._get_openai_output_tokens(res_outputs)
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-        return len(self._tokenizer.encode(output_text))
+        return list(map(len, output_tokens))
 
-    def _get_triton_output_text(self, res_outputs: dict) -> str:
-        """Return the concatenated Triton response output text."""
-        return "".join([r["text_output"] for r in res_outputs])
+    def _get_triton_output_tokens(self, res_outputs: dict) -> List[List[int]]:
+        """Return a list of Triton response output tokens."""
+        output_texts = [r["text_output"] for r in res_outputs]
+        return self._run_tokenizer(output_texts)
 
-    def _get_openai_output_text(self, res_outputs: dict) -> str:
-        """Return the concatenated OpenAI response output text."""
+    def _get_openai_output_tokens(self, res_outputs: dict) -> List[List[int]]:
+        """Return a list of OpenAI response output tokens."""
         output_texts = []
         for output in res_outputs:
             text = self._extract_openai_text_output(output["response"])
             output_texts.append(text)
-        return "".join(output_texts)
+        return self._run_tokenizer(output_texts)
+
+    def _run_tokenizer(self, output_texts: List[str]) -> List[List[int]]:
+        # exclamation mark trick forces the llama tokenization to consistently
+        # start each output with a specific token which allows us to safely skip
+        # the first token of every tokenized output and get only the ones that
+        # are returned by the model
+        output_texts = ["!" + txt for txt in output_texts]
+        encodings = self._tokenizer(output_texts)
+        return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
