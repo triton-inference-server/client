@@ -432,7 +432,7 @@ class TestCLIArguments:
                     "100",
                     "--output-tokens-mean-deterministic",
                 ],
-                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind",
+                "The --output-tokens-mean-deterministic option is only supported with the kserve endpoint type",
             ),
         ],
     )

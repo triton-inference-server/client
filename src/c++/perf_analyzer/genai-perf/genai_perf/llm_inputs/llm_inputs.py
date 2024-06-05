@@ -232,7 +232,6 @@ class LlmInputs:
         url = cls._resolve_url(dataset_name)
         configured_url = cls._create_configured_url(url, starting_index, length)
         dataset = cls._download_dataset(configured_url)
-
         return dataset
 
     @classmethod

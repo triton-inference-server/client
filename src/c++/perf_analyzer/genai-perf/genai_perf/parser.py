@@ -138,7 +138,7 @@ def _check_conditional_args(
     if args.service_kind != "triton":
         if args.output_tokens_mean_deterministic:
             parser.error(
-                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+                "The --output-tokens-mean-deterministic option is only supported with the kserve endpoint type."
             )
 
     return args
@@ -273,7 +273,7 @@ def _add_input_args(parser):
         help=f"When using --output-tokens-mean, this flag can be set to "
         "improve precision by setting the minimum number of tokens "
         "equal to the requested number of tokens. This is currently "
-        "supported with the Triton service-kind. "
+        "supported with the kserve endpoint type. "
         "Note that there is still some variability in the requested number "
         "of output tokens, but GenAi-Perf attempts its best effort with your "
         "model to get the right number of output tokens. ",
