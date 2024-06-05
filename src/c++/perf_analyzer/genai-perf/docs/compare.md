@@ -76,11 +76,11 @@ plot2:
   - profile3.json
   output: compare
 plot3:
-  title: Distribution of Input Tokens to Generated Tokens
-  x_metric: num_input_tokens
-  y_metric: num_output_tokens
-  x_label: Number of Input Tokens Per Request
-  y_label: Number of Generated Tokens Per Request
+  title: Distribution of Input Sequence Lengths to Output Sequence Lengths
+  x_metric: input_sequence_lengths
+  y_metric: output_sequence_lengths
+  x_label: Input Sequence Length
+  y_label: Output Sequence Length
   width: 1200
   height: 450
   type: heatmap
@@ -90,10 +90,10 @@ plot3:
   - profile3.json
   output: compare
 plot4:
-  title: Time to First Token vs Number of Input Tokens
-  x_metric: num_input_tokens
+  title: Time to First Token vs Input Sequence Lengths
+  x_metric: input_sequence_lengths
   y_metric: time_to_first_tokens
-  x_label: Number of Input Tokens
+  x_label: Input Sequence Length
   y_label: Time to First Token (ms)
   width: 1200
   height: 700
@@ -234,8 +234,8 @@ configuration file.
 Here are the list of sample plots that gets created by default from running the
 `compare` subcommand:
 
-### Distribution of Input Tokens to Generated Tokens
-<img src="assets/distribution_of_input_tokens_to_generated_tokens.jpeg" width="800" height="300" />
+### Distribution of Input Sequence Lengths to Output Sequence Lengths
+<img src="assets/distribution_of_input_sequence_lengths_to_output_sequence_lengths.jpeg" width="800" height="300" />
 
 ### Request Latency Analysis
 <img src="assets/request_latency.jpeg" width="800" height="300" />
@@ -243,8 +243,8 @@ Here are the list of sample plots that gets created by default from running the
 ### Time to First Token Analysis
 <img src="assets/time_to_first_token.jpeg" width="800" height="300" />
 
-### Time to First Token vs. Number of Input Tokens
-<img src="assets/time_to_first_token_vs_number_of_input_tokens.jpeg" width="800" height="300" />
+### Time to First Token vs. Input Sequence Lengths
+<img src="assets/time_to_first_token_vs_input_sequence_lengths.jpeg" width="800" height="300" />
 
 ### Token-to-Token Latency vs. Output Token Position
 <img src="assets/token-to-token_latency_vs_output_token_position.jpeg" width="800" height="300" />
