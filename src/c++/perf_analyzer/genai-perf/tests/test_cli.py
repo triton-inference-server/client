@@ -80,19 +80,17 @@ class TestCLIArguments:
             ),
             (["--concurrency", "3"], {"concurrency": 3}),
             (
-                ["--endpoint-type", "completions", "--service-kind", "openai"],
+                ["--endpoint-type", "completions"],
                 {"endpoint": "v1/completions"},
             ),
             (
-                ["--endpoint-type", "chat", "--service-kind", "openai"],
+                ["--endpoint-type", "chat"],
                 {"endpoint": "v1/chat/completions"},
             ),
             (
                 [
                     "--endpoint-type",
                     "chat",
-                    "--service-kind",
-                    "openai",
                     "--endpoint",
                     "custom/address",
                 ],
@@ -102,8 +100,6 @@ class TestCLIArguments:
                 [
                     "--endpoint-type",
                     "chat",
-                    "--service-kind",
-                    "openai",
                     "--endpoint",
                     "   /custom/address",
                 ],
@@ -113,8 +109,6 @@ class TestCLIArguments:
                 [
                     "--endpoint-type",
                     "completions",
-                    "--service-kind",
-                    "openai",
                     "--endpoint",
                     "custom/address",
                 ],
@@ -164,9 +158,9 @@ class TestCLIArguments:
             (["--random-seed", "8"], {"random_seed": 8}),
             (["--request-rate", "9.0"], {"request_rate": 9.0}),
             (["-s", "99.5"], {"stability_percentage": 99.5}),
-            (["--service-kind", "triton"], {"service_kind": "triton"}),
+            (["--endpoint-type", "kserve"], {"service_kind": "triton"}),
             (
-                ["--service-kind", "openai", "--endpoint-type", "chat"],
+                ["--endpoint-type", "chat"],
                 {"service_kind": "openai", "endpoint": "v1/chat/completions"},
             ),
             (["--stability-percentage", "99.5"], {"stability_percentage": 99.5}),
@@ -263,25 +257,25 @@ class TestCLIArguments:
         "arg, expected_path",
         [
             (
-                ["--service-kind", "openai", "--endpoint-type", "chat"],
+                ["--endpoint-type", "chat"],
                 "artifacts/test_model-openai-chat-concurrency1",
             ),
             (
-                ["--service-kind", "openai", "--endpoint-type", "completions"],
+                ["--endpoint-type", "completions"],
                 "artifacts/test_model-openai-completions-concurrency1",
             ),
             (
-                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                ["--endpoint-type", "kserve", "--backend", "tensorrtllm"],
                 "artifacts/test_model-triton-tensorrtllm-concurrency1",
             ),
             (
-                ["--service-kind", "triton", "--backend", "vllm"],
+                ["--endpoint-type", "kserve", "--backend", "vllm"],
                 "artifacts/test_model-triton-vllm-concurrency1",
             ),
             (
                 [
-                    "--service-kind",
-                    "triton",
+                    "--endpoint-type",
+                    "kserve",
                     "--backend",
                     "vllm",
                     "--concurrency",
@@ -318,8 +312,6 @@ class TestCLIArguments:
                 [
                     "--model",
                     "hello/world/test_model",
-                    "--service-kind",
-                    "openai",
                     "--endpoint-type",
                     "chat",
                 ],
@@ -408,22 +400,6 @@ class TestCLIArguments:
         "args, expected_output",
         [
             (
-                ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
-                "The --endpoint-type option is required when using the 'openai' service-kind.",
-            ),
-            (
-                [
-                    "genai-perf",
-                    "-m",
-                    "test_model",
-                    "--service-kind",
-                    "openai",
-                    "--endpoint",
-                    "custom/address",
-                ],
-                "The --endpoint-type option is required when using the 'openai' service-kind.",
-            ),
-            (
                 ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
                 "The --output-tokens-mean option is required when using --output-tokens-stddev.",
             ),
@@ -450,8 +426,6 @@ class TestCLIArguments:
                     "genai-perf",
                     "-m",
                     "test_model",
-                    "--service-kind",
-                    "openai",
                     "--endpoint-type",
                     "chat",
                     "--output-tokens-mean",
@@ -476,17 +450,15 @@ class TestCLIArguments:
         "args, expected_format",
         [
             (
-                ["--service-kind", "openai", "--endpoint-type", "chat"],
+                ["--endpoint-type", "chat"],
                 OutputFormat.OPENAI_CHAT_COMPLETIONS,
             ),
             (
-                ["--service-kind", "openai", "--endpoint-type", "completions"],
+                ["--endpoint-type", "completions"],
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
                 [
-                    "--service-kind",
-                    "openai",
                     "--endpoint-type",
                     "completions",
                     "--endpoint",
@@ -495,10 +467,10 @@ class TestCLIArguments:
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
-                ["--service-kind", "triton", "--backend", "tensorrtllm"],
+                ["--endpoint-type", "kserve", "--backend", "tensorrtllm"],
                 OutputFormat.TENSORRTLLM,
             ),
-            (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
+            (["--endpoint-type", "kserve", "--backend", "vllm"], OutputFormat.VLLM),
         ],
     )
     def test_inferred_output_format(self, monkeypatch, args, expected_format):

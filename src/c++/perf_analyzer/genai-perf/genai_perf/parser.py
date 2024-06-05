@@ -55,6 +55,7 @@ _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
     "generate": "v2/models/{MODEL_NAME}/generate",
+    "kserve": "v2/models/{MODEL_NAME}/infer",
 }
 
 
@@ -380,10 +381,10 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--backend",
         type=str,
-        choices=utils.get_enum_names(OutputFormat)[2:],
+        choices=["tensorrtllm", "vllm"],
         default="tensorrtllm",
         required=False,
-        help=f'When using the "triton" service-kind, '
+        help=f'When using the "kserve" endpoint type, '
         "this is the backend of the model. "
         "For the TENSORRT-LLM backend, you currently must set "
         "'exclude_input_in_output' to true in the model config to "
