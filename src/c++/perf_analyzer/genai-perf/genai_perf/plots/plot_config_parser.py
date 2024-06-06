@@ -111,8 +111,9 @@ class PlotConfigParser:
             itls = stats.metrics.data[name]
             return [scale(x, (1 / 1e6)) for x in itls]  # ns to ms
         elif name == "token_positions":
+            chunked_itls = getattr(stats.metrics, "_chunked_inter_token_latencies")
             token_positions: List[Union[int, float]] = []
-            for request_itls in getattr(stats.metrics, "_old_inter_token_latencies"):
+            for request_itls in chunked_itls:
                 token_positions += list(range(1, len(request_itls) + 1))
             return token_positions
         elif name == "time_to_first_tokens":

@@ -121,7 +121,7 @@ class LLMMetrics(Metrics):
         output_token_throughputs_per_request: List[int] = [],
         num_output_tokens: List[int] = [],
         num_input_tokens: List[int] = [],
-        old_inter_token_latencies: List[List[int]] = [[]],
+        chunked_inter_token_latencies: List[List[int]] = [[]],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -131,8 +131,9 @@ class LLMMetrics(Metrics):
         self.num_output_tokens = num_output_tokens
         self.num_input_tokens = num_input_tokens
 
-        # Keeping old ITL as a WAR to preserve visualization. Excluded from data.
-        self._old_inter_token_latencies = old_inter_token_latencies
+        # Keeping chunked ITL (old) as a WAR to preserve visualization.
+        # Excluded from data.
+        self._chunked_inter_token_latencies = chunked_inter_token_latencies
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
@@ -168,14 +169,23 @@ class Statistics:
         self._metrics = metrics
         self._stats_dict: Dict = defaultdict(dict)
         for attr, data in metrics.data.items():
+            if self._should_skip(data, attr):
+                continue
+
             attr = metrics.get_base_name(attr)
             self._add_units(attr)
-            if data:
-                self._calculate_mean(data, attr)
-                if not self._is_throughput_field(attr):
-                    self._calculate_percentiles(data, attr)
-                    self._calculate_minmax(data, attr)
-                    self._calculate_std(data, attr)
+            self._calculate_mean(data, attr)
+            if not self._is_throughput_field(attr):
+                self._calculate_percentiles(data, attr)
+                self._calculate_minmax(data, attr)
+                self._calculate_std(data, attr)
+
+    def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
+        """Checks if some metrics should be skipped."""
+        # Skip ITL when non-streaming (all zero)
+        if attr == "inter_token_latencies" and sum(data) == 0:
+            return True
+        return False
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
@@ -528,7 +538,7 @@ class LLMProfileDataParser(ProfileDataParser):
         output_token_throughputs_per_request = []
         num_input_tokens = []
         num_output_tokens = []
-        old_inter_token_latencies = []
+        chunked_inter_token_latencies = []
 
         for request in requests:
             req_timestamp = request["timestamp"]
@@ -569,14 +579,15 @@ class LLMProfileDataParser(ProfileDataParser):
             num_output_tokens.append(total_output_token)
 
             # inter token latencies
-            inter_token_latency = (req_latency_ns - ttft) / (total_output_token - 1)
-            inter_token_latencies.append(round(inter_token_latency))
+            if total_output_token > 1:
+                inter_token_latency = (req_latency_ns - ttft) / (total_output_token - 1)
+                inter_token_latencies.append(round(inter_token_latency))
 
             # The new ITL calculation above loses all token-level ITL information
             # and as a result breaks ITL vs token position visualization. Keep
             # the old version of inter token latency as a WAR to preserve the
             # visualization.
-            old_inter_token_latency = []
+            chunked_inter_token_latency = []
             for (t1, _), (t2, n2) in self._pairwise(
                 zip(res_timestamps, output_token_counts)
             ):
@@ -585,8 +596,8 @@ class LLMProfileDataParser(ProfileDataParser):
                 # then set it default to one for the sake of inter token latency
                 # calculation and to avoid divide by zero.
                 num_token = 1 if n2 == 0 else n2
-                old_inter_token_latency.append(round((t2 - t1) / num_token))
-            old_inter_token_latencies.append(old_inter_token_latency)
+                chunked_inter_token_latency.append(round((t2 - t1) / num_token))
+            chunked_inter_token_latencies.append(chunked_inter_token_latency)
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
@@ -602,7 +613,7 @@ class LLMProfileDataParser(ProfileDataParser):
             output_token_throughputs_per_request,
             num_output_tokens,
             num_input_tokens,
-            old_inter_token_latencies,
+            chunked_inter_token_latencies,
         )
 
     def _pairwise(self, iterable):
