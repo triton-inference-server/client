@@ -25,15 +25,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
-import sys
 from io import StringIO
-from pathlib import Path
 
 import pytest
 from genai_perf.export_data.console_exporter import ConsoleExporter
 from genai_perf.export_data.data_exporter_factory import DataExporterType
-from genai_perf.llm_metrics import LLMProfileDataParser
-from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from tests.test_data import triton_profile_data
 
 
@@ -41,7 +37,7 @@ class TestConsoleExporter:
     @pytest.fixture
     def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """
-        This function will mock the open function for specific files:
+        This function will mock the open function for specific files.
 
         """
 
@@ -57,39 +53,113 @@ class TestConsoleExporter:
 
         monkeypatch.setattr("builtins.open", custom_open)
 
-    def test_pretty_print_output(self, mock_read_write: pytest.MonkeyPatch) -> None:
-        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
-        pd = LLMProfileDataParser(
-            filename=Path("triton_profile_export.json"),
-            tokenizer=tokenizer,
-        )
-        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
-
-        capturedTable = StringIO()
-        sys.stdout = capturedTable
+    def test_pretty_print_output(self, capsys) -> None:
         config = {
             "type": DataExporterType.CONSOLE,
-            "stats": stat.stats_dict,
+            "stats": stats,
         }
         exporter = ConsoleExporter(config)
         exporter.export()
-        sys.stdout = sys.__stdout__
 
         expected_content = (
             "                             LLM Metrics                              \n"
             "┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓\n"
             "┃                Statistic ┃  avg ┃  min ┃  max ┃  p99 ┃  p90 ┃  p75 ┃\n"
             "┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━┩\n"
-            "│ Time to first token (ms) │ 2.00 │ 2.00 │ 2.00 │ 2.00 │ 2.00 │ 2.00 │\n"
-            "│ Inter token latency (ms) │ 2.00 │ 1.00 │ 3.00 │ 2.97 │ 2.70 │ 2.25 │\n"
-            "│     Request latency (ms) │ 8.00 │ 7.00 │ 9.00 │ 8.98 │ 8.80 │ 8.50 │\n"
-            "│         Num output token │ 4.50 │ 3.00 │ 6.00 │ 5.97 │ 5.70 │ 5.25 │\n"
-            "│          Num input token │ 3.50 │ 3.00 │ 4.00 │ 3.99 │ 3.90 │ 3.75 │\n"
+            "│ Time to first token (ms) │ 2.00 │ 2.00 │ 3.00 │ 2.99 │ 2.90 │ 2.75 │\n"
+            "│ Inter token latency (ms) │ 0.50 │ 0.00 │ 1.00 │ 0.99 │ 0.90 │ 0.75 │\n"
+            "│     Request latency (ms) │ 3.00 │ 3.00 │ 4.00 │ 3.99 │ 3.90 │ 3.75 │\n"
+            "│         Num output token │ 6.50 │ 6.00 │ 7.00 │ 6.99 │ 6.90 │ 6.75 │\n"
+            "│          Num input token │ 7.50 │ 7.00 │ 8.00 │ 7.99 │ 7.90 │ 7.75 │\n"
             "└──────────────────────────┴──────┴──────┴──────┴──────┴──────┴──────┘\n"
-            "Output token throughput (per sec): 900.00\n"
-            "Request throughput (per sec): 200.00\n"
+            "Output token throughput (per sec): 123.00\n"
+            "Request throughput (per sec): 456.00\n"
         )
 
-        returned_data = capturedTable.getvalue()
+        returned_data = capsys.readouterr().out
 
         assert returned_data == expected_content
+
+
+stats = {
+    "request_throughput": {"unit": "requests/sec", "avg": 456.0},
+    "request_latency": {
+        "unit": "ms",
+        "avg": 3.0,
+        "p99": 3.99,
+        "p95": 3.95,
+        "p90": 3.90,
+        "p75": 3.75,
+        "p50": 3.50,
+        "p25": 3.25,
+        "max": 4.0,
+        "min": 3.0,
+        "std": 3.50,
+    },
+    "time_to_first_token": {
+        "unit": "ms",
+        "avg": 2.0,
+        "p99": 2.99,
+        "p95": 2.95,
+        "p90": 2.90,
+        "p75": 2.75,
+        "p50": 2.50,
+        "p25": 2.25,
+        "max": 3.00,
+        "min": 2.00,
+        "std": 2.50,
+    },
+    "inter_token_latency": {
+        "unit": "ms",
+        "avg": 0.50,
+        "p99": 0.99,
+        "p95": 0.95,
+        "p90": 0.90,
+        "p75": 0.75,
+        "p50": 0.50,
+        "p25": 0.25,
+        "max": 1.00,
+        "min": 0.00,
+        "std": 0.50,
+    },
+    "output_token_throughput": {"unit": "tokens/sec", "avg": 123.0},
+    "output_token_throughput_per_request": {
+        "unit": "tokens/sec",
+        "avg": 300.00,
+        "p99": 300.00,
+        "p95": 300.00,
+        "p90": 300.00,
+        "p75": 300.00,
+        "p50": 300.00,
+        "p25": 300.00,
+        "max": 300.00,
+        "min": 300.00,
+        "std": 300.00,
+    },
+    "num_output_token": {
+        "unit": "tokens",
+        "avg": 6.5,
+        "p99": 6.99,
+        "p95": 6.95,
+        "p90": 6.90,
+        "p75": 6.75,
+        "p50": 6.5,
+        "p25": 6.25,
+        "max": 7.0,
+        "min": 6.0,
+        "std": 6.5,
+    },
+    "num_input_token": {
+        "unit": "tokens",
+        "avg": 7.5,
+        "p99": 7.99,
+        "p95": 7.95,
+        "p90": 7.90,
+        "p75": 7.75,
+        "p50": 7.5,
+        "p25": 7.25,
+        "max": 8.0,
+        "min": 7.0,
+        "std": 7.5,
+    },
+}

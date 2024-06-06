@@ -37,13 +37,12 @@ from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.parser import get_extra_inputs_as_dict
 
 
-class ReportOutput:
+class OutputReporter:
     """
     A class to orchestrate output generation.
     """
 
     def __init__(self, data_parser: LLMProfileDataParser, args: Namespace):
-        self.data_parser = data_parser
         self.args = args
 
         if args.concurrency:
@@ -55,7 +54,7 @@ class ReportOutput:
         else:
             raise GenAIPerfException("No valid infer mode specified")
 
-        self.stats = self.data_parser.get_statistics(self.infer_mode, self.load_level)
+        self.stats = data_parser.get_statistics(self.infer_mode, self.load_level)
 
     def report_output(self) -> None:
         factory = DataExporterFactory()

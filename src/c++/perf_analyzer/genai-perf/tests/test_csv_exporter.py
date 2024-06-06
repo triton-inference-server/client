@@ -41,7 +41,7 @@ class TestCsvExporter:
     @pytest.fixture
     def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[str]:
         """
-        This function will mock the open function for specific files:
+        This function will mock the open function for specific files.
 
         """
 
@@ -84,7 +84,7 @@ class TestCsvExporter:
         expected_content = [
             "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
             "Time To First Token (ms),2.00,2.00,2.00,2.00,2.00,2.00,2.00,2.00,2.00\r\n",
-            "Inter Token Latency (ms),2.00,1.00,3.00,2.97,2.85,2.70,2.25,2.00,1.75\r\n",
+            "Inter Token Latency (ms),1.95,1.40,2.50,2.49,2.44,2.39,2.23,1.95,1.67\r\n",
             "Request Latency (ms),8.00,7.00,9.00,8.98,8.90,8.80,8.50,8.00,7.50\r\n",
             "Num Output Token,4.50,3.00,6.00,5.97,5.85,5.70,5.25,4.50,3.75\r\n",
             "Num Input Token,3.50,3.00,4.00,3.99,3.95,3.90,3.75,3.50,3.25\r\n",

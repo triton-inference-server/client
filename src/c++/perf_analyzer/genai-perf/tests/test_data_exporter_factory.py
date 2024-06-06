@@ -35,7 +35,7 @@ from genai_perf.export_data.json_exporter import JsonExporter
 from genai_perf.parser import get_extra_inputs_as_dict
 
 
-class TestReportOutput:
+class TestOutputReporter:
     stats = {
         "request_latency": {
             "unit": "ms",

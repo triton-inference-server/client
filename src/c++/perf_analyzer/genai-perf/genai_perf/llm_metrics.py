@@ -192,14 +192,20 @@ class Statistics:
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
+        setattr(self, "avg_" + attr, avg)
         if self._is_time_field(attr):
             avg = self._scale(float(avg))
         self._stats_dict[attr]["avg"] = float(avg)
-        setattr(self, "avg_" + attr, avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
+        setattr(self, "p25_" + attr, p25)
+        setattr(self, "p50_" + attr, p50)
+        setattr(self, "p75_" + attr, p75)
+        setattr(self, "p90_" + attr, p90)
+        setattr(self, "p95_" + attr, p95)
+        setattr(self, "p99_" + attr, p99)
         if self._is_time_field(attr):
             p25 = self._scale(float(p25))
             p50 = self._scale(float(p50))
@@ -213,33 +219,28 @@ class Statistics:
         self._stats_dict[attr]["p75"] = float(p75)
         self._stats_dict[attr]["p50"] = float(p50)
         self._stats_dict[attr]["p25"] = float(p25)
-        setattr(self, "p25_" + attr, p25)
-        setattr(self, "p50_" + attr, p50)
-        setattr(self, "p75_" + attr, p75)
-        setattr(self, "p90_" + attr, p90)
-        setattr(self, "p95_" + attr, p95)
-        setattr(self, "p99_" + attr, p99)
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
+        setattr(self, "min_" + attr, min)
+        setattr(self, "max_" + attr, max)
         if self._is_time_field(attr):
             min = self._scale(float(min))
             max = self._scale(float(max))
         self._stats_dict[attr]["max"] = float(max)
         self._stats_dict[attr]["min"] = float(min)
-        setattr(self, "min_" + attr, min)
-        setattr(self, "max_" + attr, max)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
+        setattr(self, "std_" + attr, std)
         if self._is_time_field(attr):
             std = self._scale(float(std))
         self._stats_dict[attr]["std"] = float(std)
-        setattr(self, "std_" + attr, std)
 
     def _scale(self, metric: float, factor: float = 1 / 1e6) -> float:
         """
-        Scale metrics from nanoseconds to milliseconds
+        Scale metrics from nanoseconds by factor.
+        Default is nanoseconds to milliseconds.
         """
         return metric * factor
 
