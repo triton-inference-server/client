@@ -182,8 +182,11 @@ class Statistics:
 
     def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
         """Checks if some metrics should be skipped."""
+        # No data points
+        if len(data) == 0:
+            return True
         # Skip ITL when non-streaming (all zero)
-        if attr == "inter_token_latencies" and sum(data) == 0:
+        elif attr == "inter_token_latencies" and sum(data) == 0:
             return True
         return False
 
