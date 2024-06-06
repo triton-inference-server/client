@@ -723,13 +723,16 @@ InferenceProfiler::ProfileHelper(
     measurement_perf_status.request_rate = experiment_perf_status.request_rate;
     RETURN_IF_ERROR(manager_->CheckHealth());
 
+    MeasureConfig measure_config;
     if (measurement_mode_ == MeasurementMode::TIME_WINDOWS) {
-      error.push(
-          Measure(measurement_perf_status, measurement_window_ms_, false));
+      measure_config.measurement_window = measurement_window_ms_;
+      measure_config.is_count_based = false;
     } else {
-      error.push(
-          Measure(measurement_perf_status, measurement_request_count_, true));
+      measure_config.measurement_window = measurement_request_count_;
+      measure_config.is_count_based = true;
     }
+    measure_config.clamp_window = (request_count != 0);
+    error.push(Measure(measurement_perf_status, measure_config));
     measurement_perf_statuses.push_back(measurement_perf_status);
 
     if (error.size() > load_parameters_.stability_window) {
@@ -1169,8 +1172,7 @@ InferenceProfiler::GetServerSideStatus(
 
 // Used for measurement
 cb::Error
-InferenceProfiler::Measure(
-    PerfStatus& perf_status, uint64_t measurement_window, bool is_count_based)
+InferenceProfiler::Measure(PerfStatus& perf_status, MeasureConfig config)
 {
   std::map<cb::ModelIdentifier, cb::ModelStatistics> start_status;
   std::map<cb::ModelIdentifier, cb::ModelStatistics> end_status;
@@ -1207,10 +1209,10 @@ InferenceProfiler::Measure(
     }
   }
 
-  if (!is_count_based) {
+  if (!config.is_count_based) {
     // Wait for specified time interval in msec
     std::this_thread::sleep_for(
-        std::chrono::milliseconds((uint64_t)(measurement_window_ms_ * 1.2)));
+        std::chrono::milliseconds((uint64_t)(config.measurement_window * 1.2)));
   } else {
     do {
       // Check the health of the worker threads.
@@ -1218,7 +1220,7 @@ InferenceProfiler::Measure(
 
       // Wait for 1s until enough samples have been collected.
       std::this_thread::sleep_for(std::chrono::milliseconds((uint64_t)1000));
-    } while (manager_->CountCollectedRequests() < measurement_window);
+    } while (manager_->CountCollectedRequests() < config.measurement_window);
   }
 
   uint64_t window_end_ns =
@@ -1249,7 +1251,7 @@ InferenceProfiler::Measure(
 
   RETURN_IF_ERROR(Summarize(
       start_status, end_status, start_stat, end_stat, perf_status,
-      window_start_ns, window_end_ns));
+      window_start_ns, window_end_ns, config.clamp_window));
 
   return cb::Error::Success;
 }
@@ -1259,7 +1261,8 @@ InferenceProfiler::Summarize(
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
     const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
     const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns)
+    PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
+    bool clamp_window)
 {
   size_t valid_sequence_count = 0;
   size_t delayed_request_count = 0;
@@ -1267,12 +1270,18 @@ InferenceProfiler::Summarize(
 
   // Get measurement from requests that fall within the time interval
   std::pair<uint64_t, uint64_t> valid_range{window_start_ns, window_end_ns};
-  uint64_t window_duration_ns = valid_range.second - valid_range.first;
   std::vector<uint64_t> latencies;
   std::vector<RequestRecord> valid_requests{};
   ValidLatencyMeasurement(
       valid_range, valid_sequence_count, delayed_request_count, &latencies,
       response_count, valid_requests);
+
+
+  if (clamp_window) {
+    std::tie(window_start_ns, window_end_ns) = ClampWindow(valid_requests);
+  }
+
+  uint64_t window_duration_ns = window_end_ns - window_start_ns;
 
   if (should_collect_profile_data_) {
     CollectData(
@@ -1365,6 +1374,26 @@ InferenceProfiler::ValidLatencyMeasurement(
   // Always sort measured latencies as percentile will be reported as default
   std::sort(valid_latencies->begin(), valid_latencies->end());
 }
+
+std::pair<uint64_t, uint64_t>
+InferenceProfiler::ClampWindow(std::vector<RequestRecord>& requests)
+{
+  auto earliest_start =
+      std::chrono::time_point<std::chrono::system_clock>::max();
+  auto latest_end = std::chrono::time_point<std::chrono::system_clock>::min();
+
+  for (auto x : requests) {
+    earliest_start = std::min(earliest_start, x.start_time_);
+    latest_end = std::max(latest_end, x.response_timestamps_.back());
+  }
+
+  return std::make_pair(
+      earliest_start.time_since_epoch().count(),
+      latest_end.time_since_epoch().count());
+  // window_start_ns = earliest_start.time_since_epoch().count();
+  // window_end_ns = latest_end.time_since_epoch().count();
+}
+
 
 void
 InferenceProfiler::CollectData(
