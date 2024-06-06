@@ -2294,18 +2294,25 @@ InferenceServerHttpClient::AsyncTransfer()
         curl_easy_cleanup(msg->easy_handle);
         continue;
       }
+      auto async_request = itr->second;
 
       uint32_t http_code = 400;
       if (msg->data.result == CURLE_OK) {
         curl_easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
+        async_request->Timer().CaptureTimestamp(
+            RequestTimers::Kind::REQUEST_END);
+        Error err = UpdateInferStat(async_request->Timer());
+        if (!err.IsOk()) {
+          std::cerr << "Failed to update context stat: " << err << std::endl;
+        }
       } else if (msg->data.result == CURLE_OPERATION_TIMEDOUT) {
         http_code = 499;
       }
 
-      itr->second->http_code_ = http_code;
+      async_request->http_code_ = http_code;
       InferResult* result;
-      InferResultHttp::Create(&result, itr->second);
-      itr->second->callback_(result);
+      InferResultHttp::Create(&result, async_request);
+      async_request->callback_(result);
       ongoing_async_requests.erase(itr);
       curl_multi_remove_handle(multi_handle_, msg->easy_handle);
       curl_easy_cleanup(msg->easy_handle);
