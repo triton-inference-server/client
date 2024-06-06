@@ -107,6 +107,11 @@ class TestInferenceProfiler : public InferenceProfiler {
     return ip.IsDoneProfiling(ls, &is_stable);
   };
 
+  std::pair<uint64_t, uint64_t> ClampWindow(std::vector<RequestRecord>& reqs)
+  {
+    return InferenceProfiler::ClampWindow(reqs);
+  }
+
   cb::Error MergeMetrics(
       const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
       Metrics& merged_metrics)
@@ -1058,6 +1063,41 @@ TEST_CASE(
     CHECK(
         summary_status.client_stats.responses_per_sec == doctest::Approx(3.0));
   }
+}
+
+TEST_CASE("clamp window")
+{
+  TestInferenceProfiler tip{};
+  std::vector<RequestRecord> reqs{};
+
+  auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+  auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+  auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(20)};
+
+  reqs.emplace_back(
+      request1_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response1_timestamp});
+
+  auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+  auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(15)};
+  reqs.emplace_back(
+      request2_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response2_timestamp});
+
+  auto request3_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
+  auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(17)};
+  reqs.emplace_back(
+      request3_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response3_timestamp});
+
+  auto window = tip.ClampWindow(reqs);
+
+  CHECK(window.first == 3);
+  CHECK(window.second == 20);
 }
 
 TEST_CASE("summarize_client_stat: testing the SummarizeClientStat function")
