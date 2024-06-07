@@ -228,7 +228,8 @@ def _add_input_args(parser):
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
+        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format."
+        "Alternatively, a string representing a json formatted dict can be provided.",
     )
 
     prompt_source_group = input_group.add_mutually_exclusive_group(required=False)

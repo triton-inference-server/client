@@ -391,6 +391,7 @@ URL of the endpoint to target for benchmarking. (default: `None`)
 
 Provide additional inputs to include with every request. You can repeat this
 flag for multiple inputs. Inputs should be in an input_name:value format.
+Alternatively, a string representing a json formatted dict can be provided.
 (default: `None`)
 
 ##### `--input-dataset {openorca,cnn_dailymail}`
