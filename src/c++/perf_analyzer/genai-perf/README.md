@@ -67,22 +67,28 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
 
-Run GenAI-Perf:
-
-```bash
-genai-perf --help
-```
-
 <details>
 
-<summary>To install from source:</summary>
+<summary>Alternatively, to install from source:</summary>
 
 ## From Source
 
-This method requires that Perf Analyzer is installed in your development
-environment and that you have at least Python 3.10 installed. To build Perf
-Analyzer from source, see
-[here](../docs/install.md#build-from-source).
+GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
+
+### Install Perf Analyzer (Ubuntu, Python 3.10+)
+
+Note: you must already have CUDA 12 installed.
+
+```bash
+pip install tritonclient
+
+apt update && apt install -y --no-install-recommends libb64-0d libcurl4
+```
+
+Alternatively, you can install Perf Analyzer
+[from source](../docs/install.md#build-from-source).
+
+### Install GenAI-Perf from source
 
 ```bash
 export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
@@ -90,14 +96,14 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
 ```
 
+</details>
+</br>
+
 Run GenAI-Perf:
 
 ```bash
 genai-perf --help
 ```
-
-</details>
-</br>
 
 # Quick Start
 
