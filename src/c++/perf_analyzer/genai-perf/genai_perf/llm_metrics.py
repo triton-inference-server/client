@@ -179,6 +179,7 @@ class Statistics:
                 self._calculate_percentiles(data, attr)
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
+        self._scale_data()
 
     def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
         """Checks if some metrics should be skipped."""
@@ -193,8 +194,6 @@ class Statistics:
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
         setattr(self, "avg_" + attr, avg)
-        if self._is_time_field(attr):
-            avg = self._scale(float(avg))
         self._stats_dict[attr]["avg"] = float(avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
@@ -206,13 +205,6 @@ class Statistics:
         setattr(self, "p90_" + attr, p90)
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
-        if self._is_time_field(attr):
-            p25 = self._scale(float(p25))
-            p50 = self._scale(float(p50))
-            p75 = self._scale(float(p75))
-            p90 = self._scale(float(p90))
-            p95 = self._scale(float(p95))
-            p99 = self._scale(float(p99))
         self._stats_dict[attr]["p99"] = float(p99)
         self._stats_dict[attr]["p95"] = float(p95)
         self._stats_dict[attr]["p90"] = float(p90)
@@ -224,18 +216,21 @@ class Statistics:
         min, max = np.min(data), np.max(data)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
-        if self._is_time_field(attr):
-            min = self._scale(float(min))
-            max = self._scale(float(max))
         self._stats_dict[attr]["max"] = float(max)
         self._stats_dict[attr]["min"] = float(min)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
         setattr(self, "std_" + attr, std)
-        if self._is_time_field(attr):
-            std = self._scale(float(std))
         self._stats_dict[attr]["std"] = float(std)
+
+    def _scale_data(self) -> None:
+        for k1, v1 in self.stats_dict.items():
+            if self._is_time_field(k1):
+                for k2, v2 in v1.items():
+                    if k2 != "unit":
+                        print(f"{v2}:{type(v2)}")
+                        self.stats_dict[k1][k2] = self._scale(v2)
 
     def _scale(self, metric: float, factor: float = 1 / 1e6) -> float:
         """
