@@ -75,7 +75,7 @@ docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3
 
 GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
 
-### Install Perf Analyzer (Ubuntu, Python 3.10+)
+### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
 Note: you must already have CUDA 12 installed.
 
