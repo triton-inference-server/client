@@ -574,8 +574,10 @@ class LLMProfileDataParser(ProfileDataParser):
             num_input_tokens.append(input_token_count)
 
             # output token throughput per request
-            output_token_counts = self._get_output_token_counts(res_outputs)
-            total_output_token = sum(output_token_counts)
+            output_token_counts, full_text_tokens = self._get_output_token_counts(
+                res_outputs
+            )
+            total_output_token = full_text_tokens
             output_token_throughputs_per_request.append(
                 total_output_token / req_latency_s
             )
@@ -681,23 +683,31 @@ class LLMProfileDataParser(ProfileDataParser):
                 "Failed to parse OpenAI request input in profile export file."
             )
 
-    def _get_output_token_counts(self, res_outputs: dict) -> List[int]:
+    def _get_output_token_counts(self, res_outputs: dict) -> Tuple[List[int], int]:
         """Deserialize the response output and return tokenized outputs."""
         if self._service_kind == "triton":
-            output_tokens = self._get_triton_output_tokens(res_outputs)
+            output_tokens, full_text_tokens = self._get_triton_output_tokens(
+                res_outputs
+            )
         elif self._service_kind == "openai":
-            output_tokens = self._get_openai_output_tokens(res_outputs)
+            output_tokens, full_text_tokens = self._get_openai_output_tokens(
+                res_outputs
+            )
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-        return list(map(len, output_tokens))
+        return list(map(len, output_tokens)), len(full_text_tokens)
 
-    def _get_triton_output_tokens(self, res_outputs: dict) -> List[List[int]]:
+    def _get_triton_output_tokens(
+        self, res_outputs: dict
+    ) -> Tuple[List[List[int]], List[int]]:
         """Return a list of Triton response output tokens."""
         output_texts = [r["text_output"] for r in res_outputs]
         return self._run_tokenizer(output_texts)
 
-    def _get_openai_output_tokens(self, res_outputs: dict) -> List[List[int]]:
+    def _get_openai_output_tokens(
+        self, res_outputs: dict
+    ) -> Tuple[List[List[int]], List[int]]:
         """Return a list of OpenAI response output tokens."""
         output_texts = []
         for output in res_outputs:
@@ -705,14 +715,19 @@ class LLMProfileDataParser(ProfileDataParser):
             output_texts.append(text)
         return self._run_tokenizer(output_texts)
 
-    def _run_tokenizer(self, output_texts: List[str]) -> List[List[int]]:
+    def _run_tokenizer(
+        self, output_texts: List[str]
+    ) -> Tuple[List[List[int]], List[int]]:
         # exclamation mark trick forces the llama tokenization to consistently
         # start each output with a specific token which allows us to safely skip
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
+        full_text = "".join(output_texts)
         output_texts = ["!" + txt for txt in output_texts]
         encodings = self._tokenizer(output_texts)
-        return [out[1:] for out in encodings.data["input_ids"]]
+        return [out[1:] for out in encodings.data["input_ids"]], self._tokenizer.encode(
+            full_text
+        )
 
     def _extract_openai_text_output(self, response: str) -> str:
         """Extracts text/content of the OpenAI response object."""
