@@ -25,6 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -227,7 +228,8 @@ def _add_input_args(parser):
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
+        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format."
+        "Alternatively, a string representing a json formatted dict can be provided.",
     )
 
     prompt_source_group = input_group.add_mutually_exclusive_group(required=False)
@@ -493,38 +495,41 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
     if args.extra_inputs:
         for input_str in args.extra_inputs:
-            semicolon_count = input_str.count(":")
-            if semicolon_count != 1:
-                raise ValueError(
-                    f"Invalid input format for --extra-inputs: {input_str}\n"
-                    "Expected input format: 'input_name:value'"
+            if input_str.startswith("{") and input_str.endswith("}"):
+                request_inputs.update(json.loads(input_str))
+            else:
+                semicolon_count = input_str.count(":")
+                if semicolon_count != 1:
+                    raise ValueError(
+                        f"Invalid input format for --extra-inputs: {input_str}\n"
+                        "Expected input format: 'input_name:value'"
+                    )
+                input_name, value = input_str.split(":", 1)
+
+                if not input_name or not value:
+                    raise ValueError(
+                        f"Input name or value is empty in --extra-inputs: {input_str}\n"
+                        "Expected input format: 'input_name:value'"
+                    )
+
+                is_bool = value.lower() in ["true", "false"]
+                is_int = value.isdigit()
+                is_float = value.count(".") == 1 and (
+                    value[0] == "." or value.replace(".", "").isdigit()
                 )
-            input_name, value = input_str.split(":", 1)
 
-            if not input_name or not value:
-                raise ValueError(
-                    f"Input name or value is empty in --extra-inputs: {input_str}\n"
-                    "Expected input format: 'input_name:value'"
-                )
+                if is_bool:
+                    value = value.lower() == "true"
+                elif is_int:
+                    value = int(value)
+                elif is_float:
+                    value = float(value)
 
-            is_bool = value.lower() in ["true", "false"]
-            is_int = value.isdigit()
-            is_float = value.count(".") == 1 and (
-                value[0] == "." or value.replace(".", "").isdigit()
-            )
-
-            if is_bool:
-                value = value.lower() == "true"
-            elif is_int:
-                value = int(value)
-            elif is_float:
-                value = float(value)
-
-            if input_name in request_inputs:
-                raise ValueError(
-                    f"Input name already exists in request_inputs dictionary: {input_name}"
-                )
-            request_inputs[input_name] = value
+                if input_name in request_inputs:
+                    raise ValueError(
+                        f"Input name already exists in request_inputs dictionary: {input_name}"
+                    )
+                request_inputs[input_name] = value
 
     return request_inputs
 
