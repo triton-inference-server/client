@@ -28,7 +28,6 @@ from argparse import Namespace
 from pathlib import Path
 
 import pytest
-from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.main import create_artifacts_dirs
 
 
