@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from tritonclient.utils import raise_error
 
+from tritonclient.hl import ModelClient
 
 class InferenceServerClientBase:
     def __init__(self):
@@ -85,6 +86,26 @@ class InferenceServerClientBase:
         self._plugin = None
 
 
-class Client(InferenceServerClientBase):
-    def __init__(self) -> None:
+# # Change url to 'http://localhost:8000' for utilizing HTTP client
+# client = Client(url='grpc://loacalhost:8001')
+# 
+# input_tensor_as_numpy = np.array(...)
+# 
+# # Infer should be async similar to the exising Python APIs
+# responses = client.model('simple').infer(inputs={'input': input_tensor_as_numpy})
+# 
+# for response in responses:
+# 	numpy_array = np.asarray(response.outputs['output'])
+# 
+# client.close()
+
+    
+
+class Client:
+    def __init__(self, url: str) -> None:
+        self._client_url = url
         super().__init__()
+    
+    def model(self, name: str) -> ModelClient:
+        return ModelClient(url=self._client_url, model_name=name) 
+        
