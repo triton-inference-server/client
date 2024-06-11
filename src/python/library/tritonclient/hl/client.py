@@ -656,8 +656,8 @@ class ModelClient(BaseModelClient):
         return inputs_wrapped, outputs_wrapped
 
     def _infer(self, inputs: _IOType, parameters, headers) -> Dict[str, np.ndarray]:
-        import tritonclient.http
-        import tritonclient.utils
+        #import tritonclient.http
+        #import tritonclient.utils
         if self.model_config.decoupled:
             raise PyTritonClientInferenceServerError("Model config is decoupled. Use DecoupledModelClient instead.")
 
@@ -694,21 +694,23 @@ class ModelClient(BaseModelClient):
             _LOGGER.error(message)
             raise PyTritonClientTimeoutError(message) from e
 
-        if isinstance(response, tritonclient.http.InferResult):
-            outputs = {
-                output["name"]: response.as_numpy(output["name"]) for output in response.get_response()["outputs"]
-            }
-        else:
-            outputs = {output.name: response.as_numpy(output.name) for output in response.get_response().outputs}
+        ## FIXME: Why it is necessary
+        #if isinstance(response, tritonclient.http.InferResult):
+        #    outputs = {
+        #        output["name"]: response.as_numpy(output["name"]) for output in response.get_response()["outputs"]
+        #    }
+        #else:
+        outputs = {output.name: response.as_numpy(output.name) for output in response.get_response().outputs}
 
         return outputs
 
     def _get_numpy_result(self, result):
-        import tritonclient.grpc
-        if isinstance(result, tritonclient.grpc.InferResult):
-            result = {output.name: result.as_numpy(output.name) for output in result.get_response().outputs}
-        else:
-            result = {output["name"]: result.as_numpy(output["name"]) for output in result.get_response()["outputs"]}
+        # FIXME: Investigate if still it works for coupled model
+        #import tritonclient.hl.lw.grpc
+        #if isinstance(result, tritonclient.hl.lw.grpc.InferResult):
+        result = {output.name: result.as_numpy(output.name) for output in result.get_response().outputs}
+        #else:
+        #    result = {output["name"]: result.as_numpy(output["name"]) for output in result.get_response()["outputs"]}
         return result
 
     def _debatch_result(self, result):
@@ -752,6 +754,176 @@ class ModelClient(BaseModelClient):
 
         self._triton_client_lib.InferenceServerClient.__del__ = _monkey_patched_del
 
+class DecoupledModelClient(ModelClient):
+    """Synchronous client for decoupled model deployed on the Triton Inference Server."""
+
+    def __init__(
+        self,
+        url: str,
+        model_name: str,
+        model_version: Optional[str] = None,
+        *,
+        lazy_init: bool = True,
+        init_timeout_s: Optional[float] = None,
+        inference_timeout_s: Optional[float] = None,
+        model_config: Optional[TritonModelConfig] = None,
+        ensure_model_is_ready: bool = True,
+    ):
+        """Inits DecoupledModelClient for given decoupled model deployed on the Triton Inference Server.
+
+        Common usage:
+
+        ```python
+        client = DecoupledModelClient("localhost", "BERT")
+        for response in client.infer_sample(input1_sample, input2_sample):
+            print(response)
+        client.close()
+        ```
+
+        Args:
+            url: The Triton Inference Server url, e.g. `grpc://localhost:8001`.
+                In case no scheme is provided http scheme will be used as default.
+                In case no port is provided default port for given scheme will be used -
+                8001 for grpc scheme, 8000 for http scheme.
+            model_name: name of the model to interact with.
+            model_version: version of the model to interact with.
+                If model_version is None inference on latest model will be performed.
+                The latest versions of the model are numerically the greatest version numbers.
+            lazy_init: if initialization should be performed just before sending first request to inference server.
+            init_timeout_s: timeout in seconds for the server and model to be ready. If not passed, the default timeout of 300 seconds will be used.
+            inference_timeout_s: timeout in seconds for a single model inference request. If not passed, the default timeout of 60 seconds will be used.
+            model_config: model configuration. If not passed, it will be read from inference server during initialization.
+            ensure_model_is_ready: if model should be checked if it is ready before first inference request.
+
+        Raises:
+            PyTritonClientModelUnavailableError: If model with given name (and version) is unavailable.
+            PyTritonClientTimeoutError:
+                if `lazy_init` argument is False and wait time for server and model being ready exceeds `init_timeout_s`.
+            PyTritonClientInvalidUrlError: If provided Triton Inference Server url is invalid.
+        """
+        super().__init__(
+            url,
+            model_name,
+            model_version,
+            lazy_init=lazy_init,
+            init_timeout_s=init_timeout_s,
+            inference_timeout_s=inference_timeout_s,
+            model_config=model_config,
+            ensure_model_is_ready=ensure_model_is_ready,
+        )
+        # Let's use generate endpoints for PoC
+        #if self._triton_url.scheme == "http":
+        #    raise PyTritonClientValueError("DecoupledModelClient is only supported for grpc protocol")
+        self._queue = Queue()
+        self._lock = Lock()
+
+    def close(self):
+        """Close resources used by DecoupledModelClient."""
+        _LOGGER.debug("Closing DecoupledModelClient")
+        if self._lock.acquire(blocking=False):
+            try:
+                super().close()
+            finally:
+                self._lock.release()
+        else:
+            _LOGGER.warning("DecoupledModelClient is stil streaming answers")
+            self._infer_client.stop_stream(False)
+            super().close()
+
+    def _infer(self, inputs: _IOType, parameters, headers):
+        if not self._lock.acquire(blocking=False):
+            raise PyTritonClientInferenceServerError("Inference is already in progress")
+        if not self.model_config.decoupled:
+            raise PyTritonClientInferenceServerError("Model config is coupled. Use ModelClient instead.")
+
+        inputs_wrapped, outputs_wrapped = self._create_request(inputs)
+        if parameters is not None:
+            raise PyTritonClientValueError("DecoupledModelClient does not support parameters")
+        if headers is not None:
+            raise PyTritonClientValueError("DecoupledModelClient does not support headers")
+        try:
+            _LOGGER.debug("Sending inference request to Triton Inference Server")
+            if self._infer_client._stream is None:
+                self._infer_client.start_stream(callback=lambda result, error: self._response_callback(result, error))
+
+            self._infer_client.async_stream_infer(
+                model_name=self._model_name,
+                model_version=self._model_version or "",
+                inputs=inputs_wrapped,
+                outputs=outputs_wrapped,
+                request_id=self._next_request_id,
+                enable_empty_final_response=True,
+                **self._get_infer_extra_args(),
+            )
+        except tritonclient.utils.InferenceServerException as e:
+            # tritonclient.grpc raises execption with message containing "Deadline Exceeded" for timeout
+            if "Deadline Exceeded" in e.message():
+                raise PyTritonClientTimeoutError(
+                    f"Timeout occurred during inference request. Timeout: {self._inference_timeout_s} s. Message: {e.message()}"
+                ) from e
+
+            raise PyTritonClientInferenceServerError(
+                f"Error occurred during inference request. Message: {e.message()}"
+            ) from e
+        except socket.timeout as e:  # tritonclient.http raises socket.timeout for timeout
+            message = f"Timeout occurred during inference request. Timeout: {self._inference_timeout_s} s Message: {e}"
+            _LOGGER.error(message)
+            raise PyTritonClientTimeoutError(message) from e
+        except OSError as e:  # tritonclient.http raises socket.error for connection error
+            message = f"Timeout occurred during inference request. Timeout: {self._inference_timeout_s} s Message: {e}"
+            _LOGGER.error(message)
+            raise PyTritonClientTimeoutError(message) from e
+        _LOGGER.debug("Returning response iterator")
+        return self._create_response_iterator()
+
+    def _response_callback(self, response, error):
+        _LOGGER.debug(f"Received response from Triton Inference Server: {response}")
+        if error:
+            _LOGGER.error(f"Error occurred during inference request. Message: {error}")
+            self._queue.put(error)
+        else:
+            actual_response = response.get_response()
+            # Check if the object is not None
+            triton_final_response = actual_response.parameters.get("triton_final_response")
+            if triton_final_response and triton_final_response.bool_param:
+                self._queue.put(None)
+            else:
+                result = self._get_numpy_result(response)
+                self._queue.put(result)
+
+    def _create_response_iterator(self):
+        try:
+            while True:
+                try:
+                    item = self._queue.get(self._inference_timeout_s)
+                except Empty as e:
+                    message = f"Timeout occurred during inference request. Timeout: {self._inference_timeout_s} s"
+                    _LOGGER.error(message)
+                    raise PyTritonClientTimeoutError(message) from e
+                if isinstance(item, Exception):
+                    if hasattr(item, "message"):
+                        message = f"Error occurred during inference request. Message: {item.message()}"
+                    else:
+                        message = f"Error occurred during inference request. Message: {item}"
+                    _LOGGER.error(message)
+                    raise PyTritonClientInferenceServerError(message) from item
+
+                if item is None:
+                    break
+                yield item
+        finally:
+            self._lock.release()
+
+    def _debatch_result(self, result):
+        if self.is_batching_supported:
+            result = ({name: data[0] for name, data in result_.items()} for result_ in result)
+        return result
+
+    def _get_infer_extra_args(self):
+        # kwargs = super()._get_infer_extra_args()
+        kwargs = {}
+        # kwargs["enable_empty_final_response"] = True
+        return kwargs
 
 class InferenceServerClientBase:
     def __init__(self):

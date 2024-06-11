@@ -34,21 +34,23 @@ from typing import Dict
 import numpy as np
 from google.protobuf import json_format, text_format  # pytype: disable=pyi-error
 
+from tritonclient.hl.lw.infer_input import triton_to_np_dtype
+
 #from pytriton.exceptions import PyTritonModelConfigError
 
 from .common import QueuePolicy, TimeoutAction
 from .triton_model_config import DeviceKind, DynamicBatcher, ResponseCache, TensorSpec, TritonModelConfig
 
-try:
-    import tritonclient.grpc as grpc_client
-    from tritonclient import utils as client_utils  # noqa: F401
-except ImportError:
-    try:
-        import tritonclientutils as client_utils  # noqa: F401
-        import tritongrpcclient as grpc_client
-    except ImportError:
-        client_utils = None
-        grpc_client = None
+# try:
+#     import tritonclient.hl.lw.grpc as grpc_client
+#     from tritonclient import utils as client_utils  # noqa: F401
+# except ImportError:
+#     try:
+#         import tritonclientutils as client_utils  # noqa: F401
+#         import tritongrpcclient as grpc_client
+#     except ImportError:
+#         client_utils = None
+#         grpc_client = None
 
 LOGGER = logging.getLogger(__name__)
 
@@ -181,7 +183,7 @@ class ModelConfigParser:
         if data_type == "STRING":
             dtype = np.bytes_
         else:
-            dtype = client_utils.triton_to_np_dtype(data_type)
+            dtype = triton_to_np_dtype(data_type)
             if dtype is None:
                 raise PyTritonModelConfigError(f"Unsupported data type `{data_type}` for {io_type} with name `{name}`")
 

@@ -18,3 +18,9 @@ class InferenceServerClient:
     """Client to perform grpc communication with the Triton.
     """
     pass
+
+class InferResult:
+    """Result from the inference server."""
+    pass
+
+from tritonclient.hl.lw.http import InferResponse

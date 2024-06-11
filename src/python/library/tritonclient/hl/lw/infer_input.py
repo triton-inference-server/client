@@ -222,6 +222,7 @@ class InferInput:
         InferenceServerException
             If failed to set data for the tensor.
         """
+        self._np_data = input_tensor
 
         binary_data=False
 
@@ -349,6 +350,7 @@ class InferInput:
             "datatype": self.datatype(),
             "data": self._get_tensor()["data"],
         }
+        
 
 class InferRequestedOutput():
     def __init__(self, name):

@@ -27,7 +27,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from tritonclient.utils import raise_error
 
-from tritonclient.hl import ModelClient
+from tritonclient.hl import ModelClient, DecoupledModelClient
+from typing import Union
 
 class InferenceServerClientBase:
     def __init__(self):
@@ -99,13 +100,21 @@ class InferenceServerClientBase:
 # 
 # client.close()
 
-    
+
 
 class Client:
     def __init__(self, url: str) -> None:
         self._client_url = url
         super().__init__()
     
-    def model(self, name: str) -> ModelClient:
-        return ModelClient(url=self._client_url, model_name=name) 
+    def model(self, name: str) -> Union[ModelClient, DecoupledModelClient]:
+        client = ModelClient(url=self._client_url, model_name=name)
+        if client.model_config.decoupled:
+            try:
+                decoupled_client = DecoupledModelClient.from_existing_client(client)
+            finally:
+                client.close()
+            return decoupled_client
+        else:
+            return client
         

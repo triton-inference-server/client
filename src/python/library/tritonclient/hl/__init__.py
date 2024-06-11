@@ -15,4 +15,5 @@
 
 from .client import (
     ModelClient,  # noqa: F401
+    DecoupledModelClient,  # noqa: F401
 )
