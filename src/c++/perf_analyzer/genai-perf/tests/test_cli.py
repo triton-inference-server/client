@@ -24,6 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import argparse
 from pathlib import Path
 
 import genai_perf.logging as logging
@@ -132,6 +133,17 @@ class TestCLIArguments:
                     "another_test_key:6",
                 ],
                 {"extra_inputs": ["test_key:5", "another_test_key:6"]},
+            ),
+            (
+                [
+                    "--extra-inputs",
+                    '{"name": "Wolverine","hobbies": ["hacking", "slashing"],"address": {"street": "1407 Graymalkin Lane, Salem Center","city": "NY"}}',
+                ],
+                {
+                    "extra_inputs": [
+                        '{"name": "Wolverine","hobbies": ["hacking", "slashing"],"address": {"street": "1407 Graymalkin Lane, Salem Center","city": "NY"}}'
+                    ]
+                },
             ),
             (["--input-dataset", "openorca"], {"input_dataset": "openorca"}),
             (["--measurement-interval", "100"], {"measurement_interval": 100}),
@@ -656,3 +668,32 @@ class TestCLIArguments:
         args, _ = parser.parse_args()
 
         assert args.model == expected_model
+
+    @pytest.mark.parametrize(
+        "extra_inputs_list, expected_dict",
+        [
+            (["test_key:test_value"], {"test_key": "test_value"}),
+            (
+                ["test_key:1", "another_test_key:2"],
+                {"test_key": 1, "another_test_key": 2},
+            ),
+            (
+                [
+                    '{"name": "Wolverine","hobbies": ["hacking", "slashing"],"address": {"street": "1407 Graymalkin Lane, Salem Center","city": "NY"}}'
+                ],
+                {
+                    "name": "Wolverine",
+                    "hobbies": ["hacking", "slashing"],
+                    "address": {
+                        "street": "1407 Graymalkin Lane, Salem Center",
+                        "city": "NY",
+                    },
+                },
+            ),
+        ],
+    )
+    def test_get_extra_inputs_as_dict(self, extra_inputs_list, expected_dict):
+        namespace = argparse.Namespace()
+        namespace.extra_inputs = extra_inputs_list
+        actual_dict = parser.get_extra_inputs_as_dict(namespace)
+        assert actual_dict == expected_dict
