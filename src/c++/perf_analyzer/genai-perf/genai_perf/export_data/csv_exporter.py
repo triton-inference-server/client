@@ -29,6 +29,7 @@ import csv
 from typing import Dict
 
 import genai_perf.logging as logging
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.llm_metrics import Metrics
 
 DEFAULT_OUTPUT_DATA_CSV = "profile_export_genai_perf.csv"
@@ -41,9 +42,9 @@ class CsvExporter:
     A class to export the statistics and arg values in a csv format.
     """
 
-    def __init__(self, config: Dict):
-        self._stats = config["stats"]
-        self._output_dir = config["artifact_dir"]
+    def __init__(self, config: ExporterConfig):
+        self._stats = config.stats
+        self._output_dir = config.artifact_dir
 
     def export(self) -> None:
         csv_filename = self._output_dir / DEFAULT_OUTPUT_DATA_CSV

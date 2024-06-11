@@ -91,7 +91,17 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
 
 
 def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
-    reporter = OutputReporter(data_parser, args)
+    if args.concurrency:
+        infer_mode = "concurrency"
+        load_level = f"{args.concurrency}"
+    elif args.request_rate:
+        infer_mode = "request_rate"
+        load_level = f"{args.request_rate}"
+    else:
+        raise GenAIPerfException("No valid infer mode specified")
+
+    stats = data_parser.get_statistics(infer_mode, load_level)
+    reporter = OutputReporter(stats, args)
     reporter.report_output()
     if args.generate_plots:
         create_plots(args)

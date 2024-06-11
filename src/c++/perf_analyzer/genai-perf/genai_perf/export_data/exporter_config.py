@@ -25,36 +25,41 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from argparse import Namespace
+class ExporterConfig:
+    def __init__(self):
+        self._stats = None
+        self._args = None
+        self._extra_inputs = None
+        self._artifact_dir = None
 
-from genai_perf.export_data.data_exporter_factory import DataExporterFactory
-from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Statistics
-from genai_perf.parser import get_extra_inputs_as_dict
+    @property
+    def stats(self):
+        return self._stats
 
+    @stats.setter
+    def stats(self, stats_value):
+        self._stats = stats_value
 
-class OutputReporter:
-    """
-    A class to orchestrate output generation.
-    """
+    @property
+    def args(self):
+        return self._args
 
-    def __init__(self, stats: Statistics, args: Namespace):
-        self.args = args
-        self.stats = stats
-        self.stats.scale_data()
+    @args.setter
+    def args(self, args_value):
+        self._args = args_value
 
-    def report_output(self) -> None:
-        factory = DataExporterFactory()
-        exporter_config = self._create_exporter_config()
-        data_exporters = factory.create_data_exporters(exporter_config)
+    @property
+    def extra_inputs(self):
+        return self._extra_inputs
 
-        for exporter in data_exporters:
-            exporter.export()
+    @extra_inputs.setter
+    def extra_inputs(self, extra_inputs_value):
+        self._extra_inputs = extra_inputs_value
 
-    def _create_exporter_config(self) -> ExporterConfig:
-        config = ExporterConfig()
-        config.stats = self.stats.stats_dict
-        config.args = self.args
-        config.artifact_dir = self.args.artifact_dir
-        config.extra_inputs = get_extra_inputs_as_dict(self.args)
-        return config
+    @property
+    def artifact_dir(self):
+        return self._artifact_dir
+
+    @artifact_dir.setter
+    def artifact_dir(self, artifact_dir_value):
+        self._artifact_dir = artifact_dir_value

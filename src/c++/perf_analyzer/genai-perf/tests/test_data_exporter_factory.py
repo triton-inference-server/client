@@ -31,6 +31,7 @@ from pathlib import Path
 import genai_perf.export_data.data_exporter_factory as factory
 from genai_perf.export_data.console_exporter import ConsoleExporter
 from genai_perf.export_data.csv_exporter import CsvExporter
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.export_data.json_exporter import JsonExporter
 from genai_perf.parser import get_extra_inputs_as_dict
 
@@ -63,34 +64,21 @@ class TestOutputReporter:
     }
     args_namespace = Namespace(**args)
 
+    config = ExporterConfig()
+    config.stats = stats
+    config.args = args_namespace
+    config.artifact_dir = args_namespace.artifact_dir
+    config.extra_inputs = get_extra_inputs_as_dict(args_namespace)
+    f = factory.DataExporterFactory()
+
     def test_return_json_exporter(self) -> None:
-        config = {
-            "type": factory.DataExporterType.JSON,
-            "stats": self.stats,
-            "args": self.args_namespace,
-            "extra_inputs": get_extra_inputs_as_dict(self.args_namespace),
-            "artifact_dir": Path("."),
-        }
-        f = factory.DataExporterFactory()
-        exporter = f.create_data_exporter(config)
-        assert isinstance(exporter, JsonExporter)
+        exporter_list = self.f.create_data_exporters(self.config)
+        assert any(isinstance(exporter, JsonExporter) for exporter in exporter_list)
 
     def test_return_csv_exporter(self) -> None:
-        config = {
-            "type": factory.DataExporterType.CSV,
-            "stats": self.stats,
-            "artifact_dir": Path("."),
-        }
-        f = factory.DataExporterFactory()
-        exporter = f.create_data_exporter(config)
-        assert isinstance(exporter, CsvExporter)
+        exporter_list = self.f.create_data_exporters(self.config)
+        assert any(isinstance(exporter, CsvExporter) for exporter in exporter_list)
 
     def test_return_console_exporter(self) -> None:
-        config = {
-            "type": factory.DataExporterType.CONSOLE,
-            "stats": self.stats,
-            "artifact_dir": Path("."),
-        }
-        f = factory.DataExporterFactory()
-        exporter = f.create_data_exporter(config)
-        assert isinstance(exporter, ConsoleExporter)
+        exporter_list = self.f.create_data_exporters(self.config)
+        assert any(isinstance(exporter, ConsoleExporter) for exporter in exporter_list)

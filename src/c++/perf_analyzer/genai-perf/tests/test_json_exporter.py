@@ -27,11 +27,34 @@
 import json
 
 import genai_perf.parser as parser
-from genai_perf.export_data.data_exporter_factory import DataExporterType
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.export_data.json_exporter import JsonExporter
 
 
 class TestJsonExporter:
+    def test_generate_json(self, monkeypatch) -> None:
+        cli_cmd = [
+            "genai-perf",
+            "-m",
+            "gpt2_vllm",
+            "--backend",
+            "vllm",
+            "--streaming",
+            "--extra-inputs",
+            "max_tokens:256",
+            "--extra-inputs",
+            "ignore_eos:true",
+        ]
+        monkeypatch.setattr("sys.argv", cli_cmd)
+        args, _ = parser.parse_args()
+        config = ExporterConfig()
+        config.stats = self.stats
+        config.args = args
+        config.extra_inputs = parser.get_extra_inputs_as_dict(args)
+        config.artifact_dir = args.artifact_dir
+        json_exporter = JsonExporter(config)
+        assert json_exporter._stats_and_args == json.loads(self.expected_json_output)
+
     stats = {
         "request_throughput": {"unit": "requests/sec", "avg": "7"},
         "request_latency": {
@@ -243,28 +266,3 @@ class TestJsonExporter:
         }
       }
     """
-
-    def test_generate_json(self, monkeypatch) -> None:
-        cli_cmd = [
-            "genai-perf",
-            "-m",
-            "gpt2_vllm",
-            "--backend",
-            "vllm",
-            "--streaming",
-            "--extra-inputs",
-            "max_tokens:256",
-            "--extra-inputs",
-            "ignore_eos:true",
-        ]
-        monkeypatch.setattr("sys.argv", cli_cmd)
-        args, _ = parser.parse_args()
-        config = {
-            "type": DataExporterType.JSON,
-            "stats": self.stats,
-            "args": args,
-            "extra_inputs": parser.get_extra_inputs_as_dict(args),
-            "artifact_dir": args.artifact_dir,
-        }
-        json_exporter = JsonExporter(config)
-        assert json_exporter._stats_and_args == json.loads(self.expected_json_output)

@@ -179,7 +179,6 @@ class Statistics:
                 self._calculate_percentiles(data, attr)
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
-        self._scale_data()
 
     def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
         """Checks if some metrics should be skipped."""
@@ -224,13 +223,12 @@ class Statistics:
         setattr(self, "std_" + attr, std)
         self._stats_dict[attr]["std"] = float(std)
 
-    def _scale_data(self) -> None:
+    def scale_data(self, factor: float = 1 / 1e6) -> None:
         for k1, v1 in self.stats_dict.items():
             if self._is_time_field(k1):
                 for k2, v2 in v1.items():
                     if k2 != "unit":
-                        print(f"{v2}:{type(v2)}")
-                        self.stats_dict[k1][k2] = self._scale(v2)
+                        self.stats_dict[k1][k2] = self._scale(v2, factor)
 
     def _scale(self, metric: float, factor: float = 1 / 1e6) -> float:
         """

@@ -27,6 +27,7 @@
 
 from typing import Dict
 
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.llm_metrics import Metrics
 from rich.console import Console
 from rich.table import Table
@@ -37,8 +38,8 @@ class ConsoleExporter:
     A class to export the statistics and arg values to the console.
     """
 
-    def __init__(self, config: Dict):
-        self._stats = config["stats"]
+    def __init__(self, config: ExporterConfig):
+        self._stats = config.stats
 
     def export(self) -> None:
         singular_metric_rows = []

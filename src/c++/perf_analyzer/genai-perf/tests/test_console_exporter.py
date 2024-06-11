@@ -24,40 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
-from io import StringIO
-
-import pytest
 from genai_perf.export_data.console_exporter import ConsoleExporter
-from genai_perf.export_data.data_exporter_factory import DataExporterType
-from tests.test_data import triton_profile_data
+from genai_perf.export_data.exporter_config import ExporterConfig
 
 
 class TestConsoleExporter:
-    @pytest.fixture
-    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """
-        This function will mock the open function for specific files.
-
-        """
-
-        original_open = open
-
-        def custom_open(filename, *args, **kwargs):
-
-            if str(filename) == "triton_profile_export.json":
-                tmp_file = StringIO(json.dumps(triton_profile_data))
-                return tmp_file
-            else:
-                return original_open(filename, *args, **kwargs)
-
-        monkeypatch.setattr("builtins.open", custom_open)
 
     def test_pretty_print_output(self, capsys) -> None:
-        config = {
-            "type": DataExporterType.CONSOLE,
-            "stats": stats,
-        }
+        config = ExporterConfig()
+        config.stats = stats
         exporter = ConsoleExporter(config)
         exporter.export()
 

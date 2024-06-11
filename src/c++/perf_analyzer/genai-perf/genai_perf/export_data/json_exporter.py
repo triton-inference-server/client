@@ -30,6 +30,7 @@ from enum import Enum
 from typing import Dict
 
 import genai_perf.logging as logging
+from genai_perf.export_data.exporter_config import ExporterConfig
 
 DEFAULT_OUTPUT_DATA_JSON = "profile_export_genai_perf.json"
 
@@ -41,11 +42,11 @@ class JsonExporter:
     A class to export the statistics and arg values in a json format.
     """
 
-    def __init__(self, config: Dict):
-        self._stats: Dict = config["stats"]
-        self._args = dict(vars(config["args"]))
-        self._extra_inputs = config["extra_inputs"]
-        self._output_dir = config["artifact_dir"]
+    def __init__(self, config: ExporterConfig):
+        self._stats: Dict = config.stats
+        self._args = dict(vars(config.args))
+        self._extra_inputs = config.extra_inputs
+        self._output_dir = config.artifact_dir
         self._stats_and_args: Dict = {}
         self._prepare_args_for_export()
         self._merge_stats_and_args()

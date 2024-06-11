@@ -24,32 +24,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from enum import Enum
-from typing import Any, Dict, cast
+from typing import List
 
-from genai_perf.exceptions import GenAIPerfException
 from genai_perf.export_data.console_exporter import ConsoleExporter
 from genai_perf.export_data.csv_exporter import CsvExporter
-from genai_perf.export_data.data_exporter_interface import DataExporterInterface
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.export_data.json_exporter import JsonExporter
 
-
-class DataExporterType(str, Enum):
-    JSON = "json_exporter"
-    CSV = "csv_exporter"
-    CONSOLE = "console_exporter"
-
-
-DataExporterMapping = {
-    DataExporterType.JSON: JsonExporter,
-    DataExporterType.CSV: CsvExporter,
-    DataExporterType.CONSOLE: ConsoleExporter,
-}
+DataExporterList = [ConsoleExporter, JsonExporter, CsvExporter]
 
 
 class DataExporterFactory:
-    def create_data_exporter(self, config: Dict[str, Any]) -> DataExporterInterface:
-        if config.get("type") is None:
-            raise GenAIPerfException("No exporter type specified")
-        exporter_class = DataExporterMapping[config["type"]]
-        return cast(DataExporterInterface, exporter_class(config))
+    def create_data_exporters(self, config: ExporterConfig) -> List:
+        data_exporters = []
+        for exporter in DataExporterList:
+            data_exporters.append(exporter(config))
+        return data_exporters
