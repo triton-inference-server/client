@@ -26,9 +26,15 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Tutorial
+# Tutorials
 
-## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
+- [Profile GPT2 running on Triton + TensorRT-LLM](#tensorrt-llm)
+- [Profile GPT2 running on Triton + vLLM](#triton-vllm)
+- [Profile GPT2 running on OpenAI API-Compatible Server](#openai)
+
+---
+
+## Profile GPT2 running on Triton + TensorRT-LLM <a id="tensorrt-llm"></a>
 
 ### Running GPT2 on Triton Inference Server using TensorRT-LLM
 
@@ -120,7 +126,7 @@ Output token throughput (per sec): 460.42
 Request throughput (per sec): 4.44
 ```
 
-## Measuring Throughput and Latency of GPT2 using Triton + vLLM
+## Profile GPT2 running on Triton + vLLM <a id="triton-vllm"></a>
 
 ### Running GPT2 on Triton Inference Server using vLLM
 
@@ -205,7 +211,7 @@ Output token throughput (per sec): 290.24
 Request throughput (per sec): 2.57
 ```
 
-## Measuring Throughput and Latency of GPT2 using OpenAI API-Compatible Server
+## Profile GPT2 running on OpenAI API-Compatible Server <a id="openai"></a>
 
 ### OpenAI Chat Completions API
 
