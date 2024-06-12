@@ -247,7 +247,8 @@ def _add_input_args(parser):
         type=argparse.FileType("r"),
         default=None,
         required=False,
-        help="The input file containing the single prompt to use for profiling.",
+        help="The input file containing the prompts to use for profiling. "
+        "Each prompt should be on a new line.",
     )
 
     input_group.add_argument(

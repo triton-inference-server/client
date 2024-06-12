@@ -407,7 +407,8 @@ The HuggingFace dataset to use for prompts.
 
 ##### `--input-file <path>`
 
-The input file containing the single prompt to use for profiling.
+The input file containing the prompts to use for profiling.
+Each prompt should be on a new line.
 
 ##### `--num-prompts <int>`
 

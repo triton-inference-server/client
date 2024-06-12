@@ -333,11 +333,12 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
         cls.verify_file(input_filename)
-        input_file_prompt = cls._get_prompt_from_input_file(input_filename)
+        input_file_prompts = cls._get_prompts_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["rows"] = []
-        dataset_json["rows"].append({"row": {"text_input": input_file_prompt}})
+        dataset_json["rows"] = [
+            {"row": {"text_input": prompt}} for prompt in input_file_prompts
+        ]
         return dataset_json
 
     @classmethod
@@ -346,9 +347,10 @@ class LlmInputs:
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
 
     @classmethod
-    def _get_prompt_from_input_file(cls, input_filename: Path) -> str:
+    def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
         with open(input_filename, mode="r", newline=None) as file:
-            return file.read()
+            content = file.read()
+        return [prompt.strip() for prompt in content.split("\n") if prompt.strip()]
 
     @classmethod
     def _convert_generic_json_to_output_format(

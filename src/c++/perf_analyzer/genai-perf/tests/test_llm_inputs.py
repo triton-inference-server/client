@@ -17,6 +17,7 @@ import os
 import random
 import statistics
 from pathlib import Path
+from unittest.mock import mock_open, patch
 
 import pytest
 import responses
@@ -655,6 +656,30 @@ class TestLlmInputs:
     def test_get_input_file_without_file_existing(self):
         with pytest.raises(FileNotFoundError):
             LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
+
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch("builtins.open", new_callable=mock_open, read_data="prompt1")
+    def test_get_input_file_with_single_prompt(self, mock_file, mock_exists):
+        expected_prompts = ["prompt1"]
+        dataset = LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
+
+        assert dataset is not None
+        assert len(dataset["rows"]) == len(expected_prompts)
+        for i, prompt in enumerate(expected_prompts):
+            assert dataset["rows"][i]["row"]["text_input"] == prompt
+
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data="prompt1\nprompt2\nprompt3"
+    )
+    def test_get_input_file_with_multiple_prompts(self, mock_file, mock_exists):
+        expected_prompts = ["prompt1", "prompt2", "prompt3"]
+        dataset = LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
+
+        assert dataset is not None
+        assert len(dataset["rows"]) == len(expected_prompts)
+        for i, prompt in enumerate(expected_prompts):
+            assert dataset["rows"][i]["row"]["text_input"] == prompt
 
     @pytest.mark.parametrize(
         "seed, model_name_list, index,model_selection_strategy,expected_model",
