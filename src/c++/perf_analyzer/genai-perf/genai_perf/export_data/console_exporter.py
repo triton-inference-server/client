@@ -25,8 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from typing import Dict
-
 from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.llm_metrics import Metrics
 from rich.console import Console
@@ -75,10 +73,14 @@ class ConsoleExporter:
                 formatted_metric += " (ms)"
 
             row_values = [formatted_metric]
-
             for stat in stats:
-                value = self._stats.get(f"{metric}", -1).get(stat, -1)
-                row_values.append(f"{value:,.2f}")
+                value = self._stats.get(f"{metric}", -1)
+                # Need to check for -1 for the non streaming case
+                if value == -1:
+                    row_values.append(f"{value:,.2f}")
+                else:
+                    value = value.get(stat, -1)
+                    row_values.append(f"{value:,.2f}")
 
             # Without streaming, there is no inter-token latency available, so do not print it.
             if metric == "inter_token_latency":

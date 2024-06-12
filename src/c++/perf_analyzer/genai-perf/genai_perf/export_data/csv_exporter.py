@@ -26,7 +26,6 @@
 
 
 import csv
-from typing import Dict
 
 import genai_perf.logging as logging
 from genai_perf.export_data.exporter_config import ExporterConfig
@@ -104,8 +103,13 @@ class CsvExporter:
                     continue
 
                 for stat in multiple_metric_header[1:]:
-                    value = self._stats.get(f"{metric}", -1).get(stat, -1)
-                    row_values.append(f"{value:.2f}")
+                    value = self._stats.get(f"{metric}", -1)
+                    # Need to check for -1 for the non streaming case
+                    if value == -1:
+                        row_values.append(f"{value:,.2f}")
+                    else:
+                        value = value.get(stat, -1)
+                        row_values.append(f"{value:,.2f}")
 
                 # Without streaming, there is no inter-token latency available, so do not print it.
                 if metric == "inter_token_latency":

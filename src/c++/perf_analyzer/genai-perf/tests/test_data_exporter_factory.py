@@ -26,7 +26,6 @@
 
 
 from argparse import Namespace
-from pathlib import Path
 
 import genai_perf.export_data.data_exporter_factory as factory
 from genai_perf.export_data.console_exporter import ConsoleExporter
