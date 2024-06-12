@@ -693,12 +693,11 @@ class LLMProfileDataParser(ProfileDataParser):
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-        # Full text token count
-        total_output_token = len(self._tokenizer.encode("".join(output_texts)))
+        full_text_token_count = len(self._tokenizer.encode("".join(output_texts)))
 
         output_tokens = self._get_response_output_tokens(output_texts)
         output_token_counts = list(map(len, output_tokens))
-        return output_token_counts, total_output_token
+        return output_token_counts, full_text_token_count
 
     def _get_triton_output_tokens(self, res_outputs: List[Dict]) -> List[str]:
         """Return a list of Triton response texts."""

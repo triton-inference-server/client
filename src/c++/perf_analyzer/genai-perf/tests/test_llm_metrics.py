@@ -386,10 +386,10 @@ class TestLLMProfileDataParser:
                 "response": 'data: {"choices":[{"delta":{"content":"this"}}],"object":"chat.completion.chunk"}\n\n'
             },
             {
-                "response": 'data: {"choices":[{"delta":{"content":" is"}}],"object":"chat.completion.chunk"}\n\n'
+                "response": 'data: {"choices":[{"delta":{"content":" must be"}}],"object":"chat.completion.chunk"}\n\n'
             },
             {
-                "response": 'data: {"choices":[{"delta":{"content":" a"}}],"object":"chat.completion.chunk"}\n\n'
+                "response": 'data: {"choices":[{"delta":{"content":" a very easy"}}],"object":"chat.completion.chunk"}\n\n'
             },
             {
                 "response": 'data: {"choices":[{"delta":{"content":" test"}}],"object":"chat.completion.chunk"}\n\n'
@@ -405,16 +405,16 @@ class TestLLMProfileDataParser:
         output_token_counts, total_output_token = pd._get_output_token_counts(
             res_outputs
         )
-        assert output_token_counts == [1, 1, 1, 1]
-        assert total_output_token == 4
+        assert output_token_counts == [1, 2, 3, 1]
+        assert total_output_token == 7
 
     def test_triton_output_token_counts(
         self, mock_read_write: pytest.MonkeyPatch
     ) -> None:
         res_outputs = [
             {"text_output": "This"},
-            {"text_output": " is"},
-            {"text_output": " a"},
+            {"text_output": " must be"},
+            {"text_output": " a very easy"},
             {"text_output": " test"},
         ]
 
@@ -427,8 +427,8 @@ class TestLLMProfileDataParser:
         output_token_counts, total_output_token = pd._get_output_token_counts(
             res_outputs
         )
-        assert output_token_counts == [1, 1, 1, 1]
-        assert total_output_token == 4
+        assert output_token_counts == [1, 2, 3, 1]
+        assert total_output_token == 7
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
