@@ -484,6 +484,7 @@ InferenceProfiler::Create(
     uint64_t measurement_request_count, MeasurementMode measurement_mode,
     std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
     const bool should_collect_metrics, const double overhead_pct_threshold,
+    const bool async_mode,
     const std::shared_ptr<ProfileDataCollector> collector,
     const bool should_collect_profile_data)
 {
@@ -492,7 +493,8 @@ InferenceProfiler::Create(
       (percentile != -1), percentile, latency_threshold_ms_, protocol, parser,
       profile_backend, std::move(manager), measurement_request_count,
       measurement_mode, mpi_driver, metrics_interval_ms, should_collect_metrics,
-      overhead_pct_threshold, collector, should_collect_profile_data));
+      overhead_pct_threshold, async_mode, collector,
+      should_collect_profile_data));
 
   *profiler = std::move(local_profiler);
   return cb::Error::Success;
@@ -508,7 +510,7 @@ InferenceProfiler::InferenceProfiler(
     std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
     MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
     const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-    const double overhead_pct_threshold,
+    const double overhead_pct_threshold, const bool async_mode,
     const std::shared_ptr<ProfileDataCollector> collector,
     const bool should_collect_profile_data)
     : verbose_(verbose), measurement_window_ms_(measurement_window_ms),
@@ -519,7 +521,8 @@ InferenceProfiler::InferenceProfiler(
       measurement_request_count_(measurement_request_count),
       measurement_mode_(measurement_mode), mpi_driver_(mpi_driver),
       should_collect_metrics_(should_collect_metrics),
-      overhead_pct_threshold_(overhead_pct_threshold), collector_(collector),
+      overhead_pct_threshold_(overhead_pct_threshold), async_mode_(async_mode),
+      collector_(collector),
       should_collect_profile_data_(should_collect_profile_data)
 {
   load_parameters_.stability_threshold = stability_threshold;
@@ -789,6 +792,14 @@ InferenceProfiler::ProfileHelper(
     completed_trials++;
   } while ((!early_exit) && (completed_trials < max_trials_));
 
+  // For async requests, print a warning if the latency threshold is not met.
+  if (async_mode_ && !*is_stable && DetermineStability(load_status, false)) {
+    std::cerr << "Warning: Request latency is not stabilizing. "
+                 "Please try lowering the request rate."
+              << std::endl;
+    *is_stable = true;
+  }
+
   if (should_collect_metrics_) {
     metrics_manager_->StopQueryingMetrics();
   }
@@ -816,7 +827,8 @@ InferenceProfiler::ProfileHelper(
 }
 
 bool
-InferenceProfiler::DetermineStability(LoadStatus& load_status)
+InferenceProfiler::DetermineStability(
+    LoadStatus& load_status, bool check_latency)
 {
   bool stable = false;
   if (load_status.infer_per_sec.size() >= load_parameters_.stability_window) {
@@ -830,16 +842,17 @@ InferenceProfiler::DetermineStability(LoadStatus& load_status)
       }
     }
 
-    stable = stable && CheckWindowForStability(idx, load_status);
+    stable = stable && CheckWindowForStability(idx, load_status, check_latency);
   }
   return stable;
 }
 
 bool
-InferenceProfiler::CheckWindowForStability(size_t idx, LoadStatus& load_status)
+InferenceProfiler::CheckWindowForStability(
+    size_t idx, LoadStatus& load_status, bool check_latency)
 {
   return IsInferWindowStable(idx, load_status) &&
-         IsLatencyWindowStable(idx, load_status);
+         (!check_latency || IsLatencyWindowStable(idx, load_status));
 }
 
 bool
@@ -866,6 +879,8 @@ InferenceProfiler::IsLatencyWindowStable(size_t idx, LoadStatus& load_status)
   double max_latency = *latencies_per_sec_measurements.second;
   double min_latency = *latencies_per_sec_measurements.first;
 
+  auto is_stable =
+      max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
   return max_latency / min_latency <= 1 + load_parameters_.stability_threshold;
 }
 
