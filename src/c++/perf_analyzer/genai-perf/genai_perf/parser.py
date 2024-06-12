@@ -248,7 +248,8 @@ def _add_input_args(parser):
         default=None,
         required=False,
         help="The input file containing the prompts to use for profiling. "
-        "Each prompt should be on a new line.",
+        "Each line should be a JSON object with a 'text_input' field in JSONL format. "
+        'Example: {"text_input": "Your prompt here"}',
     )
 
     input_group.add_argument(

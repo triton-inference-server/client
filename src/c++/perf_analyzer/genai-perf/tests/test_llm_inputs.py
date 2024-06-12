@@ -658,9 +658,13 @@ class TestLlmInputs:
             LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
 
     @patch("pathlib.Path.exists", return_value=True)
-    @patch("builtins.open", new_callable=mock_open, read_data="prompt1")
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data='{"text_input": "single prompt"}\n',
+    )
     def test_get_input_file_with_single_prompt(self, mock_file, mock_exists):
-        expected_prompts = ["prompt1"]
+        expected_prompts = ["single prompt"]
         dataset = LlmInputs._get_input_dataset_from_file(Path("prompt.txt"))
 
         assert dataset is not None
@@ -670,7 +674,9 @@ class TestLlmInputs:
 
     @patch("pathlib.Path.exists", return_value=True)
     @patch(
-        "builtins.open", new_callable=mock_open, read_data="prompt1\nprompt2\nprompt3"
+        "builtins.open",
+        new_callable=mock_open,
+        read_data='{"text_input": "prompt1"}\n{"text_input": "prompt2"}\n{"text_input": "prompt3"}\n',
     )
     def test_get_input_file_with_multiple_prompts(self, mock_file, mock_exists):
         expected_prompts = ["prompt1", "prompt2", "prompt3"]
