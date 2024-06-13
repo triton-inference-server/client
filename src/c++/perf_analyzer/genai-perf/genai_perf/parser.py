@@ -247,7 +247,9 @@ def _add_input_args(parser):
         type=argparse.FileType("r"),
         default=None,
         required=False,
-        help="The input file containing the single prompt to use for profiling.",
+        help="The input file containing the prompts to use for profiling. "
+        "Each line should be a JSON object with a 'text_input' field in JSONL format. "
+        'Example: {"text_input": "Your prompt here"}',
     )
 
     input_group.add_argument(

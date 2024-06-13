@@ -332,23 +332,54 @@ class LlmInputs:
 
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
+        """
+        Reads the input prompts from a JSONL file and converts them into the required dataset format.
+
+        Parameters
+        ----------
+        input_filename : Path
+            The path to the input file containing the prompts in JSONL format.
+
+        Returns
+        -------
+        Dict
+            The dataset in the required format with the prompts read from the file.
+        """
         cls.verify_file(input_filename)
-        input_file_prompt = cls._get_prompt_from_input_file(input_filename)
+        input_file_prompts = cls._get_prompts_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["rows"] = []
-        dataset_json["rows"].append({"row": {"text_input": input_file_prompt}})
+        dataset_json["rows"] = [
+            {"row": {"text_input": prompt}} for prompt in input_file_prompts
+        ]
         return dataset_json
+
+    @classmethod
+    def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
+        """
+        Reads the input prompts from a JSONL file and returns a list of prompts.
+
+        Parameters
+        ----------
+        input_filename : Path
+            The path to the input file containing the prompts in JSONL format.
+
+        Returns
+        -------
+        List[str]
+            A list of prompts read from the file.
+        """
+        prompts = []
+        with open(input_filename, mode="r", newline=None) as file:
+            for line in file:
+                if line.strip():
+                    prompts.append(json.loads(line).get("text_input", "").strip())
+        return prompts
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
         if not input_filename.exists():
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
-
-    @classmethod
-    def _get_prompt_from_input_file(cls, input_filename: Path) -> str:
-        with open(input_filename, mode="r", newline=None) as file:
-            return file.read()
 
     @classmethod
     def _convert_generic_json_to_output_format(

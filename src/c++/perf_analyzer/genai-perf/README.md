@@ -407,7 +407,9 @@ The HuggingFace dataset to use for prompts.
 
 ##### `--input-file <path>`
 
-The input file containing the single prompt to use for profiling.
+The input file containing the prompts to use for profiling.
+Each line should be a JSON object with a 'text_input' field in JSONL format.
+Example: {\"text_input\": \"Your prompt here\"}"
 
 ##### `--num-prompts <int>`
 
