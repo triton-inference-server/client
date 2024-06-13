@@ -53,6 +53,7 @@ class OutputFormat(Enum):
     RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
+    TENSORRTLLM_ENGINE = auto()
 
     def to_lowercase(self):
         return self.name.lower()
