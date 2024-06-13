@@ -515,6 +515,7 @@ class TestCLIArguments:
                 OutputFormat.TENSORRTLLM,
             ),
             (["--service-kind", "triton", "--backend", "vllm"], OutputFormat.VLLM),
+            (["--service-kind", "tensorrtllm_engine"], OutputFormat.TENSORRTLLM_ENGINE),
         ],
     )
     def test_inferred_output_format(self, monkeypatch, args, expected_format):
