@@ -139,9 +139,9 @@ class LLMMetrics(Metrics):
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
         self._base_names["output_token_throughputs"] = "output_token_throughput"
-        self._base_names[
-            "output_token_throughputs_per_request"
-        ] = "output_token_throughput_per_request"
+        self._base_names["output_token_throughputs_per_request"] = (
+            "output_token_throughput_per_request"
+        )
         self._base_names["num_output_tokens"] = "num_output_token"
         self._base_names["num_input_tokens"] = "num_input_token"
 
@@ -192,40 +192,54 @@ class Statistics:
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
-        self._stats_dict[attr]["avg"] = float(avg)
         setattr(self, "avg_" + attr, avg)
+        self._stats_dict[attr]["avg"] = float(avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
-        self._stats_dict[attr]["p99"] = float(p99)
-        self._stats_dict[attr]["p95"] = float(p95)
-        self._stats_dict[attr]["p90"] = float(p90)
-        self._stats_dict[attr]["p75"] = float(p75)
-        self._stats_dict[attr]["p50"] = float(p50)
-        self._stats_dict[attr]["p25"] = float(p25)
         setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
         setattr(self, "p75_" + attr, p75)
         setattr(self, "p90_" + attr, p90)
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
+        self._stats_dict[attr]["p99"] = float(p99)
+        self._stats_dict[attr]["p95"] = float(p95)
+        self._stats_dict[attr]["p90"] = float(p90)
+        self._stats_dict[attr]["p75"] = float(p75)
+        self._stats_dict[attr]["p50"] = float(p50)
+        self._stats_dict[attr]["p25"] = float(p25)
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
-        self._stats_dict[attr]["max"] = float(max)
-        self._stats_dict[attr]["min"] = float(min)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
+        self._stats_dict[attr]["max"] = float(max)
+        self._stats_dict[attr]["min"] = float(min)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
-        self._stats_dict[attr]["std"] = float(std)
         setattr(self, "std_" + attr, std)
+        self._stats_dict[attr]["std"] = float(std)
+
+    def scale_data(self, factor: float = 1 / 1e6) -> None:
+        for k1, v1 in self.stats_dict.items():
+            if self._is_time_field(k1):
+                for k2, v2 in v1.items():
+                    if k2 != "unit":
+                        self.stats_dict[k1][k2] = self._scale(v2, factor)
+
+    def _scale(self, metric: float, factor: float = 1 / 1e6) -> float:
+        """
+        Scale metrics from nanoseconds by factor.
+        Default is nanoseconds to milliseconds.
+        """
+        return metric * factor
 
     def _add_units(self, key) -> None:
         if self._is_time_field(key):
-            self._stats_dict[key]["unit"] = "ns"
+            self._stats_dict[key]["unit"] = "ms"
         if key == "request_throughput":
             self._stats_dict[key]["unit"] = "requests/sec"
         if key.startswith("output_token_throughput"):
@@ -259,156 +273,6 @@ class Statistics:
 
     def _is_time_field(self, field: str) -> bool:
         return field in Metrics.time_fields
-
-    def pretty_print(self) -> None:
-        """Prints the statistics in a tabular format."""
-
-        singular_metric_rows = []
-        table = Table(title="LLM Metrics")
-
-        table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        stats = ["avg", "min", "max", "p99", "p90", "p75"]
-        for stat in stats:
-            table.add_column(stat, justify="right", style="green")
-
-        for metric in Metrics.metric_labels:
-            formatted_metric = metric.replace("_", " ").capitalize()
-
-            # Throughput fields are printed after the table
-            is_throughput_field = self._is_throughput_field(metric)
-            if is_throughput_field:
-                value = self.__dict__.get(f"{stats[0]}_{metric}", -1)
-                formatted_metric += f" (per sec): {value:.2f}"
-                singular_metric_rows.append(formatted_metric)
-                continue
-
-            # TODO (TMA-1712): need to decide if we need this metric. Remove
-            # from statistics display for now.
-            # TODO (TMA-1678): output_token_throughput_per_request is treated
-            # separately since the current code treats all throughput metrics to
-            # be displayed outside of the statistics table.
-            if metric == "output_token_throughput_per_request":
-                formatted_metric += f" (per sec)"
-                continue
-
-            is_time_field = self._is_time_field(metric)
-            if is_time_field:
-                formatted_metric += " (ns)"
-
-            row_values = [formatted_metric]
-
-            for stat in stats:
-                value = self.__dict__.get(f"{stat}_{metric}", -1)
-                row_values.append(f"{value:,.0f}")
-
-            # Without streaming, there is no inter-token latency available, so do not print it.
-            if metric == "inter_token_latency":
-                if all(value == "-1" for value in row_values[1:]):
-                    continue
-            # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-            elif metric == "time_to_first_token":
-                unique_values = False
-                for stat in stats:
-                    value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
-                    value_req_latency = self.__dict__.get(f"{stat}_request_latency", -1)
-                    if value_ttft != value_req_latency:
-                        unique_values = True
-                        break
-                if not unique_values:
-                    continue
-
-            table.add_row(*row_values)
-
-        console = Console()
-        console.print(table)
-
-        for row in singular_metric_rows:
-            print(row)
-
-    def export_to_csv(self, csv_filename: str) -> None:
-        """Exports the statistics to a CSV file."""
-
-        multiple_metric_header = [
-            "Metric",
-            "avg",
-            "min",
-            "max",
-            "p99",
-            "p95",
-            "p90",
-            "p75",
-            "p50",
-            "p25",
-        ]
-
-        single_metric_header = [
-            "Metric",
-            "Value",
-        ]
-
-        with open(csv_filename, mode="w", newline="") as csvfile:
-            singular_metric_rows = []
-
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(multiple_metric_header)
-
-            for metric in Metrics.metric_labels:
-                formatted_metric = metric.replace("_", " ").title()
-
-                is_throughput_field = self._is_throughput_field(metric)
-                is_time_field = self._is_time_field(metric)
-
-                if is_time_field:
-                    formatted_metric += " (ns)"
-                elif is_throughput_field:
-                    formatted_metric += " (per sec)"
-                # TODO (TMA-1712): need to decide if we need this metric. Do not
-                # include in the csv for now.
-                # TODO (TMA-1678): output_token_throughput_per_request is treated
-                # separately since the current code treats all throughput metrics
-                # to be displayed outside of the statistics table.
-                elif metric == "output_token_throughput_per_request":
-                    formatted_metric += " (per sec)"
-                    continue
-
-                row_values = [formatted_metric]
-
-                if is_throughput_field:
-                    value = self.__dict__.get(
-                        f"{multiple_metric_header[1]}_{metric}", -1
-                    )
-                    row_values.append(f"{value:.2f}")
-                    singular_metric_rows.append(row_values)
-                    continue
-
-                for stat in multiple_metric_header[1:]:
-                    value = self.__dict__.get(f"{stat}_{metric}", -1)
-                    row_values.append(f"{value:.0f}")
-
-                # Without streaming, there is no inter-token latency available, so do not print it.
-                if metric == "inter_token_latency":
-                    if all(value == "-1" for value in row_values[1:]):
-                        continue
-                # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-                elif metric == "time_to_first_token":
-                    unique_values = False
-                    for stat in multiple_metric_header[1:]:
-                        value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
-                        value_req_latency = self.__dict__.get(
-                            f"{stat}_request_latency", -1
-                        )
-                        if value_ttft != value_req_latency:
-                            unique_values = True
-                            break
-                    if not unique_values:
-                        continue
-
-                csv_writer.writerow(row_values)
-
-            csv_writer.writerow([])
-            csv_writer.writerow(single_metric_header)
-            for row in singular_metric_rows:
-                csv_writer.writerow(row)
 
     def export_parquet(self, artifact_dir: Path, filename: str) -> None:
         max_length = -1

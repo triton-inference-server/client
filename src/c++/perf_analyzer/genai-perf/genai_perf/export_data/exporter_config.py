@@ -24,15 +24,42 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_HTTP_URL = "localhost:8000"
-DEFAULT_GRPC_URL = "localhost:8001"
 
+class ExporterConfig:
+    def __init__(self):
+        self._stats = None
+        self._args = None
+        self._extra_inputs = None
+        self._artifact_dir = None
 
-OPEN_ORCA = "openorca"
-CNN_DAILY_MAIL = "cnn_dailymail"
-DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
+    @property
+    def stats(self):
+        return self._stats
 
+    @stats.setter
+    def stats(self, stats_value):
+        self._stats = stats_value
 
-DEFAULT_ARTIFACT_DIR = "artifacts"
-DEFAULT_COMPARE_DIR = "compare"
-DEFAULT_PARQUET_FILE = "all_data"
+    @property
+    def args(self):
+        return self._args
+
+    @args.setter
+    def args(self, args_value):
+        self._args = args_value
+
+    @property
+    def extra_inputs(self):
+        return self._extra_inputs
+
+    @extra_inputs.setter
+    def extra_inputs(self, extra_inputs_value):
+        self._extra_inputs = extra_inputs_value
+
+    @property
+    def artifact_dir(self):
+        return self._artifact_dir
+
+    @artifact_dir.setter
+    def artifact_dir(self, artifact_dir_value):
+        self._artifact_dir = artifact_dir_value

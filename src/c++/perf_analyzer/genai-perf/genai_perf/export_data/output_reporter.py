@@ -24,15 +24,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_HTTP_URL = "localhost:8000"
-DEFAULT_GRPC_URL = "localhost:8001"
+
+from argparse import Namespace
+
+from genai_perf.export_data.data_exporter_factory import DataExporterFactory
+from genai_perf.export_data.exporter_config import ExporterConfig
+from genai_perf.llm_metrics import Statistics
+from genai_perf.parser import get_extra_inputs_as_dict
 
 
-OPEN_ORCA = "openorca"
-CNN_DAILY_MAIL = "cnn_dailymail"
-DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
+class OutputReporter:
+    """
+    A class to orchestrate output generation.
+    """
 
+    def __init__(self, stats: Statistics, args: Namespace):
+        self.args = args
+        self.stats = stats
+        self.stats.scale_data()
 
-DEFAULT_ARTIFACT_DIR = "artifacts"
-DEFAULT_COMPARE_DIR = "compare"
-DEFAULT_PARQUET_FILE = "all_data"
+    def report_output(self) -> None:
+        factory = DataExporterFactory()
+        exporter_config = self._create_exporter_config()
+        data_exporters = factory.create_data_exporters(exporter_config)
+
+        for exporter in data_exporters:
+            exporter.export()
+
+    def _create_exporter_config(self) -> ExporterConfig:
+        config = ExporterConfig()
+        config.stats = self.stats.stats_dict
+        config.args = self.args
+        config.artifact_dir = self.args.artifact_dir
+        config.extra_inputs = get_extra_inputs_as_dict(self.args)
+        return config
