@@ -80,6 +80,16 @@ def init_logging() -> None:
                 "level": "DEBUG",
                 "propagate": False,
             },
+            "genai_perf.export_data.json_exporter": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
+            "genai_perf.export_data.csv_exporter": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
         },
     }
     logging.config.dictConfig(LOGGING_CONFIG)

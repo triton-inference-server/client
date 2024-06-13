@@ -24,15 +24,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DEFAULT_HTTP_URL = "localhost:8000"
-DEFAULT_GRPC_URL = "localhost:8001"
+from typing import List
+
+from genai_perf.export_data.console_exporter import ConsoleExporter
+from genai_perf.export_data.csv_exporter import CsvExporter
+from genai_perf.export_data.exporter_config import ExporterConfig
+from genai_perf.export_data.json_exporter import JsonExporter
+
+DataExporterList = [ConsoleExporter, JsonExporter, CsvExporter]
 
 
-OPEN_ORCA = "openorca"
-CNN_DAILY_MAIL = "cnn_dailymail"
-DEFAULT_INPUT_DATA_JSON = "llm_inputs.json"
-
-
-DEFAULT_ARTIFACT_DIR = "artifacts"
-DEFAULT_COMPARE_DIR = "compare"
-DEFAULT_PARQUET_FILE = "all_data"
+class DataExporterFactory:
+    def create_data_exporters(self, config: ExporterConfig) -> List:
+        data_exporters = []
+        for exporter in DataExporterList:
+            data_exporters.append(exporter(config))
+        return data_exporters
