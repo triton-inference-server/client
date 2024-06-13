@@ -407,6 +407,7 @@ class TestLLMProfileDataParser:
         )
         assert output_token_counts == [1, 2, 3, 1]
         assert total_output_token == 7
+        assert total_output_token == sum(output_token_counts)
 
     def test_triton_output_token_counts(
         self, mock_read_write: pytest.MonkeyPatch
@@ -429,6 +430,7 @@ class TestLLMProfileDataParser:
         )
         assert output_token_counts == [1, 2, 3, 1]
         assert total_output_token == 7
+        assert total_output_token == sum(output_token_counts)
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
