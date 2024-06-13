@@ -369,12 +369,12 @@ class LlmInputs:
         List[str]
             A list of prompts read from the file.
         """
+        prompts = []
         with open(input_filename, mode="r", newline=None) as file:
-            return [
-                json.loads(line).get("text_input", "").strip()
-                for line in file
-                if line.strip()
-            ]
+            for line in file:
+                if line.strip():
+                    prompts.append(json.loads(line).get("text_input", "").strip())
+        return prompts
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
