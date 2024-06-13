@@ -381,20 +381,22 @@ class TestLLMProfileDataParser:
     def test_openai_output_token_counts(
         self, mock_read_write: pytest.MonkeyPatch
     ) -> None:
-        res_outputs = [
-            {
-                "response": 'data: {"choices":[{"delta":{"content":"this"}}],"object":"chat.completion.chunk"}\n\n'
-            },
-            {
-                "response": 'data: {"choices":[{"delta":{"content":" must be"}}],"object":"chat.completion.chunk"}\n\n'
-            },
-            {
-                "response": 'data: {"choices":[{"delta":{"content":" a very easy"}}],"object":"chat.completion.chunk"}\n\n'
-            },
-            {
-                "response": 'data: {"choices":[{"delta":{"content":" test"}}],"object":"chat.completion.chunk"}\n\n'
-            },
+        output_texts = [
+            "Ad",
+            "idas",
+            " Orig",
+            "inals",
+            " are",
+            " now",
+            " available",
+            " in",
+            " more",
+            " than",
         ]
+        res_outputs = []
+        for text in output_texts:
+            response = f'data: {{"choices":[{{"delta":{{"content":"{text}"}}}}],"object":"chat.completion.chunk"}}\n\n'
+            res_outputs.append({"response": response})
 
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
@@ -405,19 +407,28 @@ class TestLLMProfileDataParser:
         output_token_counts, total_output_token = pd._get_output_token_counts(
             res_outputs
         )
-        assert output_token_counts == [1, 2, 3, 1]
-        assert total_output_token == 7
-        assert total_output_token == sum(output_token_counts)
+        assert output_token_counts == [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # total 10
+        assert total_output_token == 9
+        assert total_output_token != sum(output_token_counts)
 
     def test_triton_output_token_counts(
         self, mock_read_write: pytest.MonkeyPatch
     ) -> None:
-        res_outputs = [
-            {"text_output": "This"},
-            {"text_output": " must be"},
-            {"text_output": " a very easy"},
-            {"text_output": " test"},
+        output_texts = [
+            "Ad",
+            "idas",
+            " Orig",
+            "inals",
+            " are",
+            " now",
+            " available",
+            " in",
+            " more",
+            " than",
         ]
+        res_outputs = []
+        for text in output_texts:
+            res_outputs.append({"text_output": text})
 
         tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
         pd = LLMProfileDataParser(
@@ -428,9 +439,9 @@ class TestLLMProfileDataParser:
         output_token_counts, total_output_token = pd._get_output_token_counts(
             res_outputs
         )
-        assert output_token_counts == [1, 2, 3, 1]
-        assert total_output_token == 7
-        assert total_output_token == sum(output_token_counts)
+        assert output_token_counts == [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # total 10
+        assert total_output_token == 9
+        assert total_output_token != sum(output_token_counts)
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
