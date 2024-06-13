@@ -27,14 +27,38 @@
 import json
 
 import genai_perf.parser as parser
+from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.export_data.json_exporter import JsonExporter
 
 
 class TestJsonExporter:
+    def test_generate_json(self, monkeypatch) -> None:
+        cli_cmd = [
+            "genai-perf",
+            "-m",
+            "gpt2_vllm",
+            "--backend",
+            "vllm",
+            "--streaming",
+            "--extra-inputs",
+            "max_tokens:256",
+            "--extra-inputs",
+            "ignore_eos:true",
+        ]
+        monkeypatch.setattr("sys.argv", cli_cmd)
+        args, _ = parser.parse_args()
+        config = ExporterConfig()
+        config.stats = self.stats
+        config.args = args
+        config.extra_inputs = parser.get_extra_inputs_as_dict(args)
+        config.artifact_dir = args.artifact_dir
+        json_exporter = JsonExporter(config)
+        assert json_exporter._stats_and_args == json.loads(self.expected_json_output)
+
     stats = {
         "request_throughput": {"unit": "requests/sec", "avg": "7"},
         "request_latency": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 1,
             "p99": 2,
             "p95": 3,
@@ -47,7 +71,7 @@ class TestJsonExporter:
             "std": 0,
         },
         "time_to_first_token": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 11,
             "p99": 12,
             "p95": 13,
@@ -60,7 +84,7 @@ class TestJsonExporter:
             "std": 10,
         },
         "inter_token_latency": {
-            "unit": "ns",
+            "unit": "ms",
             "avg": 21,
             "p99": 22,
             "p95": 23,
@@ -124,7 +148,7 @@ class TestJsonExporter:
           "avg": "7"
           },
           "request_latency": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 1,
               "p99": 2,
               "p95": 3,
@@ -137,7 +161,7 @@ class TestJsonExporter:
               "std": 0
           },
           "time_to_first_token": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 11,
               "p99": 12,
               "p95": 13,
@@ -150,7 +174,7 @@ class TestJsonExporter:
               "std": 10
           },
           "inter_token_latency": {
-              "unit": "ns",
+              "unit": "ms",
               "avg": 21,
               "p99": 22,
               "p95": 23,
@@ -206,7 +230,9 @@ class TestJsonExporter:
               "std": 60
           },
         "input_config": {
-          "model": "gpt2_vllm",
+          "model": ["gpt2_vllm"],
+          "formatted_model_name": "gpt2_vllm",
+          "model_selection_strategy": "round_robin",
           "backend": "vllm",
           "endpoint": null,
           "endpoint_type": null,
@@ -240,22 +266,3 @@ class TestJsonExporter:
         }
       }
     """
-
-    def test_generate_json(self, monkeypatch) -> None:
-        cli_cmd = [
-            "genai-perf",
-            "-m",
-            "gpt2_vllm",
-            "--backend",
-            "vllm",
-            "--streaming",
-            "--extra-inputs",
-            "max_tokens:256",
-            "--extra-inputs",
-            "ignore_eos:true",
-        ]
-        monkeypatch.setattr("sys.argv", cli_cmd)
-        args, _ = parser.parse_args()
-        extra_inputs = parser.get_extra_inputs_as_dict(args)
-        json_exporter = JsonExporter(self.stats, args, extra_inputs)
-        assert json_exporter._stats_and_args == json.loads(self.expected_json_output)

@@ -1,4 +1,4 @@
-# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,6 +24,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-numpy>=1.19.1,<2
-python-rapidjson>=0.9.1
-urllib3>=2.0.7
+from typing import List
+
+from genai_perf.export_data.console_exporter import ConsoleExporter
+from genai_perf.export_data.csv_exporter import CsvExporter
+from genai_perf.export_data.exporter_config import ExporterConfig
+from genai_perf.export_data.json_exporter import JsonExporter
+
+DataExporterList = [ConsoleExporter, JsonExporter, CsvExporter]
+
+
+class DataExporterFactory:
+    def create_data_exporters(self, config: ExporterConfig) -> List:
+        data_exporters = []
+        for exporter in DataExporterList:
+            data_exporters.append(exporter(config))
+        return data_exporters

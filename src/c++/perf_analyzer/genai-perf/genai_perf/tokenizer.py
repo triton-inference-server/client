@@ -14,7 +14,7 @@
 
 import contextlib
 import io
-from typing import Union
+from typing import List
 
 from genai_perf.exceptions import GenAIPerfException
 
@@ -22,35 +22,57 @@ from genai_perf.exceptions import GenAIPerfException
 with contextlib.redirect_stdout(io.StringIO()) as stdout, contextlib.redirect_stderr(
     io.StringIO()
 ) as stderr:
-    from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
+    from transformers import AutoTokenizer, BatchEncoding
     from transformers import logging as token_logger
 
     token_logger.set_verbosity_error()
 
-Tokenizer = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
 DEFAULT_TOKENIZER = "hf-internal-testing/llama-tokenizer"
 
 
-def get_tokenizer(
-    tokenizer_model: str,
-) -> Tokenizer:
+class Tokenizer:
     """
-    Download the tokenizer from Huggingface.co
+    A small wrapper class around Huggingface Tokenizer
     """
-    try:
-        # Silence tokenizer warning on first use
-        with contextlib.redirect_stdout(
-            io.StringIO()
-        ) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
-            tokenizer = AutoTokenizer.from_pretrained(tokenizer_model)
-    except Exception as e:
-        raise GenAIPerfException(e)
 
-    # Disable add_bos_token so that llama tokenizer does not add bos token
-    # (aka. beginning-of-sentence) to the beginning of every response
-    # outputs, increasing the token count by 1 for each output response.
-    # Note: The type is being ignored here, because not all tokenizers have
-    # an add_bos_token variable.
-    tokenizer.add_bos_token = False  # type: ignore
+    def __init__(self, name: str) -> None:
+        """
+        Initialize by downloading the tokenizer from Huggingface.co
+        """
+        try:
+            # Silence tokenizer warning on first use
+            with contextlib.redirect_stdout(
+                io.StringIO()
+            ) as stdout, contextlib.redirect_stderr(io.StringIO()) as stderr:
+                tokenizer = AutoTokenizer.from_pretrained(name)
+        except Exception as e:
+            raise GenAIPerfException(e)
 
-    return tokenizer
+        self._tokenizer = tokenizer
+
+        # default tokenizer parameters for __call__, encode, decode methods
+        self._call_args = {"add_special_tokens": False}
+        self._encode_args = {"add_special_tokens": False}
+        self._decode_args = {"skip_special_tokens": True}
+
+    def __call__(self, text, **kwargs) -> BatchEncoding:
+        self._call_args.update(kwargs)
+        return self._tokenizer(text, **self._call_args)
+
+    def encode(self, text, **kwargs) -> List[int]:
+        self._encode_args.update(kwargs)
+        return self._tokenizer.encode(text, **self._encode_args)
+
+    def decode(self, token_ids, **kwargs) -> str:
+        self._decode_args.update(kwargs)
+        return self._tokenizer.decode(token_ids, **self._decode_args)
+
+    def __repr__(self) -> str:
+        return self._tokenizer.__repr__()
+
+
+def get_tokenizer(tokenizer_model: str) -> Tokenizer:
+    """
+    Return tokenizer for the given model name
+    """
+    return Tokenizer(tokenizer_model)

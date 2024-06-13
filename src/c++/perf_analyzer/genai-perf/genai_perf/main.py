@@ -35,7 +35,7 @@ import genai_perf.logging as logging
 from genai_perf import parser
 from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.export_data.json_exporter import JsonExporter
+from genai_perf.export_data.output_reporter import OutputReporter
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.plots.plot_config_parser import PlotConfigParser
@@ -64,6 +64,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         output_format=args.output_format,
         dataset_name=args.input_dataset,
         model_name=args.model,
+        model_selection_strategy=args.model_selection_strategy,
         input_filename=input_filename,
         starting_index=LlmInputs.DEFAULT_STARTING_INDEX,
         length=args.num_prompts,
@@ -100,17 +101,10 @@ def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
         raise GenAIPerfException("No valid infer mode specified")
 
     stats = data_parser.get_statistics(infer_mode, load_level)
-    export_csv_name = args.profile_export_file.with_name(
-        args.profile_export_file.stem + "_genai_perf.csv"
-    )
-    stats.export_to_csv(export_csv_name)
-    stats.export_parquet(args.artifact_dir, DEFAULT_PARQUET_FILE)
-    stats.pretty_print()
+    reporter = OutputReporter(stats, args)
+    reporter.report_output()
     if args.generate_plots:
         create_plots(args)
-    extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
-    json_exporter = JsonExporter(stats.stats_dict, args, extra_inputs_dict)
-    json_exporter.export_to_file(args.artifact_dir)
 
 
 def create_plots(args: Namespace) -> None:

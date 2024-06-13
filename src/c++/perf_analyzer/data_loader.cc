@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -398,6 +398,7 @@ DataLoader::GetOutputData(
   data.data_ptr = nullptr;
   data.batch1_size = 0;
   data.is_valid = false;
+  data.name = "";
 
   // If json data is available then try to retrieve the data from there
   if (!output_data_.empty()) {
@@ -413,6 +414,7 @@ DataLoader::GetOutputData(
       data.is_valid = true;
       data.batch1_size = data_vec->size();
       data.data_ptr = (const uint8_t*)data_vec->data();
+      data.name = output_name;
     }
   }
   return cb::Error::Success;
