@@ -113,7 +113,7 @@ class TestJsonExporter:
             "min": 49,
             "std": 40,
         },
-        "num_output_token": {
+        "output_sequence_length": {
             "unit": "tokens",
             "avg": 51,
             "p99": 52,
@@ -126,7 +126,7 @@ class TestJsonExporter:
             "min": 59,
             "std": 50,
         },
-        "num_input_token": {
+        "input_sequence_length": {
             "unit": "tokens",
             "avg": 61,
             "p99": 62,
@@ -203,7 +203,7 @@ class TestJsonExporter:
               "min": 49,
               "std": 40
           },
-          "num_output_token": {
+          "output_sequence_length": {
               "unit": "tokens",
               "avg": 51,
               "p99": 52,
@@ -216,7 +216,7 @@ class TestJsonExporter:
               "min": 59,
               "std": 50
           },
-          "num_input_token": {
+          "input_sequence_length": {
               "unit": "tokens",
               "avg": 61,
               "p99": 62,

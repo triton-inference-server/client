@@ -58,14 +58,14 @@ The data subdirectory contains the raw and processed performance data files.
 ##### GZIP Files
 
 - all_data.gzip: Aggregated performance data from all collected metrics.
-- input_tokens_vs_generated_tokens.gzip: This contains data on the number of
-input tokens versus the number of generated tokens for each request.
+- input_sequence_lengths_vs_output_sequence_lengths.gzip: This contains data on
+the input sequence lengths versus the output sequence lengths for each request.
 - request_latency.gzip: This contains the latency for each request.
 - time_to_first_token.gzip: This contains the time to first token for each request.
 - token_to_token_vs_output_position.gzip: This contains the time from one token
 generation to the next versus the position of the output token for each token.
-- ttft_vs_input_tokens.gzip: This contains the time to first token versus
-the number of input tokens for each request.
+- ttft_vs_input_sequence_lengths.gzip: This contains the time to first token
+versus the input sequence length for each request.
 
 ##### JSON Files
 
@@ -85,14 +85,14 @@ The images subdirectory contains visual representations of the performance
 data. All images are in both HTML and JPEG formats.
 
 ##### HTML and JPEG Files
-- input_tokens_vs_generated_tokens: A heat map showing the relationship
-between input and generated tokens.
+- input_sequence_lengths_vs_output_sequence_lengths: A heat map showing the
+relationship between input and generated tokens.
 - request_latency: A box plot showing request latency.
 - time_to_first_token: A box plot showing time to first token.
 - token_to_token_vs_output_position: A scatterplot showing token-to-token
 time versus output token position.
-- ttft_vs_input_tokens: A scatterplot showing token-to-token time versus the
-number of input tokens.
+- ttft_vs_input_sequence_lengths: A scatterplot showing token-to-token time
+versus the input sequence lengths.
 
 ## Usage Instructions
 

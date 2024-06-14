@@ -44,8 +44,8 @@ class TestConsoleExporter:
             "│ Time to first token (ms) │ 2.00 │ 2.00 │ 3.00 │ 2.99 │ 2.90 │ 2.75 │\n"
             "│ Inter token latency (ms) │ 0.50 │ 0.00 │ 1.00 │ 0.99 │ 0.90 │ 0.75 │\n"
             "│     Request latency (ms) │ 3.00 │ 3.00 │ 4.00 │ 3.99 │ 3.90 │ 3.75 │\n"
-            "│         Num output token │ 6.50 │ 6.00 │ 7.00 │ 6.99 │ 6.90 │ 6.75 │\n"
-            "│          Num input token │ 7.50 │ 7.00 │ 8.00 │ 7.99 │ 7.90 │ 7.75 │\n"
+            "│   Output sequence length │ 6.50 │ 6.00 │ 7.00 │ 6.99 │ 6.90 │ 6.75 │\n"
+            "│    Input sequence length │ 7.50 │ 7.00 │ 8.00 │ 7.99 │ 7.90 │ 7.75 │\n"
             "└──────────────────────────┴──────┴──────┴──────┴──────┴──────┴──────┘\n"
             "Output token throughput (per sec): 123.00\n"
             "Request throughput (per sec): 456.00\n"
@@ -111,7 +111,7 @@ stats = {
         "min": 300.00,
         "std": 300.00,
     },
-    "num_output_token": {
+    "output_sequence_length": {
         "unit": "tokens",
         "avg": 6.5,
         "p99": 6.99,
@@ -124,7 +124,7 @@ stats = {
         "min": 6.0,
         "std": 6.5,
     },
-    "num_input_token": {
+    "input_sequence_length": {
         "unit": "tokens",
         "avg": 7.5,
         "p99": 7.99,
