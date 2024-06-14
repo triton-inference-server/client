@@ -490,29 +490,26 @@ class TestRequestRateManager : public TestLoadManagerBase,
       // By definition, variance == average for Poisson.
       //
       // With such a small sample size for a poisson distribution, there will be
-      // TODO: Revert. I changed all to 20%. Maybe due to async changes?
-      // noise. Allow 20% slop
+      // noise. Allow 5% slop
       //
       CHECK(
           delay_average ==
           doctest::Approx(expected_delay_average).epsilon(0.05));
-      CHECK(delay_variance == doctest::Approx(delay_average).epsilon(0.20));
+      CHECK(delay_variance == doctest::Approx(delay_average).epsilon(0.05));
     } else if (request_distribution == CONSTANT) {
       // constant should in theory have 0 variance, but with thread timing
       // there is obviously some noise.
       //
-      // TODO: Revert. I changed all to 20%. Maybe due to async changes?
-      // Allow it to be at most 20% of average
+      // Allow it to be at most 5% of average
       //
-      auto max_allowed_delay_variance = 0.20 * delay_average;
+      auto max_allowed_delay_variance = 0.05 * delay_average;
 
-      // TODO: Revert. I changed all to 20%. Maybe due to async changes?
-      // Constant should be pretty tight. Allowing 20% slop there is noise in
-      // the thread scheduling
+      // Constant should be pretty tight. Allowing 1% slop there is noise in the
+      // thread scheduling
       //
       CHECK(
           delay_average ==
-          doctest::Approx(expected_delay_average).epsilon(0.20));
+          doctest::Approx(expected_delay_average).epsilon(0.1));
       CHECK_LT(delay_variance, max_allowed_delay_variance);
     } else {
       throw std::invalid_argument("Unexpected distribution type");
@@ -735,9 +732,7 @@ TEST_CASE("request_rate_infer_type")
 
 /// Check that the request distribution is correct for
 /// different Distribution types
-
-// TODO: Fix the below test case. It uses INPUT2, which is not in the model
-// configuration.
+///
 TEST_CASE("request_rate_distribution")
 {
   PerfAnalyzerParameters params;
@@ -990,8 +985,6 @@ TEST_CASE("request_rate_streaming: test that streaming-specific logic works")
       expected_enable_stats_value);
 }
 
-// TODO: Fix the below test case. It uses INPUT2, which is not in the model
-// configuration.
 TEST_CASE(
     "custom_json_data: Check custom json data to ensure that it is processed "
     "correctly")
