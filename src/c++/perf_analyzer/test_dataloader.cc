@@ -1171,9 +1171,6 @@ TEST_CASE(
   CHECK(status.IsOk() == false);
 }
 
-// TODO: Fix the below test case. It fails because it is using an invalid
-// directory. Previously, the test relied on the fact that the directory was
-// not checked to be valid.
 TEST_CASE(
     "dataloader: ReadDataFromDir: Error reading output file" *
     doctest::description(
@@ -1211,9 +1208,6 @@ TEST_CASE(
   CHECK(data.batch1_size == 0);
 }
 
-// TODO: Fix the below test case. It fails because it is using an invalid
-// directory. Previously, the test relied on the fact that the directory was
-// not checked to be valid.
 TEST_CASE(
     "dataloader: ReadDataFromDir: Mismatching Input Data" *
     doctest::description("Successfully reading input files but having a "
@@ -1258,9 +1252,6 @@ TEST_CASE(
             testing::SetArgPointee<1>(string_data),
             testing::Return(cb::Error::Success)));
   }
-  // TODO: Fix the below test case. It fails because it is using an invalid
-  // directory. Previously, the test relied on the fact that the directory was
-  // not checked to be valid.
   SUBCASE("Raw Binary data")
   {
     datatype = "INT32";
@@ -1359,9 +1350,6 @@ TEST_CASE(
 //  CHECK(batch1_size == 0);
 //}
 
-// TODO: Fix the below test case. It fails because it is using an invalid
-// directory. Previously, the test relied on the fact that the directory was
-// not checked to be valid.
 TEST_CASE(
     "dataloader: ReadDataFromDir: Valid Data" *
     doctest::description("Successfully reading files will always result in a "

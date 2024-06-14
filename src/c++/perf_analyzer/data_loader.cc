@@ -149,7 +149,6 @@ DataLoader::ReadDataFromDir(
       SerializeStringTensor(output_string_data, &it->second);
     }
   }
-
   return cb::Error::Success;
 }
 
