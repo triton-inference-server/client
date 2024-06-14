@@ -52,14 +52,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -U \
-  psutil \
-  "pynvml>=11.5.0" \
-  torch==2.1.2 \
-  tensorrt_llm==0.8.0 \
-  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -93,7 +86,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -144,7 +136,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -178,7 +170,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend vllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -246,7 +237,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/chat/completions \
   --endpoint-type chat \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -311,7 +301,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/completions \
   --endpoint-type completions \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
