@@ -37,14 +37,13 @@ def mock_makedirs(mocker):
     return mocker.patch("os.makedirs")
 
 
-def test_create_artifacts_dirs_custom_path(mock_makedirs):
-    artifacts_dir_path = "/genai_perf_artifacts"
-    mock_args = Namespace(artifact_dir=Path(artifacts_dir_path))
+def test_create_artifacts_dirs(mock_makedirs):
+    mock_args = Namespace(artifact_dir=Path(DEFAULT_ARTIFACT_DIR))
     create_artifacts_dirs(mock_args)
     mock_makedirs.assert_any_call(
-        Path(artifacts_dir_path), exist_ok=True
-    ), f"Expected os.makedirs to create artifacts directory inside {artifacts_dir_path} path."
+        Path(DEFAULT_ARTIFACT_DIR), exist_ok=True
+    ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR} and exist_ok=True"
     mock_makedirs.assert_any_call(
-        Path(artifacts_dir_path) / "plots", exist_ok=True
-    ), f"Expected os.makedirs to create plots directory inside {artifacts_dir_path}/plots path."
+        Path(DEFAULT_ARTIFACT_DIR) / "plots", exist_ok=True
+    ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR}/plots and exist_ok=True"
     assert mock_makedirs.call_count == 2
