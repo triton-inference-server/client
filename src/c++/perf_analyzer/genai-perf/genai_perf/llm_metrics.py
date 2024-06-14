@@ -58,8 +58,8 @@ class Metrics:
         "output_token_throughput",
         "output_token_throughput_per_request",
         "request_throughput",
-        "num_output_token",
-        "num_input_token",
+        "output_sequence_length",
+        "input_sequence_length",
     ]
 
     time_fields = [
@@ -119,8 +119,8 @@ class LLMMetrics(Metrics):
         inter_token_latencies: List[int] = [],
         output_token_throughputs: List[float] = [],
         output_token_throughputs_per_request: List[int] = [],
-        num_output_tokens: List[int] = [],
-        num_input_tokens: List[int] = [],
+        output_sequence_lengths: List[int] = [],
+        input_sequence_lengths: List[int] = [],
         chunked_inter_token_latencies: List[List[int]] = [[]],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
@@ -128,8 +128,8 @@ class LLMMetrics(Metrics):
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
         self.output_token_throughputs_per_request = output_token_throughputs_per_request
-        self.num_output_tokens = num_output_tokens
-        self.num_input_tokens = num_input_tokens
+        self.output_sequence_lengths = output_sequence_lengths
+        self.input_sequence_lengths = input_sequence_lengths
 
         # Keeping chunked ITL (old) as a WAR to preserve visualization.
         # Excluded from data.
@@ -142,8 +142,8 @@ class LLMMetrics(Metrics):
         self._base_names["output_token_throughputs_per_request"] = (
             "output_token_throughput_per_request"
         )
-        self._base_names["num_output_tokens"] = "num_output_token"
-        self._base_names["num_input_tokens"] = "num_input_token"
+        self._base_names["output_sequence_lengths"] = "output_sequence_length"
+        self._base_names["input_sequence_lengths"] = "input_sequence_length"
 
 
 class Statistics:
@@ -244,7 +244,7 @@ class Statistics:
             self._stats_dict[key]["unit"] = "requests/sec"
         if key.startswith("output_token_throughput"):
             self._stats_dict[key]["unit"] = "tokens/sec"
-        if key == "num_input_token" or key == "num_output_token":
+        if "sequence_length" in key:
             self._stats_dict[key]["unit"] = "tokens"
 
     def __repr__(self) -> str:
@@ -403,8 +403,8 @@ class LLMProfileDataParser(ProfileDataParser):
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs_per_request = []
-        num_input_tokens = []
-        num_output_tokens = []
+        input_sequence_lengths = []
+        output_sequence_lengths = []
         chunked_inter_token_latencies = []
 
         for request in requests:
@@ -434,8 +434,8 @@ class LLMProfileDataParser(ProfileDataParser):
             time_to_first_tokens.append(ttft)
 
             # number of input tokens
-            input_token_count = self._get_input_token_count(req_inputs)
-            num_input_tokens.append(input_token_count)
+            input_seq_len = self._get_input_token_count(req_inputs)
+            input_sequence_lengths.append(input_seq_len)
 
             # output token throughput per request
             output_token_counts, total_output_token = self._get_output_token_counts(
@@ -444,7 +444,7 @@ class LLMProfileDataParser(ProfileDataParser):
             output_token_throughputs_per_request.append(
                 total_output_token / req_latency_s
             )
-            num_output_tokens.append(total_output_token)
+            output_sequence_lengths.append(total_output_token)
 
             # inter token latencies
             if total_output_token > 1:
@@ -470,7 +470,7 @@ class LLMProfileDataParser(ProfileDataParser):
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
         request_throughputs = [len(requests) / benchmark_duration]
-        output_token_throughputs = [sum(num_output_tokens) / benchmark_duration]
+        output_token_throughputs = [sum(output_sequence_lengths) / benchmark_duration]
 
         return LLMMetrics(
             request_throughputs,
@@ -479,8 +479,8 @@ class LLMProfileDataParser(ProfileDataParser):
             inter_token_latencies,
             output_token_throughputs,
             output_token_throughputs_per_request,
-            num_output_tokens,
-            num_input_tokens,
+            output_sequence_lengths,
+            input_sequence_lengths,
             chunked_inter_token_latencies,
         )
 

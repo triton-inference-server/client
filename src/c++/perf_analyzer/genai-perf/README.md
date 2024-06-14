@@ -191,8 +191,8 @@ Example output:
 │ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
 │ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
 │     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
-│         Num output token │         104 │         100 │         129 │         128 │         109 │         105 │
-│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+│   Output sequence length │         104 │         100 │         129 │         128 │         109 │         105 │
+│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
 └──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 460.42
 Request throughput (per sec): 4.44
@@ -221,9 +221,9 @@ genai-perf \
 This will generate a [set of default plots](docs/compare.md#example-plots) such as:
 - Time to first token (TTFT) analysis
 - Request latency analysis
-- TTFT vs Number of input tokens
+- TTFT vs Input sequence lengths
 - Inter token latencies vs Token positions
-- Number of input tokens vs Number of output tokens
+- Input sequence lengths vs Output sequence lengths
 
 
 ## Using `compare` Subcommand to Visualize Multiple Runs
@@ -245,15 +245,15 @@ Executing the above command will perform the following actions under the
 1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
 metadata for each plot generated during the comparison process.
 2. Automatically generate the [default set of plots](docs/compare.md#example-plots)
-(e.g. TTFT vs. Number of Input Tokens) that compare the two profile runs.
+(e.g. TTFT vs. Input Sequence Lengths) that compare the two profile runs.
 
 ```
 compare
 ├── config.yaml
-├── distribution_of_input_tokens_to_generated_tokens.jpeg
+├── distribution_of_input_sequence_lengths_to_output_sequence_lengths.jpeg
 ├── request_latency.jpeg
 ├── time_to_first_token.jpeg
-├── time_to_first_token_vs_number_of_input_tokens.jpeg
+├── time_to_first_token_vs_input_sequence_lengths.jpeg
 ├── token-to-token_latency_vs_output_token_position.jpeg
 └── ...
 ```
@@ -333,7 +333,8 @@ the inference server.
 | <span id="time_to_first_token_metric">Time to First Token</span> | Time between when a request is sent and when its first response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="inter_token_latency_metric">Inter Token Latency</span> | Time between intermediate responses for a single request divided by the number of generated tokens of the latter response, one value per response per request in benchmark | Avg, min, max, p99, p90, p75 |
 | Request Latency | Time between when a request is sent and when its final response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
-| Number of Output Tokens | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
+| Output Sequence Length | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
+| Input Sequence Length | Total number of input tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="output_token_throughput_metric">Output Token Throughput</span> | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
 | <span id="request_throughput_metric">Request Throughput</span> | Number of final responses from benchmark divided by benchmark duration | None–one value per benchmark |
 
