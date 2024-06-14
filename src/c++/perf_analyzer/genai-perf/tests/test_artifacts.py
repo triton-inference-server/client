@@ -24,27 +24,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import pytest
 from argparse import Namespace
-from pathlib import Path
+from genai_perf.constants import DEFAULT_ARTIFACT_DIR
+from genai_perf.main import create_artifacts_dirs
 from unittest.mock import patch
+from pathlib import Path
 
 import pytest
+from argparse import Namespace
 from genai_perf.constants import DEFAULT_ARTIFACT_DIR
 from genai_perf.main import create_artifacts_dirs
 
-
 @pytest.fixture
 def mock_makedirs(mocker):
-    return mocker.patch("os.makedirs")
-
+    return mocker.patch('os.makedirs')
 
 def test_create_artifacts_dirs(mock_makedirs):
     mock_args = Namespace(artifact_dir=Path(DEFAULT_ARTIFACT_DIR))
     create_artifacts_dirs(mock_args)
-    assert mock_makedirs.called_with(
-        DEFAULT_ARTIFACT_DIR, exist_ok=True
-    ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR} and exist_ok=True"
-    assert mock_makedirs.called_with(
-        Path(DEFAULT_ARTIFACT_DIR) / "plots", exist_ok=True
-    ), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR}/plots and exist_ok=True"
+    assert mock_makedirs.called_with(DEFAULT_ARTIFACT_DIR, exist_ok=True), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR} and exist_ok=True"
+    assert mock_makedirs.called_with(Path(DEFAULT_ARTIFACT_DIR) / "plots", exist_ok=True), f"Expected os.makedirs to be called with {DEFAULT_ARTIFACT_DIR}/plots and exist_ok=True"
     assert mock_makedirs.call_count == 2
+
+
+
+
+
+
+
