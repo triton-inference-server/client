@@ -26,9 +26,15 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Tutorial
+# Tutorials
 
-## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
+- [Profile GPT2 running on Triton + TensorRT-LLM](#tensorrt-llm)
+- [Profile GPT2 running on Triton + vLLM](#triton-vllm)
+- [Profile GPT2 running on OpenAI API-Compatible Server](#openai)
+
+---
+
+## Profile GPT2 running on Triton + TensorRT-LLM <a id="tensorrt-llm"></a>
 
 ### Running GPT2 on Triton Inference Server using TensorRT-LLM
 
@@ -46,14 +52,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -U \
-  psutil \
-  "pynvml>=11.5.0" \
-  torch==2.1.2 \
-  tensorrt_llm==0.8.0 \
-  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -87,7 +86,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -120,7 +118,7 @@ Output token throughput (per sec): 460.42
 Request throughput (per sec): 4.44
 ```
 
-## Measuring Throughput and Latency of GPT2 using Triton + vLLM
+## Profile GPT2 running on Triton + vLLM <a id="triton-vllm"></a>
 
 ### Running GPT2 on Triton Inference Server using vLLM
 
@@ -138,7 +136,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -172,7 +170,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend vllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -205,7 +202,7 @@ Output token throughput (per sec): 290.24
 Request throughput (per sec): 2.57
 ```
 
-## Measuring Throughput and Latency of GPT2 using OpenAI API-Compatible Server
+## Profile GPT2 running on OpenAI API-Compatible Server <a id="openai"></a>
 
 ### OpenAI Chat Completions API
 
@@ -240,7 +237,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/chat/completions \
   --endpoint-type chat \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -305,7 +301,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/completions \
   --endpoint-type completions \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
