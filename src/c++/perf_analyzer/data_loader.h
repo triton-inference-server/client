@@ -58,9 +58,22 @@ class DataLoader {
     return 0;
   }
 
+  /// Validate user-supplied inputs and outputs exist in the model
+  /// \param inputs The pointer to the map holding the information about
+  /// input tensors of a model
+  /// \param outputs The pointer to the map holding the information about
+  /// output tensors of a model
+  /// \param data_directory The path to the directory containing the data
+  cb::Error ValidateIOExistsInModel(
+      const std::shared_ptr<ModelTensorMap>& inputs,
+      const std::shared_ptr<ModelTensorMap>& outputs,
+      const std::string& data_directory);
+
   /// Reads the input data from the specified data directory.
   /// \param inputs The pointer to the map holding the information about
   /// input tensors of a model
+  /// \param outputs The pointer to the map holding the information about
+  /// output tensors of a model
   /// \param data_directory The path to the directory containing the data
   cb::Error ReadDataFromDir(
       const std::shared_ptr<ModelTensorMap>& inputs,

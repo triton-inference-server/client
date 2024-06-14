@@ -39,15 +39,11 @@ DataLoader::DataLoader(const size_t batch_size)
 }
 
 cb::Error
-DataLoader::ReadDataFromDir(
+DataLoader::ValidateIOExistsInModel(
     const std::shared_ptr<ModelTensorMap>& inputs,
     const std::shared_ptr<ModelTensorMap>& outputs,
     const std::string& data_directory)
 {
-  // Directory structure supports only a single data stream and step
-  data_stream_cnt_ = 1;
-  step_num_.push_back(1);
-
   if (!std::filesystem::exists(data_directory) ||
       !std::filesystem::is_directory(data_directory)) {
     return cb::Error(
@@ -66,6 +62,19 @@ DataLoader::ReadDataFromDir(
           pa::GENERIC_ERROR);
     }
   }
+
+  return cb::Error::Success;
+}
+
+cb::Error
+DataLoader::ReadDataFromDir(
+    const std::shared_ptr<ModelTensorMap>& inputs,
+    const std::shared_ptr<ModelTensorMap>& outputs,
+    const std::string& data_directory)
+{
+  // Directory structure supports only a single data stream and step
+  data_stream_cnt_ = 1;
+  step_num_.push_back(1);
 
   for (const auto& input : *inputs) {
     if (input.second.datatype_.compare("BYTES") != 0) {
