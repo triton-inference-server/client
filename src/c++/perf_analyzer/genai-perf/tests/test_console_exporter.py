@@ -26,6 +26,7 @@
 
 from genai_perf.export_data.console_exporter import ConsoleExporter
 from genai_perf.export_data.exporter_config import ExporterConfig
+from genai_perf.llm_metrics import LLMMetrics, Statistics
 
 
 class TestConsoleExporter:
@@ -53,6 +54,40 @@ class TestConsoleExporter:
 
         returned_data = capsys.readouterr().out
 
+        assert returned_data == expected_content
+
+    def test_nonstreaming_llm_output(self, capsys) -> None:
+        metrics = LLMMetrics(
+            request_throughputs=[123],
+            request_latencies=[4, 5, 6],
+            time_to_first_tokens=[4, 5, 6],  # same as request_latency
+            inter_token_latencies=[],  # no ITL
+            output_token_throughputs=[456],
+            output_sequence_lengths=[1, 2, 3],
+            input_sequence_lengths=[5, 6, 7],
+        )
+        stats = Statistics(metrics=metrics)
+
+        config = ExporterConfig()
+        config.stats = stats.stats_dict
+        exporter = ConsoleExporter(config)
+        exporter.export()
+
+        # No TTFT and ITL in the output
+        expected_content = (
+            "                            LLM Metrics                             \n"
+            "┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━┓\n"
+            "┃              Statistic ┃  avg ┃  min ┃  max ┃  p99 ┃  p90 ┃  p75 ┃\n"
+            "┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━┩\n"
+            "│   Request latency (ms) │ 5.00 │ 4.00 │ 6.00 │ 5.98 │ 5.80 │ 5.50 │\n"
+            "│ Output sequence length │ 2.00 │ 1.00 │ 3.00 │ 2.98 │ 2.80 │ 2.50 │\n"
+            "│  Input sequence length │ 6.00 │ 5.00 │ 7.00 │ 6.98 │ 6.80 │ 6.50 │\n"
+            "└────────────────────────┴──────┴──────┴──────┴──────┴──────┴──────┘\n"
+            "Output token throughput (per sec): 456.00\n"
+            "Request throughput (per sec): 123.00\n"
+        )
+
+        returned_data = capsys.readouterr().out
         assert returned_data == expected_content
 
 
