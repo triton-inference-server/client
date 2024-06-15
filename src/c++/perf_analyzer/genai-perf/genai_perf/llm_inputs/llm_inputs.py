@@ -17,7 +17,7 @@ import random
 from copy import deepcopy
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
@@ -202,6 +202,7 @@ class LlmInputs:
             output_tokens_deterministic,
             model_name,
             model_selection_strategy,
+            tokenizer,
         )
         cls._write_json_to_file(json_in_pa_format, output_dir)
 
@@ -395,6 +396,7 @@ class LlmInputs:
         output_tokens_deterministic: bool,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+        tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
     ) -> Dict:
         if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
@@ -432,8 +434,12 @@ class LlmInputs:
                 model_name,
                 model_selection_strategy,
             )
-        elif output_format == OutputFormat.TENSORRTLLM:
+        elif (
+            output_format == OutputFormat.TENSORRTLLM
+            or output_format == OutputFormat.TENSORRTLLM_ENGINE
+        ):
             output_json = cls._convert_generic_json_to_trtllm_format(
+                output_format,
                 generic_dataset,
                 add_model_name,
                 add_stream,
@@ -443,6 +449,7 @@ class LlmInputs:
                 output_tokens_deterministic,
                 model_name,
                 model_selection_strategy,
+                tokenizer,
             )
         else:
             raise GenAIPerfException(
@@ -560,6 +567,7 @@ class LlmInputs:
     @classmethod
     def _convert_generic_json_to_trtllm_format(
         cls,
+        output_format: OutputFormat,
         dataset_json: Dict,
         add_model_name: bool,
         add_stream: bool,
@@ -569,6 +577,7 @@ class LlmInputs:
         output_tokens_deterministic: bool,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+        tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
     ) -> Dict:
         (
             system_role_headers,
@@ -577,6 +586,7 @@ class LlmInputs:
         ) = cls._determine_json_feature_roles(dataset_json)
 
         pa_json = cls._populate_trtllm_output_json(
+            output_format,
             dataset_json,
             system_role_headers,
             user_role_headers,
@@ -589,6 +599,7 @@ class LlmInputs:
             output_tokens_deterministic,
             model_name,
             model_selection_strategy,
+            tokenizer,
         )
 
         return pa_json
@@ -789,6 +800,7 @@ class LlmInputs:
     @classmethod
     def _populate_trtllm_output_json(
         cls,
+        output_format: OutputFormat,
         dataset_json: Dict,
         system_role_headers: List[str],
         user_role_headers: List[str],
@@ -801,6 +813,7 @@ class LlmInputs:
         output_tokens_deterministic: bool,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+        tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
     ) -> Dict:
         pa_json = cls._create_empty_trtllm_pa_json()
         default_max_tokens = (
@@ -823,9 +836,15 @@ class LlmInputs:
                     content,
                 )
 
-                pa_json = cls._add_new_text_input_to_json(
-                    pa_json, index, new_text_input
-                )
+                if output_format is OutputFormat.TENSORRTLLM_ENGINE:
+                    tokenized_text_input = tokenizer.encode(new_text_input)
+                    pa_json = cls._add_new_text_input_to_json(
+                        pa_json, index, tokenized_text_input
+                    )
+                else:
+                    pa_json = cls._add_new_text_input_to_json(
+                        pa_json, index, new_text_input
+                    )
 
             pa_json = cls._add_required_tags_to_trtllm_json(
                 pa_json, index, default_max_tokens
@@ -940,7 +959,7 @@ class LlmInputs:
 
     @classmethod
     def _add_new_text_input_to_json(
-        cls, pa_json: Dict, index: int, new_text_input: str
+        cls, pa_json: Dict, index: int, new_text_input: Union[str | list[int]]
     ) -> Dict:
         if new_text_input:
             if pa_json["data"][index]["text_input"][0]:

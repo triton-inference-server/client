@@ -133,9 +133,9 @@ def run():
             create_artifacts_dirs(args)
             tokenizer = get_tokenizer(args.tokenizer)
             generate_inputs(args, tokenizer)
-            args.func(args, extra_args)
-            data_parser = calculate_metrics(args, tokenizer)
-            report_output(data_parser, args)
+            # args.func(args, extra_args)
+            # data_parser = calculate_metrics(args, tokenizer)
+            # report_output(data_parser, args)
     except Exception as e:
         raise GenAIPerfException(e)
 
