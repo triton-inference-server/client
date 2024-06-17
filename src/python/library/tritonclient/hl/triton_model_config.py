@@ -17,7 +17,6 @@ import dataclasses
 from typing import Dict, Optional, Sequence, Type, Union
 
 import numpy as np
-
 from tritonclient.hl.common import DeviceKind, DynamicBatcher
 
 
@@ -55,7 +54,9 @@ class TritonModelConfig:
     max_batch_size: int = 4
     batching: bool = True
     batcher: Optional[DynamicBatcher] = None
-    instance_group: Dict[DeviceKind, Optional[int]] = dataclasses.field(default_factory=lambda: {})
+    instance_group: Dict[DeviceKind, Optional[int]] = dataclasses.field(
+        default_factory=lambda: {}
+    )
     decoupled: bool = False
     backend_parameters: Dict[str, str] = dataclasses.field(default_factory=lambda: {})
     inputs: Optional[Sequence[TensorSpec]] = None

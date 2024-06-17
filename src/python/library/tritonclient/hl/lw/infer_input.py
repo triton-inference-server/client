@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
 import numpy as np
-    
+import requests
+
+
 def raise_error(message):
     """Raise an InferenceServerException with the specified message."""
     raise Exception(message)
+
 
 def triton_to_np_dtype(dtype):
     """Converts a Triton dtype to a numpy dtype."""
@@ -48,6 +50,7 @@ def triton_to_np_dtype(dtype):
     elif dtype == "BYTES":
         return np.object_
     return None
+
 
 def serialize_byte_tensor(input_tensor):
     """
@@ -103,6 +106,7 @@ def serialize_byte_tensor(input_tensor):
     if not flattened_array.flags["C_CONTIGUOUS"]:
         flattened_array = np.ascontiguousarray(flattened_array, dtype=np.object_)
     return flattened_array
+
 
 def np_to_triton_dtype(np_dtype):
     """Converts a numpy dtype to a Triton dtype."""
@@ -224,7 +228,7 @@ class InferInput:
         """
         self._np_data = input_tensor
 
-        binary_data=False
+        binary_data = False
 
         if not isinstance(input_tensor, (np.ndarray,)):
             raise_error("input_tensor must be a numpy array")
@@ -312,7 +316,6 @@ class InferInput:
             self._parameters["binary_data_size"] = len(self._raw_data)
         return self
 
-
     def _get_binary_data(self):
         """Returns the raw binary data if available
 
@@ -350,8 +353,8 @@ class InferInput:
             "datatype": self.datatype(),
             "data": self._get_tensor()["data"],
         }
-        
 
-class InferRequestedOutput():
+
+class InferRequestedOutput:
     def __init__(self, name):
         self.name = name

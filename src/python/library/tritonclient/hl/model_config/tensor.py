@@ -54,4 +54,6 @@ class Tensor:
     def __post_init__(self):
         """Override object values on post init or field override."""
         if isinstance(self.dtype, np.dtype):
-            object.__setattr__(self, "dtype", self.dtype.type)  # pytype: disable=attribute-error
+            object.__setattr__(
+                self, "dtype", self.dtype.type
+            )  # pytype: disable=attribute-error

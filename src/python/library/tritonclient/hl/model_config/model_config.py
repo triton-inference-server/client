@@ -21,7 +21,7 @@ The dataclasses are exposed in the user API.
 
 import dataclasses
 
-#from tritonclient.hl.model_config import DynamicBatcher
+# from tritonclient.hl.model_config import DynamicBatcher
 
 
 @dataclasses.dataclass
@@ -38,6 +38,6 @@ class ModelConfig:
 
     batching: bool = True
     max_batch_size: int = 4
-    #batcher: DynamicBatcher = dataclasses.field(default_factory=DynamicBatcher)
+    # batcher: DynamicBatcher = dataclasses.field(default_factory=DynamicBatcher)
     response_cache: bool = False
     decoupled: bool = False

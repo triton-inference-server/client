@@ -13,7 +13,5 @@
 # limitations under the License.
 # noqa: D104
 
-from .client import (
-    ModelClient,  # noqa: F401
-    DecoupledModelClient,  # noqa: F401
-)
+from .client import DecoupledModelClient  # noqa: F401
+from .client import ModelClient  # noqa: F401

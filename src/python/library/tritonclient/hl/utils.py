@@ -21,18 +21,21 @@ import sys
 import time
 import urllib
 import warnings
-from typing import Optional, Any
+from typing import Any, Optional
 
 import tritonclient.hl.lw.grpc
 import tritonclient.hl.lw.http
-#import tritonclient.http.aio
-from grpc import RpcError
-from tritonclient.hl.lw.utils import InferenceServerException
 
-from tritonclient.hl.exceptions import PyTritonClientInvalidUrlError, PyTritonClientTimeoutError
-from tritonclient.hl.warnings import NotSupportedTimeoutWarning
+# import tritonclient.http.aio
+from grpc import RpcError
 from tritonclient.hl.constants import DEFAULT_GRPC_PORT, DEFAULT_HTTP_PORT
+from tritonclient.hl.exceptions import (
+    PyTritonClientInvalidUrlError,
+    PyTritonClientTimeoutError,
+)
+from tritonclient.hl.lw.utils import InferenceServerException
 from tritonclient.hl.model_config.parser import ModelConfigParser
+from tritonclient.hl.warnings import NotSupportedTimeoutWarning
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,11 +71,15 @@ def parse_http_response(models):
     models_states = {}
     _LOGGER.debug("Parsing model repository index entries:")
     for model in models:
-        _LOGGER.debug(f"    name={model.get('name')} version={model.get('version')} state={model.get('state')}")
+        _LOGGER.debug(
+            f"    name={model.get('name')} version={model.get('version')} state={model.get('state')}"
+        )
         if not model.get("version"):
             continue
 
-        model_state = ModelState(model["state"]) if model.get("state") else ModelState.LOADING
+        model_state = (
+            ModelState(model["state"]) if model.get("state") else ModelState.LOADING
+        )
         models_states[(model["name"], model["version"])] = model_state
 
     return models_states
@@ -83,7 +90,9 @@ def parse_grpc_response(models):
     models_states = {}
     _LOGGER.debug("Parsing model repository index entries:")
     for model in models:
-        _LOGGER.debug(f"    name={model.name} version={model.version} state={model.state}")
+        _LOGGER.debug(
+            f"    name={model.name} version={model.version} state={model.state}"
+        )
         if not model.version:
             continue
 
@@ -120,12 +129,16 @@ def get_model_state(
 
     if model_version is None:
         requested_model_states = {
-            version: state for (name, version), state in models_states.items() if name == model_name
+            version: state
+            for (name, version), state in models_states.items()
+            if name == model_name
         }
         if not requested_model_states:
             return ModelState.UNAVAILABLE
         else:
-            requested_model_states = sorted(requested_model_states.items(), key=lambda item: int(item[0]))
+            requested_model_states = sorted(
+                requested_model_states.items(), key=lambda item: int(item[0])
+            )
             _latest_version, latest_version_state = requested_model_states[-1]
             return latest_version_state
     else:
@@ -165,7 +178,9 @@ def get_model_config(
         PyTritonClientTimeoutError: If obtain of model configuration didn't finish before given timeout.
         PyTritonClientModelUnavailableError: If model with given name (and version) is unavailable.
     """
-    wait_for_model_ready(client, model_name=model_name, model_version=model_version, timeout_s=timeout_s)
+    wait_for_model_ready(
+        client, model_name=model_name, model_version=model_version, timeout_s=timeout_s
+    )
 
     model_version = model_version or ""
 
@@ -216,7 +231,9 @@ def wait_for_server_ready(
     Raises:
         PyTritonClientTimeoutError: If obtain of model configuration didn't finish before given timeout.
     """
-    timeout_s = timeout_s if timeout_s is not None else _DEFAULT_WAIT_FOR_SERVER_READY_TIMEOUT_S
+    timeout_s = (
+        timeout_s if timeout_s is not None else _DEFAULT_WAIT_FOR_SERVER_READY_TIMEOUT_S
+    )
     should_finish_before_s = time.time() + timeout_s
     _warn_on_too_big_network_timeout(client, timeout_s)
 
@@ -225,7 +242,11 @@ def wait_for_server_ready(
             return client.is_server_ready() and client.is_server_live()
         except InferenceServerException:
             return False
-        except (RpcError, ConnectionError, socket.gaierror):  # GRPC and HTTP clients raises these errors
+        except (
+            RpcError,
+            ConnectionError,
+            socket.gaierror,
+        ):  # GRPC and HTTP clients raises these errors
             return False
         except Exception as e:
             _LOGGER.exception(f"Exception while checking server readiness: {e}")
@@ -238,7 +259,9 @@ def wait_for_server_ready(
         time.sleep(min(1.0, timeout_s))
         is_server_ready = _is_server_ready()
         if not is_server_ready and time.time() >= should_finish_before_s:
-            raise PyTritonClientTimeoutError("Waiting for server to be ready timed out.")
+            raise PyTritonClientTimeoutError(
+                "Waiting for server to be ready timed out."
+            )
 
 
 def wait_for_model_ready(
@@ -263,12 +286,16 @@ def wait_for_model_ready(
     """
     model_version = model_version or ""
     model_version_msg = model_version or LATEST_MODEL_VERSION
-    timeout_s = timeout_s if timeout_s is not None else _DEFAULT_WAIT_FOR_MODEL_TIMEOUT_S
+    timeout_s = (
+        timeout_s if timeout_s is not None else _DEFAULT_WAIT_FOR_MODEL_TIMEOUT_S
+    )
     should_finish_before_s = time.time() + timeout_s
 
     wait_for_server_ready(client, timeout_s=timeout_s)
     timeout_s = max(0.0, should_finish_before_s - time.time())
-    _LOGGER.debug(f"Waiting for model {model_name}/{model_version_msg} to be ready (timeout={timeout_s})")
+    _LOGGER.debug(
+        f"Waiting for model {model_name}/{model_version_msg} to be ready (timeout={timeout_s})"
+    )
     is_model_ready = client.is_model_ready(model_name, model_version)
     while not is_model_ready:
         time.sleep(min(1.0, timeout_s))
@@ -296,11 +323,17 @@ def create_client_from_url(url: str, network_timeout_s: Optional[float] = None) 
         PyTritonClientInvalidUrlError: If provided Triton Inference Server url is invalid.
     """
     url = TritonUrl.from_url(url)
-    triton_client_lib = {"grpc": tritonclient.grpc, "http": tritonclient.http}[url.scheme]
+    triton_client_lib = {"grpc": tritonclient.grpc, "http": tritonclient.http}[
+        url.scheme
+    ]
 
     if url.scheme == "grpc":
         # by default grpc client has very large number of timeout, thus we want to make it equal to http client timeout
-        network_timeout_s = _DEFAULT_NETWORK_TIMEOUT_S if network_timeout_s is None else network_timeout_s
+        network_timeout_s = (
+            _DEFAULT_NETWORK_TIMEOUT_S
+            if network_timeout_s is None
+            else network_timeout_s
+        )
         warnings.warn(
             f"tritonclient.grpc doesn't support timeout for other commands than infer. Ignoring network_timeout: {network_timeout_s}.",
             NotSupportedTimeoutWarning,
@@ -312,12 +345,19 @@ def create_client_from_url(url: str, network_timeout_s: Optional[float] = None) 
         triton_client_init_kwargs.update(
             **{
                 "grpc": {},
-                "http": {"connection_timeout": network_timeout_s, "network_timeout": network_timeout_s},
+                "http": {
+                    "connection_timeout": network_timeout_s,
+                    "network_timeout": network_timeout_s,
+                },
             }[url.scheme]
         )
 
-    _LOGGER.debug(f"Creating InferenceServerClient for {url.with_scheme} with {triton_client_init_kwargs}")
-    return triton_client_lib.InferenceServerClient(url.without_scheme, **triton_client_init_kwargs)
+    _LOGGER.debug(
+        f"Creating InferenceServerClient for {url.with_scheme} with {triton_client_init_kwargs}"
+    )
+    return triton_client_lib.InferenceServerClient(
+        url.without_scheme, **triton_client_init_kwargs
+    )
 
 
 @dataclasses.dataclass
@@ -351,24 +391,39 @@ class TritonUrl:
             TritonUrl object with scheme, hostname and port.
         """
         if not isinstance(url, str):
-            raise PyTritonClientInvalidUrlError(f"Invalid url {url}. Url must be a string.")
+            raise PyTritonClientInvalidUrlError(
+                f"Invalid url {url}. Url must be a string."
+            )
         try:
             parsed_url = urllib.parse.urlparse(url)
             # change in py3.9+
             # https://github.com/python/cpython/commit/5a88d50ff013a64fbdb25b877c87644a9034c969
-            if sys.version_info < (3, 9) and not parsed_url.scheme and "://" in parsed_url.path:
-                raise ValueError(f"Invalid url {url}. Only grpc and http are supported.")
+            if (
+                sys.version_info < (3, 9)
+                and not parsed_url.scheme
+                and "://" in parsed_url.path
+            ):
+                raise ValueError(
+                    f"Invalid url {url}. Only grpc and http are supported."
+                )
             if (not parsed_url.scheme and "://" not in parsed_url.path) or (
-                sys.version_info >= (3, 9) and parsed_url.scheme and not parsed_url.netloc
+                sys.version_info >= (3, 9)
+                and parsed_url.scheme
+                and not parsed_url.netloc
             ):
                 _LOGGER.debug(f"Adding http scheme to {url}")
                 parsed_url = urllib.parse.urlparse(f"http://{url}")
 
             scheme = parsed_url.scheme.lower()
             if scheme not in ["grpc", "http"]:
-                raise ValueError(f"Invalid scheme {scheme}. Only grpc and http are supported.")
+                raise ValueError(
+                    f"Invalid scheme {scheme}. Only grpc and http are supported."
+                )
 
-            port = parsed_url.port or {"grpc": DEFAULT_GRPC_PORT, "http": DEFAULT_HTTP_PORT}[scheme]
+            port = (
+                parsed_url.port
+                or {"grpc": DEFAULT_GRPC_PORT, "http": DEFAULT_HTTP_PORT}[scheme]
+            )
         except ValueError as e:
             raise PyTritonClientInvalidUrlError(f"Invalid url {url}") from e
         return cls(scheme, parsed_url.hostname, port)
