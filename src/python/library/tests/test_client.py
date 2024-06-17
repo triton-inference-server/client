@@ -31,7 +31,7 @@ from tritonclient._client import Client
 
 class TestClient(unittest.TestCase):
     def test_client(self):
-        Client()
+        Client("localhost:8000")
 
 
 if __name__ == "__main__":

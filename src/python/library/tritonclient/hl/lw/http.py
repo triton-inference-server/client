@@ -258,8 +258,10 @@ class InferenceServerClient:
         self._stream_thread.start()
         self._event.wait()  # Block until the first 200 response or error is returned
 
-        if self._exception:
+        if isinstance(self._exception, Exception):
             raise self._exception
+        else:
+            raise Exception("An unknown error occurred")
 
     def close(self):
         """Close the stream and join the thread."""
