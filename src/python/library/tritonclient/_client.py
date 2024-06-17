@@ -25,6 +25,9 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from typing import Union
+
+from tritonclient.hl import DecoupledModelClient, ModelClient
 from tritonclient.utils import raise_error
 
 
@@ -85,6 +88,32 @@ class InferenceServerClientBase:
         self._plugin = None
 
 
-class Client(InferenceServerClientBase):
-    def __init__(self) -> None:
+# # Change url to 'http://localhost:8000' for utilizing HTTP client
+# client = Client(url='grpc://loacalhost:8001')
+#
+# input_tensor_as_numpy = np.array(...)
+#
+# # Infer should be async similar to the existing Python APIs
+# responses = client.model('simple').infer(inputs={'input': input_tensor_as_numpy})
+#
+# for response in responses:
+# 	numpy_array = np.asarray(response.outputs['output'])
+#
+# client.close()
+
+
+class Client:
+    def __init__(self, url: str) -> None:
+        self._client_url = url
         super().__init__()
+
+    def model(self, name: str) -> Union[ModelClient, DecoupledModelClient]:
+        client = ModelClient(url=self._client_url, model_name=name)
+        if client.model_config.decoupled:
+            try:
+                decoupled_client = DecoupledModelClient.from_existing_client(client)
+            finally:
+                client.close()
+            return decoupled_client
+        else:
+            return client
