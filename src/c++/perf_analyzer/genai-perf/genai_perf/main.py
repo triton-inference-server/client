@@ -79,6 +79,9 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         tokenizer=tokenizer,
         extra_inputs=extra_input_dict,
         output_dir=args.artifact_dir,
+        embeddings_prompts_mean=args.embeddings_prompts_mean,
+        embeddings_prompts_stddev=args.embeddings_prompts_stddev,
+        embeddings_input_type=args.embeddings_input_type,
     )
 
 

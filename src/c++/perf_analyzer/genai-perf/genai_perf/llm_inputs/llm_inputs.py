@@ -41,6 +41,8 @@ class PromptSource(Enum):
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
+    # OPENAI_RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -70,6 +72,9 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_MEAN = -1
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
+    DEFAULT_PROMPTS_PER_REQUEST_MEAN = 1
+    DEFAULT_PROMPTS_PER_REQUEST_STDDEV = 0
+    DEFAULT_EMBEDDINGS_INPUT_TYPE = "query"
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
@@ -100,6 +105,9 @@ class LlmInputs:
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
         output_dir: Path = Path(""),
+        embeddings_prompts_mean: int = DEFAULT_PROMPTS_PER_REQUEST_MEAN,
+        embeddings_prompts_stddev: int = DEFAULT_PROMPTS_PER_REQUEST_STDDEV,
+        embeddings_input_type: str = "query",
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -150,42 +158,34 @@ class LlmInputs:
             The number of synthetic output prompts to generate
         random_seed:
             Seed used to generate random values
+        embeddings_prompts_mean
+            The mean number of prompts to generate per request (only for v1/embeddings)
+        embeddings_prompts_stddev
+            The standard deviation number of prompts to generate per request (only for v1/embeddings)
+        embeddings_input_type
+            The type of input to generate prompts for (only for v1/embeddings)
         """
 
         cls._check_for_valid_args(
             input_type, dataset_name, starting_index, length, tokenizer
         )
 
-        if input_type == PromptSource.DATASET:
-            dataset = cls._get_input_dataset_from_url(
-                dataset_name, starting_index, length
-            )
-            generic_dataset_json = cls._convert_input_url_dataset_to_generic_json(
-                dataset
-            )
-        elif input_type == PromptSource.SYNTHETIC:
-            random.seed(random_seed)
-            synthetic_dataset = cls._get_input_dataset_from_synthetic(
-                tokenizer,
-                prompt_tokens_mean,
-                prompt_tokens_stddev,
-                num_of_output_prompts,
-            )
-            generic_dataset_json = (
-                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                    synthetic_dataset
-                )
-            )
-        elif input_type == PromptSource.FILE:
-            input_filename = cast(Path, input_filename)
-            input_file_dataset = cls._get_input_dataset_from_file(input_filename)
-            generic_dataset_json = (
-                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                    input_file_dataset
-                )
-            )
-        else:
-            raise GenAIPerfException("Input source is not recognized.")
+        generic_dataset_json = cls.get_generic_dataset_json(
+            input_type,
+            output_format,
+            dataset_name,
+            starting_index,
+            length,
+            tokenizer,
+            prompt_tokens_mean,
+            prompt_tokens_stddev,
+            num_of_output_prompts,
+            random_seed,
+            input_filename,
+            embeddings_prompts_mean,
+            embeddings_prompts_stddev,
+            embeddings_input_type,
+        )
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -205,6 +205,191 @@ class LlmInputs:
         cls._write_json_to_file(json_in_pa_format, output_dir)
 
         return json_in_pa_format
+
+    @classmethod
+    def get_generic_dataset_json(
+        cls,
+        input_type: PromptSource,
+        output_format: OutputFormat,
+        dataset_name: str,
+        starting_index: int,
+        length: int,
+        tokenizer: Tokenizer,
+        prompt_tokens_mean: int,
+        prompt_tokens_stddev: int,
+        num_of_output_prompts: int,
+        random_seed: int,
+        input_filename: Optional[Path],
+        embeddings_prompts_mean: int,
+        embeddings_prompts_stddev: int,
+        embeddings_input_type: str,
+    ) -> Dict:
+        """
+        Retrieve and convert the dataset based on the input type.
+
+        Parameters
+        ----------
+        input_type:
+            Specify how the input is received
+        output_format:
+            Specify the output format
+        dataset_name:
+            The name of the dataset
+        starting_index:
+            Offset from within the list to start gathering inputs
+        length:
+            Number of entries to gather
+        tokenizer:
+            The tokenizer to use when generating synthetic prompts
+        prompt_tokens_mean:
+            The mean length of the prompt to generate
+        prompt_tokens_stddev:
+            The standard deviation of the length of the prompt to generate
+        num_of_output_prompts:
+            The number of synthetic output prompts to generate
+        random_seed:
+            Seed used to generate random values
+        input_filename:
+            The path to the input file containing the prompts in JSONL format.
+        embeddings_prompts_mean
+            The mean number of prompts to generate per request (only for v1/embeddings)
+        embeddings_prompts_stddev
+            The standard deviation number of prompts to generate per request (only for v1/embeddings)
+        embeddings_input_type
+            The type of input to generate prompts for (only for v1/embeddings)
+
+        Returns
+        -------
+        Dict:
+            The generic dataset JSON
+        """
+        if output_format == OutputFormat.OPENAI_EMBEDDINGS:
+            if input_type == PromptSource.SYNTHETIC:
+                synthetic_prompts = (
+                    cls._generate_synthetic_prompts_for_openai_embeddings(
+                        tokenizer,
+                        prompt_tokens_mean,
+                        prompt_tokens_stddev,
+                        num_of_output_prompts,
+                        embeddings_input_type,
+                        embeddings_prompts_mean,
+                        embeddings_prompts_stddev,
+                    )
+                )
+                generic_dataset_json = (
+                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                        synthetic_prompts
+                    )
+                )
+            elif input_type == PromptSource.FILE:
+                input_filename = cast(Path, input_filename)
+                input_file_dataset = cls._get_input_dataset_from_embeddings_file(
+                    input_filename, embeddings_input_type
+                )
+                generic_dataset_json = (
+                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                        input_file_dataset
+                    )
+                )
+            else:
+                raise GenAIPerfException(
+                    "OpenAI embeddings only supports synthetic prompts or file input."
+                )
+        else:
+            if input_type == PromptSource.DATASET:
+                dataset = cls._get_input_dataset_from_url(
+                    dataset_name, starting_index, length
+                )
+                generic_dataset_json = cls._convert_input_url_dataset_to_generic_json(
+                    dataset
+                )
+            elif input_type == PromptSource.SYNTHETIC:
+                random.seed(random_seed)
+                synthetic_dataset = cls._get_input_dataset_from_synthetic(
+                    tokenizer,
+                    prompt_tokens_mean,
+                    prompt_tokens_stddev,
+                    num_of_output_prompts,
+                )
+                generic_dataset_json = (
+                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                        synthetic_dataset
+                    )
+                )
+            elif input_type == PromptSource.FILE:
+                input_filename = cast(Path, input_filename)
+                input_file_dataset = cls._get_input_dataset_from_file(input_filename)
+                generic_dataset_json = (
+                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                        input_file_dataset
+                    )
+                )
+            else:
+                raise GenAIPerfException("Input source is not recognized.")
+
+        return generic_dataset_json
+
+    @classmethod
+    def _generate_synthetic_prompts_for_openai_embeddings(
+        cls,
+        tokenizer: Tokenizer,
+        prompts_mean: int,
+        prompts_stddev: int,
+        num_of_output_prompts: int,
+        embeddings_input_type: str,
+        embeddings_prompts_mean: int,
+        embeddings_prompts_stddev: int,
+    ) -> Dict[str, Any]:
+        dataset_json: Dict[str, Any] = {}
+        dataset_json["features"] = [{"name": "input"}]
+        dataset_json["rows"] = []
+        for _ in range(num_of_output_prompts):
+            num_prompts = max(
+                1, int(random.gauss(embeddings_prompts_mean, embeddings_prompts_stddev))
+            )
+            synthetic_prompt_array = [
+                SyntheticPromptGenerator.create_synthetic_prompt(
+                    tokenizer, prompts_mean, prompts_stddev
+                )
+                for _ in range(num_prompts)
+            ]
+            dataset_json["rows"].append(
+                {
+                    "row": {
+                        "input": synthetic_prompt_array,
+                        "input_type": embeddings_input_type,
+                    }
+                }
+            )
+        return dataset_json
+
+    @classmethod
+    def _get_input_dataset_from_embeddings_file(
+        cls, input_filename: Path, embeddings_input_type: str
+    ) -> Dict[str, Any]:
+        with open(input_filename, "r") as file:
+            file_content = json.load(file)
+
+        dataset_json: Dict[str, Any] = {}
+        dataset_json["features"] = [{"name": "input"}]
+        dataset_json["rows"] = []
+
+        for item in file_content:
+            if embeddings_input_type == "query":
+                dataset_json["rows"].append(
+                    {"row": {"input": item["question"], "input_type": "query"}}
+                )
+            elif embeddings_input_type == "passage":
+                for pos_doc in item.get("pos_doc", []):
+                    dataset_json["rows"].append(
+                        {"row": {"input": pos_doc, "input_type": "passage"}}
+                    )
+                for neg_doc in item.get("neg_doc", []):
+                    dataset_json["rows"].append(
+                        {"row": {"input": neg_doc, "input_type": "passage"}}
+                    )
+
+        return dataset_json
 
     @classmethod
     def _check_for_valid_args(
@@ -419,6 +604,14 @@ class LlmInputs:
                 model_name,
                 model_selection_strategy,
             )
+        elif output_format == OutputFormat.OPENAI_EMBEDDINGS:
+            output_json = cls._convert_generic_json_to_openai_embeddings_format(
+                generic_dataset,
+                add_model_name,
+                extra_inputs,
+                model_name,
+                model_selection_strategy,
+            )
         elif output_format == OutputFormat.VLLM:
             output_json = cls._convert_generic_json_to_vllm_format(
                 generic_dataset,
@@ -517,6 +710,31 @@ class LlmInputs:
             model_name,
             model_selection_strategy,
         )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_openai_embeddings_format(
+        cls,
+        generic_dataset: Dict,
+        add_model_name: bool,
+        extra_inputs: Dict,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict[str, Any]:
+        pa_json: Dict[str, Any] = {"data": []}
+
+        for index, entry in enumerate(generic_dataset["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
+            pa_json["data"].append({"input": entry["input"]})
+
+            if add_model_name:
+                pa_json["data"][index]["model"] = iter_model_name
+
+            for key, value in extra_inputs.items():
+                pa_json["data"][index][key] = value
 
         return pa_json
 

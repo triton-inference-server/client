@@ -92,6 +92,9 @@ class Profiler:
             "synthetic_input_tokens_stddev",
             "subcommand",
             "tokenizer",
+            "embeddings_prompts_mean",
+            "embeddings_prompts_stddev",
+            "embeddings_input_type",
         ]
 
         utils.remove_file(args.profile_export_file)

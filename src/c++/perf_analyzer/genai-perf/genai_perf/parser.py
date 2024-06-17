@@ -52,7 +52,12 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {
+    "chat": "v1/chat/completions",
+    "completions": "v1/completions",
+    "embeddings": "v1/embeddings",
+    #   "rankings": "v1/rankings"
+}
 
 
 def _check_model_args(
@@ -110,6 +115,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
             elif args.endpoint_type == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
+            elif args.endpoint_type == "embeddings":
+                args.output_format = OutputFormat.OPENAI_EMBEDDINGS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -141,6 +148,38 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
+    if args.endpoint_type == "embeddings":
+        if args.streaming:
+            parser.error(
+                "The --streaming option is not supported with the embeddings endpoint type."
+            )
+    else:
+        if args.embeddings_prompts_mean != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN:
+            parser.error(
+                "The --embeddings-prompts-mean option is only supported with the embeddings endpoint type."
+            )
+        if (
+            args.embeddings_prompts_stddev
+            != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
+        ):
+            parser.error(
+                "The --embeddings-prompts-stddev option is only supported with the embeddings endpoint type."
+            )
+        if args.embeddings_prompts_mean != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN:
+            parser.error(
+                "The --embeddings-prompts-mean option is only supported with the embeddings endpoint type."
+            )
+        if (
+            args.embeddings_prompts_stddev
+            != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
+        ):
+            parser.error(
+                "The --embeddings-prompts-stddev option is only supported with the embeddings endpoint type."
+            )
+        if args.embeddings_input_type != LlmInputs.DEFAULT_EMBEDDINGS_INPUT_TYPE:
+            parser.error(
+                "The --embeddings-input-type option is only supported with the embeddings endpoint type."
+            )
     return args
 
 
@@ -223,6 +262,31 @@ def _convert_str_to_enum_entry(args, option, enum):
 
 def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
+
+    input_group.add_argument(
+        "--embeddings-input-type",
+        type=str,
+        choices=["query", "passage"],
+        default=LlmInputs.DEFAULT_EMBEDDINGS_INPUT_TYPE,
+        required=False,
+        help="Specify if the input type is 'query' or 'passage' for v1/embeddings.",
+    )
+
+    input_group.add_argument(
+        "--embeddings-prompts-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN,
+        required=False,
+        help=f"The mean number of prompts to generate per request for v1/embeddings.",
+    )
+
+    input_group.add_argument(
+        "--embeddings-prompts-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV,
+        required=False,
+        help=f"The standard deviation of the number of prompts per request to generate for v1/embeddings.",
+    )
 
     input_group.add_argument(
         "--extra-inputs",
@@ -404,7 +468,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions"],
+        choices=["chat", "completions", "embeddings"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',
