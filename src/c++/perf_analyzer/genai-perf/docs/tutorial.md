@@ -26,9 +26,15 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Tutorial
+# Tutorials
 
-## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
+- [Profile GPT2 running on Triton + TensorRT-LLM](#tensorrt-llm)
+- [Profile GPT2 running on Triton + vLLM](#triton-vllm)
+- [Profile GPT2 running on OpenAI API-Compatible Server](#openai)
+
+---
+
+## Profile GPT2 running on Triton + TensorRT-LLM <a id="tensorrt-llm"></a>
 
 ### Running GPT2 on Triton Inference Server using TensorRT-LLM
 
@@ -38,7 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
@@ -46,14 +52,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -U \
-  psutil \
-  "pynvml>=11.5.0" \
-  torch==2.1.2 \
-  tensorrt_llm==0.8.0 \
-  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -75,7 +74,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -87,7 +86,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -113,14 +111,14 @@ Example output:
 │ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
 │ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
 │     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
-│         Num output token │         104 │         100 │         129 │         128 │         109 │         105 │
-│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+│   Output sequence length │         104 │         100 │         129 │         128 │         109 │         105 │
+│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
 └──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 460.42
 Request throughput (per sec): 4.44
 ```
 
-## Measuring Throughput and Latency of GPT2 using Triton + vLLM
+## Profile GPT2 running on Triton + vLLM <a id="triton-vllm"></a>
 
 ### Running GPT2 on Triton Inference Server using vLLM
 
@@ -130,7 +128,7 @@ Request throughput (per sec): 4.44
 1. Run Triton Inference Server with vLLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
 ```
@@ -138,7 +136,7 @@ docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ul
 2. Install Triton CLI (~5 min):
 
 ```bash
-pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
+pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 ```
 
 3. Download model:
@@ -160,7 +158,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -172,7 +170,6 @@ genai-perf \
   -m gpt2 \
   --service-kind triton \
   --backend vllm \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -198,14 +195,14 @@ Example output:
 │ Time to first token (ns) │  15,786,560 │  11,437,189 │  49,550,549 │  40,129,652 │  21,248,091 │  17,824,695 │
 │ Inter token latency (ns) │   3,543,380 │     591,898 │  10,013,690 │   6,152,260 │   5,039,278 │   4,060,982 │
 │     Request latency (ns) │ 388,415,721 │ 312,552,612 │ 528,229,817 │ 518,189,390 │ 484,281,365 │ 459,417,637 │
-│         Num output token │         113 │         105 │         123 │         122 │         119 │         115 │
-│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+│   Output sequence length │         113 │         105 │         123 │         122 │         119 │         115 │
+│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
 └──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 290.24
 Request throughput (per sec): 2.57
 ```
 
-## Measuring Throughput and Latency of GPT2 using OpenAI API-Compatible Server
+## Profile GPT2 running on OpenAI API-Compatible Server <a id="openai"></a>
 
 ### OpenAI Chat Completions API
 
@@ -227,7 +224,7 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -240,7 +237,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/chat/completions \
   --endpoint-type chat \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -265,8 +261,8 @@ Example output:
 │ Time to first token (ns) │  13,546,815 │   9,821,658 │  48,317,756 │  34,361,913 │  16,541,625 │  14,612,026 │
 │ Inter token latency (ns) │   2,560,813 │     457,703 │   6,507,334 │   3,754,617 │   3,059,158 │   2,953,540 │
 │     Request latency (ns) │ 283,597,027 │ 240,098,890 │ 361,730,568 │ 349,164,037 │ 323,279,761 │ 306,507,562 │
-│         Num output token │         114 │         103 │         142 │         136 │         122 │         119 │
-│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+│   Output sequence length │         114 │         103 │         142 │         136 │         122 │         119 │
+│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
 └──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 401.62
 Request throughput (per sec): 3.52
@@ -292,7 +288,7 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model gpt2 -
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -305,7 +301,6 @@ genai-perf \
   --service-kind openai \
   --endpoint v1/completions \
   --endpoint-type completions \
-  --prompt-source synthetic \
   --num-prompts 100 \
   --random-seed 123 \
   --synthetic-input-tokens-mean 200 \
@@ -323,13 +318,13 @@ Example output:
 
 ```
                                                 LLM Metrics
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃            Statistic ┃         avg ┃        min ┃         max ┃         p99 ┃         p90 ┃         p75 ┃
-┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ Request latency (ns) │ 296,990,497 │ 43,312,449 │ 332,788,242 │ 327,475,292 │ 317,392,767 │ 310,343,333 │
-│     Num output token │         109 │         11 │         158 │         142 │         118 │         113 │
-│      Num input token │           1 │          1 │           1 │           1 │           1 │           1 │
-└──────────────────────┴─────────────┴────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃              Statistic ┃         avg ┃        min ┃         max ┃         p99 ┃         p90 ┃         p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│   Request latency (ns) │ 296,990,497 │ 43,312,449 │ 332,788,242 │ 327,475,292 │ 317,392,767 │ 310,343,333 │
+│ Output sequence length │         109 │         11 │         158 │         142 │         118 │         113 │
+│  Input sequence length │           1 │          1 │           1 │           1 │           1 │           1 │
+└────────────────────────┴─────────────┴────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 366.78
 Request throughput (per sec): 3.37
 ```
