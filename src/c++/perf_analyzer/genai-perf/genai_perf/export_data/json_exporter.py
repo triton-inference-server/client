@@ -66,10 +66,24 @@ class JsonExporter:
             if isinstance(v, Enum):
                 self._args[k] = v.name.lower()
         self._add_extra_inputs_to_args()
+        self._prune_embeddings_args_if_needed()
 
     def _add_extra_inputs_to_args(self) -> None:
         del self._args["extra_inputs"]
         self._args.update({"extra_inputs": self._extra_inputs})
+
+    def _prune_embeddings_args_if_needed(self) -> None:
+        print(self._args.get("endpoint_type"))
+        if self._args.get("endpoint_type") != "embeddings":
+            print("endpoint_type not embeddings")
+            embeddings_args = [
+                "embeddings_input_type",
+                "embeddings_prompts_mean",
+                "embeddings_prompts_stddev",
+            ]
+            for arg in embeddings_args:
+                if arg in self._args:
+                    del self._args[arg]
 
     def _merge_stats_and_args(self) -> None:
         self._stats_and_args = dict(self._stats)
