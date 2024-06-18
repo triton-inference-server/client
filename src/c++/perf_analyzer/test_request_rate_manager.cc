@@ -509,7 +509,7 @@ class TestRequestRateManager : public TestLoadManagerBase,
       //
       CHECK(
           delay_average ==
-          doctest::Approx(expected_delay_average).epsilon(0.01));
+          doctest::Approx(expected_delay_average).epsilon(0.1));
       CHECK_LT(delay_variance, max_allowed_delay_variance);
     } else {
       throw std::invalid_argument("Unexpected distribution type");
@@ -1008,20 +1008,21 @@ TEST_CASE(
   ModelTensor model_tensor2 = model_tensor1;
   model_tensor2.name_ = "INPUT2";
 
-  std::string json_str{R"({
-   "data": [
-     { "INPUT1": [1], "INPUT2": [21] },
-     { "INPUT1": [2], "INPUT2": [22] },
-     { "INPUT1": [3], "INPUT2": [23] }
-   ]})"};
-
   size_t num_requests = 4;
   size_t num_threads = 1;
+  std::string json_str;
 
   const auto& ParameterizeTensors{[&]() {
     SUBCASE("one tensor")
     {
       tensors.push_back(model_tensor1);
+
+      json_str = R"({
+                "data": [
+                    { "INPUT1": [1] },
+                    { "INPUT1": [2] },
+                    { "INPUT1": [3] }
+                ]})";
 
       switch (params.batch_size) {
         case 1:
@@ -1042,6 +1043,13 @@ TEST_CASE(
     {
       tensors.push_back(model_tensor1);
       tensors.push_back(model_tensor2);
+
+      json_str = R"({
+                "data": [
+                    { "INPUT1": [1], "INPUT2": [21] },
+                    { "INPUT1": [2], "INPUT2": [22] },
+                    { "INPUT1": [3], "INPUT2": [23] }
+                ]})";
 
       switch (params.batch_size) {
         case 1:

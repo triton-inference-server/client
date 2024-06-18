@@ -39,6 +39,34 @@ DataLoader::DataLoader(const size_t batch_size)
 }
 
 cb::Error
+DataLoader::ValidateIOExistsInModel(
+    const std::shared_ptr<ModelTensorMap>& inputs,
+    const std::shared_ptr<ModelTensorMap>& outputs,
+    const std::string& data_directory)
+{
+  if (!std::filesystem::exists(data_directory) ||
+      !std::filesystem::is_directory(data_directory)) {
+    return cb::Error(
+        "Error: Directory does not exist or is not a directory: " +
+            std::string(data_directory),
+        pa::GENERIC_ERROR);
+  }
+
+  for (const auto& file : std::filesystem::directory_iterator(data_directory)) {
+    std::string io_name = file.path().filename().string();
+    if (inputs->find(io_name) == inputs->end() &&
+        outputs->find(io_name) == outputs->end()) {
+      return cb::Error(
+          "Provided data file '" + io_name +
+              "' does not correspond to a valid model input or output.",
+          pa::GENERIC_ERROR);
+    }
+  }
+
+  return cb::Error::Success;
+}
+
+cb::Error
 DataLoader::ReadDataFromDir(
     const std::shared_ptr<ModelTensorMap>& inputs,
     const std::shared_ptr<ModelTensorMap>& outputs,
@@ -449,9 +477,11 @@ DataLoader::ReadTensorData(
     const std::shared_ptr<ModelTensorMap>& tensors, const int stream_index,
     const int step_index, const bool is_input)
 {
+  std::unordered_set<std::string> model_io_names;
   auto& tensor_data = is_input ? input_data_ : output_data_;
   auto& tensor_shape = is_input ? input_shapes_ : output_shapes_;
   for (const auto& io : *tensors) {
+    model_io_names.insert(io.first);
     if (step.HasMember(io.first.c_str())) {
       std::string key_name(
           io.first + "_" + std::to_string(stream_index) + "_" +
@@ -539,6 +569,19 @@ DataLoader::ReadTensorData(
           pa::GENERIC_ERROR);
     }
   }
+
+  // Add allowed non-model inputs/outputs to the model_io_names set
+  model_io_names.insert("model");
+
+  for (auto itr = step.MemberBegin(); itr != step.MemberEnd(); ++itr) {
+    if (model_io_names.find(itr->name.GetString()) == model_io_names.end()) {
+      return cb::Error(
+          "The input or output '" + std::string(itr->name.GetString()) +
+              "' is not found in the model configuration",
+          pa::GENERIC_ERROR);
+    }
+  }
+
 
   return cb::Error::Success;
 }
