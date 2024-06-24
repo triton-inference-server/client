@@ -36,6 +36,7 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import load_json, remove_sse_prefix
 from rich.console import Console
@@ -45,6 +46,7 @@ from rich.table import Table
 class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    OPENAI_VISION = auto()
     TRITON = auto()
 
 
@@ -304,8 +306,9 @@ class ProfileDataParser:
     extract core metrics and calculate various performance statistics.
     """
 
-    def __init__(self, filename: Path) -> None:
+    def __init__(self, filename: Path, output_format: OutputFormat) -> None:
         data = load_json(filename)
+        self.output_format = output_format
         self._get_profile_metadata(data)
         self._parse_profile_data(data)
 
@@ -326,6 +329,8 @@ class ProfileDataParser:
                     self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
                 elif "text_completion" in response:
                     self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+                elif self.output_format == OutputFormat.OPENAI_VISION:
+                    self._response_format = ResponseFormat.OPENAI_VISION
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 
@@ -392,9 +397,10 @@ class LLMProfileDataParser(ProfileDataParser):
         self,
         filename: Path,
         tokenizer: Tokenizer,
+        output_format: OutputFormat,
     ) -> None:
         self._tokenizer = tokenizer
-        super().__init__(filename)
+        super().__init__(filename, output_format)
 
     def _parse_requests(self, requests: dict) -> LLMMetrics:
         """Parse each requests in profile export data to extract key metrics."""
@@ -539,6 +545,8 @@ class LLMProfileDataParser(ProfileDataParser):
         payload = json.loads(req_inputs["payload"])
         if self._response_format == ResponseFormat.OPENAI_CHAT_COMPLETIONS:
             return payload["messages"][0]["content"]
+        elif self._response_format == ResponseFormat.OPENAI_VISION:
+            return payload["messages"][0]["content"]
         elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
             return payload["prompt"]
         else:
@@ -599,7 +607,13 @@ class LLMProfileDataParser(ProfileDataParser):
             # FIXME: TPA-47 workaround for vLLM not following OpenAI Completions
             # API specification when streaming, missing 'object' field:
             # https://platform.openai.com/docs/api-reference/completions
-            text_output = completions.get("text", "")
+            if "message" in completions:
+                output = completions["message"]
+            elif "delta" in completions:
+                output = completions["delta"]
+            else:
+                raise ValueError("Unknown OpenAI response with object type unspecified")
+            text_output = output.get("content", "")
         elif data["object"] == "text_completion":  # legacy
             text_output = completions.get("text", "")
         elif data["object"] == "chat.completion":  # non-streaming

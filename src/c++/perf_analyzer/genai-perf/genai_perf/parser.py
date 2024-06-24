@@ -110,6 +110,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
             elif args.endpoint_type == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
+            elif args.endpoint_type == "vision":
+                args.output_format = OutputFormat.OPENAI_VISION
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -404,7 +406,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions"],
+        choices=["chat", "completions", "vision"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',
@@ -586,7 +588,7 @@ def compare_handler(args: argparse.Namespace):
         args.config = output_dir / "config.yaml"
 
     config_parser = PlotConfigParser(args.config)
-    plot_configs = config_parser.generate_configs()
+    plot_configs = config_parser.generate_configs(args.output_format)
     plot_manager = PlotManager(plot_configs)
     plot_manager.generate_plots()
 

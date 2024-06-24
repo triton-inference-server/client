@@ -33,6 +33,7 @@ import genai_perf.logging as logging
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
 from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
@@ -47,7 +48,7 @@ class PlotConfigParser:
     def __init__(self, filename: Path) -> None:
         self._filename = filename
 
-    def generate_configs(self) -> List[PlotConfig]:
+    def generate_configs(self, output_format: OutputFormat) -> List[PlotConfig]:
         """Load YAML configuration file and convert to PlotConfigs."""
         logger.info(
             f"Generating plot configurations by parsing {self._filename}. "
@@ -60,7 +61,7 @@ class PlotConfigParser:
             # Collect profile run data
             profile_data: List[ProfileRunData] = []
             for filepath in config["paths"]:
-                stats = self._get_statistics(filepath)
+                stats = self._get_statistics(filepath, output_format)
                 profile_data.append(
                     ProfileRunData(
                         name=self._get_run_name(Path(filepath)),
@@ -84,11 +85,12 @@ class PlotConfigParser:
 
         return plot_configs
 
-    def _get_statistics(self, filepath: str) -> Statistics:
+    def _get_statistics(self, filepath: str, output_format: OutputFormat) -> Statistics:
         """Extract a single profile run data."""
         data_parser = LLMProfileDataParser(
             filename=Path(filepath),
             tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
+            output_format=output_format,
         )
         load_info = data_parser.get_profile_load_info()
 

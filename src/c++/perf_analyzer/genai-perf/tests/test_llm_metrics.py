@@ -31,6 +31,7 @@ from typing import Any, List, Union
 
 import numpy as np
 import pytest
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMMetrics, LLMProfileDataParser, ResponseFormat
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 
@@ -69,6 +70,9 @@ class TestLLMProfileDataParser:
                 return tmp_file
             elif filename == "openai_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.openai_profile_data))
+                return tmp_file
+            elif filename == "openai_vlm_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.openai_vlm_profile_data))
                 return tmp_file
             elif filename == "empty_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.empty_profile_data))
@@ -115,6 +119,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         # experiment 1 metrics & statistics
@@ -259,6 +264,93 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
+        )
+
+        # experiment 1 statistics
+        stat_obj = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stat_obj.metrics
+        stat = stat_obj.stats_dict
+        assert isinstance(metrics, LLMMetrics)
+
+        assert metrics.time_to_first_tokens == [4, 5]
+        assert metrics.inter_token_latencies == [4, 2]
+        ottpr = [3 / ns_to_sec(11), 6 / ns_to_sec(13)]
+        assert metrics.output_token_throughputs_per_request == pytest.approx(ottpr)
+        ott = [9 / ns_to_sec(14)]
+        assert metrics.output_token_throughputs == pytest.approx(ott)
+        assert metrics.output_sequence_lengths == [3, 6]
+        assert metrics.input_sequence_lengths == [3, 4]
+
+        assert stat["time_to_first_token"]["avg"] == pytest.approx(4.5)  # type: ignore
+        assert stat["inter_token_latency"]["avg"] == pytest.approx(3)  # type: ignore
+        assert stat["output_token_throughput_per_request"]["avg"] == pytest.approx(  # type: ignore
+            np.mean(ottpr)
+        )
+        assert stat["output_sequence_length"]["avg"] == 4.5  # type: ignore
+        assert stat["input_sequence_length"]["avg"] == 3.5  # type: ignore
+
+        assert stat["time_to_first_token"]["p50"] == pytest.approx(4.5)  # type: ignore
+        assert stat["inter_token_latency"]["p50"] == pytest.approx(3)  # type: ignore
+        assert stat["output_token_throughput_per_request"]["p50"] == pytest.approx(  # type: ignore
+            np.percentile(ottpr, 50)
+        )
+        assert stat["output_sequence_length"]["p50"] == 4.5  # type: ignore
+        assert stat["input_sequence_length"]["p50"] == 3.5  # type: ignore
+
+        assert stat["time_to_first_token"]["min"] == pytest.approx(4)  # type: ignore
+        assert stat["inter_token_latency"]["min"] == pytest.approx(2)  # type: ignore
+        min_ottpr = 3 / ns_to_sec(11)
+        assert stat["output_token_throughput_per_request"]["min"] == pytest.approx(min_ottpr)  # type: ignore
+        assert stat["output_sequence_length"]["min"] == 3  # type: ignore
+        assert stat["input_sequence_length"]["min"] == 3  # type: ignore
+
+        assert stat["time_to_first_token"]["max"] == pytest.approx(5)  # type: ignore
+        assert stat["inter_token_latency"]["max"] == pytest.approx(4)  # type: ignore
+        max_ottpr = 6 / ns_to_sec(13)
+        assert stat["output_token_throughput_per_request"]["max"] == pytest.approx(max_ottpr)  # type: ignore
+        assert stat["output_sequence_length"]["max"] == 6  # type: ignore
+        assert stat["input_sequence_length"]["max"] == 4  # type: ignore
+
+        assert stat["time_to_first_token"]["std"] == np.std([4, 5]) * (1)  # type: ignore
+        assert stat["inter_token_latency"]["std"] == np.std([4, 2]) * (1)  # type: ignore
+        assert stat["output_token_throughput_per_request"]["std"] == pytest.approx(  # type: ignore
+            np.std(ottpr)
+        )
+        assert stat["output_sequence_length"]["std"] == np.std([3, 6])  # type: ignore
+        assert stat["input_sequence_length"]["std"] == np.std([3, 4])  # type: ignore
+
+        oott = 9 / ns_to_sec(14)
+        assert stat["output_token_throughput"]["avg"] == pytest.approx(oott)  # type: ignore
+
+        # check non-existing profile data
+        with pytest.raises(KeyError):
+            pd.get_statistics(infer_mode="concurrency", load_level="40")
+
+    def test_openai_vlm_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Collect LLM metrics from profile export data and check values.
+
+        Metrics
+        * time to first tokens
+            - experiment 1: [5 - 1, 7 - 2] = [4, 5]
+        * inter token latencies
+            - experiment 1: [((12 - 1) - 4)/(3 - 1), ((15 - 2) - 5)/(6 - 1)]
+                          : [3.5, 1.6]
+                          : [4, 2]  # rounded
+        * output token throughputs per request
+            - experiment 1: [3/(12 - 1), 6/(15 - 2)] = [3/11, 6/13]
+        * output token throughputs
+            - experiment 1: [(3 + 6)/(15 - 1)] = [9/14]
+        * output sequence lengths
+            - experiment 1: [3, 6]
+        * input sequence lengths
+            - experiment 1: [3, 4]
+        """
+        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
+        pd = LLMProfileDataParser(
+            filename=Path("openai_vlm_profile_export.json"),
+            tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_VISION,
         )
 
         # experiment 1 statistics
@@ -343,6 +435,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         pd._preprocess_response(res_timestamps, res_outputs)
@@ -372,6 +465,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         output_token_counts, total_output_token = pd._get_output_token_counts(
@@ -404,6 +498,7 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         output_token_counts, total_output_token = pd._get_output_token_counts(
@@ -449,6 +544,7 @@ class TestLLMProfileDataParser:
         _ = LLMProfileDataParser(
             filename=Path("empty_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
     empty_profile_data = {
@@ -514,6 +610,73 @@ class TestLLMProfileDataParser:
                             },
                             {
                                 "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        "request_inputs": {
+                            "payload": '{"messages":[{"role":"user","content":"This is test too"}],"model":"llama-2-7b","stream":true}',
+                        },
+                        # the first, and the last two responses will be ignored because they have no "content"
+                        "response_timestamps": [4, 7, 11, 15, 18, 19],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","created":123,"model":"llama-2-7b","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                            },
+                            {"response": "data: [DONE]\n\n"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    openai_vlm_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "",
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "request_inputs": {
+                            "payload": '{"messages":[{"role":"user","content":"This is test"}],"stream":true}',
+                        },
+                        # the first, and the last two responses will be ignored because they have no "content"
+                        "response_timestamps": [3, 5, 8, 12, 13, 14],
+                        "response_outputs": [
+                            {
+                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":" like"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":" dogs"},"finish_reason":null}]}\n\n'
+                            },
+                            {
+                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
                             },
                             {"response": "data: [DONE]\n\n"},
                         ],

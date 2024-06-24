@@ -32,6 +32,7 @@ from typing import Any, List
 import pytest
 from genai_perf.export_data.csv_exporter import CsvExporter
 from genai_perf.export_data.exporter_config import ExporterConfig
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 
@@ -76,6 +77,7 @@ class TestCsvExporter:
         pd = LLMProfileDataParser(
             filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
+            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
         stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
 

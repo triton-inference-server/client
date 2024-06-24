@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
+import os
 import random
 from copy import deepcopy
 from enum import Enum, auto
@@ -25,6 +27,11 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from requests import Response
+
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
 
 
 class ModelSelectionStrategy(Enum):
@@ -41,6 +48,7 @@ class PromptSource(Enum):
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    OPENAI_VISION = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -186,6 +194,22 @@ class LlmInputs:
             )
         else:
             raise GenAIPerfException("Input source is not recognized.")
+
+        if output_format == OutputFormat.OPENAI_VISION:
+            sample_image = Path(
+                os.path.join(
+                    os.path.dirname(__file__),
+                    os.pardir,
+                    os.pardir,
+                    "docs",
+                    "assets",
+                    "request_latency.jpeg",
+                )
+            )
+            generic_dataset_json = cls._add_vision_input(
+                generic_dataset_json,
+                vision_filename=sample_image,
+            )
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -355,6 +379,21 @@ class LlmInputs:
         return dataset_json
 
     @classmethod
+    def _add_vision_input(
+        cls, generic_dataset_json: Dict[str, List[Dict]], vision_filename: Path
+    ) -> Dict[str, List[Dict]]:
+        for row in generic_dataset_json["rows"]:
+            img_base64 = encode_image(vision_filename)
+            row["text_input"] += (
+                "\n"
+                "What two words from the text above describes the image the best?"
+                " Explain your choice.\n"
+                f'<img src="data:image/png;base64,{img_base64}"/>'
+            )
+
+        return generic_dataset_json
+
+    @classmethod
     def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
         """
         Reads the input prompts from a JSONL file and returns a list of prompts.
@@ -419,6 +458,18 @@ class LlmInputs:
                 model_name,
                 model_selection_strategy,
             )
+        elif output_format == OutputFormat.OPENAI_VISION:
+            output_json = cls._convert_generic_json_to_openai_vision_format(
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+                model_selection_strategy,
+            )
         elif output_format == OutputFormat.VLLM:
             output_json = cls._convert_generic_json_to_vllm_format(
                 generic_dataset,
@@ -473,6 +524,41 @@ class LlmInputs:
             dataset_json,
             system_role_headers,
             user_role_headers,
+            add_model_name,
+            add_stream,
+            extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            output_tokens_deterministic,
+            model_name,
+            model_selection_strategy,
+        )
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_openai_vision_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = cls._determine_json_feature_roles(dataset_json)
+        pa_json = cls._populate_openai_vision_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
             add_model_name,
             add_stream,
             extra_inputs,
@@ -645,6 +731,52 @@ class LlmInputs:
         dataset_json: Dict,
         system_role_headers: List[str],
         user_role_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict:
+        pa_json = cls._create_empty_openai_pa_json()
+
+        for index, entry in enumerate(dataset_json["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
+            pa_json["data"].append({"payload": []})
+            pa_json["data"][index]["payload"].append({"messages": []})
+
+            for header, content in entry.items():
+                new_message = cls._create_new_openai_chat_completions_message(
+                    header, system_role_headers, user_role_headers, content
+                )
+
+                pa_json = cls._add_new_message_to_json(pa_json, index, new_message)
+
+            pa_json = cls._add_optional_tags_to_openai_json(
+                pa_json,
+                index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                iter_model_name,
+            )
+
+        return pa_json
+
+    @classmethod
+    def _populate_openai_vision_output_json(
+        cls,
+        dataset_json: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,
