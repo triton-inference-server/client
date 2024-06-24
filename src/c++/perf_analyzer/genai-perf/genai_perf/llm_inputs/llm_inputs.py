@@ -356,9 +356,12 @@ class LlmInputs:
             dataset_json["rows"].append(
                 {
                     "row": {
-                        "input": synthetic_prompt_array,
-                        "input_type": embeddings_input_type,
+                        "payload": {
+                            "input": synthetic_prompt_array,
+                            "input_type": embeddings_input_type,
+                        },
                     }
+                    # TODO: Test with extra inputs "encoding_format: float", "truncate: NONE"
                 }
             )
         return dataset_json
@@ -377,16 +380,31 @@ class LlmInputs:
         for item in file_content:
             if embeddings_input_type == "query":
                 dataset_json["rows"].append(
-                    {"row": {"input": item["question"], "input_type": "query"}}
+                    {
+                        "row": {
+                            "payload": {
+                                "input": item["question"],
+                                "input_type": "query",
+                            }
+                        }
+                    }
                 )
             elif embeddings_input_type == "passage":
                 for pos_doc in item.get("pos_doc", []):
                     dataset_json["rows"].append(
-                        {"row": {"input": pos_doc, "input_type": "passage"}}
+                        {
+                            "row": {
+                                "payload": {"input": pos_doc, "input_type": "passage"}
+                            }
+                        }
                     )
                 for neg_doc in item.get("neg_doc", []):
                     dataset_json["rows"].append(
-                        {"row": {"input": neg_doc, "input_type": "passage"}}
+                        {
+                            "row": {
+                                "payload": {"input": neg_doc, "input_type": "passage"}
+                            }
+                        }
                     )
 
         return dataset_json
@@ -607,7 +625,6 @@ class LlmInputs:
         elif output_format == OutputFormat.OPENAI_EMBEDDINGS:
             output_json = cls._convert_generic_json_to_openai_embeddings_format(
                 generic_dataset,
-                add_model_name,
                 extra_inputs,
                 model_name,
                 model_selection_strategy,
@@ -717,7 +734,6 @@ class LlmInputs:
     def _convert_generic_json_to_openai_embeddings_format(
         cls,
         generic_dataset: Dict,
-        add_model_name: bool,
         extra_inputs: Dict,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
@@ -728,13 +744,30 @@ class LlmInputs:
             iter_model_name = cls._select_model_name(
                 model_name, index, model_selection_strategy
             )
-            pa_json["data"].append({"input": entry["input"]})
+            payload = entry.get("payload", {})
+            input_value = payload.get("input")
+            input_type_value = payload.get("input_type")
 
-            if add_model_name:
-                pa_json["data"][index]["model"] = iter_model_name
+            if input_value is None:
+                raise ValueError("Missing required fields 'input' in dataset entry")
+
+            if input_type_value is None:
+                raise ValueError(
+                    "Missing required fields 'input_type' in dataset entry"
+                )
+
+            payload = {
+                "input": input_value,
+                "model": iter_model_name,
+                "input_type": input_type_value,
+                "encoding_format": extra_inputs.get("encoding_format", "float"),
+                "truncate": extra_inputs.get("truncate", "NONE"),
+            }
 
             for key, value in extra_inputs.items():
-                pa_json["data"][index][key] = value
+                payload[key] = value
+
+            pa_json["data"].append({"payload": [payload]})
 
         return pa_json
 

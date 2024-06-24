@@ -148,23 +148,39 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
+    _check_conditional_args_embeddings(parser, args)
+
+    return args
+
+
+def _check_conditional_args_embeddings(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+):
     if args.endpoint_type == "embeddings":
         if args.streaming:
             parser.error(
                 "The --streaming option is not supported with the embeddings endpoint type."
             )
+        if args.embeddings_input_type is None:
+            parser.error(
+                "The --embeddings-input-type option is required with the embeddings endpoint type."
+            )
+        if args.input_file:
+            if (
+                args.embeddings_prompts_mean
+                != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN
+            ):
+                parser.error(
+                    "The --embeddings-prompts-mean option is only supported with synthetic data."
+                )
+            if (
+                args.embeddings_prompts_stddev
+                != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
+            ):
+                parser.error(
+                    "The --embeddings-prompts-stddev option is only supported with synthetic data."
+                )
     else:
-        if args.embeddings_prompts_mean != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN:
-            parser.error(
-                "The --embeddings-prompts-mean option is only supported with the embeddings endpoint type."
-            )
-        if (
-            args.embeddings_prompts_stddev
-            != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
-        ):
-            parser.error(
-                "The --embeddings-prompts-stddev option is only supported with the embeddings endpoint type."
-            )
         if args.embeddings_prompts_mean != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN:
             parser.error(
                 "The --embeddings-prompts-mean option is only supported with the embeddings endpoint type."
@@ -180,7 +196,6 @@ def _check_conditional_args(
             parser.error(
                 "The --embeddings-input-type option is only supported with the embeddings endpoint type."
             )
-    return args
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -269,7 +284,7 @@ def _add_input_args(parser):
         choices=["query", "passage"],
         default=LlmInputs.DEFAULT_EMBEDDINGS_INPUT_TYPE,
         required=False,
-        help="Specify if the input type is 'query' or 'passage' for v1/embeddings.",
+        help="Specify if the input type is 'query' or 'passage' for the embeddings endpoint.",
     )
 
     input_group.add_argument(
@@ -277,7 +292,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN,
         required=False,
-        help=f"The mean number of prompts to generate per request for v1/embeddings.",
+        help=f"The mean number of prompts to generate per request for the embeddings endpoint.",
     )
 
     input_group.add_argument(
@@ -285,7 +300,7 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV,
         required=False,
-        help=f"The standard deviation of the number of prompts per request to generate for v1/embeddings.",
+        help=f"The standard deviation of the number of prompts per request to generate for the embeddings endpoint.",
     )
 
     input_group.add_argument(

@@ -81,6 +81,39 @@ class TestCLIArguments:
             ),
             (["--concurrency", "3"], {"concurrency": 3}),
             (
+                [
+                    "--embeddings-input-type",
+                    "query",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                ],
+                {"embeddings_input_type": "query", "endpoint_type": "embeddings"},
+            ),
+            (
+                [
+                    "--embeddings-prompts-mean",
+                    "5",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                ],
+                {"embeddings_prompts_mean": 5},
+            ),
+            (
+                [
+                    "--embeddings-prompts-stddev",
+                    "2",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                ],
+                {"embeddings_prompts_stddev": 2},
+            ),
+            (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
                 {"endpoint": "v1/completions"},
             ),
