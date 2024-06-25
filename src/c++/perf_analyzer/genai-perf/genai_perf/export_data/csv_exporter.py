@@ -29,7 +29,7 @@ import csv
 
 import genai_perf.logging as logging
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Metrics
+from genai_perf.metrics import Metrics
 
 DEFAULT_OUTPUT_DATA_CSV = "profile_export_genai_perf.csv"
 

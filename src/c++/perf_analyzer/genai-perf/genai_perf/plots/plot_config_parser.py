@@ -33,8 +33,9 @@ import genai_perf.logging as logging
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
-from genai_perf.llm_metrics import LLMProfileDataParser, Statistics
+from genai_perf.metrics import Statistics
 from genai_perf.plots.plot_config import PlotConfig, PlotType, ProfileRunData
+from genai_perf.profile_data_parser import LLMProfileDataParser
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from genai_perf.utils import load_yaml, scale
 

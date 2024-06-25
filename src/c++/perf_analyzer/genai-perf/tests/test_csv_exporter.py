@@ -32,7 +32,7 @@ from typing import Any, List
 import pytest
 from genai_perf.export_data.csv_exporter import CsvExporter
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import LLMProfileDataParser
+from genai_perf.profile_data_parser import LLMProfileDataParser
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 
 
