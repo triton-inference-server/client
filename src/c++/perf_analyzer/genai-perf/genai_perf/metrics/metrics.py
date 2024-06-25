@@ -33,21 +33,16 @@ from typing import List
 class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
     TRITON = auto()
 
 
 class Metrics:
     """A base class for all the metrics class that contains common metrics."""
 
-    metric_labels = [
-        "time_to_first_token",
-        "inter_token_latency",
+    _METRICS = [
         "request_latency",
-        "output_token_throughput",
-        "output_token_throughput_per_request",
         "request_throughput",
-        "output_sequence_length",
-        "input_sequence_length",
     ]
 
     time_fields = [
@@ -82,6 +77,10 @@ class Metrics:
             if not k.startswith("_"):
                 attr_strs.append(f"{k}={v}")
         return f"Metrics({','.join(attr_strs)})"
+
+    @property
+    def names(self) -> List[str]:
+        return self._METRICS
 
     @property
     def data(self) -> dict:

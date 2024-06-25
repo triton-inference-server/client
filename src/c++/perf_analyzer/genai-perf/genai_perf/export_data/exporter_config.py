@@ -25,9 +25,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from genai_perf.metrics import Metrics
+
+
 class ExporterConfig:
     def __init__(self):
         self._stats = None
+        self._metrics = None
         self._args = None
         self._extra_inputs = None
         self._artifact_dir = None
@@ -39,6 +43,14 @@ class ExporterConfig:
     @stats.setter
     def stats(self, stats_value):
         self._stats = stats_value
+
+    @property
+    def metrics(self):
+        return self._metrics
+
+    @metrics.setter
+    def metrics(self, metrics: Metrics):
+        self._metrics = metrics
 
     @property
     def args(self):

@@ -43,6 +43,7 @@ class CsvExporter:
 
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
+        self._metrics = config.metrics
         self._output_dir = config.artifact_dir
 
     def export(self) -> None:
@@ -73,7 +74,7 @@ class CsvExporter:
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow(multiple_metric_header)
 
-            for metric in Metrics.metric_labels:
+            for metric in self._metrics.names:
                 formatted_metric = metric.replace("_", " ").title()
 
                 is_throughput_field = metric in Metrics.throughput_fields

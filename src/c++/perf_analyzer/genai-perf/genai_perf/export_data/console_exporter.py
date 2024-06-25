@@ -25,6 +25,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+from typing import List
+
 from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.metrics import Metrics
 from rich.console import Console
@@ -36,25 +38,44 @@ class ConsoleExporter:
     A class to export the statistics and arg values to the console.
     """
 
+    _STAT_COLUMNS = ["avg", "min", "max", "p99", "p90", "p75"]
+
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
+        self._metrics = config.metrics
+        self._endpoint_type = config.args.endpoint_type
+
+    def _get_title(self):
+        if self._endpoint_type == "embeddings":
+            return "Embedding Metrics"
+        return "LLM Metrics"
 
     def export(self) -> None:
-        singular_metric_rows = []
-        table = Table(title="LLM Metrics")
+        singular_metric_rows: List[str] = []
+
+        title = self._get_title()
+        table = Table(title=title)
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        stats = ["avg", "min", "max", "p99", "p90", "p75"]
-        for stat in stats:
+        for stat in self._STAT_COLUMNS:
             table.add_column(stat, justify="right", style="green")
 
-        for metric in Metrics.metric_labels:
+        self._construct_table(table, singular_metric_rows)
+
+        console = Console()
+        console.print(table)
+
+        for row in singular_metric_rows:
+            print(row)
+
+    def _construct_table(self, table: Table, singular_metric_rows: List[str]) -> None:
+        for metric in self._metrics.names:
             formatted_metric = metric.replace("_", " ").capitalize()
 
             # Throughput fields are printed after the table
             is_throughput_field = metric in Metrics.throughput_fields
             if is_throughput_field:
-                value = self._stats.get(f"{metric}", -1).get(stats[0], -1)
+                value = self._stats.get(f"{metric}", -1).get("avg", -1)
                 formatted_metric += f" (per sec): {value:.2f}"
                 singular_metric_rows.append(formatted_metric)
                 continue
@@ -73,7 +94,7 @@ class ConsoleExporter:
                 formatted_metric += " (ms)"
 
             row_values = [formatted_metric]
-            for stat in stats:
+            for stat in self._STAT_COLUMNS:
                 value = self._stats.get(f"{metric}", -1)
                 # Need to check for -1 for the non streaming case
                 if value == -1:
@@ -82,14 +103,17 @@ class ConsoleExporter:
                     value = value.get(stat, -1)
                     row_values.append(f"{value:,.2f}")
 
-            # Without streaming, there is no inter-token latency available, so do not print it.
+            # Without streaming, there is no inter-token latency available,
+            # so do not print it.
             if metric == "inter_token_latency":
                 if all(float(value) < 0 for value in row_values[1:]):
                     continue
-            # Without streaming, TTFT and request latency are the same, so do not print TTFT.
+
+            # Without streaming, TTFT and request latency are the same,
+            # so do not print TTFT.
             elif metric == "time_to_first_token":
                 unique_values = False
-                for stat in stats:
+                for stat in self._STAT_COLUMNS:
                     value_ttft = self._stats.get(f"{metric}", -1).get(stat, -1)
                     value_req_latency = self._stats.get("request_latency", -1).get(
                         stat, -1
@@ -101,9 +125,3 @@ class ConsoleExporter:
                     continue
 
             table.add_row(*row_values)
-
-        console = Console()
-        console.print(table)
-
-        for row in singular_metric_rows:
-            print(row)

@@ -34,6 +34,29 @@ from genai_perf.metrics.metrics import Metrics
 class LLMMetrics(Metrics):
     """A simple dataclass that holds core LLM performance metrics."""
 
+    _LLM_METRICS = [
+        "time_to_first_token",
+        "inter_token_latency",
+        "output_token_throughput",
+        "output_token_throughput_per_request",
+        "output_sequence_length",
+        "input_sequence_length",
+    ]
+
+    time_fields = [
+        "inter_token_latency",
+        "time_to_first_token",
+        "request_latency",
+    ]
+
+    # TODO (TMA-1678): output_token_throughput_per_request is not on this list
+    # since the current code treats all the throughput metrics to be displayed
+    # outside of the statistics table.
+    throughput_fields = [
+        "request_throughput",
+        "output_token_throughput",
+    ]
+
     def __init__(
         self,
         request_throughputs: List[float] = [],
@@ -67,3 +90,8 @@ class LLMMetrics(Metrics):
         )
         self._base_names["output_sequence_lengths"] = "output_sequence_length"
         self._base_names["input_sequence_lengths"] = "input_sequence_length"
+
+    @property
+    def names(self) -> List[str]:
+        base_metrics = super().names  # get Metrics metric names
+        return base_metrics + self._LLM_METRICS
