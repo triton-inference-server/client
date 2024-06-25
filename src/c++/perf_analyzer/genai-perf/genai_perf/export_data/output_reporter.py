@@ -29,7 +29,7 @@ from argparse import Namespace
 
 from genai_perf.export_data.data_exporter_factory import DataExporterFactory
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Statistics
+from genai_perf.metrics import Statistics
 from genai_perf.parser import get_extra_inputs_as_dict
 
 

@@ -33,13 +33,12 @@ from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
-from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.export_data.output_reporter import OutputReporter
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
+from genai_perf.profile_data_parser import LLMProfileDataParser, ProfileDataParser
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
@@ -83,7 +82,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     )
 
 
-def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
+def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
     return LLMProfileDataParser(
         filename=args.profile_export_file,
         tokenizer=tokenizer,

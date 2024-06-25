@@ -26,7 +26,7 @@
 
 
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Metrics
+from genai_perf.metrics import Metrics
 from rich.console import Console
 from rich.table import Table
 
