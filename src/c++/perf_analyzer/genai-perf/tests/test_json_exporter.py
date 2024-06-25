@@ -55,53 +55,6 @@ class TestJsonExporter:
         json_exporter = JsonExporter(config)
         assert json_exporter._stats_and_args == json.loads(self.expected_json_output)
 
-    def test_generate_json_with_embeddings(self, monkeypatch) -> None:
-        cli_cmd = [
-            "genai-perf",
-            "-m",
-            "gpt2_vllm",
-            "--service-kind",
-            "openai",
-            "--backend",
-            "vllm",
-            "--extra-inputs",
-            "max_tokens:256",
-            "--extra-inputs",
-            "ignore_eos:true",
-            "--endpoint-type",
-            "embeddings",
-            "--embeddings-input-type",
-            "query",
-            "--embeddings-prompts-mean",
-            "1",
-            "--embeddings-prompts-stddev",
-            "0",
-        ]
-        monkeypatch.setattr("sys.argv", cli_cmd)
-        args, _ = parser.parse_args()
-        config = ExporterConfig()
-        config.stats = self.stats
-        config.args = args
-        config.extra_inputs = parser.get_extra_inputs_as_dict(args)
-        config.artifact_dir = args.artifact_dir
-        json_exporter = JsonExporter(config)
-        assert (
-            json_exporter._stats_and_args["input_config"]["endpoint_type"]
-            == "embeddings"
-        )
-        assert (
-            json_exporter._stats_and_args["input_config"]["embeddings_input_type"]
-            == "query"
-        )
-        assert (
-            json_exporter._stats_and_args["input_config"]["embeddings_prompts_mean"]
-            == 1
-        )
-        assert (
-            json_exporter._stats_and_args["input_config"]["embeddings_prompts_stddev"]
-            == 0
-        )
-
     stats = {
         "request_throughput": {"unit": "requests/sec", "avg": "7"},
         "request_latency": {
@@ -281,6 +234,7 @@ class TestJsonExporter:
           "formatted_model_name": "gpt2_vllm",
           "model_selection_strategy": "round_robin",
           "backend": "vllm",
+          "batch_size": 1,
           "endpoint": null,
           "endpoint_type": null,
           "service_kind": "triton",

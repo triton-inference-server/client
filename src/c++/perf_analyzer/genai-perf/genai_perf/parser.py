@@ -56,7 +56,6 @@ _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
     "embeddings": "v1/embeddings",
-    #   "rankings": "v1/rankings"
 }
 
 
@@ -161,41 +160,6 @@ def _check_conditional_args_embeddings(
             parser.error(
                 "The --streaming option is not supported with the embeddings endpoint type."
             )
-        if args.embeddings_input_type is None:
-            parser.error(
-                "The --embeddings-input-type option is required with the embeddings endpoint type."
-            )
-        if args.input_file:
-            if (
-                args.embeddings_prompts_mean
-                != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN
-            ):
-                parser.error(
-                    "The --embeddings-prompts-mean option is only supported with synthetic data."
-                )
-            if (
-                args.embeddings_prompts_stddev
-                != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
-            ):
-                parser.error(
-                    "The --embeddings-prompts-stddev option is only supported with synthetic data."
-                )
-    else:
-        if args.embeddings_prompts_mean != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN:
-            parser.error(
-                "The --embeddings-prompts-mean option is only supported with the embeddings endpoint type."
-            )
-        if (
-            args.embeddings_prompts_stddev
-            != LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV
-        ):
-            parser.error(
-                "The --embeddings-prompts-stddev option is only supported with the embeddings endpoint type."
-            )
-        if args.embeddings_input_type != LlmInputs.DEFAULT_EMBEDDINGS_INPUT_TYPE:
-            parser.error(
-                "The --embeddings-input-type option is only supported with the embeddings endpoint type."
-            )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -279,28 +243,12 @@ def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
     input_group.add_argument(
-        "--embeddings-input-type",
-        type=str,
-        choices=["query", "passage"],
-        default=LlmInputs.DEFAULT_EMBEDDINGS_INPUT_TYPE,
-        required=False,
-        help="Specify if the input type is 'query' or 'passage' for the embeddings endpoint.",
-    )
-
-    input_group.add_argument(
-        "--embeddings-prompts-mean",
+        "--batch-size",
+        "-b",
         type=int,
-        default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_MEAN,
+        default=1,
         required=False,
-        help=f"The mean number of prompts to generate per request for the embeddings endpoint.",
-    )
-
-    input_group.add_argument(
-        "--embeddings-prompts-stddev",
-        type=int,
-        default=LlmInputs.DEFAULT_PROMPTS_PER_REQUEST_STDDEV,
-        required=False,
-        help=f"The standard deviation of the number of prompts per request to generate for the embeddings endpoint.",
+        help=f"The batch size of the requests GenAI-Perf should send",
     )
 
     input_group.add_argument(

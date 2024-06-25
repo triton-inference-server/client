@@ -92,10 +92,11 @@ class Profiler:
             "synthetic_input_tokens_stddev",
             "subcommand",
             "tokenizer",
-            "embeddings_prompts_mean",
-            "embeddings_prompts_stddev",
-            "embeddings_input_type",
         ]
+
+        # TODO: Do we need this?
+        if args.endpoint_type == "embeddings":
+            skip_args += "batch_size"
 
         utils.remove_file(args.profile_export_file)
 

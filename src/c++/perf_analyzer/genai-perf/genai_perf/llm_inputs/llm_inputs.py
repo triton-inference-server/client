@@ -42,7 +42,6 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
-    # OPENAI_RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -72,9 +71,6 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_MEAN = -1
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
-    DEFAULT_PROMPTS_PER_REQUEST_MEAN = 1
-    DEFAULT_PROMPTS_PER_REQUEST_STDDEV = 0
-    DEFAULT_EMBEDDINGS_INPUT_TYPE = "query"
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
@@ -105,9 +101,6 @@ class LlmInputs:
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
         output_dir: Path = Path(""),
-        embeddings_prompts_mean: int = DEFAULT_PROMPTS_PER_REQUEST_MEAN,
-        embeddings_prompts_stddev: int = DEFAULT_PROMPTS_PER_REQUEST_STDDEV,
-        embeddings_input_type: str = "query",
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -158,17 +151,13 @@ class LlmInputs:
             The number of synthetic output prompts to generate
         random_seed:
             Seed used to generate random values
-        embeddings_prompts_mean
-            The mean number of prompts to generate per request (only for v1/embeddings)
-        embeddings_prompts_stddev
-            The standard deviation number of prompts to generate per request (only for v1/embeddings)
-        embeddings_input_type
-            The type of input to generate prompts for (only for v1/embeddings)
         """
 
         cls._check_for_valid_args(
             input_type, dataset_name, starting_index, length, tokenizer
         )
+
+        random.seed(random_seed)
 
         generic_dataset_json = cls.get_generic_dataset_json(
             input_type,
@@ -180,11 +169,7 @@ class LlmInputs:
             prompt_tokens_mean,
             prompt_tokens_stddev,
             num_of_output_prompts,
-            random_seed,
             input_filename,
-            embeddings_prompts_mean,
-            embeddings_prompts_stddev,
-            embeddings_input_type,
         )
 
         if extra_inputs is None:
@@ -218,11 +203,7 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
-        random_seed: int,
         input_filename: Optional[Path],
-        embeddings_prompts_mean: int,
-        embeddings_prompts_stddev: int,
-        embeddings_input_type: str,
     ) -> Dict:
         """
         Retrieve and convert the dataset based on the input type.
@@ -247,44 +228,21 @@ class LlmInputs:
             The standard deviation of the length of the prompt to generate
         num_of_output_prompts:
             The number of synthetic output prompts to generate
-        random_seed:
-            Seed used to generate random values
         input_filename:
             The path to the input file containing the prompts in JSONL format.
-        embeddings_prompts_mean
-            The mean number of prompts to generate per request (only for v1/embeddings)
-        embeddings_prompts_stddev
-            The standard deviation number of prompts to generate per request (only for v1/embeddings)
-        embeddings_input_type
-            The type of input to generate prompts for (only for v1/embeddings)
-
         Returns
         -------
         Dict:
             The generic dataset JSON
         """
         if output_format == OutputFormat.OPENAI_EMBEDDINGS:
-            if input_type == PromptSource.SYNTHETIC:
-                synthetic_prompts = (
-                    cls._generate_synthetic_prompts_for_openai_embeddings(
-                        tokenizer,
-                        prompt_tokens_mean,
-                        prompt_tokens_stddev,
-                        num_of_output_prompts,
-                        embeddings_input_type,
-                        embeddings_prompts_mean,
-                        embeddings_prompts_stddev,
-                    )
-                )
-                generic_dataset_json = (
-                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                        synthetic_prompts
-                    )
-                )
-            elif input_type == PromptSource.FILE:
+            if input_type == PromptSource.FILE:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_embeddings_file(
-                    input_filename, embeddings_input_type
+                    ## TODO: Add batch size to the function signature
+                    input_filename,
+                    5,
+                    num_of_output_prompts,
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -292,9 +250,7 @@ class LlmInputs:
                     )
                 )
             else:
-                raise GenAIPerfException(
-                    "OpenAI embeddings only supports synthetic prompts or file input."
-                )
+                raise GenAIPerfException("OpenAI embeddings only supports file input.")
         else:
             if input_type == PromptSource.DATASET:
                 dataset = cls._get_input_dataset_from_url(
@@ -304,7 +260,6 @@ class LlmInputs:
                     dataset
                 )
             elif input_type == PromptSource.SYNTHETIC:
-                random.seed(random_seed)
                 synthetic_dataset = cls._get_input_dataset_from_synthetic(
                     tokenizer,
                     prompt_tokens_mean,
@@ -330,82 +285,26 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _generate_synthetic_prompts_for_openai_embeddings(
-        cls,
-        tokenizer: Tokenizer,
-        prompts_mean: int,
-        prompts_stddev: int,
-        num_of_output_prompts: int,
-        embeddings_input_type: str,
-        embeddings_prompts_mean: int,
-        embeddings_prompts_stddev: int,
-    ) -> Dict[str, Any]:
-        dataset_json: Dict[str, Any] = {}
-        dataset_json["features"] = [{"name": "input"}]
-        dataset_json["rows"] = []
-        for _ in range(num_of_output_prompts):
-            num_prompts = max(
-                1, int(random.gauss(embeddings_prompts_mean, embeddings_prompts_stddev))
-            )
-            synthetic_prompt_array = [
-                SyntheticPromptGenerator.create_synthetic_prompt(
-                    tokenizer, prompts_mean, prompts_stddev
-                )
-                for _ in range(num_prompts)
-            ]
-            dataset_json["rows"].append(
-                {
-                    "row": {
-                        "payload": {
-                            "input": synthetic_prompt_array,
-                            "input_type": embeddings_input_type,
-                        },
-                    }
-                    # TODO: Test with extra inputs "encoding_format: float", "truncate: NONE"
-                }
-            )
-        return dataset_json
-
-    @classmethod
     def _get_input_dataset_from_embeddings_file(
-        cls, input_filename: Path, embeddings_input_type: str
+        cls, input_filename: Path, batch_size: int, num_prompts: int
     ) -> Dict[str, Any]:
         with open(input_filename, "r") as file:
-            file_content = json.load(file)
+            file_content = [json.loads(line) for line in file]
+
+        texts = [item["text"] for item in file_content]
+
+        if batch_size > len(texts):
+            raise ValueError(
+                "Batch size cannot be larger than the number of available texts"
+            )
 
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "input"}]
         dataset_json["rows"] = []
 
-        for item in file_content:
-            if embeddings_input_type == "query":
-                dataset_json["rows"].append(
-                    {
-                        "row": {
-                            "payload": {
-                                "input": item["question"],
-                                "input_type": "query",
-                            }
-                        }
-                    }
-                )
-            elif embeddings_input_type == "passage":
-                for pos_doc in item.get("pos_doc", []):
-                    dataset_json["rows"].append(
-                        {
-                            "row": {
-                                "payload": {"input": pos_doc, "input_type": "passage"}
-                            }
-                        }
-                    )
-                for neg_doc in item.get("neg_doc", []):
-                    dataset_json["rows"].append(
-                        {
-                            "row": {
-                                "payload": {"input": neg_doc, "input_type": "passage"}
-                            }
-                        }
-                    )
+        for _ in range(num_prompts):
+            sampled_texts = random.sample(texts, batch_size)
+            dataset_json["rows"].append({"row": {"payload": {"input": sampled_texts}}})
 
         return dataset_json
 
@@ -745,21 +644,20 @@ class LlmInputs:
                 model_name, index, model_selection_strategy
             )
             payload = entry.get("payload", {})
-            input_value = payload.get("input")
-            input_type_value = payload.get("input_type")
+            input_values = payload.get("input")
 
-            if input_value is None:
+            if input_values is None:
                 raise ValueError("Missing required fields 'input' in dataset entry")
-
-            if input_type_value is None:
+            if not isinstance(input_values, list):
                 raise ValueError(
-                    "Missing required fields 'input_type' in dataset entry"
+                    f"Required field 'input' must be a list (actual: {type(input_values)})"
                 )
 
             payload = {
-                "input": input_value,
+                "input": input_values,
                 "model": iter_model_name,
-                "input_type": input_type_value,
+                # TODO: Can remove below, just need to remember to test and document those options.
+                "input_type": extra_inputs.get("input_type", "query"),
                 "encoding_format": extra_inputs.get("encoding_format", "float"),
                 "truncate": extra_inputs.get("truncate", "NONE"),
             }
