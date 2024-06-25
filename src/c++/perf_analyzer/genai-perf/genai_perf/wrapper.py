@@ -94,7 +94,6 @@ class Profiler:
             "tokenizer",
         ]
 
-        # TODO: Do we need this?
         if args.endpoint_type == "embeddings":
             skip_args += "batch_size"
 

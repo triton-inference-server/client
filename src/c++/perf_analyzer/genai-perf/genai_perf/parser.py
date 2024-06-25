@@ -246,7 +246,7 @@ def _add_input_args(parser):
         "--batch-size",
         "-b",
         type=int,
-        default=1,
+        default=LlmInputs.DEFAULT_BATCH_SIZE,
         required=False,
         help=f"The batch size of the requests GenAI-Perf should send",
     )

@@ -24,7 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -87,9 +86,6 @@ class TestLlmInputsEmbeddings:
                         {
                             "input": ["text 1", "text 2"],
                             "model": "test_model",
-                            "input_type": "query",
-                            "encoding_format": "float",
-                            "truncate": "NONE",
                         }
                     ]
                 },
@@ -97,10 +93,7 @@ class TestLlmInputsEmbeddings:
                     "payload": [
                         {
                             "input": ["text 3", "text 4"],
-                            "input_type": "query",
                             "model": "test_model",
-                            "encoding_format": "float",
-                            "truncate": "NONE",
                         }
                     ]
                 },
@@ -142,7 +135,6 @@ class TestLlmInputsEmbeddings:
                     "payload": [
                         {
                             "input": ["text 1", "text 2"],
-                            "input_type": "query",
                             "model": "test_model",
                             "encoding_format": "base64",
                             "truncate": "END",
@@ -154,7 +146,6 @@ class TestLlmInputsEmbeddings:
                     "payload": [
                         {
                             "input": ["text 3", "text 4"],
-                            "input_type": "query",
                             "model": "test_model",
                             "encoding_format": "base64",
                             "truncate": "END",

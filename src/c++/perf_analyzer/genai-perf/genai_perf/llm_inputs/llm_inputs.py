@@ -65,6 +65,7 @@ class LlmInputs:
 
     DEFAULT_TENSORRTLLM_MAX_TOKENS = 256
 
+    DEFAULT_BATCH_SIZE = 1
     DEFAULT_RANDOM_SEED = 0
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 0
@@ -100,6 +101,7 @@ class LlmInputs:
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
+        batch_size: int = 1,
         output_dir: Path = Path(""),
     ) -> Dict:
         """
@@ -135,6 +137,8 @@ class LlmInputs:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
+        batch_size:
+            The number of inputs per request (currently only used for v1/embeddings)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -169,6 +173,7 @@ class LlmInputs:
             prompt_tokens_mean,
             prompt_tokens_stddev,
             num_of_output_prompts,
+            batch_size,
             input_filename,
         )
 
@@ -203,6 +208,7 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        batch_size: int,
         input_filename: Optional[Path],
     ) -> Dict:
         """
@@ -228,6 +234,8 @@ class LlmInputs:
             The standard deviation of the length of the prompt to generate
         num_of_output_prompts:
             The number of synthetic output prompts to generate
+        batch_size:
+            The number of inputs per request (currently only used for v1/embeddings)
         input_filename:
             The path to the input file containing the prompts in JSONL format.
         Returns
@@ -239,9 +247,8 @@ class LlmInputs:
             if input_type == PromptSource.FILE:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_embeddings_file(
-                    ## TODO: Add batch size to the function signature
                     input_filename,
-                    5,
+                    batch_size,
                     num_of_output_prompts,
                 )
                 generic_dataset_json = (
@@ -656,10 +663,6 @@ class LlmInputs:
             payload = {
                 "input": input_values,
                 "model": iter_model_name,
-                # TODO: Can remove below, just need to remember to test and document those options.
-                "input_type": extra_inputs.get("input_type", "query"),
-                "encoding_format": extra_inputs.get("encoding_format", "float"),
-                "truncate": extra_inputs.get("truncate", "NONE"),
             }
 
             for key, value in extra_inputs.items():
