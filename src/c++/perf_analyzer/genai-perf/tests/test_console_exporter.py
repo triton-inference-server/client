@@ -26,7 +26,7 @@
 
 from genai_perf.export_data.console_exporter import ConsoleExporter
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import LLMMetrics, Statistics
+from genai_perf.metrics import LLMMetrics, Statistics
 
 
 class TestConsoleExporter:

@@ -24,36 +24,5 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import pytest
-from genai_perf.metrics import LLMMetrics
-
-
-class TestLLMMetrics:
-
-    def test_llm_metrics_get_base_name(self) -> None:
-        """Test get_base_name method in LLMMetrics class."""
-        # initialize with dummy values
-        metrics = LLMMetrics(
-            request_throughputs=[10.12, 11.33],
-            request_latencies=[3, 44],
-            time_to_first_tokens=[1, 2, 3],
-            inter_token_latencies=[4, 5],
-            output_token_throughputs=[22.13, 9423.02],
-            output_token_throughputs_per_request=[7, 8, 9],
-            output_sequence_lengths=[3, 4],
-            input_sequence_lengths=[12, 34],
-        )
-        assert metrics.get_base_name("time_to_first_tokens") == "time_to_first_token"
-        assert metrics.get_base_name("inter_token_latencies") == "inter_token_latency"
-        assert (
-            metrics.get_base_name("output_token_throughputs_per_request")
-            == "output_token_throughput_per_request"
-        )
-        assert (
-            metrics.get_base_name("output_sequence_lengths") == "output_sequence_length"
-        )
-        assert (
-            metrics.get_base_name("input_sequence_lengths") == "input_sequence_length"
-        )
-        with pytest.raises(KeyError):
-            metrics.get_base_name("hello1234")
+from genai_perf.profile_data_parser.llm_profile_data_parser import LLMProfileDataParser
+from genai_perf.profile_data_parser.profile_data_parser import ProfileDataParser
