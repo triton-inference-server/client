@@ -108,14 +108,12 @@ class PlotConfigParser:
         if not name:  # no metric
             return []
         elif name == "inter_token_latencies":
-            # Flatten ITL since they are grouped by request
-            itl_flatten = []
-            for request_itls in stats.metrics.data[name]:
-                itl_flatten += request_itls
-            return [scale(x, (1 / 1e6)) for x in itl_flatten]  # ns to ms
+            itls = stats.metrics.data[name]
+            return [scale(x, (1 / 1e6)) for x in itls]  # ns to ms
         elif name == "token_positions":
+            chunked_itls = getattr(stats.metrics, "_chunked_inter_token_latencies")
             token_positions: List[Union[int, float]] = []
-            for request_itls in stats.metrics.data["inter_token_latencies"]:
+            for request_itls in chunked_itls:
                 token_positions += list(range(1, len(request_itls) + 1))
             return token_positions
         elif name == "time_to_first_tokens":
@@ -169,11 +167,11 @@ class PlotConfigParser:
           output: {output_dir}
 
         plot3:
-          title: Distribution of Input Tokens to Generated Tokens
-          x_metric: num_input_tokens
-          y_metric: num_output_tokens
-          x_label: Number of Input Tokens Per Request
-          y_label: Number of Generated Tokens Per Request
+          title: Distribution of Input Sequence Lengths to Output Sequence Lengths
+          x_metric: input_sequence_lengths
+          y_metric: output_sequence_lengths
+          x_label: Input Sequence Length
+          y_label: Output Sequence Length
           width: {1200 if len(filenames) > 1 else 700}
           height: 450
           type: heatmap
@@ -181,10 +179,10 @@ class PlotConfigParser:
           output: {output_dir}
 
         plot4:
-          title: Time to First Token vs Number of Input Tokens
-          x_metric: num_input_tokens
+          title: Time to First Token vs Input Sequence Lengths
+          x_metric: input_sequence_lengths
           y_metric: time_to_first_tokens
-          x_label: Number of Input Tokens
+          x_label: Input Sequence Length
           y_label: Time to First Token (ms)
           width: {1200 if len(filenames) > 1 else 700}
           height: 450

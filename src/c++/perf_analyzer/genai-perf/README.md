@@ -62,42 +62,48 @@ Available starting with the 24.03 release of the
 Run the Triton Inference Server SDK docker container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
 
-Run GenAI-Perf:
-
-```bash
-genai-perf --help
-```
-
 <details>
 
-<summary>To install from source:</summary>
+<summary>Alternatively, to install from source:</summary>
 
 ## From Source
 
-This method requires that Perf Analyzer is installed in your development
-environment and that you have at least Python 3.10 installed. To build Perf
-Analyzer from source, see
-[here](../docs/install.md#build-from-source).
+GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
+
+### Install Perf Analyzer (Ubuntu, Python 3.8+)
+
+Note: you must already have CUDA 12 installed.
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+pip install tritonclient
+
+apt update && apt install -y --no-install-recommends libb64-0d libcurl4
+```
+
+Alternatively, you can install Perf Analyzer
+[from source](../docs/install.md#build-from-source).
+
+### Install GenAI-Perf from source
+
+```bash
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
 ```
 
+</details>
+</br>
+
 Run GenAI-Perf:
 
 ```bash
 genai-perf --help
 ```
-
-</details>
-</br>
 
 # Quick Start
 
@@ -111,7 +117,7 @@ genai-perf --help
 1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
@@ -148,7 +154,7 @@ triton start
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="mm.yy" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -185,14 +191,91 @@ Example output:
 │ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
 │ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
 │     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
-│         Num output token │         104 │         100 │         129 │         128 │         109 │         105 │
-│          Num input token │         199 │         199 │         199 │         199 │         199 │         199 │
+│   Output sequence length │         104 │         100 │         129 │         128 │         109 │         105 │
+│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
 └──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
 Output token throughput (per sec): 460.42
 Request throughput (per sec): 4.44
 ```
 
 See [Tutorial](docs/tutorial.md) for additional examples.
+
+</br>
+
+# Visualization
+
+GenAI-Perf can also generate various plots that visualize the performance of the
+current profile run. This is disabled by default but users can easily enable it
+by passing the `--generate-plots` option when running the benchmark:
+
+```bash
+genai-perf \
+  -m gpt2 \
+  --service-kind triton \
+  --backend tensorrtllm \
+  --streaming \
+  --concurrency 1 \
+  --generate-plots
+```
+
+This will generate a [set of default plots](docs/compare.md#example-plots) such as:
+- Time to first token (TTFT) analysis
+- Request latency analysis
+- TTFT vs Input sequence lengths
+- Inter token latencies vs Token positions
+- Input sequence lengths vs Output sequence lengths
+
+
+## Using `compare` Subcommand to Visualize Multiple Runs
+
+The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
+profile runs and visualizing the differences through plots.
+
+### Usage
+Assuming the user possesses two profile export JSON files,
+namely `profile1.json` and `profile2.json`,
+they can execute the `compare` subcommand using the `--files` option:
+
+```bash
+genai-perf compare --files profile1.json profile2.json
+```
+
+Executing the above command will perform the following actions under the
+`compare` directory:
+1. Generate a YAML configuration file (e.g. `config.yaml`) containing the
+metadata for each plot generated during the comparison process.
+2. Automatically generate the [default set of plots](docs/compare.md#example-plots)
+(e.g. TTFT vs. Input Sequence Lengths) that compare the two profile runs.
+
+```
+compare
+├── config.yaml
+├── distribution_of_input_sequence_lengths_to_output_sequence_lengths.jpeg
+├── request_latency.jpeg
+├── time_to_first_token.jpeg
+├── time_to_first_token_vs_input_sequence_lengths.jpeg
+├── token-to-token_latency_vs_output_token_position.jpeg
+└── ...
+```
+
+### Customization
+Users have the flexibility to iteratively modify the generated YAML configuration
+file to suit their specific requirements.
+They can make alterations to the plots according to their preferences and execute
+the command with the `--config` option followed by the path to the modified
+configuration file:
+
+```bash
+genai-perf compare --config compare/config.yaml
+```
+
+This command will regenerate the plots based on the updated configuration settings,
+enabling users to refine the visual representation of the comparison results as
+per their needs.
+
+See [Compare documentation](docs/compare.md) for more details.
+
+</br>
 
 # Model Inputs
 
@@ -203,8 +286,7 @@ inputs, or from the HuggingFace
 specified using the `--input-dataset` CLI option.
 
 When the dataset is synthetic, you can specify the following options:
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
 * `--synthetic-input-tokens-mean <int>`: The mean of number of tokens in the
   generated prompts when using synthetic data, >= 1.
 * `--synthetic-input-tokens-stddev <int>`: The standard deviation of number of
@@ -215,8 +297,7 @@ When the dataset is coming from HuggingFace, you can specify the following
 options:
 * `--input-dataset {openorca,cnn_dailymail}`: HuggingFace dataset to use for
   benchmarking.
-* `--num-prompts <int>`: The number of unique prompts to generate as stimulus,
-  >= 1.
+* `--num-prompts <int>`: The number of unique prompts to generate as stimulus, >= 1.
 
 When the dataset is coming from a file, you can specify the following
 options:
@@ -240,6 +321,8 @@ You can optionally set additional model inputs with the following option:
   model with a singular value, such as `stream:true` or `max_tokens:5`. This
   flag can be repeated to supply multiple extra inputs.
 
+</br>
+
 # Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
@@ -250,9 +333,12 @@ the inference server.
 | <span id="time_to_first_token_metric">Time to First Token</span> | Time between when a request is sent and when its first response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="inter_token_latency_metric">Inter Token Latency</span> | Time between intermediate responses for a single request divided by the number of generated tokens of the latter response, one value per response per request in benchmark | Avg, min, max, p99, p90, p75 |
 | Request Latency | Time between when a request is sent and when its final response is received, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
-| Number of Output Tokens | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
+| Output Sequence Length | Total number of output tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
+| Input Sequence Length | Total number of input tokens of a request, one value per request in benchmark | Avg, min, max, p99, p90, p75 |
 | <span id="output_token_throughput_metric">Output Token Throughput</span> | Total number of output tokens from benchmark divided by benchmark duration | None–one value per benchmark |
 | <span id="request_throughput_metric">Request Throughput</span> | Number of final responses from benchmark divided by benchmark duration | None–one value per benchmark |
+
+</br>
 
 # Command Line Options
 
@@ -263,10 +349,19 @@ Show the help message and exit.
 
 ## Endpoint Options:
 
-##### `-m <str>`
-##### `--model <str>`
+##### `-m <list>`
+##### `--model <list>`
 
-The name of the model to benchmark. (default: `None`)
+The names of the models to benchmark.
+A single model is recommended, unless you are
+[profiling multiple LoRA adapters](docs/lora.md). (default: `None`)
+
+##### `--model-selection-strategy {round_robin, random}`
+
+When multiple models are specified, this is how a specific model
+is assigned to a prompt. Round robin means that each model receives
+a request in order. Random means that assignment is uniformly random
+(default: `round_robin`)
 
 ##### `--backend {tensorrtllm,vllm}`
 
@@ -303,6 +398,7 @@ URL of the endpoint to target for benchmarking. (default: `None`)
 
 Provide additional inputs to include with every request. You can repeat this
 flag for multiple inputs. Inputs should be in an input_name:value format.
+Alternatively, a string representing a json formatted dict can be provided.
 (default: `None`)
 
 ##### `--input-dataset {openorca,cnn_dailymail}`
@@ -312,7 +408,9 @@ The HuggingFace dataset to use for prompts.
 
 ##### `--input-file <path>`
 
-The input file containing the single prompt to use for profiling.
+The input file containing the prompts to use for profiling.
+Each line should be a JSON object with a 'text_input' field in JSONL format.
+Example: {\"text_input\": \"Your prompt here\"}"
 
 ##### `--num-prompts <int>`
 
@@ -377,6 +475,11 @@ the recent 3 measurements is within (stability percentage) in terms of both
 infer per second and latency. (default: `999`)
 
 ## Output Options
+
+##### `--artifact-dir`
+
+The directory to store all the (output) artifacts generated by GenAI-Perf and
+Perf Analyzer. (default: `artifacts`)
 
 ##### `--generate-plots`
 

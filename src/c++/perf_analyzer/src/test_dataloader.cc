@@ -193,6 +193,18 @@ TEST_CASE("dataloader: ParseData: Misc error cases")
     expected_message =
         "missing tensor INPUT1 ( Location stream id: 0, step id: 0)";
   }
+  SUBCASE("Invalid input")
+  {
+    json_str = R"({"data":
+    [{
+     "INPUT1": [2],
+     "INVALID_INPUT": [2]
+    }]
+    })";
+    expected_message =
+        "The input or output 'INVALID_INPUT' is not found in the model "
+        "configuration";
+  }
 
   MockDataLoader dataloader;
   std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();

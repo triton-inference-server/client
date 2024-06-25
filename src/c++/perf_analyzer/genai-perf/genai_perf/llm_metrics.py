@@ -58,8 +58,8 @@ class Metrics:
         "output_token_throughput",
         "output_token_throughput_per_request",
         "request_throughput",
-        "num_output_token",
-        "num_input_token",
+        "output_sequence_length",
+        "input_sequence_length",
     ]
 
     time_fields = [
@@ -116,29 +116,34 @@ class LLMMetrics(Metrics):
         request_throughputs: List[float] = [],
         request_latencies: List[int] = [],
         time_to_first_tokens: List[int] = [],
-        inter_token_latencies: List[List[int]] = [[]],
+        inter_token_latencies: List[int] = [],
         output_token_throughputs: List[float] = [],
         output_token_throughputs_per_request: List[int] = [],
-        num_output_tokens: List[int] = [],
-        num_input_tokens: List[int] = [],
+        output_sequence_lengths: List[int] = [],
+        input_sequence_lengths: List[int] = [],
+        chunked_inter_token_latencies: List[List[int]] = [[]],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
         self.inter_token_latencies = inter_token_latencies
         self.output_token_throughputs = output_token_throughputs
         self.output_token_throughputs_per_request = output_token_throughputs_per_request
-        self.num_output_tokens = num_output_tokens
-        self.num_input_tokens = num_input_tokens
+        self.output_sequence_lengths = output_sequence_lengths
+        self.input_sequence_lengths = input_sequence_lengths
+
+        # Keeping chunked ITL (old) as a WAR to preserve visualization.
+        # Excluded from data.
+        self._chunked_inter_token_latencies = chunked_inter_token_latencies
 
         # add base name mapping
         self._base_names["time_to_first_tokens"] = "time_to_first_token"
         self._base_names["inter_token_latencies"] = "inter_token_latency"
         self._base_names["output_token_throughputs"] = "output_token_throughput"
-        self._base_names[
-            "output_token_throughputs_per_request"
-        ] = "output_token_throughput_per_request"
-        self._base_names["num_output_tokens"] = "num_output_token"
-        self._base_names["num_input_tokens"] = "num_input_token"
+        self._base_names["output_token_throughputs_per_request"] = (
+            "output_token_throughput_per_request"
+        )
+        self._base_names["output_sequence_lengths"] = "output_sequence_length"
+        self._base_names["input_sequence_lengths"] = "input_sequence_length"
 
 
 class Statistics:
@@ -164,67 +169,82 @@ class Statistics:
         self._metrics = metrics
         self._stats_dict: Dict = defaultdict(dict)
         for attr, data in metrics.data.items():
+            if self._should_skip(data, attr):
+                continue
+
             attr = metrics.get_base_name(attr)
             self._add_units(attr)
-            data = self._preprocess_data(data, attr)
-            if data:
-                self._calculate_mean(data, attr)
-                if not self._is_throughput_field(attr):
-                    self._calculate_percentiles(data, attr)
-                    self._calculate_minmax(data, attr)
-                    self._calculate_std(data, attr)
+            self._calculate_mean(data, attr)
+            if not self._is_throughput_field(attr):
+                self._calculate_percentiles(data, attr)
+                self._calculate_minmax(data, attr)
+                self._calculate_std(data, attr)
 
-    def _preprocess_data(self, data: List, attr: str) -> List[Union[int, float]]:
-        new_data = []
-        if attr == "inter_token_latency":
-            # flatten inter token latencies to 1D
-            for d in data:
-                new_data += d
-        else:
-            new_data = data
-        return new_data
+    def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
+        """Checks if some metrics should be skipped."""
+        # No data points
+        if len(data) == 0:
+            return True
+        # Skip ITL when non-streaming (all zero)
+        elif attr == "inter_token_latencies" and sum(data) == 0:
+            return True
+        return False
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
-        self._stats_dict[attr]["avg"] = float(avg)
         setattr(self, "avg_" + attr, avg)
+        self._stats_dict[attr]["avg"] = float(avg)
 
     def _calculate_percentiles(self, data: List[Union[int, float]], attr: str) -> None:
         p25, p50, p75 = np.percentile(data, [25, 50, 75])
         p90, p95, p99 = np.percentile(data, [90, 95, 99])
-        self._stats_dict[attr]["p99"] = float(p99)
-        self._stats_dict[attr]["p95"] = float(p95)
-        self._stats_dict[attr]["p90"] = float(p90)
-        self._stats_dict[attr]["p75"] = float(p75)
-        self._stats_dict[attr]["p50"] = float(p50)
-        self._stats_dict[attr]["p25"] = float(p25)
         setattr(self, "p25_" + attr, p25)
         setattr(self, "p50_" + attr, p50)
         setattr(self, "p75_" + attr, p75)
         setattr(self, "p90_" + attr, p90)
         setattr(self, "p95_" + attr, p95)
         setattr(self, "p99_" + attr, p99)
+        self._stats_dict[attr]["p99"] = float(p99)
+        self._stats_dict[attr]["p95"] = float(p95)
+        self._stats_dict[attr]["p90"] = float(p90)
+        self._stats_dict[attr]["p75"] = float(p75)
+        self._stats_dict[attr]["p50"] = float(p50)
+        self._stats_dict[attr]["p25"] = float(p25)
 
     def _calculate_minmax(self, data: List[Union[int, float]], attr: str) -> None:
         min, max = np.min(data), np.max(data)
-        self._stats_dict[attr]["max"] = float(max)
-        self._stats_dict[attr]["min"] = float(min)
         setattr(self, "min_" + attr, min)
         setattr(self, "max_" + attr, max)
+        self._stats_dict[attr]["max"] = float(max)
+        self._stats_dict[attr]["min"] = float(min)
 
     def _calculate_std(self, data: List[Union[int, float]], attr: str) -> None:
         std = np.std(data)
-        self._stats_dict[attr]["std"] = float(std)
         setattr(self, "std_" + attr, std)
+        self._stats_dict[attr]["std"] = float(std)
+
+    def scale_data(self, factor: float = 1 / 1e6) -> None:
+        for k1, v1 in self.stats_dict.items():
+            if self._is_time_field(k1):
+                for k2, v2 in v1.items():
+                    if k2 != "unit":
+                        self.stats_dict[k1][k2] = self._scale(v2, factor)
+
+    def _scale(self, metric: float, factor: float = 1 / 1e6) -> float:
+        """
+        Scale metrics from nanoseconds by factor.
+        Default is nanoseconds to milliseconds.
+        """
+        return metric * factor
 
     def _add_units(self, key) -> None:
         if self._is_time_field(key):
-            self._stats_dict[key]["unit"] = "ns"
+            self._stats_dict[key]["unit"] = "ms"
         if key == "request_throughput":
             self._stats_dict[key]["unit"] = "requests/sec"
         if key.startswith("output_token_throughput"):
             self._stats_dict[key]["unit"] = "tokens/sec"
-        if key == "num_input_token" or key == "num_output_token":
+        if "sequence_length" in key:
             self._stats_dict[key]["unit"] = "tokens"
 
     def __repr__(self) -> str:
@@ -253,156 +273,6 @@ class Statistics:
 
     def _is_time_field(self, field: str) -> bool:
         return field in Metrics.time_fields
-
-    def pretty_print(self) -> None:
-        """Prints the statistics in a tabular format."""
-
-        singular_metric_rows = []
-        table = Table(title="LLM Metrics")
-
-        table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        stats = ["avg", "min", "max", "p99", "p90", "p75"]
-        for stat in stats:
-            table.add_column(stat, justify="right", style="green")
-
-        for metric in Metrics.metric_labels:
-            formatted_metric = metric.replace("_", " ").capitalize()
-
-            # Throughput fields are printed after the table
-            is_throughput_field = self._is_throughput_field(metric)
-            if is_throughput_field:
-                value = self.__dict__.get(f"{stats[0]}_{metric}", -1)
-                formatted_metric += f" (per sec): {value:.2f}"
-                singular_metric_rows.append(formatted_metric)
-                continue
-
-            # TODO (TMA-1712): need to decide if we need this metric. Remove
-            # from statistics display for now.
-            # TODO (TMA-1678): output_token_throughput_per_request is treated
-            # separately since the current code treats all throughput metrics to
-            # be displayed outside of the statistics table.
-            if metric == "output_token_throughput_per_request":
-                formatted_metric += f" (per sec)"
-                continue
-
-            is_time_field = self._is_time_field(metric)
-            if is_time_field:
-                formatted_metric += " (ns)"
-
-            row_values = [formatted_metric]
-
-            for stat in stats:
-                value = self.__dict__.get(f"{stat}_{metric}", -1)
-                row_values.append(f"{value:,.0f}")
-
-            # Without streaming, there is no inter-token latency available, so do not print it.
-            if metric == "inter_token_latency":
-                if all(value == "-1" for value in row_values[1:]):
-                    continue
-            # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-            elif metric == "time_to_first_token":
-                unique_values = False
-                for stat in stats:
-                    value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
-                    value_req_latency = self.__dict__.get(f"{stat}_request_latency", -1)
-                    if value_ttft != value_req_latency:
-                        unique_values = True
-                        break
-                if not unique_values:
-                    continue
-
-            table.add_row(*row_values)
-
-        console = Console()
-        console.print(table)
-
-        for row in singular_metric_rows:
-            print(row)
-
-    def export_to_csv(self, csv_filename: str) -> None:
-        """Exports the statistics to a CSV file."""
-
-        multiple_metric_header = [
-            "Metric",
-            "avg",
-            "min",
-            "max",
-            "p99",
-            "p95",
-            "p90",
-            "p75",
-            "p50",
-            "p25",
-        ]
-
-        single_metric_header = [
-            "Metric",
-            "Value",
-        ]
-
-        with open(csv_filename, mode="w", newline="") as csvfile:
-            singular_metric_rows = []
-
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(multiple_metric_header)
-
-            for metric in Metrics.metric_labels:
-                formatted_metric = metric.replace("_", " ").title()
-
-                is_throughput_field = self._is_throughput_field(metric)
-                is_time_field = self._is_time_field(metric)
-
-                if is_time_field:
-                    formatted_metric += " (ns)"
-                elif is_throughput_field:
-                    formatted_metric += " (per sec)"
-                # TODO (TMA-1712): need to decide if we need this metric. Do not
-                # include in the csv for now.
-                # TODO (TMA-1678): output_token_throughput_per_request is treated
-                # separately since the current code treats all throughput metrics
-                # to be displayed outside of the statistics table.
-                elif metric == "output_token_throughput_per_request":
-                    formatted_metric += " (per sec)"
-                    continue
-
-                row_values = [formatted_metric]
-
-                if is_throughput_field:
-                    value = self.__dict__.get(
-                        f"{multiple_metric_header[1]}_{metric}", -1
-                    )
-                    row_values.append(f"{value:.2f}")
-                    singular_metric_rows.append(row_values)
-                    continue
-
-                for stat in multiple_metric_header[1:]:
-                    value = self.__dict__.get(f"{stat}_{metric}", -1)
-                    row_values.append(f"{value:.0f}")
-
-                # Without streaming, there is no inter-token latency available, so do not print it.
-                if metric == "inter_token_latency":
-                    if all(value == "-1" for value in row_values[1:]):
-                        continue
-                # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-                elif metric == "time_to_first_token":
-                    unique_values = False
-                    for stat in multiple_metric_header[1:]:
-                        value_ttft = self.__dict__.get(f"{stat}_{metric}", -1)
-                        value_req_latency = self.__dict__.get(
-                            f"{stat}_request_latency", -1
-                        )
-                        if value_ttft != value_req_latency:
-                            unique_values = True
-                            break
-                    if not unique_values:
-                        continue
-
-                csv_writer.writerow(row_values)
-
-            csv_writer.writerow([])
-            csv_writer.writerow(single_metric_header)
-            for row in singular_metric_rows:
-                csv_writer.writerow(row)
 
     def export_parquet(self, artifact_dir: Path, filename: str) -> None:
         max_length = -1
@@ -533,8 +403,10 @@ class LLMProfileDataParser(ProfileDataParser):
         time_to_first_tokens = []
         inter_token_latencies = []
         output_token_throughputs_per_request = []
-        num_input_tokens = []
-        num_generated_tokens = []
+        input_sequence_lengths = []
+        output_sequence_lengths = []
+        chunked_inter_token_latencies = []
+
         for request in requests:
             req_timestamp = request["timestamp"]
             req_inputs = request["request_inputs"]
@@ -553,43 +425,52 @@ class LLMProfileDataParser(ProfileDataParser):
             max_res_timestamp = max(max_res_timestamp, res_timestamps[-1])
 
             # request latencies
-            req_latency = res_timestamps[-1] - req_timestamp
-            request_latencies.append(req_latency)  # nanosec
-            req_latency = req_latency / 1e9  # sec
+            req_latency_ns = res_timestamps[-1] - req_timestamp
+            request_latencies.append(req_latency_ns)  # nanosec
+            req_latency_s = req_latency_ns / 1e9  # sec
 
             # time to first token
-            time_to_first_tokens.append(res_timestamps[0] - req_timestamp)
+            ttft = res_timestamps[0] - req_timestamp
+            time_to_first_tokens.append(ttft)
 
             # number of input tokens
-            input_tokens = self._tokenize_request_inputs(req_inputs)
-            num_input_tokens.append(len(input_tokens))
+            input_seq_len = self._get_input_token_count(req_inputs)
+            input_sequence_lengths.append(input_seq_len)
 
             # output token throughput per request
-            output_tokens = self._tokenize_response_outputs(res_outputs)
-            num_output_tokens = list(map(len, output_tokens))
-            total_output_tokens = np.sum(num_output_tokens)
-            output_token_throughputs_per_request.append(
-                total_output_tokens / req_latency
+            output_token_counts, total_output_token = self._get_output_token_counts(
+                res_outputs
             )
-            num_generated_tokens.append(total_output_tokens)
+            output_token_throughputs_per_request.append(
+                total_output_token / req_latency_s
+            )
+            output_sequence_lengths.append(total_output_token)
 
-            # inter token latency
-            itl_per_request = []
+            # inter token latencies
+            if total_output_token > 1:
+                inter_token_latency = (req_latency_ns - ttft) / (total_output_token - 1)
+                inter_token_latencies.append(round(inter_token_latency))
+
+            # The new ITL calculation above loses all token-level ITL information
+            # and as a result breaks ITL vs token position visualization. Keep
+            # the old version of inter token latency as a WAR to preserve the
+            # visualization.
+            chunked_inter_token_latency = []
             for (t1, _), (t2, n2) in self._pairwise(
-                zip(res_timestamps, num_output_tokens)
+                zip(res_timestamps, output_token_counts)
             ):
                 # TMA-1676: handle empty first/last responses
                 # if the latter response has zero token (e.g. empty string),
                 # then set it default to one for the sake of inter token latency
                 # calculation and to avoid divide by zero.
                 num_token = 1 if n2 == 0 else n2
-                itl_per_request.append(round((t2 - t1) / num_token))
-            inter_token_latencies.append(itl_per_request)
+                chunked_inter_token_latency.append(round((t2 - t1) / num_token))
+            chunked_inter_token_latencies.append(chunked_inter_token_latency)
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
         request_throughputs = [len(requests) / benchmark_duration]
-        output_token_throughputs = [sum(num_generated_tokens) / benchmark_duration]
+        output_token_throughputs = [sum(output_sequence_lengths) / benchmark_duration]
 
         return LLMMetrics(
             request_throughputs,
@@ -598,8 +479,9 @@ class LLMProfileDataParser(ProfileDataParser):
             inter_token_latencies,
             output_token_throughputs,
             output_token_throughputs_per_request,
-            num_generated_tokens,
-            num_input_tokens,
+            output_sequence_lengths,
+            input_sequence_lengths,
+            chunked_inter_token_latencies,
         )
 
     def _pairwise(self, iterable):
@@ -620,6 +502,11 @@ class LLMProfileDataParser(ProfileDataParser):
                 responses = response.strip().split("\n\n")
                 if len(responses) > 1:
                     merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    if (
+                        merged_response["choices"][0]["delta"].get("content", None)
+                        is None
+                    ):
+                        merged_response["choices"][0]["delta"]["content"] = ""
                     for r in responses[1:]:
                         text = self._extract_openai_text_output(r)
                         merged_response["choices"][0]["delta"]["content"] += text
@@ -627,78 +514,74 @@ class LLMProfileDataParser(ProfileDataParser):
                     res_outputs[i] = {"response": json.dumps(merged_response)}
 
             # Remove responses without any content
-            # These are only observed to happen at the start or end
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[0]["response"]
-            ):
-                res_timestamps.pop(0)
-                res_outputs.pop(0)
+            indices_to_remove = []
+            for idx, out in enumerate(res_outputs):
+                if self._is_openai_empty_response(out["response"]):
+                    indices_to_remove.append(idx)
+            indices_to_remove.sort(reverse=True)
+            for index in indices_to_remove:
+                res_timestamps.pop(index)
+                res_outputs.pop(index)
 
-            while res_outputs and self._is_openai_empty_response(
-                res_outputs[-1]["response"]
-            ):
-                res_timestamps.pop()
-                res_outputs.pop()
-
-    def _tokenize_request_inputs(self, req_inputs: dict) -> List[int]:
+    def _get_input_token_count(self, req_inputs: dict) -> int:
         """Deserialize the request input and return tokenized inputs."""
         if self._service_kind == "triton":
-            return self._tokenize_triton_request_input(req_inputs)
+            input_text = req_inputs["text_input"]
         elif self._service_kind == "openai":
-            return self._tokenize_openai_request_input(req_inputs)
+            input_text = self._get_openai_input_text(req_inputs)
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_request_input(self, req_inputs: dict) -> List[int]:
-        """Tokenize the Triton request input texts."""
-        encodings = self._tokenizer(req_inputs["text_input"])
-        return encodings.data["input_ids"]
+        return len(self._tokenizer.encode(input_text))
 
-    def _tokenize_openai_request_input(self, req_inputs: dict) -> List[int]:
+    def _get_openai_input_text(self, req_inputs: dict) -> str:
         """Tokenize the OpenAI request input texts."""
         payload = json.loads(req_inputs["payload"])
         if self._response_format == ResponseFormat.OPENAI_CHAT_COMPLETIONS:
-            input_text = payload["messages"][0]["content"]
+            return payload["messages"][0]["content"]
         elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
-            input_text = payload["prompt"]
+            return payload["prompt"]
         else:
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
             )
-        encodings = self._tokenizer(input_text)
-        return encodings.data["input_ids"]
 
-    def _tokenize_response_outputs(self, res_outputs: dict) -> List[List[int]]:
-        """Deserialize the response output and return tokenized outputs."""
+    def _get_output_token_counts(
+        self, res_outputs: List[Dict]
+    ) -> Tuple[List[int], int]:
+        """Return response-level token counts and total token count."""
         if self._service_kind == "triton":
-            return self._tokenize_triton_response_output(res_outputs)
+            output_texts = self._get_triton_output_tokens(res_outputs)
         elif self._service_kind == "openai":
-            return self._tokenize_openai_response_output(res_outputs)
+            output_texts = self._get_openai_output_tokens(res_outputs)
         else:
             raise ValueError(f"Unknown service kind: '{self._service_kind}'.")
 
-    def _tokenize_triton_response_output(self, res_outputs: dict) -> List[List[int]]:
-        """Tokenize the Triton response output texts."""
-        output_texts = []
-        for output in res_outputs:
-            output_texts.append(output["text_output"])
-        return self._run_tokenizer(output_texts)
+        full_text_token_count = len(self._tokenizer.encode("".join(output_texts)))
 
-    def _tokenize_openai_response_output(self, res_outputs: dict) -> List[List[int]]:
-        """Tokenize the OpenAI response output texts."""
+        output_tokens = self._get_response_output_tokens(output_texts)
+        output_token_counts = list(map(len, output_tokens))
+        return output_token_counts, full_text_token_count
+
+    def _get_triton_output_tokens(self, res_outputs: List[Dict]) -> List[str]:
+        """Return a list of Triton response texts."""
+        return [r["text_output"] for r in res_outputs]
+
+    def _get_openai_output_tokens(self, res_outputs: List[Dict]) -> List[str]:
+        """Return a list of OpenAI response texts."""
         output_texts = []
         for output in res_outputs:
             text = self._extract_openai_text_output(output["response"])
             output_texts.append(text)
-        return self._run_tokenizer(output_texts)
+        return output_texts
 
-    def _run_tokenizer(self, output_texts: List[str]) -> List[List[int]]:
-        # exclamation mark trick forces the llama tokenization to consistently
+    def _get_response_output_tokens(self, output_texts: List[str]) -> List[List[int]]:
+        """Return a list of response output tokens."""
+        # Exclamation mark trick forces the llama tokenization to consistently
         # start each output with a specific token which allows us to safely skip
         # the first token of every tokenized output and get only the ones that
         # are returned by the model
-        output_texts = ["!" + txt for txt in output_texts]
-        encodings = self._tokenizer(output_texts)
+        encodings = self._tokenizer(["!" + txt for txt in output_texts])
         return [out[1:] for out in encodings.data["input_ids"]]
 
     def _extract_openai_text_output(self, response: str) -> str:

@@ -41,3 +41,36 @@ class TestTokenizer:
     def test_bad_tokenizer(self):
         with pytest.raises(GenAIPerfException):
             get_tokenizer("bad_tokenizer")
+
+    def test_default_args(self):
+        tokenizer_model = DEFAULT_TOKENIZER
+        tokenizer = get_tokenizer(tokenizer_model)
+
+        # There are 3 special tokens in the default tokenizer
+        #  - <unk>: 0  (unknown)
+        #  - <s>: 1  (beginning of sentence)
+        #  - </s>: 2  (end of sentence)
+        special_tokens = list(tokenizer._tokenizer.added_tokens_encoder.keys())
+        special_token_ids = list(tokenizer._tokenizer.added_tokens_encoder.values())
+
+        # special tokens are disabled by default
+        text = "This is test."
+        tokens = tokenizer(text)["input_ids"]
+        assert all([s not in tokens for s in special_token_ids])
+
+        tokens = tokenizer.encode(text)
+        assert all([s not in tokens for s in special_token_ids])
+
+        output = tokenizer.decode(tokens)
+        assert all([s not in output for s in special_tokens])
+
+        # check special tokens is enabled
+        text = "This is test."
+        tokens = tokenizer(text, add_special_tokens=True)["input_ids"]
+        assert any([s in tokens for s in special_token_ids])
+
+        tokens = tokenizer.encode(text, add_special_tokens=True)
+        assert any([s in tokens for s in special_token_ids])
+
+        output = tokenizer.decode(tokens, skip_special_tokens=False)
+        assert any([s in output for s in special_tokens])

@@ -81,16 +81,17 @@ class TestInferenceProfiler : public InferenceProfiler {
     ip.load_parameters_.stability_threshold = lp.stability_threshold;
     ip.load_parameters_.stability_window = lp.stability_window;
 
-    return ip.CheckWindowForStability(idx, ls);
+    return ip.CheckWindowForStability(idx, ls, true);
   };
 
-  static bool TestDetermineStability(LoadStatus& ls, LoadParams& lp)
+  static bool TestDetermineStability(
+      LoadStatus& ls, LoadParams& lp, bool check_latency = true)
   {
     InferenceProfiler ip;
     ip.load_parameters_.stability_threshold = lp.stability_threshold;
     ip.load_parameters_.stability_window = lp.stability_window;
 
-    return ip.DetermineStability(ls);
+    return ip.DetermineStability(ls, check_latency);
   }
 
   static bool TestIsDoneProfiling(
@@ -348,6 +349,16 @@ TEST_CASE("test_determine_stability")
 
     ls.infer_per_sec = {500.0, 520.0, 510.0};
     CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp) == true);
+  }
+
+  SUBCASE("test determine stability without latency check")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {100, 106, 112};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp, false) == true);
   }
 }
 

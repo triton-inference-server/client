@@ -28,6 +28,12 @@ cmake_minimum_required(VERSION 3.17)
 
 project(cc-clients LANGUAGES C CXX)
 
+# Use C++17 standard as Triton's minimum required.
+set(TRITON_MIN_CXX_STANDARD 17 CACHE STRING "The minimum C++ standard which features are requested to build this target.")
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 #
 # Options
 #
