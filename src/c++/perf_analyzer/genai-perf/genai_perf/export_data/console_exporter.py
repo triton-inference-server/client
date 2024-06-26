@@ -38,90 +38,69 @@ class ConsoleExporter:
     A class to export the statistics and arg values to the console.
     """
 
-    _STAT_COLUMNS = ["avg", "min", "max", "p99", "p90", "p75"]
+    STAT_COLUMNS = ["avg", "min", "max", "p99", "p90", "p75"]
 
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
         self._metrics = config.metrics
-        self._endpoint_type = config.args.endpoint_type
+        self._args = config.args
 
     def _get_title(self):
-        if self._endpoint_type == "embeddings":
+        if self._args.endpoint_type == "embeddings":
             return "Embedding Metrics"
         return "LLM Metrics"
 
     def export(self) -> None:
-        singular_metric_rows: List[str] = []
-
-        title = self._get_title()
-        table = Table(title=title)
+        table = Table(title=self._get_title())
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        for stat in self._STAT_COLUMNS:
+        for stat in self.STAT_COLUMNS:
             table.add_column(stat, justify="right", style="green")
 
-        self._construct_table(table, singular_metric_rows)
+        # Request metrics table
+        self._construct_table(table)
 
         console = Console()
         console.print(table)
 
-        for row in singular_metric_rows:
-            print(row)
-
-    def _construct_table(self, table: Table, singular_metric_rows: List[str]) -> None:
-        for metric in self._metrics.names:
+        # System metrics are printed after the table
+        for metric, unit in self._metrics.system_metric_names:
             formatted_metric = metric.replace("_", " ").capitalize()
+            value = self._stats[metric]["avg"]
+            formatted_metric += f" ({unit}): {value:.2f}"
+            print(formatted_metric)
 
-            # Throughput fields are printed after the table
-            is_throughput_field = metric in Metrics.throughput_fields
-            if is_throughput_field:
-                value = self._stats.get(f"{metric}", -1).get("avg", -1)
-                formatted_metric += f" (per sec): {value:.2f}"
-                singular_metric_rows.append(formatted_metric)
+    def _construct_table(self, table: Table) -> None:
+        for metric, unit in self._metrics.request_metric_names:
+            if self._should_skip(metric):
                 continue
 
-            # TODO (TMA-1712): need to decide if we need this metric. Remove
-            # from statistics display for now.
-            # TODO (TMA-1678): output_token_throughput_per_request is treated
-            # separately since the current code treats all throughput metrics to
-            # be displayed outside of the statistics table.
-            if metric == "output_token_throughput_per_request":
-                formatted_metric += f" (per sec)"
-                continue
-
-            is_time_field = metric in Metrics.time_fields
-            if is_time_field:
-                formatted_metric += " (ms)"
-
+            formatted_metric = metric.replace("_", " ").capitalize()
+            formatted_metric += f" ({unit})" if unit != "tokens" else ""
             row_values = [formatted_metric]
-            for stat in self._STAT_COLUMNS:
-                value = self._stats.get(f"{metric}", -1)
-                # Need to check for -1 for the non streaming case
-                if value == -1:
-                    row_values.append(f"{value:,.2f}")
-                else:
-                    value = value.get(stat, -1)
-                    row_values.append(f"{value:,.2f}")
-
-            # Without streaming, there is no inter-token latency available,
-            # so do not print it.
-            if metric == "inter_token_latency":
-                if all(float(value) < 0 for value in row_values[1:]):
-                    continue
-
-            # Without streaming, TTFT and request latency are the same,
-            # so do not print TTFT.
-            elif metric == "time_to_first_token":
-                unique_values = False
-                for stat in self._STAT_COLUMNS:
-                    value_ttft = self._stats.get(f"{metric}", -1).get(stat, -1)
-                    value_req_latency = self._stats.get("request_latency", -1).get(
-                        stat, -1
-                    )
-                    if value_ttft != value_req_latency:
-                        unique_values = True
-                        break
-                if not unique_values:
-                    continue
+            for stat in self.STAT_COLUMNS:
+                value = self._stats[metric][stat]
+                row_values.append(f"{value:,.2f}")
 
             table.add_row(*row_values)
+
+    def _should_skip(self, metric: str) -> bool:
+        if self._args.endpoint_type in ["embeddings", "ranking"]:
+            return False  # skip nothing
+
+        # TODO (TMA-1712): need to decide if we need this metric. Remove
+        # from statistics display for now.
+        # TODO (TMA-1678): output_token_throughput_per_request is treated
+        # separately since the current code treats all throughput metrics to
+        # be displayed outside of the statistics table.
+        if metric == "output_token_throughput_per_request":
+            return True
+
+        # When non-streaming, skip ITL and TTFT
+        streaming_metrics = [
+            "inter_token_latency",
+            "time_to_first_token",
+        ]
+        if not self._args.streaming and metric in streaming_metrics:
+            return True
+        return False

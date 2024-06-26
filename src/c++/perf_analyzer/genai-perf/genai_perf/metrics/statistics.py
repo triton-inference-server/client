@@ -64,7 +64,7 @@ class Statistics:
             attr = metrics.get_base_name(attr)
             self._add_units(attr)
             self._calculate_mean(data, attr)
-            if not self._is_throughput_field(attr):
+            if not self._is_system_metric(metrics, attr):
                 self._calculate_percentiles(data, attr)
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
@@ -114,7 +114,7 @@ class Statistics:
 
     def scale_data(self, factor: float = 1 / 1e6) -> None:
         for k1, v1 in self.stats_dict.items():
-            if self._is_time_field(k1):
+            if self._is_time_metric(k1):
                 for k2, v2 in v1.items():
                     if k2 != "unit":
                         self.stats_dict[k1][k2] = self._scale(v2, factor)
@@ -127,7 +127,7 @@ class Statistics:
         return metric * factor
 
     def _add_units(self, key) -> None:
-        if self._is_time_field(key):
+        if self._is_time_metric(key):
             self._stats_dict[key]["unit"] = "ms"
         if key == "request_throughput":
             self._stats_dict[key]["unit"] = "requests/sec"
@@ -157,11 +157,18 @@ class Statistics:
     def stats_dict(self) -> Dict:
         return self._stats_dict
 
-    def _is_throughput_field(self, field: str) -> bool:
-        return field in Metrics.throughput_fields
+    def _is_system_metric(self, metrics: Metrics, attr: str) -> bool:
+        system_metrics = [m for m, _ in metrics.system_metric_names]
+        return attr in system_metrics
 
-    def _is_time_field(self, field: str) -> bool:
-        return field in Metrics.time_fields
+    def _is_time_metric(self, field: str) -> bool:
+        # TMA-?: Remove the hardcoded time metrics list
+        time_metrics = [
+            "inter_token_latency",
+            "time_to_first_token",
+            "request_latency",
+        ]
+        return field in time_metrics
 
     def export_parquet(self, artifact_dir: Path, filename: str) -> None:
         max_length = -1

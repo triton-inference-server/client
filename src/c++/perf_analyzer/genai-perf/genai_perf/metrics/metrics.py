@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from enum import Enum, auto
-from typing import List
+from typing import List, Tuple
 
 
 class ResponseFormat(Enum):
@@ -40,23 +40,12 @@ class ResponseFormat(Enum):
 class Metrics:
     """A base class for all the metrics class that contains common metrics."""
 
-    _METRICS = [
-        "request_latency",
-        "request_throughput",
+    REQUEST_METRICS = [
+        ("request_latency", "ms"),
     ]
 
-    time_fields = [
-        "inter_token_latency",
-        "time_to_first_token",
-        "request_latency",
-    ]
-
-    # TODO (TMA-1678): output_token_throughput_per_request is not on this list
-    # since the current code treats all the throughput metrics to be displayed
-    # outside of the statistics table.
-    throughput_fields = [
-        "request_throughput",
-        "output_token_throughput",
+    SYSTEM_METRICS = [
+        ("request_throughput", "requests/sec"),
     ]
 
     def __init__(
@@ -79,8 +68,16 @@ class Metrics:
         return f"Metrics({','.join(attr_strs)})"
 
     @property
-    def names(self) -> List[str]:
-        return self._METRICS
+    def metric_names(self) -> List[Tuple[str, str]]:
+        return self.request_metric_names + self.system_metric_names
+
+    @property
+    def request_metric_names(self) -> List[Tuple[str, str]]:
+        return self.REQUEST_METRICS
+
+    @property
+    def system_metric_names(self) -> List[Tuple[str, str]]:
+        return self.SYSTEM_METRICS
 
     @property
     def data(self) -> dict:
