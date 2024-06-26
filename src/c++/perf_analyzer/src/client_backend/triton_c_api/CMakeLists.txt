@@ -26,6 +26,15 @@
 
 cmake_minimum_required (VERSION 3.18)
 
+include(FetchContent)
+FetchContent_Declare(
+    repo-core
+    GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/core.git
+    GIT_TAG ${TRITON_CORE_REPO_TAG}
+    GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(repo-core)
+
 set(
     TRITON_C_API_CLIENT_BACKEND_SRCS
     triton_c_api_backend.cc
@@ -52,8 +61,29 @@ add_library(
 )
 
 target_link_libraries(
-  triton-c-api-backend-library
-  grpcclient_static
-  httpclient_static
-  triton-core-serverapi   # from repo-core
+    triton-c-api-backend-library
+    PUBLIC grpcclient_static
+    PUBLIC gRPC::grpc++
+    PUBLIC gRPC::grpc
 )
+
+target_link_libraries(
+    triton-c-api-backend-library
+    PUBLIC httpclient_static
+    PUBLIC triton-core-serverapi   # from repo-core
+)
+
+if(${TRITON_ENABLE_GPU})
+  target_link_libraries(
+    triton-c-api-backend-library
+    PRIVATE CUDA::cudart
+  )
+  # Need to enable this compilation flag, otherwise, ipc.h
+  # will select mock-struct as opposed to the correct cuda
+  # runtime header file.
+  target_compile_definitions(
+    triton-c-api-backend-library
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
+endif() # TRITON_ENABLE_GPU
+

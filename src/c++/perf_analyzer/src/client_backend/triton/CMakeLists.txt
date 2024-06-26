@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright 2020-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,33 +26,61 @@
 
 cmake_minimum_required (VERSION 3.18)
 
+if(${TRITON_ENABLE_ZLIB})
+  find_package(ZLIB REQUIRED)
+endif()
+
+if(${TRITON_ENABLE_GPU})
+  find_package(CUDAToolkit REQUIRED)
+endif()
+
 set(
-    TS_CLIENT_BACKEND_SRCS
-    torchserve_client_backend.cc
-    torchserve_infer_input.cc
-    torchserve_http_client.cc
+    TRITON_CLIENT_BACKEND_SRCS
+    triton_client_backend.cc
 )
 
 set(
-    TS_CLIENT_BACKEND_HDRS
-    torchserve_client_backend.h
-    torchserve_infer_input.h
-    torchserve_http_client.h
+    TRITON_CLIENT_BACKEND_HDRS
+    triton_client_backend.h
 )
 
 add_library(
-    ts-client-backend-library  EXCLUDE_FROM_ALL OBJECT
-    ${TS_CLIENT_BACKEND_SRCS}
-    ${TS_CLIENT_BACKEND_HDRS}
+    triton-client-backend-library  EXCLUDE_FROM_ALL OBJECT
+    ${TRITON_CLIENT_BACKEND_SRCS}
+    ${TRITON_CLIENT_BACKEND_HDRS}
 )
 
 target_link_libraries(
-  ts-client-backend-library
-  PUBLIC CURL::libcurl
-  PUBLIC httpclient_static
+  triton-client-backend-library
+  PUBLIC grpcclient_static
+  PUBLIC gRPC::grpc++
+  PUBLIC gRPC::grpc
 )
 
+target_link_libraries(
+  triton-client-backend-library
+  PUBLIC shm_utils_static
+  PUBLIC httpclient_static
+  PRIVATE CURL::libcurl
+)
+
+if(${TRITON_ENABLE_ZLIB})
+  target_link_libraries(
+    triton-client-backend-library
+    PRIVATE ZLIB::ZLIB
+  )
+endif()
+
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(ts-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(ts-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+  target_link_libraries(
+    triton-client-backend-library
+    PRIVATE CUDA::cudart
+  )
+  # Need to enable this compilation flag, otherwise, ipc.h
+  # will select mock-struct as opposed to the correct cuda
+  # runtime header file.
+  target_compile_definitions(
+    triton-client-backend-library
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
 endif() # TRITON_ENABLE_GPU

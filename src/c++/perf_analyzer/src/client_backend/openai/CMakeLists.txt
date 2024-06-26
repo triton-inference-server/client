@@ -55,6 +55,19 @@ target_link_libraries(
 )
 
 if(${TRITON_ENABLE_GPU})
-    target_include_directories(openai-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
-    target_link_libraries(openai-client-backend-library PRIVATE ${CUDA_LIBRARIES})
+  target_include_directories(openai-client-backend-library PUBLIC ${CUDA_INCLUDE_DIRS})
+  target_link_libraries(
+    openai-client-backend-library
+    PRIVATE ${CUDA_LIBRARIES}
+    PRIVATE CUDA::cudart
+  )
+
+  # Need to enable this compilation flag, otherwise, ipc.h
+  # will select mock-struct as opposed to the correct cuda
+  # runtime header file.
+  target_compile_definitions(
+    openai-client-backend-library
+    PUBLIC TRITON_ENABLE_GPU=1
+  )
 endif() # TRITON_ENABLE_GPU
+

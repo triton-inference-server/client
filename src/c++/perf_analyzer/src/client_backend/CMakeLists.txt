@@ -26,26 +26,45 @@
 
 cmake_minimum_required (VERSION 3.18)
 
+find_package(CURL REQUIRED)
+
 # fixme
 add_definitions(-DCURL_STATICLIB)
+
+#
+# Dependencies
+#
+include(FetchContent)
+
+FetchContent_Declare(
+  repo-common
+  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
+  GIT_TAG ${TRITON_COMMON_REPO_TAG}
+  GIT_SHALLOW ON
+)
+
+set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+set(TRITON_COMMON_ENABLE_GRPC ON)
+
+FetchContent_MakeAvailable(repo-common)
 
 add_subdirectory(triton)
 
 if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   add_subdirectory(triton_c_api)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_C_API
 
 if(TRITON_ENABLE_PERF_ANALYZER_TFS)
   add_subdirectory(tensorflow_serving)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TFS
 
 if(TRITON_ENABLE_PERF_ANALYZER_TS)
   add_subdirectory(torchserve)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TS
 
 if(TRITON_ENABLE_PERF_ANALYZER_OPENAI)
   add_subdirectory(openai)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_OPENAI
 
 set(
   CLIENT_BACKEND_SRCS
@@ -61,32 +80,31 @@ if(TRITON_ENABLE_PERF_ANALYZER_C_API)
   set(CAPI_LIBRARY $<TARGET_OBJECTS:triton-c-api-backend-library>)
   set(CAPI_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:triton-c-api-backend-library,LINK_LIBRARIES>)
   set(CAPI_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:triton-c-api-backend-library,INCLUDE_DIRECTORIES>)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_C_API
 
 if(TRITON_ENABLE_PERF_ANALYZER_TFS)
   set(TFS_LIBRARY $<TARGET_OBJECTS:tfs-client-backend-library>)
   set(TFS_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:tfs-client-backend-library,LINK_LIBRARIES>)
   set(TFS_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:tfs-client-backend-library,INCLUDE_DIRECTORIES>)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TFS
 
 if(TRITON_ENABLE_PERF_ANALYZER_TS)
   set(TS_LIBRARY $<TARGET_OBJECTS:ts-client-backend-library>)
   set(TS_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:ts-client-backend-library,LINK_LIBRARIES>)
   set(TS_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:ts-client-backend-library,INCLUDE_DIRECTORIES>)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_TS
 
 if(TRITON_ENABLE_PERF_ANALYZER_OPENAI)
   set(OPENAI_LIBRARY $<TARGET_OBJECTS:openai-client-backend-library>)
   set(OPENAI_TARGET_LINK_LIBRARY PUBLIC $<TARGET_PROPERTY:openai-client-backend-library,LINK_LIBRARIES>)
   set(OPENAI_TARGET_INCLUDE_DIRECTORY PRIVATE $<TARGET_PROPERTY:openai-client-backend-library,INCLUDE_DIRECTORIES>)
-endif()
+endif() # TRITON_ENABLE_PERF_ANALYZER_OPENAIs
 
 add_library(
   client-backend-library
   ${CLIENT_BACKEND_SRCS}
   ${CLIENT_BACKEND_HDRS}
   $<TARGET_OBJECTS:triton-client-backend-library>
-  $<TARGET_OBJECTS:shm-utils-library>
   ${CAPI_LIBRARY}
   ${TFS_LIBRARY}
   ${TS_LIBRARY}
@@ -95,19 +113,23 @@ add_library(
 
 target_link_libraries(
   client-backend-library
-  PUBLIC triton-common-json        # from repo-common
-  PUBLIC $<TARGET_PROPERTY:triton-client-backend-library,LINK_LIBRARIES>
-  ${CAPI_TARGET_LINK_LIBRARY}
-  ${TFS_TARGET_LINK_LIBRARY}
-  ${TS_TARGET_LINK_LIBRARY}
-  ${OPENAI_TARGET_LINK_LIBRARY}
+    PUBLIC
+      triton-common-json        # from repo-common
+      triton-client-backend-library
+      json_utils_static
+      ${CAPI_TARGET_LINK_LIBRARY}
+      ${TFS_TARGET_LINK_LIBRARY}
+      ${TS_TARGET_LINK_LIBRARY}
+      ${OPENAI_TARGET_LINK_LIBRARY}
 )
 
 target_include_directories(
   client-backend-library
-  PRIVATE $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
-  ${CAPI_TARGET_INCLUDE_DIRECTORY}
-  ${TFS_TARGET_INCLUDE_DIRECTORY}
-  ${TS_TARGET_INCLUDE_DIRECTORY}
-  ${OPENAI_TARGET_INCLUDE_DIRECTORY}
+  PUBLIC
+    $<TARGET_PROPERTY:triton-client-backend-library,INCLUDE_DIRECTORIES>
+    ${CAPI_TARGET_INCLUDE_DIRECTORY}
+    ${TFS_TARGET_INCLUDE_DIRECTORY}
+    ${TS_TARGET_INCLUDE_DIRECTORY}
+    ${OPENAI_TARGET_INCLUDE_DIRECTORY}
 )
+
