@@ -79,6 +79,28 @@ class TestCLIArguments:
                 ["--artifact-dir", "test_artifact_dir"],
                 {"artifact_dir": Path("test_artifact_dir")},
             ),
+            (
+                [
+                    "--batch-size",
+                    "5",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--service-kind",
+                    "openai",
+                ],
+                {"batch_size": 5},
+            ),
+            (
+                [
+                    "-b",
+                    "5",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--service-kind",
+                    "openai",
+                ],
+                {"batch_size": 5},
+            ),
             (["--concurrency", "3"], {"concurrency": 3}),
             (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
@@ -471,6 +493,16 @@ class TestCLIArguments:
                     "--output-tokens-mean-deterministic",
                 ],
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--batch-size",
+                    "10",
+                ],
+                "The --batch-size option is currently only supported with the embeddings endpoint type",
             ),
         ],
     )

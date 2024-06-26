@@ -52,7 +52,11 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {
+    "chat": "v1/chat/completions",
+    "completions": "v1/completions",
+    "embeddings": "v1/embeddings",
+}
 
 
 def _check_model_args(
@@ -110,6 +114,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
             elif args.endpoint_type == "completions":
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
+            elif args.endpoint_type == "embeddings":
+                args.output_format = OutputFormat.OPENAI_EMBEDDINGS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -141,7 +147,24 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
+    _check_conditional_args_embeddings(parser, args)
+
     return args
+
+
+def _check_conditional_args_embeddings(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+):
+    if args.endpoint_type == "embeddings":
+        if args.streaming:
+            parser.error(
+                "The --streaming option is not supported with the embeddings endpoint type."
+            )
+    else:
+        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
+            parser.error(
+                "The --batch-size option is currently only supported with the embeddings endpoint type."
+            )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -223,6 +246,16 @@ def _convert_str_to_enum_entry(args, option, enum):
 
 def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
+
+    input_group.add_argument(
+        "--batch-size",
+        "-b",
+        type=int,
+        default=LlmInputs.DEFAULT_BATCH_SIZE,
+        required=False,
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings endpoint type.",
+    )
 
     input_group.add_argument(
         "--extra-inputs",
@@ -404,7 +437,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions"],
+        choices=["chat", "completions", "embeddings"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',

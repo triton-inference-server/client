@@ -394,6 +394,13 @@ URL of the endpoint to target for benchmarking. (default: `None`)
 
 ## Input Options
 
+##### `-b <int>`
+##### `--batch-size <int>`
+
+The batch size of the requests GenAI-Perf should send.
+This is currently only supported with the embeddings endpoint type.
+(default: `1`)
+
 ##### `--extra-inputs <str>`
 
 Provide additional inputs to include with every request. You can repeat this
