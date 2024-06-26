@@ -1390,8 +1390,6 @@ InferenceProfiler::ClampWindow(std::vector<RequestRecord>& requests)
   return std::make_pair(
       earliest_start.time_since_epoch().count(),
       latest_end.time_since_epoch().count());
-  // window_start_ns = earliest_start.time_since_epoch().count();
-  // window_end_ns = latest_end.time_since_epoch().count();
 }
 
 
