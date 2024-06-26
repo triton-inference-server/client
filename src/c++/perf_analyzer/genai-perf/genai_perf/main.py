@@ -78,6 +78,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         add_stream=args.streaming,
         tokenizer=tokenizer,
         extra_inputs=extra_input_dict,
+        batch_size=args.batch_size,
         output_dir=args.artifact_dir,
     )
 

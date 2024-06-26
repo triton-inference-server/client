@@ -234,6 +234,7 @@ class TestJsonExporter:
           "formatted_model_name": "gpt2_vllm",
           "model_selection_strategy": "round_robin",
           "backend": "vllm",
+          "batch_size": 1,
           "endpoint": null,
           "endpoint_type": null,
           "service_kind": "triton",
