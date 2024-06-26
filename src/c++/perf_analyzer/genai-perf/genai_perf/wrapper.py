@@ -64,7 +64,7 @@ class Profiler:
         skip_args = [
             "artifact_dir",
             "backend",
-            "concurrency",
+            "batch_size" "concurrency",
             "endpoint_type",
             "extra_inputs",
             "formatted_model_name",
@@ -93,9 +93,6 @@ class Profiler:
             "subcommand",
             "tokenizer",
         ]
-
-        if args.endpoint_type == "embeddings":
-            skip_args += "batch_size"
 
         utils.remove_file(args.profile_export_file)
 

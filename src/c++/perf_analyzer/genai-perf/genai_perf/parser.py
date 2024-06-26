@@ -160,6 +160,11 @@ def _check_conditional_args_embeddings(
             parser.error(
                 "The --streaming option is not supported with the embeddings endpoint type."
             )
+    else:
+        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
+            parser.error(
+                "The --batch-size option is currently only supported with the embeddings endpoint type. Currently, this is supported for the embeddings endpoint."
+            )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
