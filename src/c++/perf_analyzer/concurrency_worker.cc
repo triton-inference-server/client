@@ -111,7 +111,7 @@ ConcurrencyWorker::HandleExecuteOff()
       // Wait if no request should be sent and it is not exiting
       thread_config_->is_paused_ = true;
       std::unique_lock<std::mutex> lock(wake_mutex_);
-      wake_signal_.wait(lock, [this]() { return early_exit || execute_; });
+      wake_signal_.wait(lock, [this]() { return exiting_ || execute_; });
 
       // TODO REFACTOR TMA-1043 - memory manager should be handling this instead
       // of here
@@ -131,10 +131,10 @@ ConcurrencyWorker::HandleNoConcurrency()
     // Wait if no request should be sent and it is not exiting
     std::unique_lock<std::mutex> lock(wake_mutex_);
     wake_signal_.wait(lock, [this]() {
-      return early_exit || (thread_config_->concurrency_ > 0);
+      return exiting_ || (thread_config_->concurrency_ > 0);
     });
-    // Stop executing if concurrency is 0 and early exit is requested
-    if (early_exit && thread_config_->concurrency_ == 0) {
+    // Stop executing if concurrency is 0 and we are exiting
+    if (exiting_ && thread_config_->concurrency_ == 0) {
       return true;
     }
   }
@@ -181,7 +181,7 @@ ConcurrencyWorker::WaitForResponses()
       std::unique_lock<std::mutex> lk(cb_mtx_);
       thread_stat_->idle_timer.Start();
       cb_cv_.wait(lk, [this] {
-        if (notified_) {
+        if (notified_ || (exiting_ && fast_exit_)) {
           notified_ = false;
           return true;
         }

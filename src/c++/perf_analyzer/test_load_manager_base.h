@@ -66,12 +66,6 @@ class TestLoadManagerBase {
         is_sequence_model, is_decoupled_model);
   }
 
-  ~TestLoadManagerBase()
-  {
-    // Reset early_exit in case any test sets it to true during execution.
-    early_exit = false;
-  }
-
   // Helper function to process custom json data in testing
   // Creates a model tensor to pass to a mock parser which is consumed by the
   // mock data loader

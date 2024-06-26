@@ -34,6 +34,22 @@
 
 namespace triton { namespace perfanalyzer {
 
+void
+LoadWorker::Exit(bool fast_exit)
+{
+  for (auto ctx : ctxs_) {
+    ctx->Exit(fast_exit);
+  }
+
+  fast_exit_ = fast_exit;
+  exiting_ = true;
+
+  {
+    std::lock_guard<std::mutex> lk(cb_mtx_);
+    cb_cv_.notify_all();
+  }
+}
+
 bool
 LoadWorker::ShouldExit()
 {
@@ -44,7 +60,7 @@ LoadWorker::ShouldExit()
       thread_config_->num_requests_ != 0 &&
       thread_stat_->num_sent_requests_ >= thread_config_->num_requests_;
 
-  return early_exit || bad_status || done_with_request_count;
+  return exiting_ || bad_status || done_with_request_count;
 }
 
 bool
@@ -73,7 +89,7 @@ LoadWorker::CompleteOngoingSequences()
 void
 LoadWorker::WaitForOngoingRequests()
 {
-  while (GetNumOngoingRequests() != 0) {
+  while (GetNumOngoingRequests() != 0 && !(exiting_ && fast_exit_)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 }

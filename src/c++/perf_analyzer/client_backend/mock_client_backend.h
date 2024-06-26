@@ -489,6 +489,14 @@ class NaggyMockClientBackend : public ClientBackend {
             });
   }
 
+  ~NaggyMockClientBackend()
+  {
+    // Make sure no requests carry over to the next test
+    while (stats_->num_active_infer_calls) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
   MOCK_METHOD(
       Error, ModelConfig,
       (rapidjson::Document*, const std::string&, const std::string&),
