@@ -163,7 +163,7 @@ def _check_conditional_args_embeddings(
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
             parser.error(
-                "The --batch-size option is currently only supported with the embeddings endpoint type. Currently, this is supported for the embeddings endpoint."
+                "The --batch-size option is currently only supported with the embeddings endpoint type."
             )
 
 
@@ -253,7 +253,8 @@ def _add_input_args(parser):
         type=int,
         default=LlmInputs.DEFAULT_BATCH_SIZE,
         required=False,
-        help=f"The batch size of the requests GenAI-Perf should send",
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings endpoint type.",
     )
 
     input_group.add_argument(
