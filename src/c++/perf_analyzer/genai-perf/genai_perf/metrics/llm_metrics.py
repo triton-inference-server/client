@@ -43,7 +43,8 @@ class LLMMetrics(Metrics):
     ]
 
     LLM_SYSTEM_METRICS = [
-        Metric("output_token_throughput", "tokens/sec"),
+        # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
+        Metric("output_token_throughput", "per sec"),
     ]
 
     def __init__(
@@ -83,9 +84,25 @@ class LLMMetrics(Metrics):
     @property
     def request_metrics(self) -> List[Metric]:
         base_metrics = super().request_metrics  # base metrics
-        return base_metrics + self.LLM_REQUEST_METRICS
+
+        # (TMA-1975) The order is hardcoded as below to avoid introducing any
+        # breaking changes to the users who might be parsing the outputs. However,
+        # we would eventually want to impose some consistent order such as a
+        # base metrics first and then task specific metrics. Uncomment the below
+        # line to enable this order:
+        # return base_metrics + self.LLM_REQUEST_METRICS
+        return (
+            self.LLM_REQUEST_METRICS[:2] + base_metrics + self.LLM_REQUEST_METRICS[2:]
+        )
 
     @property
     def system_metrics(self) -> List[Metric]:
         base_metrics = super().system_metrics  # base metrics
-        return base_metrics + self.LLM_SYSTEM_METRICS
+
+        # (TMA-1975) The order is hardcoded as below to avoid introducing any
+        # breaking changes to the users who might be parsing the outputs. However,
+        # we would eventually want to impose some consistent order such as a
+        # base metrics first and then task specific metrics. Uncomment the below
+        # line to enable this order:
+        # return base_metrics + self.LLM_SYSTEM_METRICS
+        return self.LLM_SYSTEM_METRICS + base_metrics

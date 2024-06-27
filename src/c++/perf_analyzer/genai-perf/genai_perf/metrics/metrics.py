@@ -52,7 +52,8 @@ class Metrics:
     ]
 
     SYSTEM_METRICS = [
-        Metric("request_throughput", "requests/sec"),
+        # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
+        Metric("request_throughput", "per sec"),
     ]
 
     def __init__(

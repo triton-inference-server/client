@@ -25,10 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from typing import List
-
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.metrics import Metrics
 from rich.console import Console
 from rich.table import Table
 
@@ -38,7 +35,7 @@ class ConsoleExporter:
     A class to export the statistics and arg values to the console.
     """
 
-    STAT_COLUMNS = ["avg", "min", "max", "p99", "p90", "p75"]
+    STAT_COLUMN_KEYS = ["avg", "min", "max", "p99", "p90", "p75"]
 
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
@@ -47,14 +44,14 @@ class ConsoleExporter:
 
     def _get_title(self):
         if self._args.endpoint_type == "embeddings":
-            return "Embedding Metrics"
+            return "Embeddings Metrics"
         return "LLM Metrics"
 
     def export(self) -> None:
         table = Table(title=self._get_title())
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        for stat in self.STAT_COLUMNS:
+        for stat in self.STAT_COLUMN_KEYS:
             table.add_column(stat, justify="right", style="green")
 
         # Request metrics table
@@ -78,12 +75,13 @@ class ConsoleExporter:
             metric_str = metric.name.replace("_", " ").capitalize()
             metric_str += f" ({metric.unit})" if metric.unit != "tokens" else ""
             row_values = [metric_str]
-            for stat in self.STAT_COLUMNS:
+            for stat in self.STAT_COLUMN_KEYS:
                 value = self._stats[metric.name][stat]
                 row_values.append(f"{value:,.2f}")
 
             table.add_row(*row_values)
 
+    # (TMA-1976) Refactor this method as the csv exporter shares identical method.
     def _should_skip(self, metric_name: str) -> bool:
         if self._args.endpoint_type == "embeddings":
             return False  # skip nothing

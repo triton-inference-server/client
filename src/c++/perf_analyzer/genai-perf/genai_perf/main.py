@@ -86,11 +86,11 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
     if args.endpoint_type == "embeddings":
         return ProfileDataParser(args.profile_export_file)
-
-    return LLMProfileDataParser(
-        filename=args.profile_export_file,
-        tokenizer=tokenizer,
-    )
+    else:
+        return LLMProfileDataParser(
+            filename=args.profile_export_file,
+            tokenizer=tokenizer,
+        )
 
 
 def report_output(data_parser: ProfileDataParser, args: Namespace) -> None:

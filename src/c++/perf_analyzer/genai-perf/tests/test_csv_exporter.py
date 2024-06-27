@@ -104,15 +104,15 @@ class TestCsvExporter:
 
         expected_content = [
             "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
-            "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
             "Time To First Token (ms),8.00,7.00,9.00,8.98,8.90,8.80,8.50,8.00,7.50\r\n",
             "Inter Token Latency (ms),11.00,10.00,12.00,11.98,11.90,11.80,11.50,11.00,10.50\r\n",
+            "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
             "Output Sequence Length,2.00,1.00,3.00,2.98,2.90,2.80,2.50,2.00,1.50\r\n",
             "Input Sequence Length,6.00,5.00,7.00,6.98,6.90,6.80,6.50,6.00,5.50\r\n",
             "\r\n",
             "Metric,Value\r\n",
-            "Request Throughput (requests/sec),123.00\r\n",
-            "Output Token Throughput (tokens/sec),456.00\r\n",
+            "Output Token Throughput (per sec),456.00\r\n",
+            "Request Throughput (per sec),123.00\r\n",
         ]
         returned_data = mock_read_write
         assert returned_data == expected_content
@@ -163,8 +163,8 @@ class TestCsvExporter:
             "Input Sequence Length,6.00,5.00,7.00,6.98,6.90,6.80,6.50,6.00,5.50\r\n",
             "\r\n",
             "Metric,Value\r\n",
-            "Request Throughput (requests/sec),123.00\r\n",
-            "Output Token Throughput (tokens/sec),456.00\r\n",
+            "Output Token Throughput (per sec),456.00\r\n",
+            "Request Throughput (per sec),123.00\r\n",
         ]
         returned_data = mock_read_write
         assert returned_data == expected_content
@@ -204,7 +204,7 @@ class TestCsvExporter:
             "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
             "\r\n",
             "Metric,Value\r\n",
-            "Request Throughput (requests/sec),123.00\r\n",
+            "Request Throughput (per sec),123.00\r\n",
         ]
         returned_data = mock_read_write
         assert returned_data == expected_content

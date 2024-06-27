@@ -44,11 +44,11 @@ class TestLLMMetrics:
         )
         req_metrics = m.request_metrics
         assert len(req_metrics) == 6
-        assert req_metrics[0].name == "request_latency"
+        assert req_metrics[0].name == "time_to_first_token"
         assert req_metrics[0].unit == "ms"
-        assert req_metrics[1].name == "time_to_first_token"
+        assert req_metrics[1].name == "inter_token_latency"
         assert req_metrics[1].unit == "ms"
-        assert req_metrics[2].name == "inter_token_latency"
+        assert req_metrics[2].name == "request_latency"
         assert req_metrics[2].unit == "ms"
         assert req_metrics[3].name == "output_token_throughput_per_request"
         assert req_metrics[3].unit == "tokens/sec"
@@ -71,10 +71,10 @@ class TestLLMMetrics:
         )
         sys_metrics = m.system_metrics
         assert len(sys_metrics) == 2
-        assert sys_metrics[0].name == "request_throughput"
-        assert sys_metrics[0].unit == "requests/sec"
-        assert sys_metrics[1].name == "output_token_throughput"
-        assert sys_metrics[1].unit == "tokens/sec"
+        assert sys_metrics[0].name == "output_token_throughput"
+        assert sys_metrics[0].unit == "per sec"
+        assert sys_metrics[1].name == "request_throughput"
+        assert sys_metrics[1].unit == "per sec"
 
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
