@@ -29,6 +29,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
@@ -56,6 +57,7 @@ _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
     "embeddings": "v1/embeddings",
+    "rankings": "v1/ranking",
 }
 
 
@@ -116,6 +118,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
             elif args.endpoint_type == "embeddings":
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
+            elif args.endpoint_type == "rankings":
+                args.output_format = OutputFormat.OPENAI_RANKINGS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -147,15 +151,27 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
-    _check_conditional_args_embeddings(parser, args)
+    _check_conditional_args_embeddings_rankings(parser, args)
 
     return args
 
 
-def _check_conditional_args_embeddings(
+def _check_conditional_args_embeddings_rankings(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ):
-    if args.endpoint_type == "embeddings":
+
+    if args.output_format in [
+        OutputFormat.OPENAI_EMBEDDINGS,
+        OutputFormat.OPENAI_RANKINGS,
+    ]:
+        # if args.prompt_source is PromptSource.SYNTHETIC:
+        #     parser.error(
+        #         "A synthetic dataset is not currently supported for embeddings or rankings"
+        #     )
+        # elif args.prompt_source is PromptSource.DATASET:
+        #     parser.error(
+        #         "A custom dataset is not currently supported for embeddings or rankings"
+        #     )
         if args.streaming:
             parser.error(
                 "The --streaming option is not supported with the embeddings endpoint type."
@@ -165,6 +181,19 @@ def _check_conditional_args_embeddings(
             parser.error(
                 "The --batch-size option is currently only supported with the embeddings endpoint type."
             )
+
+    if args.input_file:
+        _, path_type = args.input_file
+        if args.output_format != OutputFormat.OPENAI_RANKINGS:
+            if path_type == "directory":
+                parser.error(
+                    "A directory is only supported for endpoint-type rankings currently."
+                )
+        else:
+            if path_type == "file":
+                parser.error(
+                    "The rankings service kind requires a directory input file currently."
+                )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -224,7 +253,12 @@ def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
         logger.debug(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file:
         args.prompt_source = PromptSource.FILE
-        logger.debug(f"Input source is the following file: {args.input_file.name}")
+        if args.endpoint_type == "rankings":
+            logger.debug(
+                f"Input source is the following directory: {args.input_file[0]}"
+            )
+        else:
+            logger.debug(f"Input source is the following file: {args.input_file[0]}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC
         logger.debug("Input source is synthetic data")
@@ -239,6 +273,18 @@ def _convert_str_to_enum_entry(args, option, enum):
     if attr_val is not None:
         setattr(args, f"{option}", utils.get_enum_entry(attr_val, enum))
     return args
+
+
+### Types ###
+
+
+def file_or_directory(path: str) -> Tuple[Path, str]:
+    if os.path.isfile(path):
+        return (Path(path), "file")
+    elif os.path.isdir(path):
+        return (Path(path), "directory")
+    else:
+        raise ValueError(f"'{path}' is not a valid file or directory")
 
 
 ### Parsers ###
@@ -277,12 +323,13 @@ def _add_input_args(parser):
 
     prompt_source_group.add_argument(
         "--input-file",
-        type=argparse.FileType("r"),
+        type=file_or_directory,
         default=None,
         required=False,
-        help="The input file containing the prompts to use for profiling. "
+        help="The input file or directory containing the prompts to use for profiling. "
         "Each line should be a JSON object with a 'text_input' field in JSONL format. "
-        'Example: {"text_input": "Your prompt here"}',
+        'Example: {"text_input": "Your prompt here"}'
+        "Note: directory is only supported for endpoint-type rankings currently.",
     )
 
     input_group.add_argument(
@@ -437,7 +484,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings"],
+        choices=["chat", "completions", "embeddings", "rankings"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',

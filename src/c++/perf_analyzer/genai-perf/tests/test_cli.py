@@ -111,6 +111,10 @@ class TestCLIArguments:
                 {"endpoint": "v1/chat/completions"},
             ),
             (
+                ["--endpoint-type", "rankings", "--service-kind", "openai"],
+                {"endpoint": "v1/ranking"},
+            ),
+            (
                 [
                     "--endpoint-type",
                     "chat",
@@ -279,7 +283,9 @@ class TestCLIArguments:
         assert captured.out == ""
 
     def test_file_flags_parsed(self, monkeypatch, mocker):
-        mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        _ = mocker.patch("os.path.isfile", return_value=True)
+        _ = mocker.patch("os.path.isdir", return_value=True)
+        # mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
         combined_args = [
             "genai-perf",
             "--model",
@@ -289,9 +295,9 @@ class TestCLIArguments:
         ]
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
-        assert (
-            args.input_file == mocked_open.return_value
-        ), "The file argument should be the mock object"
+        assert args.input_file[0] == Path(
+            "fakefile.txt"
+        ), "The file argument should be the path to the file"
 
     @pytest.mark.parametrize(
         "arg, expected_path",
@@ -303,6 +309,10 @@ class TestCLIArguments:
             (
                 ["--service-kind", "openai", "--endpoint-type", "completions"],
                 "artifacts/test_model-openai-completions-concurrency1",
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint-type", "rankings"],
+                "artifacts/test_model-openai-rankings-concurrency1",
             ),
             (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],
@@ -539,6 +549,10 @@ class TestCLIArguments:
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
+                ["--service-kind", "openai", "--endpoint-type", "rankings"],
+                OutputFormat.OPENAI_RANKINGS,
+            ),
+            (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],
                 OutputFormat.TENSORRTLLM,
             ),
@@ -603,6 +617,8 @@ class TestCLIArguments:
         self, monkeypatch, mocker, args, expected_prompt_source
     ):
         _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        _ = mocker.patch("os.path.isfile", return_value=True)
+        _ = mocker.patch("os.path.isdir", return_value=True)
         combined_args = ["genai-perf", "--model", "test_model"] + args
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
@@ -611,6 +627,8 @@ class TestCLIArguments:
 
     def test_prompt_source_assertions(self, monkeypatch, mocker, capsys):
         _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        _ = mocker.patch("os.path.isfile", return_value=True)
+        _ = mocker.patch("os.path.isdir", return_value=True)
         args = [
             "genai-perf",
             "--model",

@@ -42,6 +42,7 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
+    OPENAI_RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -243,21 +244,39 @@ class LlmInputs:
         Dict:
             The generic dataset JSON
         """
+        if output_format in [
+            OutputFormat.OPENAI_EMBEDDINGS,
+            OutputFormat.OPENAI_RANKINGS,
+        ]:
+            if input_type != PromptSource.FILE:
+                raise GenAIPerfException(
+                    "OpenAI embeddings and rankings only supports file input."
+                )
+
         if output_format == OutputFormat.OPENAI_EMBEDDINGS:
-            if input_type == PromptSource.FILE:
-                input_filename = cast(Path, input_filename)
-                input_file_dataset = cls._get_input_dataset_from_embeddings_file(
-                    input_filename,
-                    batch_size,
-                    num_of_output_prompts,
+            input_filename = cast(Path, input_filename)
+            input_file_dataset = cls._get_input_dataset_from_embeddings_file(
+                input_filename,
+                batch_size,
+                num_of_output_prompts,
+            )
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    input_file_dataset
                 )
-                generic_dataset_json = (
-                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                        input_file_dataset
-                    )
+            )
+        elif output_format == OutputFormat.OPENAI_RANKINGS:
+            queries_filename = cast(Path, input_filename) / "queries.jsonl"
+            passages_filename = cast(Path, input_filename) / "passages.jsonl"
+            input_file_dataset = cls._get_input_dataset_from_rankings_files(
+                queries_filename, passages_filename, batch_size, num_of_output_prompts
+            )
+
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    input_file_dataset
                 )
-            else:
-                raise GenAIPerfException("OpenAI embeddings only supports file input.")
+            )
         else:
             if input_type == PromptSource.DATASET:
                 dataset = cls._get_input_dataset_from_url(
@@ -313,6 +332,42 @@ class LlmInputs:
             sampled_texts = random.sample(texts, batch_size)
             dataset_json["rows"].append({"row": {"payload": {"input": sampled_texts}}})
 
+        return dataset_json
+
+    @classmethod
+    def _get_input_dataset_from_rankings_files(
+        cls,
+        queries_filename: Path,
+        passages_filename: Path,
+        batch_size: int,
+        num_prompts: int,
+    ) -> Dict[str, Any]:
+
+        with open(queries_filename, "r") as file:
+            queries_content = [json.loads(line) for line in file]
+        queries_texts = [item for item in queries_content]
+
+        with open(passages_filename, "r") as file:
+            passages_content = [json.loads(line) for line in file]
+        # passages_texts = [item["text"] for item in passages_content]
+        passages_texts = [item for item in passages_content]
+
+        if batch_size > len(passages_texts):
+            raise ValueError(
+                "Batch size cannot be larger than the number of available passages"
+            )
+
+        dataset_json: Dict[str, Any] = {}
+        dataset_json["features"] = [{"name": "input"}]
+        dataset_json["rows"] = []
+
+        for _ in range(num_prompts):
+            sampled_texts = random.sample(passages_texts, batch_size)
+            query_sample = random.choice(queries_texts)
+            entry_dict = {}
+            entry_dict["query"] = query_sample
+            entry_dict["passages"] = sampled_texts
+            dataset_json["rows"].append({"row": {"payload": entry_dict}})
         return dataset_json
 
     @classmethod
@@ -535,6 +590,13 @@ class LlmInputs:
                 model_name,
                 model_selection_strategy,
             )
+        elif output_format == OutputFormat.OPENAI_RANKINGS:
+            output_json = cls._convert_generic_json_to_openai_rankings_format(
+                generic_dataset,
+                extra_inputs,
+                model_name,
+                model_selection_strategy,
+            )
         elif output_format == OutputFormat.VLLM:
             output_json = cls._convert_generic_json_to_vllm_format(
                 generic_dataset,
@@ -662,6 +724,46 @@ class LlmInputs:
 
             payload = {
                 "input": input_values,
+                "model": iter_model_name,
+            }
+
+            for key, value in extra_inputs.items():
+                payload[key] = value
+
+            pa_json["data"].append({"payload": [payload]})
+
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_openai_rankings_format(
+        cls,
+        generic_dataset: Dict,
+        extra_inputs: Dict,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict[str, Any]:
+        pa_json: Dict[str, Any] = {"data": []}
+
+        for index, entry in enumerate(generic_dataset["rows"]):
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
+            payload = entry.get("payload", {})
+            query_values = payload.get("query")
+            passage_values = payload.get("passages")
+
+            if query_values is None:
+                raise ValueError("Missing required fields 'query' in dataset entry")
+            if passage_values is None:
+                raise ValueError("Missing required fields 'passages' in dataset entry")
+            if not isinstance(passage_values, list):
+                raise ValueError(
+                    f"Required field 'query' must be a list (actual: {type(query_values)})"
+                )
+
+            payload = {
+                "query": query_values,
+                "passages": passage_values,
                 "model": iter_model_name,
             }
 
