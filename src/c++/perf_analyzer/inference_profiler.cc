@@ -1278,7 +1278,7 @@ InferenceProfiler::Summarize(
 
 
   if (clamp_window) {
-    std::tie(window_start_ns, window_end_ns) = ClampWindow(valid_requests);
+    auto [start, end] = ClampWindow(valid_requests);
   }
 
   uint64_t window_duration_ns = window_end_ns - window_start_ns;
