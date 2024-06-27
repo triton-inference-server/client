@@ -504,7 +504,7 @@ class InferenceProfiler {
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
   /// \param clamp_window If true, the actual window range is reduced to the
-  /// start of the first request to the final response
+  /// start of the first request to the final response.
   /// \return cb::Error object indicating success or failure.
   cb::Error Summarize(
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
