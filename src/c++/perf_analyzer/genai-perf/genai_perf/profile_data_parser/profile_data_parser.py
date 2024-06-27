@@ -100,11 +100,11 @@ class ProfileDataParser:
             max_res_timestamp = max(max_res_timestamp, res_timestamps[-1])
 
             # request latencies
-            req_latency_ns = res_timestamps[-1] - req_timestamp
-            request_latencies.append(req_latency_ns)  # nanosec
+            req_latency = res_timestamps[-1] - req_timestamp
+            request_latencies.append(req_latency)
 
         # request throughput
-        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
+        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # to seconds
         request_throughputs = [len(requests) / benchmark_duration]
 
         return Metrics(
