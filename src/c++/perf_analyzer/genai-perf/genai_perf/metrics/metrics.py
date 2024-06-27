@@ -39,21 +39,21 @@ class ResponseFormat(Enum):
 
 
 @dataclass
-class Metric:
+class MetricMetadata:
     name: str
     unit: str
 
 
 class Metrics:
-    """A base class for all the metrics class that contains common metrics."""
+    """A base class that contains common request level metrics."""
 
     REQUEST_METRICS = [
-        Metric("request_latency", "ms"),
+        MetricMetadata("request_latency", "ms"),
     ]
 
     SYSTEM_METRICS = [
         # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
-        Metric("request_throughput", "per sec"),
+        MetricMetadata("request_throughput", "per sec"),
     ]
 
     def __init__(
@@ -76,11 +76,11 @@ class Metrics:
         return f"Metrics({','.join(attr_strs)})"
 
     @property
-    def request_metrics(self) -> List[Metric]:
+    def request_metrics(self) -> List[MetricMetadata]:
         return self.REQUEST_METRICS
 
     @property
-    def system_metrics(self) -> List[Metric]:
+    def system_metrics(self) -> List[MetricMetadata]:
         return self.SYSTEM_METRICS
 
     @property

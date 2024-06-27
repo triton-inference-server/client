@@ -28,23 +28,23 @@
 
 from typing import List
 
-from genai_perf.metrics.metrics import Metric, Metrics
+from genai_perf.metrics.metrics import MetricMetadata, Metrics
 
 
 class LLMMetrics(Metrics):
     """A simple dataclass that holds core LLM performance metrics."""
 
     LLM_REQUEST_METRICS = [
-        Metric("time_to_first_token", "ms"),
-        Metric("inter_token_latency", "ms"),
-        Metric("output_token_throughput_per_request", "tokens/sec"),
-        Metric("output_sequence_length", "tokens"),
-        Metric("input_sequence_length", "tokens"),
+        MetricMetadata("time_to_first_token", "ms"),
+        MetricMetadata("inter_token_latency", "ms"),
+        MetricMetadata("output_token_throughput_per_request", "tokens/sec"),
+        MetricMetadata("output_sequence_length", "tokens"),
+        MetricMetadata("input_sequence_length", "tokens"),
     ]
 
     LLM_SYSTEM_METRICS = [
         # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
-        Metric("output_token_throughput", "per sec"),
+        MetricMetadata("output_token_throughput", "per sec"),
     ]
 
     def __init__(
@@ -82,7 +82,7 @@ class LLMMetrics(Metrics):
         self._base_names["input_sequence_lengths"] = "input_sequence_length"
 
     @property
-    def request_metrics(self) -> List[Metric]:
+    def request_metrics(self) -> List[MetricMetadata]:
         base_metrics = super().request_metrics  # base metrics
 
         # (TMA-1975) The order is hardcoded as below to avoid introducing any
@@ -96,7 +96,7 @@ class LLMMetrics(Metrics):
         )
 
     @property
-    def system_metrics(self) -> List[Metric]:
+    def system_metrics(self) -> List[MetricMetadata]:
         base_metrics = super().system_metrics  # base metrics
 
         # (TMA-1975) The order is hardcoded as below to avoid introducing any
