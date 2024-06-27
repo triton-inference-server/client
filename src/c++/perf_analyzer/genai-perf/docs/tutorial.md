@@ -31,7 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - [Profile GPT2 running on Triton + TensorRT-LLM](#tensorrt-llm)
 - [Profile GPT2 running on Triton + vLLM](#triton-vllm)
 - [Profile GPT2 running on OpenAI Chat Completions API-Compatible Server](#openai-chat)
-- [Profile GPT2 running on OpenAI API-Compatible Server](#openai-chat)
+- [Profile GPT2 running on OpenAI Completions API-Compatible Server](#openai-completions)
 
 ---
 
