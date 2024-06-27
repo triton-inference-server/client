@@ -84,13 +84,16 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 
 
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
-    return LLMProfileDataParser(
-        filename=args.profile_export_file,
-        tokenizer=tokenizer,
-    )
+    if args.endpoint_type == "embeddings":
+        return ProfileDataParser(args.profile_export_file)
+    else:
+        return LLMProfileDataParser(
+            filename=args.profile_export_file,
+            tokenizer=tokenizer,
+        )
 
 
-def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
+def report_output(data_parser: ProfileDataParser, args: Namespace) -> None:
     if args.concurrency:
         infer_mode = "concurrency"
         load_level = f"{args.concurrency}"

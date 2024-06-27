@@ -24,54 +24,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+import pytest
 from genai_perf.metrics import Metrics
 
 
-class ExporterConfig:
-    def __init__(self):
-        self._stats = None
-        self._metrics = None
-        self._args = None
-        self._extra_inputs = None
-        self._artifact_dir = None
+class TestMetrics:
 
-    @property
-    def stats(self):
-        return self._stats
+    def test_metric_request_metrics(self) -> None:
+        """Test request_metrics property."""
+        m = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        req_metrics = m.request_metrics
+        assert len(req_metrics) == 1
+        assert req_metrics[0].name == "request_latency"
+        assert req_metrics[0].unit == "ms"
 
-    @stats.setter
-    def stats(self, stats_value):
-        self._stats = stats_value
+    def test_metric_system_metrics(self) -> None:
+        """Test system_metrics property."""
+        m = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        sys_metrics = m.system_metrics
+        assert len(sys_metrics) == 1
+        assert sys_metrics[0].name == "request_throughput"
+        assert sys_metrics[0].unit == "per sec"
 
-    @property
-    def metrics(self):
-        return self._metrics
-
-    @metrics.setter
-    def metrics(self, metrics: Metrics):
-        self._metrics = metrics
-
-    @property
-    def args(self):
-        return self._args
-
-    @args.setter
-    def args(self, args_value):
-        self._args = args_value
-
-    @property
-    def extra_inputs(self):
-        return self._extra_inputs
-
-    @extra_inputs.setter
-    def extra_inputs(self, extra_inputs_value):
-        self._extra_inputs = extra_inputs_value
-
-    @property
-    def artifact_dir(self):
-        return self._artifact_dir
-
-    @artifact_dir.setter
-    def artifact_dir(self, artifact_dir_value):
-        self._artifact_dir = artifact_dir_value
+    def test_metrics_get_base_name(self) -> None:
+        """Test get_base_name method in Metrics class."""
+        metrics = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        assert metrics.get_base_name("request_throughputs") == "request_throughput"
+        assert metrics.get_base_name("request_latencies") == "request_latency"
+        with pytest.raises(KeyError):
+            metrics.get_base_name("hello1234")

@@ -54,6 +54,7 @@ class OutputReporter:
     def _create_exporter_config(self) -> ExporterConfig:
         config = ExporterConfig()
         config.stats = self.stats.stats_dict
+        config.metrics = self.stats.metrics
         config.args = self.args
         config.artifact_dir = self.args.artifact_dir
         config.extra_inputs = get_extra_inputs_as_dict(self.args)

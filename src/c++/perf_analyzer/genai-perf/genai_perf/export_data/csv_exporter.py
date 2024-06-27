@@ -29,7 +29,6 @@ import csv
 
 import genai_perf.logging as logging
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.metrics import Metrics
 
 DEFAULT_OUTPUT_DATA_CSV = "profile_export_genai_perf.csv"
 
@@ -41,97 +40,80 @@ class CsvExporter:
     A class to export the statistics and arg values in a csv format.
     """
 
+    REQUEST_METRICS_HEADER = [
+        "Metric",
+        "avg",
+        "min",
+        "max",
+        "p99",
+        "p95",
+        "p90",
+        "p75",
+        "p50",
+        "p25",
+    ]
+
+    SYSTEM_METRICS_HEADER = [
+        "Metric",
+        "Value",
+    ]
+
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
+        self._metrics = config.metrics
         self._output_dir = config.artifact_dir
+        self._args = config.args
 
     def export(self) -> None:
         csv_filename = self._output_dir / DEFAULT_OUTPUT_DATA_CSV
         logger.info(f"Generating {csv_filename}")
 
-        multiple_metric_header = [
-            "Metric",
-            "avg",
-            "min",
-            "max",
-            "p99",
-            "p95",
-            "p90",
-            "p75",
-            "p50",
-            "p25",
-        ]
-
-        single_metric_header = [
-            "Metric",
-            "Value",
-        ]
-
         with open(csv_filename, mode="w", newline="") as csvfile:
-            singular_metric_rows = []
-
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(multiple_metric_header)
-
-            for metric in Metrics.metric_labels:
-                formatted_metric = metric.replace("_", " ").title()
-
-                is_throughput_field = metric in Metrics.throughput_fields
-                is_time_field = metric in Metrics.time_fields
-
-                if is_time_field:
-                    formatted_metric += " (ms)"
-                elif is_throughput_field:
-                    formatted_metric += " (per sec)"
-                # TODO (TMA-1712): need to decide if we need this metric. Do not
-                # include in the csv for now.
-                # TODO (TMA-1678): output_token_throughput_per_request is treated
-                # separately since the current code treats all throughput metrics
-                # to be displayed outside of the statistics table.
-                elif metric == "output_token_throughput_per_request":
-                    formatted_metric += " (per sec)"
-                    continue
-
-                row_values = [formatted_metric]
-
-                if is_throughput_field:
-                    value = self._stats.get(f"{metric}", -1).get(
-                        multiple_metric_header[1], -1
-                    )
-                    row_values.append(f"{value:.2f}")
-                    singular_metric_rows.append(row_values)
-                    continue
-
-                for stat in multiple_metric_header[1:]:
-                    value = self._stats.get(f"{metric}", -1)
-                    # Need to check for -1 for the non streaming case
-                    if value == -1:
-                        row_values.append(f"{value:,.2f}")
-                    else:
-                        value = value.get(stat, -1)
-                        row_values.append(f"{value:,.2f}")
-
-                # Without streaming, there is no inter-token latency available, so do not print it.
-                if metric == "inter_token_latency":
-                    if all(value == "-1" for value in row_values[1:]):
-                        continue
-                # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-                elif metric == "time_to_first_token":
-                    unique_values = False
-                    for stat in multiple_metric_header[1:]:
-                        value_ttft = self._stats.get(f"{metric}", -1).get(stat, -1)
-                        value_req_latency = self._stats.get("request_latency", -1).get(
-                            stat, -1
-                        )
-                        if value_ttft != value_req_latency:
-                            unique_values = True
-                            break
-                    if not unique_values:
-                        continue
-
-                csv_writer.writerow(row_values)
-
+            self._write_request_metrics(csv_writer)
             csv_writer.writerow([])
-            csv_writer.writerow(single_metric_header)
-            for row in singular_metric_rows:
-                csv_writer.writerow(row)
+            self._write_system_metrics(csv_writer)
+
+    def _write_request_metrics(self, csv_writer) -> None:
+        csv_writer.writerow(self.REQUEST_METRICS_HEADER)
+        for metric in self._metrics.request_metrics:
+            if self._should_skip(metric.name):
+                continue
+
+            metric_str = metric.name.replace("_", " ").title()
+            metric_str += f" ({metric.unit})" if metric.unit != "tokens" else ""
+            row_values = [metric_str]
+            for stat in self.REQUEST_METRICS_HEADER[1:]:
+                value = self._stats[metric.name][stat]
+                row_values.append(f"{value:,.2f}")
+
+            csv_writer.writerow(row_values)
+
+    def _write_system_metrics(self, csv_writer) -> None:
+        csv_writer.writerow(self.SYSTEM_METRICS_HEADER)
+        for metric in self._metrics.system_metrics:
+            metric_str = metric.name.replace("_", " ").title()
+            metric_str += f" ({metric.unit})"
+            value = self._stats[metric.name]["avg"]
+            csv_writer.writerow([metric_str, f"{value:.2f}"])
+
+    def _should_skip(self, metric_name: str) -> bool:
+        if self._args.endpoint_type == "embeddings":
+            return False  # skip nothing
+
+        # TODO (TMA-1712): need to decide if we need this metric. Remove
+        # from statistics display for now.
+        # TODO (TMA-1678): output_token_throughput_per_request is treated
+        # separately since the current code treats all throughput metrics to
+        # be displayed outside of the statistics table.
+        if metric_name == "output_token_throughput_per_request":
+            return True
+
+        # When non-streaming, skip ITL and TTFT
+        streaming_metrics = [
+            "inter_token_latency",
+            "time_to_first_token",
+        ]
+        if not self._args.streaming and metric_name in streaming_metrics:
+            return True
+        return False

@@ -50,6 +50,8 @@ class ProfileDataParser:
                 self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+            elif data["endpoint"] == "v1/embeddings":
+                self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
             else:
                 # TPA-66: add PA metadata to handle this case
                 # When endpoint field is either empty or custom endpoint, fall
@@ -60,6 +62,8 @@ class ProfileDataParser:
                     self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
                 elif "text_completion" in response:
                     self._response_format = ResponseFormat.OPENAI_COMPLETIONS
+                elif "embedding" in response:
+                    self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 
@@ -84,7 +88,29 @@ class ProfileDataParser:
 
     def _parse_requests(self, requests: dict) -> Metrics:
         """Parse each request in profile data to extract core metrics."""
-        raise NotImplementedError
+        min_req_timestamp, max_res_timestamp = float("inf"), 0
+        request_latencies = []
+
+        for request in requests:
+            req_timestamp = request["timestamp"]
+            res_timestamps = request["response_timestamps"]
+
+            # track entire benchmark duration
+            min_req_timestamp = min(min_req_timestamp, req_timestamp)
+            max_res_timestamp = max(max_res_timestamp, res_timestamps[-1])
+
+            # request latencies
+            req_latency = res_timestamps[-1] - req_timestamp
+            request_latencies.append(req_latency)
+
+        # request throughput
+        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # to seconds
+        request_throughputs = [len(requests) / benchmark_duration]
+
+        return Metrics(
+            request_throughputs,
+            request_latencies,
+        )
 
     def get_statistics(self, infer_mode: str, load_level: str) -> Statistics:
         """Return profile statistics if it exists."""

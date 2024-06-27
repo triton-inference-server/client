@@ -28,11 +28,24 @@
 
 from typing import List
 
-from genai_perf.metrics.metrics import Metrics
+from genai_perf.metrics.metrics import MetricMetadata, Metrics
 
 
 class LLMMetrics(Metrics):
     """A simple dataclass that holds core LLM performance metrics."""
+
+    LLM_REQUEST_METRICS = [
+        MetricMetadata("time_to_first_token", "ms"),
+        MetricMetadata("inter_token_latency", "ms"),
+        MetricMetadata("output_token_throughput_per_request", "tokens/sec"),
+        MetricMetadata("output_sequence_length", "tokens"),
+        MetricMetadata("input_sequence_length", "tokens"),
+    ]
+
+    LLM_SYSTEM_METRICS = [
+        # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
+        MetricMetadata("output_token_throughput", "per sec"),
+    ]
 
     def __init__(
         self,
@@ -67,3 +80,29 @@ class LLMMetrics(Metrics):
         )
         self._base_names["output_sequence_lengths"] = "output_sequence_length"
         self._base_names["input_sequence_lengths"] = "input_sequence_length"
+
+    @property
+    def request_metrics(self) -> List[MetricMetadata]:
+        base_metrics = super().request_metrics  # base metrics
+
+        # (TMA-1975) The order is hardcoded as below to avoid introducing any
+        # breaking changes to the users who might be parsing the outputs. However,
+        # we would eventually want to impose some consistent order such as a
+        # base metrics first and then task specific metrics. Uncomment the below
+        # line to enable this order:
+        # return base_metrics + self.LLM_REQUEST_METRICS
+        return (
+            self.LLM_REQUEST_METRICS[:2] + base_metrics + self.LLM_REQUEST_METRICS[2:]
+        )
+
+    @property
+    def system_metrics(self) -> List[MetricMetadata]:
+        base_metrics = super().system_metrics  # base metrics
+
+        # (TMA-1975) The order is hardcoded as below to avoid introducing any
+        # breaking changes to the users who might be parsing the outputs. However,
+        # we would eventually want to impose some consistent order such as a
+        # base metrics first and then task specific metrics. Uncomment the below
+        # line to enable this order:
+        # return base_metrics + self.LLM_SYSTEM_METRICS
+        return self.LLM_SYSTEM_METRICS + base_metrics
