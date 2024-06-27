@@ -668,7 +668,7 @@ class TestLLMProfileDataParser:
                     {
                         "timestamp": 1,
                         "request_inputs": {
-                            "payload": '{"messages":[{"role":"user","content":"This is test"}],"stream":true}',
+                            "payload": '{"messages":[{"role":"user","content":[{"type":"text","text":"This is test"}]}],"stream":true}',
                         },
                         # the first, and the last two responses will be ignored because they have no "content"
                         "response_timestamps": [3, 5, 8, 12, 13, 14],

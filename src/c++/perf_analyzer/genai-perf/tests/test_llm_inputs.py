@@ -539,7 +539,10 @@ class TestLlmInputs:
                         item[input_name] == input_value
                     ), f"The value of {input_name} is incorrect"
                     if output_format == OutputFormat.OPENAI_VISION:
-                        assert "<img src" in item["messages"][-1]["content"], item
+                        assert any(
+                            isinstance(c, dict) and c["type"] == "image_url"
+                            for c in item["messages"][-1]["content"]
+                        )
         elif (
             output_format == OutputFormat.TENSORRTLLM
             or output_format == OutputFormat.VLLM

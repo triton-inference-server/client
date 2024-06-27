@@ -382,13 +382,21 @@ class LlmInputs:
     def _add_vision_input(
         cls, generic_dataset_json: Dict[str, List[Dict]], vision_filename: Path
     ) -> Dict[str, List[Dict]]:
+        img_base64 = encode_image(vision_filename)
         for row in generic_dataset_json["rows"]:
-            img_base64 = encode_image(vision_filename)
-            row["text_input"] += (
-                "\n"
-                "What two words from the text above describes the image the best?"
-                " Explain your choice.\n"
-                f'<img src="data:image/png;base64,{img_base64}"/>'
+            if isinstance(row["text_input"], str):
+                row["text_input"] = [
+                    dict(
+                        type="text",
+                        text=row["text_input"],
+                    )
+                ]
+
+            row["text_input"].append(
+                dict(
+                    type="image_url",
+                    image_url=f"data:image/jpeg;base64,{img_base64}",
+                )
             )
 
         return generic_dataset_json
