@@ -529,7 +529,7 @@ class InferenceProfiler {
 
   /// Clamp a window around a set of requests, from the earliest start time to
   /// the latest response
-  /// \param requests A vector of requests to clamp the window around
+  /// \param requests A vector of requests to clamp the window around.
   /// \return std::pair object containing <start, end> of the window
   std::pair<uint64_t, uint64_t> ClampWindow(
       std::vector<RequestRecord>& requests);
