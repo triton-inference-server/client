@@ -99,7 +99,7 @@ class CsvExporter:
             csv_writer.writerow([metric_str, f"{value:.2f}"])
 
     def _should_skip(self, metric_name: str) -> bool:
-        if self._args.endpoint_type in ["embeddings", "ranking"]:
+        if self._args.endpoint_type == "embeddings":
             return False  # skip nothing
 
         # TODO (TMA-1712): need to decide if we need this metric. Remove

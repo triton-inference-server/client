@@ -161,7 +161,7 @@ class Statistics:
         return attr in [m.name for m in metrics.system_metrics]
 
     def _is_time_metric(self, field: str) -> bool:
-        # TMA-?: Remove the hardcoded time metrics list
+        # TPA-188: Remove the hardcoded time metrics list
         time_metrics = [
             "inter_token_latency",
             "time_to_first_token",
