@@ -158,8 +158,7 @@ class Statistics:
         return self._stats_dict
 
     def _is_system_metric(self, metrics: Metrics, attr: str) -> bool:
-        system_metrics = [m for m, _ in metrics.system_metric_names]
-        return attr in system_metrics
+        return attr in [m.name for m in metrics.system_metrics]
 
     def _is_time_metric(self, field: str) -> bool:
         # TMA-?: Remove the hardcoded time metrics list

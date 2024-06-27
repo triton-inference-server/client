@@ -26,24 +26,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import List, Tuple
+from typing import List
 
-from genai_perf.metrics.metrics import Metrics
+from genai_perf.metrics.metrics import Metric, Metrics
 
 
 class LLMMetrics(Metrics):
     """A simple dataclass that holds core LLM performance metrics."""
 
     LLM_REQUEST_METRICS = [
-        ("time_to_first_token", "ms"),
-        ("inter_token_latency", "ms"),
-        ("output_token_throughput_per_request", "tokens/sec"),
-        ("output_sequence_length", "tokens"),
-        ("input_sequence_length", "tokens"),
+        Metric("time_to_first_token", "ms"),
+        Metric("inter_token_latency", "ms"),
+        Metric("output_token_throughput_per_request", "tokens/sec"),
+        Metric("output_sequence_length", "tokens"),
+        Metric("input_sequence_length", "tokens"),
     ]
 
     LLM_SYSTEM_METRICS = [
-        ("output_token_throughput", "tokens/sec"),
+        Metric("output_token_throughput", "tokens/sec"),
     ]
 
     def __init__(
@@ -81,15 +81,11 @@ class LLMMetrics(Metrics):
         self._base_names["input_sequence_lengths"] = "input_sequence_length"
 
     @property
-    def metric_names(self) -> List[Tuple[str, str]]:
-        return self.request_metric_names + self.system_metric_names
-
-    @property
-    def request_metric_names(self) -> List[Tuple[str, str]]:
-        base_metrics = super().request_metric_names  # base Metrics
+    def request_metrics(self) -> List[Metric]:
+        base_metrics = super().request_metrics  # base metrics
         return base_metrics + self.LLM_REQUEST_METRICS
 
     @property
-    def system_metric_names(self) -> List[Tuple[str, str]]:
-        base_metrics = super().system_metric_names  # base Metrics
+    def system_metrics(self) -> List[Metric]:
+        base_metrics = super().system_metrics  # base metrics
         return base_metrics + self.LLM_SYSTEM_METRICS

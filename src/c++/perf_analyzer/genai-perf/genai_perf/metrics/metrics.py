@@ -26,8 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Tuple
+from typing import List
 
 
 class ResponseFormat(Enum):
@@ -37,15 +38,21 @@ class ResponseFormat(Enum):
     TRITON = auto()
 
 
+@dataclass
+class Metric:
+    name: str
+    unit: str
+
+
 class Metrics:
     """A base class for all the metrics class that contains common metrics."""
 
     REQUEST_METRICS = [
-        ("request_latency", "ms"),
+        Metric("request_latency", "ms"),
     ]
 
     SYSTEM_METRICS = [
-        ("request_throughput", "requests/sec"),
+        Metric("request_throughput", "requests/sec"),
     ]
 
     def __init__(
@@ -68,15 +75,11 @@ class Metrics:
         return f"Metrics({','.join(attr_strs)})"
 
     @property
-    def metric_names(self) -> List[Tuple[str, str]]:
-        return self.request_metric_names + self.system_metric_names
-
-    @property
-    def request_metric_names(self) -> List[Tuple[str, str]]:
+    def request_metrics(self) -> List[Metric]:
         return self.REQUEST_METRICS
 
     @property
-    def system_metric_names(self) -> List[Tuple[str, str]]:
+    def system_metrics(self) -> List[Metric]:
         return self.SYSTEM_METRICS
 
     @property

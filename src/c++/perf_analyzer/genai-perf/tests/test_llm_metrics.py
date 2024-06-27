@@ -30,6 +30,52 @@ from genai_perf.metrics import LLMMetrics
 
 class TestLLMMetrics:
 
+    def test_llm_metric_request_metrics(self) -> None:
+        """Test request_metrics property."""
+        m = LLMMetrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+            time_to_first_tokens=[1, 2, 3],
+            inter_token_latencies=[4, 5],
+            output_token_throughputs=[22.13, 9423.02],
+            output_token_throughputs_per_request=[7, 8, 9],
+            output_sequence_lengths=[3, 4],
+            input_sequence_lengths=[12, 34],
+        )
+        req_metrics = m.request_metrics
+        assert len(req_metrics) == 6
+        assert req_metrics[0].name == "request_latency"
+        assert req_metrics[0].unit == "ms"
+        assert req_metrics[1].name == "time_to_first_token"
+        assert req_metrics[1].unit == "ms"
+        assert req_metrics[2].name == "inter_token_latency"
+        assert req_metrics[2].unit == "ms"
+        assert req_metrics[3].name == "output_token_throughput_per_request"
+        assert req_metrics[3].unit == "tokens/sec"
+        assert req_metrics[4].name == "output_sequence_length"
+        assert req_metrics[4].unit == "tokens"
+        assert req_metrics[5].name == "input_sequence_length"
+        assert req_metrics[5].unit == "tokens"
+
+    def test_llm_metric_system_metrics(self) -> None:
+        """Test system_metrics property."""
+        m = LLMMetrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+            time_to_first_tokens=[1, 2, 3],
+            inter_token_latencies=[4, 5],
+            output_token_throughputs=[22.13, 9423.02],
+            output_token_throughputs_per_request=[7, 8, 9],
+            output_sequence_lengths=[3, 4],
+            input_sequence_lengths=[12, 34],
+        )
+        sys_metrics = m.system_metrics
+        assert len(sys_metrics) == 2
+        assert sys_metrics[0].name == "request_throughput"
+        assert sys_metrics[0].unit == "requests/sec"
+        assert sys_metrics[1].name == "output_token_throughput"
+        assert sys_metrics[1].unit == "tokens/sec"
+
     def test_llm_metrics_get_base_name(self) -> None:
         """Test get_base_name method in LLMMetrics class."""
         # initialize with dummy values

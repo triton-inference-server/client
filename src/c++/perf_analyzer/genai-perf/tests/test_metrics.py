@@ -24,6 +24,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from genai_perf.metrics.llm_metrics import LLMMetrics
-from genai_perf.metrics.metrics import Metric, Metrics, ResponseFormat
-from genai_perf.metrics.statistics import Statistics
+import pytest
+from genai_perf.metrics import Metrics
+
+
+class TestMetrics:
+
+    def test_metric_request_metrics(self) -> None:
+        """Test request_metrics property."""
+        m = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        req_metrics = m.request_metrics
+        assert len(req_metrics) == 1
+        assert req_metrics[0].name == "request_latency"
+        assert req_metrics[0].unit == "ms"
+
+    def test_metric_system_metrics(self) -> None:
+        """Test system_metrics property."""
+        m = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        sys_metrics = m.system_metrics
+        assert len(sys_metrics) == 1
+        assert sys_metrics[0].name == "request_throughput"
+        assert sys_metrics[0].unit == "requests/sec"
+
+    def test_metrics_get_base_name(self) -> None:
+        """Test get_base_name method in Metrics class."""
+        metrics = Metrics(
+            request_throughputs=[10.12, 11.33],
+            request_latencies=[3, 44],
+        )
+        assert metrics.get_base_name("request_throughputs") == "request_throughput"
+        assert metrics.get_base_name("request_latencies") == "request_latency"
+        with pytest.raises(KeyError):
+            metrics.get_base_name("hello1234")

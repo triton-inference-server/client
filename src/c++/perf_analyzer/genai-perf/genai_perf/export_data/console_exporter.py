@@ -64,27 +64,27 @@ class ConsoleExporter:
         console.print(table)
 
         # System metrics are printed after the table
-        for metric, unit in self._metrics.system_metric_names:
-            formatted_metric = metric.replace("_", " ").capitalize()
-            value = self._stats[metric]["avg"]
-            formatted_metric += f" ({unit}): {value:.2f}"
-            print(formatted_metric)
+        for metric in self._metrics.system_metrics:
+            line = metric.name.replace("_", " ").capitalize()
+            value = self._stats[metric.name]["avg"]
+            line += f" ({metric.unit}): {value:.2f}"
+            print(line)
 
     def _construct_table(self, table: Table) -> None:
-        for metric, unit in self._metrics.request_metric_names:
-            if self._should_skip(metric):
+        for metric in self._metrics.request_metrics:
+            if self._should_skip(metric.name):
                 continue
 
-            formatted_metric = metric.replace("_", " ").capitalize()
-            formatted_metric += f" ({unit})" if unit != "tokens" else ""
-            row_values = [formatted_metric]
+            metric_str = metric.name.replace("_", " ").capitalize()
+            metric_str += f" ({metric.unit})" if metric.unit != "tokens" else ""
+            row_values = [metric_str]
             for stat in self.STAT_COLUMNS:
-                value = self._stats[metric][stat]
+                value = self._stats[metric.name][stat]
                 row_values.append(f"{value:,.2f}")
 
             table.add_row(*row_values)
 
-    def _should_skip(self, metric: str) -> bool:
+    def _should_skip(self, metric_name: str) -> bool:
         if self._args.endpoint_type in ["embeddings", "ranking"]:
             return False  # skip nothing
 
@@ -93,7 +93,7 @@ class ConsoleExporter:
         # TODO (TMA-1678): output_token_throughput_per_request is treated
         # separately since the current code treats all throughput metrics to
         # be displayed outside of the statistics table.
-        if metric == "output_token_throughput_per_request":
+        if metric_name == "output_token_throughput_per_request":
             return True
 
         # When non-streaming, skip ITL and TTFT
@@ -101,6 +101,6 @@ class ConsoleExporter:
             "inter_token_latency",
             "time_to_first_token",
         ]
-        if not self._args.streaming and metric in streaming_metrics:
+        if not self._args.streaming and metric_name in streaming_metrics:
             return True
         return False
