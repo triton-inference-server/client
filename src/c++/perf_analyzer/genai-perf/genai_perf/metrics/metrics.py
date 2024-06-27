@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List
 
@@ -33,35 +34,26 @@ from typing import List
 class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
     TRITON = auto()
 
 
+@dataclass
+class MetricMetadata:
+    name: str
+    unit: str
+
+
 class Metrics:
-    """A base class for all the metrics class that contains common metrics."""
+    """A base class that contains common request level metrics."""
 
-    metric_labels = [
-        "time_to_first_token",
-        "inter_token_latency",
-        "request_latency",
-        "output_token_throughput",
-        "output_token_throughput_per_request",
-        "request_throughput",
-        "output_sequence_length",
-        "input_sequence_length",
+    REQUEST_METRICS = [
+        MetricMetadata("request_latency", "ms"),
     ]
 
-    time_fields = [
-        "inter_token_latency",
-        "time_to_first_token",
-        "request_latency",
-    ]
-
-    # TODO (TMA-1678): output_token_throughput_per_request is not on this list
-    # since the current code treats all the throughput metrics to be displayed
-    # outside of the statistics table.
-    throughput_fields = [
-        "request_throughput",
-        "output_token_throughput",
+    SYSTEM_METRICS = [
+        # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
+        MetricMetadata("request_throughput", "per sec"),
     ]
 
     def __init__(
@@ -82,6 +74,14 @@ class Metrics:
             if not k.startswith("_"):
                 attr_strs.append(f"{k}={v}")
         return f"Metrics({','.join(attr_strs)})"
+
+    @property
+    def request_metrics(self) -> List[MetricMetadata]:
+        return self.REQUEST_METRICS
+
+    @property
+    def system_metrics(self) -> List[MetricMetadata]:
+        return self.SYSTEM_METRICS
 
     @property
     def data(self) -> dict:

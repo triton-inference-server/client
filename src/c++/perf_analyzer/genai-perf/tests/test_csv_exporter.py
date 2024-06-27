@@ -24,16 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
 from io import StringIO
 from pathlib import Path
 from typing import Any, List
 
 import pytest
+from genai_perf import parser
 from genai_perf.export_data.csv_exporter import CsvExporter
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.profile_data_parser import LLMProfileDataParser
-from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
+from genai_perf.metrics import LLMMetrics, Metrics, Statistics
 
 
 class TestCsvExporter:
@@ -52,10 +51,7 @@ class TestCsvExporter:
                 written_data.append(content)
                 return len(content)
 
-            if str(filename) == "triton_profile_export.json":
-                tmp_file = StringIO(json.dumps(triton_profile_data))
-                return tmp_file
-            elif str(filename) == "profile_export_genai_perf.csv":
+            if str(filename) == "profile_export_genai_perf.csv":
                 tmp_file = StringIO()
                 tmp_file.write = write.__get__(tmp_file)
                 return tmp_file
@@ -66,102 +62,149 @@ class TestCsvExporter:
 
         return written_data
 
-    def test_csv_output(self, mock_read_write: pytest.MonkeyPatch) -> None:
+    def test_streaming_llm_csv_output(
+        self, monkeypatch, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
         """
         Collect LLM metrics from profile export data and confirm correct values are
         printed in csv.
         """
-
-        tokenizer = get_tokenizer(DEFAULT_TOKENIZER)
-        pd = LLMProfileDataParser(
-            filename=Path("triton_profile_export.json"),
-            tokenizer=tokenizer,
-        )
-        stat = pd.get_statistics(infer_mode="concurrency", load_level="10")
-
-        expected_content = [
-            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
-            "Time To First Token (ms),2.00,2.00,2.00,2.00,2.00,2.00,2.00,2.00,2.00\r\n",
-            "Inter Token Latency (ms),1.50,1.00,2.00,1.99,1.95,1.90,1.75,1.50,1.25\r\n",
-            "Request Latency (ms),8.00,7.00,9.00,8.98,8.90,8.80,8.50,8.00,7.50\r\n",
-            "Output Sequence Length,4.50,3.00,6.00,5.97,5.85,5.70,5.25,4.50,3.75\r\n",
-            "Input Sequence Length,3.50,3.00,4.00,3.99,3.95,3.90,3.75,3.50,3.25\r\n",
-            "\r\n",
-            "Metric,Value\r\n",
-            "Output Token Throughput (per sec),900000000.00\r\n",
-            "Request Throughput (per sec),200000000.00\r\n",
+        argv = [
+            "genai-perf",
+            "-m",
+            "model_name",
+            "--service-kind",
+            "openai",
+            "--endpoint-type",
+            "chat",
+            "--streaming",
         ]
+        monkeypatch.setattr("sys.argv", argv)
+        args, _ = parser.parse_args()
+
+        metrics = LLMMetrics(
+            request_throughputs=[123],
+            request_latencies=[4, 5, 6],
+            time_to_first_tokens=[7, 8, 9],
+            inter_token_latencies=[10, 11, 12],
+            output_token_throughputs=[456],
+            output_sequence_lengths=[1, 2, 3],
+            input_sequence_lengths=[5, 6, 7],
+        )
+        stats = Statistics(metrics=metrics)
+
         config = ExporterConfig()
-        config.stats = stat.stats_dict
+        config.stats = stats.stats_dict
+        config.metrics = stats.metrics
         config.artifact_dir = Path(".")
+        config.args = args
+
         exporter = CsvExporter(config)
         exporter.export()
 
+        expected_content = [
+            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
+            "Time To First Token (ms),8.00,7.00,9.00,8.98,8.90,8.80,8.50,8.00,7.50\r\n",
+            "Inter Token Latency (ms),11.00,10.00,12.00,11.98,11.90,11.80,11.50,11.00,10.50\r\n",
+            "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
+            "Output Sequence Length,2.00,1.00,3.00,2.98,2.90,2.80,2.50,2.00,1.50\r\n",
+            "Input Sequence Length,6.00,5.00,7.00,6.98,6.90,6.80,6.50,6.00,5.50\r\n",
+            "\r\n",
+            "Metric,Value\r\n",
+            "Output Token Throughput (per sec),456.00\r\n",
+            "Request Throughput (per sec),123.00\r\n",
+        ]
         returned_data = mock_read_write
-
         assert returned_data == expected_content
 
+    def test_nonstreaming_llm_csv_output(
+        self, monkeypatch, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
+        """
+        Collect LLM metrics from profile export data and confirm correct values are
+        printed in csv.
+        """
+        argv = [
+            "genai-perf",
+            "-m",
+            "model_name",
+            "--service-kind",
+            "openai",
+            "--endpoint-type",
+            "chat",
+        ]
+        monkeypatch.setattr("sys.argv", argv)
+        args, _ = parser.parse_args()
 
-triton_profile_data = {
-    "service_kind": "triton",
-    "endpoint": "",
-    "experiments": [
-        {
-            "experiment": {
-                "mode": "concurrency",
-                "value": 10,
-            },
-            "requests": [
-                {
-                    "timestamp": 1,
-                    "request_inputs": {"text_input": "This is test"},
-                    "response_timestamps": [3, 5, 8],
-                    "response_outputs": [
-                        {"text_output": "I"},
-                        {"text_output": " like"},
-                        {"text_output": " dogs"},
-                    ],
-                },
-                {
-                    "timestamp": 2,
-                    "request_inputs": {"text_input": "This is test too"},
-                    "response_timestamps": [4, 7, 11],
-                    "response_outputs": [
-                        {"text_output": "I"},
-                        {"text_output": " don't"},
-                        {"text_output": " cook food"},
-                    ],
-                },
-            ],
-        },
-        {
-            "experiment": {
-                "mode": "request_rate",
-                "value": 2.0,
-            },
-            "requests": [
-                {
-                    "timestamp": 5,
-                    "request_inputs": {"text_input": "This is test"},
-                    "response_timestamps": [7, 8, 13, 18],
-                    "response_outputs": [
-                        {"text_output": "cat"},
-                        {"text_output": " is"},
-                        {"text_output": " cool"},
-                        {"text_output": " too"},
-                    ],
-                },
-                {
-                    "timestamp": 3,
-                    "request_inputs": {"text_input": "This is test too"},
-                    "response_timestamps": [6, 8, 11],
-                    "response_outputs": [
-                        {"text_output": "it's"},
-                        {"text_output": " very"},
-                        {"text_output": " simple work"},
-                    ],
-                },
-            ],
-        },
-    ],
-}
+        metrics = LLMMetrics(
+            request_throughputs=[123],
+            request_latencies=[4, 5, 6],
+            time_to_first_tokens=[4, 5, 6],  # same as request_latency
+            inter_token_latencies=[],  # no ITL
+            output_token_throughputs=[456],
+            output_sequence_lengths=[1, 2, 3],
+            input_sequence_lengths=[5, 6, 7],
+        )
+        stats = Statistics(metrics=metrics)
+
+        config = ExporterConfig()
+        config.stats = stats.stats_dict
+        config.metrics = stats.metrics
+        config.artifact_dir = Path(".")
+        config.args = args
+
+        exporter = CsvExporter(config)
+        exporter.export()
+
+        expected_content = [
+            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
+            "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
+            "Output Sequence Length,2.00,1.00,3.00,2.98,2.90,2.80,2.50,2.00,1.50\r\n",
+            "Input Sequence Length,6.00,5.00,7.00,6.98,6.90,6.80,6.50,6.00,5.50\r\n",
+            "\r\n",
+            "Metric,Value\r\n",
+            "Output Token Throughput (per sec),456.00\r\n",
+            "Request Throughput (per sec),123.00\r\n",
+        ]
+        returned_data = mock_read_write
+        assert returned_data == expected_content
+
+    def test_embedding_csv_output(
+        self, monkeypatch, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
+        argv = [
+            "genai-perf",
+            "-m",
+            "model_name",
+            "--service-kind",
+            "openai",
+            "--endpoint-type",
+            "embeddings",
+        ]
+        monkeypatch.setattr("sys.argv", argv)
+        args, _ = parser.parse_args()
+
+        metrics = Metrics(
+            request_throughputs=[123],
+            request_latencies=[4, 5, 6],
+        )
+        stats = Statistics(metrics=metrics)
+
+        config = ExporterConfig()
+        config.stats = stats.stats_dict
+        config.metrics = stats.metrics
+        config.artifact_dir = Path(".")
+        config.args = args
+
+        exporter = CsvExporter(config)
+        exporter.export()
+
+        expected_content = [
+            "Metric,avg,min,max,p99,p95,p90,p75,p50,p25\r\n",
+            "Request Latency (ms),5.00,4.00,6.00,5.98,5.90,5.80,5.50,5.00,4.50\r\n",
+            "\r\n",
+            "Metric,Value\r\n",
+            "Request Throughput (per sec),123.00\r\n",
+        ]
+        returned_data = mock_read_write
+        assert returned_data == expected_content
