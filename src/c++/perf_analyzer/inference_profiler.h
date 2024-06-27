@@ -482,7 +482,7 @@ class InferenceProfiler {
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
-  /// \param config The configuration for measurement
+  /// \param config The configuration for measurement.
   /// \return cb::Error object indicating success or failure.
   cb::Error Measure(PerfStatus& status_summary, MeasureConfig config);
 
