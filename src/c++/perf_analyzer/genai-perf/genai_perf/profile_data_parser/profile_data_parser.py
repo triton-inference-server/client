@@ -26,11 +26,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from enum import Enum, auto
 from pathlib import Path
 from typing import List, Tuple
 
-from genai_perf.metrics import Metrics, ResponseFormat, Statistics
+from genai_perf.metrics import Metrics, Statistics
 from genai_perf.utils import load_json
+
+
+class ResponseFormat(Enum):
+    OPENAI_CHAT_COMPLETIONS = auto()
+    OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
+    OPENAI_RANKINGS = auto()
+    TRITON = auto()
 
 
 class ProfileDataParser:
@@ -52,6 +61,8 @@ class ProfileDataParser:
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
             elif data["endpoint"] == "v1/embeddings":
                 self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
+            elif data["endpoint"] == "v1/ranking":
+                self._response_format = ResponseFormat.OPENAI_RANKINGS
             else:
                 # TPA-66: add PA metadata to handle this case
                 # When endpoint field is either empty or custom endpoint, fall
@@ -64,6 +75,8 @@ class ProfileDataParser:
                     self._response_format = ResponseFormat.OPENAI_COMPLETIONS
                 elif "embedding" in response:
                     self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
+                elif "ranking" in response:
+                    self._response_format = ResponseFormat.OPENAI_RANKINGS
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 

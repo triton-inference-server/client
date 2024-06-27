@@ -84,7 +84,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 
 
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
-    if args.endpoint_type == "embeddings":
+    if args.endpoint_type in ["embeddings", "rankings"]:
         return ProfileDataParser(args.profile_export_file)
     else:
         return LLMProfileDataParser(
