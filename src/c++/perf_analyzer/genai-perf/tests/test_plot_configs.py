@@ -29,6 +29,7 @@ from pathlib import Path
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.plots.plot_config import PlotType
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 
@@ -73,7 +74,9 @@ class TestPlotConfigParser:
         monkeypatch.setattr(PlotConfigParser, "_get_metric", lambda *_: [1, 2, 3])
 
         config_parser = PlotConfigParser(Path("test_config.yaml"))
-        plot_configs = config_parser.generate_configs()
+        # FORMAT_STUB value is irrelevant since _get_statistics is monkeypatched
+        FORMAT_STUB = OutputFormat.VLLM
+        plot_configs = config_parser.generate_configs(output_format=FORMAT_STUB)
 
         assert len(plot_configs) == 2
         pc1, pc2 = plot_configs

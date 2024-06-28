@@ -87,6 +87,7 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataPa
     return LLMProfileDataParser(
         filename=args.profile_export_file,
         tokenizer=tokenizer,
+        output_format=args.output_format,
     )
 
 
@@ -115,7 +116,7 @@ def create_plots(args: Namespace) -> None:
         output_dir=plot_dir,
     )
     config_parser = PlotConfigParser(plot_dir / "config.yaml")
-    plot_configs = config_parser.generate_configs()
+    plot_configs = config_parser.generate_configs(args.output_format)
     plot_manager = PlotManager(plot_configs)
     plot_manager.generate_plots()
 

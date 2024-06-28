@@ -59,6 +59,7 @@ dependencies = [
   "pytest-mock",
   "pyyaml",
   "responses",
+  "pillow",
 ]
 
 # CLI Entrypoint
