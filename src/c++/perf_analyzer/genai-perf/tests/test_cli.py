@@ -513,7 +513,7 @@ class TestCLIArguments:
                     "--batch-size",
                     "10",
                 ],
-                "The --batch-size option is currently only supported with the embeddings and rankings endpoint type",
+                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types",
             ),
         ],
     )

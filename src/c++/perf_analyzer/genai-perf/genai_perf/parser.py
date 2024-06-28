@@ -176,12 +176,12 @@ def _check_conditional_args_embeddings_rankings(
     ]:
         if args.streaming:
             parser.error(
-                "The --streaming option is not supported with the embeddings nor rankings endpoint type."
+                f"The --streaming option is not supported with the {args.endpoint_type} endpoint type."
             )
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
             parser.error(
-                "The --batch-size option is currently only supported with the embeddings and rankings endpoint type."
+                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types."
             )
 
     if args.input_file:
@@ -189,12 +189,12 @@ def _check_conditional_args_embeddings_rankings(
         if args.output_format != OutputFormat.RANKINGS:
             if path_type == "directory":
                 parser.error(
-                    "A directory is only supported for endpoint-type rankings currently."
+                    "A directory is only currently supported for the rankings endpoint type."
                 )
         else:
             if path_type == PathType.FILE:
                 parser.error(
-                    "The rankings service kind requires a directory input file currently."
+                    "The rankings endpoint-type requires a directory value for the --input-file flag."
                 )
 
 
@@ -302,7 +302,7 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_BATCH_SIZE,
         required=False,
         help=f"The batch size of the requests GenAI-Perf should send. "
-        "This is currently only supported with the embeddings and rankings endpoint type.",
+        "This is currently only supported with the embeddings and rankings endpoint types.",
     )
 
     input_group.add_argument(
