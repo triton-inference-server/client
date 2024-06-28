@@ -25,4 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from genai_perf.profile_data_parser.llm_profile_data_parser import LLMProfileDataParser
-from genai_perf.profile_data_parser.profile_data_parser import ProfileDataParser
+from genai_perf.profile_data_parser.profile_data_parser import (
+    ProfileDataParser,
+    ResponseFormat,
+)

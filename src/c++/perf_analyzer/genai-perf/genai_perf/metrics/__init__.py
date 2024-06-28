@@ -25,5 +25,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from genai_perf.metrics.llm_metrics import LLMMetrics
-from genai_perf.metrics.metrics import MetricMetadata, Metrics, ResponseFormat
+from genai_perf.metrics.metrics import MetricMetadata, Metrics
 from genai_perf.metrics.statistics import Statistics
