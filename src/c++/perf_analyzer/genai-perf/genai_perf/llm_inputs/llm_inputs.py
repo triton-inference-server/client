@@ -14,20 +14,19 @@
 
 import base64
 import json
-import os
 import random
 from copy import deepcopy
 from enum import Enum, auto
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
-from PIL import Image, ImageDraw
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from PIL import Image, ImageDraw
 from requests import Response
 
 

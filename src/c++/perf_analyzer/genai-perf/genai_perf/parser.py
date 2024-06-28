@@ -52,7 +52,11 @@ from . import __version__
 
 logger = logging.getLogger(__name__)
 
-_endpoint_type_map = {"chat": "v1/chat/completions", "completions": "v1/completions"}
+_endpoint_type_map = {
+    "chat": "v1/chat/completions",
+    "vision": "v1/chat/completions",
+    "completions": "v1/completions",
+}
 
 
 def _check_model_args(

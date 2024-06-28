@@ -316,7 +316,11 @@ class ProfileDataParser:
         self._service_kind = data["service_kind"]
         if self._service_kind == "openai":
             if data["endpoint"] == "v1/chat/completions":
-                self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+                self._response_format = (
+                    ResponseFormat.OPENAI_VISION
+                    if self.output_format == OutputFormat.OPENAI_VISION
+                    else ResponseFormat.OPENAI_CHAT_COMPLETIONS
+                )
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
             else:

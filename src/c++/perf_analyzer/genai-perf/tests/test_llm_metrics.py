@@ -404,7 +404,6 @@ class TestLLMProfileDataParser:
 
         assert stat["time_to_first_token"]["max"] == max(TTFT)  # type: ignore
         assert stat["inter_token_latency"]["max"] == max(itl)  # type: ignore
-        max_ottpr = 6 / ns_to_sec(13)
         assert stat["output_token_throughput_per_request"]["max"] == max(ottpr)  # type: ignore
         assert stat["output_sequence_length"]["max"] == max(OSL)  # type: ignore
         assert stat["input_sequence_length"]["max"] == max(ISL)  # type: ignore
@@ -657,7 +656,7 @@ class TestLLMProfileDataParser:
 
     openai_vlm_profile_data = {
         "service_kind": "openai",
-        "endpoint": "",
+        "endpoint": "v1/chat/completions",
         "experiments": [
             {
                 "experiment": {
