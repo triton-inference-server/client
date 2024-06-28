@@ -285,7 +285,6 @@ class TestCLIArguments:
     def test_file_flags_parsed(self, monkeypatch, mocker):
         _ = mocker.patch("os.path.isfile", return_value=True)
         _ = mocker.patch("os.path.isdir", return_value=True)
-        # mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
         combined_args = [
             "genai-perf",
             "--model",

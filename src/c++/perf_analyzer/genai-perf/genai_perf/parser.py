@@ -164,14 +164,6 @@ def _check_conditional_args_embeddings_rankings(
         OutputFormat.OPENAI_EMBEDDINGS,
         OutputFormat.OPENAI_RANKINGS,
     ]:
-        # if args.prompt_source is PromptSource.SYNTHETIC:
-        #     parser.error(
-        #         "A synthetic dataset is not currently supported for embeddings or rankings"
-        #     )
-        # elif args.prompt_source is PromptSource.DATASET:
-        #     parser.error(
-        #         "A custom dataset is not currently supported for embeddings or rankings"
-        #     )
         if args.streaming:
             parser.error(
                 "The --streaming option is not supported with the embeddings endpoint type."
