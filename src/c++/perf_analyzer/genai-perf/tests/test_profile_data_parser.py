@@ -81,6 +81,9 @@ class TestProfileDataParser:
 
         return written_data
 
+    # ================================================
+    # EMBEDDINGS API
+    # ================================================
     embedding_profile_data = {
         "service_kind": "openai",
         "endpoint": "v1/embeddings",
@@ -148,6 +151,9 @@ class TestProfileDataParser:
 
         assert stats_dict["request_throughput"]["avg"] == pytest.approx(5e8)  # type: ignore
 
+    # ================================================
+    # RANKINGS API
+    # ================================================
     ranking_profile_data = {
         "service_kind": "openai",
         "endpoint": "v1/ranking",

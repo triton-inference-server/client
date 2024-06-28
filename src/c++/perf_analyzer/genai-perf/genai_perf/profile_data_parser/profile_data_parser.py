@@ -38,7 +38,7 @@ class ResponseFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
-    OPENAI_RANKINGS = auto()
+    RANKINGS = auto()
     TRITON = auto()
 
 
@@ -62,7 +62,7 @@ class ProfileDataParser:
             elif data["endpoint"] == "v1/embeddings":
                 self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
             elif data["endpoint"] == "v1/ranking":
-                self._response_format = ResponseFormat.OPENAI_RANKINGS
+                self._response_format = ResponseFormat.RANKINGS
             else:
                 # TPA-66: add PA metadata to handle this case
                 # When endpoint field is either empty or custom endpoint, fall
@@ -76,7 +76,7 @@ class ProfileDataParser:
                 elif "embedding" in response:
                     self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
                 elif "ranking" in response:
-                    self._response_format = ResponseFormat.OPENAI_RANKINGS
+                    self._response_format = ResponseFormat.RANKINGS
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 
