@@ -28,7 +28,9 @@ import argparse
 import json
 import os
 import sys
+from enum import Enum, auto
 from pathlib import Path
+from typing import Tuple
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
@@ -50,12 +52,22 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
+
+class PathType(Enum):
+    FILE = auto()
+    DIRECTORY = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
     "embeddings": "v1/embeddings",
+    "rankings": "v1/ranking",
 }
 
 
@@ -116,6 +128,8 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_COMPLETIONS
             elif args.endpoint_type == "embeddings":
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
+            elif args.endpoint_type == "rankings":
+                args.output_format = OutputFormat.RANKINGS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -147,24 +161,41 @@ def _check_conditional_args(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
 
-    _check_conditional_args_embeddings(parser, args)
+    _check_conditional_args_embeddings_rankings(parser, args)
 
     return args
 
 
-def _check_conditional_args_embeddings(
+def _check_conditional_args_embeddings_rankings(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ):
-    if args.endpoint_type == "embeddings":
+
+    if args.output_format in [
+        OutputFormat.OPENAI_EMBEDDINGS,
+        OutputFormat.RANKINGS,
+    ]:
         if args.streaming:
             parser.error(
-                "The --streaming option is not supported with the embeddings endpoint type."
+                f"The --streaming option is not supported with the {args.endpoint_type} endpoint type."
             )
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
             parser.error(
-                "The --batch-size option is currently only supported with the embeddings endpoint type."
+                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types."
             )
+
+    if args.input_file:
+        _, path_type = args.input_file
+        if args.output_format != OutputFormat.RANKINGS:
+            if path_type == "directory":
+                parser.error(
+                    "A directory is only currently supported for the rankings endpoint type."
+                )
+        else:
+            if path_type == PathType.FILE:
+                parser.error(
+                    "The rankings endpoint-type requires a directory value for the --input-file flag."
+                )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -224,7 +255,12 @@ def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
         logger.debug(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file:
         args.prompt_source = PromptSource.FILE
-        logger.debug(f"Input source is the following file: {args.input_file.name}")
+        if args.endpoint_type == "rankings":
+            logger.debug(
+                f"Input source is the following directory: {args.input_file[0]}"
+            )
+        else:
+            logger.debug(f"Input source is the following file: {args.input_file[0]}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC
         logger.debug("Input source is synthetic data")
@@ -241,6 +277,18 @@ def _convert_str_to_enum_entry(args, option, enum):
     return args
 
 
+### Types ###
+
+
+def file_or_directory(path: str) -> Tuple[Path, PathType]:
+    if os.path.isfile(path):
+        return (Path(path), PathType.FILE)
+    elif os.path.isdir(path):
+        return (Path(path), PathType.DIRECTORY)
+    else:
+        raise ValueError(f"'{path}' is not a valid file or directory")
+
+
 ### Parsers ###
 
 
@@ -254,7 +302,7 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_BATCH_SIZE,
         required=False,
         help=f"The batch size of the requests GenAI-Perf should send. "
-        "This is currently only supported with the embeddings endpoint type.",
+        "This is currently only supported with the embeddings and rankings endpoint types.",
     )
 
     input_group.add_argument(
@@ -277,12 +325,14 @@ def _add_input_args(parser):
 
     prompt_source_group.add_argument(
         "--input-file",
-        type=argparse.FileType("r"),
+        type=file_or_directory,
         default=None,
         required=False,
         help="The input file containing the prompts to use for profiling. "
         "Each line should be a JSON object with a 'text_input' field in JSONL format. "
-        'Example: {"text_input": "Your prompt here"}',
+        'Example: {"text_input": "Your prompt here"}'
+        "For the rankings endpoint-type, a directory should be passed in instead with "
+        'a "queries.jsonl" file and a "passages.jsonl" file with the same format.',
     )
 
     input_group.add_argument(
@@ -437,7 +487,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings"],
+        choices=["chat", "completions", "embeddings", "rankings"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',
