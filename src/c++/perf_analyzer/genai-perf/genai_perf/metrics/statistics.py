@@ -129,12 +129,14 @@ class Statistics:
     def _add_units(self, key) -> None:
         if self._is_time_metric(key):
             self._stats_dict[key]["unit"] = "ms"
-        if key == "request_throughput":
+        elif key == "request_throughput":
             self._stats_dict[key]["unit"] = "requests/sec"
-        if key.startswith("output_token_throughput"):
+        elif key.startswith("output_token_throughput"):
             self._stats_dict[key]["unit"] = "tokens/sec"
-        if "sequence_length" in key:
+        elif "sequence_length" in key:
             self._stats_dict[key]["unit"] = "tokens"
+        else:
+            self._stats_dict[key]["unit"] = ""
 
     def __repr__(self) -> str:
         attr_strs = []
