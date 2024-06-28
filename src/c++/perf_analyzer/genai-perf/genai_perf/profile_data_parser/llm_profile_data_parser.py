@@ -31,8 +31,11 @@ from itertools import tee
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from genai_perf.metrics import LLMMetrics, Metrics, ResponseFormat
-from genai_perf.profile_data_parser.profile_data_parser import ProfileDataParser
+from genai_perf.metrics import LLMMetrics, Metrics
+from genai_perf.profile_data_parser.profile_data_parser import (
+    ProfileDataParser,
+    ResponseFormat,
+)
 from genai_perf.tokenizer import Tokenizer
 from genai_perf.utils import remove_sse_prefix
 

@@ -27,15 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from dataclasses import dataclass
-from enum import Enum, auto
 from typing import List
-
-
-class ResponseFormat(Enum):
-    OPENAI_CHAT_COMPLETIONS = auto()
-    OPENAI_COMPLETIONS = auto()
-    OPENAI_EMBEDDINGS = auto()
-    TRITON = auto()
 
 
 @dataclass

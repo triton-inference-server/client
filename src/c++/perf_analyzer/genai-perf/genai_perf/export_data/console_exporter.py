@@ -45,7 +45,10 @@ class ConsoleExporter:
     def _get_title(self):
         if self._args.endpoint_type == "embeddings":
             return "Embeddings Metrics"
-        return "LLM Metrics"
+        elif self._args.endpoint_type == "rankings":
+            return "Rankings Metrics"
+        else:
+            return "LLM Metrics"
 
     def export(self) -> None:
         table = Table(title=self._get_title())
