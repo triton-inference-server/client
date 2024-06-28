@@ -731,6 +731,12 @@ InferenceProfiler::ProfileHelper(
       measure_config.measurement_window = measurement_request_count_;
       measure_config.is_count_based = true;
     }
+
+    // When request_count is not 0, the experiment will run for exactly X
+    // requests. In that case, we are not measuring based on window stability,
+    // and instead need to clamp the windows to be from the start of the
+    // first request to the end of the last request of the request count
+    //
     measure_config.clamp_window = (request_count != 0);
     error.push(Measure(measurement_perf_status, measure_config));
     measurement_perf_statuses.push_back(measurement_perf_status);
