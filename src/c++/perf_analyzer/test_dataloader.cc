@@ -28,6 +28,7 @@
 #include "doctest.h"
 #include "mock_data_loader.h"
 
+
 namespace triton { namespace perfanalyzer {
 
 /// Helper class for testing the DataLoader
@@ -102,6 +103,127 @@ TEST_CASE("dataloader: GetTotalSteps")
 
   // It will return 0 if out of range
   CHECK_EQ(dataloader.GetTotalSteps(2), 0);
+}
+
+TEST_CASE("dataloader: ValidateIOExistsInModel")
+{
+  MockDataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+  inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
+
+  SUBCASE("Directory does not exist")
+  {
+    std::string data_directory = "non_existent_directory";
+    cb::Error status =
+        dataloader.ValidateIOExistsInModel(inputs, outputs, data_directory);
+    CHECK(
+        status.Message() ==
+        "Error: Directory does not exist or is not a directory: "
+        "non_existent_directory");
+    CHECK(status.Err() == pa::GENERIC_ERROR);
+  }
+
+  SUBCASE("Directory is not a directory")
+  {
+    std::string data_directory = "tmp/test.txt";
+    std::ofstream file(data_directory);
+    cb::Error status =
+        dataloader.ValidateIOExistsInModel(inputs, outputs, data_directory);
+    CHECK(
+        status.Message() ==
+        "Error: Directory does not exist or is not a directory: tmp/test.txt");
+    CHECK(status.Err() == pa::GENERIC_ERROR);
+    std::remove(data_directory.c_str());
+  }
+
+  SUBCASE("Valid directory but no corresponding files")
+  {
+    std::string data_directory = "valid_directory";
+    std::filesystem::create_directory(data_directory);
+    std::ofstream(data_directory + "/invalid_file").close();
+    cb::Error status =
+        dataloader.ValidateIOExistsInModel(inputs, outputs, data_directory);
+    std::filesystem::remove_all(data_directory);
+    CHECK(
+        status.Message() ==
+        "Provided data file 'invalid_file' does not correspond to a valid "
+        "model input or output.");
+    CHECK(status.Err() == pa::GENERIC_ERROR);
+  }
+
+  SUBCASE("Valid directory with corresponding files")
+  {
+    std::string data_directory = "valid_directory";
+    std::filesystem::create_directory(data_directory);
+    std::ofstream(data_directory + "/INPUT1").close();
+    std::ofstream(data_directory + "/OUTPUT1").close();
+    cb::Error status =
+        dataloader.ValidateIOExistsInModel(inputs, outputs, data_directory);
+    std::filesystem::remove_all(data_directory);
+    CHECK(status.Message().empty());
+    CHECK(status.IsOk());
+  }
+}
+
+TEST_CASE("dataloader: ReadDataFromJSON")
+{
+  DataLoader dataloader;
+  std::shared_ptr<ModelTensorMap> inputs = std::make_shared<ModelTensorMap>();
+  std::shared_ptr<ModelTensorMap> outputs = std::make_shared<ModelTensorMap>();
+  ModelTensor input1 = TestDataLoader::CreateTensor("INPUT1");
+  ModelTensor output1 = TestDataLoader::CreateTensor("OUTPUT1");
+
+  inputs->insert(std::make_pair(input1.name_, input1));
+  outputs->insert(std::make_pair(output1.name_, output1));
+  SUBCASE("File does not exist")
+  {
+    std::string json_file = "non_existent_file.json";
+    cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
+    CHECK(status.Message() == "failed to open file for reading provided data");
+    CHECK(status.Err() == pa::GENERIC_ERROR);
+  }
+
+  SUBCASE("Valid JSON file")
+  {
+    std::string json_file = "valid_file.json";
+    std::ofstream out(json_file);
+    out << R"({
+                    "data": [
+                      { "INPUT1": [1] },
+                      { "INPUT1": [2] },
+                      { "INPUT1": [3] }
+                    ],
+                    "validation_data": [
+                      { "OUTPUT1": [4] },
+                      { "OUTPUT1": [5] },
+                      { "OUTPUT1": [6] }
+                  ]})";
+    out.close();
+
+    cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
+    std::filesystem::remove(json_file);
+    std::cout << status.Message();
+    CHECK(status.Message().empty());
+    CHECK(status.IsOk());
+  }
+
+  SUBCASE("Invalid JSON file")
+  {
+    std::string json_file = "invalid_file.json";
+    std::ofstream out(json_file);
+    out << R"({invalid_json: 1,)";
+    out.close();
+
+    cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
+    std::filesystem::remove(json_file);
+
+    CHECK(!status.Message().empty());
+    CHECK(status.Err() == pa::GENERIC_ERROR);
+  }
 }
 
 TEST_CASE("dataloader: GetInputData missing data")
