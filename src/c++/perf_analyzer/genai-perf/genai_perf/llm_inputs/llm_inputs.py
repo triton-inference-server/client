@@ -139,7 +139,7 @@ class LlmInputs:
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -236,7 +236,7 @@ class LlmInputs:
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
             The path to the input file containing the prompts in JSONL format.
         Returns
