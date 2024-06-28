@@ -61,11 +61,11 @@ To profile embeddings models using GenAI-Perf, use the following command:
 
 ```bash
 genai-perf \
--m intfloat/e5-mistral-7b-instruct \
---service-kind openai \
---endpoint-type embeddings \
---batch-size 2 \
---input-file embeddings.jsonl
+    -m intfloat/e5-mistral-7b-instruct \
+    --service-kind openai \
+    --endpoint-type embeddings \
+    --batch-size 2 \
+    --input-file embeddings.jsonl
 ```
 
 This will use default values for optional arguments. You can also pass in
@@ -74,10 +74,10 @@ For example, you could use this command:
 
 ```bash
 genai-perf \
--m intfloat/e5-mistral-7b-instruct \
---service-kind openai \
---endpoint-type embeddings \
---extra-inputs user:sample_user
+    -m intfloat/e5-mistral-7b-instruct \
+    --service-kind openai \
+    --endpoint-type embeddings \
+    --extra-inputs user:sample_user
 ```
 
 Example output:
