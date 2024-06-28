@@ -35,6 +35,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     OutputFormat,
     PromptSource,
 )
+from genai_perf.parser import PathType
 
 
 class TestCLIArguments:
@@ -284,7 +285,6 @@ class TestCLIArguments:
 
     def test_file_flags_parsed(self, monkeypatch, mocker):
         _ = mocker.patch("os.path.isfile", return_value=True)
-        _ = mocker.patch("os.path.isdir", return_value=True)
         combined_args = [
             "genai-perf",
             "--model",
@@ -294,9 +294,11 @@ class TestCLIArguments:
         ]
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
-        assert args.input_file[0] == Path(
+        filepath, pathtype = args.input_file
+        assert filepath == Path(
             "fakefile.txt"
         ), "The file argument should be the path to the file"
+        assert pathtype == PathType.FILE
 
     @pytest.mark.parametrize(
         "arg, expected_path",
@@ -549,7 +551,7 @@ class TestCLIArguments:
             ),
             (
                 ["--service-kind", "openai", "--endpoint-type", "rankings"],
-                OutputFormat.OPENAI_RANKINGS,
+                OutputFormat.RANKINGS,
             ),
             (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],

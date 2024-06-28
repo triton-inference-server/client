@@ -42,7 +42,7 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
-    OPENAI_RANKINGS = auto()
+    RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -244,16 +244,12 @@ class LlmInputs:
         Dict:
             The generic dataset JSON
         """
-        if output_format in [
-            OutputFormat.OPENAI_EMBEDDINGS,
-            OutputFormat.OPENAI_RANKINGS,
-        ]:
-            if input_type != PromptSource.FILE:
-                raise GenAIPerfException(
-                    "OpenAI embeddings and rankings only supports file input."
-                )
 
         if output_format == OutputFormat.OPENAI_EMBEDDINGS:
+            if input_type != PromptSource.FILE:
+                raise GenAIPerfException(
+                    f"{OutputFormat.OPENAI_EMBEDDINGS.to_lowercase()} only supports a file as input."
+                )
             input_filename = cast(Path, input_filename)
             input_file_dataset = cls._get_input_dataset_from_embeddings_file(
                 input_filename,
@@ -265,7 +261,11 @@ class LlmInputs:
                     input_file_dataset
                 )
             )
-        elif output_format == OutputFormat.OPENAI_RANKINGS:
+        elif output_format == OutputFormat.RANKINGS:
+            if input_type != PromptSource.FILE:
+                raise GenAIPerfException(
+                    f"{OutputFormat.RANKINGS.to_lowercase()} only supports a directory as input."
+                )
             queries_filename = cast(Path, input_filename) / "queries.jsonl"
             passages_filename = cast(Path, input_filename) / "passages.jsonl"
             input_file_dataset = cls._get_input_dataset_from_rankings_files(
@@ -349,7 +349,6 @@ class LlmInputs:
 
         with open(passages_filename, "r") as file:
             passages_content = [json.loads(line) for line in file]
-        # passages_texts = [item["text"] for item in passages_content]
         passages_texts = [item for item in passages_content]
 
         if batch_size > len(passages_texts):
@@ -590,7 +589,7 @@ class LlmInputs:
                 model_name,
                 model_selection_strategy,
             )
-        elif output_format == OutputFormat.OPENAI_RANKINGS:
+        elif output_format == OutputFormat.RANKINGS:
             output_json = cls._convert_generic_json_to_openai_rankings_format(
                 generic_dataset,
                 extra_inputs,

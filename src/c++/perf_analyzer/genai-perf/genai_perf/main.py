@@ -51,7 +51,8 @@ def create_artifacts_dirs(args: Namespace) -> None:
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     # TODO (TMA-1759): review if add_model_name is always true
-    input_filename = Path(args.input_file[0]) if args.input_file else None
+    filepath, _ = args.input_file
+    input_filename = Path(filepath) if filepath else None
     add_model_name = True
     try:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)

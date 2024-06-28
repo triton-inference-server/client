@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import sys
+from enum import Enum, auto
 from pathlib import Path
 from typing import Tuple
 
@@ -50,6 +51,15 @@ from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
+
+
+class PathType(Enum):
+    FILE = auto()
+    DIRECTORY = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +129,7 @@ def _check_conditional_args(
             elif args.endpoint_type == "embeddings":
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
             elif args.endpoint_type == "rankings":
-                args.output_format = OutputFormat.OPENAI_RANKINGS
+                args.output_format = OutputFormat.RANKINGS
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -162,11 +172,11 @@ def _check_conditional_args_embeddings_rankings(
 
     if args.output_format in [
         OutputFormat.OPENAI_EMBEDDINGS,
-        OutputFormat.OPENAI_RANKINGS,
+        OutputFormat.RANKINGS,
     ]:
         if args.streaming:
             parser.error(
-                "The --streaming option is not supported with the embeddings endpoint type."
+                "The --streaming option is not supported with the embeddings nor rankings endpoint type."
             )
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
@@ -176,13 +186,13 @@ def _check_conditional_args_embeddings_rankings(
 
     if args.input_file:
         _, path_type = args.input_file
-        if args.output_format != OutputFormat.OPENAI_RANKINGS:
+        if args.output_format != OutputFormat.RANKINGS:
             if path_type == "directory":
                 parser.error(
                     "A directory is only supported for endpoint-type rankings currently."
                 )
         else:
-            if path_type == "file":
+            if path_type == PathType.FILE:
                 parser.error(
                     "The rankings service kind requires a directory input file currently."
                 )
@@ -270,11 +280,11 @@ def _convert_str_to_enum_entry(args, option, enum):
 ### Types ###
 
 
-def file_or_directory(path: str) -> Tuple[Path, str]:
+def file_or_directory(path: str) -> Tuple[Path, PathType]:
     if os.path.isfile(path):
-        return (Path(path), "file")
+        return (Path(path), PathType.FILE)
     elif os.path.isdir(path):
-        return (Path(path), "directory")
+        return (Path(path), PathType.DIRECTORY)
     else:
         raise ValueError(f"'{path}' is not a valid file or directory")
 
@@ -318,10 +328,11 @@ def _add_input_args(parser):
         type=file_or_directory,
         default=None,
         required=False,
-        help="The input file or directory containing the prompts to use for profiling. "
+        help="The input file containing the prompts to use for profiling. "
         "Each line should be a JSON object with a 'text_input' field in JSONL format. "
         'Example: {"text_input": "Your prompt here"}'
-        "Note: directory is only supported for endpoint-type rankings currently.",
+        "For the rankings endpoint-type, a directory should be passed in instead with "
+        'a "queries.jsonl" file and a "passages.jsonl" file with the same format.',
     )
 
     input_group.add_argument(
