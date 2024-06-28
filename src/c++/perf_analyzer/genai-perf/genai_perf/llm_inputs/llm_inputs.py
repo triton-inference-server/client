@@ -590,7 +590,7 @@ class LlmInputs:
                 model_selection_strategy,
             )
         elif output_format == OutputFormat.RANKINGS:
-            output_json = cls._convert_generic_json_to_openai_rankings_format(
+            output_json = cls._convert_generic_json_to_rankings_format(
                 generic_dataset,
                 extra_inputs,
                 model_name,
@@ -734,7 +734,7 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _convert_generic_json_to_openai_rankings_format(
+    def _convert_generic_json_to_rankings_format(
         cls,
         generic_dataset: Dict,
         extra_inputs: Dict,
