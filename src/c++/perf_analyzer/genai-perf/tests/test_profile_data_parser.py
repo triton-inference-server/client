@@ -67,6 +67,9 @@ class TestProfileDataParser:
             if filename == "embedding_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.embedding_profile_data))
                 return tmp_file
+            if filename == "ranking_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.ranking_profile_data))
+                return tmp_file
             elif filename == "profile_export.csv":
                 tmp_file = StringIO()
                 tmp_file.write = write.__get__(tmp_file)
@@ -77,34 +80,6 @@ class TestProfileDataParser:
         monkeypatch.setattr("builtins.open", custom_open)
 
         return written_data
-
-    def test_base_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
-        """Collect base metrics from profile export data and check values.
-
-        Metrics
-        * request latencies
-            - experiment 1: [3 - 1, 5 - 2] = [2, 3]
-        * request throughputs
-            - experiment 1: [2 / (5e-9 - 1e-9)] = [5e8]
-        """
-        pd = ProfileDataParser(filename=Path("embedding_profile_export.json"))
-
-        # experiment 1 statistics
-        stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
-        metrics = stats.metrics
-        stats_dict = stats.stats_dict
-        assert isinstance(metrics, Metrics)
-
-        assert metrics.request_latencies == [2, 3]
-        assert metrics.request_throughputs == [pytest.approx(5e8)]
-
-        assert stats_dict["request_latency"]["avg"] == pytest.approx(2.5)  # type: ignore
-        assert stats_dict["request_latency"]["p50"] == pytest.approx(2.5)  # type: ignore
-        assert stats_dict["request_latency"]["min"] == pytest.approx(2)  # type: ignore
-        assert stats_dict["request_latency"]["max"] == pytest.approx(3)  # type: ignore
-        assert stats_dict["request_latency"]["std"] == np.std([2, 3])  # type: ignore
-
-        assert stats_dict["request_throughput"]["avg"] == pytest.approx(5e8)  # type: ignore
 
     embedding_profile_data = {
         "service_kind": "openai",
@@ -144,3 +119,98 @@ class TestProfileDataParser:
             },
         ],
     }
+
+    def test_embedding_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Collect base metrics from profile export data and check values.
+
+        Metrics
+        * request latencies
+            - [3 - 1, 5 - 2] = [2, 3]
+        * request throughputs
+            - [2 / (5e-9 - 1e-9)] = [5e8]
+        """
+        pd = ProfileDataParser(filename=Path("embedding_profile_export.json"))
+
+        # experiment 1 statistics
+        stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stats.metrics
+        stats_dict = stats.stats_dict
+        assert isinstance(metrics, Metrics)
+
+        assert metrics.request_latencies == [2, 3]
+        assert metrics.request_throughputs == [pytest.approx(5e8)]
+
+        assert stats_dict["request_latency"]["avg"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["p50"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["min"] == pytest.approx(2)  # type: ignore
+        assert stats_dict["request_latency"]["max"] == pytest.approx(3)  # type: ignore
+        assert stats_dict["request_latency"]["std"] == np.std([2, 3])  # type: ignore
+
+        assert stats_dict["request_throughput"]["avg"] == pytest.approx(5e8)  # type: ignore
+
+    ranking_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "v1/ranking",
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "request_inputs": {
+                            "payload": '{"query":{"text":"This is a test."},"passages":[{"text":"test output one"},{"text":"test output two"},{"text":"test output three"}],"model":"nv-rerank-qa-mistral-4b:1","truncate":"END"}',
+                        },
+                        "response_timestamps": [3],
+                        "response_outputs": [
+                            {
+                                "response": '{"rankings":[{"index":0,"logit":-5.98828125},{"index":1,"logit":-6.828125},{"index":2,"logit":-7.60546875}]}'
+                            },
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        "request_inputs": {
+                            "payload": '{"query":{"text":"This is a test."},"passages":[{"text":"test output one"},{"text":"test output two"},{"text":"test output three"}],"model":"nv-rerank-qa-mistral-4b:1","truncate":"END"}',
+                        },
+                        "response_timestamps": [5],
+                        "response_outputs": [
+                            {
+                                "response": '{"rankings":[{"index":2,"logit":-6.15625},{"index":1,"logit":-7.83984375},{"index":0,"logit":-7.84765625}]}'
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    def test_ranking_profile_data(self, mock_read_write: pytest.MonkeyPatch) -> None:
+        """Collect base metrics from profile export data and check values.
+
+        Metrics
+        * request latencies
+            - [3 - 1, 5 - 2] = [2, 3]
+        * request throughputs
+            - [2 / (5e-9 - 1e-9)] = [5e8]
+        """
+        pd = ProfileDataParser(filename=Path("ranking_profile_export.json"))
+
+        # experiment 1 statistics
+        stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stats.metrics
+        stats_dict = stats.stats_dict
+        assert isinstance(metrics, Metrics)
+
+        assert metrics.request_latencies == [2, 3]
+        assert metrics.request_throughputs == [pytest.approx(5e8)]
+
+        assert stats_dict["request_latency"]["avg"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["p50"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["min"] == pytest.approx(2)  # type: ignore
+        assert stats_dict["request_latency"]["max"] == pytest.approx(3)  # type: ignore
+        assert stats_dict["request_latency"]["std"] == np.std([2, 3])  # type: ignore
+
+        assert stats_dict["request_throughput"]["avg"] == pytest.approx(5e8)  # type: ignore
