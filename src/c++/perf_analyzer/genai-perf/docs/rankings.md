@@ -54,10 +54,11 @@ echo '{"text": "What was the first car ever driven?"}
 Create another JSONL file named passages.jsonl with the following passages:
 
 ```bash
-echo '{"text": "Eric Anderson (born January 18, 1968) is an American sociologist and sexologist specializing in adolescent men's gender and sexualities. Anderson is an advocate for the inclusion of gay men in sport and is America's first openly gay high-school coach coming out at Huntington Beach High School, the same high-school that produced the nation's first openly gay, actively playing, professional team sport athlete, Robbie Rogers who currently plays for LA Galaxy."}
-{"text": "Kevin Loader is a British film and television producer. Since 1996, he and co-owner Roger Michell have run a London-based production company, Free Range Films, through which the pair have made several feature films directed by Michell, including 'The Mother', 'Enduring Love', 'Venus', 'Hyde Park on Hudson', and 'Le Week-end'."}
-{"text": "Francisco Antonio Zea Juan Francisco Antonio Hilari was a Colombian journalist, botanist, diplomat, politician, and statesman who served as the 1st Vice President of Colombia under then President Sim\u00f3n Bol\u00edvar. He was also Ambassador of Colombia to the United Kingdom where he tried in vain to gain recognition for the nascent nation of Colombia."}
-{"text": "Daddy's Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."}' > rankings_jsonl/passages.jsonl
+echo '{"text": "Eric Anderson (born January 18, 1968) is an American sociologist and sexologist."}
+{"text": "Kevin Loader is a British film and television producer."}
+{"text": "Francisco Antonio Zea Juan Francisco Antonio Hilari was a Colombian journalist, botanist, diplomat, politician, and statesman who served as the 1st Vice President of Colombia."}
+{"text": "Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."}' > rankings_jsonl/passages.jsonl
+```
 
 ## Starting a Hugging Face Re-Ranker-Compatible Server
 To start a Hugging Face re-ranker-compatible server, run the following commands:
@@ -73,7 +74,8 @@ docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingf
 ## Running GenAI-Perf
 To profile ranking models using GenAI-Perf, use the following command:
 
-```genai-perf \
+```bash
+genai-perf \
     -m BAAI/bge-reranker-large \
     --service-kind openai \
     --endpoint-type rankings \
