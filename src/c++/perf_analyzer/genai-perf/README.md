@@ -373,7 +373,7 @@ model config to not echo the input tokens in the output. (default: tensorrtllm)
 
 Set a custom endpoint that differs from the OpenAI defaults. (default: `None`)
 
-##### `--endpoint-type {chat,completions}`
+##### `--endpoint-type {chat,completions,embeddings}`
 
 The endpoint-type to send requests to on the server. This is only used with the
 `openai` service-kind. (default: `None`)
@@ -393,6 +393,14 @@ An option to enable the use of the streaming API. (default: `False`)
 URL of the endpoint to target for benchmarking. (default: `None`)
 
 ## Input Options
+
+##### `-b <int>`
+##### `--batch-size <int>`
+
+The batch size of the requests GenAI-Perf should send.
+This is currently only supported with the
+[embeddings endpoint type](docs/embeddings.md).
+(default: `1`)
 
 ##### `--extra-inputs <str>`
 

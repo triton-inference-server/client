@@ -77,6 +77,13 @@ struct LoadStatus {
   uint64_t avg_latency = 0;
 };
 
+/// Configuration for the Measure function
+struct MeasureConfig {
+  uint64_t measurement_window{0};
+  bool is_count_based{false};
+  bool clamp_window{false};
+};
+
 // Holds the total of the timiming components of composing models of an
 // ensemble.
 struct EnsembleDurations {
@@ -475,14 +482,9 @@ class InferenceProfiler {
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
-  /// \param measurement_window Indicating the number of requests or the
-  /// duration in milliseconds to collect requests.
-  /// \param is_count_based determines whether measurement_window is indicating
-  /// time or count.
+  /// \param config The configuration for measurement.
   /// \return cb::Error object indicating success or failure.
-  cb::Error Measure(
-      PerfStatus& status_summary, uint64_t measurement_window,
-      bool is_count_based);
+  cb::Error Measure(PerfStatus& status_summary, MeasureConfig config);
 
   /// Gets the server side statistics
   /// \param model_status Returns the status of the models provided by
@@ -501,12 +503,15 @@ class InferenceProfiler {
   /// \param summary Returns the summary of the measurement.
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
+  /// \param clamp_window If true, the actual window range is reduced to the
+  /// start of the first request to the final response.
   /// \return cb::Error object indicating success or failure.
   cb::Error Summarize(
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-      PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns);
+      PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
+      bool clamp_window);
 
   /// \param valid_range The start and end timestamp of the measurement window.
   /// \param valid_sequence_count Returns the number of completed sequences
@@ -521,6 +526,13 @@ class InferenceProfiler {
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies, size_t& response_count,
       std::vector<RequestRecord>& valid_requests);
+
+  /// Clamp a window around a set of requests, from the earliest start time to
+  /// the latest response
+  /// \param requests A vector of requests to clamp the window around.
+  /// \return std::pair object containing <start, end> of the window.
+  std::pair<uint64_t, uint64_t> ClampWindow(
+      std::vector<RequestRecord>& requests);
 
   /// Add the data from the request records to the Raw Data Collector
   /// \param perf_status PerfStatus of the current measurement

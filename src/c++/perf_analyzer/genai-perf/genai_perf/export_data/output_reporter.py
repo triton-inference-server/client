@@ -29,7 +29,7 @@ from argparse import Namespace
 
 from genai_perf.export_data.data_exporter_factory import DataExporterFactory
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Statistics
+from genai_perf.metrics import Statistics
 from genai_perf.parser import get_extra_inputs_as_dict
 
 
@@ -54,6 +54,7 @@ class OutputReporter:
     def _create_exporter_config(self) -> ExporterConfig:
         config = ExporterConfig()
         config.stats = self.stats.stats_dict
+        config.metrics = self.stats.metrics
         config.args = self.args
         config.artifact_dir = self.args.artifact_dir
         config.extra_inputs = get_extra_inputs_as_dict(self.args)
