@@ -144,6 +144,7 @@ TEST_CASE("perf_utils: ConvertDTypeFromTFS")
         std::make_pair("DT_DOUBLE", "FP64"),
         std::make_pair("DT_INT32", "INT32"),
         std::make_pair("DT_INT16", "INT16"),
+        std::make_pair("DT_UINT16", "UINT16"),
         std::make_pair("DT_INT8", "INT8"),
         std::make_pair("DT_UINT8", "UINT8"),
         std::make_pair("DT_STRING", "BYTES"),
