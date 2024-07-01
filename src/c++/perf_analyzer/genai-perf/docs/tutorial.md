@@ -49,7 +49,7 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.05"
 
 docker run -it --net=host --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 
-# Install triton CLI (~5 min)
+# Install Triton CLI (~5 min):
 pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 
 # Download model:
