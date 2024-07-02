@@ -46,7 +46,8 @@ def create_artifacts_dirs(args: Namespace) -> None:
     # TMA-1911: support plots CLI option
     plot_dir = args.artifact_dir / "plots"
     os.makedirs(args.artifact_dir, exist_ok=True)
-    os.makedirs(plot_dir, exist_ok=True)
+    if args.generate_plots:
+        os.makedirs(plot_dir, exist_ok=True)
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
