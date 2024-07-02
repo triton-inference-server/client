@@ -26,12 +26,12 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Profiling Embeddings Models with GenAI-Perf
+# Profile Embeddings Models with GenAI-Perf
 
 GenAI-Perf allows you to profile embedding models running on an
 [OpenAI Embeddings API](https://platform.openai.com/docs/api-reference/embeddings)-compatible server.
 
-## Creating a Sample Embeddings Input File
+## Create a Sample Embeddings Input File
 
 To create a sample embeddings input file, use the following command:
 
@@ -50,13 +50,13 @@ This will generate a file named embeddings.jsonl with the following content:
 {"text": "In what state did they film Shrek 2?"}
 ```
 
-## Starting an OpenAI Embeddings-Compatible Server
+## Start an OpenAI Embeddings-Compatible Server
 To start an OpenAI embeddings-compatible server, run the following command:
 ```bash
 docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model intfloat/e5-mistral-7b-instruct --dtype float16 --max-model-len 1024
 ```
 
-## Running GenAI-Perf
+## Run GenAI-Perf
 To profile embeddings models using GenAI-Perf, use the following command:
 
 ```bash

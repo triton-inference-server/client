@@ -26,25 +26,22 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Profiling Ranking Models with GenAI-Perf
+# Profile Ranking Models with GenAI-Perf
 
 
 GenAI-Perf allows you to profile ranking models compatible with Hugging Face's
 [Text Embeddings Interface's re-ranker API](https://huggingface.co/docs/text-embeddings-inference/en/quick_tour#re-rankers).
 
-## Creating a Sample Rankings Input Directory
+## Create a Sample Rankings Input Directory
 
 To create a sample rankings input directory, follow these steps:
 
 Create a directory called rankings_jsonl:
 ```bash
-genai-perf -m NV-Rerank-QA-MiniLM --service-kind openai --endpoint-type rankings --input-file rankings_jsonl/ -u localhost:1976 --batch-size 2
-```
-```bash
 mkdir rankings_jsonl
 ```
-Inside this directory, create a JSONL file named queries.jsonl with the
-following queries:
+
+Inside this directory, create a JSONL file named queries.jsonl with queries data:
 
 ```bash
 echo '{"text": "What was the first car ever driven?"}
@@ -53,7 +50,7 @@ echo '{"text": "What was the first car ever driven?"}
 {"text": "In what state did they film Shrek 2?"}' > rankings_jsonl/queries.jsonl
 ```
 
-Create another JSONL file named passages.jsonl with the following passages:
+Create another JSONL file named passages.jsonl with passages data:
 
 ```bash
 echo '{"text": "Eric Anderson (born January 18, 1968) is an American sociologist and sexologist."}
@@ -62,7 +59,7 @@ echo '{"text": "Eric Anderson (born January 18, 1968) is an American sociologist
 {"text": "Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."}' > rankings_jsonl/passages.jsonl
 ```
 
-## Starting a Hugging Face Re-Ranker-Compatible Server
+## Start a Hugging Face Re-Ranker-Compatible Server
 To start a Hugging Face re-ranker-compatible server, run the following commands:
 
 ```bash
@@ -73,7 +70,7 @@ volume=$PWD/data
 docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingface/text-embeddings-inference:1.3 --model-id $model --revision $revision
 ```
 
-## Running GenAI-Perf
+## Run GenAI-Perf
 To profile ranking models using GenAI-Perf, use the following command:
 
 ```bash
@@ -92,7 +89,7 @@ This command specifies the use of Hugging Face's ranking API with `--endpoint re
 
 Example output:
 
-Copy code
+```
                           Rankings Metrics
 ┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━┓
 ┃            Statistic ┃  avg ┃  min ┃   max ┃   p99 ┃  p90 ┃  p75 ┃
@@ -100,3 +97,4 @@ Copy code
 │ Request latency (ms) │ 5.48 │ 2.50 │ 23.91 │ 10.27 │ 8.34 │ 6.07 │
 └──────────────────────┴──────┴──────┴───────┴───────┴──────┴──────┘
 Request throughput (per sec): 180.11
+```
