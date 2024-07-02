@@ -167,6 +167,28 @@ TEST_CASE("dataloader: ValidateIOExistsInModel")
     CHECK(status.Message().empty());
     CHECK(status.IsOk());
   }
+
+  SUBCASE("Valid directory with multiple input and output tensors")
+  {
+    ModelTensor input2 = TestDataLoader::CreateTensor("INPUT2");
+    ModelTensor output2 = TestDataLoader::CreateTensor("OUTPUT2");
+
+    inputs->insert(std::make_pair(input2.name_, input2));
+    outputs->insert(std::make_pair(output2.name_, output2));
+
+    std::string data_directory = "valid_directory_multiple";
+    std::filesystem::create_directory(data_directory);
+    std::ofstream(data_directory + "/INPUT1").close();
+    std::ofstream(data_directory + "/INPUT2").close();
+    std::ofstream(data_directory + "/OUTPUT1").close();
+    std::ofstream(data_directory + "/OUTPUT2").close();
+
+    cb::Error status =
+        dataloader.ValidateIOExistsInModel(inputs, outputs, data_directory);
+    std::filesystem::remove_all(data_directory);
+    CHECK(status.Message().empty());
+    CHECK(status.IsOk());
+  }
 }
 
 TEST_CASE("dataloader: ReadDataFromJSON")
@@ -179,6 +201,7 @@ TEST_CASE("dataloader: ReadDataFromJSON")
 
   inputs->insert(std::make_pair(input1.name_, input1));
   outputs->insert(std::make_pair(output1.name_, output1));
+
   SUBCASE("File does not exist")
   {
     std::string json_file = "non_existent_file.json";
@@ -206,7 +229,6 @@ TEST_CASE("dataloader: ReadDataFromJSON")
 
     cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
     std::filesystem::remove(json_file);
-    std::cout << status.Message();
     CHECK(status.Message().empty());
     CHECK(status.IsOk());
   }
@@ -221,8 +243,58 @@ TEST_CASE("dataloader: ReadDataFromJSON")
     cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
     std::filesystem::remove(json_file);
 
-    CHECK(!status.Message().empty());
+    CHECK(
+        status.Message() ==
+        "failed to parse the specified json file for reading provided data");
     CHECK(status.Err() == pa::GENERIC_ERROR);
+  }
+
+  SUBCASE("Multiple input and output tensors")
+  {
+    ModelTensor input2 = TestDataLoader::CreateTensor("INPUT2");
+    ModelTensor output2 = TestDataLoader::CreateTensor("OUTPUT2");
+
+    inputs->insert(std::make_pair(input2.name_, input2));
+    outputs->insert(std::make_pair(output2.name_, output2));
+
+    std::string json_file = "valid_file_multiple_input_output.json";
+    std::ofstream out(json_file);
+    out << R"({
+                "data": [
+                    {
+                        "INPUT1": [1],
+                        "INPUT2": [4]
+                    },
+                    {
+                        "INPUT1": [2],
+                        "INPUT2": [5]
+                    },
+                    {
+                        "INPUT1": [3],
+                        "INPUT2": [6]
+                    }
+                ],
+                "validation_data": [
+                    {
+                        "OUTPUT1": [4],
+                        "OUTPUT2": [7]
+                    },
+                    {
+                        "OUTPUT1": [5],
+                        "OUTPUT2": [8]
+                    },
+                    {
+                        "OUTPUT1": [6],
+                        "OUTPUT2": [9]
+                    }
+                ]
+              })";
+    out.close();
+
+    cb::Error status = dataloader.ReadDataFromJSON(inputs, outputs, json_file);
+    std::filesystem::remove(json_file);
+    CHECK(status.Message().empty());
+    CHECK(status.IsOk());
   }
 }
 
