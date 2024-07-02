@@ -515,6 +515,58 @@ class TestCLIArguments:
                 ],
                 "The --batch-size option is currently only supported with the embeddings and rankings endpoint types",
             ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--streaming",
+                ],
+                "The --streaming option is not supported with the embeddings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "rankings",
+                    "--streaming",
+                ],
+                "The --streaming option is not supported with the rankings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--generate-plots",
+                ],
+                "The --generate-plots option is not currently supported with the embeddings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "rankings",
+                    "--generate-plots",
+                ],
+                "The --generate-plots option is not currently supported with the rankings endpoint type",
+            ),
         ],
     )
     def test_conditional_errors(self, args, expected_output, monkeypatch, capsys):
