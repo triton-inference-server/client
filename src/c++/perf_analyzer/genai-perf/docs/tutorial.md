@@ -125,7 +125,7 @@ docker run -it --net=host --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit 
 pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 
 # Download model:
-triton import -m gpt2 --backend vllm
+triton import -m opt125m --backend vllm
 
 # Run server:
 triton start
@@ -144,7 +144,7 @@ docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-
 
 # Run GenAI-Perf in the container:
 genai-perf \
-  -m gpt2 \
+  -m opt125m \
   --service-kind triton \
   --backend vllm \
   --num-prompts 100 \
