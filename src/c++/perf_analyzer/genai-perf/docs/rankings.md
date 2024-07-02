@@ -37,7 +37,9 @@ GenAI-Perf allows you to profile ranking models compatible with Hugging Face's
 To create a sample rankings input directory, follow these steps:
 
 Create a directory called rankings_jsonl:
-
+```bash
+genai-perf -m NV-Rerank-QA-MiniLM --service-kind openai --endpoint-type rankings --input-file rankings_jsonl/ -u localhost:1976 --batch-size 2
+```
 ```bash
 mkdir rankings_jsonl
 ```
@@ -92,9 +94,9 @@ Example output:
 
 Copy code
                           Rankings Metrics
-┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━┓
-┃ Statistic            ┃ avg   ┃ min   ┃ max    ┃ p99   ┃ p90   ┃ p75   ┃
-┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━┩
-│ Request latency (ms) │ 35.17 │ 22.34 │ 215.73 │ 47.89 │ 39.75 │ 34.56 │
-└──────────────────────┴───────┴───────┴────────┴───────┴───────┴───────┘
-Request throughput (per sec): 28.37
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━━┓
+┃            Statistic ┃  avg ┃  min ┃   max ┃   p99 ┃  p90 ┃  p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━━┩
+│ Request latency (ms) │ 5.48 │ 2.50 │ 23.91 │ 10.27 │ 8.34 │ 6.07 │
+└──────────────────────┴──────┴──────┴───────┴───────┴──────┴──────┘
+Request throughput (per sec): 180.11
