@@ -127,6 +127,12 @@ pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 # Download model:
 triton import -m opt125m --backend vllm
 
+# Find model.json and increase the value of gpu_memory_utilization
+sed -i.bak 's/"gpu_memory_utilization": [0-9.]\+/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
+
+# FIXME: for debug only
+cat /root/models/opt125m/1/model.json
+
 # Run server:
 triton start
 ```
