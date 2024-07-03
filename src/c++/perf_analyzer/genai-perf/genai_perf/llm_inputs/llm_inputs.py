@@ -102,7 +102,7 @@ class LlmInputs:
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
-        batch_size: int = 1,
+        batch_size: int = DEFAULT_BATCH_SIZE,
         output_dir: Path = Path(""),
     ) -> Dict:
         """
@@ -139,7 +139,7 @@ class LlmInputs:
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
         batch_size:
-            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
+            The number of inputs per request (currently only used for the embeddings/rankings/completions endpoints)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -190,6 +190,7 @@ class LlmInputs:
             output_tokens_mean,
             output_tokens_stddev,
             output_tokens_deterministic,
+            batch_size,
             model_name,
             model_selection_strategy,
         )
@@ -236,7 +237,7 @@ class LlmInputs:
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         batch_size:
-            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
+            The number of inputs per request (currently only used for the embeddings/rankings/completions endpoints)
         input_filename:
             The path to the input file containing the prompts in JSONL format.
         Returns
@@ -555,6 +556,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
+        batch_size: int,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
@@ -567,6 +569,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
+                batch_size,
                 model_name,
                 model_selection_strategy,
             )
@@ -579,6 +582,7 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
+                batch_size,
                 model_name,
                 model_selection_strategy,
             )
@@ -637,6 +641,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
+        batch_size: int,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
@@ -656,6 +661,7 @@ class LlmInputs:
             output_tokens_mean,
             output_tokens_stddev,
             output_tokens_deterministic,
+            batch_size,
             model_name,
             model_selection_strategy,
         )
@@ -672,6 +678,7 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
+        batch_size: int,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
@@ -691,6 +698,7 @@ class LlmInputs:
             output_tokens_mean,
             output_tokens_stddev,
             output_tokens_deterministic,
+            batch_size,
             model_name,
             model_selection_strategy,
         )
@@ -775,7 +783,7 @@ class LlmInputs:
                 )
             if not isinstance(passage_values, list):
                 raise ValueError(
-                    f"Required field '{'texts' if use_tei_format else 'passages'}' must be a list (actual: {type(passage_values)})"
+                    f"Required field 'query' must be a list (actual: {type(query_values)})"
                 )
 
             if use_tei_format:
@@ -926,35 +934,68 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
+        batch_size: int,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
+
+        if batch_size >= len(dataset_json["rows"]):
+            raise GenAIPerfException(
+                "Batch size cannot be larger than the number of available texts"
+            )
+
         pa_json = cls._create_empty_openai_pa_json()
 
-        for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(
-                model_name, index, model_selection_strategy
-            )
-            pa_json["data"].append({"payload": []})
-            pa_json["data"][index]["payload"].append({"messages": []})
-
+        def create_messages(entry):
+            messages = []
             for header, content in entry.items():
                 new_message = cls._create_new_openai_chat_completions_message(
                     header, system_role_headers, user_role_headers, content
                 )
+                if new_message:
+                    messages.append(new_message)
+            return messages
 
-                pa_json = cls._add_new_message_to_json(pa_json, index, new_message)
+        current_batch = []
+        for index, entry in enumerate(dataset_json["rows"]):
+            messages = create_messages(entry)
+            if messages:
+                current_batch.extend(messages)
+                if len(current_batch) == batch_size:
+                    payload_entry: Dict[str, Any] = {}
+                    payload_entry["messages"] = current_batch
+                    batch_index = index // batch_size
+                    if add_model_name:
+                        payload_entry["model"] = cls._select_model_name(
+                            model_name, batch_index, model_selection_strategy
+                        )
+                    if add_stream:
+                        payload_entry["stream"] = True
+                    for key, value in extra_inputs.items():
+                        payload_entry[key] = value
+                    if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
+                        payload_entry["max_tokens"] = int(
+                            random.gauss(output_tokens_mean, output_tokens_stddev)
+                        )
 
-            pa_json = cls._add_optional_tags_to_openai_json(
-                pa_json,
-                index,
-                add_model_name,
-                add_stream,
-                extra_inputs,
-                output_tokens_mean,
-                output_tokens_stddev,
-                output_tokens_deterministic,
-                iter_model_name,
+                    pa_json["data"].append({"payload": [payload_entry]})
+                    current_batch = []
+
+                    pa_json = cls._add_optional_tags_to_openai_json(
+                        pa_json,
+                        batch_index,
+                        add_model_name,
+                        add_stream,
+                        extra_inputs,
+                        output_tokens_mean,
+                        output_tokens_stddev,
+                        output_tokens_deterministic,
+                        payload_entry["model"],
+                    )
+
+        if len(current_batch) > batch_size:
+            raise GenAIPerfException(
+                "Internal error: the number of messages in the batch exceeds the batch size."
             )
 
         return pa_json
@@ -972,18 +1013,14 @@ class LlmInputs:
         output_tokens_mean: int,
         output_tokens_stddev: int,
         output_tokens_deterministic: bool,
+        batch_size: int,
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
-        for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(
-                model_name, index, model_selection_strategy
-            )
-            pa_json["data"].append({"payload": []})
-            pa_json["data"][index]["payload"].append({"prompt": ""})
-
+        def create_prompt(entry):
+            prompt = ""
             for header, content in entry.items():
                 new_prompt = cls._create_new_prompt(
                     header,
@@ -992,20 +1029,33 @@ class LlmInputs:
                     text_input_headers,
                     content,
                 )
+                if new_prompt:
+                    prompt += f" {new_prompt}" if prompt else new_prompt
+            return prompt
 
-                pa_json = cls._add_new_prompt_to_json(pa_json, index, new_prompt)
+        current_batch = []
+        for index, entry in enumerate(dataset_json["rows"]):
+            prompt = create_prompt(entry)
+            if prompt:
+                current_batch.append(prompt)
+                if len(current_batch) == batch_size:
+                    payload_entry: Dict[str, Any] = {}
+                    payload_entry["prompt"] = " ".join(current_batch)
+                    if add_model_name:
+                        payload_entry["model"] = cls._select_model_name(
+                            model_name, index, model_selection_strategy
+                        )
+                    if add_stream:
+                        payload_entry["stream"] = True
+                    for key, value in extra_inputs.items():
+                        payload_entry[key] = value
+                    if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
+                        payload_entry["max_tokens"] = int(
+                            random.gauss(output_tokens_mean, output_tokens_stddev)
+                        )
 
-            pa_json = cls._add_optional_tags_to_openai_json(
-                pa_json,
-                index,
-                add_model_name,
-                add_stream,
-                extra_inputs,
-                output_tokens_mean,
-                output_tokens_stddev,
-                output_tokens_deterministic,
-                iter_model_name,
-            )
+                    pa_json["data"].append({"payload": [payload_entry]})
+                    current_batch = []
 
         return pa_json
 

@@ -160,6 +160,11 @@ def _check_conditional_args(
             parser.error(
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
             )
+    else:
+        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
+            parser.error(
+                "The --batch-size option is only supported with the Triton service-kind."
+            )
 
     _check_conditional_args_embeddings_rankings(parser, args)
 
@@ -182,11 +187,6 @@ def _check_conditional_args_embeddings_rankings(
         if args.generate_plots:
             parser.error(
                 f"The --generate-plots option is not currently supported with the {args.endpoint_type} endpoint type."
-            )
-    else:
-        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
-            parser.error(
-                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types."
             )
 
     if args.input_file:

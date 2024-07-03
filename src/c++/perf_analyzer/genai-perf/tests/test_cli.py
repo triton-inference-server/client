@@ -510,16 +510,6 @@ class TestCLIArguments:
                     "genai-perf",
                     "-m",
                     "test_model",
-                    "--batch-size",
-                    "10",
-                ],
-                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types",
-            ),
-            (
-                [
-                    "genai-perf",
-                    "-m",
-                    "test_model",
                     "--service-kind",
                     "openai",
                     "--endpoint-type",
