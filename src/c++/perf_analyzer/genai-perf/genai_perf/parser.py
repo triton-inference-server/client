@@ -163,7 +163,7 @@ def _check_conditional_args(
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
             parser.error(
-                "The --batch-size option is only supported with the Triton service-kind."
+                "The --batch-size option is only supported with the OpenAPI service-kind."
             )
 
     _check_conditional_args_embeddings_rankings(parser, args)
@@ -307,7 +307,7 @@ def _add_input_args(parser):
         default=LlmInputs.DEFAULT_BATCH_SIZE,
         required=False,
         help=f"The batch size of the requests GenAI-Perf should send. "
-        "This is currently only supported with the embeddings and rankings endpoint types.",
+        "This is currently only supported with the OpenAI service-kind.",
     )
 
     input_group.add_argument(

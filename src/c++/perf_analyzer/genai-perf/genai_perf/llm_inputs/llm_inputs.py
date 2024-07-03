@@ -894,8 +894,7 @@ class LlmInputs:
         text_input_headers: List[str] = []
 
         if "features" in dataset_json.keys():
-            # TODO (TPA-53) remove enumerate if index isnt useful
-            for index, feature in enumerate(dataset_json["features"]):
+            for _, feature in enumerate(dataset_json["features"]):
                 if feature in SYSTEM_ROLE_LIST:
                     system_role_headers.append(feature)
                 if feature in USER_ROLE_LIST:
@@ -1019,43 +1018,63 @@ class LlmInputs:
     ) -> Dict:
         pa_json = cls._create_empty_openai_pa_json()
 
-        def create_prompt(entry):
-            prompt = ""
-            for header, content in entry.items():
-                new_prompt = cls._create_new_prompt(
-                    header,
-                    system_role_headers,
-                    user_role_headers,
-                    text_input_headers,
-                    content,
+        num_batches = len(dataset_json["rows"]) // batch_size
+
+        for batch_index in range(num_batches):
+            batch = dataset_json["rows"][
+                batch_index * batch_size : (batch_index + 1) * batch_size
+            ]
+            batch_prompts = []
+
+            for index, entry in enumerate(batch):
+                prompt = ""
+
+                for header, content in entry.items():
+                    new_prompt = cls._create_new_prompt(
+                        header,
+                        system_role_headers,
+                        user_role_headers,
+                        text_input_headers,
+                        content,
+                    )
+                    if new_prompt:
+                        if prompt:
+                            prompt += f" {new_prompt}"
+                        else:
+                            prompt = new_prompt
+
+                batch_prompts.append(prompt)
+
+            iter_model_name = cls._select_model_name(
+                model_name, batch_index, model_selection_strategy
+            )
+
+            row: Dict[str, Any] = {}
+            row["prompt"] = batch_prompts
+            if add_model_name:
+                row["model"] = iter_model_name
+            if add_stream:
+                row["stream"] = True
+            if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
+                row["max_tokens"] = int(
+                    random.gauss(output_tokens_mean, output_tokens_stddev)
                 )
-                if new_prompt:
-                    prompt += f" {new_prompt}" if prompt else new_prompt
-            return prompt
+            for key, value in extra_inputs.items():
+                row[key] = value
 
-        current_batch = []
-        for index, entry in enumerate(dataset_json["rows"]):
-            prompt = create_prompt(entry)
-            if prompt:
-                current_batch.append(prompt)
-                if len(current_batch) == batch_size:
-                    payload_entry: Dict[str, Any] = {}
-                    payload_entry["prompt"] = " ".join(current_batch)
-                    if add_model_name:
-                        payload_entry["model"] = cls._select_model_name(
-                            model_name, index, model_selection_strategy
-                        )
-                    if add_stream:
-                        payload_entry["stream"] = True
-                    for key, value in extra_inputs.items():
-                        payload_entry[key] = value
-                    if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
-                        payload_entry["max_tokens"] = int(
-                            random.gauss(output_tokens_mean, output_tokens_stddev)
-                        )
+            pa_json["data"].append({"payload": [row]})
 
-                    pa_json["data"].append({"payload": [payload_entry]})
-                    current_batch = []
+            pa_json = cls._add_optional_tags_to_openai_json(
+                pa_json,
+                batch_index,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                iter_model_name,
+            )
 
         return pa_json
 

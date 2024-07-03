@@ -557,6 +557,16 @@ class TestCLIArguments:
                 ],
                 "The --generate-plots option is not currently supported with the rankings endpoint type",
             ),
+            (
+                [
+                    "genai-perf",
+                    "-m",
+                    "test_model",
+                    "--batch-size",
+                    "2",
+                ],
+                "The --batch-size option is only supported with the OpenAPI service-kind",
+            ),
         ],
     )
     def test_conditional_errors(self, args, expected_output, monkeypatch, capsys):
