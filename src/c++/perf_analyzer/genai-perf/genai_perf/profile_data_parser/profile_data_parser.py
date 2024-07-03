@@ -35,6 +35,7 @@ from genai_perf.utils import load_json
 
 
 class ResponseFormat(Enum):
+    HUGGINGFACE_RANKINGS = auto()
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
@@ -55,7 +56,9 @@ class ProfileDataParser:
     def _get_profile_metadata(self, data: dict) -> None:
         self._service_kind = data["service_kind"]
         if self._service_kind == "openai":
-            if data["endpoint"] == "v1/chat/completions":
+            if data["endpoint"] == "rerank":
+                self._response_format = ResponseFormat.HUGGINGFACE_RANKINGS
+            elif data["endpoint"] == "v1/chat/completions":
                 self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
