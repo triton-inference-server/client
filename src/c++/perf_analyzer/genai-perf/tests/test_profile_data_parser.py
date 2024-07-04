@@ -31,6 +31,7 @@ from typing import Any, List, Union
 
 import numpy as np
 import pytest
+from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.metrics import Metrics
 from genai_perf.profile_data_parser import ProfileDataParser
 
@@ -132,7 +133,10 @@ class TestProfileDataParser:
         * request throughputs
             - [2 / (5e-9 - 1e-9)] = [5e8]
         """
-        pd = ProfileDataParser(filename=Path("embedding_profile_export.json"))
+        pd = ProfileDataParser(
+            filename=Path("embedding_profile_export.json"),
+            output_format=OutputFormat.OPENAI_EMBEDDINGS,
+        )
 
         # experiment 1 statistics
         stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -202,7 +206,10 @@ class TestProfileDataParser:
         * request throughputs
             - [2 / (5e-9 - 1e-9)] = [5e8]
         """
-        pd = ProfileDataParser(filename=Path("ranking_profile_export.json"))
+        pd = ProfileDataParser(
+            filename=Path("ranking_profile_export.json"),
+            output_format=OutputFormat.RANKINGS,
+        )
 
         # experiment 1 statistics
         stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
