@@ -119,39 +119,14 @@ Run Triton Inference Server with vLLM backend container:
 ```bash
 export RELEASE="yy.mm" # e.g. export RELEASE="24.05"
 
-docker run -it --net=host --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
+
+docker run -it --net=host --gpus=1 --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-vllm-python-py3
 
 # Install Triton CLI (~5 min):
 pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 
-# Install sed in case it's not already installed
-apt-get update && apt-get install -y jq
-
 # Download model:
 triton import -m gpt2 --backend vllm
-
-# Check if model.json exists and has write permissions
-if [ -w /root/models/gpt2/1/model.json ]; then
-    echo 'model.json exists and is writable'
-else
-    echo 'model.json does not exist or is not writable'
-fi
-
-echo 'model.json content before updating:'
-
-cat /root/models/gpt2/1/model.json
-
-echo 'using jq to modify model.json'
-
-jq '.gpu_memory_utilization = 1.0' /root/models/gpt2/1/model.json > /root/models/gpt2/1/model.tmp.json && mv /root/models/gpt2/1/model.tmp.json /root/models/gpt2/1/model.json
-
-if [ $? -ne 0 ]; then
-    echo 'jq command failed'
-fi
-
-echo 'Updated model.json content after jq:'
-cat /root/models/gpt2/1/model.json
-
 
 # Run server:
 triton start
@@ -166,7 +141,7 @@ Run GenAI-Perf from Triton Inference Server SDK container:
 ```bash
 export RELEASE="yy.mm" # e.g. export RELEASE="24.05"
 
-docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+docker run -it --net=host --gpus=1 nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
 # Run GenAI-Perf in the container:
 genai-perf \
