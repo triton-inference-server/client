@@ -40,6 +40,27 @@ def raise_error(msg):
     raise InferenceServerException(msg=msg) from None
 
 
+def num_elements(shape):
+    """
+    Calculate the number of elements in an array given its shape.
+
+    Parameters
+    ----------
+    shape : list or tuple
+        Shape of the array.
+
+    Returns
+    -------
+    int
+        Number of elements in the array.
+    """
+
+    num_elements = 1
+    for dim in shape:
+        num_elements *= dim
+    return num_elements
+
+
 def serialized_byte_size(tensor_value):
     """
     Get the underlying number of bytes for a numpy ndarray.
@@ -188,6 +209,54 @@ def triton_to_np_dtype(dtype):
     elif dtype == "BYTES":
         return np.object_
     return None
+
+
+def get_data_type_byte_size(dtype):
+    """
+    Get the size of a given datatype in bytes.
+
+    Parameters
+    ----------
+    dtype : str
+        The data-type
+
+    Returns
+    -------
+    int
+        The size in bytes of the datatype, or 0 if size cannot be determined
+        (for example, values of type BYTES have variable length and so size
+        cannot be determine just from the type)
+    """
+
+    if dtype == "BOOL":
+        return 1
+    elif dtype == "INT8":
+        return 1
+    elif dtype == "INT16":
+        return 2
+    elif dtype == "INT32":
+        return 4
+    elif dtype == "INT64":
+        return 8
+    elif dtype == "UINT8":
+        return 1
+    elif dtype == "UINT16":
+        return 2
+    elif dtype == "UINT32":
+        return 4
+    elif dtype == "UINT64":
+        return 8
+    elif dtype == "FP16":
+        return 2
+    elif dtype == "FP32":
+        return 4
+    elif dtype == "FP64":
+        return 8
+    elif dtype == "BYTES":
+        return 0
+    elif dtype == "BF16":
+        return 2
+    return 0
 
 
 def serialize_byte_tensor(input_tensor):

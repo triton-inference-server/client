@@ -106,7 +106,11 @@ def _get_inference_request(
     if timeout is not None:
         parameters["timeout"] = timeout
 
-    infer_request["inputs"] = [this_input._get_tensor() for this_input in inputs]
+    infer_request["inputs"] = []
+    for infer_input in inputs:
+        infer_input.is_ready()
+        infer_request["inputs"].append(infer_input._get_tensor())
+
     if outputs:
         infer_request["outputs"] = [
             this_output._get_tensor() for this_output in outputs

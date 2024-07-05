@@ -30,7 +30,7 @@ import numpy as np
 from tritonclient.grpc import service_pb2
 from tritonclient.utils import *
 
-from ._utils import raise_error
+from ._utils import get_data_type_byte_size, num_elements, raise_error
 
 
 class InferInput:
@@ -54,6 +54,7 @@ class InferInput:
         self._input.ClearField("shape")
         self._input.shape.extend(shape)
         self._input.datatype = datatype
+        self._data_shape = None
         self._raw_content = None
 
     def name(self):
@@ -85,6 +86,48 @@ class InferInput:
             The shape of input
         """
         return self._input.shape
+
+    def is_ready(self):
+        """Get the status of input.
+
+        Returns
+        -------
+        bool
+            The status of input
+        """
+        # Input must set only one of the following fields: '_raw_content', 'shared_memory_region' in '_input.parameters'
+        cnt = 0
+        cnt += self._raw_content != None
+        cnt += "shared_memory_region" in self._input.parameters
+        if cnt != 1:
+            return
+
+        if "shared_memory_region" in self._input.parameters:
+            # Using shared memory
+            if self._input.datatype != "BYTES":
+                expected_byte_size = num_elements(
+                    self._input.shape
+                ) * get_data_type_byte_size(self._input.datatype)
+                data_byte_size = self._input.parameters[
+                    "shared_memory_byte_size"
+                ].int64_param
+                if data_byte_size != expected_byte_size:
+                    raise_error(
+                        "'{}' got unexpected byte size {}, expected {}".format(
+                            self._input.name, data_byte_size, expected_byte_size
+                        )
+                    )
+        else:
+            # Not using shared memory
+            expected_num_elements = num_elements(self._input.shape)
+            data_num_elements = num_elements(self._data_shape)
+            if expected_num_elements != data_num_elements:
+                raise_error(
+                    "'{}' got unexpected elements count {}, expected {}".format(
+                        self._input.name, data_num_elements, expected_num_elements
+                    )
+                )
+        return
 
     def set_shape(self, shape):
         """Set the shape of input.
@@ -171,6 +214,7 @@ class InferInput:
                 self._raw_content = b""
         else:
             self._raw_content = input_tensor.tobytes()
+        self._data_shape = input_tensor.shape
         return self
 
     def set_shared_memory(self, region_name, byte_size, offset=0):
@@ -193,6 +237,7 @@ class InferInput:
         """
         self._input.ClearField("contents")
         self._raw_content = None
+        self._data_shape = None
 
         self._input.parameters["shared_memory_region"].string_param = region_name
         self._input.parameters["shared_memory_byte_size"].int64_param = byte_size
