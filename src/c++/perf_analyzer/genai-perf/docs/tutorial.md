@@ -125,13 +125,13 @@ docker run -it --net=host --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit 
 pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 
 # Install sed in case it's not already installed
-apt-get update && apt-get install -y sed jq
+apt-get update && apt-get install -y jq
 
 # Download model:
-triton import -m opt125m --backend vllm
+triton import -m gpt2 --backend vllm
 
 # Check if model.json exists and has write permissions
-if [ -w /root/models/opt125m/1/model.json ]; then
+if [ -w /root/models/gpt2/1/model.json ]; then
     echo 'model.json exists and is writable'
 else
     echo 'model.json does not exist or is not writable'
@@ -139,30 +139,18 @@ fi
 
 echo 'model.json content before updating:'
 
-cat /root/models/opt125m/1/model.json
-
-# Find model.json and increase the value of gpu_memory_utilization
-sed -i 's/"gpu_memory_utilization": 0.85/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
-
-if [ $? -ne 0 ]; then
-    echo 'sed command failed'
-fi
-
-# FIXME: for debug only
-echo 'Updated model.json content after sed:'
-
-cat /root/models/opt125m/1/model.json
+cat /root/models/gpt2/1/model.json
 
 echo 'using jq to modify model.json'
 
-jq '.gpu_memory_utilization = 0.99' /root/models/opt125m/1/model.json > /root/models/opt125m/1/model.tmp.json && mv /root/models/opt125m/1/model.tmp.json /root/models/opt125m/1/model.json
+jq '.gpu_memory_utilization = 1.00' /root/models/gpt2/1/model.json > /root/models/gpt2/1/model.tmp.json && mv /root/models/gpt2/1/model.tmp.json /root/models/gpt2/1/model.json
 
 if [ $? -ne 0 ]; then
     echo 'jq command failed'
 fi
 
 echo 'Updated model.json content after jq:'
-cat /root/models/opt125m/1/model.json
+cat /root/models/gpt2/1/model.json
 
 
 # Run server:
@@ -182,7 +170,7 @@ docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-
 
 # Run GenAI-Perf in the container:
 genai-perf \
-  -m opt125m \
+  -m gpt2 \
   --service-kind triton \
   --backend vllm \
   --num-prompts 100 \
