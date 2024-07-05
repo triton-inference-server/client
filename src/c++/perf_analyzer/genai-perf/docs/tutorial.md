@@ -124,11 +124,22 @@ docker run -it --net=host --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit 
 # Install Triton CLI (~5 min):
 pip install "git+https://github.com/triton-inference-server/triton_cli@0.0.8"
 
+# Install sed in case it's not already installed
+apt-get update && apt-get install -y sed
+
 # Download model:
 triton import -m opt125m --backend vllm
 
+# Check if model.json exists and has write permissions
+if [ -w /root/models/opt125m/1/model.json ]; then
+    echo 'model.json exists and is writable'
+else
+    echo 'model.json does not exist or is not writable'
+fi
+
+
 # Find model.json and increase the value of gpu_memory_utilization
-sed -i.bak 's/"gpu_memory_utilization": [0-9.]\+/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
+sed -i 's/"gpu_memory_utilization": [0-9.]\+/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
 
 # FIXME: for debug only
 cat /root/models/opt125m/1/model.json
