@@ -371,10 +371,12 @@ class TestCLParser : public CLParser {
 void
 CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
-    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range)
+    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
+    PAParamsPtr& exp)
 {
   SUBCASE("start:end provided")
   {
+    exp->max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400");  // start:end
 
@@ -392,6 +394,7 @@ CheckValidRange(
 
   SUBCASE("start:end:step provided")
   {
+    exp->max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400:10");  // start:end:step
 
@@ -1126,12 +1129,12 @@ TEST_CASE("Testing Command Line Parser")
 
       exp->using_concurrency_range = true;
       exp->concurrency_range.start = 100;
+      exp->max_threads = 16;
     }
 
     CheckValidRange(
         args, option_name, parser, act, exp->using_concurrency_range,
-        exp->concurrency_range);
-
+        exp->concurrency_range, exp);
     CheckInvalidRange(args, option_name, parser, act, check_params);
 
     SUBCASE("wrong separator")
@@ -1173,6 +1176,60 @@ TEST_CASE("Testing Command Line Parser")
 
       check_params = false;
     }
+
+    SUBCASE("concurrency-range.end < 16")
+    {
+      args.push_back(option_name);
+      args.push_back("10:10");  // start
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 10;
+      exp->concurrency_range.end = 10;
+      exp->max_threads = 16;
+    }
+
+    SUBCASE("concurrency-range.end == 16")
+    {
+      args.push_back(option_name);
+      args.push_back("10:16");  // start
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 10;
+      exp->concurrency_range.end = 16;
+      exp->max_threads = 16;
+    }
+
+    SUBCASE("concurrency-range.end > 16")
+    {
+      args.push_back(option_name);
+      args.push_back("10:40");  // start
+
+      int argc = args.size();
+      char* argv[argc];
+      std::copy(args.begin(), args.end(), argv);
+
+      REQUIRE_NOTHROW(act = parser.Parse(argc, argv));
+      CHECK(!parser.UsageCalled());
+
+      exp->using_concurrency_range = true;
+      exp->concurrency_range.start = 10;
+      exp->concurrency_range.end = 40;
+      exp->max_threads = 40;
+    }
   }
 
   SUBCASE("Option : --periodic-concurrency-range")
@@ -1210,7 +1267,7 @@ TEST_CASE("Testing Command Line Parser")
 
     CheckValidRange(
         args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
-        exp->periodic_concurrency_range);
+        exp->periodic_concurrency_range, exp);
 
     CheckInvalidRange(args, option_name, parser, act, check_params);
 
