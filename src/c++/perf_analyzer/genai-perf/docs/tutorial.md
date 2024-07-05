@@ -143,7 +143,7 @@ cat /root/models/gpt2/1/model.json
 
 echo 'using jq to modify model.json'
 
-jq '.gpu_memory_utilization = 1.00' /root/models/gpt2/1/model.json > /root/models/gpt2/1/model.tmp.json && mv /root/models/gpt2/1/model.tmp.json /root/models/gpt2/1/model.json
+jq '.gpu_memory_utilization = 0.6' /root/models/gpt2/1/model.json > /root/models/gpt2/1/model.tmp.json && mv /root/models/gpt2/1/model.tmp.json /root/models/gpt2/1/model.json
 
 if [ $? -ne 0 ]; then
     echo 'jq command failed'
