@@ -137,11 +137,18 @@ else
     echo 'model.json does not exist or is not writable'
 fi
 
+echo 'model.json content before updating:'
+cat /root/models/opt125m/1/model.json
 
 # Find model.json and increase the value of gpu_memory_utilization
-sed -i 's/"gpu_memory_utilization": [0-9.]\+/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
+sed -i 's/"gpu_memory_utilization": 0.85/"gpu_memory_utilization": 0.99/' /root/models/opt125m/1/model.json
+if [ $? -ne 0 ]; then
+    echo 'sed command failed'
+    exit 1
+fi
 
 # FIXME: for debug only
+echo 'Updated model.json content:'
 cat /root/models/opt125m/1/model.json
 
 # Run server:
