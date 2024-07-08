@@ -12,65 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.dataset_decorators import DatasetDecorator
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
-from PIL import Image, ImageDraw
 from requests import Response
-
-
-def make_a_snowman():
-    # Create a blank image with white background
-    img = Image.new("RGB", (600, 800), color="skyblue")
-    d = ImageDraw.Draw(img)
-
-    # Draw the snowman's body (three circles)
-    body_color = "white"
-    d.ellipse([200, 500, 400, 700], fill=body_color, outline="black")  # Bottom circle
-    d.ellipse([225, 350, 375, 550], fill=body_color, outline="black")  # Middle circle
-    d.ellipse([250, 200, 350, 400], fill=body_color, outline="black")  # Head circle
-
-    # Draw the snowman's eyes
-    eye_color = "black"
-    d.ellipse([275, 250, 285, 260], fill=eye_color)  # Left eye
-    d.ellipse([315, 250, 325, 260], fill=eye_color)  # Right eye
-
-    # Draw the snowman's nose (carrot)
-    nose_color = "orange"
-    d.polygon([(300, 270), (300, 280), (340, 275)], fill=nose_color)  # Nose
-
-    # Draw the snowman's mouth (smile)
-    mouth_color = "black"
-    d.arc([275, 290, 325, 310], start=0, end=180, fill=mouth_color)  # Smile
-
-    # Draw the snowman's buttons
-    d.ellipse([290, 420, 310, 440], fill=eye_color)  # Top button
-    d.ellipse([290, 460, 310, 480], fill=eye_color)  # Middle button
-    d.ellipse([290, 500, 310, 520], fill=eye_color)  # Bottom button
-
-    # Draw the snowman's arms
-    arm_color = "brown"
-    d.line([225, 450, 150, 400], fill=arm_color, width=5)  # Left arm
-    d.line([375, 450, 450, 400], fill=arm_color, width=5)  # Right arm
-
-    return img
-
-
-def encode_image(img: Image):
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
 class ModelSelectionStrategy(Enum):
@@ -145,6 +100,7 @@ class LlmInputs:
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
+        dataset_decorators: List[DatasetDecorator] = [],
         add_model_name: bool = False,
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
@@ -224,6 +180,8 @@ class LlmInputs:
             batch_size,
             input_filename,
         )
+        for decorator in dataset_decorators:
+            generic_dataset_json = decorator.process(generic_dataset_json)
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -354,12 +312,6 @@ class LlmInputs:
                 )
             else:
                 raise GenAIPerfException("Input source is not recognized.")
-
-            if output_format == OutputFormat.OPENAI_VISION:
-                snowman_image = make_a_snowman()
-                generic_dataset_json = cls._add_vision_input(
-                    generic_dataset_json, snowman_image
-                )
 
         return generic_dataset_json
 
@@ -569,29 +521,6 @@ class LlmInputs:
             {"row": {"text_input": prompt}} for prompt in input_file_prompts
         ]
         return dataset_json
-
-    @classmethod
-    def _add_vision_input(
-        cls, generic_dataset_json: Dict[str, List[Dict]], img: Image
-    ) -> Dict[str, List[Dict]]:
-        img_base64 = encode_image(img)
-        for row in generic_dataset_json["rows"]:
-            if isinstance(row["text_input"], str):
-                row["text_input"] = [
-                    dict(
-                        type="text",
-                        text=row["text_input"],
-                    )
-                ]
-
-            row["text_input"].append(
-                dict(
-                    type="image_url",
-                    image_url=f"data:image/png;base64,{img_base64}",
-                )
-            )
-
-        return generic_dataset_json
 
     @classmethod
     def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
