@@ -72,11 +72,10 @@ class ImageDecorator(DatasetDecorator):
 
     def pack_image(self, image):
         image_repr = None
-        match self.upload_method:
-            case UploadMethod.base64:
-                image_repr = self.encode_image(image)
-            case _:
-                raise GenAIPerfException("unexpected upload_method")
+        if self.upload_method == UploadMethod.base64:
+            image_repr = self.encode_image(image)
+        else:
+            raise GenAIPerfException("unexpected upload_method")
         return dict(
             type="image_url",
             image_url=f"data:image/png;{self.upload_method.name},{image_repr}",
