@@ -26,4 +26,6 @@ def test_base64_images(generic_dataset):
     images = [content for content in prompt if content["type"] == "image_url"]
     assert len(images) == 1, "Image not added to the prompt"
 
-    assert images[0]["image_url"].startswith(f"data:image/png;{upload_method.name},")
+    assert images[0]["image_url"]["url"].startswith(
+        f"data:image/png;{upload_method.name},"
+    )

@@ -2,6 +2,7 @@ import base64
 from enum import Enum, auto
 from io import BytesIO
 
+from genai_perf.exceptions import GenAIPerfException
 from PIL import Image, ImageDraw
 
 
@@ -60,10 +61,10 @@ class ImageDecorator(DatasetDecorator):
         for row in generic_dataset["rows"]:
             if isinstance(row["text_input"], str):
                 row["text_input"] = [
-                    dict(
-                        type="text",
-                        text=row["text_input"],
-                    )
+                    {
+                        "type": "text",
+                        "text": row["text_input"],
+                    }
                 ]
 
             row["text_input"].append(self.pack_image(snowman_image))
@@ -76,10 +77,12 @@ class ImageDecorator(DatasetDecorator):
             image_repr = self.encode_image(image)
         else:
             raise GenAIPerfException("unexpected upload_method")
-        return dict(
-            type="image_url",
-            image_url=f"data:image/png;{self.upload_method.name},{image_repr}",
-        )
+        return {
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/png;{self.upload_method.name},{image_repr}"
+            },
+        }
 
     def encode_image(self, img: Image):
         buffered = BytesIO()
