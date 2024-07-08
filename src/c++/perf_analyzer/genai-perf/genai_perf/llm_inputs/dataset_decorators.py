@@ -2,7 +2,6 @@ import base64
 from enum import Enum, auto
 from io import BytesIO
 
-import requests
 from PIL import Image, ImageDraw
 
 
@@ -17,7 +16,7 @@ class DatasetDecorator:
 
 def make_a_snowman():
     # Create a blank image with white background
-    img = Image.new("RGB", (600, 800), color="skyblue")
+    img = Image.new("RGB", (600, 400), color="skyblue")
     d = ImageDraw.Draw(img)
 
     # Draw the snowman's body (three circles)
@@ -53,14 +52,12 @@ def make_a_snowman():
 
 
 class ImageDecorator(DatasetDecorator):
-    def __init__(self, upload_method, nvcf_api_token=None):
+    def __init__(self, upload_method):
         self.upload_method = upload_method
-        self.nvcf_api_token = nvcf_api_token
 
     def process(self, generic_dataset):
         snowman_image = make_a_snowman()
-        for item in generic_dataset["rows"]:
-            row = item["row"]
+        for row in generic_dataset["rows"]:
             if isinstance(row["text_input"], str):
                 row["text_input"] = [
                     dict(
@@ -74,6 +71,7 @@ class ImageDecorator(DatasetDecorator):
         return generic_dataset
 
     def pack_image(self, image):
+        image_repr = None
         match self.upload_method:
             case UploadMethod.base64:
                 image_repr = self.encode_image(image)
@@ -81,7 +79,7 @@ class ImageDecorator(DatasetDecorator):
                 raise GenAIPerfException("unexpected upload_method")
         return dict(
             type="image_url",
-            image_url=f"data:image/png;{self.upload_method},{image_repr}",
+            image_url=f"data:image/png;{self.upload_method.name},{image_repr}",
         )
 
     def encode_image(self, img: Image):
