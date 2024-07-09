@@ -54,14 +54,12 @@ class YamlExporter:
         filename = self._output_dir / DEFAULT_OUTPUT_DATA_YAML
         logger.info(f"Generating {filename}")
         with open(str(filename), "w") as f:
-            yaml.dump(self._stats_and_args, f, indent=2, sort_keys=False)
+            yaml.safe_dump(self._stats_and_args, f, indent=2, sort_keys=False)
 
     def _prepare_args_for_export(self) -> None:
-        keys_to_exclude = ['model_selection_strategy', 'batch_size', 'extra_inputs', 'formatted_model_name', 'output_format','func']
+        keys_to_exclude = ['model_selection_strategy', 'batch_size', 'formatted_model_name', 'output_format','func','extra_inputs']
         for key in keys_to_exclude:
             self._args.pop(key,None)
-        print("=====================YAML Args==============================")
-        print(self._args)
         self._args['model'] = ', '.join(self._args['model'])
         self._args['profile_export_file'] = str(self._args['profile_export_file'])
         self._args['artifact_dir'] = str(self._args['artifact_dir'])
@@ -69,9 +67,8 @@ class YamlExporter:
         self._add_extra_inputs_to_args()
 
     def _add_extra_inputs_to_args(self) -> None:
-        print("Type of extra inputs: ")
-        print(type(self._extra_inputs))
-        self._args.update({"extra_inputs": self._extra_inputs})
+        if self._extra_inputs:
+            self._args["extra_inputs"] = self._extra_inputs
 
     def _prepare_stats_for_export(self) -> None:
         self._stats['output_token_throughput_per_request']['unit'] = 'queries/sec'
