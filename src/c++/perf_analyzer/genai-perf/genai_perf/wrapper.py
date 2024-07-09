@@ -88,6 +88,9 @@ class Profiler:
             # LLM response should be streaming. That is different than the
             # 'streaming' that PA takes, which means something else (and is
             # required for decoupled models into triton).
+            # TODO: Make it just one arg SLOs (can parse list elsewhere)
+            "slo",
+            "slos",
             "streaming",
             "synthetic_input_tokens_mean",
             "synthetic_input_tokens_stddev",

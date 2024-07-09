@@ -434,6 +434,14 @@ def _add_profile_args(parser):
     )
 
     profile_group.add_argument(
+        "--slo",
+        action="append",
+        help="Service Level Objectives in the format 'metric:value'. "
+        "Multiple SLOs can be provided by repeating the flag."
+        "These are used for calculating goodwill",
+    )
+
+    profile_group.add_argument(
         "-s",
         "--stability-percentage",
         type=float,
@@ -651,6 +659,15 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     return compare
 
 
+def parse_slos(slo_list):
+    slos = {}
+    if slo_list:
+        for slo in slo_list:
+            metric, value = slo.split(":")
+            slos[metric] = float(value)
+    return slos
+
+
 ### Handlers ###
 
 
@@ -713,6 +730,7 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
+    args.slos = parse_slos(args.slo)
     args = _infer_prompt_source(args)
     args = _check_model_args(parser, args)
     args = _check_conditional_args(parser, args)
