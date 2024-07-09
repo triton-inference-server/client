@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 GenAI-Perf allows you to profile ranking models compatible with Hugging Face's
-[Text Embeddings Interface's re-ranker API](https://huggingface.co/docs/text-embeddings-inference/en/quick_tour#re-rankers).
+[Text Embeddings Inference's re-ranker API](https://huggingface.co/docs/text-embeddings-inference/en/quick_tour#re-rankers).
 
 ## Create a Sample Rankings Input Directory
 
