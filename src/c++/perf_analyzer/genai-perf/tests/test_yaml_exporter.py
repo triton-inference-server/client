@@ -24,20 +24,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import List
+import json
+#from yaml import safe_load
 
-from genai_perf.export_data.console_exporter import ConsoleExporter
-from genai_perf.export_data.csv_exporter import CsvExporter
+import genai_perf.parser as parser
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.export_data.json_exporter import JsonExporter
 from genai_perf.export_data.yaml_exporter import YamlExporter
 
-DataExporterList = [ConsoleExporter, JsonExporter, CsvExporter, YamlExporter]
+class TestYamlExporter:
+    def test_generate_yaml(self, monkeypatch) -> None:
+        cli_cmd = [
+            "genai-perf",
+            "-m",
+            "gpt2_vllm",
+            "--backend",
+            "vllm",
+            "--streaming",
+            "--extra-inputs",
+            "max_tokens:256",
+            "--extra-inputs",
+            "ignore_eos:true",
+        ]
+        config = ExporterConfig()
+        monkeypatch.setattr("sys.argv", cli_cmd)
+        args, _ = parser.parse_args()
+        config.stats = self.stats
+        config.args = args
+        config.extra_inputs = parser.get_extra_inputs_as_dict(args)
+        config.artifact_dir = args.artifact_dir
+        yaml_exporter = YamlExporter(config)
+        assert yaml_exporter._stats_and_args == self.expected_yaml_output
 
-
-class DataExporterFactory:
-    def create_data_exporters(self, config: ExporterConfig) -> List:
-        data_exporters = []
-        for exporter in DataExporterList:
-            data_exporters.append(exporter(config))
-        return data_exporters
+    stats = {}
+    expected_yaml_output = {'name': 'Silenthand Olleander', 'race': 'Human','traits': ['ONE_HAND', 'ONE_EYE']}
