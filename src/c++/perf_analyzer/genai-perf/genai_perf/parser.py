@@ -573,13 +573,6 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
-    other_group.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        help=f"An option to print the version and exit.",
-    )
-
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
@@ -704,14 +697,12 @@ def parse_args():
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.set_defaults(func=profile_handler)
-
-    # Conceptually group args for easier visualization
-    _add_endpoint_args(parser)
-    _add_input_args(parser)
-    _add_profile_args(parser)
-    _add_output_args(parser)
-    _add_other_args(parser)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        help=f"An option to print the version and exit.",
+    )
 
     # Add subcommands
     subparsers = parser.add_subparsers(

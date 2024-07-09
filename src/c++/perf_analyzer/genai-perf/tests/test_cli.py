@@ -52,10 +52,7 @@ class TestCLIArguments:
         [
             (["-h"], expected_help_output),
             (["--help"], expected_help_output),
-            (["-m", "abc", "--help"], expected_help_output),
-            (["-m", "abc", "-h"], expected_help_output),
             (["--version"], expected_version_output),
-            (["-m", "abc", "--version"], expected_version_output),
         ],
     )
     def test_help_version_arguments_output_and_exit(
