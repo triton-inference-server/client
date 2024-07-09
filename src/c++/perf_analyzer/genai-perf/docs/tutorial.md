@@ -83,6 +83,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -167,6 +168,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind triton \
   --backend vllm \
@@ -233,6 +235,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind openai \
   --endpoint v1/chat/completions \
@@ -297,6 +300,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind openai \
   --endpoint v1/completions \

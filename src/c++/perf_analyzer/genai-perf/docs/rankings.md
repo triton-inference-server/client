@@ -75,6 +75,7 @@ To profile ranking models using GenAI-Perf, use the following command:
 
 ```bash
 genai-perf \
+    profile \
     -m BAAI/bge-reranker-large \
     --service-kind openai \
     --endpoint-type rankings \

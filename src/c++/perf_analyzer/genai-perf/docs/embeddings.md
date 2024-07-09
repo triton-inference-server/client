@@ -61,6 +61,7 @@ To profile embeddings models using GenAI-Perf, use the following command:
 
 ```bash
 genai-perf \
+    profile \
     -m intfloat/e5-mistral-7b-instruct \
     --service-kind openai \
     --endpoint-type embeddings \
@@ -74,6 +75,7 @@ For example, you could use this command:
 
 ```bash
 genai-perf \
+    profile \
     -m intfloat/e5-mistral-7b-instruct \
     --service-kind openai \
     --endpoint-type embeddings \

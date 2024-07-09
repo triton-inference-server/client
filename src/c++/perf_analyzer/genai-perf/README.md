@@ -163,6 +163,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -210,6 +211,7 @@ by passing the `--generate-plots` option when running the benchmark:
 
 ```bash
 genai-perf \
+  profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
