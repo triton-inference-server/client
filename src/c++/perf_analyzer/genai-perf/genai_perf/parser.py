@@ -77,7 +77,7 @@ def _check_model_args(
     """
     Check if model name is provided.
     """
-    if not args.subcommand and not args.model:
+    if not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
     args = _convert_str_to_enum_entry(
         args, "model_selection_strategy", ModelSelectionStrategy
@@ -651,6 +651,20 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     return compare
 
 
+def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
+    profile = subparsers.add_parser(
+        "profile",
+        description="Subcommand to profile LLMs and Generative AI models.",
+    )
+    _add_endpoint_args(profile)
+    _add_input_args(profile)
+    _add_profile_args(profile)
+    _add_output_args(profile)
+    _add_other_args(profile)
+    profile.set_defaults(func=profile_handler)
+    return profile
+
+
 ### Handlers ###
 
 
@@ -704,18 +718,8 @@ def parse_args():
         help="List of subparser commands.", dest="subcommand"
     )
     compare_parser = _parse_compare_args(subparsers)
-
-    profile_parser = subparsers.add_parser(
-        "profile",
-        description="Subcommand to profile LLMs and Generative AI models.",
-    )
+    compare_parser = _parse_profile_args(subparsers)
     subparsers.required = True
-    _add_endpoint_args(profile_parser)
-    _add_input_args(profile_parser)
-    _add_profile_args(profile_parser)
-    _add_output_args(profile_parser)
-    _add_other_args(profile_parser)
-    profile_parser.set_defaults(func=profile_handler)
 
     # Check for passthrough args
     if "--" in argv:
@@ -725,11 +729,15 @@ def parse_args():
         passthrough_index = len(argv)
 
     args = parser.parse_args(argv[1:passthrough_index])
-    args = _infer_prompt_source(args)
-    args = _check_model_args(parser, args)
-    args = _check_conditional_args(parser, args)
-    args = _check_compare_args(compare_parser, args)
-    args = _check_load_manager_args(args)
-    args = _set_artifact_paths(args)
+    if args.subcommand == "profile":
+        args = _infer_prompt_source(args)
+        args = _check_model_args(parser, args)
+        args = _check_conditional_args(parser, args)
+        args = _check_load_manager_args(args)
+        args = _set_artifact_paths(args)
+    elif args.subcommand == "compare":
+        args = _check_compare_args(compare_parser, args)
+    else:
+        raise ValueError(f"Unknown subcommand: {args.subcommand}")
 
     return args, argv[passthrough_index + 1 :]
