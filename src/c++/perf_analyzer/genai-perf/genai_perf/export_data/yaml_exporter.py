@@ -32,6 +32,8 @@ from genai_perf.export_data.exporter_config import ExporterConfig
 
 
 DEFAULT_OUTPUT_DATA_YAML = "profile_export_genai_perf.yaml"
+SCHEMA_TYPE = "measurement"
+BENCHMARK_NAME = "abc"
 
 logger = logging.getLogger(__name__)
 
@@ -41,53 +43,58 @@ class YamlExporter:
     """
 
     def __init__(self,config: ExporterConfig):
-        self._stats = dict(config.stats)
-        self._args = dict(vars(config.args))
+        self._benchmark_metadata = {}
+        self._benchmark_measurement = dict(config.stats)
+        self._benchmark_config = dict(vars(config.args))
         self._extra_inputs = dict(config.extra_inputs)
         self._output_dir = config.artifact_dir
-        self._stats_and_args: Dict = {}
-        self._prepare_args_for_export()
-        self._prepare_stats_for_export()
-        self._merge_stats_and_args()
+        self._benchmark_data: Dict = {}
+        self._prepare_benchmark_metadata_for_export()
+        self._prepare__benchmark_config_for_export()
+        self._prepare__benchmark_measurement_for_export()
+        self._prepare_benchmark_data()
 
     def export(self) -> None:
         filename = self._output_dir / DEFAULT_OUTPUT_DATA_YAML
         logger.info(f"Generating {filename}")
         with open(str(filename), "w") as f:
-            yaml.safe_dump(self._stats_and_args, f, indent=2, sort_keys=False)
+            yaml.safe_dump(self._benchmark_data, f, indent=2, sort_keys=False)
 
-    def _prepare_args_for_export(self) -> None:
-        keys_to_exclude = ['model_selection_strategy', 'batch_size', 'formatted_model_name', 'output_format','func','extra_inputs']
-        for key in keys_to_exclude:
-            self._args.pop(key,None)
-        self._args['model'] = ', '.join(self._args['model'])
-        self._args['profile_export_file'] = str(self._args['profile_export_file'])
-        self._args['artifact_dir'] = str(self._args['artifact_dir'])
-        self._args['prompt_source'] = self._args['prompt_source'].name.lower()
-        self._add_extra_inputs_to_args()
+    def _prepare_benchmark_metadata_for_export(self) -> None:
+        self._benchmark_metadata.update({"schema_type":SCHEMA_TYPE})
+        self._benchmark_metadata.update({"benchmark_name":BENCHMARK_NAME})
 
-    def _add_extra_inputs_to_args(self) -> None:
-        if self._extra_inputs:
-            self._args["extra_inputs"] = self._extra_inputs
+    def _prepare_benchmark_config_for_export(self) -> None:
+        config_to_exclude = ['model_selection_strategy', 'batch_size', 'formatted_model_name', 'output_format','func','extra_inputs']
+        for config in config_to_exclude:
+            self._benchmark_config.pop(config,None)
+        self._benchmark_config['model'] = ', '.join(self._benchmark_config['model'])
+        self._benchmark_config['profile_export_file'] = str(self._benchmark_config['profile_export_file'])
+        self._benchmark_config['artifact_dir'] = str(self._benchmark_config['artifact_dir'])
+        self._benchmark_config['prompt_source'] = self._benchmark_config['prompt_source'].name.lower()
+        self._add_extra_inputs_to__benchmark_config()
 
-    def _prepare_stats_for_export(self) -> None:
-        self._stats['output_token_throughput_per_request']['unit'] = 'queries/sec'
-        self._convert_stats_ms_to_ns()
-        self._rename_stats()
+    def _add_extra_inputs_to__benchmark_config(self) -> None:
+        self._benchmark_config.update({"extra_inputs":self._extra_inputs})
 
-    def _convert_stats_ms_to_ns(self) -> None:
+    def _prepare__benchmark_measurement_for_export(self) -> None:
+        self._benchmark_measurement['output_token_throughput_per_request']['unit'] = 'queries/sec'
+        self._convert_measurement_ms_to_ns()
+        self._rename_metrics()
+
+    def _convert_measuremnt_ms_to_ns(self) -> None:
         conversion_factor = 1000000
-        stats_to_convert = ['request_latency','time_to_first_token','inter_token_latency']
-        for stat in stats_to_convert:
-            for key in self._stats[stat]:
+        metrics_to_convert = ['request_latency','time_to_first_token','inter_token_latency']
+        for metric in metrics_to_convert:
+            for key in self.__benchmark_measurement[metric]:
                 if key == 'unit':
-                    self._stats[stat][key] = 'ns'
+                    self._benchmark_measurement[metric][key] = 'ns'
                 else:
-                    self._stats[stat][key] = self._stats[stat][key] * conversion_factor
+                    self._benchmark_measurement[metric][key] = self._benchmark_measurement[metric][key] * conversion_factor
 
-    def _rename_stats(self) -> None:
+    def _rename_metrics(self) -> None:
         #rename stats to match the provided yaml
-        key_mapping = {
+        metric_name_mapping = {
             'request_throughput':'request_throughput_per_sec',
             'request_latency': 'request_latency_ns',
             'time_to_first_token': 'time_to_first_token_ns',
@@ -96,10 +103,11 @@ class YamlExporter:
             'output_sequence_length': 'num_output_tokens',
             'input_sequence_length' : 'num_input_tokens'
         }
-        self._stats = {key_mapping.get(key, key): value for key, value in self._stats.items()}
+        self._benchmark_measurement = {metric_name_mapping.get(original_name, original_name): refactored_name for original_name, refactored_name in self._benchmark_measurement.items()}
 
-    def _merge_stats_and_args(self) -> None:
-        self._stats_and_args.update({"benchmark_config":self._args})
-        self._stats_and_args.update({"benchmark_measurements": self._stats})
+    def _prepare_benchmark_data(self) -> None:
+        self._benchmark_data = dict(self._benchmark_metadata)
+        self._benchmark_data.update({"benchmark_config":self._benchmark_config})
+        self._benchmark_data.update({"benchmark_measurements": self._benchmark_measurement})
 
             
