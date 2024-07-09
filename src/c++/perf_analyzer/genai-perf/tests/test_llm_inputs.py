@@ -24,7 +24,6 @@ import responses
 from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.dataset_decorators import DatasetDecorator
 from genai_perf.llm_inputs.llm_inputs import (
     LlmInputs,
     ModelSelectionStrategy,
@@ -763,37 +762,3 @@ class TestLlmInputs:
             model_name_list, index, model_selection_strategy
         )
         assert actual_model == expected_model
-
-    @patch("pathlib.Path.exists", return_value=True)
-    @patch(
-        "builtins.open",
-        new_callable=mock_open,
-        read_data='{"text_input": "single prompt"}',
-    )
-    def test_decorators(self, mock_file, mock_exists):
-        EXPECTED_INPUT = {
-            "features": ["text_input"],
-            "rows": [{"text_input": "single prompt"}],
-        }
-        DECORATED_PROMPT = "decorated prompt"
-        EXPECTED_OUTPUT = {
-            "features": ["text_input"],
-            "rows": [{"text_input": DECORATED_PROMPT}],
-        }
-
-        dummy_decorator = DatasetDecorator()
-        dummy_decorator.process = MagicMock(return_value=EXPECTED_OUTPUT)
-
-        result = LlmInputs.create_llm_inputs(
-            input_type=PromptSource.FILE,
-            input_filename=Path("prompt.txt"),
-            output_format=OutputFormat.OPENAI_CHAT_COMPLETIONS,
-            dataset_decorators=[dummy_decorator],
-            model_name=["test_model_A"],
-        )
-
-        dummy_decorator.process.assert_called_once_with(EXPECTED_INPUT)
-        assert (
-            result["data"][0]["payload"][0]["messages"][0]["content"]
-            == DECORATED_PROMPT
-        )

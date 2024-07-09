@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -25,7 +27,51 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.dataset_decorators import DatasetDecorator
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from PIL import Image, ImageDraw
 from requests import Response
+
+
+# (TMA-1984) Remove the dummy image input with random noise image
+def make_snowman_image():
+    # Create a blank image with white background
+    img = Image.new("RGB", (600, 800), color="skyblue")
+    d = ImageDraw.Draw(img)
+
+    # Draw the snowman's body (three circles)
+    body_color = "white"
+    d.ellipse([200, 500, 400, 700], fill=body_color, outline="black")  # Bottom circle
+    d.ellipse([225, 350, 375, 550], fill=body_color, outline="black")  # Middle circle
+    d.ellipse([250, 200, 350, 400], fill=body_color, outline="black")  # Head circle
+
+    # Draw the snowman's eyes
+    eye_color = "black"
+    d.ellipse([275, 250, 285, 260], fill=eye_color)  # Left eye
+    d.ellipse([315, 250, 325, 260], fill=eye_color)  # Right eye
+
+    # Draw the snowman's nose (carrot)
+    nose_color = "orange"
+    d.polygon([(300, 270), (300, 280), (340, 275)], fill=nose_color)  # Nose
+
+    # Draw the snowman's mouth (smile)
+    mouth_color = "black"
+    d.arc([275, 290, 325, 310], start=0, end=180, fill=mouth_color)  # Smile
+
+    # Draw the snowman's buttons
+    d.ellipse([290, 420, 310, 440], fill=eye_color)  # Top button
+    d.ellipse([290, 460, 310, 480], fill=eye_color)  # Middle button
+    d.ellipse([290, 500, 310, 520], fill=eye_color)  # Bottom button
+
+    # Draw the snowman's arms
+    arm_color = "brown"
+    d.line([225, 450, 150, 400], fill=arm_color, width=5)  # Left arm
+    d.line([375, 450, 450, 400], fill=arm_color, width=5)  # Right arm
+
+    return img
+
+
+class ImageFormat(Enum):
+    PNG = auto()
+    JPEG = auto()
 
 
 class ModelSelectionStrategy(Enum):
@@ -100,7 +146,6 @@ class LlmInputs:
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
-        dataset_decorators: List[DatasetDecorator] = [],
         add_model_name: bool = False,
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
@@ -180,8 +225,6 @@ class LlmInputs:
             batch_size,
             input_filename,
         )
-        for decorator in dataset_decorators:
-            generic_dataset_json = decorator.process(generic_dataset_json)
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -312,6 +355,12 @@ class LlmInputs:
                 )
             else:
                 raise GenAIPerfException("Input source is not recognized.")
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                snowman_image = make_snowman_image()
+                generic_dataset_json = cls._add_images_to_generic_json(
+                    generic_dataset_json, snowman_image
+                )
 
         return generic_dataset_json
 
@@ -550,6 +599,35 @@ class LlmInputs:
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
 
     @classmethod
+    def _add_images_to_generic_json(
+        cls, generic_dataset_json: Dict[str, List[Dict]], img: Image
+    ) -> Dict[str, List[Dict]]:
+        # (TMA-1985) Support multiple image formats
+        img_format = ImageFormat.PNG
+        img_base64 = cls._encode_image(img, img_format)
+        for row in generic_dataset_json["rows"]:
+            if isinstance(row["text_input"], str):
+                row["text_input"] = [
+                    {
+                        "type": "text",
+                        "text": row["text_input"],
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{img_base64}"},
+                    },
+                ]
+
+        return generic_dataset_json
+
+    @classmethod
+    def _encode_image(cls, img: Image, format=ImageFormat.PNG):
+        """Encodes an image into base64 encoding."""
+        buffered = BytesIO()
+        img.save(buffered, format=format.name)
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+    @classmethod
     def _convert_generic_json_to_output_format(
         cls,
         output_format: OutputFormat,
@@ -563,7 +641,10 @@ class LlmInputs:
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
-        if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
+        if (
+            output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
+            or output_format == OutputFormat.OPENAI_VISION
+        ):
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
                 generic_dataset,
                 add_model_name,
@@ -598,18 +679,6 @@ class LlmInputs:
             output_json = cls._convert_generic_json_to_rankings_format(
                 generic_dataset,
                 extra_inputs,
-                model_name,
-                model_selection_strategy,
-            )
-        elif output_format == OutputFormat.OPENAI_VISION:
-            output_json = cls._convert_generic_json_to_openai_vision_format(
-                generic_dataset,
-                add_model_name,
-                add_stream,
-                extra_inputs,
-                output_tokens_mean,
-                output_tokens_stddev,
-                output_tokens_deterministic,
                 model_name,
                 model_selection_strategy,
             )
@@ -791,41 +860,6 @@ class LlmInputs:
         return pa_json
 
     @classmethod
-    def _convert_generic_json_to_openai_vision_format(
-        cls,
-        dataset_json: Dict,
-        add_model_name: bool,
-        add_stream: bool,
-        extra_inputs: Dict,
-        output_tokens_mean: int,
-        output_tokens_stddev: int,
-        output_tokens_deterministic: bool,
-        model_name: list = [],
-        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
-    ) -> Dict:
-        (
-            system_role_headers,
-            user_role_headers,
-            text_input_headers,
-        ) = cls._determine_json_feature_roles(dataset_json)
-        pa_json = cls._populate_openai_vision_output_json(
-            dataset_json,
-            system_role_headers,
-            user_role_headers,
-            text_input_headers,
-            add_model_name,
-            add_stream,
-            extra_inputs,
-            output_tokens_mean,
-            output_tokens_stddev,
-            output_tokens_deterministic,
-            model_name,
-            model_selection_strategy,
-        )
-
-        return pa_json
-
-    @classmethod
     def _convert_generic_json_to_vllm_format(
         cls,
         dataset_json: Dict,
@@ -950,52 +984,6 @@ class LlmInputs:
         dataset_json: Dict,
         system_role_headers: List[str],
         user_role_headers: List[str],
-        add_model_name: bool,
-        add_stream: bool,
-        extra_inputs: Dict,
-        output_tokens_mean: int,
-        output_tokens_stddev: int,
-        output_tokens_deterministic: bool,
-        model_name: list = [],
-        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
-    ) -> Dict:
-        pa_json = cls._create_empty_openai_pa_json()
-
-        for index, entry in enumerate(dataset_json["rows"]):
-            iter_model_name = cls._select_model_name(
-                model_name, index, model_selection_strategy
-            )
-            pa_json["data"].append({"payload": []})
-            pa_json["data"][index]["payload"].append({"messages": []})
-
-            for header, content in entry.items():
-                new_message = cls._create_new_openai_chat_completions_message(
-                    header, system_role_headers, user_role_headers, content
-                )
-
-                pa_json = cls._add_new_message_to_json(pa_json, index, new_message)
-
-            pa_json = cls._add_optional_tags_to_openai_json(
-                pa_json,
-                index,
-                add_model_name,
-                add_stream,
-                extra_inputs,
-                output_tokens_mean,
-                output_tokens_stddev,
-                output_tokens_deterministic,
-                iter_model_name,
-            )
-
-        return pa_json
-
-    @classmethod
-    def _populate_openai_vision_output_json(
-        cls,
-        dataset_json: Dict,
-        system_role_headers: List[str],
-        user_role_headers: List[str],
-        text_input_headers: List[str],
         add_model_name: bool,
         add_stream: bool,
         extra_inputs: Dict,

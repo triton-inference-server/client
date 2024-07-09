@@ -35,8 +35,7 @@ import genai_perf.logging as logging
 from genai_perf import parser
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.export_data.output_reporter import OutputReporter
-from genai_perf.llm_inputs.dataset_decorators import ImageDecorator, UploadMethod
-from genai_perf.llm_inputs.llm_inputs import LlmInputs, OutputFormat
+from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.profile_data_parser import LLMProfileDataParser, ProfileDataParser
@@ -48,13 +47,6 @@ def create_artifacts_dirs(args: Namespace) -> None:
     plot_dir = args.artifact_dir / "plots"
     os.makedirs(args.artifact_dir, exist_ok=True)
     os.makedirs(plot_dir, exist_ok=True)
-
-
-def get_dataset_decorators(output_format):
-    decorators = []
-    if output_format == OutputFormat.OPENAI_VISION:
-        decorators.append(ImageDecorator(upload_method=UploadMethod.base64))
-    return decorators
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
@@ -69,8 +61,6 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)
     except ValueError as e:
         raise GenAIPerfException(e)
-
-    dataset_decorators = get_dataset_decorators(args.output_format)
 
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
@@ -94,7 +84,6 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         extra_inputs=extra_input_dict,
         batch_size=args.batch_size,
         output_dir=args.artifact_dir,
-        dataset_decorators=dataset_decorators,
     )
 
 
