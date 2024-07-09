@@ -70,6 +70,9 @@ install(
   RUNTIME DESTINATION bin
 )
 
+#
+# cc_client_test
+#
 add_executable(
   cc_client_test
   cc_client_test.cc
@@ -86,6 +89,34 @@ target_link_libraries(
 )
 install(
   TARGETS cc_client_test
+  RUNTIME DESTINATION bin
+)
+
+#
+# client_input_test
+#
+add_executable(
+  client_input_test
+  client_input_test.cc
+  $<TARGET_OBJECTS:shm-utils-library>
+)
+target_include_directories(
+  client_input_test
+  PRIVATE
+    ${GTEST_INCLUDE_DIRS}
+)
+target_link_libraries(
+  client_input_test
+  PRIVATE
+    grpcclient_static
+    httpclient_static
+    gtest
+    ${GTEST_LIBRARY}
+    ${GTEST_MAIN_LIBRARY}
+    GTest::gmock
+)
+install(
+  TARGETS client_input_test
   RUNTIME DESTINATION bin
 )
 

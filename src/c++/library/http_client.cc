@@ -2117,6 +2117,11 @@ InferenceServerHttpClient::PreRunProcessing(
   // Add the buffers holding input tensor data
   bool all_inputs_are_json{true};
   for (const auto this_input : inputs) {
+    err = this_input->ValidateData();
+    if (!err.IsOk()) {
+      return err;
+    }
+
     if (this_input->BinaryData()) {
       all_inputs_are_json = false;
     }

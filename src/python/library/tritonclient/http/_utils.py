@@ -108,7 +108,7 @@ def _get_inference_request(
 
     infer_request["inputs"] = []
     for infer_input in inputs:
-        infer_input.is_ready()
+        infer_input.validate_data()
         infer_request["inputs"].append(infer_input._get_tensor())
 
     if outputs:

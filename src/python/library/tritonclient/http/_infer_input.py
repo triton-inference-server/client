@@ -90,15 +90,15 @@ class InferInput:
         """
         return self._shape
 
-    def is_ready(self):
-        """Get the status of input.
+    def validate_data(self):
+        """Validate input has data and input shape matches input data.
 
         Returns
         -------
-        bool
-            The status of input
+        None
         """
-        # Input must set only one of the following fields: 'data', 'binary_data_size' in 'parameters', 'shared_memory_region' in 'parameters'
+        # Input must set only one of the following fields: 'data', 'binary_data_size'
+        # in 'parameters', 'shared_memory_region' in 'parameters'
         cnt = 0
         cnt += self._data != None
         cnt += "binary_data_size" in self._parameters

@@ -1470,7 +1470,13 @@ InferenceServerGrpcClient::PreRunProcessing(
 
   int index = 0;
   infer_request_.mutable_raw_input_contents()->Clear();
+  Error err;
   for (const auto input : inputs) {
+    err = input->ValidateData();
+    if (!err.IsOk()) {
+      return err;
+    }
+
     // Add new InferInputTensor submessages only if required, otherwise
     // reuse the submessages already available.
     auto grpc_input = (infer_request_.inputs().size() <= index)

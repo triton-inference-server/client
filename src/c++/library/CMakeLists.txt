@@ -122,6 +122,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpcclient_static
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
+      PRIVATE triton-common-model-config
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
@@ -275,6 +276,10 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
       http-client-library EXCLUDE_FROM_ALL OBJECT
       ${REQUEST_SRCS} ${REQUEST_HDRS}
   )
+  add_dependencies(
+    http-client-library
+    proto-library
+  )
 
   if (NOT WIN32)
     set_property(
@@ -287,12 +292,14 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
     http-client-library
     PUBLIC
       triton-common-json        # from repo-common
+      triton-common-model-config
   )
 
   # libhttpclient_static.a
   add_library(
       httpclient_static STATIC
       $<TARGET_OBJECTS:http-client-library>
+      $<TARGET_OBJECTS:proto-library>
   )
   add_library(
       TritonClient::httpclient_static ALIAS httpclient_static
@@ -301,6 +308,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   target_link_libraries(
       httpclient_static
       PRIVATE triton-common-json
+      PRIVATE triton-common-model-config
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
   )
@@ -316,6 +324,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   add_library(
       httpclient SHARED
       $<TARGET_OBJECTS:http-client-library>
+      $<TARGET_OBJECTS:proto-library>
   )
   add_library(
       TritonClient::httpclient ALIAS httpclient
@@ -333,6 +342,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
   target_link_libraries(
       httpclient
       PRIVATE triton-common-json
+      PRIVATE triton-common-model-config
       PUBLIC CURL::libcurl
       PUBLIC Threads::Threads
   )
@@ -358,6 +368,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER)
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<TARGET_PROPERTY:CURL::libcurl,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:proto-library,INCLUDE_DIRECTORIES>
       PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
