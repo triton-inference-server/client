@@ -705,6 +705,18 @@ def parse_args():
     )
     compare_parser = _parse_compare_args(subparsers)
 
+    profile_parser = subparsers.add_parser(
+        "profile",
+        description="Subcommand to profile LLMs and Generative AI models.",
+    )
+    subparsers.required = True
+    _add_endpoint_args(profile_parser)
+    _add_input_args(profile_parser)
+    _add_profile_args(profile_parser)
+    _add_output_args(profile_parser)
+    _add_other_args(profile_parser)
+    profile_parser.set_defaults(func=profile_handler)
+
     # Check for passthrough args
     if "--" in argv:
         passthrough_index = argv.index("--")
