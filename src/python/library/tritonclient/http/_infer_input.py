@@ -115,7 +115,7 @@ class InferInput:
                 data_byte_size = self._parameters["shared_memory_byte_size"]
                 if data_byte_size != expected_byte_size:
                     raise_error(
-                        "'{}' got unexpected byte size {}, expected {}".format(
+                        "input '{}' got unexpected byte size {}, expected {}".format(
                             self._name, data_byte_size, expected_byte_size
                         )
                     )
@@ -125,7 +125,7 @@ class InferInput:
             data_num_elements = num_elements(self._data_shape)
             if expected_num_elements != data_num_elements:
                 raise_error(
-                    "'{}' got unexpected elements count {}, expected {}".format(
+                    "input '{}' got unexpected elements count {}, expected {}".format(
                         self._name, data_num_elements, expected_num_elements
                     )
                 )

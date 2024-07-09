@@ -310,7 +310,7 @@ InferInput::ValidateData() const
           triton::common::GetByteSize(datatype, shape_);
       if ((int64_t)byte_size_ != expected_byte_size) {
         return Error(
-            "'" + name_ + "' got unexpected byte size " +
+            "input '" + name_ + "' got unexpected byte size " +
             std::to_string(byte_size_) + ", expected " +
             std::to_string(expected_byte_size));
       }
@@ -325,7 +325,7 @@ InferInput::ValidateData() const
       }
       if ((int64_t)str_cnt != expected_str_cnt) {
         return Error(
-            "'" + name_ + "' got unexpected string count " +
+            "input '" + name_ + "' got unexpected string count " +
             std::to_string(str_cnt) + ", expected " +
             std::to_string(expected_str_cnt));
       }
@@ -334,7 +334,7 @@ InferInput::ValidateData() const
           triton::common::GetByteSize(datatype, shape_);
       if ((int64_t)byte_size_ != expected_byte_size) {
         return Error(
-            "'" + name_ + "' got unexpected byte size " +
+            "input '" + name_ + "' got unexpected byte size " +
             std::to_string(byte_size_) + ", expected " +
             std::to_string(expected_byte_size));
       }

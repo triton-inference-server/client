@@ -151,6 +151,7 @@ if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
       grpcclient
       PRIVATE gRPC::grpc++
       PRIVATE gRPC::grpc
+      PRIVATE triton-common-model-config
       PUBLIC protobuf::libprotobuf
       PUBLIC Threads::Threads
   )
