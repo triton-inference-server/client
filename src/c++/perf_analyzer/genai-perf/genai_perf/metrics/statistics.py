@@ -69,6 +69,18 @@ class Statistics:
                 self._calculate_minmax(data, attr)
                 self._calculate_std(data, attr)
 
+        for attr, data in metrics.data.items():
+            if self._should_skip(data, attr):
+                continue
+
+            # TODO: Find better approach. Wanted throughput to be initialized first.
+            # TODO: Check if provided SLOs are valid... maybe remove the used ones then check if not empty at end and print warning?
+            # Calculate goodput if SLOs are provided
+            print("ATTR: ", attr)
+            if attr in metrics.SLOs:
+                print("SLO: ", metrics.SLOs[attr])
+                self._calculate_goodput(attr, metrics.SLOs[attr])
+
     def _should_skip(self, data: List[Union[int, float]], attr: str) -> bool:
         """Checks if some metrics should be skipped."""
         # No data points
@@ -78,6 +90,16 @@ class Statistics:
         elif attr == "inter_token_latencies" and sum(data) == 0:
             return True
         return False
+
+    def _calculate_goodput(self, attr: str, slo: float) -> None:
+        data = self._metrics.data.get(attr, [])
+        goodput_count = sum(1 for value in data if value <= slo)
+        fraction = goodput_count / len(data) if data else 0
+        avg_throughput = self._stats_dict.get("request_throughput", {}).get("avg")
+        goodput = fraction * avg_throughput
+        setattr(self, f"avg_goodput_{attr}", goodput)
+        print(f"goodput_{attr}: {goodput}")
+        self._stats_dict[f"goodput_{attr}"] = {"value": goodput, "unit": "requests/sec"}
 
     def _calculate_mean(self, data: List[Union[int, float]], attr: str) -> None:
         avg = np.mean(data)
@@ -129,7 +151,7 @@ class Statistics:
     def _add_units(self, key) -> None:
         if self._is_time_metric(key):
             self._stats_dict[key]["unit"] = "ms"
-        elif key == "request_throughput":
+        elif key == "request_throughput" or key.startswith("goodput"):
             self._stats_dict[key]["unit"] = "requests/sec"
         elif key.startswith("output_token_throughput"):
             self._stats_dict[key]["unit"] = "tokens/sec"
@@ -160,7 +182,9 @@ class Statistics:
         return self._stats_dict
 
     def _is_system_metric(self, metrics: Metrics, attr: str) -> bool:
-        return attr in [m.name for m in metrics.system_metrics]
+        return attr in [m.name for m in metrics.system_metrics] or attr.startswith(
+            "goodput"
+        )
 
     def _is_time_metric(self, field: str) -> bool:
         # TPA-188: Remove the hardcoded time metrics list

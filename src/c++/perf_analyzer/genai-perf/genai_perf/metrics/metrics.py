@@ -52,9 +52,13 @@ class Metrics:
         self,
         request_throughputs: List[float] = [],
         request_latencies: List[int] = [],
+        # slos: Dict[str, float] = None,
     ) -> None:
         self.request_throughputs = request_throughputs
         self.request_latencies = request_latencies
+        # TODO: Remove temp solution (constants) below and pass in via parser
+        slos = {"request_latencies": 1500000000}
+        self.SLOs = slos if slos else {}
         self._base_names = {
             "request_throughputs": "request_throughput",
             "request_latencies": "request_latency",
@@ -77,7 +81,17 @@ class Metrics:
 
     @property
     def data(self) -> dict:
-        """Returns all the metrics."""
+        """Returns all the metrics except SLOs."""
+        return {
+            k: v
+            for k, v in self.__dict__.items()
+            if not k.startswith("_") and k != "SLOs"
+        }
+
+    # TODO: Fix this extra function. Temporary solution to prevent SLOs from being included for getting metrics but want them included for exporting metrics
+    @property
+    def all_data(self) -> dict:
+        """Returns all the metrics except SLOs."""
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     def get_base_name(self, metric_name: str) -> str:

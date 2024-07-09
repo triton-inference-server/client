@@ -70,6 +70,18 @@ class ConsoleExporter:
             line += f" ({metric.unit}): {value:.2f}"
             print(line)
 
+        for stat in self._stats:
+            if stat.startswith("goodput"):
+                stat_str = (
+                    stat.replace("_", " ")
+                    .capitalize()
+                    .replace("Goodput ", "Goodput - ")
+                )
+                stat_str += f" (requests/sec) "
+                value = self._stats[stat]["value"]
+                stat_str += f" {value:.2f}"
+                print(stat_str)
+
     def _construct_table(self, table: Table) -> None:
         for metric in self._metrics.request_metrics:
             if self._should_skip(metric.name):

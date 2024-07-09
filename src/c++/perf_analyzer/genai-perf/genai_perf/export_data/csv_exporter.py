@@ -97,6 +97,17 @@ class CsvExporter:
             value = self._stats[metric.name]["avg"]
             csv_writer.writerow([metric_str, f"{value:.2f}"])
 
+        # TODO: Avoid duplicates later
+        # TODO: But also need to make goodwill work for multiple constraints... and for token latencies
+        for stat in self._stats:
+            if stat.startswith("goodput"):
+                stat_str = (
+                    stat.replace("_", " ").title().replace("Goodput ", "Goodput - ")
+                )
+                stat_str += f" (requests/sec)"
+                value = self._stats[stat]["value"]
+                csv_writer.writerow([stat_str, f"{value:.2f}"])
+
     def _should_skip(self, metric_name: str) -> bool:
         if self._args.endpoint_type == "embeddings":
             return False  # skip nothing
