@@ -184,6 +184,11 @@ def _check_conditional_args_embeddings_rankings(
             parser.error(
                 f"The --streaming option is not supported with the {args.endpoint_type} endpoint type."
             )
+
+        if args.generate_plots:
+            parser.error(
+                f"The --generate-plots option is not currently supported with the {args.endpoint_type} endpoint type."
+            )
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
             parser.error(

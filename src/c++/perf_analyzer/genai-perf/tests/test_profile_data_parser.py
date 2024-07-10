@@ -67,8 +67,11 @@ class TestProfileDataParser:
             if filename == "embedding_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.embedding_profile_data))
                 return tmp_file
-            if filename == "ranking_profile_export.json":
+            elif filename == "ranking_profile_export.json":
                 tmp_file = StringIO(json.dumps(self.ranking_profile_data))
+                return tmp_file
+            elif filename == "huggingface_ranking_profile_export.json":
+                tmp_file = StringIO(json.dumps(self.huggingface_ranking_profile_data))
                 return tmp_file
             elif filename == "profile_export.csv":
                 tmp_file = StringIO()
@@ -203,6 +206,78 @@ class TestProfileDataParser:
             - [2 / (5e-9 - 1e-9)] = [5e8]
         """
         pd = ProfileDataParser(filename=Path("ranking_profile_export.json"))
+
+        # experiment 1 statistics
+        stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
+        metrics = stats.metrics
+        stats_dict = stats.stats_dict
+        assert isinstance(metrics, Metrics)
+
+        assert metrics.request_latencies == [2, 3]
+        assert metrics.request_throughputs == [pytest.approx(5e8)]
+
+        assert stats_dict["request_latency"]["avg"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["p50"] == pytest.approx(2.5)  # type: ignore
+        assert stats_dict["request_latency"]["min"] == pytest.approx(2)  # type: ignore
+        assert stats_dict["request_latency"]["max"] == pytest.approx(3)  # type: ignore
+        assert stats_dict["request_latency"]["std"] == np.std([2, 3])  # type: ignore
+
+        assert stats_dict["request_throughput"]["avg"] == pytest.approx(5e8)  # type: ignore
+
+    # ================================================
+    # HUGGINGFACE RANKINGS API
+    # ================================================
+    huggingface_ranking_profile_data = {
+        "service_kind": "openai",
+        "endpoint": "rerank",
+        "experiments": [
+            {
+                "experiment": {
+                    "mode": "concurrency",
+                    "value": 10,
+                },
+                "requests": [
+                    {
+                        "timestamp": 1,
+                        "request_inputs": {
+                            "payload": '{"query":"What was the first car ever driven?","texts":["Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget.","Kevin Loader is a British film and television producer."]}'
+                        },
+                        "response_timestamps": [3],
+                        "response_outputs": [
+                            {
+                                "response": '[{"index":0,"score":0.0032476764},{"index":1,"score":0.00036117696}]'
+                            },
+                        ],
+                    },
+                    {
+                        "timestamp": 2,
+                        "request_inputs": {
+                            "payload": '{"query":"In what state did they film Shrek 2?","texts":["Francisco Antonio Zea Juan Francisco Antonio Hilari was a Colombian journalist, botanist, diplomat, politician, and statesman who served as the 1st Vice President of Colombia.","Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."]}'
+                        },
+                        "response_timestamps": [5],
+                        "response_outputs": [
+                            {
+                                "response": '[{"index":0,"score":0.020177318},{"index":1,"score":0.01461567}]'
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    def test_huggingface_ranking_profile_data(
+        self, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
+        """Collect base metrics from HuggingFace ranking profile export data and check values.
+
+        Metrics
+        * request latencies
+            - [3 - 1, 5 - 2] = [2, 3]
+        * request throughputs
+            - [2 / (5e-9 - 1e-9)] = [5e8]
+        """
+        pd = ProfileDataParser(filename=Path("huggingface_ranking_profile_export.json"))
 
         # experiment 1 statistics
         stats = pd.get_statistics(infer_mode="concurrency", load_level="10")

@@ -26,17 +26,17 @@ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-# Profiling Multiple LoRA Adapters
+# Profile Multiple LoRA Adapters
 GenAI-Perf allows you to profile multiple LoRA adapters on top of a base model.
 
-## Selecting LoRA Adapters
+## Select LoRA Adapters
 To do this, list multiple adapters after the model name option `-m`:
 
 ```bash
 genai-perf -m lora_adapter1 lora_adapter2 lora_adapter3
 ```
 
-## Choosing a Strategy for Selecting Models
+## Choose a Strategy for Selecting Models
 When profiling with multiple models, you can specify how the models should be
 assigned to prompts using the `--model-selection-strategy` option:
 
