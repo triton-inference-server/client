@@ -61,6 +61,14 @@ class PathType(Enum):
         return self.name.lower()
 
 
+class Subcommand(Enum):
+    PROFILE = auto()
+    COMPARE = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {
@@ -102,9 +110,8 @@ def _check_compare_args(
     """
     Check compare subcommand args
     """
-    if args.subcommand == "compare":
-        if not args.config and not args.files:
-            parser.error("Either the --config or --files option must be specified.")
+    if not args.config and not args.files:
+        parser.error("Either the --config or --files option must be specified.")
     return args
 
 
@@ -619,10 +626,10 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
-        "compare",
+        Subcommand.COMPARE.to_lowercase(),
         description="Subcommand to generate plots that compare multiple profile runs.",
     )
-    compare_group = compare.add_argument_group("Compare")
+    compare_group = compare.add_argument_group("Input")
     mx_group = compare_group.add_mutually_exclusive_group(required=False)
     mx_group.add_argument(
         "--config",
@@ -646,7 +653,7 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
 
 def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
     profile = subparsers.add_parser(
-        "profile",
+        Subcommand.PROFILE.to_lowercase(),
         description="Subcommand to profile LLMs and Generative AI models.",
     )
     _add_endpoint_args(profile)
@@ -726,13 +733,13 @@ def get_passthrough_args_index(argv: list) -> int:
 def refine_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> argparse.Namespace:
-    if args.subcommand == "profile":
+    if args.subcommand == Subcommand.PROFILE.to_lowercase():
         args = _infer_prompt_source(args)
         args = _check_model_args(parser, args)
         args = _check_conditional_args(parser, args)
         args = _check_load_manager_args(args)
         args = _set_artifact_paths(args)
-    elif args.subcommand == "compare":
+    elif args.subcommand == Subcommand.COMPARE.to_lowercase():
         args = _check_compare_args(parser, args)
     else:
         raise ValueError(f"Unknown subcommand: {args.subcommand}")

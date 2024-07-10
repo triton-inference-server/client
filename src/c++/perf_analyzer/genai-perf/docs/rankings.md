@@ -74,8 +74,7 @@ docker run --gpus all -p 8080:80 -v $volume:/data --pull always ghcr.io/huggingf
 To profile ranking models using GenAI-Perf, use the following command:
 
 ```bash
-genai-perf \
-    profile \
+genai-perf profile \
     -m BAAI/bge-reranker-large \
     --service-kind openai \
     --endpoint-type rankings \
