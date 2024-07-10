@@ -71,6 +71,7 @@ class TestCsvExporter:
         """
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",
@@ -126,6 +127,7 @@ class TestCsvExporter:
         """
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",
@@ -174,6 +176,7 @@ class TestCsvExporter:
     ) -> None:
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",

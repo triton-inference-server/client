@@ -60,7 +60,7 @@ docker run -it --net=host --rm --gpus=all vllm/vllm-openai:latest --model intflo
 To profile embeddings models using GenAI-Perf, use the following command:
 
 ```bash
-genai-perf \
+genai-perf profile \
     -m intfloat/e5-mistral-7b-instruct \
     --service-kind openai \
     --endpoint-type embeddings \
@@ -73,7 +73,7 @@ additional arguments with the `--extra-inputs` [flag](../README.md#input-options
 For example, you could use this command:
 
 ```bash
-genai-perf \
+genai-perf profile \
     -m intfloat/e5-mistral-7b-instruct \
     --service-kind openai \
     --endpoint-type embeddings \

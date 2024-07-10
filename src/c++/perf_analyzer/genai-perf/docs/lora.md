@@ -41,7 +41,7 @@ When profiling with multiple models, you can specify how the models should be
 assigned to prompts using the `--model-selection-strategy` option:
 
 ```bash
-genai-perf \
+genai-perf profile \
     -m lora_adapter1 lora_adapter2 lora_adapter3 \
     --model-selection-strategy round_robin
 ```
