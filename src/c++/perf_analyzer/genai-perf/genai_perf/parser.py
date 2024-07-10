@@ -76,6 +76,7 @@ _endpoint_type_map = {
     "completions": "v1/completions",
     "embeddings": "v1/embeddings",
     "rankings": "v1/ranking",
+    "vision": "v1/chat/completions",
 }
 
 
@@ -137,6 +138,11 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
             elif args.endpoint_type == "rankings":
                 args.output_format = OutputFormat.RANKINGS
+
+            # (TMA-1986) deduce vision format from chat completions + image CLI
+            # because there's no openai vision endpoint.
+            elif args.endpoint_type == "vision":
+                args.output_format = OutputFormat.OPENAI_VISION
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -499,7 +505,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings", "rankings"],
+        choices=["chat", "completions", "embeddings", "rankings", "vision"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',

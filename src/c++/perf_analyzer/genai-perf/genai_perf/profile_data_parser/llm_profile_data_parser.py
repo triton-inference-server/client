@@ -218,6 +218,9 @@ class LLMProfileDataParser(ProfileDataParser):
             return payload["messages"][0]["content"]
         elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
             return payload["prompt"]
+        elif self._response_format == ResponseFormat.OPENAI_VISION:
+            content = payload["messages"][0]["content"]
+            return " ".join(c["text"] for c in content if c["type"] == "text")
         else:
             raise ValueError(
                 "Failed to parse OpenAI request input in profile export file."
