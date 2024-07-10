@@ -161,7 +161,7 @@ stability.
 
 Specifies a total number of requests to use for measurement.
 
-Default is 0, which means that there is no request count and the measurement
+Default is `0`, which means that there is no request count and the measurement
 will proceed using windows until stabilization is detected.
 
 #### `-r <n>`
