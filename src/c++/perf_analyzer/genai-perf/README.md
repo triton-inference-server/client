@@ -301,8 +301,8 @@ options:
 
 When the dataset is coming from a file, you can specify the following
 options:
-* `--input-file <path>`: The input file containing the single prompt to
-  use for benchmarking.
+* `--input-file <path>`: The input file containing the prompts to
+  use for benchmarking as JSON objects.
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
