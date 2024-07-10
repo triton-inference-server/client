@@ -48,7 +48,6 @@ requires-python = ">=3.8,<4"
 dependencies = [
   "numpy<2",
   "pytest",
-  "requests-mock",
   "rich",
   "transformers",
   "plotly",
