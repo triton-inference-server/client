@@ -666,12 +666,6 @@ def create_compare_dir() -> None:
         os.mkdir(DEFAULT_COMPARE_DIR)
 
 
-def profile_handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
-
-
 def compare_handler(args: argparse.Namespace):
     """Handles `compare` subcommand workflow."""
     if args.files:
@@ -686,12 +680,16 @@ def compare_handler(args: argparse.Namespace):
     plot_manager.generate_plots()
 
 
-### Entrypoint ###
+def profile_handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
 
 
-def parse_args():
-    argv = sys.argv
+### Parser Initialization ###
 
+
+def init_parsers():
     parser = argparse.ArgumentParser(
         prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
@@ -708,18 +706,26 @@ def parse_args():
     subparsers = parser.add_subparsers(
         help="List of subparser commands.", dest="subcommand"
     )
-    compare_parser = _parse_compare_args(subparsers)
-    compare_parser = _parse_profile_args(subparsers)
+    _ = _parse_compare_args(subparsers)
+    _ = _parse_profile_args(subparsers)
     subparsers.required = True
 
-    # Check for passthrough args
+    return parser
+
+
+def get_passthrough_args_index(argv: list) -> int:
     if "--" in argv:
         passthrough_index = argv.index("--")
         logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
     else:
         passthrough_index = len(argv)
 
-    args = parser.parse_args(argv[1:passthrough_index])
+    return passthrough_index
+
+
+def refine_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
     if args.subcommand == "profile":
         args = _infer_prompt_source(args)
         args = _check_model_args(parser, args)
@@ -727,8 +733,22 @@ def parse_args():
         args = _check_load_manager_args(args)
         args = _set_artifact_paths(args)
     elif args.subcommand == "compare":
-        args = _check_compare_args(compare_parser, args)
+        args = _check_compare_args(parser, args)
     else:
         raise ValueError(f"Unknown subcommand: {args.subcommand}")
+
+    return args
+
+
+### Entrypoint ###
+
+
+def parse_args():
+    argv = sys.argv
+
+    parser = init_parsers()
+    passthrough_index = get_passthrough_args_index(argv)
+    args = parser.parse_args(argv[1:passthrough_index])
+    args = refine_args(parser, args)
 
     return args, argv[passthrough_index + 1 :]
