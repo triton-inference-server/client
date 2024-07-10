@@ -132,9 +132,7 @@ class TestProfileDataParser:
         * request throughputs
             - [2 / (5e-9 - 1e-9)] = [5e8]
         """
-        pd = ProfileDataParser(
-            filename=Path("embedding_profile_export.json"),
-        )
+        pd = ProfileDataParser(filename=Path("embedding_profile_export.json"))
 
         # experiment 1 statistics
         stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
@@ -204,9 +202,7 @@ class TestProfileDataParser:
         * request throughputs
             - [2 / (5e-9 - 1e-9)] = [5e8]
         """
-        pd = ProfileDataParser(
-            filename=Path("ranking_profile_export.json"),
-        )
+        pd = ProfileDataParser(filename=Path("ranking_profile_export.json"))
 
         # experiment 1 statistics
         stats = pd.get_statistics(infer_mode="concurrency", load_level="10")
