@@ -124,7 +124,7 @@ TYPED_TEST_P(ClientInputTest, AppendRaw)
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
-      "'INPUT1' got unexpected byte size 64, expected 60");
+      "input 'INPUT1' got unexpected byte size 64, expected 60");
 
   // Check error message and verify the request reaches the server
   inputs[1]->SetShape({2, 8});
@@ -204,8 +204,9 @@ TYPED_TEST_P(ClientInputTest, SetSharedMemory)
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
-      ("'INPUT1' got unexpected byte size " + std::to_string(input_byte_size) +
-       ", expected " + std::to_string(input_byte_size - sizeof(int))));
+      ("input 'INPUT1' got unexpected byte size " +
+       std::to_string(input_byte_size) + ", expected " +
+       std::to_string(input_byte_size - sizeof(int))));
 
   // Get shared memory regions active/registered within triton
   // std::string shm_status;
@@ -270,7 +271,7 @@ TYPED_TEST_P(ClientInputTest, AppendString)
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
-      "'INPUT1' got unexpected elements count 16, expected 15");
+      "input 'INPUT1' got unexpected elements count 16, expected 15");
 
   // Check error message and verify the request reaches the server
   inputs[1]->SetShape({2, 8});
