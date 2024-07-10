@@ -29,6 +29,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
+    make_snowman_image,
 )
 from genai_perf.tokenizer import Tokenizer
 
@@ -551,6 +552,42 @@ class TestLlmInputs:
                 ], f"The value of {input_name} is incorrect"
         else:
             assert False, f"Unsupported output format: {output_format}"
+
+    def test_add_image_inputs_openai_vision(self) -> None:
+        generic_json = {
+            "rows": [
+                {"text_input": "test input one"},
+                {"text_input": "test input two"},
+            ]
+        }
+        img = make_snowman_image()
+        encoded_img = LlmInputs._encode_image(img)
+
+        generic_json = LlmInputs._add_images_to_generic_json(generic_json, img)
+
+        row1 = generic_json["rows"][0]["text_input"]
+        assert row1 == [
+            {
+                "type": "text",
+                "text": "test input one",
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{encoded_img}"},
+            },
+        ]
+
+        row2 = generic_json["rows"][1]["text_input"]
+        assert row2 == [
+            {
+                "type": "text",
+                "text": "test input two",
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{encoded_img}"},
+            },
+        ]
 
     # def test_trtllm_default_max_tokens(self, default_tokenizer: Tokenizer) -> None:
     #     input_name = "max_tokens"

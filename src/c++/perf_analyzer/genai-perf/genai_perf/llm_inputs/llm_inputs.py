@@ -24,7 +24,6 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 import requests
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.dataset_decorators import DatasetDecorator
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from PIL import Image, ImageDraw

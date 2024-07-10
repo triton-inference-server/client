@@ -131,6 +131,9 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
             elif args.endpoint_type == "rankings":
                 args.output_format = OutputFormat.RANKINGS
+
+            # (TMA-1986) deduce vision format from chat completions + image CLI
+            # because there's no openai vision endpoint.
             elif args.endpoint_type == "vision":
                 args.output_format = OutputFormat.OPENAI_VISION
 
