@@ -30,7 +30,6 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import List, Tuple
 
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.metrics import Metrics, Statistics
 from genai_perf.utils import load_json
 
@@ -49,9 +48,8 @@ class ProfileDataParser:
     extract core metrics and calculate various performance statistics.
     """
 
-    def __init__(self, filename: Path, output_format: OutputFormat) -> None:
+    def __init__(self, filename: Path) -> None:
         data = load_json(filename)
-        self.output_format = output_format
         self._get_profile_metadata(data)
         self._parse_profile_data(data)
 
@@ -59,11 +57,15 @@ class ProfileDataParser:
         self._service_kind = data["service_kind"]
         if self._service_kind == "openai":
             if data["endpoint"] == "v1/chat/completions":
-                self._response_format = (
-                    ResponseFormat.OPENAI_VISION
-                    if self.output_format == OutputFormat.OPENAI_VISION
-                    else ResponseFormat.OPENAI_CHAT_COMPLETIONS
-                )
+                # (TPA-66) add PA metadata to deduce the response format instead
+                # of parsing the request input payload in profile export json
+                # file.
+                request = data["experiments"][0]["requests"][0]
+                request_input = request["request_inputs"]["payload"]
+                if "image_url" in request_input:
+                    self._response_format = ResponseFormat.OPENAI_VISION
+                else:
+                    self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
             elif data["endpoint"] == "v1/completions":
                 self._response_format = ResponseFormat.OPENAI_COMPLETIONS
             elif data["endpoint"] == "v1/embeddings":
@@ -71,21 +73,23 @@ class ProfileDataParser:
             elif data["endpoint"] == "v1/ranking":
                 self._response_format = ResponseFormat.RANKINGS
             else:
-                # TPA-66: add PA metadata to handle this case
+                # (TPA-66) add PA metadata to handle this case
                 # When endpoint field is either empty or custom endpoint, fall
                 # back to parsing the response to extract the response format.
                 request = data["experiments"][0]["requests"][0]
+                request_input = request["request_inputs"]["payload"]
                 response = request["response_outputs"][0]["response"]
                 if "chat.completion" in response:
-                    self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
+                    if "image_url" in request_input:
+                        self._response_format = ResponseFormat.OPENAI_VISION
+                    else:
+                        self._response_format = ResponseFormat.OPENAI_CHAT_COMPLETIONS
                 elif "text_completion" in response:
                     self._response_format = ResponseFormat.OPENAI_COMPLETIONS
                 elif "embedding" in response:
                     self._response_format = ResponseFormat.OPENAI_EMBEDDINGS
                 elif "ranking" in response:
                     self._response_format = ResponseFormat.RANKINGS
-                elif self.output_format == OutputFormat.OPENAI_VISION:
-                    self._response_format = ResponseFormat.OPENAI_VISION
                 else:
                     raise RuntimeError("Unknown OpenAI response format.")
 

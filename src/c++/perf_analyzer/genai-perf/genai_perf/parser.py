@@ -675,7 +675,7 @@ def compare_handler(args: argparse.Namespace):
         args.config = output_dir / "config.yaml"
 
     config_parser = PlotConfigParser(args.config)
-    plot_configs = config_parser.generate_configs(args.output_format)
+    plot_configs = config_parser.generate_configs()
     plot_manager = PlotManager(plot_configs)
     plot_manager.generate_plots()
 

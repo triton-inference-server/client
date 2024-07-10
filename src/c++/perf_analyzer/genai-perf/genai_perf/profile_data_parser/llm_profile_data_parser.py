@@ -31,7 +31,6 @@ from itertools import tee
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.metrics import LLMMetrics, Metrics
 from genai_perf.profile_data_parser.profile_data_parser import (
     ProfileDataParser,
@@ -70,10 +69,9 @@ class LLMProfileDataParser(ProfileDataParser):
         self,
         filename: Path,
         tokenizer: Tokenizer,
-        output_format: OutputFormat,
     ) -> None:
         self._tokenizer = tokenizer
-        super().__init__(filename, output_format)
+        super().__init__(filename)
 
     def _parse_requests(self, requests: dict) -> Metrics:
         """Parse each requests in profile export data to extract key metrics."""
@@ -222,8 +220,6 @@ class LLMProfileDataParser(ProfileDataParser):
             return payload["prompt"]
         elif self._response_format == ResponseFormat.OPENAI_VISION:
             content = payload["messages"][0]["content"]
-            if isinstance(content, str):
-                content = [dict(type="text", text=content)]
             return " ".join(c["text"] for c in content if c["type"] == "text")
         else:
             raise ValueError(

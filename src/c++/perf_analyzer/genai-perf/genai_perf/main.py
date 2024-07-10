@@ -89,15 +89,11 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 
 def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
     if args.endpoint_type in ["embeddings", "rankings"]:
-        return ProfileDataParser(
-            filename=args.profile_export_file,
-            output_format=args.output_format,
-        )
+        return ProfileDataParser(args.profile_export_file)
     else:
         return LLMProfileDataParser(
             filename=args.profile_export_file,
             tokenizer=tokenizer,
-            output_format=args.output_format,
         )
 
 
@@ -126,7 +122,7 @@ def create_plots(args: Namespace) -> None:
         output_dir=plot_dir,
     )
     config_parser = PlotConfigParser(plot_dir / "config.yaml")
-    plot_configs = config_parser.generate_configs(args.output_format)
+    plot_configs = config_parser.generate_configs()
     plot_manager = PlotManager(plot_configs)
     plot_manager.generate_plots()
 

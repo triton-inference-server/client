@@ -17,7 +17,7 @@ import os
 import random
 import statistics
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 import responses

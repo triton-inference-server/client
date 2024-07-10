@@ -31,7 +31,6 @@ from typing import Any, List, Union
 
 import numpy as np
 import pytest
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.metrics import LLMMetrics
 from genai_perf.profile_data_parser import LLMProfileDataParser
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
@@ -120,7 +119,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         # experiment 1 metrics & statistics
@@ -265,7 +263,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_COMPLETIONS,
         )
 
         # experiment 1 statistics
@@ -351,7 +348,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_vlm_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_VISION,
         )
 
         # experiment 1 statistics
@@ -436,7 +432,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_VISION,
         )
 
         pd._preprocess_response(res_timestamps, res_outputs)
@@ -466,7 +461,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("openai_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_VISION,
         )
 
         output_token_counts, total_output_token = pd._get_output_token_counts(
@@ -499,7 +493,6 @@ class TestLLMProfileDataParser:
         pd = LLMProfileDataParser(
             filename=Path("triton_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_VISION,
         )
 
         output_token_counts, total_output_token = pd._get_output_token_counts(
@@ -517,7 +510,6 @@ class TestLLMProfileDataParser:
         _ = LLMProfileDataParser(
             filename=Path("empty_profile_export.json"),
             tokenizer=tokenizer,
-            output_format=OutputFormat.OPENAI_VISION,
         )
 
     empty_profile_data = {

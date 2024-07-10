@@ -31,7 +31,6 @@ from typing import Any, List, Union
 
 import numpy as np
 import pytest
-from genai_perf.llm_inputs.llm_inputs import OutputFormat
 from genai_perf.metrics import Metrics
 from genai_perf.profile_data_parser import ProfileDataParser
 
@@ -135,7 +134,6 @@ class TestProfileDataParser:
         """
         pd = ProfileDataParser(
             filename=Path("embedding_profile_export.json"),
-            output_format=OutputFormat.OPENAI_EMBEDDINGS,
         )
 
         # experiment 1 statistics
@@ -208,7 +206,6 @@ class TestProfileDataParser:
         """
         pd = ProfileDataParser(
             filename=Path("ranking_profile_export.json"),
-            output_format=OutputFormat.RANKINGS,
         )
 
         # experiment 1 statistics
