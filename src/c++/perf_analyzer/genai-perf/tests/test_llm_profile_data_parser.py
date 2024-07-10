@@ -629,19 +629,19 @@ class TestLLMProfileDataParser:
                         "response_timestamps": [3, 5, 8, 12, 13, 14],
                         "response_outputs": [
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":" like"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" like"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":" dogs"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":" dogs"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
                             },
                             {"response": "data: [DONE]\n\n"},
                         ],
@@ -655,19 +655,19 @@ class TestLLMProfileDataParser:
                         "response_timestamps": [4, 7, 11, 15, 18, 19],
                         "response_outputs": [
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"I"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"don\'t"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"cook food"},"finish_reason":null}]}\n\n'
                             },
                             {
-                                "response": 'data: {"id":"abc","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
+                                "response": 'data: {"id":"abc","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":null}]}\n\n'
                             },
                             {"response": "data: [DONE]\n\n"},
                         ],

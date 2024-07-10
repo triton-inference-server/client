@@ -279,13 +279,7 @@ class LLMProfileDataParser(ProfileDataParser):
             # FIXME: TPA-47 workaround for vLLM not following OpenAI Completions
             # API specification when streaming, missing 'object' field:
             # https://platform.openai.com/docs/api-reference/completions
-            if "message" in completions:
-                output = completions["message"]
-            elif "delta" in completions:
-                output = completions["delta"]
-            else:
-                raise ValueError("Unknown OpenAI response with object type unspecified")
-            text_output = output.get("content", "")
+            text_output = completions.get("text", "")
         elif data["object"] == "text_completion":  # legacy
             text_output = completions.get("text", "")
         elif data["object"] == "chat.completion":  # non-streaming
