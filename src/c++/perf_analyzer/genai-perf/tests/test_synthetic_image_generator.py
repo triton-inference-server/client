@@ -1,12 +1,16 @@
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
+from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pytest
+from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_image_generator import (
     ImageFormat,
     RandomFormatBase64Encoder,
-    build_synthetic_image_generator,
+    SyntheticImageGenerator,
+    images_from_file_generator,
     white_images_generator,
 )
 from PIL import Image
@@ -20,14 +24,46 @@ from PIL import Image
     ],
 )
 def test_different_image_size(image_size):
-    sut = build_synthetic_image_generator(
-        mean_size=image_size, dimensions_stddev=[0, 0]
+    sut = SyntheticImageGenerator(
+        mean_size=image_size,
+        dimensions_stddev=[0, 0],
+        image_iterator=white_images_generator(),
     )
 
     image = next(sut)
 
     assert isinstance(image, Image.Image), "generator produces unexpected type of data"
     assert image.size == image_size, "image not resized to the target size"
+
+
+@patch("pathlib.Path.exists", return_value=False)
+def test_images_from_file_raises_when_file_not_found(mock_exists):
+    DUMMY_PATH = Path("dummy-image.png")
+    sut = images_from_file_generator(DUMMY_PATH)
+
+    with pytest.raises(GenAIPerfException):
+        next(sut)
+
+
+DUMMY_IMAGE = Image.new("RGB", (100, 100), color="blue")
+
+
+@patch("pathlib.Path.exists", return_value=True)
+@patch(
+    "PIL.Image.open",
+    return_value=DUMMY_IMAGE,
+)
+def test_images_from_file_generates_multiple_times(mock_file, mock_exists):
+    DUMMY_PATH = Path("dummy-image.png")
+    sut = images_from_file_generator(DUMMY_PATH)
+
+    image = next(sut)
+    mock_exists.assert_called_once()
+    mock_file.assert_called_once_with(DUMMY_PATH)
+    assert image == DUMMY_IMAGE, "unexpected image produced"
+
+    image = next(sut)
+    assert image == DUMMY_IMAGE, "unexpected image produced"
 
 
 def test_white_images_generator():
