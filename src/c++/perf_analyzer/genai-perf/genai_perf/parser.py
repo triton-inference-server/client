@@ -40,8 +40,16 @@ from genai_perf.constants import (
     DEFAULT_COMPARE_DIR,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.llm_inputs import (
-    LlmInputs,
+from genai_perf.llm_inputs.shared import (
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_LENGTH,
+    DEFAULT_NUM_PROMPTS,
+    DEFAULT_OUTPUT_TOKENS_MEAN,
+    DEFAULT_OUTPUT_TOKENS_STDDEV,
+    DEFAULT_PROMPT_TOKENS_MEAN,
+    DEFAULT_PROMPT_TOKENS_STDDEV,
+    DEFAULT_RANDOM_SEED,
+    DEFAULT_TENSORRTLLM_MAX_TOKENS,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
@@ -152,8 +160,8 @@ def _check_conditional_args(
         args.output_format = args.backend
 
     # Output token distribution checks
-    if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
-        if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
+    if args.output_tokens_mean == DEFAULT_OUTPUT_TOKENS_MEAN:
+        if args.output_tokens_stddev != DEFAULT_OUTPUT_TOKENS_STDDEV:
             parser.error(
                 "The --output-tokens-mean option is required when using --output-tokens-stddev."
             )
@@ -191,7 +199,7 @@ def _check_conditional_args_embeddings_rankings(
                 f"The --generate-plots option is not currently supported with the {args.endpoint_type} endpoint type."
             )
     else:
-        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
+        if args.batch_size != DEFAULT_BATCH_SIZE:
             parser.error(
                 "The --batch-size option is currently only supported with the embeddings and rankings endpoint types."
             )
@@ -311,7 +319,7 @@ def _add_input_args(parser):
         "--batch-size",
         "-b",
         type=int,
-        default=LlmInputs.DEFAULT_BATCH_SIZE,
+        default=DEFAULT_BATCH_SIZE,
         required=False,
         help=f"The batch size of the requests GenAI-Perf should send. "
         "This is currently only supported with the embeddings and rankings endpoint types.",
@@ -350,7 +358,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--num-prompts",
         type=int,
-        default=LlmInputs.DEFAULT_NUM_PROMPTS,
+        default=DEFAULT_NUM_PROMPTS,
         required=False,
         help=f"The number of unique prompts to generate as stimulus.",
     )
@@ -358,7 +366,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--output-tokens-mean",
         type=int,
-        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN,
+        default=DEFAULT_OUTPUT_TOKENS_MEAN,
         required=False,
         help=f"The mean number of tokens in each output. "
         "Ensure the --tokenizer value is set correctly. ",
@@ -380,7 +388,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--output-tokens-stddev",
         type=int,
-        default=LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV,
+        default=DEFAULT_OUTPUT_TOKENS_STDDEV,
         required=False,
         help=f"The standard deviation of the number of tokens in each output. "
         "This is only used when --output-tokens-mean is provided.",
@@ -389,7 +397,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--random-seed",
         type=int,
-        default=LlmInputs.DEFAULT_RANDOM_SEED,
+        default=DEFAULT_RANDOM_SEED,
         required=False,
         help="The seed used to generate random values.",
     )
@@ -397,7 +405,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--synthetic-input-tokens-mean",
         type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_MEAN,
+        default=DEFAULT_PROMPT_TOKENS_MEAN,
         required=False,
         help=f"The mean of number of tokens in the generated prompts when using synthetic data.",
     )
@@ -405,7 +413,7 @@ def _add_input_args(parser):
     input_group.add_argument(
         "--synthetic-input-tokens-stddev",
         type=int,
-        default=LlmInputs.DEFAULT_PROMPT_TOKENS_STDDEV,
+        default=DEFAULT_PROMPT_TOKENS_STDDEV,
         required=False,
         help=f"The standard deviation of number of tokens in the generated prompts when using synthetic data.",
     )
