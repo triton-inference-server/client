@@ -16,6 +16,7 @@ import json
 import os
 import random
 import statistics
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -32,6 +33,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     make_snowman_image,
 )
 from genai_perf.tokenizer import Tokenizer
+from PIL import Image
 
 mocked_openorca_data = {
     "features": [
@@ -555,14 +557,12 @@ class TestLlmInputs:
     def test_add_image_inputs_openai_vision(self) -> None:
         generic_json = {
             "rows": [
-                {"text_input": "test input one"},
-                {"text_input": "test input two"},
+                {"text_input": "test input one", "image": "test_image1"},
+                {"text_input": "test input two", "image": "test_image2"},
             ]
         }
-        img = make_snowman_image()
-        encoded_img = LlmInputs._encode_image(img)
 
-        generic_json = LlmInputs._add_images_to_generic_json(generic_json, img)
+        generic_json = LlmInputs._convert_to_openai_multi_modal_content(generic_json)
 
         row1 = generic_json["rows"][0]["text_input"]
         assert row1 == [
@@ -572,7 +572,7 @@ class TestLlmInputs:
             },
             {
                 "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{encoded_img}"},
+                "image_url": {"url": "test_image1"},
             },
         ]
 
@@ -584,7 +584,7 @@ class TestLlmInputs:
             },
             {
                 "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{encoded_img}"},
+                "image_url": {"url": "test_image2"},
             },
         ]
 
@@ -724,6 +724,34 @@ class TestLlmInputs:
         assert len(dataset["rows"]) == len(expected_prompts)
         for i, prompt in enumerate(expected_prompts):
             assert dataset["rows"][i]["row"]["text_input"] == prompt
+
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch("PIL.Image.open", return_value=Image.new("RGB", (10, 10)))
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=(
+            '{"text_input": "prompt1", "image": "image1.png"}\n'
+            '{"text_input": "prompt2", "image": "image2.png"}\n'
+            '{"text_input": "prompt3", "image": "image3.png"}\n'
+        ),
+    )
+    def test_get_input_file_with_multi_modal_data(
+        self, mock_exists, mock_image, mock_file
+    ):
+        Data = namedtuple("Data", ["text_input", "image"])
+        expected_data = [
+            Data(text_input="prompt1", image="image1.png"),
+            Data(text_input="prompt2", image="image2.png"),
+            Data(text_input="prompt3", image="image3.png"),
+        ]
+        dataset = LlmInputs._get_input_dataset_from_file(Path("somefile.txt"))
+
+        assert dataset is not None
+        assert len(dataset["rows"]) == len(expected_data)
+        for i, data in enumerate(expected_data):
+            assert dataset["rows"][i]["row"]["text_input"] == data.text_input
+            assert dataset["rows"][i]["row"]["image"] == data.image
 
     @pytest.mark.parametrize(
         "seed, model_name_list, index,model_selection_strategy,expected_model",
