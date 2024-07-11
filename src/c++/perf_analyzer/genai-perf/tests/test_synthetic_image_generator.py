@@ -10,12 +10,20 @@ from genai_perf.llm_inputs.synthetic_image_generator import (
 from PIL import Image
 
 
-def test_generating_images():
-    sut = SyntheticImageGenerator()
+@pytest.mark.parametrize(
+    "image_size",
+    [
+        (100, 100),
+        (200, 200),
+    ],
+)
+def test_different_image_size(image_size):
+    sut = SyntheticImageGenerator(mean_size=image_size, dimensions_stddev=[0, 0])
 
-    data = next(sut)
+    image = next(sut)
 
-    assert isinstance(data, Image.Image), "generator produces unexpected type of data"
+    assert isinstance(image, Image.Image), "generator produces unexpected type of data"
+    assert image.size == image_size, "image not resized to the target size"
 
 
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
