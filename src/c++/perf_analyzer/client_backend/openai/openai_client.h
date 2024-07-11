@@ -121,6 +121,7 @@ class ChatCompletionRequest : public HttpRequest {
         request_id_(request_id)
   {
   }
+  bool IsFinalResponseSent() { return final_response_sent_; };
   void SendResponse(bool is_final, bool is_null);
   bool is_stream_{false};
   std::function<void(InferResult*)> response_callback_{nullptr};
