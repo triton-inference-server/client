@@ -326,6 +326,12 @@ class LlmInputs:
             )
         else:
             if input_type == PromptSource.DATASET:
+                # (TMA-1990) support VLM input from public dataset
+                if output_format == OutputFormat.OPENAI_VISION:
+                    raise GenAIPerfException(
+                        f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
+                        "does not support dataset as input."
+                    )
                 dataset = cls._get_input_dataset_from_url(
                     dataset_name, starting_index, length
                 )
@@ -333,6 +339,13 @@ class LlmInputs:
                     dataset
                 )
             elif input_type == PromptSource.SYNTHETIC:
+                # (TMA-1989) support synthetic image generation for VLM input
+                if output_format == OutputFormat.OPENAI_VISION:
+                    raise GenAIPerfException(
+                        f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
+                        "does not support synthetic input."
+                    )
+
                 synthetic_dataset = cls._get_input_dataset_from_synthetic(
                     tokenizer,
                     prompt_tokens_mean,
@@ -347,6 +360,9 @@ class LlmInputs:
             elif input_type == PromptSource.FILE:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_file(input_filename)
+                input_file_dataset = cls._encode_images_in_input_dataset(
+                    input_file_dataset
+                )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
                         input_file_dataset
@@ -355,10 +371,12 @@ class LlmInputs:
             else:
                 raise GenAIPerfException("Input source is not recognized.")
 
+            # When the generic_dataset_json contains multi-modal data (e.g. images),
+            # convert the format of the content to OpenAI multi-modal format:
+            # see https://platform.openai.com/docs/guides/vision
             if output_format == OutputFormat.OPENAI_VISION:
-                snowman_image = make_snowman_image()
-                generic_dataset_json = cls._add_images_to_generic_json(
-                    generic_dataset_json, snowman_image
+                generic_dataset_json = cls._convert_to_openai_multi_modal_content(
+                    generic_dataset_json
                 )
 
         return generic_dataset_json
@@ -549,29 +567,37 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
         """
-        Reads the input prompts from a JSONL file and converts them into the required dataset format.
+        Reads the input prompts and images from a JSONL file and converts them
+        into the required dataset format.
 
         Parameters
         ----------
         input_filename : Path
-            The path to the input file containing the prompts in JSONL format.
+            The path to the input file containing the prompts and/or images in
+            JSONL format.
 
         Returns
         -------
         Dict
-            The dataset in the required format with the prompts read from the file.
+            The dataset in the required format with the prompts and/or images
+            read from the file.
         """
         cls.verify_file(input_filename)
-        input_file_prompts = cls._get_prompts_from_input_file(input_filename)
+        prompts, images = cls._get_prompts_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["rows"] = [
-            {"row": {"text_input": prompt}} for prompt in input_file_prompts
-        ]
+        dataset_json["rows"] = []
+        for prompt, image in zip(prompts, images):
+            content = {"text_input": prompt}
+            content.update({"image": image} if image else {})
+            dataset_json["rows"].append({"row": content})
+
         return dataset_json
 
     @classmethod
-    def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
+    def _get_prompts_from_input_file(
+        cls, input_filename: Path
+    ) -> Tuple[List[str], List[str]]:
         """
         Reads the input prompts from a JSONL file and returns a list of prompts.
 
@@ -582,15 +608,17 @@ class LlmInputs:
 
         Returns
         -------
-        List[str]
-            A list of prompts read from the file.
+        Tuple[List[str], List[str]]
+            A list of prompts and images read from the file.
         """
         prompts = []
+        images = []
         with open(input_filename, mode="r", newline=None) as file:
             for line in file:
                 if line.strip():
                     prompts.append(json.loads(line).get("text_input", "").strip())
-        return prompts
+                    images.append(json.loads(line).get("image", "").strip())
+        return prompts, images
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
@@ -598,14 +626,14 @@ class LlmInputs:
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
 
     @classmethod
-    def _add_images_to_generic_json(
-        cls, generic_dataset_json: Dict[str, List[Dict]], img: Image
+    def _convert_to_openai_multi_modal_content(
+        cls, generic_dataset_json: Dict[str, List[Dict]]
     ) -> Dict[str, List[Dict]]:
-        # (TMA-1985) Support multiple image formats
-        img_format = ImageFormat.PNG
-        img_base64 = cls._encode_image(img, img_format)
+        """
+        Converts to multi-modal content format of OpenAI Chat Completions API.
+        """
         for row in generic_dataset_json["rows"]:
-            if isinstance(row["text_input"], str):
+            if row["image"]:
                 row["text_input"] = [
                     {
                         "type": "text",
@@ -613,11 +641,23 @@ class LlmInputs:
                     },
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{img_base64}"},
+                        "image_url": {"url": row["image"]},
                     },
                 ]
 
         return generic_dataset_json
+
+    @classmethod
+    def _encode_images_in_input_dataset(cls, input_file_dataset: Dict) -> Dict:
+        for row in input_file_dataset["rows"]:
+            filename = row["row"].get("image")
+            if filename:
+                img = Image.open(filename)
+                # (TMA-1985) Support multiple image formats
+                img_base64 = cls._encode_image(img, ImageFormat.PNG)
+                row["row"]["image"] = f"data:image/png;base64,{img_base64}"
+
+        return input_file_dataset
 
     @classmethod
     def _encode_image(cls, img: Image, format=ImageFormat.PNG):
