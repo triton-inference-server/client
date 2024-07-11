@@ -62,6 +62,15 @@ def load_json(filepath: Path) -> Dict[str, Any]:
             raise
 
 
+def load_json_str(json_str: str) -> Dict[str, Any]:
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        snippet = json_str[:200] + ("..." if len(json_str) > 200 else "")
+        logger.error("Failed to parse JSON string: '%s'", snippet)
+        raise
+
+
 def remove_file(file: Path) -> None:
     if file.is_file():
         file.unlink()
