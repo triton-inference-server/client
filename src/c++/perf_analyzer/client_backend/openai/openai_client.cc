@@ -181,8 +181,8 @@ ChatCompletionClient::AsyncInfer(
         triton::client::RequestTimers::Kind::REQUEST_END);
     UpdateInferStat(request->timer_);
 
-    // Send Response checks if a final
-    // response has already been sent
+    // Send final response on request completion
+    // Ignored if final response has already been sent
     // (in the case of seeing [DONE] in streaming case)
     request->SendResponse(true /* is_final */, false /* is_null */);
   };
