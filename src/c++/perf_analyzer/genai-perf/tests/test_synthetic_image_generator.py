@@ -3,8 +3,8 @@ from io import BytesIO
 
 import pytest
 from genai_perf.llm_inputs.synthetic_image_generator import (
-    Base64Encoder,
     ImageFormat,
+    RandomFormatBase64Encoder,
     SyntheticImageGenerator,
 )
 from PIL import Image
@@ -21,7 +21,7 @@ def test_generating_images():
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
 def test_base64_encoding_with_different_formats(image_format):
     image = Image.new("RGB", (100, 100))
-    sut = Base64Encoder(image_format=image_format)
+    sut = RandomFormatBase64Encoder(image_formats=[image_format])
 
     base64String = sut(image)
 

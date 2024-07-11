@@ -1,4 +1,5 @@
 import base64
+import random
 from enum import Enum, auto
 from io import BytesIO
 
@@ -11,24 +12,24 @@ class ImageFormat(Enum):
     PNG = auto()
 
 
-class Base64Encoder:
-    def __init__(self, image_format: ImageFormat = ImageFormat.PNG):
-        self.image_format = image_format
+class RandomFormatBase64Encoder:
+    def __init__(self, image_formats: ImageFormat = ImageFormat.PNG):
+        self.image_formats = image_formats
 
     def __call__(self, image):
+        choice = random.randint(0, len(self.image_formats) - 1)
+        image_format = self.image_formats[choice]
         buffered = BytesIO()
-        image.save(buffered, format=self.image_format.name)
+        image.save(buffered, format=image_format.name)
         data = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        prefix = f"data:image/{self.image_format.name.lower()};base64"
+        prefix = f"data:image/{image_format.name.lower()};base64"
         return f"{prefix},{data}"
 
 
 class SyntheticImageGenerator:
     def __init__(
         self,
-        image_format: ImageFormat = ImageFormat.PNG,
     ):
-        self.image_format = image_format
         self._image_iterator = self.white_images_iterator()
 
     def __iter__(self):
