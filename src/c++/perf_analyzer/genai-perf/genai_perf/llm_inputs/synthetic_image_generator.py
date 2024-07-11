@@ -1,5 +1,4 @@
 import base64
-import os
 from enum import Enum, auto
 from io import BytesIO
 from pathlib import Path
