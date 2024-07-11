@@ -78,7 +78,7 @@ class SyntheticImageGenerator:
 
     def random_resize(self, image):
         new_size = np.random.normal(self.mean_size, self.dimensions_stddev)
-        new_size = new_size.astype(int)
+        new_size = tuple(new_size.astype(int))
         return image.resize(new_size)
 
     def __next__(self):
