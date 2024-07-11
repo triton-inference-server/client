@@ -284,7 +284,7 @@ PerfAnalyzer::CreateAnalyzerObjects()
           params_->measurement_request_count, params_->measurement_mode,
           params_->mpi_driver, params_->metrics_interval_ms,
           params_->should_collect_metrics, params_->overhead_pct_threshold,
-          params_->async, collector_, !params_->profile_export_file.empty()),
+          collector_, !params_->profile_export_file.empty()),
       "failed to create profiler");
 }
 
@@ -311,16 +311,11 @@ PerfAnalyzer::PrerunReport()
                 << std::endl;
     }
 
-    std::string stabilization_metric = "latency and throughput";
-    if (params_->async) {
-      stabilization_metric = "throughput";
-    }
     if (params_->percentile == -1) {
-      std::cout << "  Stabilizing using average " << stabilization_metric
-                << std::endl;
+      std::cout << "  Stabilizing using average latency" << std::endl;
     } else {
-      std::cout << "  Stabilizing using p" << params_->percentile
-                << stabilization_metric << std::endl;
+      std::cout << "  Stabilizing using p" << params_->percentile << " latency"
+                << std::endl;
     }
 
     if (params_->measurement_mode == pa::MeasurementMode::TIME_WINDOWS) {

@@ -25,12 +25,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import json
 import os
 import sys
-from enum import Enum, auto
 from pathlib import Path
-from typing import Tuple
 
 import genai_perf.logging as logging
 import genai_perf.utils as utils
@@ -52,30 +49,13 @@ from genai_perf.tokenizer import DEFAULT_TOKENIZER
 
 from . import __version__
 
-
-class PathType(Enum):
-    FILE = auto()
-    DIRECTORY = auto()
-
-    def to_lowercase(self):
-        return self.name.lower()
-
-
-class Subcommand(Enum):
-    PROFILE = auto()
-    COMPARE = auto()
-
-    def to_lowercase(self):
-        return self.name.lower()
-
-
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
-    "embeddings": "v1/embeddings",
-    "rankings": "v1/ranking",
+    "generate": "v2/models/{MODEL_NAME}/generate",
+    "kserve": "v2/models/{MODEL_NAME}/infer",
 }
 
 
@@ -85,7 +65,7 @@ def _check_model_args(
     """
     Check if model name is provided.
     """
-    if not args.model:
+    if not args.subcommand and not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
     args = _convert_str_to_enum_entry(
         args, "model_selection_strategy", ModelSelectionStrategy
@@ -110,8 +90,9 @@ def _check_compare_args(
     """
     Check compare subcommand args
     """
-    if not args.config and not args.files:
-        parser.error("Either the --config or --files option must be specified.")
+    if args.subcommand == "compare":
+        if not args.config and not args.files:
+            parser.error("Either the --config or --files option must be specified.")
     return args
 
 
@@ -122,34 +103,30 @@ def _check_conditional_args(
     Check for conditional args and raise an error if they are not set.
     """
 
-    # Endpoint and output format checks
-    if args.service_kind == "openai":
-        if args.endpoint_type is None:
-            parser.error(
-                "The --endpoint-type option is required when using the 'openai' service-kind."
-            )
-        else:
-            if args.endpoint_type == "chat":
-                args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
-            elif args.endpoint_type == "completions":
-                args.output_format = OutputFormat.OPENAI_COMPLETIONS
-            elif args.endpoint_type == "embeddings":
-                args.output_format = OutputFormat.OPENAI_EMBEDDINGS
-            elif args.endpoint_type == "rankings":
-                args.output_format = OutputFormat.RANKINGS
-
-            if args.endpoint is not None:
-                args.endpoint = args.endpoint.lstrip(" /")
-            else:
-                args.endpoint = _endpoint_type_map[args.endpoint_type]
-    elif args.endpoint_type is not None:
-        parser.error(
-            "The --endpoint-type option should only be used when using the 'openai' service-kind."
-        )
-
-    if args.service_kind == "triton":
+    if args.endpoint_type == "chat":
+        args.output_format = OutputFormat.OPENAI_CHAT_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "completions":
+        args.output_format = OutputFormat.OPENAI_COMPLETIONS
+        args.service_kind = "openai"
+    elif args.endpoint_type == "generate":
+        args.output_format = OutputFormat.TRITON_GENERATE
+        args.service_kind = "openai"
+    elif args.endpoint_type == "kserve":
+        args.service_kind = "triton"
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
+
+    if args.endpoint is not None:
+        args.endpoint = args.endpoint.lstrip(" /")
+    else:
+        if args.model:
+            model_name = args.model[0]
+        else:
+            model_name = ""
+        args.endpoint = _endpoint_type_map[args.endpoint_type].format(
+            MODEL_NAME=model_name
+        )
 
     # Output token distribution checks
     if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
@@ -165,49 +142,10 @@ def _check_conditional_args(
     if args.service_kind != "triton":
         if args.output_tokens_mean_deterministic:
             parser.error(
-                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+                "The --output-tokens-mean-deterministic option is only supported with the kserve endpoint type."
             )
-
-    _check_conditional_args_embeddings_rankings(parser, args)
 
     return args
-
-
-def _check_conditional_args_embeddings_rankings(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-):
-
-    if args.output_format in [
-        OutputFormat.OPENAI_EMBEDDINGS,
-        OutputFormat.RANKINGS,
-    ]:
-        if args.streaming:
-            parser.error(
-                f"The --streaming option is not supported with the {args.endpoint_type} endpoint type."
-            )
-
-        if args.generate_plots:
-            parser.error(
-                f"The --generate-plots option is not currently supported with the {args.endpoint_type} endpoint type."
-            )
-    else:
-        if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
-            parser.error(
-                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types."
-            )
-
-    if args.input_file:
-        _, path_type = args.input_file
-        if args.output_format != OutputFormat.RANKINGS:
-            if path_type == "directory":
-                parser.error(
-                    "A directory is only currently supported for the rankings endpoint type."
-                )
-        else:
-            if path_type == PathType.FILE:
-                parser.error(
-                    "The rankings endpoint-type requires a directory value for the --input-file flag."
-                )
 
 
 def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
@@ -267,12 +205,7 @@ def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
         logger.debug(f"Input source is the following dataset: {args.input_dataset}")
     elif args.input_file:
         args.prompt_source = PromptSource.FILE
-        if args.endpoint_type == "rankings":
-            logger.debug(
-                f"Input source is the following directory: {args.input_file[0]}"
-            )
-        else:
-            logger.debug(f"Input source is the following file: {args.input_file[0]}")
+        logger.debug(f"Input source is the following file: {args.input_file.name}")
     else:
         args.prompt_source = PromptSource.SYNTHETIC
         logger.debug("Input source is synthetic data")
@@ -289,18 +222,6 @@ def _convert_str_to_enum_entry(args, option, enum):
     return args
 
 
-### Types ###
-
-
-def file_or_directory(path: str) -> Tuple[Path, PathType]:
-    if os.path.isfile(path):
-        return (Path(path), PathType.FILE)
-    elif os.path.isdir(path):
-        return (Path(path), PathType.DIRECTORY)
-    else:
-        raise ValueError(f"'{path}' is not a valid file or directory")
-
-
 ### Parsers ###
 
 
@@ -308,21 +229,10 @@ def _add_input_args(parser):
     input_group = parser.add_argument_group("Input")
 
     input_group.add_argument(
-        "--batch-size",
-        "-b",
-        type=int,
-        default=LlmInputs.DEFAULT_BATCH_SIZE,
-        required=False,
-        help=f"The batch size of the requests GenAI-Perf should send. "
-        "This is currently only supported with the embeddings and rankings endpoint types.",
-    )
-
-    input_group.add_argument(
         "--extra-inputs",
         action="append",
         help="Provide additional inputs to include with every request. "
-        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format."
-        "Alternatively, a string representing a json formatted dict can be provided.",
+        "You can repeat this flag for multiple inputs. Inputs should be in an input_name:value format.",
     )
 
     prompt_source_group = input_group.add_mutually_exclusive_group(required=False)
@@ -337,14 +247,10 @@ def _add_input_args(parser):
 
     prompt_source_group.add_argument(
         "--input-file",
-        type=file_or_directory,
+        type=argparse.FileType("r"),
         default=None,
         required=False,
-        help="The input file containing the prompts to use for profiling. "
-        "Each line should be a JSON object with a 'text_input' field in JSONL format. "
-        'Example: {"text_input": "Your prompt here"}'
-        "For the rankings endpoint-type, a directory should be passed in instead with "
-        'a "queries.jsonl" file and a "passages.jsonl" file with the same format.',
+        help="The input file containing the single prompt to use for profiling.",
     )
 
     input_group.add_argument(
@@ -371,7 +277,7 @@ def _add_input_args(parser):
         help=f"When using --output-tokens-mean, this flag can be set to "
         "improve precision by setting the minimum number of tokens "
         "equal to the requested number of tokens. This is currently "
-        "supported with the Triton service-kind. "
+        "supported with the kserve endpoint type. "
         "Note that there is still some variability in the requested number "
         "of output tokens, but GenAi-Perf attempts its best effort with your "
         "model to get the right number of output tokens. ",
@@ -479,10 +385,10 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--backend",
         type=str,
-        choices=utils.get_enum_names(OutputFormat)[2:],
+        choices=["tensorrtllm", "vllm"],
         default="tensorrtllm",
         required=False,
-        help=f'When using the "triton" service-kind, '
+        help=f'When using the "kserve" endpoint type, '
         "this is the backend of the model. "
         "For the TENSORRT-LLM backend, you currently must set "
         "'exclude_input_in_output' to true in the model config to "
@@ -499,21 +405,10 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings", "rankings"],
+        choices=["chat", "completions", "generate", "kserve"],
+        default="kserve",
         required=False,
-        help=f"The endpoint-type to send requests to on the "
-        'server. This is only used with the "openai" service-kind.',
-    )
-
-    endpoint_group.add_argument(
-        "--service-kind",
-        type=str,
-        choices=["triton", "openai"],
-        default="triton",
-        required=False,
-        help="The kind of service perf_analyzer will "
-        'generate load for. In order to use "openai", '
-        "you must specify an api via --endpoint-type.",
+        help=f"The endpoint-type for requests. Inputs will be formatted according to endpoint-type.",
     )
 
     endpoint_group.add_argument(
@@ -537,13 +432,6 @@ def _add_endpoint_args(parser):
 def _add_output_args(parser):
     output_group = parser.add_argument_group("Output")
     output_group.add_argument(
-        "--artifact-dir",
-        type=Path,
-        default=Path(DEFAULT_ARTIFACT_DIR),
-        help="The directory to store all the (output) artifacts generated by "
-        "GenAI-Perf and Perf Analyzer.",
-    )
-    output_group.add_argument(
         "--generate-plots",
         action="store_true",
         required=False,
@@ -558,6 +446,13 @@ def _add_output_args(parser):
         "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
         "For example, if the profile export file is profile_export.json, the genai-perf file will be "
         "exported to profile_export_genai_perf.csv.",
+    )
+    output_group.add_argument(
+        "--artifact-dir",
+        type=Path,
+        default=Path(DEFAULT_ARTIFACT_DIR),
+        help="The directory to store all the (output) artifacts generated by "
+        "GenAI-Perf and Perf Analyzer.",
     )
 
 
@@ -580,56 +475,60 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
+    other_group.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        help=f"An option to print the version and exit.",
+    )
+
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
     if args.extra_inputs:
         for input_str in args.extra_inputs:
-            if input_str.startswith("{") and input_str.endswith("}"):
-                request_inputs.update(json.loads(input_str))
-            else:
-                semicolon_count = input_str.count(":")
-                if semicolon_count != 1:
-                    raise ValueError(
-                        f"Invalid input format for --extra-inputs: {input_str}\n"
-                        "Expected input format: 'input_name:value'"
-                    )
-                input_name, value = input_str.split(":", 1)
+            semicolon_count = input_str.count(":")
+            if semicolon_count != 1:
+                raise ValueError(
+                    f"Invalid input format for --extra-inputs: {input_str}\n"
+                    "Expected input format: 'input_name:value'"
+                )
+            input_name, value = input_str.split(":", 1)
 
-                if not input_name or not value:
-                    raise ValueError(
-                        f"Input name or value is empty in --extra-inputs: {input_str}\n"
-                        "Expected input format: 'input_name:value'"
-                    )
-
-                is_bool = value.lower() in ["true", "false"]
-                is_int = value.isdigit()
-                is_float = value.count(".") == 1 and (
-                    value[0] == "." or value.replace(".", "").isdigit()
+            if not input_name or not value:
+                raise ValueError(
+                    f"Input name or value is empty in --extra-inputs: {input_str}\n"
+                    "Expected input format: 'input_name:value'"
                 )
 
-                if is_bool:
-                    value = value.lower() == "true"
-                elif is_int:
-                    value = int(value)
-                elif is_float:
-                    value = float(value)
+            is_bool = value.lower() in ["true", "false"]
+            is_int = value.isdigit()
+            is_float = value.count(".") == 1 and (
+                value[0] == "." or value.replace(".", "").isdigit()
+            )
 
-                if input_name in request_inputs:
-                    raise ValueError(
-                        f"Input name already exists in request_inputs dictionary: {input_name}"
-                    )
-                request_inputs[input_name] = value
+            if is_bool:
+                value = value.lower() == "true"
+            elif is_int:
+                value = int(value)
+            elif is_float:
+                value = float(value)
+
+            if input_name in request_inputs:
+                raise ValueError(
+                    f"Input name already exists in request_inputs dictionary: {input_name}"
+                )
+            request_inputs[input_name] = value
 
     return request_inputs
 
 
 def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
-        Subcommand.COMPARE.to_lowercase(),
+        "compare",
         description="Subcommand to generate plots that compare multiple profile runs.",
     )
-    compare_group = compare.add_argument_group("Input")
+    compare_group = compare.add_argument_group("Compare")
     mx_group = compare_group.add_mutually_exclusive_group(required=False)
     mx_group.add_argument(
         "--config",
@@ -651,26 +550,18 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     return compare
 
 
-def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
-    profile = subparsers.add_parser(
-        Subcommand.PROFILE.to_lowercase(),
-        description="Subcommand to profile LLMs and Generative AI models.",
-    )
-    _add_endpoint_args(profile)
-    _add_input_args(profile)
-    _add_profile_args(profile)
-    _add_output_args(profile)
-    _add_other_args(profile)
-    profile.set_defaults(func=profile_handler)
-    return profile
-
-
 ### Handlers ###
 
 
 def create_compare_dir() -> None:
     if not os.path.exists(DEFAULT_COMPARE_DIR):
         os.mkdir(DEFAULT_COMPARE_DIR)
+
+
+def profile_handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
 
 
 def compare_handler(args: argparse.Namespace):
@@ -687,75 +578,45 @@ def compare_handler(args: argparse.Namespace):
     plot_manager.generate_plots()
 
 
-def profile_handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
-
-
-### Parser Initialization ###
-
-
-def init_parsers():
-    parser = argparse.ArgumentParser(
-        prog="genai-perf",
-        description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        help=f"An option to print the version and exit.",
-    )
-
-    # Add subcommands
-    subparsers = parser.add_subparsers(
-        help="List of subparser commands.", dest="subcommand"
-    )
-    _ = _parse_compare_args(subparsers)
-    _ = _parse_profile_args(subparsers)
-    subparsers.required = True
-
-    return parser
-
-
-def get_passthrough_args_index(argv: list) -> int:
-    if "--" in argv:
-        passthrough_index = argv.index("--")
-        logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
-    else:
-        passthrough_index = len(argv)
-
-    return passthrough_index
-
-
-def refine_args(
-    parser: argparse.ArgumentParser, args: argparse.Namespace
-) -> argparse.Namespace:
-    if args.subcommand == Subcommand.PROFILE.to_lowercase():
-        args = _infer_prompt_source(args)
-        args = _check_model_args(parser, args)
-        args = _check_conditional_args(parser, args)
-        args = _check_load_manager_args(args)
-        args = _set_artifact_paths(args)
-    elif args.subcommand == Subcommand.COMPARE.to_lowercase():
-        args = _check_compare_args(parser, args)
-    else:
-        raise ValueError(f"Unknown subcommand: {args.subcommand}")
-
-    return args
-
-
 ### Entrypoint ###
 
 
 def parse_args():
     argv = sys.argv
 
-    parser = init_parsers()
-    passthrough_index = get_passthrough_args_index(argv)
+    parser = argparse.ArgumentParser(
+        prog="genai-perf",
+        description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.set_defaults(func=profile_handler)
+
+    # Conceptually group args for easier visualization
+    _add_endpoint_args(parser)
+    _add_input_args(parser)
+    _add_profile_args(parser)
+    _add_output_args(parser)
+    _add_other_args(parser)
+
+    # Add subcommands
+    subparsers = parser.add_subparsers(
+        help="List of subparser commands.", dest="subcommand"
+    )
+    compare_parser = _parse_compare_args(subparsers)
+
+    # Check for passthrough args
+    if "--" in argv:
+        passthrough_index = argv.index("--")
+        logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
+    else:
+        passthrough_index = len(argv)
+
     args = parser.parse_args(argv[1:passthrough_index])
-    args = refine_args(parser, args)
+    args = _infer_prompt_source(args)
+    args = _check_model_args(parser, args)
+    args = _check_conditional_args(parser, args)
+    args = _check_compare_args(compare_parser, args)
+    args = _check_load_manager_args(args)
+    args = _set_artifact_paths(args)
 
     return args, argv[passthrough_index + 1 :]

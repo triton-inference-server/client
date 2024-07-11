@@ -55,8 +55,7 @@ TritonCApiClientBackend::Create(
 
   std::unique_ptr<TritonCApiClientBackend> triton_client_backend(
       new TritonCApiClientBackend());
-  RETURN_IF_ERROR(
-      TritonLoader::Create(triton_server_path, model_repository_path, verbose));
+  TritonLoader::Create(triton_server_path, model_repository_path, verbose);
   *client_backend = std::move(triton_client_backend);
   return Error::Success;
 }

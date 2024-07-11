@@ -77,13 +77,6 @@ struct LoadStatus {
   uint64_t avg_latency = 0;
 };
 
-/// Configuration for the Measure function
-struct MeasureConfig {
-  uint64_t measurement_window{0};
-  bool is_count_based{false};
-  bool clamp_window{false};
-};
-
 // Holds the total of the timiming components of composing models of an
 // ensemble.
 struct EnsembleDurations {
@@ -267,7 +260,6 @@ class InferenceProfiler {
       uint64_t measurement_request_count, MeasurementMode measurement_mode,
       std::shared_ptr<MPIDriver> mpi_driver, const uint64_t metrics_interval_ms,
       const bool should_collect_metrics, const double overhead_pct_threshold,
-      const bool async_mode,
       const std::shared_ptr<ProfileDataCollector> collector,
       const bool should_collect_profile_data);
 
@@ -371,7 +363,7 @@ class InferenceProfiler {
       std::unique_ptr<LoadManager> manager, uint64_t measurement_request_count,
       MeasurementMode measurement_mode, std::shared_ptr<MPIDriver> mpi_driver,
       const uint64_t metrics_interval_ms, const bool should_collect_metrics,
-      const double overhead_pct_threshold, const bool async_mode,
+      const double overhead_pct_threshold,
       const std::shared_ptr<ProfileDataCollector> collector,
       const bool should_collect_profile_data);
 
@@ -440,9 +432,8 @@ class InferenceProfiler {
 
   /// A helper function to determine if profiling is stable
   /// \param load_status Stores the observations of infer_per_sec and latencies
-  /// \param check_latency Whether to check latency for stability
   /// \return Returns if the threshold and latencies are stable.
-  bool DetermineStability(LoadStatus& load_status, bool check_latency = true);
+  bool DetermineStability(LoadStatus& load_status);
 
   /// Check if latency at index idx is within the latency threshold
   /// \param idx index in latency vector
@@ -461,10 +452,8 @@ class InferenceProfiler {
   /// for a single window starting at idx
   /// \param idx index in latency vector
   /// \param load_status Stores the observations of infer_per_sec and latencies
-  /// \param check_latency Whether to check latency for stability
   /// \return Returns whether inference and latency are stable
-  bool CheckWindowForStability(
-      size_t idx, LoadStatus& load_status, bool check_latency);
+  bool CheckWindowForStability(size_t idx, LoadStatus& load_status);
 
   /// Check if observed inferences are within threshold
   /// for a single window starting at idx
@@ -482,9 +471,14 @@ class InferenceProfiler {
 
   /// Helper function to perform measurement.
   /// \param status_summary The summary of this measurement.
-  /// \param config The configuration for measurement.
+  /// \param measurement_window Indicating the number of requests or the
+  /// duration in milliseconds to collect requests.
+  /// \param is_count_based determines whether measurement_window is indicating
+  /// time or count.
   /// \return cb::Error object indicating success or failure.
-  cb::Error Measure(PerfStatus& status_summary, MeasureConfig config);
+  cb::Error Measure(
+      PerfStatus& status_summary, uint64_t measurement_window,
+      bool is_count_based);
 
   /// Gets the server side statistics
   /// \param model_status Returns the status of the models provided by
@@ -503,15 +497,12 @@ class InferenceProfiler {
   /// \param summary Returns the summary of the measurement.
   /// \param window_start_ns The window start timestamp in nanoseconds.
   /// \param window_end_ns The window end timestamp in nanoseconds.
-  /// \param clamp_window If true, the actual window range is reduced to the
-  /// start of the first request to the final response.
   /// \return cb::Error object indicating success or failure.
   cb::Error Summarize(
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& start_status,
       const std::map<cb::ModelIdentifier, cb::ModelStatistics>& end_status,
       const cb::InferStat& start_stat, const cb::InferStat& end_stat,
-      PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns,
-      bool clamp_window);
+      PerfStatus& summary, uint64_t window_start_ns, uint64_t window_end_ns);
 
   /// \param valid_range The start and end timestamp of the measurement window.
   /// \param valid_sequence_count Returns the number of completed sequences
@@ -526,13 +517,6 @@ class InferenceProfiler {
       size_t& valid_sequence_count, size_t& delayed_request_count,
       std::vector<uint64_t>* latencies, size_t& response_count,
       std::vector<RequestRecord>& valid_requests);
-
-  /// Clamp a window around a set of requests, from the earliest start time to
-  /// the latest response
-  /// \param requests A vector of requests to clamp the window around.
-  /// \return std::pair object containing <start, end> of the window.
-  std::pair<uint64_t, uint64_t> ClampWindow(
-      std::vector<RequestRecord>& requests);
 
   /// Add the data from the request records to the Raw Data Collector
   /// \param perf_status PerfStatus of the current measurement
@@ -801,9 +785,6 @@ class InferenceProfiler {
 
   // Whether to collect profile data.
   bool should_collect_profile_data_{false};
-
-  // Whether the client is operating in async mode.
-  const bool async_mode_{false};
 
 #ifndef DOCTEST_CONFIG_DISABLE
   friend NaggyMockInferenceProfiler;

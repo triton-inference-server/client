@@ -51,11 +51,11 @@ class TestPlotConfigParser:
       output: test_output_1
 
     plot2:
-      title: Input Sequence Length vs Output Sequence Length
-      x_metric: input_sequence_lengths
-      y_metric: output_sequence_lengths
-      x_label: Input Sequence Length
-      y_label: Output Sequence Length
+      title: Num Input Token vs Num Output Token
+      x_metric: num_input_tokens
+      y_metric: num_output_tokens
+      x_label: Input Tokens
+      y_label: Output Tokens
       width: 1234
       height: 5678
       type: scatter
@@ -97,9 +97,9 @@ class TestPlotConfigParser:
             assert prd.y_metric == [1, 2, 3]
 
         # plot config 2
-        assert pc2.title == "Input Sequence Length vs Output Sequence Length"
-        assert pc2.x_label == "Input Sequence Length"
-        assert pc2.y_label == "Output Sequence Length"
+        assert pc2.title == "Num Input Token vs Num Output Token"
+        assert pc2.x_label == "Input Tokens"
+        assert pc2.y_label == "Output Tokens"
         assert pc2.width == 1234
         assert pc2.height == 5678
         assert pc2.type == PlotType.SCATTER

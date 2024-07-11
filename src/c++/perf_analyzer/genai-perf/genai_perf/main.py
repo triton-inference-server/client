@@ -33,29 +33,26 @@ from pathlib import Path
 
 import genai_perf.logging as logging
 from genai_perf import parser
+from genai_perf.constants import DEFAULT_PARQUET_FILE
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.export_data.output_reporter import OutputReporter
+from genai_perf.export_data.json_exporter import JsonExporter
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
+from genai_perf.llm_metrics import LLMProfileDataParser
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
-from genai_perf.profile_data_parser import LLMProfileDataParser, ProfileDataParser
 from genai_perf.tokenizer import Tokenizer, get_tokenizer
 
 
 def create_artifacts_dirs(args: Namespace) -> None:
+    # TMA-1911: support plots CLI option
     plot_dir = args.artifact_dir / "plots"
     os.makedirs(args.artifact_dir, exist_ok=True)
-    if hasattr(args, "generate_plots") and args.generate_plots:
-        os.makedirs(plot_dir, exist_ok=True)
+    os.makedirs(plot_dir, exist_ok=True)
 
 
 def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     # TODO (TMA-1759): review if add_model_name is always true
-    if args.input_file:
-        filepath, _ = args.input_file
-        input_filename = Path(filepath)
-    else:
-        input_filename = None
+    input_filename = Path(args.input_file.name) if args.input_file else None
     add_model_name = True
     try:
         extra_input_dict = parser.get_extra_inputs_as_dict(args)
@@ -82,22 +79,18 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         add_stream=args.streaming,
         tokenizer=tokenizer,
         extra_inputs=extra_input_dict,
-        batch_size=args.batch_size,
         output_dir=args.artifact_dir,
     )
 
 
-def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParser:
-    if args.endpoint_type in ["embeddings", "rankings"]:
-        return ProfileDataParser(args.profile_export_file)
-    else:
-        return LLMProfileDataParser(
-            filename=args.profile_export_file,
-            tokenizer=tokenizer,
-        )
+def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> LLMProfileDataParser:
+    return LLMProfileDataParser(
+        filename=args.profile_export_file,
+        tokenizer=tokenizer,
+    )
 
 
-def report_output(data_parser: ProfileDataParser, args: Namespace) -> None:
+def report_output(data_parser: LLMProfileDataParser, args: Namespace) -> None:
     if args.concurrency:
         infer_mode = "concurrency"
         load_level = f"{args.concurrency}"
@@ -108,10 +101,17 @@ def report_output(data_parser: ProfileDataParser, args: Namespace) -> None:
         raise GenAIPerfException("No valid infer mode specified")
 
     stats = data_parser.get_statistics(infer_mode, load_level)
-    reporter = OutputReporter(stats, args)
-    reporter.report_output()
+    export_csv_name = args.profile_export_file.with_name(
+        args.profile_export_file.stem + "_genai_perf.csv"
+    )
+    stats.export_to_csv(export_csv_name)
+    stats.export_parquet(args.artifact_dir, DEFAULT_PARQUET_FILE)
+    stats.pretty_print()
     if args.generate_plots:
         create_plots(args)
+    extra_inputs_dict = parser.get_extra_inputs_as_dict(args)
+    json_exporter = JsonExporter(stats.stats_dict, args, extra_inputs_dict)
+    json_exporter.export_to_file(args.artifact_dir)
 
 
 def create_plots(args: Namespace) -> None:

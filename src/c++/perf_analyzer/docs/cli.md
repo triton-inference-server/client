@@ -157,13 +157,6 @@ will also be reported in the results.
 Default is `-1` indicating that the average latency is used to determine
 stability.
 
-#### `--request-count=<n>`
-
-Specifies a total number of requests to use for measurement.
-
-Default is `0`, which means that there is no request count and the measurement
-will proceed using windows until stabilization is detected.
-
 #### `-r <n>`
 #### `--max-trials=<n>`
 

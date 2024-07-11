@@ -41,8 +41,7 @@ class PromptSource(Enum):
 class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
-    OPENAI_EMBEDDINGS = auto()
-    RANKINGS = auto()
+    TRITON_GENERATE = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
@@ -66,7 +65,6 @@ class LlmInputs:
 
     DEFAULT_TENSORRTLLM_MAX_TOKENS = 256
 
-    DEFAULT_BATCH_SIZE = 1
     DEFAULT_RANDOM_SEED = 0
     DEFAULT_PROMPT_TOKENS_MEAN = 550
     DEFAULT_PROMPT_TOKENS_STDDEV = 0
@@ -102,7 +100,6 @@ class LlmInputs:
         add_stream: bool = False,
         tokenizer: Tokenizer = get_tokenizer(DEFAULT_TOKENIZER),
         extra_inputs: Optional[Dict] = None,
-        batch_size: int = 1,
         output_dir: Path = Path(""),
     ) -> Dict:
         """
@@ -138,8 +135,6 @@ class LlmInputs:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
-        batch_size:
-            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -162,21 +157,36 @@ class LlmInputs:
             input_type, dataset_name, starting_index, length, tokenizer
         )
 
-        random.seed(random_seed)
-
-        generic_dataset_json = cls.get_generic_dataset_json(
-            input_type,
-            output_format,
-            dataset_name,
-            starting_index,
-            length,
-            tokenizer,
-            prompt_tokens_mean,
-            prompt_tokens_stddev,
-            num_of_output_prompts,
-            batch_size,
-            input_filename,
-        )
+        if input_type == PromptSource.DATASET:
+            dataset = cls._get_input_dataset_from_url(
+                dataset_name, starting_index, length
+            )
+            generic_dataset_json = cls._convert_input_url_dataset_to_generic_json(
+                dataset
+            )
+        elif input_type == PromptSource.SYNTHETIC:
+            random.seed(random_seed)
+            synthetic_dataset = cls._get_input_dataset_from_synthetic(
+                tokenizer,
+                prompt_tokens_mean,
+                prompt_tokens_stddev,
+                num_of_output_prompts,
+            )
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    synthetic_dataset
+                )
+            )
+        elif input_type == PromptSource.FILE:
+            input_filename = cast(Path, input_filename)
+            input_file_dataset = cls._get_input_dataset_from_file(input_filename)
+            generic_dataset_json = (
+                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
+                    input_file_dataset
+                )
+            )
+        else:
+            raise GenAIPerfException("Input source is not recognized.")
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -196,178 +206,6 @@ class LlmInputs:
         cls._write_json_to_file(json_in_pa_format, output_dir)
 
         return json_in_pa_format
-
-    @classmethod
-    def get_generic_dataset_json(
-        cls,
-        input_type: PromptSource,
-        output_format: OutputFormat,
-        dataset_name: str,
-        starting_index: int,
-        length: int,
-        tokenizer: Tokenizer,
-        prompt_tokens_mean: int,
-        prompt_tokens_stddev: int,
-        num_of_output_prompts: int,
-        batch_size: int,
-        input_filename: Optional[Path],
-    ) -> Dict:
-        """
-        Retrieve and convert the dataset based on the input type.
-
-        Parameters
-        ----------
-        input_type:
-            Specify how the input is received
-        output_format:
-            Specify the output format
-        dataset_name:
-            The name of the dataset
-        starting_index:
-            Offset from within the list to start gathering inputs
-        length:
-            Number of entries to gather
-        tokenizer:
-            The tokenizer to use when generating synthetic prompts
-        prompt_tokens_mean:
-            The mean length of the prompt to generate
-        prompt_tokens_stddev:
-            The standard deviation of the length of the prompt to generate
-        num_of_output_prompts:
-            The number of synthetic output prompts to generate
-        batch_size:
-            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
-        input_filename:
-            The path to the input file containing the prompts in JSONL format.
-        Returns
-        -------
-        Dict:
-            The generic dataset JSON
-        """
-
-        if output_format == OutputFormat.OPENAI_EMBEDDINGS:
-            if input_type != PromptSource.FILE:
-                raise GenAIPerfException(
-                    f"{OutputFormat.OPENAI_EMBEDDINGS.to_lowercase()} only supports a file as input."
-                )
-            input_filename = cast(Path, input_filename)
-            input_file_dataset = cls._get_input_dataset_from_embeddings_file(
-                input_filename,
-                batch_size,
-                num_of_output_prompts,
-            )
-            generic_dataset_json = (
-                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                    input_file_dataset
-                )
-            )
-        elif output_format == OutputFormat.RANKINGS:
-            if input_type != PromptSource.FILE:
-                raise GenAIPerfException(
-                    f"{OutputFormat.RANKINGS.to_lowercase()} only supports a directory as input."
-                )
-            queries_filename = cast(Path, input_filename) / "queries.jsonl"
-            passages_filename = cast(Path, input_filename) / "passages.jsonl"
-            input_file_dataset = cls._get_input_dataset_from_rankings_files(
-                queries_filename, passages_filename, batch_size, num_of_output_prompts
-            )
-
-            generic_dataset_json = (
-                cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                    input_file_dataset
-                )
-            )
-        else:
-            if input_type == PromptSource.DATASET:
-                dataset = cls._get_input_dataset_from_url(
-                    dataset_name, starting_index, length
-                )
-                generic_dataset_json = cls._convert_input_url_dataset_to_generic_json(
-                    dataset
-                )
-            elif input_type == PromptSource.SYNTHETIC:
-                synthetic_dataset = cls._get_input_dataset_from_synthetic(
-                    tokenizer,
-                    prompt_tokens_mean,
-                    prompt_tokens_stddev,
-                    num_of_output_prompts,
-                )
-                generic_dataset_json = (
-                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                        synthetic_dataset
-                    )
-                )
-            elif input_type == PromptSource.FILE:
-                input_filename = cast(Path, input_filename)
-                input_file_dataset = cls._get_input_dataset_from_file(input_filename)
-                generic_dataset_json = (
-                    cls._convert_input_synthetic_or_file_dataset_to_generic_json(
-                        input_file_dataset
-                    )
-                )
-            else:
-                raise GenAIPerfException("Input source is not recognized.")
-
-        return generic_dataset_json
-
-    @classmethod
-    def _get_input_dataset_from_embeddings_file(
-        cls, input_filename: Path, batch_size: int, num_prompts: int
-    ) -> Dict[str, Any]:
-        with open(input_filename, "r") as file:
-            file_content = [json.loads(line) for line in file]
-
-        texts = [item["text"] for item in file_content]
-
-        if batch_size > len(texts):
-            raise ValueError(
-                "Batch size cannot be larger than the number of available texts"
-            )
-
-        dataset_json: Dict[str, Any] = {}
-        dataset_json["features"] = [{"name": "input"}]
-        dataset_json["rows"] = []
-
-        for _ in range(num_prompts):
-            sampled_texts = random.sample(texts, batch_size)
-            dataset_json["rows"].append({"row": {"payload": {"input": sampled_texts}}})
-
-        return dataset_json
-
-    @classmethod
-    def _get_input_dataset_from_rankings_files(
-        cls,
-        queries_filename: Path,
-        passages_filename: Path,
-        batch_size: int,
-        num_prompts: int,
-    ) -> Dict[str, Any]:
-
-        with open(queries_filename, "r") as file:
-            queries_content = [json.loads(line) for line in file]
-        queries_texts = [item for item in queries_content]
-
-        with open(passages_filename, "r") as file:
-            passages_content = [json.loads(line) for line in file]
-        passages_texts = [item for item in passages_content]
-
-        if batch_size > len(passages_texts):
-            raise ValueError(
-                "Batch size cannot be larger than the number of available passages"
-            )
-
-        dataset_json: Dict[str, Any] = {}
-        dataset_json["features"] = [{"name": "input"}]
-        dataset_json["rows"] = []
-
-        for _ in range(num_prompts):
-            sampled_texts = random.sample(passages_texts, batch_size)
-            query_sample = random.choice(queries_texts)
-            entry_dict = {}
-            entry_dict["query"] = query_sample
-            entry_dict["passages"] = sampled_texts
-            dataset_json["rows"].append({"row": {"payload": entry_dict}})
-        return dataset_json
 
     @classmethod
     def _check_for_valid_args(
@@ -394,7 +232,6 @@ class LlmInputs:
         url = cls._resolve_url(dataset_name)
         configured_url = cls._create_configured_url(url, starting_index, length)
         dataset = cls._download_dataset(configured_url)
-
         return dataset
 
     @classmethod
@@ -495,54 +332,23 @@ class LlmInputs:
 
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
-        """
-        Reads the input prompts from a JSONL file and converts them into the required dataset format.
-
-        Parameters
-        ----------
-        input_filename : Path
-            The path to the input file containing the prompts in JSONL format.
-
-        Returns
-        -------
-        Dict
-            The dataset in the required format with the prompts read from the file.
-        """
         cls.verify_file(input_filename)
-        input_file_prompts = cls._get_prompts_from_input_file(input_filename)
+        input_file_prompt = cls._get_prompt_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["rows"] = [
-            {"row": {"text_input": prompt}} for prompt in input_file_prompts
-        ]
+        dataset_json["rows"] = []
+        dataset_json["rows"].append({"row": {"text_input": input_file_prompt}})
         return dataset_json
-
-    @classmethod
-    def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
-        """
-        Reads the input prompts from a JSONL file and returns a list of prompts.
-
-        Parameters
-        ----------
-        input_filename : Path
-            The path to the input file containing the prompts in JSONL format.
-
-        Returns
-        -------
-        List[str]
-            A list of prompts read from the file.
-        """
-        prompts = []
-        with open(input_filename, mode="r", newline=None) as file:
-            for line in file:
-                if line.strip():
-                    prompts.append(json.loads(line).get("text_input", "").strip())
-        return prompts
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
         if not input_filename.exists():
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
+
+    @classmethod
+    def _get_prompt_from_input_file(cls, input_filename: Path) -> str:
+        with open(input_filename, mode="r", newline=None) as file:
+            return file.read()
 
     @classmethod
     def _convert_generic_json_to_output_format(
@@ -558,7 +364,18 @@ class LlmInputs:
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
-        if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
+        if output_format == OutputFormat.TRITON_GENERATE:
+            output_json = cls._convert_generic_json_to_generate_format(
+                generic_dataset,
+                add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                model_name,
+            )
+        elif output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
                 generic_dataset,
                 add_model_name,
@@ -579,20 +396,6 @@ class LlmInputs:
                 output_tokens_mean,
                 output_tokens_stddev,
                 output_tokens_deterministic,
-                model_name,
-                model_selection_strategy,
-            )
-        elif output_format == OutputFormat.OPENAI_EMBEDDINGS:
-            output_json = cls._convert_generic_json_to_openai_embeddings_format(
-                generic_dataset,
-                extra_inputs,
-                model_name,
-                model_selection_strategy,
-            )
-        elif output_format == OutputFormat.RANKINGS:
-            output_json = cls._convert_generic_json_to_rankings_format(
-                generic_dataset,
-                extra_inputs,
                 model_name,
                 model_selection_strategy,
             )
@@ -663,6 +466,41 @@ class LlmInputs:
         return pa_json
 
     @classmethod
+    def _convert_generic_json_to_generate_format(
+        cls,
+        dataset_json: Dict,
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict:
+        (
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+        ) = cls._determine_json_feature_roles(dataset_json)
+
+        pa_json = cls._populate_triton_generate_output_json(
+            dataset_json,
+            system_role_headers,
+            user_role_headers,
+            text_input_headers,
+            add_model_name,
+            add_stream,
+            extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            output_tokens_deterministic,
+            model_name,
+        )
+
+        return pa_json
+
+    @classmethod
     def _convert_generic_json_to_openai_completions_format(
         cls,
         dataset_json: Dict,
@@ -694,104 +532,6 @@ class LlmInputs:
             model_name,
             model_selection_strategy,
         )
-
-        return pa_json
-
-    @classmethod
-    def _convert_generic_json_to_openai_embeddings_format(
-        cls,
-        generic_dataset: Dict,
-        extra_inputs: Dict,
-        model_name: list = [],
-        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
-    ) -> Dict[str, Any]:
-        pa_json: Dict[str, Any] = {"data": []}
-
-        for index, entry in enumerate(generic_dataset["rows"]):
-            iter_model_name = cls._select_model_name(
-                model_name, index, model_selection_strategy
-            )
-            payload = entry.get("payload", {})
-            input_values = payload.get("input")
-
-            if input_values is None:
-                raise ValueError("Missing required fields 'input' in dataset entry")
-            if not isinstance(input_values, list):
-                raise ValueError(
-                    f"Required field 'input' must be a list (actual: {type(input_values)})"
-                )
-
-            payload = {
-                "input": input_values,
-                "model": iter_model_name,
-            }
-
-            for key, value in extra_inputs.items():
-                payload[key] = value
-
-            pa_json["data"].append({"payload": [payload]})
-
-        return pa_json
-
-    @classmethod
-    def contains_rankings_tei(cls, extra_inputs: Optional[Dict]) -> bool:
-        """
-        Check if user specified that they are using the Hugging Face
-        Text Embeddings Interface for ranking models
-        """
-        if extra_inputs and extra_inputs.get("rankings") == "tei":
-            return True
-        return False
-
-    @classmethod
-    def _convert_generic_json_to_rankings_format(
-        cls,
-        generic_dataset: Dict,
-        extra_inputs: Dict,
-        model_name: list = [],
-        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
-    ) -> Dict[str, Any]:
-        pa_json: Dict[str, Any] = {"data": []}
-        use_tei_format = cls.contains_rankings_tei(extra_inputs)
-
-        for index, entry in enumerate(generic_dataset["rows"]):
-            iter_model_name = cls._select_model_name(
-                model_name, index, model_selection_strategy
-            )
-            payload = entry.get("payload", {})
-            query_values = payload.get("query")
-
-            if use_tei_format:
-                passage_values = payload.get("passages", [])
-                passage_values = [item.get("text", "") for item in passage_values]
-            else:
-                passage_values = payload.get("passages")
-
-            if query_values is None:
-                raise ValueError("Missing required fields 'query' in dataset entry")
-            if passage_values is None:
-                raise ValueError(
-                    f"Missing required fields '{'texts' if use_tei_format else 'passages'}' in dataset entry"
-                )
-            if not isinstance(passage_values, list):
-                raise ValueError(
-                    f"Required field '{'texts' if use_tei_format else 'passages'}' must be a list (actual: {type(passage_values)})"
-                )
-
-            if use_tei_format:
-                payload = {"query": query_values["text"], "texts": passage_values}
-            else:
-                payload = {
-                    "query": query_values,
-                    "passages": passage_values,
-                    "model": iter_model_name,
-                }
-
-            for key, value in extra_inputs.items():
-                if not (key == "rankings" and value == "tei"):
-                    payload[key] = value
-
-            pa_json["data"].append({"payload": [payload]})
 
         return pa_json
 
@@ -949,6 +689,52 @@ class LlmInputs:
                 pa_json,
                 index,
                 add_model_name,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+                iter_model_name,
+            )
+
+        return pa_json
+
+    @classmethod
+    def _populate_triton_generate_output_json(
+        cls,
+        dataset: Dict,
+        system_role_headers: List[str],
+        user_role_headers: List[str],
+        text_input_headers: List[str],
+        add_model_name: bool,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+        model_name: list = [],
+        model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
+    ) -> Dict:
+        pa_json: dict = {"data": [{"payload": [{}]} for _ in dataset["rows"]]}
+
+        for index, entry in enumerate(dataset["rows"]):
+            for header, content in entry.items():
+                new_text_input = cls._create_new_text_input(
+                    header,
+                    system_role_headers,
+                    user_role_headers,
+                    text_input_headers,
+                    content,
+                )
+                pa_json["data"][index]["payload"][0]["text_input"] = new_text_input
+
+            iter_model_name = cls._select_model_name(
+                model_name, index, model_selection_strategy
+            )
+            pa_json = cls._add_optional_tags_to_openai_json(
+                pa_json,
+                index,
+                False,
                 add_stream,
                 extra_inputs,
                 output_tokens_mean,

@@ -218,8 +218,6 @@ LoadManager::InitManagerInputs(
   // Read provided data
   if (!user_data.empty()) {
     if (IsDirectory(user_data[0])) {
-      RETURN_IF_ERROR(data_loader_->ValidateIOExistsInModel(
-          parser_->Inputs(), parser_->Outputs(), user_data[0]));
       RETURN_IF_ERROR(data_loader_->ReadDataFromDir(
           parser_->Inputs(), parser_->Outputs(), user_data[0]));
     } else {
