@@ -54,12 +54,7 @@ def load_yaml(filepath: Path) -> Dict[str, Any]:
 def load_json(filepath: Path) -> Dict[str, Any]:
     with open(str(filepath), encoding="utf-8", errors="ignore") as f:
         content = f.read()
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            snippet = content[:200] + ("..." if len(content) > 200 else "")
-            logger.error("Failed to parse JSON string: '%s'", snippet)
-            raise
+        load_json_str(content)
 
 
 def load_json_str(json_str: str) -> Dict[str, Any]:
