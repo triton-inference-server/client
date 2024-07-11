@@ -29,9 +29,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
+import genai_perf.logging as logging
+
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
+
+logger = logging.getLogger(__name__)
 
 
 def remove_sse_prefix(msg: str) -> str:
@@ -49,7 +53,13 @@ def load_yaml(filepath: Path) -> Dict[str, Any]:
 
 def load_json(filepath: Path) -> Dict[str, Any]:
     with open(str(filepath), encoding="utf-8", errors="ignore") as f:
-        return json.load(f)
+        content = f.read()
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            snippet = content[:200] + ("..." if len(content) > 200 else "")
+            logger.error("Failed to parse JSON string: '%s'", snippet)
+            raise
 
 
 def remove_file(file: Path) -> None:
