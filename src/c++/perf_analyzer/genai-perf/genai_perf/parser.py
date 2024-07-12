@@ -417,6 +417,60 @@ def _add_input_args(parser):
     )
 
 
+def _add_multimodal_args(parser):
+    input_group = parser.add_argument_group("Multimodal")
+
+    input_group.add_argument(
+        "--mean-image-width",
+        type=int,
+        required=False,
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings and rankings endpoint types.",
+    )
+
+    input_group.add_argument(
+        "--mean-image-height",
+        type=int,
+        required=False,
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings and rankings endpoint types.",
+    )
+
+    input_group.add_argument(
+        "--image-width-standard-deviation",
+        type=int,
+        required=False,
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings and rankings endpoint types.",
+    )
+
+    input_group.add_argument(
+        "--image-height-standard-deviation",
+        type=int,
+        required=False,
+        help=f"The batch size of the requests GenAI-Perf should send. "
+        "This is currently only supported with the embeddings and rankings endpoint types.",
+    )
+
+    input_group.add_argument(
+        "--image-path",
+        type=Path,
+        required=False,
+        help="The path where the perf_analyzer profile export will be "
+        "generated. By default, the profile export will be to profile_export.json. "
+        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
+        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
+        "exported to profile_export_genai_perf.csv.",
+    )
+
+    input_group.add_argument(
+        "--image-formats",
+        nargs="+",
+        default=[],
+        help=f"The name of the model(s) to benchmark.",
+    )
+
+
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
     load_management_group = profile_group.add_mutually_exclusive_group(required=False)
@@ -664,6 +718,7 @@ def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
     )
     _add_endpoint_args(profile)
     _add_input_args(profile)
+    _add_multimodal_args(profile)
     _add_profile_args(profile)
     _add_output_args(profile)
     _add_other_args(profile)

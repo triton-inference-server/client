@@ -151,6 +151,8 @@ class LlmInputs:
         extra_inputs: Optional[Dict] = None,
         batch_size: int = 1,
         output_dir: Path = Path(""),
+        image_generator=None,
+        base64_encoder=None,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -223,6 +225,8 @@ class LlmInputs:
             num_of_output_prompts,
             batch_size,
             input_filename,
+            image_generator,
+            base64_encoder,
         )
 
         if extra_inputs is None:
@@ -258,6 +262,8 @@ class LlmInputs:
         num_of_output_prompts: int,
         batch_size: int,
         input_filename: Optional[Path],
+        image_generator,
+        base64_encoder,
     ) -> Dict:
         """
         Retrieve and convert the dataset based on the input type.
@@ -340,7 +346,7 @@ class LlmInputs:
                 )
             elif input_type == PromptSource.SYNTHETIC:
                 # (TMA-1989) support synthetic image generation for VLM input
-                if output_format == OutputFormat.OPENAI_VISION:
+                if False and output_format == OutputFormat.OPENAI_VISION:
                     raise GenAIPerfException(
                         f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
                         "does not support synthetic input."
@@ -351,6 +357,11 @@ class LlmInputs:
                     prompt_tokens_mean,
                     prompt_tokens_stddev,
                     num_of_output_prompts,
+                )
+                synthetic_dataset = cls._encode_synthetic_images(
+                    synthetic_dataset,
+                    image_generator,
+                    base64_encoder,
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -646,6 +657,16 @@ class LlmInputs:
                 ]
 
         return generic_dataset_json
+
+    @classmethod
+    def _encode_synthetic_images(
+        cls, synthetic_dataset: Dict, image_generator, base64_encoder
+    ) -> Dict:
+        for row, img in zip(synthetic_dataset["rows"], image_generator):
+            img_base64 = base64_encoder(img)
+            row["row"]["image"] = img_base64
+
+        return synthetic_dataset
 
     @classmethod
     def _encode_images_in_input_dataset(cls, input_file_dataset: Dict) -> Dict:

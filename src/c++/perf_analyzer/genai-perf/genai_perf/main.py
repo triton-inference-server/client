@@ -62,6 +62,24 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
     except ValueError as e:
         raise GenAIPerfException(e)
 
+    from genai_perf.llm_inputs.synthetic_image_generator import (
+        ImageFormat,
+        RandomFormatBase64Encoder,
+        build_synthetic_image_generator,
+    )
+
+    mean_size = args.mean_image_width, args.mean_image_height
+    dimensions_stddev = (
+        args.image_width_standard_deviation,
+        args.image_height_standard_deviation,
+    )
+    image_generator = build_synthetic_image_generator(
+        mean_size,
+        dimensions_stddev,
+        args.image_path,
+    )
+    formats = [ImageFormat[f] for f in args.image_formats]
+    base64_encoder = RandomFormatBase64Encoder(formats)
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
         output_format=args.output_format,
@@ -84,6 +102,8 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         extra_inputs=extra_input_dict,
         batch_size=args.batch_size,
         output_dir=args.artifact_dir,
+        image_generator=image_generator,
+        base64_encoder=base64_encoder,
     )
 
 
