@@ -121,6 +121,11 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
 
+    DEFAULT_IMAGE_WIDTH_MEAN = 100
+    DEFAULT_IMAGE_WIDTH_STDDEV = 0
+    DEFAULT_IMAGE_HEIGHT_MEAN = 100
+    DEFAULT_IMAGE_HEIGHT_STDDEV = 0
+
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_OPENAI_PA_FORMAT: Dict = {"data": []}
@@ -143,6 +148,11 @@ class LlmInputs:
         output_tokens_deterministic: bool = False,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
+        image_width_mean: int = DEFAULT_IMAGE_WIDTH_MEAN,
+        image_width_stddev: int = DEFAULT_IMAGE_WIDTH_STDDEV,
+        image_height_mean: int = DEFAULT_IMAGE_HEIGHT_MEAN,
+        image_height_stddev: int = DEFAULT_IMAGE_HEIGHT_STDDEV,
+        image_format: ImageFormat = ImageFormat.PNG,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -185,6 +195,16 @@ class LlmInputs:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
+        image_width_mean:
+            The mean width of images when generating synthetic image data.
+        image_width_stddev:
+            The standard deviation of width of images when generating synthetic image data.
+        image_height_mean:
+            The mean height of images when generating synthetic image data.
+        image_height_stddev:
+            The standard deviation of height of images when generating synthetic image data.
+        image_format:
+            The compression format of the images.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
@@ -221,6 +241,11 @@ class LlmInputs:
             prompt_tokens_mean,
             prompt_tokens_stddev,
             num_of_output_prompts,
+            image_width_mean,
+            image_width_stddev,
+            image_height_mean,
+            image_height_stddev,
+            image_format,
             batch_size,
             input_filename,
         )
@@ -256,6 +281,11 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
         batch_size: int,
         input_filename: Optional[Path],
     ) -> Dict:
@@ -282,6 +312,16 @@ class LlmInputs:
             The standard deviation of the length of the prompt to generate
         num_of_output_prompts:
             The number of synthetic output prompts to generate
+        image_width_mean:
+            The mean width of images when generating synthetic image data.
+        image_width_stddev:
+            The standard deviation of width of images when generating synthetic image data.
+        image_height_mean:
+            The mean height of images when generating synthetic image data.
+        image_height_stddev:
+            The standard deviation of height of images when generating synthetic image data.
+        image_format:
+            The compression format of the images.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
@@ -361,7 +401,7 @@ class LlmInputs:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_file(input_filename)
                 input_file_dataset = cls._encode_images_in_input_dataset(
-                    input_file_dataset
+                    input_file_dataset, image_format
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -648,13 +688,14 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _encode_images_in_input_dataset(cls, input_file_dataset: Dict) -> Dict:
+    def _encode_images_in_input_dataset(
+        cls, input_file_dataset: Dict, image_format: ImageFormat
+    ) -> Dict:
         for row in input_file_dataset["rows"]:
             filename = row["row"].get("image")
             if filename:
                 img = Image.open(filename)
-                # (TMA-1985) Support multiple image formats
-                img_base64 = cls._encode_image(img, ImageFormat.PNG)
+                img_base64 = cls._encode_image(img, image_format)
                 row["row"]["image"] = f"data:image/png;base64,{img_base64}"
 
         return input_file_dataset

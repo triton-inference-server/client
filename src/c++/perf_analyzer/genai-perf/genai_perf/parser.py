@@ -41,6 +41,7 @@ from genai_perf.constants import (
     OPEN_ORCA,
 )
 from genai_perf.llm_inputs.llm_inputs import (
+    ImageFormat,
     LlmInputs,
     ModelSelectionStrategy,
     OutputFormat,
@@ -113,6 +114,25 @@ def _check_compare_args(
     """
     if not args.config and not args.files:
         parser.error("Either the --config or --files option must be specified.")
+    return args
+
+
+def _check_image_input_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Sanity check the image input args
+    """
+    if args.image_width_mean <= 0 or args.image_height_mean <= 0:
+        parser.error(
+            "Both --image-width-mean and --image-height-mean values must be positive."
+        )
+    if args.image_width_stddev < 0 or args.image_height_stddev < 0:
+        parser.error(
+            "Both --image-width-stddev and --image-height-stddev values must be non-negative."
+        )
+
+    args = _convert_str_to_enum_entry(args, "image_format", ImageFormat)
     return args
 
 
@@ -417,6 +437,51 @@ def _add_input_args(parser):
     )
 
 
+def _add_image_input_args(parser):
+    input_group = parser.add_argument_group("Image Input")
+
+    input_group.add_argument(
+        "--image-width-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_WIDTH_MEAN,
+        required=False,
+        help=f"The mean width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-width-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_WIDTH_STDDEV,
+        required=False,
+        help=f"The standard deviation of width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_HEIGHT_MEAN,
+        required=False,
+        help=f"The mean height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_HEIGHT_STDDEV,
+        required=False,
+        help=f"The standard deviation of height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-format",
+        type=str,
+        choices=utils.get_enum_names(ImageFormat),
+        default="png",
+        required=False,
+        help=f"The compression format of the images.",
+    )
+
+
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
     load_management_group = profile_group.add_mutually_exclusive_group(required=False)
@@ -664,6 +729,7 @@ def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
     )
     _add_endpoint_args(profile)
     _add_input_args(profile)
+    _add_image_input_args(profile)
     _add_profile_args(profile)
     _add_output_args(profile)
     _add_other_args(profile)
@@ -743,6 +809,7 @@ def refine_args(
         args = _infer_prompt_source(args)
         args = _check_model_args(parser, args)
         args = _check_conditional_args(parser, args)
+        args = _check_image_input_args(parser, args)
         args = _check_load_manager_args(args)
         args = _set_artifact_paths(args)
     elif args.subcommand == Subcommand.COMPARE.to_lowercase():
