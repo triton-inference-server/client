@@ -162,7 +162,7 @@ docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}
 2. Run GenAI-Perf:
 
 ```bash
-genai-perf \
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -209,7 +209,7 @@ current profile run. This is disabled by default but users can easily enable it
 by passing the `--generate-plots` option when running the benchmark:
 
 ```bash
-genai-perf \
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -301,8 +301,8 @@ options:
 
 When the dataset is coming from a file, you can specify the following
 options:
-* `--input-file <path>`: The input file containing the single prompt to
-  use for benchmarking.
+* `--input-file <path>`: The input file containing the prompts to
+  use for benchmarking as JSON objects.
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
@@ -373,7 +373,7 @@ model config to not echo the input tokens in the output. (default: tensorrtllm)
 
 Set a custom endpoint that differs from the OpenAI defaults. (default: `None`)
 
-##### `--endpoint-type {chat,completions,embeddings}`
+##### `--endpoint-type {chat,completions,embeddings,rankings}`
 
 The endpoint-type to send requests to on the server. This is only used with the
 `openai` service-kind. (default: `None`)
@@ -400,7 +400,8 @@ URL of the endpoint to target for benchmarking. (default: `None`)
 The batch size of the requests GenAI-Perf should send.
 This is currently only supported with the
 [embeddings endpoint type](docs/embeddings.md).
-(default: `1`)
+(default: `1`) and
+[rankings endpoint type](docs/rankings.md).
 
 ##### `--extra-inputs <str>`
 

@@ -35,6 +35,7 @@ class TestConsoleExporter:
     def test_streaming_llm_output(self, monkeypatch, capsys) -> None:
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",
@@ -86,6 +87,7 @@ class TestConsoleExporter:
     def test_nonstreaming_llm_output(self, monkeypatch, capsys) -> None:
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",
@@ -135,6 +137,7 @@ class TestConsoleExporter:
     def test_embedding_output(self, monkeypatch, capsys) -> None:
         argv = [
             "genai-perf",
+            "profile",
             "-m",
             "model_name",
             "--service-kind",

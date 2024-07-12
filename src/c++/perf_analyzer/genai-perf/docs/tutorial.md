@@ -71,7 +71,8 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
 # Run GenAI-Perf in the container:
-genai-perf \
+```bash
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -144,7 +145,8 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 docker run -it --net=host --gpus=1 nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
 # Run GenAI-Perf in the container:
-genai-perf \
+```bash
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend vllm \
@@ -205,7 +207,8 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
 # Run GenAI-Perf in the container:
-genai-perf \
+```bash
+genai-perf profile \
   -m gpt2 \
   --service-kind openai \
   --endpoint v1/chat/completions \
@@ -265,8 +268,10 @@ export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 
+
 # Run GenAI-Perf in the container:
-genai-perf \
+```bash
+genai-perf profile \
   -m gpt2 \
   --service-kind openai \
   --endpoint v1/completions \

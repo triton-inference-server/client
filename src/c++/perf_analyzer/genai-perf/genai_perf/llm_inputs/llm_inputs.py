@@ -24,6 +24,7 @@ from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_O
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from genai_perf.utils import load_json_str
 from requests import Response
 
 
@@ -139,7 +140,7 @@ class LlmInputs:
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -236,7 +237,7 @@ class LlmInputs:
         num_of_output_prompts:
             The number of synthetic output prompts to generate
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
             The path to the input file containing the prompts in JSONL format.
         Returns
@@ -315,7 +316,7 @@ class LlmInputs:
         cls, input_filename: Path, batch_size: int, num_prompts: int
     ) -> Dict[str, Any]:
         with open(input_filename, "r") as file:
-            file_content = [json.loads(line) for line in file]
+            file_content = [load_json_str(line) for line in file]
 
         texts = [item["text"] for item in file_content]
 
@@ -344,11 +345,11 @@ class LlmInputs:
     ) -> Dict[str, Any]:
 
         with open(queries_filename, "r") as file:
-            queries_content = [json.loads(line) for line in file]
+            queries_content = [load_json_str(line) for line in file]
         queries_texts = [item for item in queries_content]
 
         with open(passages_filename, "r") as file:
-            passages_content = [json.loads(line) for line in file]
+            passages_content = [load_json_str(line) for line in file]
         passages_texts = [item for item in passages_content]
 
         if batch_size > len(passages_texts):
@@ -363,7 +364,7 @@ class LlmInputs:
         for _ in range(num_prompts):
             sampled_texts = random.sample(passages_texts, batch_size)
             query_sample = random.choice(queries_texts)
-            entry_dict = {}
+            entry_dict: Dict = {}
             entry_dict["query"] = query_sample
             entry_dict["passages"] = sampled_texts
             dataset_json["rows"].append({"row": {"payload": entry_dict}})
@@ -536,7 +537,7 @@ class LlmInputs:
         with open(input_filename, mode="r", newline=None) as file:
             for line in file:
                 if line.strip():
-                    prompts.append(json.loads(line).get("text_input", "").strip())
+                    prompts.append(load_json_str(line).get("text_input", "").strip())
         return prompts
 
     @classmethod
@@ -734,6 +735,16 @@ class LlmInputs:
         return pa_json
 
     @classmethod
+    def contains_rankings_tei(cls, extra_inputs: Optional[Dict]) -> bool:
+        """
+        Check if user specified that they are using the Hugging Face
+        Text Embeddings Interface for ranking models
+        """
+        if extra_inputs and extra_inputs.get("rankings") == "tei":
+            return True
+        return False
+
+    @classmethod
     def _convert_generic_json_to_rankings_format(
         cls,
         generic_dataset: Dict,
@@ -742,6 +753,7 @@ class LlmInputs:
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict[str, Any]:
         pa_json: Dict[str, Any] = {"data": []}
+        use_tei_format = cls.contains_rankings_tei(extra_inputs)
 
         for index, entry in enumerate(generic_dataset["rows"]):
             iter_model_name = cls._select_model_name(
@@ -749,25 +761,36 @@ class LlmInputs:
             )
             payload = entry.get("payload", {})
             query_values = payload.get("query")
-            passage_values = payload.get("passages")
+
+            if use_tei_format:
+                passage_values = payload.get("passages", [])
+                passage_values = [item.get("text", "") for item in passage_values]
+            else:
+                passage_values = payload.get("passages")
 
             if query_values is None:
                 raise ValueError("Missing required fields 'query' in dataset entry")
             if passage_values is None:
-                raise ValueError("Missing required fields 'passages' in dataset entry")
+                raise ValueError(
+                    f"Missing required fields '{'texts' if use_tei_format else 'passages'}' in dataset entry"
+                )
             if not isinstance(passage_values, list):
                 raise ValueError(
-                    f"Required field 'query' must be a list (actual: {type(query_values)})"
+                    f"Required field '{'texts' if use_tei_format else 'passages'}' must be a list (actual: {type(passage_values)})"
                 )
 
-            payload = {
-                "query": query_values,
-                "passages": passage_values,
-                "model": iter_model_name,
-            }
+            if use_tei_format:
+                payload = {"query": query_values["text"], "texts": passage_values}
+            else:
+                payload = {
+                    "query": query_values,
+                    "passages": passage_values,
+                    "model": iter_model_name,
+                }
 
             for key, value in extra_inputs.items():
-                payload[key] = value
+                if not (key == "rankings" and value == "tei"):
+                    payload[key] = value
 
             pa_json["data"].append({"payload": [payload]})
 

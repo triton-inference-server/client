@@ -35,6 +35,7 @@ class TestJsonExporter:
     def test_generate_json(self, monkeypatch) -> None:
         cli_cmd = [
             "genai-perf",
+            "profile",
             "-m",
             "gpt2_vllm",
             "--backend",
@@ -257,7 +258,7 @@ class TestJsonExporter:
           "artifact_dir": "artifacts/gpt2_vllm-triton-vllm-concurrency1",
           "tokenizer": "hf-internal-testing/llama-tokenizer",
           "verbose": false,
-          "subcommand": null,
+          "subcommand": "profile",
           "prompt_source": "synthetic",
           "extra_inputs": {
             "max_tokens": 256,
