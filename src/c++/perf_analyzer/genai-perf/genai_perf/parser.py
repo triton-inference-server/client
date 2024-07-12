@@ -586,7 +586,7 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     if args.extra_inputs:
         for input_str in args.extra_inputs:
             if input_str.startswith("{") and input_str.endswith("}"):
-                request_inputs.update(json.loads(input_str))
+                request_inputs.update(utils.load_json_str(input_str))
             else:
                 semicolon_count = input_str.count(":")
                 if semicolon_count != 1:
