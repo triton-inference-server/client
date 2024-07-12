@@ -2,7 +2,7 @@ import base64
 from enum import Enum, auto
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast
 
 import numpy as np
 from genai_perf.exceptions import GenAIPerfException
@@ -15,7 +15,7 @@ class ImageFormat(Enum):
 
 
 class RandomFormatBase64Encoder:
-    def __init__(self, image_formats: ImageFormat = ImageFormat.PNG):
+    def __init__(self, image_formats: List[ImageFormat] = [ImageFormat.PNG]):
         self.image_formats = image_formats
 
     def __call__(self, image):
