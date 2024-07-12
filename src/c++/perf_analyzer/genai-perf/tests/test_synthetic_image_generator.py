@@ -36,6 +36,17 @@ def test_different_image_size(image_size):
     assert image.size == image_size, "image not resized to the target size"
 
 
+def test_negative_size_is_not_selected():
+    sut = SyntheticImageGenerator(
+        mean_size=(-1, -1),
+        dimensions_stddev=[10, 10],
+        image_iterator=white_images_generator(),
+    )
+
+    # exception is raised, when PIL.Image.resize is called with negative values
+    image = next(sut)
+
+
 @patch("pathlib.Path.exists", return_value=False)
 def test_images_from_file_raises_when_file_not_found(mock_exists):
     DUMMY_PATH = Path("dummy-image.png")
