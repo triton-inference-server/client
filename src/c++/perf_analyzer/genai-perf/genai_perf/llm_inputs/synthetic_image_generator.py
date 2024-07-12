@@ -47,6 +47,7 @@ def build_synthetic_image_generator(
     mean_size: Tuple[int, int],
     dimensions_stddev: Tuple[int, int],
     image_path: Optional[Path] = None,
+    formats: List[ImageFormat] = [ImageFormat.PNG],
 ):
     if image_path is None:
         image_iterator = white_images_generator()
@@ -54,11 +55,13 @@ def build_synthetic_image_generator(
         image_path = cast(Path, image_path)
         image_iterator = images_from_file_generator(image_path)
 
-    return SyntheticImageGenerator(
+    image_generator = SyntheticImageGenerator(
         mean_size=mean_size,
         dimensions_stddev=dimensions_stddev,
         image_iterator=image_iterator,
     )
+    base64_encode = RandomFormatBase64Encoder(formats)
+    return (base64_encode(image) for image in image_generator)
 
 
 class SyntheticImageGenerator:
