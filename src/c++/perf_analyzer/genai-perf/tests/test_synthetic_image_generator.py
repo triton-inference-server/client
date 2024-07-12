@@ -44,7 +44,7 @@ def test_negative_size_is_not_selected():
     )
 
     # exception is raised, when PIL.Image.resize is called with negative values
-    image = next(sut)
+    next(sut)
 
 
 @patch("pathlib.Path.exists", return_value=False)
