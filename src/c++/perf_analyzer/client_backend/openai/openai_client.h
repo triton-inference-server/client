@@ -121,12 +121,14 @@ class ChatCompletionRequest : public HttpRequest {
         request_id_(request_id)
   {
   }
+  bool IsFinalResponseSent() { return final_response_sent_; };
   void SendResponse(bool is_final, bool is_null);
   bool is_stream_{false};
   std::function<void(InferResult*)> response_callback_{nullptr};
   // The timers for infer request.
   triton::client::RequestTimers timer_;
   const std::string request_id_;
+  bool final_response_sent_{false};
 };
 
 class ChatCompletionClient : public HttpClient {
