@@ -152,7 +152,6 @@ class LlmInputs:
         batch_size: int = 1,
         output_dir: Path = Path(""),
         image_generator=None,
-        base64_encoder=None,
     ) -> Dict:
         """
         Given an input type, input format, and output type. Output a string of LLM Inputs
@@ -226,7 +225,6 @@ class LlmInputs:
             batch_size,
             input_filename,
             image_generator,
-            base64_encoder,
         )
 
         if extra_inputs is None:
@@ -263,7 +261,6 @@ class LlmInputs:
         batch_size: int,
         input_filename: Optional[Path],
         image_generator,
-        base64_encoder,
     ) -> Dict:
         """
         Retrieve and convert the dataset based on the input type.
@@ -361,7 +358,6 @@ class LlmInputs:
                 synthetic_dataset = cls._encode_synthetic_images(
                     synthetic_dataset,
                     image_generator,
-                    base64_encoder,
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -659,11 +655,8 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _encode_synthetic_images(
-        cls, synthetic_dataset: Dict, image_generator, base64_encoder
-    ) -> Dict:
-        for row, img in zip(synthetic_dataset["rows"], image_generator):
-            img_base64 = base64_encoder(img)
+    def _encode_synthetic_images(cls, synthetic_dataset: Dict, image_generator) -> Dict:
+        for row, img_base64 in zip(synthetic_dataset["rows"], image_generator):
             row["row"]["image"] = img_base64
 
         return synthetic_dataset
