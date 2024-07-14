@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
+from genai_perf import utils
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
@@ -401,7 +402,7 @@ class LlmInputs:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_file(input_filename)
                 input_file_dataset = cls._encode_images_in_input_dataset(
-                    input_file_dataset, image_format
+                    input_file_dataset
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -688,23 +689,28 @@ class LlmInputs:
         return generic_dataset_json
 
     @classmethod
-    def _encode_images_in_input_dataset(
-        cls, input_file_dataset: Dict, image_format: ImageFormat
-    ) -> Dict:
+    def _encode_images_in_input_dataset(cls, input_file_dataset: Dict) -> Dict:
         for row in input_file_dataset["rows"]:
             filename = row["row"].get("image")
             if filename:
                 img = Image.open(filename)
-                img_base64 = cls._encode_image(img, image_format)
-                row["row"]["image"] = f"data:image/png;base64,{img_base64}"
+                if img.format.lower() not in utils.get_enum_names(ImageFormat):
+                    raise GenAIPerfException(
+                        f"Unsupported image format '{img.format}' of "
+                        f"the image '{filename}'."
+                    )
+
+                img_base64 = cls._encode_image(img, img.format)
+                payload = f"data:image/{img.format.lower()};base64,{img_base64}"
+                row["row"]["image"] = payload
 
         return input_file_dataset
 
     @classmethod
-    def _encode_image(cls, img: Image, format=ImageFormat.PNG):
+    def _encode_image(cls, img: Image, format: str):
         """Encodes an image into base64 encoding."""
         buffered = BytesIO()
-        img.save(buffered, format=format.name)
+        img.save(buffered, format=format)
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
     @classmethod

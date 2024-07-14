@@ -30,7 +30,6 @@ from genai_perf.llm_inputs.llm_inputs import (
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
-    make_snowman_image,
 )
 from genai_perf.tokenizer import Tokenizer
 from PIL import Image
