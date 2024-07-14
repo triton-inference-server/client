@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import json
 import random
 from copy import deepcopy
 from enum import Enum, auto
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -700,18 +698,11 @@ class LlmInputs:
                         f"the image '{filename}'."
                     )
 
-                img_base64 = cls._encode_image(img, img.format)
+                img_base64 = utils.encode_image(img, img.format)
                 payload = f"data:image/{img.format.lower()};base64,{img_base64}"
                 row["row"]["image"] = payload
 
         return input_file_dataset
-
-    @classmethod
-    def _encode_image(cls, img: Image, format: str):
-        """Encodes an image into base64 encoding."""
-        buffered = BytesIO()
-        img.save(buffered, format=format)
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
     @classmethod
     def _convert_generic_json_to_output_format(
