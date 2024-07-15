@@ -674,7 +674,7 @@ class LlmInputs:
         return input_file_dataset
 
     @classmethod
-    def _encode_image(cls, img: Image, format=ImageFormat.PNG):
+    def _encode_image(cls, img: Image.Image, format=ImageFormat.PNG):
         """Encodes an image into base64 encoding."""
         buffered = BytesIO()
         img.save(buffered, format=format.name)

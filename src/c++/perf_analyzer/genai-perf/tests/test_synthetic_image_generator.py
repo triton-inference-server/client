@@ -17,29 +17,34 @@ from PIL import Image
 
 
 @pytest.mark.parametrize(
-    "image_size",
+    "expected_image_size",
     [
         (100, 100),
         (200, 200),
     ],
 )
-def test_different_image_size(image_size):
+def test_different_image_size(expected_image_size):
+    expected_width, expected_height = expected_image_size
     sut = SyntheticImageGenerator(
-        mean_size=image_size,
-        dimensions_stddev=[0, 0],
+        image_width_mean=expected_width,
+        image_height_mean=expected_height,
+        image_width_stddev=0,
+        image_height_stddev=0,
         image_iterator=white_images_generator(),
     )
 
     image = next(sut)
 
     assert isinstance(image, Image.Image), "generator produces unexpected type of data"
-    assert image.size == image_size, "image not resized to the target size"
+    assert image.size == expected_image_size, "image not resized to the target size"
 
 
 def test_negative_size_is_not_selected():
     sut = SyntheticImageGenerator(
-        mean_size=(-1, -1),
-        dimensions_stddev=[10, 10],
+        image_width_mean=-1,
+        image_height_mean=-1,
+        image_width_stddev=10,
+        image_height_stddev=10,
         image_iterator=white_images_generator(),
     )
 
@@ -56,25 +61,21 @@ def test_images_from_file_raises_when_file_not_found(mock_exists):
         next(sut)
 
 
-DUMMY_IMAGE = Image.new("RGB", (100, 100), color="blue")
-
-
 @patch("pathlib.Path.exists", return_value=True)
-@patch(
-    "PIL.Image.open",
-    return_value=DUMMY_IMAGE,
-)
-def test_images_from_file_generates_multiple_times(mock_file, mock_exists):
+def test_images_from_file_generates_multiple_times(mock_exists):
+    DUMMY_IMAGE = Image.new("RGB", (100, 100), color="blue")
     DUMMY_PATH = Path("dummy-image.png")
-    sut = images_from_file_generator(DUMMY_PATH)
+    with patch("PIL.Image.open", return_value=DUMMY_IMAGE) as mock_file:
+        sut = images_from_file_generator(DUMMY_PATH)
 
-    image = next(sut)
-    mock_exists.assert_called_once()
-    mock_file.assert_called_once_with(DUMMY_PATH)
-    assert image == DUMMY_IMAGE, "unexpected image produced"
+        image = next(sut)
 
-    image = next(sut)
-    assert image == DUMMY_IMAGE, "unexpected image produced"
+        mock_exists.assert_called_once()
+        mock_file.assert_called_once_with(DUMMY_PATH)
+        assert image == DUMMY_IMAGE, "unexpected image produced"
+
+        image = next(sut)
+        assert image == DUMMY_IMAGE, "unexpected image produced"
 
 
 def test_white_images_generator():

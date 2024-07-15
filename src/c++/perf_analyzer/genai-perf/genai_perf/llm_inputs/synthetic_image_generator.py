@@ -22,8 +22,7 @@ class RandomFormatBase64Encoder:
         buffered = BytesIO()
         image.save(buffered, format=self.image_format.name)
         data = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        prefix = f"data:image/{self.image_format.name.lower()};base64"
-        return f"{prefix},{data}"
+        return f"data:image/{self.image_format.name.lower()};base64,{data}"
 
 
 def images_from_file_generator(image_path: Path):
@@ -42,8 +41,10 @@ def white_images_generator():
 
 
 def build_synthetic_image_generator(
-    mean_size: Tuple[int, int],
-    dimensions_stddev: Tuple[int, int],
+    image_width_mean: int,
+    image_height_mean: int,
+    image_width_stddev: int,
+    image_height_stddev: int,
     image_path: Optional[Path] = None,
     image_format: ImageFormat = ImageFormat.PNG,
 ):
@@ -54,8 +55,10 @@ def build_synthetic_image_generator(
         image_iterator = images_from_file_generator(image_path)
 
     image_generator = SyntheticImageGenerator(
-        mean_size=mean_size,
-        dimensions_stddev=dimensions_stddev,
+        image_width_mean=image_width_mean,
+        image_height_mean=image_height_mean,
+        image_width_stddev=image_width_stddev,
+        image_height_stddev=image_height_stddev,
         image_iterator=image_iterator,
     )
     base64_encode = RandomFormatBase64Encoder(image_format)
@@ -65,13 +68,17 @@ def build_synthetic_image_generator(
 class SyntheticImageGenerator:
     def __init__(
         self,
-        mean_size,
-        dimensions_stddev,
+        image_width_mean,
+        image_height_mean,
+        image_width_stddev,
+        image_height_stddev,
         image_iterator,
     ):
         self.image_iterator = image_iterator
-        self.mean_size = mean_size
-        self.dimensions_stddev = dimensions_stddev
+        self._image_width_mean = image_width_mean
+        self._image_height_mean = image_height_mean
+        self._image_width_stddev = image_width_stddev
+        self._image_height_stddev = image_height_stddev
 
     def __iter__(self):
         return self
