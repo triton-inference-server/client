@@ -32,6 +32,18 @@ from typing import Any, Dict, List, Optional, Type
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
+from PIL import Image
+
+
+def encode_image(img: Image, format: str):
+    """Encodes an image into base64 encoding."""
+    # Lazy import for vision related endpoints
+    import base64
+    from io import BytesIO
+
+    buffered = BytesIO()
+    img.save(buffered, format=format)
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
 def remove_sse_prefix(msg: str) -> str:
