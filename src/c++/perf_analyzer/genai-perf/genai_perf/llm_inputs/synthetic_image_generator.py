@@ -76,19 +76,21 @@ class SyntheticImageGenerator:
     def __iter__(self):
         return self
 
-    def _sample_random_positive_pair(
-        self, mean: Tuple[int, int], stddev: Tuple[int, int]
-    ) -> Tuple[int, int]:
-        new_size = np.array([-1, -1])
-        while any(int(dim) <= 0 for dim in new_size):
-            new_size = np.random.normal(self.mean_size, self.dimensions_stddev)
-        return tuple(new_size.astype(int))
+    def _sample_random_positive_integer(self, mean: int, stddev: int) -> int:
+        while True:
+            n = int(np.random.normal(mean, stddev))
+            if n > 0:
+                break
+        return n
 
     def random_resize(self, image):
-        new_size = self._sample_random_positive_pair(
-            self.mean_size, self.dimensions_stddev
+        width = self._sample_random_positive_integer(
+            self._image_width_mean, self._image_width_stddev
         )
-        return image.resize(new_size)
+        height = self._sample_random_positive_integer(
+            self._image_height_mean, self._image_height_stddev
+        )
+        return image.resize((width, height))
 
     def __next__(self):
         image = next(self.image_iterator)
