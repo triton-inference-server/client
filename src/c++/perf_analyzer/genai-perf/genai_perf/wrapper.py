@@ -77,7 +77,7 @@ class Profiler:
             "mean_image_width",
             "mean_image_height",
             "image_path",
-            "image_formats",
+            "image_format",
             "image_width_standard_deviation",
             "image_height_standard_deviation",
             "model",

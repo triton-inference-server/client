@@ -464,9 +464,9 @@ def _add_multimodal_args(parser):
     )
 
     input_group.add_argument(
-        "--image-formats",
-        nargs="+",
-        default=[],
+        "--image-format",
+        default="PNG",
+        choices=["PNG", "JPEG"],
         help=f"The name of the model(s) to benchmark.",
     )
 

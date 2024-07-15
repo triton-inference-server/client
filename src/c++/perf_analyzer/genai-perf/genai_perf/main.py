@@ -72,12 +72,11 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         args.image_width_standard_deviation,
         args.image_height_standard_deviation,
     )
-    formats = [ImageFormat[f] for f in args.image_formats]
     image_generator = build_synthetic_image_generator(
         mean_size,
         dimensions_stddev,
         args.image_path,
-        formats,
+        ImageFormat[args.image_format],
     )
     LlmInputs.create_llm_inputs(
         input_type=args.prompt_source,
