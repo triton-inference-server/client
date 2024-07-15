@@ -39,17 +39,16 @@ class SyntheticImageGenerator:
                 break
         return n
 
-    def _random_resize(self, image):
+    def _get_next_image(self):
         width = self._sample_random_positive_integer(
             self._image_width_mean, self._image_width_stddev
         )
         height = self._sample_random_positive_integer(
             self._image_height_mean, self._image_height_stddev
         )
-        return image.resize((width, height))
-
-    def _get_next_image(self):
-        return Image.new("RGB", (100, 100), color="white")
+        shape = width, height, 3
+        noise = self.rng.integers(0, 256, shape, dtype=np.uint8)
+        return Image.fromarray(noise)
 
     def _encode(self, image):
         buffered = BytesIO()
@@ -59,6 +58,5 @@ class SyntheticImageGenerator:
 
     def __next__(self) -> str:
         image = self._get_next_image()
-        image = self._random_resize(image)
         base64_string = self._encode(image)
         return base64_string
