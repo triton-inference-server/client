@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_image_generator import (
+    Base64Encoder,
     ImageFormat,
-    RandomFormatBase64Encoder,
     SyntheticImageGenerator,
     images_from_file_generator,
     white_images_generator,
@@ -90,7 +90,7 @@ def test_white_images_generator():
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
 def test_base64_encoding_with_different_formats(image_format):
     image = Image.new("RGB", (100, 100))
-    sut = RandomFormatBase64Encoder(image_format=image_format)
+    sut = Base64Encoder(image_format=image_format)
 
     base64String = sut(image)
 

@@ -14,7 +14,7 @@ class ImageFormat(Enum):
     PNG = auto()
 
 
-class RandomFormatBase64Encoder:
+class Base64Encoder:
     def __init__(self, image_format: ImageFormat = ImageFormat.PNG):
         self.image_format = image_format
 
@@ -61,7 +61,7 @@ def build_synthetic_image_generator(
         image_height_stddev=image_height_stddev,
         image_iterator=image_iterator,
     )
-    base64_encode = RandomFormatBase64Encoder(image_format)
+    base64_encode = Base64Encoder(image_format)
     return (base64_encode(image) for image in image_generator)
 
 
