@@ -24,10 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import base64
 import json
 from enum import Enum
-from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
@@ -39,6 +37,10 @@ from PIL import Image
 
 def encode_image(img: Image, format: str):
     """Encodes an image into base64 encoding."""
+    # Lazy import for vision related endpoints
+    import base64
+    from io import BytesIO
+
     buffered = BytesIO()
     img.save(buffered, format=format)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
