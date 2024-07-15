@@ -7,11 +7,16 @@ import numpy as np
 import pytest
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.synthetic_image_generator import (
-    Base64Encoder,
     ImageFormat,
     SyntheticImageGenerator,
 )
 from PIL import Image
+
+
+def decode_image(base64_string):
+    _, data = base64_string.split(",")
+    decoded_data = base64.b64decode(data)
+    return Image.open(BytesIO(decoded_data))
 
 
 @pytest.mark.parametrize(
@@ -30,9 +35,9 @@ def test_different_image_size(expected_image_size):
         image_height_stddev=0,
     )
 
-    image = next(sut)
+    base64_string = next(sut)
+    image = decode_image(base64_string)
 
-    assert isinstance(image, Image.Image), "generator produces unexpected type of data"
     assert image.size == expected_image_size, "image not resized to the target size"
 
 
@@ -63,10 +68,11 @@ def test_generator_deterministic():
 
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
 def test_base64_encoding_with_different_formats(image_format):
-    image = Image.new("RGB", (100, 100))
-    sut = Base64Encoder(image_format=image_format)
+    IMAGE_SIZE = 100, 100
+    STDDEV = 100, 100
+    sut = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, image_format=image_format)
 
-    base64String = sut(image)
+    base64String = next(sut)
 
     base64prefix = f"data:image/{image_format.name.lower()};base64,"
     assert base64String.startswith(base64prefix), "unexpected prefix"

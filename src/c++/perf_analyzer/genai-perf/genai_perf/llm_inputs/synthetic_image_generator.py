@@ -14,17 +14,6 @@ class ImageFormat(Enum):
     PNG = auto()
 
 
-class Base64Encoder:
-    def __init__(self, image_format: ImageFormat = ImageFormat.PNG):
-        self.image_format = image_format
-
-    def __call__(self, image):
-        buffered = BytesIO()
-        image.save(buffered, format=self.image_format.name)
-        data = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return f"data:image/{self.image_format.name.lower()};base64,{data}"
-
-
 class SyntheticImageGenerator:
     def __init__(
         self,
@@ -32,12 +21,14 @@ class SyntheticImageGenerator:
         image_height_mean: int,
         image_width_stddev: int,
         image_height_stddev: int,
+        image_format: ImageFormat = ImageFormat.PNG,
         rng: Optional[np.random.Generator] = None,
     ):
         self._image_width_mean = image_width_mean
         self._image_height_mean = image_height_mean
         self._image_width_stddev = image_width_stddev
         self._image_height_stddev = image_height_stddev
+        self.image_format = image_format
         self.rng = rng or np.random.default_rng()
 
     def __iter__(self):
@@ -50,7 +41,7 @@ class SyntheticImageGenerator:
                 break
         return n
 
-    def random_resize(self, image):
+    def _random_resize(self, image):
         width = self._sample_random_positive_integer(
             self._image_width_mean, self._image_width_stddev
         )
@@ -59,10 +50,17 @@ class SyntheticImageGenerator:
         )
         return image.resize((width, height))
 
-    def get_next_image(self):
+    def _get_next_image(self):
         return Image.new("RGB", (100, 100), color="white")
 
-    def __next__(self):
-        image = self.get_next_image()
-        image = self.random_resize(image)
-        return image
+    def _encode(self, image):
+        buffered = BytesIO()
+        image.save(buffered, format=self.image_format.name)
+        data = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        return f"data:image/{self.image_format.name.lower()};base64,{data}"
+
+    def __next__(self) -> str:
+        image = self._get_next_image()
+        image = self._random_resize(image)
+        base64_string = self._encode(image)
+        return base64_string
