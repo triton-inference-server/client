@@ -64,7 +64,7 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
 
     from genai_perf.llm_inputs.synthetic_image_generator import (
         ImageFormat,
-        build_synthetic_image_generator,
+        SyntheticImageGenerator,
     )
 
     mean_size = args.mean_image_width, args.mean_image_height
@@ -72,10 +72,9 @@ def generate_inputs(args: Namespace, tokenizer: Tokenizer) -> None:
         args.image_width_standard_deviation,
         args.image_height_standard_deviation,
     )
-    image_generator = build_synthetic_image_generator(
-        mean_size,
-        dimensions_stddev,
-        args.image_path,
+    image_generator = SyntheticImageGenerator(
+        *mean_size,
+        *dimensions_stddev,
         ImageFormat[args.image_format],
     )
     LlmInputs.create_llm_inputs(

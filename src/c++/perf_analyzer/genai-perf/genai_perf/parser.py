@@ -453,17 +453,6 @@ def _add_multimodal_args(parser):
     )
 
     input_group.add_argument(
-        "--image-path",
-        type=Path,
-        required=False,
-        help="The path where the perf_analyzer profile export will be "
-        "generated. By default, the profile export will be to profile_export.json. "
-        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
-        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
-        "exported to profile_export_genai_perf.csv.",
-    )
-
-    input_group.add_argument(
         "--image-format",
         default="PNG",
         choices=["PNG", "JPEG"],
