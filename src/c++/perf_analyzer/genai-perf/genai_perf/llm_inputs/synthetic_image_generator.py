@@ -2,7 +2,7 @@ import base64
 from enum import Enum, auto
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional, Tuple, cast
+from typing import Generator, List, Optional, Tuple, cast
 
 import numpy as np
 from genai_perf.exceptions import GenAIPerfException
@@ -25,7 +25,7 @@ class Base64Encoder:
         return f"data:image/{self.image_format.name.lower()};base64,{data}"
 
 
-def images_from_file_generator(image_path: Path):
+def images_from_file_generator(image_path: Path) -> Generator[Image.Image, None, None]:
     if not image_path.exists():
         raise GenAIPerfException(f"File not found: {image_path}")
 
@@ -34,7 +34,7 @@ def images_from_file_generator(image_path: Path):
         yield image
 
 
-def white_images_generator():
+def white_images_generator() -> Generator[Image.Image, None, None]:
     white_image = Image.new("RGB", (100, 100), color="white")
     while True:
         yield white_image
@@ -68,12 +68,12 @@ def build_synthetic_image_generator(
 class SyntheticImageGenerator:
     def __init__(
         self,
-        image_width_mean,
-        image_height_mean,
-        image_width_stddev,
-        image_height_stddev,
-        image_iterator,
-        rng=None,
+        image_width_mean: int,
+        image_height_mean: int,
+        image_width_stddev: int,
+        image_height_stddev: int,
+        image_iterator: Generator[Image.Image, None, None],
+        rng: Optional[np.random.Generator] = None,
     ):
         self.image_iterator = image_iterator
         self._image_width_mean = image_width_mean
