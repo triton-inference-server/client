@@ -26,7 +26,6 @@
 
 
 from genai_perf.export_data.exporter_config import ExporterConfig
-from genai_perf.llm_metrics import Metrics
 from rich.console import Console
 from rich.table import Table
 
@@ -36,74 +35,73 @@ class ConsoleExporter:
     A class to export the statistics and arg values to the console.
     """
 
+    STAT_COLUMN_KEYS = ["avg", "min", "max", "p99", "p90", "p75"]
+
     def __init__(self, config: ExporterConfig):
         self._stats = config.stats
+        self._metrics = config.metrics
+        self._args = config.args
+
+    def _get_title(self):
+        if self._args.endpoint_type == "embeddings":
+            return "Embeddings Metrics"
+        elif self._args.endpoint_type == "rankings":
+            return "Rankings Metrics"
+        else:
+            return "LLM Metrics"
 
     def export(self) -> None:
-        singular_metric_rows = []
-        table = Table(title="LLM Metrics")
+        table = Table(title=self._get_title())
 
         table.add_column("Statistic", justify="right", style="cyan", no_wrap=True)
-        stats = ["avg", "min", "max", "p99", "p90", "p75"]
-        for stat in stats:
+        for stat in self.STAT_COLUMN_KEYS:
             table.add_column(stat, justify="right", style="green")
 
-        for metric in Metrics.metric_labels:
-            formatted_metric = metric.replace("_", " ").capitalize()
-
-            # Throughput fields are printed after the table
-            is_throughput_field = metric in Metrics.throughput_fields
-            if is_throughput_field:
-                value = self._stats.get(f"{metric}", -1).get(stats[0], -1)
-                formatted_metric += f" (per sec): {value:.2f}"
-                singular_metric_rows.append(formatted_metric)
-                continue
-
-            # TODO (TMA-1712): need to decide if we need this metric. Remove
-            # from statistics display for now.
-            # TODO (TMA-1678): output_token_throughput_per_request is treated
-            # separately since the current code treats all throughput metrics to
-            # be displayed outside of the statistics table.
-            if metric == "output_token_throughput_per_request":
-                formatted_metric += f" (per sec)"
-                continue
-
-            is_time_field = metric in Metrics.time_fields
-            if is_time_field:
-                formatted_metric += " (ms)"
-
-            row_values = [formatted_metric]
-            for stat in stats:
-                value = self._stats.get(f"{metric}", -1)
-                # Need to check for -1 for the non streaming case
-                if value == -1:
-                    row_values.append(f"{value:,.2f}")
-                else:
-                    value = value.get(stat, -1)
-                    row_values.append(f"{value:,.2f}")
-
-            # Without streaming, there is no inter-token latency available, so do not print it.
-            if metric == "inter_token_latency":
-                if all(float(value) < 0 for value in row_values[1:]):
-                    continue
-            # Without streaming, TTFT and request latency are the same, so do not print TTFT.
-            elif metric == "time_to_first_token":
-                unique_values = False
-                for stat in stats:
-                    value_ttft = self._stats.get(f"{metric}", -1).get(stat, -1)
-                    value_req_latency = self._stats.get("request_latency", -1).get(
-                        stat, -1
-                    )
-                    if value_ttft != value_req_latency:
-                        unique_values = True
-                        break
-                if not unique_values:
-                    continue
-
-            table.add_row(*row_values)
+        # Request metrics table
+        self._construct_table(table)
 
         console = Console()
         console.print(table)
 
-        for row in singular_metric_rows:
-            print(row)
+        # System metrics are printed after the table
+        for metric in self._metrics.system_metrics:
+            line = metric.name.replace("_", " ").capitalize()
+            value = self._stats[metric.name]["avg"]
+            line += f" ({metric.unit}): {value:.2f}"
+            print(line)
+
+    def _construct_table(self, table: Table) -> None:
+        for metric in self._metrics.request_metrics:
+            if self._should_skip(metric.name):
+                continue
+
+            metric_str = metric.name.replace("_", " ").capitalize()
+            metric_str += f" ({metric.unit})" if metric.unit != "tokens" else ""
+            row_values = [metric_str]
+            for stat in self.STAT_COLUMN_KEYS:
+                value = self._stats[metric.name][stat]
+                row_values.append(f"{value:,.2f}")
+
+            table.add_row(*row_values)
+
+    # (TMA-1976) Refactor this method as the csv exporter shares identical method.
+    def _should_skip(self, metric_name: str) -> bool:
+        if self._args.endpoint_type == "embeddings":
+            return False  # skip nothing
+
+        # TODO (TMA-1712): need to decide if we need this metric. Remove
+        # from statistics display for now.
+        # TODO (TMA-1678): output_token_throughput_per_request is treated
+        # separately since the current code treats all throughput metrics to
+        # be displayed outside of the statistics table.
+        if metric_name == "output_token_throughput_per_request":
+            return True
+
+        # When non-streaming, skip ITL and TTFT
+        streaming_metrics = [
+            "inter_token_latency",
+            "time_to_first_token",
+        ]
+        if not self._args.streaming and metric_name in streaming_metrics:
+            return True
+        return False

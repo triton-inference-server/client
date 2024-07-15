@@ -35,6 +35,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     OutputFormat,
     PromptSource,
 )
+from genai_perf.parser import PathType
 
 
 class TestCLIArguments:
@@ -51,10 +52,7 @@ class TestCLIArguments:
         [
             (["-h"], expected_help_output),
             (["--help"], expected_help_output),
-            (["-m", "abc", "--help"], expected_help_output),
-            (["-m", "abc", "-h"], expected_help_output),
             (["--version"], expected_version_output),
-            (["-m", "abc", "--version"], expected_version_output),
         ],
     )
     def test_help_version_arguments_output_and_exit(
@@ -79,6 +77,28 @@ class TestCLIArguments:
                 ["--artifact-dir", "test_artifact_dir"],
                 {"artifact_dir": Path("test_artifact_dir")},
             ),
+            (
+                [
+                    "--batch-size",
+                    "5",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--service-kind",
+                    "openai",
+                ],
+                {"batch_size": 5},
+            ),
+            (
+                [
+                    "-b",
+                    "5",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--service-kind",
+                    "openai",
+                ],
+                {"batch_size": 5},
+            ),
             (["--concurrency", "3"], {"concurrency": 3}),
             (
                 ["--endpoint-type", "completions", "--service-kind", "openai"],
@@ -87,6 +107,10 @@ class TestCLIArguments:
             (
                 ["--endpoint-type", "chat", "--service-kind", "openai"],
                 {"endpoint": "v1/chat/completions"},
+            ),
+            (
+                ["--endpoint-type", "rankings", "--service-kind", "openai"],
+                {"endpoint": "v1/ranking"},
             ),
             (
                 [
@@ -199,7 +223,7 @@ class TestCLIArguments:
     )
     def test_non_file_flags_parsed(self, monkeypatch, arg, expected_attributes, capsys):
         logging.init_logging()
-        combined_args = ["genai-perf", "--model", "test_model"] + arg
+        combined_args = ["genai-perf", "profile", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -240,7 +264,7 @@ class TestCLIArguments:
         self, monkeypatch, models, expected_model_list, formatted_name, capsys
     ):
         logging.init_logging()
-        combined_args = ["genai-perf"] + models
+        combined_args = ["genai-perf", "profile"] + models
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -257,9 +281,10 @@ class TestCLIArguments:
         assert captured.out == ""
 
     def test_file_flags_parsed(self, monkeypatch, mocker):
-        mocked_open = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        _ = mocker.patch("os.path.isfile", return_value=True)
         combined_args = [
             "genai-perf",
+            "profile",
             "--model",
             "test_model",
             "--input-file",
@@ -267,9 +292,11 @@ class TestCLIArguments:
         ]
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
-        assert (
-            args.input_file == mocked_open.return_value
-        ), "The file argument should be the mock object"
+        filepath, pathtype = args.input_file
+        assert filepath == Path(
+            "fakefile.txt"
+        ), "The file argument should be the path to the file"
+        assert pathtype == PathType.FILE
 
     @pytest.mark.parametrize(
         "arg, expected_path",
@@ -281,6 +308,10 @@ class TestCLIArguments:
             (
                 ["--service-kind", "openai", "--endpoint-type", "completions"],
                 "artifacts/test_model-openai-completions-concurrency1",
+            ),
+            (
+                ["--service-kind", "openai", "--endpoint-type", "rankings"],
+                "artifacts/test_model-openai-rankings-concurrency1",
             ),
             (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],
@@ -307,7 +338,7 @@ class TestCLIArguments:
         self, monkeypatch, arg, expected_path, capsys
     ):
         logging.init_logging()
-        combined_args = ["genai-perf", "--model", "test_model"] + arg
+        combined_args = ["genai-perf", "profile", "--model", "test_model"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -347,7 +378,7 @@ class TestCLIArguments:
         self, monkeypatch, arg, expected_path, expected_output, capsys
     ):
         logging.init_logging()
-        combined_args = ["genai-perf"] + arg
+        combined_args = ["genai-perf", "profile"] + arg
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -357,7 +388,9 @@ class TestCLIArguments:
 
     def test_default_load_level(self, monkeypatch, capsys):
         logging.init_logging()
-        monkeypatch.setattr("sys.argv", ["genai-perf", "--model", "test_model"])
+        monkeypatch.setattr(
+            "sys.argv", ["genai-perf", "profile", "--model", "test_model"]
+        )
         args, _ = parser.parse_args()
         assert args.concurrency == 1
         captured = capsys.readouterr()
@@ -365,7 +398,8 @@ class TestCLIArguments:
 
     def test_load_level_mutually_exclusive(self, monkeypatch, capsys):
         monkeypatch.setattr(
-            "sys.argv", ["genai-perf", "--concurrency", "3", "--request-rate", "9.0"]
+            "sys.argv",
+            ["genai-perf", "profile", "--concurrency", "3", "--request-rate", "9.0"],
         )
         expected_output = (
             "argument --request-rate: not allowed with argument --concurrency"
@@ -379,7 +413,7 @@ class TestCLIArguments:
         assert expected_output in captured.err
 
     def test_model_not_provided(self, monkeypatch, capsys):
-        monkeypatch.setattr("sys.argv", ["genai-perf"])
+        monkeypatch.setattr("sys.argv", ["genai-perf", "profile"])
         expected_output = "The -m/--model option is required and cannot be empty."
 
         with pytest.raises(SystemExit) as excinfo:
@@ -390,7 +424,7 @@ class TestCLIArguments:
         assert expected_output in captured.err
 
     def test_pass_through_args(self, monkeypatch):
-        args = ["genai-perf", "-m", "test_model"]
+        args = ["genai-perf", "profile", "-m", "test_model"]
         other_args = ["--", "With", "great", "power"]
         monkeypatch.setattr("sys.argv", args + other_args)
         _, pass_through_args = parser.parse_args()
@@ -402,6 +436,7 @@ class TestCLIArguments:
             "sys.argv",
             [
                 "genai-perf",
+                "profile",
                 "-m",
                 "nonexistent_model",
                 "--wrong-arg",
@@ -420,12 +455,20 @@ class TestCLIArguments:
         "args, expected_output",
         [
             (
-                ["genai-perf", "-m", "test_model", "--service-kind", "openai"],
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                ],
                 "The --endpoint-type option is required when using the 'openai' service-kind.",
             ),
             (
                 [
                     "genai-perf",
+                    "profile",
                     "-m",
                     "test_model",
                     "--service-kind",
@@ -436,12 +479,20 @@ class TestCLIArguments:
                 "The --endpoint-type option is required when using the 'openai' service-kind.",
             ),
             (
-                ["genai-perf", "-m", "test_model", "--output-tokens-stddev", "5"],
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--output-tokens-stddev",
+                    "5",
+                ],
                 "The --output-tokens-mean option is required when using --output-tokens-stddev.",
             ),
             (
                 [
                     "genai-perf",
+                    "profile",
                     "-m",
                     "test_model",
                     "--output-tokens-mean-deterministic",
@@ -451,6 +502,7 @@ class TestCLIArguments:
             (
                 [
                     "genai-perf",
+                    "profile",
                     "-m",
                     "test_model",
                     "--output-tokens-mean-deterministic",
@@ -460,6 +512,7 @@ class TestCLIArguments:
             (
                 [
                     "genai-perf",
+                    "profile",
                     "-m",
                     "test_model",
                     "--service-kind",
@@ -471,6 +524,73 @@ class TestCLIArguments:
                     "--output-tokens-mean-deterministic",
                 ],
                 "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--batch-size",
+                    "10",
+                ],
+                "The --batch-size option is currently only supported with the embeddings and rankings endpoint types",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--streaming",
+                ],
+                "The --streaming option is not supported with the embeddings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "rankings",
+                    "--streaming",
+                ],
+                "The --streaming option is not supported with the rankings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "embeddings",
+                    "--generate-plots",
+                ],
+                "The --generate-plots option is not currently supported with the embeddings endpoint type",
+            ),
+            (
+                [
+                    "genai-perf",
+                    "profile",
+                    "-m",
+                    "test_model",
+                    "--service-kind",
+                    "openai",
+                    "--endpoint-type",
+                    "rankings",
+                    "--generate-plots",
+                ],
+                "The --generate-plots option is not currently supported with the rankings endpoint type",
             ),
         ],
     )
@@ -507,6 +627,10 @@ class TestCLIArguments:
                 OutputFormat.OPENAI_COMPLETIONS,
             ),
             (
+                ["--service-kind", "openai", "--endpoint-type", "rankings"],
+                OutputFormat.RANKINGS,
+            ),
+            (
                 ["--service-kind", "triton", "--backend", "tensorrtllm"],
                 OutputFormat.TENSORRTLLM,
             ),
@@ -514,7 +638,9 @@ class TestCLIArguments:
         ],
     )
     def test_inferred_output_format(self, monkeypatch, args, expected_format):
-        monkeypatch.setattr("sys.argv", ["genai-perf", "-m", "test_model"] + args)
+        monkeypatch.setattr(
+            "sys.argv", ["genai-perf", "profile", "-m", "test_model"] + args
+        )
 
         parsed_args, _ = parser.parse_args()
         assert parsed_args.output_format == expected_format
@@ -545,7 +671,7 @@ class TestCLIArguments:
         ],
     )
     def test_repeated_extra_arg_warning(self, monkeypatch, args, expected_error):
-        combined_args = ["genai-perf", "-m", "test_model"] + args
+        combined_args = ["genai-perf", "profile", "-m", "test_model"] + args
         monkeypatch.setattr("sys.argv", combined_args)
 
         parsed_args, _ = parser.parse_args()
@@ -571,7 +697,9 @@ class TestCLIArguments:
         self, monkeypatch, mocker, args, expected_prompt_source
     ):
         _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
-        combined_args = ["genai-perf", "--model", "test_model"] + args
+        _ = mocker.patch("os.path.isfile", return_value=True)
+        _ = mocker.patch("os.path.isdir", return_value=True)
+        combined_args = ["genai-perf", "profile", "--model", "test_model"] + args
         monkeypatch.setattr("sys.argv", combined_args)
         args, _ = parser.parse_args()
 
@@ -579,8 +707,11 @@ class TestCLIArguments:
 
     def test_prompt_source_assertions(self, monkeypatch, mocker, capsys):
         _ = mocker.patch("builtins.open", mocker.mock_open(read_data="data"))
+        _ = mocker.patch("os.path.isfile", return_value=True)
+        _ = mocker.patch("os.path.isdir", return_value=True)
         args = [
             "genai-perf",
+            "profile",
             "--model",
             "test_model",
             "--input-dataset",
@@ -654,20 +785,6 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
-
-    @pytest.mark.parametrize(
-        "args, expected_model",
-        [
-            (["--files", "profile1.json", "profile2.json", "profile3.json"], None),
-            (["--config", "config.yaml"], None),
-        ],
-    )
-    def test_compare_model_arg(self, monkeypatch, args, expected_model):
-        combined_args = ["genai-perf", "compare"] + args
-        monkeypatch.setattr("sys.argv", combined_args)
-        args, _ = parser.parse_args()
-
-        assert args.model == expected_model
 
     @pytest.mark.parametrize(
         "extra_inputs_list, expected_dict",
