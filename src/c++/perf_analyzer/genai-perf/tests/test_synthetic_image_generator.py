@@ -89,7 +89,7 @@ def test_white_images_generator():
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
 def test_base64_encoding_with_different_formats(image_format):
     image = Image.new("RGB", (100, 100))
-    sut = RandomFormatBase64Encoder(image_formats=[image_format])
+    sut = RandomFormatBase64Encoder(image_format=image_format)
 
     base64String = sut(image)
 

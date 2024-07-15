@@ -15,16 +15,14 @@ class ImageFormat(Enum):
 
 
 class RandomFormatBase64Encoder:
-    def __init__(self, image_formats: List[ImageFormat] = [ImageFormat.PNG]):
-        self.image_formats = image_formats
+    def __init__(self, image_format: ImageFormat = ImageFormat.PNG):
+        self.image_format = image_format
 
     def __call__(self, image):
-        choice = np.random.randint(len(self.image_formats))
-        image_format = self.image_formats[choice]
         buffered = BytesIO()
-        image.save(buffered, format=image_format.name)
+        image.save(buffered, format=self.image_format.name)
         data = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        prefix = f"data:image/{image_format.name.lower()};base64"
+        prefix = f"data:image/{self.image_format.name.lower()};base64"
         return f"{prefix},{data}"
 
 
@@ -47,7 +45,7 @@ def build_synthetic_image_generator(
     mean_size: Tuple[int, int],
     dimensions_stddev: Tuple[int, int],
     image_path: Optional[Path] = None,
-    formats: List[ImageFormat] = [ImageFormat.PNG],
+    image_format: ImageFormat = ImageFormat.PNG,
 ):
     if image_path is None:
         image_iterator = white_images_generator()
@@ -60,7 +58,7 @@ def build_synthetic_image_generator(
         dimensions_stddev=dimensions_stddev,
         image_iterator=image_iterator,
     )
-    base64_encode = RandomFormatBase64Encoder(formats)
+    base64_encode = RandomFormatBase64Encoder(image_format)
     return (base64_encode(image) for image in image_generator)
 
 
