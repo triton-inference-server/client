@@ -1,11 +1,9 @@
 import base64
 from enum import Enum, auto
 from io import BytesIO
-from pathlib import Path
-from typing import Generator, Optional, Tuple, cast
+from typing import Optional, cast
 
 import numpy as np
-from genai_perf.exceptions import GenAIPerfException
 from PIL import Image
 
 
@@ -29,7 +27,7 @@ class SyntheticImageGenerator:
         self._image_width_stddev = image_width_stddev
         self._image_height_stddev = image_height_stddev
         self.image_format = image_format
-        self.rng = rng or np.random.default_rng()
+        self.rng = cast(np.random.Generator, rng or np.random.default_rng())
 
     def __iter__(self):
         return self
