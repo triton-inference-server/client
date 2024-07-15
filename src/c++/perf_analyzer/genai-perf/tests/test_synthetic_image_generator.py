@@ -52,6 +52,21 @@ def test_negative_size_is_not_selected():
     next(sut)
 
 
+def test_generator_deterministic():
+    IMAGE_SIZE = 100, 100
+    STDDEV = 100, 100
+    SEED = 44
+    img_gen1 = white_images_generator()
+    img_gen2 = white_images_generator()
+    rng1 = np.random.default_rng(seed=SEED)
+    rng2 = np.random.default_rng(seed=SEED)
+    sut1 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, img_gen1, rng=rng1)
+    sut2 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, img_gen2, rng=rng2)
+
+    for _, img1, img2 in zip(range(5), sut1, sut2):
+        assert img1 == img2, "generator is nondererministic"
+
+
 @patch("pathlib.Path.exists", return_value=False)
 def test_images_from_file_raises_when_file_not_found(mock_exists):
     DUMMY_PATH = Path("dummy-image.png")

@@ -73,19 +73,21 @@ class SyntheticImageGenerator:
         image_width_stddev,
         image_height_stddev,
         image_iterator,
+        rng=None,
     ):
         self.image_iterator = image_iterator
         self._image_width_mean = image_width_mean
         self._image_height_mean = image_height_mean
         self._image_width_stddev = image_width_stddev
         self._image_height_stddev = image_height_stddev
+        self.rng = rng or np.random.default_rng()
 
     def __iter__(self):
         return self
 
     def _sample_random_positive_integer(self, mean: int, stddev: int) -> int:
         while True:
-            n = int(np.random.normal(mean, stddev))
+            n = int(self.rng.normal(mean, stddev))
             if n > 0:
                 break
         return n
