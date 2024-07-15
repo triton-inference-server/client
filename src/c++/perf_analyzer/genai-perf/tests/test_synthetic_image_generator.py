@@ -10,8 +10,6 @@ from genai_perf.llm_inputs.synthetic_image_generator import (
     Base64Encoder,
     ImageFormat,
     SyntheticImageGenerator,
-    images_from_file_generator,
-    white_images_generator,
 )
 from PIL import Image
 
@@ -30,7 +28,6 @@ def test_different_image_size(expected_image_size):
         image_height_mean=expected_height,
         image_width_stddev=0,
         image_height_stddev=0,
-        image_iterator=white_images_generator(),
     )
 
     image = next(sut)
@@ -45,7 +42,6 @@ def test_negative_size_is_not_selected():
         image_height_mean=-1,
         image_width_stddev=10,
         image_height_stddev=10,
-        image_iterator=white_images_generator(),
     )
 
     # exception is raised, when PIL.Image.resize is called with negative values
@@ -56,50 +52,13 @@ def test_generator_deterministic():
     IMAGE_SIZE = 100, 100
     STDDEV = 100, 100
     SEED = 44
-    img_gen1 = white_images_generator()
-    img_gen2 = white_images_generator()
     rng1 = np.random.default_rng(seed=SEED)
     rng2 = np.random.default_rng(seed=SEED)
-    sut1 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, img_gen1, rng=rng1)
-    sut2 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, img_gen2, rng=rng2)
+    sut1 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, rng=rng1)
+    sut2 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, rng=rng2)
 
     for _, img1, img2 in zip(range(5), sut1, sut2):
         assert img1 == img2, "generator is nondererministic"
-
-
-@patch("pathlib.Path.exists", return_value=False)
-def test_images_from_file_raises_when_file_not_found(mock_exists):
-    DUMMY_PATH = Path("dummy-image.png")
-    sut = images_from_file_generator(DUMMY_PATH)
-
-    with pytest.raises(GenAIPerfException):
-        next(sut)
-
-
-@patch("pathlib.Path.exists", return_value=True)
-def test_images_from_file_generates_multiple_times(mock_exists):
-    DUMMY_IMAGE = Image.new("RGB", (100, 100), color="blue")
-    DUMMY_PATH = Path("dummy-image.png")
-    with patch("PIL.Image.open", return_value=DUMMY_IMAGE) as mock_file:
-        sut = images_from_file_generator(DUMMY_PATH)
-
-        image = next(sut)
-
-        mock_exists.assert_called_once()
-        mock_file.assert_called_once_with(DUMMY_PATH)
-        assert image == DUMMY_IMAGE, "unexpected image produced"
-
-        image = next(sut)
-        assert image == DUMMY_IMAGE, "unexpected image produced"
-
-
-def test_white_images_generator():
-    sut = white_images_generator()
-
-    image = next(sut)
-    assert isinstance(image, Image.Image), "generator produces unexpected type of data"
-    white_pixel = np.array([[[255, 255, 255]]])
-    assert (np.array(image) == white_pixel).all(), "not all pixels are white"
 
 
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
