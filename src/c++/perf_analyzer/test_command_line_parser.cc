@@ -528,7 +528,7 @@ TEST_CASE("Testing Command Line Parser")
 
   // Most common defaults
   exp->model_name = model_name;  // model_name;
-  exp->max_threads = 16;
+  exp->max_threads = DEFAULT_MAX_THREADS;
 
   SUBCASE("with no parameters")
   {
@@ -1114,11 +1114,14 @@ TEST_CASE("Testing Command Line Parser")
   SUBCASE("Option : --concurrency-range")
   {
     char* option_name = "--concurrency-range";
+    uint64_t concurrency_range_start;
+    uint64_t concurrency_range_end;
 
     SUBCASE("start provided")
     {
+      concurrency_range_start = 100;
       args.push_back(option_name);
-      args.push_back("100");  // start
+      args.push_back(std::to_string(concurrency_range_start).data());  // start
 
       int argc = args.size();
       char* argv[argc];
@@ -1128,8 +1131,8 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 100;
-      exp->max_threads = 16;
+      exp->concurrency_range.start = concurrency_range_start;
+      exp->max_threads = DEFAULT_MAX_THREADS;
     }
 
     CheckValidRange(
@@ -1177,10 +1180,15 @@ TEST_CASE("Testing Command Line Parser")
       check_params = false;
     }
 
-    SUBCASE("Max threads set to default when concurrency-range < 16")
+    concurrency_range_start = 10;
+    SUBCASE("Max threads set to default when concurrency-range.end < 16")
     {
+      concurrency_range_end = 10;
+      std::string concurrency_range_str =
+          std::to_string(concurrency_range_start) + ":" +
+          std::to_string(concurrency_range_end);
       args.push_back(option_name);
-      args.push_back("10:10");  // start
+      args.push_back(concurrency_range_str.data());
 
       int argc = args.size();
       char* argv[argc];
@@ -1190,15 +1198,19 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 10;
-      exp->concurrency_range.end = 10;
-      exp->max_threads = 16;
+      exp->concurrency_range.start = concurrency_range_start;
+      exp->concurrency_range.end = concurrency_range_end;
+      exp->max_threads = DEFAULT_MAX_THREADS;
     }
 
     SUBCASE("Max_threads set to default when concurrency-range.end = 16")
     {
+      concurrency_range_end = 16;
+      std::string concurrency_range_str =
+          std::to_string(concurrency_range_start) + ":" +
+          std::to_string(concurrency_range_end);
       args.push_back(option_name);
-      args.push_back("10:16");  // start
+      args.push_back(concurrency_range_str.data());
 
       int argc = args.size();
       char* argv[argc];
@@ -1208,17 +1220,21 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 10;
-      exp->concurrency_range.end = 16;
-      exp->max_threads = 16;
+      exp->concurrency_range.start = concurrency_range_start;
+      exp->concurrency_range.end = concurrency_range_end;
+      exp->max_threads = DEFAULT_MAX_THREADS;
     }
 
     SUBCASE(
         "Max_threads set to concurrency-range.end when concurrency-range.end > "
         "16")
     {
+      concurrency_range_end = 40;
+      std::string concurrency_range_str =
+          std::to_string(concurrency_range_start) + ":" +
+          std::to_string(concurrency_range_end);
       args.push_back(option_name);
-      args.push_back("10:40");  // start
+      args.push_back(concurrency_range_str.data());
 
       int argc = args.size();
       char* argv[argc];
@@ -1228,9 +1244,9 @@ TEST_CASE("Testing Command Line Parser")
       CHECK(!parser.UsageCalled());
 
       exp->using_concurrency_range = true;
-      exp->concurrency_range.start = 10;
-      exp->concurrency_range.end = 40;
-      exp->max_threads = 40;
+      exp->concurrency_range.start = concurrency_range_start;
+      exp->concurrency_range.end = concurrency_range_end;
+      exp->max_threads = exp->concurrency_range.end;
     }
   }
 
