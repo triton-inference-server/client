@@ -371,7 +371,8 @@ class TestCLParser : public CLParser {
 void
 CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
-    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,  size_t* max_threads)
+    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
+    size_t* max_threads)
 {
   SUBCASE("start:end provided")
   {
@@ -1212,7 +1213,9 @@ TEST_CASE("Testing Command Line Parser")
       exp->max_threads = 16;
     }
 
-    SUBCASE("Max_threads set to concurrency-range.end when concurrency-range.end > 16")
+    SUBCASE(
+        "Max_threads set to concurrency-range.end when concurrency-range.end > "
+        "16")
     {
       args.push_back(option_name);
       args.push_back("10:40");  // start
