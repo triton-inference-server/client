@@ -23,6 +23,10 @@ from genai_perf.utils import load_json_str
 
 
 class DatasetRetriever:
+    """
+    This class retrieves the dataset from different sources and formats it into a corresponding format.
+    """
+
     @staticmethod
     def from_url(url: str, starting_index: int, length: int) -> List[Dict[str, Any]]:
         url += f"&offset={starting_index}&length={length}"
@@ -52,11 +56,11 @@ class DatasetRetriever:
                     )
                 if "text_input" not in item:
                     raise GenAIPerfException(
-                        "Missing 'text_input' field in one or more items."
+                        f"Missing 'text_input' field in file item: {item}"
                     )
-                if len(item) != 1 or "text_input" not in item:
+                if len(item) != 1:
                     raise GenAIPerfException(
-                        "Each item must only contain the 'text_input' field."
+                        f"Field other than 'text_input' field found in file item: {item}"
                     )
 
             return [{"text_input": item["text_input"]} for item in data]

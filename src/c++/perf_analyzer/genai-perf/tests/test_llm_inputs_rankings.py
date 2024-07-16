@@ -31,7 +31,7 @@
 
 # import pytest
 # from genai_perf.llm_inputs.llm_inputs import LlmInputs, ModelSelectionStrategy
-# from genai_perf.llm_inputs.shared import OutputFormat, PromptSource
+# from genai_perf.llm_inputs.inputs_utils import OutputFormat, PromptSource
 
 
 # class TestLlmInputsRankings:

@@ -21,15 +21,15 @@ import responses
 from genai_perf import tokenizer
 from genai_perf.constants import OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
-from genai_perf.llm_inputs.llm_inputs import LlmInputs
-from genai_perf.llm_inputs.output_format_converter import BaseConverter
-from genai_perf.llm_inputs.shared import (
+from genai_perf.llm_inputs.inputs_utils import (
     DEFAULT_LENGTH,
     DEFAULT_STARTING_INDEX,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
 )
+from genai_perf.llm_inputs.llm_inputs import LlmInputs
+from genai_perf.llm_inputs.output_format_converter import BaseConverter
 
 mocked_openorca_data = {
     "features": [

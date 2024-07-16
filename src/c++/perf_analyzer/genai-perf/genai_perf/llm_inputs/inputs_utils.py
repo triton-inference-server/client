@@ -24,20 +24,42 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import json
-from pathlib import Path
-from typing import Dict
-
-from genai_perf.constants import DEFAULT_INPUT_DATA_JSON
+from enum import Enum, auto
 
 
-class JSONWriter:
-    """
-    This class writes out JSON representations to a file.
-    """
+class ModelSelectionStrategy(Enum):
+    ROUND_ROBIN = auto()
+    RANDOM = auto()
 
-    @staticmethod
-    def write_to_file(json_data: Dict, output_dir: Path) -> None:
-        filename = output_dir / DEFAULT_INPUT_DATA_JSON
-        with open(filename, "w") as f:
-            f.write(json.dumps(json_data, indent=2))
+
+class PromptSource(Enum):
+    SYNTHETIC = auto()
+    DATASET = auto()
+    FILE = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
+class OutputFormat(Enum):
+    OPENAI_CHAT_COMPLETIONS = auto()
+    OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
+    RANKINGS = auto()
+    TENSORRTLLM = auto()
+    VLLM = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
+DEFAULT_STARTING_INDEX = 0
+DEFAULT_LENGTH = 100
+DEFAULT_TENSORRTLLM_MAX_TOKENS = 256
+DEFAULT_BATCH_SIZE = 1
+DEFAULT_RANDOM_SEED = 0
+DEFAULT_PROMPT_TOKENS_MEAN = 550
+DEFAULT_PROMPT_TOKENS_STDDEV = 0
+DEFAULT_OUTPUT_TOKENS_MEAN = -1
+DEFAULT_OUTPUT_TOKENS_STDDEV = 0
+DEFAULT_NUM_PROMPTS = 100

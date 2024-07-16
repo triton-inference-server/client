@@ -40,16 +40,14 @@ from genai_perf.constants import (
     DEFAULT_COMPARE_DIR,
     OPEN_ORCA,
 )
-from genai_perf.llm_inputs.shared import (
+from genai_perf.llm_inputs.inputs_utils import (
     DEFAULT_BATCH_SIZE,
-    DEFAULT_LENGTH,
     DEFAULT_NUM_PROMPTS,
     DEFAULT_OUTPUT_TOKENS_MEAN,
     DEFAULT_OUTPUT_TOKENS_STDDEV,
     DEFAULT_PROMPT_TOKENS_MEAN,
     DEFAULT_PROMPT_TOKENS_STDDEV,
     DEFAULT_RANDOM_SEED,
-    DEFAULT_TENSORRTLLM_MAX_TOKENS,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,

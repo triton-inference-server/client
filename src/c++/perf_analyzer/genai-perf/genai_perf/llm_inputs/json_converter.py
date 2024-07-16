@@ -16,11 +16,15 @@ from typing import Any, Dict, List
 
 
 class JSONConverter:
+    """
+    This class converts the dataset into a generic format that
+    is agnostic of the data source.
+    """
+
     @staticmethod
     def to_generic(dataset: List[Dict[str, Any]]) -> Dict:
         if isinstance(dataset, list) and len(dataset) > 0:
             if isinstance(dataset[0], dict):
-                # Assume dataset is a list of dictionaries
                 converted_data = []
                 for item in dataset:
                     row_data = {
@@ -40,6 +44,10 @@ class JSONConverter:
                     "rows": [{"row": {"text_input": item}} for item in dataset],
                 }
             else:
-                raise ValueError("Dataset is not in a recognized format.")
+                raise ValueError(
+                    f"Dataset is not in a recognized format. Dataset: `{dataset}`"
+                )
         else:
-            raise ValueError("Dataset is empty or not in a recognized format.")
+            raise ValueError(
+                f"Dataset is empty or not in a recognized format. Dataset: `{dataset}`"
+            )

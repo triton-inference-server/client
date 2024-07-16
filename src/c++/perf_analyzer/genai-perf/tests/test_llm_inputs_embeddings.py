@@ -27,8 +27,8 @@
 # from pathlib import Path
 # from unittest.mock import mock_open, patch
 
+from genai_perf.llm_inputs.inputs_utils import OutputFormat
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, ModelSelectionStrategy
-from genai_perf.llm_inputs.shared import OutputFormat
 
 
 class TestLlmInputsEmbeddings:
