@@ -206,7 +206,7 @@ class RankingsConverter(BaseConverter):
         for index, row in enumerate(generic_dataset["rows"]):
             if "query" not in row or "passages" not in row:
                 raise GenAIPerfException(
-                    "Expected keys 'query' and 'passages' not found in dataset row."
+                    f"Expected keys 'query' and 'passages' not found in dataset row: `{row}`"
                 )
 
             model = self._select_model_name(model_name, index, model_selection_strategy)

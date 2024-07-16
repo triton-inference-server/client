@@ -28,7 +28,7 @@ import random
 from pathlib import Path
 from typing import Dict, Optional, cast
 
-from genai_perf.constants import CNN_DAILY_MAIL, OPEN_ORCA
+from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.dataset_retriever import DatasetRetriever
 from genai_perf.llm_inputs.inputs_utils import (
@@ -45,9 +45,9 @@ from genai_perf.llm_inputs.inputs_utils import (
     PromptSource,
 )
 from genai_perf.llm_inputs.json_converter import JSONConverter
-from genai_perf.llm_inputs.json_writer import JSONWriter
 from genai_perf.llm_inputs.output_format_converter import OutputFormatConverterFactory
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from genai_perf.utils import write_to_json_file
 
 
 class LlmInputs:
@@ -108,7 +108,6 @@ class LlmInputs:
             # if output_format == OutputFormat.RANKINGS:
             #     dataset = DatasetRetriever.from_directory(input_filename)
             # else:
-            input_filename = cast(Path, input_filename)
             dataset = DatasetRetriever.from_file(input_filename)
         else:
             raise GenAIPerfException("Input source is not recognized.")
@@ -131,7 +130,7 @@ class LlmInputs:
             model_selection_strategy,
         )
 
-        JSONWriter.write_to_file(json_in_pa_format, output_dir)
+        write_to_json_file(json_in_pa_format, (output_dir / DEFAULT_INPUT_DATA_JSON))
         return json_in_pa_format
 
     @staticmethod
