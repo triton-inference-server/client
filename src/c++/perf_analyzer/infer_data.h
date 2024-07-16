@@ -62,3 +62,4 @@ struct InferData {
 
 
 }}  // namespace triton::perfanalyzer
+
