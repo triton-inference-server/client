@@ -1715,9 +1715,8 @@ CLParser::ParseCommandLine(int argc, char** argv)
 
   // Overriding the max_threads default for request_rate search
   if (!params_->max_threads_specified && params_->targeting_concurrency()) {
-    params_->max_threads = 16;
     params_->max_threads =
-        std::max(params_->max_threads, params_->concurrency_range.end);
+        std::max(DEFAULT_MAX_THREADS, params_->concurrency_range.end);
   }
 
   if (params_->using_custom_intervals) {

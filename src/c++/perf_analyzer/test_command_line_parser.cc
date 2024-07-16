@@ -371,12 +371,11 @@ class TestCLParser : public CLParser {
 void
 CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
-    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
-    PAParamsPtr& exp)
+    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,  size_t* max_threads)
 {
   SUBCASE("start:end provided")
   {
-    exp->max_threads = 400;
+    *max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400");  // start:end
 
@@ -394,7 +393,7 @@ CheckValidRange(
 
   SUBCASE("start:end:step provided")
   {
-    exp->max_threads = 400;
+    *max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400:10");  // start:end:step
 
@@ -1134,7 +1133,7 @@ TEST_CASE("Testing Command Line Parser")
 
     CheckValidRange(
         args, option_name, parser, act, exp->using_concurrency_range,
-        exp->concurrency_range, exp);
+        exp->concurrency_range, &(exp->max_threads));
     CheckInvalidRange(args, option_name, parser, act, check_params);
 
     SUBCASE("wrong separator")
@@ -1177,7 +1176,7 @@ TEST_CASE("Testing Command Line Parser")
       check_params = false;
     }
 
-    SUBCASE("concurrency-range.end < 16")
+    SUBCASE("Max threads set to default when concurrency-range < 16")
     {
       args.push_back(option_name);
       args.push_back("10:10");  // start
@@ -1195,7 +1194,7 @@ TEST_CASE("Testing Command Line Parser")
       exp->max_threads = 16;
     }
 
-    SUBCASE("concurrency-range.end == 16")
+    SUBCASE("Max_threads set to default when concurrency-range.end = 16")
     {
       args.push_back(option_name);
       args.push_back("10:16");  // start
@@ -1213,7 +1212,7 @@ TEST_CASE("Testing Command Line Parser")
       exp->max_threads = 16;
     }
 
-    SUBCASE("concurrency-range.end > 16")
+    SUBCASE("Max_threads set to concurrency-range.end when concurrency-range.end > 16")
     {
       args.push_back(option_name);
       args.push_back("10:40");  // start
@@ -1267,7 +1266,7 @@ TEST_CASE("Testing Command Line Parser")
 
     CheckValidRange(
         args, option_name, parser, act, exp->is_using_periodic_concurrency_mode,
-        exp->periodic_concurrency_range, exp);
+        exp->periodic_concurrency_range, &(exp->max_threads));
 
     CheckInvalidRange(args, option_name, parser, act, check_params);
 

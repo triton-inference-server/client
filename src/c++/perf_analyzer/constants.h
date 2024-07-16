@@ -41,6 +41,7 @@ constexpr static const uint32_t STABILITY_ERROR = 2;
 constexpr static const uint32_t OPTION_ERROR = 3;
 
 constexpr static const uint32_t GENERIC_ERROR = 99;
+constexpr static const size_t DEFAULT_MAX_THREADS = 16;
 
 const double DELAY_PCT_THRESHOLD{1.0};
 
