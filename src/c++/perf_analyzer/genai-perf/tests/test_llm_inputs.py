@@ -26,12 +26,12 @@ from genai_perf import tokenizer
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.llm_inputs import (
-    ImageFormat,
     LlmInputs,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
 )
+from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from PIL import Image
 
@@ -624,7 +624,6 @@ class TestLlmInputs:
             image_height_mean=_placeholder,
             image_height_stddev=_placeholder,
             image_format=ImageFormat.PNG,
-            random_seed=_placeholder,
             output_format=output_format,
         )
 

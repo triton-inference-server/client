@@ -24,53 +24,59 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import numpy as np
+import glob
+import random
+from enum import Enum, auto
+from pathlib import Path
+
 from genai_perf import utils
-from genai_perf.llm_inputs.llm_inputs import ImageFormat
 from PIL import Image
+
+
+class ImageFormat(Enum):
+    PNG = auto()
+    JPEG = auto()
 
 
 class SyntheticImageGenerator:
     """A simple synthetic image generator that generates multiple synthetic
-    images from source image (either real or random noise).
+    images from the source images.
     """
 
-    def __init__(
-        self,
+    @classmethod
+    def create_synthetic_image(
+        cls,
         image_width_mean: int,
-        image_height_mean: int,
         image_width_stddev: int,
+        image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
-        random_seed: int,
-    ):
-        self._image_width_mean = image_width_mean
-        self._image_height_mean = image_height_mean
-        self._image_width_stddev = image_width_stddev
-        self._image_height_stddev = image_height_stddev
-        self._image_format = image_format
-        self.rng = np.random.default_rng(seed=random_seed)
+    ) -> str:
+        """Generate base64 encoded synthetic image using the source images."""
+        width = cls._sample_random_positive_integer(
+            image_width_mean, image_width_stddev
+        )
+        height = cls._sample_random_positive_integer(
+            image_height_mean, image_height_stddev
+        )
 
-    def _sample_random_positive_integer(self, mean: int, stddev: int) -> int:
+        image = cls._sample_source_image()
+        image = image.resize(size=(width, height))
+
+        img_base64 = utils.encode_image(image, image_format.name)
+        return f"data:image/{image_format.name.lower()};base64,{img_base64}"
+
+    @classmethod
+    def _sample_source_image(cls):
+        """Sample one image among the source images."""
+        filepath = Path(__file__).parent.resolve() / "source_images" / "*"
+        filenames = glob.glob(str(filepath))
+        return Image.open(random.choice(filenames))
+
+    @classmethod
+    def _sample_random_positive_integer(cls, mean: int, stddev: int) -> int:
         while True:
-            n = int(self.rng.normal(mean, stddev))
+            n = int(random.gauss(mean, stddev))
             if n > 0:
                 break
         return n
-
-    def _get_next_image(self):
-        width = self._sample_random_positive_integer(
-            self._image_width_mean, self._image_width_stddev
-        )
-        height = self._sample_random_positive_integer(
-            self._image_height_mean, self._image_height_stddev
-        )
-        # (TMA-1994) support real images as source image
-        shape = width, height, 3
-        noise = self.rng.integers(0, 256, shape, dtype=np.uint8)
-        return Image.fromarray(noise)
-
-    def create_synthetic_image(self) -> str:
-        image = self._get_next_image()
-        img_base64 = utils.encode_image(image, self._image_format.name)
-        return f"data:image/{self._image_format.name.lower()};base64,{img_base64}"

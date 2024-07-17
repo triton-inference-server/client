@@ -23,15 +23,14 @@ import requests
 from genai_perf import utils
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.synthetic_image_generator import (
+    ImageFormat,
+    SyntheticImageGenerator,
+)
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
 from PIL import Image
 from requests import Response
-
-
-class ImageFormat(Enum):
-    PNG = auto()
-    JPEG = auto()
 
 
 class ModelSelectionStrategy(Enum):
@@ -209,7 +208,6 @@ class LlmInputs:
             image_format,
             batch_size,
             input_filename,
-            random_seed,
         )
 
         if extra_inputs is None:
@@ -250,7 +248,6 @@ class LlmInputs:
         image_format: ImageFormat,
         batch_size: int,
         input_filename: Optional[Path],
-        random_seed: int,
     ) -> Dict:
         """
         Retrieve and convert the dataset based on the input type.
@@ -352,7 +349,6 @@ class LlmInputs:
                     image_height_mean,
                     image_height_stddev,
                     image_format,
-                    random_seed,
                     output_format,
                 )
                 generic_dataset_json = (
@@ -483,7 +479,6 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
-        random_seed: int,
         output_format: OutputFormat,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
@@ -505,7 +500,6 @@ class LlmInputs:
                     image_height_mean=image_height_mean,
                     image_height_stddev=image_height_stddev,
                     image_format=image_format,
-                    random_seed=random_seed,
                 )
                 row["row"]["image"] = synthetic_image
 
@@ -1580,19 +1574,11 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
-        random_seed: int,
     ) -> str:
-        # Lazy import to avoid circular dependency
-        from genai_perf.llm_inputs.synthetic_image_generator import (
-            SyntheticImageGenerator,
-        )
-
-        sig = SyntheticImageGenerator(
+        return SyntheticImageGenerator.create_synthetic_image(
             image_width_mean=image_width_mean,
             image_width_stddev=image_width_stddev,
             image_height_mean=image_height_mean,
             image_height_stddev=image_height_stddev,
             image_format=image_format,
-            random_seed=random_seed,
         )
-        return sig.create_synthetic_image()

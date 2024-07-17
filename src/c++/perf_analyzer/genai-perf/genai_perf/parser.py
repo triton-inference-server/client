@@ -41,12 +41,12 @@ from genai_perf.constants import (
     OPEN_ORCA,
 )
 from genai_perf.llm_inputs.llm_inputs import (
-    ImageFormat,
     LlmInputs,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
 )
+from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
