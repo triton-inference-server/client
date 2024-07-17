@@ -226,6 +226,16 @@ class LlmInputs:
             input_filename,
             image_generator,
         )
+        import os
+
+        api_key = os.environ.get("NVCF_API_KEY")
+        if api_key is not None:
+            from genai_perf.llm_inputs.nvcf_assets import NvcfUploader
+
+            uploader = NvcfUploader(threshold_kbytes=128, nvcf_api_key=api_key)
+            uploader.upload_large_assets(generic_dataset_json)
+            with open("asset_ids", "w") as f:
+                f.write(",".join(k for k in uploader.get_upload_report()))
 
         if extra_inputs is None:
             extra_inputs = {}
@@ -640,6 +650,21 @@ class LlmInputs:
         Converts to multi-modal content format of OpenAI Chat Completions API.
         """
         for row in generic_dataset_json["rows"]:
+            if row["images"]:
+                row["text_input"] = [
+                    {
+                        "type": "text",
+                        "text": row["text_input"],
+                    },
+                    *[
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": img},
+                        }
+                        for img in row["images"]
+                    ],
+                ]
+            del row["images"]
             if row["image"]:
                 row["text_input"] = [
                     {
@@ -651,13 +676,16 @@ class LlmInputs:
                         "image_url": {"url": row["image"]},
                     },
                 ]
+            del row["image"]
 
         return generic_dataset_json
 
     @classmethod
     def _encode_synthetic_images(cls, synthetic_dataset: Dict, image_generator) -> Dict:
-        for row, img_base64 in zip(synthetic_dataset["rows"], image_generator):
-            row["row"]["image"] = img_base64
+        for row in synthetic_dataset["rows"]:
+            N = random.randint(0, 1)
+            row["row"]["images"] = [img for _, img in zip(range(N), image_generator)]
+            row["row"]["image"] = []
 
         return synthetic_dataset
 

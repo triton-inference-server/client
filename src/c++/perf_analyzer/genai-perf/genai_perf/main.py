@@ -156,6 +156,11 @@ def run():
             create_artifacts_dirs(args)
             tokenizer = get_tokenizer(args.tokenizer)
             generate_inputs(args, tokenizer)
+            with open("asset_ids", "r") as f:
+                ids = f.read()
+            if ids:
+                extra_args += ["-H", "NVCF-INPUT-ASSET-REFERENCES: " + ids]
+            print(extra_args)
             args.func(args, extra_args)
             data_parser = calculate_metrics(args, tokenizer)
             report_output(data_parser, args)
