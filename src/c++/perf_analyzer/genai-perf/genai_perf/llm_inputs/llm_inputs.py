@@ -29,6 +29,7 @@ from genai_perf.llm_inputs.synthetic_image_generator import (
 )
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from genai_perf.utils import load_json_str
 from PIL import Image
 from requests import Response
 
@@ -385,7 +386,7 @@ class LlmInputs:
         cls, input_filename: Path, batch_size: int, num_prompts: int
     ) -> Dict[str, Any]:
         with open(input_filename, "r") as file:
-            file_content = [json.loads(line) for line in file]
+            file_content = [load_json_str(line) for line in file]
 
         texts = [item["text"] for item in file_content]
 
@@ -414,11 +415,11 @@ class LlmInputs:
     ) -> Dict[str, Any]:
 
         with open(queries_filename, "r") as file:
-            queries_content = [json.loads(line) for line in file]
+            queries_content = [load_json_str(line) for line in file]
         queries_texts = [item for item in queries_content]
 
         with open(passages_filename, "r") as file:
-            passages_content = [json.loads(line) for line in file]
+            passages_content = [load_json_str(line) for line in file]
         passages_texts = [item for item in passages_content]
 
         if batch_size > len(passages_texts):
@@ -433,7 +434,7 @@ class LlmInputs:
         for _ in range(num_prompts):
             sampled_texts = random.sample(passages_texts, batch_size)
             query_sample = random.choice(queries_texts)
-            entry_dict = {}
+            entry_dict: Dict = {}
             entry_dict["query"] = query_sample
             entry_dict["passages"] = sampled_texts
             dataset_json["rows"].append({"row": {"payload": entry_dict}})
@@ -634,8 +635,8 @@ class LlmInputs:
         with open(input_filename, mode="r", newline=None) as file:
             for line in file:
                 if line.strip():
-                    prompts.append(json.loads(line).get("text_input", "").strip())
-                    images.append(json.loads(line).get("image", "").strip())
+                    prompts.append(load_json_str(line).get("text_input", "").strip())
+                    images.append(load_json_str(line).get("image", "").strip())
         return prompts, images
 
     @classmethod

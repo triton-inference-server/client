@@ -29,10 +29,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
+import genai_perf.logging as logging
+
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 def encode_image(img: Image, format: str):
@@ -66,7 +70,17 @@ def load_yaml(filepath: Path) -> Dict[str, Any]:
 
 def load_json(filepath: Path) -> Dict[str, Any]:
     with open(str(filepath), encoding="utf-8", errors="ignore") as f:
-        return json.load(f)
+        content = f.read()
+        return load_json_str(content)
+
+
+def load_json_str(json_str: str) -> Dict[str, Any]:
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        snippet = json_str[:200] + ("..." if len(json_str) > 200 else "")
+        logger.error("Failed to parse JSON string: '%s'", snippet)
+        raise
 
 
 def remove_file(file: Path) -> None:

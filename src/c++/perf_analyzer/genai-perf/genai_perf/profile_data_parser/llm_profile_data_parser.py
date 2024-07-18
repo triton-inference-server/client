@@ -37,7 +37,7 @@ from genai_perf.profile_data_parser.profile_data_parser import (
     ResponseFormat,
 )
 from genai_perf.tokenizer import Tokenizer
-from genai_perf.utils import remove_sse_prefix
+from genai_perf.utils import load_json_str, remove_sse_prefix
 
 
 class LLMProfileDataParser(ProfileDataParser):
@@ -178,7 +178,7 @@ class LLMProfileDataParser(ProfileDataParser):
                 response = res_outputs[i]["response"]
                 responses = response.strip().split("\n\n")
                 if len(responses) > 1:
-                    merged_response = json.loads(remove_sse_prefix(responses[0]))
+                    merged_response = load_json_str(remove_sse_prefix(responses[0]))
                     if (
                         merged_response["choices"][0]["delta"].get("content", None)
                         is None
@@ -213,7 +213,7 @@ class LLMProfileDataParser(ProfileDataParser):
 
     def _get_openai_input_text(self, req_inputs: dict) -> str:
         """Tokenize the OpenAI request input texts."""
-        payload = json.loads(req_inputs["payload"])
+        payload = load_json_str(req_inputs["payload"])
         if self._response_format == ResponseFormat.OPENAI_CHAT_COMPLETIONS:
             return payload["messages"][0]["content"]
         elif self._response_format == ResponseFormat.OPENAI_COMPLETIONS:
@@ -271,7 +271,7 @@ class LLMProfileDataParser(ProfileDataParser):
         if response == "[DONE]":
             return ""
 
-        data = json.loads(response)
+        data = load_json_str(response)
         completions = data["choices"][0]
 
         text_output = ""
