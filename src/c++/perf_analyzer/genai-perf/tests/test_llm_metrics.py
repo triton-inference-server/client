@@ -69,6 +69,7 @@ class TestLLMMetrics:
             output_sequence_lengths=[3, 4],
             input_sequence_lengths=[12, 34],
         )
+
         sys_metrics = m.system_metrics
         assert len(sys_metrics) == 2
         assert sys_metrics[0].name == "output_token_throughput"
