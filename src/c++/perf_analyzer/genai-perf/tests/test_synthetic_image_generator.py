@@ -1,7 +1,7 @@
 import base64
+import random
 from io import BytesIO
 
-import numpy as np
 import pytest
 from genai_perf.llm_inputs.synthetic_image_generator import (
     ImageFormat,
@@ -25,60 +25,75 @@ def decode_image(base64_string):
 )
 def test_different_image_size(expected_image_size):
     expected_width, expected_height = expected_image_size
-    sut = SyntheticImageGenerator(
+    base64_string = SyntheticImageGenerator.create_synthetic_image(
         image_width_mean=expected_width,
-        image_height_mean=expected_height,
         image_width_stddev=0,
+        image_height_mean=expected_height,
         image_height_stddev=0,
+        image_format=ImageFormat.PNG,
     )
 
-    base64_string = next(sut)
     image = decode_image(base64_string)
-
     assert image.size == expected_image_size, "image not resized to the target size"
 
 
 def test_negative_size_is_not_selected():
-    sut = SyntheticImageGenerator(
+    # exception is raised, when PIL.Image.resize is called with negative values
+    _ = SyntheticImageGenerator.create_synthetic_image(
         image_width_mean=-1,
-        image_height_mean=-1,
         image_width_stddev=10,
+        image_height_mean=-1,
         image_height_stddev=10,
+        image_format=ImageFormat.PNG,
     )
 
-    # exception is raised, when PIL.Image.resize is called with negative values
-    next(sut)
 
+@pytest.mark.parametrize(
+    "width_mean, width_stddev, height_mean, height_stddev",
+    [
+        (100, 15, 100, 15),
+        (123, 10, 456, 7),
+    ],
+)
+def test_generator_deterministic(width_mean, width_stddev, height_mean, height_stddev):
+    random.seed(123)
+    img1 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=width_mean,
+        image_width_stddev=width_stddev,
+        image_height_mean=height_mean,
+        image_height_stddev=height_stddev,
+        image_format=ImageFormat.PNG,
+    )
 
-def test_generator_deterministic():
-    IMAGE_SIZE = 100, 100
-    STDDEV = 100, 100
-    SEED = 44
-    rng1 = np.random.default_rng(seed=SEED)
-    rng2 = np.random.default_rng(seed=SEED)
-    sut1 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, rng=rng1)
-    sut2 = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, rng=rng2)
+    random.seed(123)
+    img2 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=width_mean,
+        image_width_stddev=width_stddev,
+        image_height_mean=height_mean,
+        image_height_stddev=height_stddev,
+        image_format=ImageFormat.PNG,
+    )
 
-    for _, img1, img2 in zip(range(5), sut1, sut2):
-        assert img1 == img2, "generator is nondererministic"
+    assert img1 == img2, "generator is nondererministic"
 
 
 @pytest.mark.parametrize("image_format", [ImageFormat.PNG, ImageFormat.JPEG])
 def test_base64_encoding_with_different_formats(image_format):
-    IMAGE_SIZE = 100, 100
-    STDDEV = 100, 100
-    sut = SyntheticImageGenerator(*IMAGE_SIZE, *STDDEV, image_format=image_format)
+    img_base64 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=100,
+        image_width_stddev=100,
+        image_height_mean=100,
+        image_height_stddev=100,
+        image_format=image_format,
+    )
 
-    base64String = next(sut)
+    # check prefix
+    expected_prefix = f"data:image/{image_format.name.lower()};base64,"
+    assert img_base64.startswith(expected_prefix), "unexpected prefix"
 
-    base64prefix = f"data:image/{image_format.name.lower()};base64,"
-    assert base64String.startswith(base64prefix), "unexpected prefix"
-    data = base64String[len(base64prefix) :]
-
-    # test if generator encodes to base64
+    # check image format
+    data = img_base64[len(expected_prefix) :]
     img_data = base64.b64decode(data)
     img_bytes = BytesIO(img_data)
-    # test if an image is encoded
     image = Image.open(img_bytes)
-
     assert image.format == image_format.name

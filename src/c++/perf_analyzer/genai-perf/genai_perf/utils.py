@@ -41,6 +41,11 @@ def encode_image(img: Image, format: str):
     import base64
     from io import BytesIO
 
+    # JPEG does not support P or RGBA mode (commonly used for PNG) so it needs
+    # to be converted to RGB before an image can be saved as JPEG format.
+    if format == "JPEG" and img.mode != "RGB":
+        img = img.convert("RGB")
+
     buffered = BytesIO()
     img.save(buffered, format=format)
     return base64.b64encode(buffered.getvalue()).decode("utf-8")

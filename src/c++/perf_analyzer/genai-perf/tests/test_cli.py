@@ -36,6 +36,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     OutputFormat,
     PromptSource,
 )
+from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
 from genai_perf.parser import PathType
 
 

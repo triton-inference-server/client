@@ -23,53 +23,14 @@ import requests
 from genai_perf import utils
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.synthetic_image_generator import (
+    ImageFormat,
+    SyntheticImageGenerator,
+)
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
-from PIL import Image, ImageDraw
+from PIL import Image
 from requests import Response
-
-
-# (TMA-1984) Remove the dummy image input with random noise image
-def make_snowman_image():
-    # Create a blank image with white background
-    img = Image.new("RGB", (600, 800), color="skyblue")
-    d = ImageDraw.Draw(img)
-
-    # Draw the snowman's body (three circles)
-    body_color = "white"
-    d.ellipse([200, 500, 400, 700], fill=body_color, outline="black")  # Bottom circle
-    d.ellipse([225, 350, 375, 550], fill=body_color, outline="black")  # Middle circle
-    d.ellipse([250, 200, 350, 400], fill=body_color, outline="black")  # Head circle
-
-    # Draw the snowman's eyes
-    eye_color = "black"
-    d.ellipse([275, 250, 285, 260], fill=eye_color)  # Left eye
-    d.ellipse([315, 250, 325, 260], fill=eye_color)  # Right eye
-
-    # Draw the snowman's nose (carrot)
-    nose_color = "orange"
-    d.polygon([(300, 270), (300, 280), (340, 275)], fill=nose_color)  # Nose
-
-    # Draw the snowman's mouth (smile)
-    mouth_color = "black"
-    d.arc([275, 290, 325, 310], start=0, end=180, fill=mouth_color)  # Smile
-
-    # Draw the snowman's buttons
-    d.ellipse([290, 420, 310, 440], fill=eye_color)  # Top button
-    d.ellipse([290, 460, 310, 480], fill=eye_color)  # Middle button
-    d.ellipse([290, 500, 310, 520], fill=eye_color)  # Bottom button
-
-    # Draw the snowman's arms
-    arm_color = "brown"
-    d.line([225, 450, 150, 400], fill=arm_color, width=5)  # Left arm
-    d.line([375, 450, 450, 400], fill=arm_color, width=5)  # Right arm
-
-    return img
-
-
-class ImageFormat(Enum):
-    PNG = auto()
-    JPEG = auto()
 
 
 class ModelSelectionStrategy(Enum):
@@ -378,18 +339,17 @@ class LlmInputs:
                     dataset
                 )
             elif input_type == PromptSource.SYNTHETIC:
-                # (TMA-1989) support synthetic image generation for VLM input
-                if output_format == OutputFormat.OPENAI_VISION:
-                    raise GenAIPerfException(
-                        f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
-                        "does not support synthetic input."
-                    )
-
                 synthetic_dataset = cls._get_input_dataset_from_synthetic(
                     tokenizer,
                     prompt_tokens_mean,
                     prompt_tokens_stddev,
                     num_of_output_prompts,
+                    image_width_mean,
+                    image_width_stddev,
+                    image_height_mean,
+                    image_height_stddev,
+                    image_format,
+                    output_format,
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -514,17 +474,36 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
+        output_format: OutputFormat,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for _ in range(num_of_output_prompts):
+            row: Dict["str", Any] = {"row": {}}
             synthetic_prompt = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
             )
-            dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+            row["row"]["text_input"] = synthetic_prompt
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                synthetic_image = cls._create_synthetic_image(
+                    image_width_mean=image_width_mean,
+                    image_width_stddev=image_width_stddev,
+                    image_height_mean=image_height_mean,
+                    image_height_stddev=image_height_stddev,
+                    image_format=image_format,
+                )
+                row["row"]["image"] = synthetic_image
+
+            dataset_json["rows"].append(row)
 
         return dataset_json
 
@@ -1585,4 +1564,21 @@ class LlmInputs:
     ) -> str:
         return SyntheticPromptGenerator.create_synthetic_prompt(
             tokenizer, prompt_tokens_mean, prompt_tokens_stddev
+        )
+
+    @classmethod
+    def _create_synthetic_image(
+        cls,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
+    ) -> str:
+        return SyntheticImageGenerator.create_synthetic_image(
+            image_width_mean=image_width_mean,
+            image_width_stddev=image_width_stddev,
+            image_height_mean=image_height_mean,
+            image_height_stddev=image_height_stddev,
+            image_format=image_format,
         )
