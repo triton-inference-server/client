@@ -75,8 +75,5 @@ class SyntheticImageGenerator:
 
     @classmethod
     def _sample_random_positive_integer(cls, mean: int, stddev: int) -> int:
-        while True:
-            n = int(random.gauss(mean, stddev))
-            if n > 0:
-                break
-        return n
+        n = int(abs(random.gauss(mean, stddev)))
+        return n if n != 0 else 1  # avoid zero

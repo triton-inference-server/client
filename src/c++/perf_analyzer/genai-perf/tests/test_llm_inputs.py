@@ -32,7 +32,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     PromptSource,
 )
 from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
-from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
 from PIL import Image
 
 mocked_openorca_data = {
