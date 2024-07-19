@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 GenAI-Perf is a command line tool for measuring the throughput and latency of
 generative AI models as served through an inference server. For large language
-models (LLMs), GenAI-Perf provides metrics such as
+models (LLMs), as an example, GenAI-Perf provides metrics such as
 [output token throughput](#output_token_throughput_metric),
 [time to first token](#time_to_first_token_metric),
 [inter token latency](#inter_token_latency_metric), and
@@ -47,35 +47,50 @@ The tool also logs all results in a csv file that can be used to derive
 additional metrics and visualizations. The inference server must already be
 running when GenAI-Perf is run.
 
+Your can use GenAI-Perf to profile
+- [Large Language Models](docs/tutorial.md)
+- [Multi-Modal Models](docs/multi_modal.md)
+- [Embedding Models](docs/embeddings.md)
+- [Ranking Models](docs/rankings.md)
+- [Multiple LoRA Adapters](docs/lora.md)
+
 > [!Note]
 > GenAI-Perf is currently in early release and under rapid development. While we
 > will try to remain consistent, command line options and functionality are
 > subject to change as the tool matures.
 
-# Installation
+</br>
 
-## Triton SDK Container
+<!--
+======================
+INSTALLATION
+======================
+-->
 
-Available starting with the 24.03 release of the
+## Installation
+
+The easiest way to install GenAI-Perf is through
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
-
-Run the Triton Inference Server SDK docker container:
+Install the latest release using the following command:
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+
+# Check out genai_perf command inside the container:
+genai-perf --help
 ```
 
 <details>
 
 <summary>Alternatively, to install from source:</summary>
 
-## From Source
+### From Source
 
 GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
 
-### Install Perf Analyzer (Ubuntu, Python 3.8+)
+#### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
 Note: you must already have CUDA 12 installed.
 
@@ -88,28 +103,29 @@ apt update && apt install -y --no-install-recommends libb64-0d libcurl4
 Alternatively, you can install Perf Analyzer
 [from source](../docs/install.md#build-from-source).
 
-### Install GenAI-Perf from source
+#### Install GenAI-Perf from source
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+git clone https://github.com/triton-inference-server/client.git && cd client
 
-pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
+pip install -e .
 ```
 
 </details>
+
 </br>
 
-Run GenAI-Perf:
+<!--
+======================
+QUICK START
+======================
+-->
 
-```bash
-genai-perf --help
-```
+## Quick Start
 
-# Quick Start
+### Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
 
-## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
-
-### Running GPT2 on Triton Inference Server using TensorRT-LLM
+#### Running GPT2 on Triton Inference Server using TensorRT-LLM
 
 <details>
 <summary>See instructions</summary>
@@ -117,7 +133,7 @@ genai-perf --help
 1. Run Triton Inference Server with TensorRT-LLM backend container:
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
 ```
@@ -149,12 +165,12 @@ triton start
 
 </details>
 
-### Running GenAI-Perf
+#### Running GenAI-Perf
 
 1. Run Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
 ```
@@ -202,7 +218,13 @@ See [Tutorial](docs/tutorial.md) for additional examples.
 
 </br>
 
-# Visualization
+<!--
+======================
+VISUALIZATION
+======================
+-->
+
+## Visualization
 
 GenAI-Perf can also generate various plots that visualize the performance of the
 current profile run. This is disabled by default but users can easily enable it
@@ -226,12 +248,12 @@ This will generate a [set of default plots](docs/compare.md#example-plots) such 
 - Input sequence lengths vs Output sequence lengths
 
 
-## Using `compare` Subcommand to Visualize Multiple Runs
+### Using `compare` Subcommand to Visualize Multiple Runs
 
 The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
 profile runs and visualizing the differences through plots.
 
-### Usage
+#### Usage
 Assuming the user possesses two profile export JSON files,
 namely `profile1.json` and `profile2.json`,
 they can execute the `compare` subcommand using the `--files` option:
@@ -258,7 +280,7 @@ compare
 └── ...
 ```
 
-### Customization
+#### Customization
 Users have the flexibility to iteratively modify the generated YAML configuration
 file to suit their specific requirements.
 They can make alterations to the plots according to their preferences and execute
@@ -277,7 +299,13 @@ See [Compare documentation](docs/compare.md) for more details.
 
 </br>
 
-# Model Inputs
+<!--
+======================
+MODEL INPUTS
+======================
+-->
+
+## Model Inputs
 
 GenAI-Perf supports model input prompts from either synthetically generated
 inputs, or from the HuggingFace
@@ -323,7 +351,13 @@ You can optionally set additional model inputs with the following option:
 
 </br>
 
-# Metrics
+<!--
+======================
+METRICS
+======================
+-->
+
+## Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
 the inference server.
@@ -340,7 +374,13 @@ the inference server.
 
 </br>
 
-# Command Line Options
+<!--
+======================
+COMMAND LINE OPTIONS
+======================
+-->
+
+## Command Line Options
 
 ##### `-h`
 ##### `--help`
@@ -518,7 +558,15 @@ An option to enable verbose mode. (default: `False`)
 
 An option to print the version and exit.
 
-# Known Issues
+</br>
+
+<!--
+======================
+Known Issues
+======================
+-->
+
+## Known Issues
 
 * GenAI-Perf can be slow to finish if a high request-rate is provided
 * Token counts may not be exact
