@@ -30,47 +30,48 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 GenAI-Perf allows you to profile Vison-Language Models (VLM) running on
 [OpenAI Chat Completions API](https://platform.openai.com/docs/guides/chat-completions)-compatible server
-by sending multi-modal data to the server.
-Currently, you can generate the multi-modal data using two approaches when running GenAI-Perf:
-1. The synthetic data generation approach, where GenAI-Perf generates synthetic data for you.
-2. The "bring your own data" approach, where you provide GenAI-Perf with the data to send.
+by sending [multi-modal contents](https://platform.openai.com/docs/guides/vision) to the server.
+Currently, you can send multi-modal contents with GenAI-Perf using the following two approaches:
+1. The synthetic data generation approach, where GenAI-Perf generates the multi-modal data for you.
+2. The Bring Your Own Data (BYOD) approach, where you provide GenAI-Perf with the data to send.
 
 
-## Approach 1: Generate synthetic data for VLM
+## Approach 1: Synthetic Multi-Modal Data Generation
 
 GenAI-Perf can generate synthetic multi-modal data such as texts or images using
 the parameters provide by the user through CLI.
 
 ```bash
 genai-perf profile \
-	-m llava-hf/llava-v1.6-mistral-7b-hf \
-	--service-kind openai \
-	--endpoint-type vision \
-	--image-width-mean 512 \
-	--image-width-stddev 30 \
-	--image-height-mean 512 \
-	--image-height-stddev 30 \
-	--image-format png \
-	--synthetic-input-tokens-mean 100 \
-	--synthetic-input-tokens-stddev 0 \
-	--streaming
+    -m llava-hf/llava-v1.6-mistral-7b-hf \
+    --service-kind openai \
+    --endpoint-type vision \
+    --image-width-mean 512 \
+    --image-width-stddev 30 \
+    --image-height-mean 512 \
+    --image-height-stddev 30 \
+    --image-format png \
+    --synthetic-input-tokens-mean 100 \
+    --synthetic-input-tokens-stddev 0 \
+    --streaming
 ```
 
-This will generate randomized synthetic data for both prompts and images.
-Under the hood, the GenAI-Perf generates synthetic images using few source images
-under the `genai_perf/llm_inputs/source_images` directory.
-If you would like to add/remove/edit the source images,
-you can do so by directly editing the source images under the directory.
-GenAI-Perf will pickup the images under the directory automatically when generating
-the synthetic images.
+> [!Note]
+> Under the hood, the GenAI-Perf generates synthetic images using few source images
+> under the `genai_perf/llm_inputs/source_images` directory.
+> If you would like to add/remove/edit the source images,
+> you can do so by directly editing the source images under the directory.
+> GenAI-Perf will pickup the images under the directory automatically when
+> generating the synthetic images.
 
 
 ## Approach 2: Bring Your Own Data (BYOD)
 
 Instead of letting GenAI-Perf create the synthetic data,
-you can also provide GenAI-Perf with your own data using `--input-file` CLI option.
-The file needs to be in JSONL format and should contain the prompt to send and
-the filepath to the image to send along with the prompt.
+you can also provide GenAI-Perf with your own data using
+[`--input-file`](../README.md#--input-file-path) CLI option.
+The file needs to be in JSONL format and should contain both the prompt and
+the filepath to the image to send.
 
 For instance, an example of input file would look something as following:
 ```bash
@@ -81,13 +82,13 @@ For instance, an example of input file would look something as following:
 ...
 ```
 
-After that you can run GenAI-Perf using the following command:
+After you create the file, you can run GenAI-Perf using the following command:
 
 ```bash
 genai-perf profile \
-	-m llava-hf/llava-v1.6-mistral-7b-hf \
-	--service-kind openai \
-	--endpoint-type vision \
+    -m llava-hf/llava-v1.6-mistral-7b-hf \
+    --service-kind openai \
+    --endpoint-type vision \
     --input-file input.jsonl \
     --streaming
 ```
