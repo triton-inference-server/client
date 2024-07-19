@@ -28,15 +28,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Profile Vision-Language Models with GenAI-Perf
 
-GenAI-Perf allows you to profile Vison-Language Models (VLM) running on
+GenAI-Perf allows you to profile Vision-Language Models (VLM) running on
 [OpenAI Chat Completions API](https://platform.openai.com/docs/guides/chat-completions)-compatible server
-by sending [multi-modal contents](https://platform.openai.com/docs/guides/vision) to the server.
+by sending [multi-modal content](https://platform.openai.com/docs/guides/vision) to the server.
 Currently, you can send multi-modal contents with GenAI-Perf using the following two approaches:
 1. The synthetic data generation approach, where GenAI-Perf generates the multi-modal data for you.
 2. The Bring Your Own Data (BYOD) approach, where you provide GenAI-Perf with the data to send.
 
 Before we dive into the two approaches,
-you can start OpenAI API compatible server with VLM model using following command:
+you can start OpenAI API compatible server with a VLM model using following command:
 
 ```bash
 docker run --runtime nvidia --gpus all \
@@ -67,7 +67,7 @@ genai-perf profile \
 ```
 
 > [!Note]
-> Under the hood, the GenAI-Perf generates synthetic images using few source images
+> Under the hood, GenAI-Perf generates synthetic images using few source images
 > under the `llm_inputs/source_images` directory.
 > If you would like to add/remove/edit the source images,
 > you can do so by directly editing the source images under the directory.
