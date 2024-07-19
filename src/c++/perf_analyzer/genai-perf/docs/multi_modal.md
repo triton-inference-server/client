@@ -35,6 +35,16 @@ Currently, you can send multi-modal contents with GenAI-Perf using the following
 1. The synthetic data generation approach, where GenAI-Perf generates the multi-modal data for you.
 2. The Bring Your Own Data (BYOD) approach, where you provide GenAI-Perf with the data to send.
 
+Before we dive into the two approaches,
+you can start OpenAI API compatible server with VLM model using following command:
+
+```bash
+docker run --runtime nvidia --gpus all \
+    -p 8000:8000 --ipc=host \
+    vllm/vllm-openai:latest \
+    --model llava-hf/llava-v1.6-mistral-7b-hf --dtype float16
+```
+
 
 ## Approach 1: Synthetic Multi-Modal Data Generation
 
