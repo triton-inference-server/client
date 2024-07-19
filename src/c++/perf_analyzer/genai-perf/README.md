@@ -86,13 +86,12 @@ genai-perf --help
 
 <summary>Alternatively, to install from source:</summary>
 
-### From Source
+Since GenAI-Perf depends on Perf Analyzer,
+you'll need to install Perf Analyzer binary:
 
-GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
+### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
-#### Install Perf Analyzer (Ubuntu, Python 3.8+)
-
-Note: you must already have CUDA 12 installed.
+**NOTE**: you must already have CUDA 12 installed.
 
 ```bash
 pip install tritonclient
@@ -100,10 +99,9 @@ pip install tritonclient
 apt update && apt install -y --no-install-recommends libb64-0d libcurl4
 ```
 
-Alternatively, you can install Perf Analyzer
-[from source](../docs/install.md#build-from-source).
+You can also build Perf Analyzer [from source](../docs/install.md#build-from-source) as well.
 
-#### Install GenAI-Perf from source
+### Install GenAI-Perf from source
 
 ```bash
 git clone https://github.com/triton-inference-server/client.git && cd client
@@ -387,7 +385,7 @@ COMMAND LINE OPTIONS
 
 Show the help message and exit.
 
-## Endpoint Options:
+### Endpoint Options:
 
 ##### `-m <list>`
 ##### `--model <list>`
@@ -432,7 +430,7 @@ An option to enable the use of the streaming API. (default: `False`)
 
 URL of the endpoint to target for benchmarking. (default: `None`)
 
-## Input Options
+### Input Options
 
 ##### `-b <int>`
 ##### `--batch-size <int>`
@@ -498,7 +496,7 @@ data. (default: `550`)
 The standard deviation of number of tokens in the generated prompts when
 using synthetic data. (default: `0`)
 
-## Profiling Options
+### Profiling Options
 
 ##### `--concurrency <int>`
 
@@ -523,7 +521,7 @@ stable. The measurement is considered as stable if the ratio of max / min from
 the recent 3 measurements is within (stability percentage) in terms of both
 infer per second and latency. (default: `999`)
 
-## Output Options
+### Output Options
 
 ##### `--artifact-dir`
 
@@ -542,7 +540,7 @@ exported to `<profile_export_file>_genai_perf.csv`. For example, if the profile
 export file is `profile_export.json`, the genai-perf file will be exported to
 `profile_export_genai_perf.csv`. (default: `profile_export.json`)
 
-## Other Options
+### Other Options
 
 ##### `--tokenizer <str>`
 
