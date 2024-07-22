@@ -253,7 +253,7 @@ class TestJsonExporter:
           "image_width_stddev": 0,
           "image_height_mean": 100,
           "image_height_stddev": 0,
-          "image_format": "png",
+          "image_format": null,
           "concurrency": 1,
           "measurement_interval": 10000,
           "request_rate": null,

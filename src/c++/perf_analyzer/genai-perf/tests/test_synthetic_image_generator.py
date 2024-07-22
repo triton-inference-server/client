@@ -97,3 +97,24 @@ def test_base64_encoding_with_different_formats(image_format):
     img_bytes = BytesIO(img_data)
     image = Image.open(img_bytes)
     assert image.format == image_format.name
+
+
+def test_null_format_is_accepted():
+    img_base64 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=100,
+        image_width_stddev=100,
+        image_height_mean=100,
+        image_height_stddev=100,
+        image_format=None,
+    )
+
+    # check prefix
+    expected_prefix = "data:image/"
+    assert img_base64.startswith(expected_prefix), "unexpected prefix"
+
+    # check image format
+    data = img_base64.split(",")[1]
+    img_data = base64.b64decode(data)
+    img_bytes = BytesIO(img_data)
+    image = Image.open(img_bytes)
+    assert image.format in [f.name for f in ImageFormat]
