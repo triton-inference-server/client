@@ -216,7 +216,7 @@ class LlmInputs:
         if api_key is not None:
             from genai_perf.llm_inputs.nvcf_assets import NvcfUploader
 
-            uploader = NvcfUploader(threshold_kbytes=128, nvcf_api_key=api_key)
+            uploader = NvcfUploader(threshold_kbytes=1, nvcf_api_key=api_key)
             uploader.upload_large_assets(generic_dataset_json)
             with open("asset_ids", "w") as f:
                 f.write(",".join(k for k in uploader.get_upload_report()))
@@ -662,21 +662,6 @@ class LlmInputs:
         Converts to multi-modal content format of OpenAI Chat Completions API.
         """
         for row in generic_dataset_json["rows"]:
-            if row["images"]:
-                row["text_input"] = [
-                    {
-                        "type": "text",
-                        "text": row["text_input"],
-                    },
-                    *[
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": img},
-                        }
-                        for img in row["images"]
-                    ],
-                ]
-            del row["images"]
             if row["image"]:
                 row["text_input"] = [
                     {
@@ -685,7 +670,7 @@ class LlmInputs:
                     },
                     {
                         "type": "image_url",
-                        "image_url": {"url": row["image"]},
+                        "image_url": row["image"],
                     },
                 ]
             del row["image"]

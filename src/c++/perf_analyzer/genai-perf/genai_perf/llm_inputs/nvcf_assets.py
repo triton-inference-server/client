@@ -96,10 +96,10 @@ class NvcfUploader:
         return new_asset_resp["assetId"]
 
     def _upload_image(self, data):
-        img_format, img = self._decode_base64_img_url(data["image_url"]["url"])
+        img_format, img = self._decode_base64_img_url(data["image_url"])
 
         start_time = time.perf_counter()
         asset_id = self._upload_image_to_nvcf(img, img_format)
-        data["image_url"]["url"] = f"data:image/{img_format};asset_id,{asset_id}"
+        data["image_url"] = f"data:image/{img_format};asset_id,{asset_id}"
         end_time = time.perf_counter()
         self._add_upload_report_entry(asset_id, end_time - start_time)
