@@ -28,7 +28,7 @@ import glob
 import random
 from enum import Enum, auto
 from pathlib import Path
-from typing import Optional, cast
+from typing import Optional
 
 from genai_perf import utils
 from PIL import Image
