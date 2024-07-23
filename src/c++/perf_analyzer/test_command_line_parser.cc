@@ -1120,8 +1120,10 @@ TEST_CASE("Testing Command Line Parser")
     SUBCASE("start provided")
     {
       concurrency_range_start = 100;
+      std::string concurrency_range_str =
+          std::to_string(concurrency_range_start);
       args.push_back(option_name);
-      args.push_back(std::to_string(concurrency_range_start).data());  // start
+      args.push_back(concurrency_range_str.data());  // start
 
       int argc = args.size();
       char* argv[argc];
