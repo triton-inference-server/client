@@ -372,6 +372,8 @@ void
 CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
     PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
+    PAParamsPtr& exp)
+    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
     size_t* max_threads)
     PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
     size_t* max_threads)
