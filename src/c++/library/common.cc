@@ -237,108 +237,21 @@ InferInput::SetBinaryData(const bool binary_data)
 }
 
 Error
-InferInput::GetStringCount(size_t* str_cnt) const
-{
-  int64_t str_checked = 0;
-  size_t remaining_str_size = 0;
-
-  size_t next_buf_idx = 0;
-  const size_t buf_cnt = bufs_.size();
-
-  const uint8_t* buf = nullptr;
-  size_t remaining_buf_size = 0;
-
-  // Validate elements until all buffers have been fully processed.
-  while (remaining_buf_size || next_buf_idx < buf_cnt) {
-    // Get the next buf if not currently processing one.
-    if (!remaining_buf_size) {
-      // Reset remaining buf size and pointers for next buf.
-      buf = bufs_[next_buf_idx];
-      remaining_buf_size = buf_byte_sizes_[next_buf_idx];
-      next_buf_idx++;
-    }
-
-    constexpr size_t kStringSizeIndicator = sizeof(uint32_t);
-    // Get the next element if not currently processing one.
-    if (!remaining_str_size) {
-      // FIXME: Assume the string element's byte size indicator is not spread
-      // across buf boundaries for simplicity. Also needs better log msg.
-      if (remaining_buf_size < kStringSizeIndicator) {
-        return Error("element byte size indicator exceeds the end of the buf.");
-      }
-
-      // Start the next element and reset the remaining element size.
-      remaining_str_size = *(reinterpret_cast<const uint32_t*>(buf));
-      str_checked++;
-
-      // Advance pointer and remainder by the indicator size.
-      buf += kStringSizeIndicator;
-      remaining_buf_size -= kStringSizeIndicator;
-    }
-
-    // If the remaining buf fits it: consume the rest of the element, proceed
-    // to the next element.
-    if (remaining_buf_size >= remaining_str_size) {
-      buf += remaining_str_size;
-      remaining_buf_size -= remaining_str_size;
-      remaining_str_size = 0;
-    }
-    // Otherwise the remaining element is larger: consume the rest of the
-    // buf, proceed to the next buf.
-    else {
-      remaining_str_size -= remaining_buf_size;
-      remaining_buf_size = 0;
-    }
-  }
-
-  // FIXME: If more than expected, should stop earlier
-  // Validate the number of processed elements exactly match expectations.
-  *str_cnt = str_checked;
-  return Error::Success;
-}
-
-Error
 InferInput::ValidateData() const
 {
   inference::DataType datatype =
       triton::common::ProtocolStringToDataType(datatype_);
-  if (io_type_ == SHARED_MEMORY) {
-    if (datatype == inference::DataType::TYPE_STRING) {
-      // TODO Didn't find any shm and BYTES inputs inference example
-    } else {
-      int64_t expected_byte_size =
-          triton::common::GetByteSize(datatype, shape_);
-      if ((int64_t)byte_size_ != expected_byte_size) {
-        return Error(
-            "input '" + name_ + "' got unexpected byte size " +
-            std::to_string(byte_size_) + ", expected " +
-            std::to_string(expected_byte_size));
-      }
-    }
-  } else {
-    if (datatype == inference::DataType::TYPE_STRING) {
-      int64_t expected_str_cnt = triton::common::GetElementCount(shape_);
-      size_t str_cnt;
-      Error err = GetStringCount(&str_cnt);
-      if (!err.IsOk()) {
-        return err;
-      }
-      if ((int64_t)str_cnt != expected_str_cnt) {
-        return Error(
-            "input '" + name_ + "' got unexpected string count " +
-            std::to_string(str_cnt) + ", expected " +
-            std::to_string(expected_str_cnt));
-      }
-    } else {
-      int64_t expected_byte_size =
-          triton::common::GetByteSize(datatype, shape_);
-      if ((int64_t)byte_size_ != expected_byte_size) {
-        return Error(
-            "input '" + name_ + "' got unexpected byte size " +
-            std::to_string(byte_size_) + ", expected " +
-            std::to_string(expected_byte_size));
-      }
-    }
+  // String inputs will be checked at core and backend to reduce overhead.
+  if (datatype == inference::DataType::TYPE_STRING) {
+    return Error::Success;
+  }
+
+  int64_t expected_byte_size = triton::common::GetByteSize(datatype, shape_);
+  if ((int64_t)byte_size_ != expected_byte_size) {
+    return Error(
+        "input '" + name_ + "' got unexpected byte size " +
+        std::to_string(byte_size_) + ", expected " +
+        std::to_string(expected_byte_size));
   }
   return Error::Success;
 }

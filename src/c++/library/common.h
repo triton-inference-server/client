@@ -354,11 +354,6 @@ class InferInput {
   /// \return Error object indicating success or failure.
   Error SetBinaryData(const bool binary_data);
 
-  /// Gets the total number of strings in this input data.
-  /// \param byte_size The number of strings.
-  /// \return Error object indicating success or failure.
-  Error GetStringCount(size_t* str_cnt) const;
-
   /// Validate input has data and input shape matches input data.
   /// \return Error object indicating success of failure.
   Error ValidateData() const;

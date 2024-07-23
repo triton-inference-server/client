@@ -120,18 +120,23 @@ TYPED_TEST_P(ClientInputTest, AppendRaw)
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
   tc::InferResult* results;
+
+  // Test 1
   inputs[1]->SetShape({1, 15});
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
       "input 'INPUT1' got unexpected byte size 64, expected 60");
 
-  // Check error message and verify the request reaches the server
+  // Test 2
+  inputs[0]->SetShape({2, 8});
   inputs[1]->SetShape({2, 8});
+  // Assert the request reaches the server
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
-      "input 'INPUT0' batch size does not match other inputs for 'simple'");
+      "unexpected shape for input 'INPUT1' for model 'simple'. Expected "
+      "[-1,16], got [2,8]");
 }
 
 TYPED_TEST_P(ClientInputTest, SetSharedMemory)
@@ -198,9 +203,10 @@ TYPED_TEST_P(ClientInputTest, SetSharedMemory)
   options.model_version_ = "";
 
   std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  inputs[1]->SetShape({1, 15});
-
   tc::InferResult* results;
+
+  // Test 1
+  inputs[1]->SetShape({1, 15});
   FAIL_IF_SUCCESS(
       this->client_->Infer(&results, options, inputs),
       "expect error with inference request",
@@ -208,12 +214,32 @@ TYPED_TEST_P(ClientInputTest, SetSharedMemory)
        std::to_string(input_byte_size) + ", expected " +
        std::to_string(input_byte_size - sizeof(int))));
 
+  // Test 2
+  inputs[0]->SetShape({2, 8});
+  inputs[1]->SetShape({2, 8});
+  // Assert the request reaches the server
+  FAIL_IF_SUCCESS(
+      this->client_->Infer(&results, options, inputs),
+      "expect error with inference request",
+      "unexpected shape for input 'INPUT1' for model 'simple'. Expected "
+      "[-1,16], got [2,8]");
+
   // Get shared memory regions active/registered within triton
-  // std::string shm_status;
-  // FAIL_IF_ERR(
-  //     this->client_->SystemSharedMemoryStatus(&shm_status),
-  //     "failed to get shared memory status");
-  // std::cout << "Shared Memory Status:\n" << shm_status << "\n";
+  using ClientType = TypeParam;
+  if constexpr (std::is_same<
+                    ClientType, tc::InferenceServerGrpcClient>::value) {
+    inference::SystemSharedMemoryStatusResponse shm_status;
+    FAIL_IF_ERR(
+        this->client_->SystemSharedMemoryStatus(&shm_status),
+        "failed to get shared memory status");
+    std::cout << "Shared Memory Status:\n" << shm_status.DebugString() << "\n";
+  } else {
+    std::string shm_status;
+    FAIL_IF_ERR(
+        this->client_->SystemSharedMemoryStatus(&shm_status),
+        "failed to get shared memory status");
+    std::cout << "Shared Memory Status:\n" << shm_status << "\n";
+  }
 
   // Unregister shared memory
   FAIL_IF_ERR(
@@ -225,65 +251,7 @@ TYPED_TEST_P(ClientInputTest, SetSharedMemory)
   FAIL_IF_ERR(tc::UnlinkSharedMemoryRegion("/input_simple"), "");
 }
 
-TYPED_TEST_P(ClientInputTest, AppendString)
-{
-  // Create the data for the two input tensors. Initialize the first
-  // to unique integers and the second to all ones. The input tensors
-  // are the string representation of these values.
-  std::vector<std::string> input0_data(16);
-  std::vector<std::string> input1_data(16);
-  for (size_t i = 0; i < 16; ++i) {
-    input0_data[i] = std::to_string(i);
-    input1_data[i] = std::to_string(1);
-  }
-
-  std::vector<int64_t> shape{1, 16};
-
-  // Initialize the inputs with the data.
-  tc::InferInput* input0;
-  tc::InferInput* input1;
-
-  FAIL_IF_ERR(
-      tc::InferInput::Create(&input0, "INPUT0", shape, "BYTES"),
-      "unable to get INPUT0");
-  std::shared_ptr<tc::InferInput> input0_ptr;
-  input0_ptr.reset(input0);
-  FAIL_IF_ERR(
-      tc::InferInput::Create(&input1, "INPUT1", shape, "BYTES"),
-      "unable to get INPUT1");
-  std::shared_ptr<tc::InferInput> input1_ptr;
-  input1_ptr.reset(input1);
-
-  FAIL_IF_ERR(
-      input0_ptr->AppendFromString(input0_data),
-      "unable to set data for INPUT0");
-  FAIL_IF_ERR(
-      input1_ptr->AppendFromString(input1_data),
-      "unable to set data for INPUT1");
-
-  // The inference settings. Will be using default for now.
-  tc::InferOptions options("simple_string");
-  options.model_version_ = "";
-
-  std::vector<tc::InferInput*> inputs = {input0_ptr.get(), input1_ptr.get()};
-  tc::InferResult* results;
-  input1_ptr->SetShape({1, 15});
-  FAIL_IF_SUCCESS(
-      this->client_->Infer(&results, options, inputs),
-      "expect error with inference request",
-      "input 'INPUT1' got unexpected elements count 16, expected 15");
-
-  // Check error message and verify the request reaches the server
-  inputs[1]->SetShape({2, 8});
-  FAIL_IF_SUCCESS(
-      this->client_->Infer(&results, options, inputs),
-      "expect error with inference request",
-      "input 'INPUT0' batch size does not match other inputs for "
-      "'simple_string'");
-}
-
-REGISTER_TYPED_TEST_SUITE_P(
-    ClientInputTest, AppendRaw, SetSharedMemory, AppendString);
+REGISTER_TYPED_TEST_SUITE_P(ClientInputTest, AppendRaw, SetSharedMemory);
 
 INSTANTIATE_TYPED_TEST_SUITE_P(
     GRPC, ClientInputTest, tc::InferenceServerGrpcClient);
