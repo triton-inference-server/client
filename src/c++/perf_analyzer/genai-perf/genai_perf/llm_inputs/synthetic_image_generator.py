@@ -55,9 +55,7 @@ class SyntheticImageGenerator:
     ) -> str:
         """Generate base64 encoded synthetic image using the source images."""
         if image_format is None:
-            image_formats = list(ImageFormat)
-        else:
-            image_formats = [cast(ImageFormat, image_format)]
+            image_format = random.choice(list(ImageFormat))
         width = cls._sample_random_positive_integer(
             image_width_mean, image_width_stddev
         )
@@ -68,9 +66,8 @@ class SyntheticImageGenerator:
         image = cls._sample_source_image()
         image = image.resize(size=(width, height))
 
-        selected_format = random.choice(image_formats)
-        img_base64 = utils.encode_image(image, selected_format.name)
-        return f"data:image/{selected_format.name.lower()};base64,{img_base64}"
+        img_base64 = utils.encode_image(image, image_format.name)
+        return f"data:image/{image_format.name.lower()};base64,{img_base64}"
 
     @classmethod
     def _sample_source_image(cls):
