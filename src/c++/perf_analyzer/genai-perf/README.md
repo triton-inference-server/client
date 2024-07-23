@@ -43,11 +43,11 @@ concurrent requests, request rate).
 
 GenAI-Perf generates the specified load, measures the performance of the
 inference server and reports the metrics in a simple table as console output.
-The tool also logs all results in a csv file that can be used to derive
+The tool also logs all results in a csv and json file that can be used to derive
 additional metrics and visualizations. The inference server must already be
 running when GenAI-Perf is run.
 
-Your can use GenAI-Perf to profile
+You can use GenAI-Perf to run performance benchmarks on
 - [Large Language Models](docs/tutorial.md)
 - [Multi-Modal Models](docs/multi_modal.md)
 - [Embedding Models](docs/embeddings.md)
@@ -121,61 +121,48 @@ QUICK START
 
 ## Quick Start
 
-### Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
+In this quick start, we will use GenAI-Perf to run performance benchmark on
+the GPT-2 model running on Triton Inference Server with TensorRT-LLM engine.
 
-#### Running GPT2 on Triton Inference Server using TensorRT-LLM
+### Serve GPT-2 TensorRT-LLM model using Triton CLI
 
-<details>
-<summary>See instructions</summary>
-
-1. Run Triton Inference Server with TensorRT-LLM backend container:
-
-```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
-
-docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
-```
-
-2. Install Triton CLI (~5 min):
+You can follow the [quickstart guide](https://github.com/triton-inference-server/triton_cli?tab=readme-ov-file#serving-a-trt-llm-model)
+on Triton CLI github repo to run GPT-2 model locally.
+The full instructions are copied below for convenience:
 
 ```bash
-pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -U \
-  psutil \
-  "pynvml>=11.5.0" \
-  torch==2.1.2 \
-  tensorrt_llm==0.8.0 \
-  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
-```
+# This container comes with all of the dependencies for building TRT-LLM engines
+# and serving the engine with Triton Inference Server.
+docker run -ti \
+    --gpus all \
+    --network=host \
+    --shm-size=1g --ulimit memlock=-1 \
+    -v /tmp:/tmp \
+    -v ${HOME}/models:/root/models \
+    -v ${HOME}/.cache/huggingface:/root/.cache/huggingface \
+    nvcr.io/nvidia/tritonserver:24.05-trtllm-python-py3
 
-3. Download model:
+# Install the Triton CLI
+pip install git+https://github.com/triton-inference-server/triton_cli.git@0.0.8
 
-```bash
+# Build TRT LLM engine and generate a Triton model repository pointing at it
+triton remove -m all
 triton import -m gpt2 --backend tensorrtllm
-```
 
-4. Run server:
-
-```bash
+# Start Triton pointing at the default model repository
 triton start
 ```
 
-</details>
+### Running GenAI-Perf
 
-#### Running GenAI-Perf
-
-1. Run Triton Inference Server SDK container:
+Now we can run GenAI-Perf from Triton Inference Server SDK container:
 
 ```bash
 export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
-```
 
-2. Run GenAI-Perf:
-
-```bash
+# Run GenAI-Perf in the container:
 genai-perf profile \
   -m gpt2 \
   --service-kind triton \
@@ -198,18 +185,18 @@ genai-perf profile \
 Example output:
 
 ```
-                                                  LLM Metrics
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃                Statistic ┃         avg ┃         min ┃         max ┃         p99 ┃         p90 ┃         p75 ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
-│ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
-│     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
-│   Output sequence length │         104 │         100 │         129 │         128 │         109 │         105 │
-│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
-└──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
-Output token throughput (per sec): 460.42
-Request throughput (per sec): 4.44
+                                   LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
+┃                Statistic ┃    avg ┃    min ┃    max ┃    p99 ┃    p90 ┃    p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
+│ Time to first token (ms) │  11.70 │   9.88 │  17.21 │  14.35 │  12.01 │  11.87 │
+│ Inter token latency (ms) │   1.46 │   1.08 │   1.89 │   1.87 │   1.62 │   1.52 │
+│     Request latency (ms) │ 161.24 │ 153.45 │ 200.74 │ 200.66 │ 179.43 │ 162.23 │
+│   Output sequence length │ 103.39 │  95.00 │ 134.00 │ 120.08 │ 107.30 │ 105.00 │
+│    Input sequence length │ 200.01 │ 200.00 │ 201.00 │ 200.13 │ 200.00 │ 200.00 │
+└──────────────────────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+Output token throughput (per sec): 635.61
+Request throughput (per sec): 6.15
 ```
 
 See [Tutorial](docs/tutorial.md) for additional examples.
