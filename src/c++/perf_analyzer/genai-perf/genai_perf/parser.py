@@ -476,9 +476,9 @@ def _add_image_input_args(parser):
         "--image-format",
         type=str,
         choices=utils.get_enum_names(ImageFormat),
-        default="png",
         required=False,
-        help=f"The compression format of the images.",
+        help=f"The compression format of the images. "
+        "If format is not selected, format of generated image is selected at random",
     )
 
 

@@ -28,6 +28,7 @@ import glob
 import random
 from enum import Enum, auto
 from pathlib import Path
+from typing import Optional
 
 from genai_perf import utils
 from PIL import Image
@@ -50,9 +51,11 @@ class SyntheticImageGenerator:
         image_width_stddev: int,
         image_height_mean: int,
         image_height_stddev: int,
-        image_format: ImageFormat,
+        image_format: Optional[ImageFormat] = None,
     ) -> str:
         """Generate base64 encoded synthetic image using the source images."""
+        if image_format is None:
+            image_format = random.choice(list(ImageFormat))
         width = cls._sample_random_positive_integer(
             image_width_mean, image_width_stddev
         )
