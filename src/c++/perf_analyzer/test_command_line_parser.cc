@@ -373,9 +373,12 @@ CheckValidRange(
     std::vector<char*>& args, char* option_name, TestCLParser& parser,
     PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
     size_t* max_threads)
+    PAParamsPtr& act, bool& using_range, Range<uint64_t>& range,
+    size_t* max_threads)
 {
   SUBCASE("start:end provided")
   {
+    *max_threads = 400;
     *max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400");  // start:end
@@ -394,6 +397,7 @@ CheckValidRange(
 
   SUBCASE("start:end:step provided")
   {
+    *max_threads = 400;
     *max_threads = 400;
     args.push_back(option_name);
     args.push_back("100:400:10");  // start:end:step

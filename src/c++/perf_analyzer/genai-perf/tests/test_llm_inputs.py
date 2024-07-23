@@ -16,6 +16,7 @@ import json
 import os
 import random
 import statistics
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -30,7 +31,9 @@ from genai_perf.llm_inputs.llm_inputs import (
     OutputFormat,
     PromptSource,
 )
-from genai_perf.tokenizer import Tokenizer
+from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
+from genai_perf.tokenizer import DEFAULT_TOKENIZER, get_tokenizer
+from PIL import Image
 
 mocked_openorca_data = {
     "features": [
@@ -78,6 +81,7 @@ class TestLlmInputs:
         ("triton", "tensorrtllm", OutputFormat.TENSORRTLLM),
         ("openai", "v1/completions", OutputFormat.OPENAI_COMPLETIONS),
         ("openai", "v1/chat/completions", OutputFormat.OPENAI_CHAT_COMPLETIONS),
+        ("openai", "v1/chat/completions", OutputFormat.OPENAI_VISION),
     ]
 
     @pytest.fixture
@@ -550,6 +554,94 @@ class TestLlmInputs:
     #     else:
     #         assert False, f"Unsupported output format: {output_format}"
 
+    def test_add_image_inputs_openai_vision(self) -> None:
+        generic_json = {
+            "rows": [
+                {"text_input": "test input one", "image": "test_image1"},
+                {"text_input": "test input two", "image": "test_image2"},
+            ]
+        }
+
+        generic_json = LlmInputs._convert_to_openai_multi_modal_content(generic_json)
+
+        row1 = generic_json["rows"][0]["text_input"]
+        assert row1 == [
+            {
+                "type": "text",
+                "text": "test input one",
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": "test_image1"},
+            },
+        ]
+
+        row2 = generic_json["rows"][1]["text_input"]
+        assert row2 == [
+            {
+                "type": "text",
+                "text": "test input two",
+            },
+            {
+                "type": "image_url",
+                "image_url": {"url": "test_image2"},
+            },
+        ]
+
+    @patch(
+        "genai_perf.llm_inputs.llm_inputs.LlmInputs._create_synthetic_prompt",
+        return_value="This is test prompt",
+    )
+    @patch(
+        "genai_perf.llm_inputs.llm_inputs.LlmInputs._create_synthetic_image",
+        return_value="test_image_base64",
+    )
+    @pytest.mark.parametrize(
+        "output_format",
+        [
+            OutputFormat.OPENAI_CHAT_COMPLETIONS,
+            OutputFormat.OPENAI_COMPLETIONS,
+            OutputFormat.OPENAI_EMBEDDINGS,
+            OutputFormat.RANKINGS,
+            OutputFormat.OPENAI_VISION,
+            OutputFormat.VLLM,
+            OutputFormat.TENSORRTLLM,
+        ],
+    )
+    def test_get_input_dataset_from_synthetic(
+        self, mock_prompt, mock_image, output_format
+    ) -> None:
+        _placeholder = 123  # dummy value
+        num_prompts = 3
+
+        dataset_json = LlmInputs._get_input_dataset_from_synthetic(
+            tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
+            prompt_tokens_mean=_placeholder,
+            prompt_tokens_stddev=_placeholder,
+            num_of_output_prompts=num_prompts,
+            image_width_mean=_placeholder,
+            image_width_stddev=_placeholder,
+            image_height_mean=_placeholder,
+            image_height_stddev=_placeholder,
+            image_format=ImageFormat.PNG,
+            output_format=output_format,
+        )
+
+        assert len(dataset_json["rows"]) == num_prompts
+
+        for i in range(num_prompts):
+            row = dataset_json["rows"][i]["row"]
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                assert row == {
+                    "text_input": "This is test prompt",
+                    "image": "test_image_base64",
+                }
+            else:
+                assert row == {
+                    "text_input": "This is test prompt",
+                }
+
     # def test_trtllm_default_max_tokens(self, default_tokenizer: Tokenizer) -> None:
     #     input_name = "max_tokens"
     #     input_value = 256
@@ -686,6 +778,34 @@ class TestLlmInputs:
         assert len(dataset["rows"]) == len(expected_prompts)
         for i, prompt in enumerate(expected_prompts):
             assert dataset["rows"][i]["row"]["text_input"] == prompt
+
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch("PIL.Image.open", return_value=Image.new("RGB", (10, 10)))
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=(
+            '{"text_input": "prompt1", "image": "image1.png"}\n'
+            '{"text_input": "prompt2", "image": "image2.png"}\n'
+            '{"text_input": "prompt3", "image": "image3.png"}\n'
+        ),
+    )
+    def test_get_input_file_with_multi_modal_data(
+        self, mock_exists, mock_image, mock_file
+    ):
+        Data = namedtuple("Data", ["text_input", "image"])
+        expected_data = [
+            Data(text_input="prompt1", image="image1.png"),
+            Data(text_input="prompt2", image="image2.png"),
+            Data(text_input="prompt3", image="image3.png"),
+        ]
+        dataset = LlmInputs._get_input_dataset_from_file(Path("somefile.txt"))
+
+        assert dataset is not None
+        assert len(dataset["rows"]) == len(expected_data)
+        for i, data in enumerate(expected_data):
+            assert dataset["rows"][i]["row"]["text_input"] == data.text_input
+            assert dataset["rows"][i]["row"]["image"] == data.image
 
     @pytest.mark.parametrize(
         "seed, model_name_list, index,model_selection_strategy,expected_model",
