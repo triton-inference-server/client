@@ -86,6 +86,8 @@ class LlmInputs:
     DEFAULT_IMAGE_WIDTH_STDDEV = 0
     DEFAULT_IMAGE_HEIGHT_MEAN = 100
     DEFAULT_IMAGE_HEIGHT_STDDEV = 0
+    DEFAULT_IMAGES_COUNT_MIN = 0
+    DEFAULT_IMAGES_COUNT_MAX = 1
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
@@ -114,6 +116,8 @@ class LlmInputs:
         image_height_mean: int = DEFAULT_IMAGE_HEIGHT_MEAN,
         image_height_stddev: int = DEFAULT_IMAGE_HEIGHT_STDDEV,
         image_format: ImageFormat = ImageFormat.PNG,
+        images_count_min: int = DEFAULT_IMAGES_COUNT_MIN,
+        images_count_max: int = DEFAULT_IMAGES_COUNT_MAX,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -166,6 +170,10 @@ class LlmInputs:
             The standard deviation of height of images when generating synthetic image data.
         image_format:
             The compression format of the images.
+        images_count_min:
+            Minimum number of synthetic images to be added to a prompt.
+        images_count_max:
+            Maximum number of synthetic images to be added to a prompt.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
@@ -187,7 +195,13 @@ class LlmInputs:
         """
 
         cls._check_for_valid_args(
-            input_type, dataset_name, starting_index, length, tokenizer
+            input_type,
+            dataset_name,
+            starting_index,
+            length,
+            tokenizer,
+            images_count_min,
+            images_count_max,
         )
 
         random.seed(random_seed)
@@ -207,6 +221,8 @@ class LlmInputs:
             image_height_mean,
             image_height_stddev,
             image_format,
+            images_count_min,
+            images_count_max,
             batch_size,
             input_filename,
         )
@@ -247,6 +263,8 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
+        images_count_min: int,
+        images_count_max: int,
         batch_size: int,
         input_filename: Optional[Path],
     ) -> Dict:
@@ -283,6 +301,10 @@ class LlmInputs:
             The standard deviation of height of images when generating synthetic image data.
         image_format:
             The compression format of the images.
+        images_count_min:
+            Minimum number of synthetic images to be added to a prompt.
+        images_count_max:
+            Maximum number of synthetic images to be added to a prompt.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
@@ -350,6 +372,8 @@ class LlmInputs:
                     image_height_mean,
                     image_height_stddev,
                     image_format,
+                    images_count_min,
+                    images_count_max,
                     output_format,
                 )
                 generic_dataset_json = (
@@ -448,12 +472,15 @@ class LlmInputs:
         starting_index: int,
         length: int,
         tokenizer: Tokenizer,
+        images_count_min: int,
+        images_count_max: int,
     ) -> None:
         try:
             cls._check_for_dataset_name_if_input_type_is_url(input_type, dataset_name)
             cls._check_for_tokenzier_if_input_type_is_synthetic(input_type, tokenizer)
             cls._check_for_valid_starting_index(starting_index)
             cls._check_for_valid_length(length)
+            cls._check_for_valid_multimodal_args(images_count_min, images_count_max)
 
         except Exception as e:
             raise GenAIPerfException(e)
@@ -480,6 +507,8 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
+        images_count_min: int,
+        images_count_max: int,
         output_format: OutputFormat,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
@@ -495,14 +524,18 @@ class LlmInputs:
             row["row"]["text_input"] = synthetic_prompt
 
             if output_format == OutputFormat.OPENAI_VISION:
-                synthetic_image = cls._create_synthetic_image(
-                    image_width_mean=image_width_mean,
-                    image_width_stddev=image_width_stddev,
-                    image_height_mean=image_height_mean,
-                    image_height_stddev=image_height_stddev,
-                    image_format=image_format,
-                )
-                row["row"]["image"] = synthetic_image
+                N = random.randint(images_count_min, images_count_max)
+                synthetic_images = [
+                    cls._create_synthetic_image(
+                        image_width_mean=image_width_mean,
+                        image_width_stddev=image_width_stddev,
+                        image_height_mean=image_height_mean,
+                        image_height_stddev=image_height_stddev,
+                        image_format=image_format,
+                    )
+                    for _ in range(N)
+                ]
+                row["row"]["images"] = synthetic_images
 
             dataset_json["rows"].append(row)
 
@@ -607,8 +640,8 @@ class LlmInputs:
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for prompt, image in zip(prompts, images):
-            content = {"text_input": prompt}
-            content.update({"image": image} if image else {})
+            content: Dict[str, Any] = {"text_input": prompt}
+            content.update({"images": [image]} if image else {})
             dataset_json["rows"].append({"row": content})
 
         return dataset_json
@@ -652,16 +685,19 @@ class LlmInputs:
         Converts to multi-modal content format of OpenAI Chat Completions API.
         """
         for row in generic_dataset_json["rows"]:
-            if row["image"]:
+            if row["images"]:
                 row["text_input"] = [
                     {
                         "type": "text",
                         "text": row["text_input"],
                     },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": row["image"]},
-                    },
+                    *[
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image},
+                        }
+                        for image in row["images"]
+                    ],
                 ]
 
         return generic_dataset_json
@@ -1530,6 +1566,29 @@ class LlmInputs:
         if length < cls.MINIMUM_LENGTH:
             raise GenAIPerfException(
                 f"starting_index: {length} must be larger than {cls.MINIMUM_LENGTH}."
+            )
+
+    @classmethod
+    def _check_for_valid_multimodal_args(
+        cls, images_count_min: int, images_count_max: int
+    ) -> None:
+        if not isinstance(images_count_min, int):
+            raise GenAIPerfException(
+                f"images_count_min: {images_count_min} must be an integer."
+            )
+
+        if images_count_min < 0:
+            raise GenAIPerfException(
+                f"images_count_min: {images_count_min} must be a positive number."
+            )
+        if not isinstance(images_count_max, int):
+            raise GenAIPerfException(
+                f"images_count_max: {images_count_max} must be an integer."
+            )
+
+        if images_count_max < images_count_min:
+            raise GenAIPerfException(
+                f"images_count_max: {images_count_max} must be greater than images_count_min {images_count_min}"
             )
 
     @classmethod

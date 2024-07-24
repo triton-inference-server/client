@@ -557,8 +557,8 @@ class TestLlmInputs:
     def test_add_image_inputs_openai_vision(self) -> None:
         generic_json = {
             "rows": [
-                {"text_input": "test input one", "image": "test_image1"},
-                {"text_input": "test input two", "image": "test_image2"},
+                {"text_input": "test input one", "images": ["test_image1"]},
+                {"text_input": "test input two", "images": ["test_image2"]},
             ]
         }
 
@@ -608,8 +608,12 @@ class TestLlmInputs:
             OutputFormat.TENSORRTLLM,
         ],
     )
+    @pytest.mark.parametrize(
+        "images_count",
+        [0, 5],
+    )
     def test_get_input_dataset_from_synthetic(
-        self, mock_prompt, mock_image, output_format
+        self, mock_prompt, mock_image, output_format, images_count
     ) -> None:
         _placeholder = 123  # dummy value
         num_prompts = 3
@@ -624,6 +628,8 @@ class TestLlmInputs:
             image_height_mean=_placeholder,
             image_height_stddev=_placeholder,
             image_format=ImageFormat.PNG,
+            images_count_min=images_count,
+            images_count_max=images_count,
             output_format=output_format,
         )
 
@@ -635,7 +641,7 @@ class TestLlmInputs:
             if output_format == OutputFormat.OPENAI_VISION:
                 assert row == {
                     "text_input": "This is test prompt",
-                    "image": "test_image_base64",
+                    "images": images_count * ["test_image_base64"],
                 }
             else:
                 assert row == {
@@ -805,7 +811,7 @@ class TestLlmInputs:
         assert len(dataset["rows"]) == len(expected_data)
         for i, data in enumerate(expected_data):
             assert dataset["rows"][i]["row"]["text_input"] == data.text_input
-            assert dataset["rows"][i]["row"]["image"] == data.image
+            assert dataset["rows"][i]["row"]["images"] == [data.image]
 
     @pytest.mark.parametrize(
         "seed, model_name_list, index,model_selection_strategy,expected_model",

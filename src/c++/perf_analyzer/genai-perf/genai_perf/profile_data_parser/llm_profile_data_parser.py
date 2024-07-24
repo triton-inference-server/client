@@ -220,6 +220,8 @@ class LLMProfileDataParser(ProfileDataParser):
             return payload["prompt"]
         elif self._response_format == ResponseFormat.OPENAI_VISION:
             content = payload["messages"][0]["content"]
+            if isinstance(content, str):
+                return content
             return " ".join(c["text"] for c in content if c["type"] == "text")
         else:
             raise ValueError(

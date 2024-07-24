@@ -649,7 +649,7 @@ class TestLLMProfileDataParser:
                     {
                         "timestamp": 2,
                         "request_inputs": {
-                            "payload": '{"messages":[{"role":"user","content":[{"type":"text","text":"This is test too"},{"type":"image_url","image_url":{"url":"data:image/png;base64,abcdef"}}]}],"model":"llava-1.6","stream":true}',
+                            "payload": '{"messages":[{"role":"user","content":"This is test too"}],"model":"llava-1.6","stream":true}',
                         },
                         # the first, and the last two responses will be ignored because they have no "content"
                         "response_timestamps": [4, 7, 11, 15, 18, 19],

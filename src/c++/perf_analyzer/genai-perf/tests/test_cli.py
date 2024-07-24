@@ -234,6 +234,10 @@ class TestCLIArguments:
                 {"image_height_stddev": 456},
             ),
             (["--image-format", "png"], {"image_format": ImageFormat.PNG}),
+            (
+                ["--images-count-min", "123", "--images-count-max", "321"],
+                {"images_count_min": 123, "images_count_max": 321},
+            ),
             (["-v"], {"verbose": True}),
             (["--verbose"], {"verbose": True}),
             (["-u", "test_url"], {"u": "test_url"}),
