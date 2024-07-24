@@ -29,13 +29,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # GenAI-Perf
 
 GenAI-Perf is a command line tool for measuring the throughput and latency of
-generative AI models as served through an inference server. For large language
-models (LLMs), as an example, GenAI-Perf provides metrics such as
+generative AI models as served through an inference server.
+For large language models (LLMs), GenAI-Perf provides metrics such as
 [output token throughput](#output_token_throughput_metric),
 [time to first token](#time_to_first_token_metric),
 [inter token latency](#inter_token_latency_metric), and
-[request throughput](#request_throughput_metric). For a full list of metrics
-please see the [Metrics section](#metrics).
+[request throughput](#request_throughput_metric).
+For a full list of metrics please see the [Metrics section](#metrics).
 
 Users specify a model name, an inference server URL, the type of inputs to use
 (synthetic or from dataset), and the type of load to generate (number of
@@ -49,7 +49,7 @@ running when GenAI-Perf is run.
 
 You can use GenAI-Perf to run performance benchmarks on
 - [Large Language Models](docs/tutorial.md)
-- [Multi-Modal Models](docs/multi_modal.md)
+- [Vision Language Models](docs/multi_modal.md)
 - [Embedding Models](docs/embeddings.md)
 - [Ranking Models](docs/rankings.md)
 - [Multiple LoRA Adapters](docs/lora.md)
@@ -87,7 +87,7 @@ genai-perf --help
 <summary>Alternatively, to install from source:</summary>
 
 Since GenAI-Perf depends on Perf Analyzer,
-you'll need to install Perf Analyzer binary:
+you'll need to install the Perf Analyzer binary:
 
 ### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
@@ -121,8 +121,8 @@ QUICK START
 
 ## Quick Start
 
-In this quick start, we will use GenAI-Perf to run performance benchmark on
-the GPT-2 model running on Triton Inference Server with TensorRT-LLM engine.
+In this quick start, we will use GenAI-Perf to run performance benchmarking on
+the GPT-2 model running on Triton Inference Server with a TensorRT-LLM engine.
 
 ### Serve GPT-2 TensorRT-LLM model using Triton CLI
 
