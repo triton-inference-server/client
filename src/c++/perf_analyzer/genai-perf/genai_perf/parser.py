@@ -177,6 +177,9 @@ def _check_conditional_args(
         args = _convert_str_to_enum_entry(args, "backend", OutputFormat)
         args.output_format = args.backend
 
+    if args.service_kind == "tensorrtllm_engine":
+        args.output_format = OutputFormat.TENSORRTLLM_ENGINE
+
     # Output token distribution checks
     if args.output_tokens_mean == LlmInputs.DEFAULT_OUTPUT_TOKENS_MEAN:
         if args.output_tokens_stddev != LlmInputs.DEFAULT_OUTPUT_TOKENS_STDDEV:
@@ -268,6 +271,8 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
             name += [f"{args.service_kind}-{args.endpoint_type}"]
         elif args.service_kind == "triton":
             name += [f"{args.service_kind}-{args.backend.to_lowercase()}"]
+        elif args.service_kind == "tensorrtllm_engine":
+            name += [f"{args.service_kind}"]
         else:
             raise ValueError(f"Unknown service kind '{args.service_kind}'.")
 
@@ -529,25 +534,6 @@ def _add_endpoint_args(parser):
     endpoint_group = parser.add_argument_group("Endpoint")
 
     endpoint_group.add_argument(
-        "-m",
-        "--model",
-        nargs="+",
-        default=[],
-        help=f"The name of the model(s) to benchmark.",
-    )
-    endpoint_group.add_argument(
-        "--model-selection-strategy",
-        type=str,
-        choices=utils.get_enum_names(ModelSelectionStrategy),
-        default="round_robin",
-        required=False,
-        help=f"When multiple model are specified, this is how a specific model "
-        "should be assigned to a prompt.  round_robin means that ith prompt in the "
-        "list gets assigned to i mod len(models).  random means that assignment is "
-        "uniformly random",
-    )
-
-    endpoint_group.add_argument(
         "--backend",
         type=str,
         choices=utils.get_enum_names(OutputFormat)[2:],
@@ -577,9 +563,28 @@ def _add_endpoint_args(parser):
     )
 
     endpoint_group.add_argument(
+        "-m",
+        "--model",
+        nargs="+",
+        default=[],
+        help=f"The name of the model(s) to benchmark.",
+    )
+    endpoint_group.add_argument(
+        "--model-selection-strategy",
+        type=str,
+        choices=utils.get_enum_names(ModelSelectionStrategy),
+        default="round_robin",
+        required=False,
+        help=f"When multiple model are specified, this is how a specific model "
+        "should be assigned to a prompt.  round_robin means that ith prompt in the "
+        "list gets assigned to i mod len(models).  random means that assignment is "
+        "uniformly random",
+    )
+
+    endpoint_group.add_argument(
         "--service-kind",
         type=str,
-        choices=["triton", "openai"],
+        choices=["triton", "openai", "tensorrtllm_engine"],
         default="triton",
         required=False,
         help="The kind of service perf_analyzer will "
