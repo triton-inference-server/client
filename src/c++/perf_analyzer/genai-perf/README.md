@@ -91,7 +91,8 @@ you'll need to install the Perf Analyzer binary:
 
 ### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
-**NOTE**: you must already have CUDA 12 installed.
+**NOTE**: you must already have CUDA 12 installed
+(checkout the [CUDA installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)).
 
 ```bash
 pip install tritonclient
