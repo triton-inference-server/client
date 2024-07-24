@@ -24,10 +24,42 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from enum import Enum, auto
 
-class GenAIPerfException(Exception):
-    """
-    A custom exception specific to the genai-perf
-    """
 
-    pass
+class ModelSelectionStrategy(Enum):
+    ROUND_ROBIN = auto()
+    RANDOM = auto()
+
+
+class PromptSource(Enum):
+    SYNTHETIC = auto()
+    DATASET = auto()
+    FILE = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
+class OutputFormat(Enum):
+    OPENAI_CHAT_COMPLETIONS = auto()
+    OPENAI_COMPLETIONS = auto()
+    OPENAI_EMBEDDINGS = auto()
+    RANKINGS = auto()
+    TENSORRTLLM = auto()
+    VLLM = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
+DEFAULT_STARTING_INDEX = 0
+DEFAULT_LENGTH = 100
+DEFAULT_TENSORRTLLM_MAX_TOKENS = 256
+DEFAULT_BATCH_SIZE = 1
+DEFAULT_RANDOM_SEED = 0
+DEFAULT_PROMPT_TOKENS_MEAN = 550
+DEFAULT_PROMPT_TOKENS_STDDEV = 0
+DEFAULT_OUTPUT_TOKENS_MEAN = -1
+DEFAULT_OUTPUT_TOKENS_STDDEV = 0
+DEFAULT_NUM_PROMPTS = 100

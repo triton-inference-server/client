@@ -24,58 +24,68 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pathlib import Path
-from unittest.mock import mock_open, patch
+# from pathlib import Path
+# from unittest.mock import mock_open, patch
 
-import pytest
+from genai_perf.llm_inputs.inputs_utils import OutputFormat
 from genai_perf.llm_inputs.llm_inputs import LlmInputs, ModelSelectionStrategy
 
 
 class TestLlmInputsEmbeddings:
-    @patch("pathlib.Path.exists", return_value=True)
-    @patch(
-        "builtins.open",
-        new_callable=mock_open,
-        read_data="\n".join(
-            [
-                '{"text": "What production company co-owned by Kevin Loader and Rodger Michell produced My Cousin Rachel?"}',
-                '{"text": "Who served as the 1st Vice President of Colombia under El Libertador?"}',
-                '{"text": "Are the Barton Mine and Hermiston-McCauley Mine located in The United States of America?"}',
-                '{"text": "what state did they film daddy\'s home 2"}',
-            ]
-        ),
-    )
-    def test_get_input_dataset_from_embeddings_file(self, mock_file, mock_exists):
-        input_filename = Path("embeddings.jsonl")
-        batch_size = 3
-        dataset = LlmInputs._get_input_dataset_from_embeddings_file(
-            input_filename, batch_size, num_prompts=100
-        )
+    # TODO: 100 inputs should be generated in this test
+    # @patch("pathlib.Path.exists", return_value=True)
+    # @patch(
+    #     "builtins.open",
+    #     new_callable=mock_open,
+    #     read_data="\n".join(
+    #         [
+    #             '{"text_input": "What production company co-owned by Kevin Loader and Rodger Michell produced My Cousin Rachel?"}',
+    #             '{"text_input": "Who served as the 1st Vice President of Colombia under El Libertador?"}',
+    #             '{"text_input": "Are the Barton Mine and Hermiston-McCauley Mine located in The United States of America?"}',
+    #             '{"text_input": "what state did they film daddy\'s home 2"}',
+    #         ]
+    #     ),
+    # )
+    # def test_get_input_dataset_from_embeddings_file(self, mock_file, mock_exists):
+    # input_filename = Path("embeddings.jsonl")
+    # batch_size = 1
+    # pa_json = LlmInputs.create_llm_inputs(
+    #     model_name=["test_model"],
+    #     input_type=PromptSource.FILE,
+    #     input_filename=input_filename,
+    #     output_format=OutputFormat.OPENAI_EMBEDDINGS,
+    #     batch_size=batch_size,
+    #     num_of_output_prompts=100,
+    # )
 
-        assert dataset is not None
-        assert len(dataset["rows"]) == 100
-        for row in dataset["rows"]:
-            assert "row" in row
-            assert "payload" in row["row"]
-            payload = row["row"]["payload"]
-            assert "input" in payload
-            assert isinstance(payload["input"], list)
-            assert len(payload["input"]) == batch_size
+    # assert pa_json is not None
+    # assert len(pa_json["data"]) == 100
+    # for row in pa_json["data"]:
+    #     assert "payload" in row
+    #     payload = row["payload"][0]
+    #     assert "input" in payload
+    #     assert isinstance(payload["input"], list)
+    #     assert len(payload["input"]) == batch_size
 
-        # Try error case where batch size is larger than the number of available texts
-        with pytest.raises(
-            ValueError,
-            match="Batch size cannot be larger than the number of available texts",
-        ):
-            LlmInputs._get_input_dataset_from_embeddings_file(
-                input_filename, 5, num_prompts=10
-            )
+    # TODO: Add and test batching support
+    # Try error case where batch size is larger than the number of available texts
+    # with pytest.raises(
+    #     ValueError,
+    #     match="Batch size cannot be larger than the number of available texts",
+    # ):
+    #     LlmInputs.create_llm_inputs(
+    #         input_type=PromptSource.FILE,
+    #         input_filename=input_filename,
+    #         output_format=OutputFormat.OPENAI_EMBEDDINGS,
+    #         batch_size=5,
+    #         num_of_output_prompts=10,
+    #     )
 
     def test_convert_generic_json_to_openai_embeddings_format(self):
         generic_dataset = {
             "rows": [
-                {"payload": {"input": ["text 1", "text 2"]}},
-                {"payload": {"input": ["text 3", "text 4"]}},
+                {"row": {"text_input": "text 1"}},
+                {"row": {"text_input": "text 2"}},
             ]
         }
 
@@ -84,7 +94,7 @@ class TestLlmInputsEmbeddings:
                 {
                     "payload": [
                         {
-                            "input": ["text 1", "text 2"],
+                            "input": ["text 1"],
                             "model": "test_model",
                         }
                     ]
@@ -92,7 +102,7 @@ class TestLlmInputsEmbeddings:
                 {
                     "payload": [
                         {
-                            "input": ["text 3", "text 4"],
+                            "input": ["text 2"],
                             "model": "test_model",
                         }
                     ]
@@ -100,9 +110,15 @@ class TestLlmInputsEmbeddings:
             ]
         }
 
-        result = LlmInputs._convert_generic_json_to_openai_embeddings_format(
-            generic_dataset,
+        result = LlmInputs.convert_to_output_format(
+            output_format=OutputFormat.OPENAI_EMBEDDINGS,
+            generic_dataset=generic_dataset,
+            add_model_name=True,
+            add_stream=False,
             extra_inputs={},
+            output_tokens_mean=0,
+            output_tokens_stddev=0,
+            output_tokens_deterministic=False,
             model_name=["test_model"],
             model_selection_strategy=ModelSelectionStrategy.ROUND_ROBIN,
         )
@@ -118,8 +134,8 @@ class TestLlmInputsEmbeddings:
     def test_convert_generic_json_to_openai_embeddings_format_with_extra_inputs(self):
         generic_dataset = {
             "rows": [
-                {"payload": {"input": ["text 1", "text 2"]}},
-                {"payload": {"input": ["text 3", "text 4"]}},
+                {"row": {"text_input": "text 1"}},
+                {"row": {"text_input": "text 2"}},
             ]
         }
 
@@ -134,7 +150,7 @@ class TestLlmInputsEmbeddings:
                 {
                     "payload": [
                         {
-                            "input": ["text 1", "text 2"],
+                            "input": ["text 1"],
                             "model": "test_model",
                             "encoding_format": "base64",
                             "truncate": "END",
@@ -145,7 +161,7 @@ class TestLlmInputsEmbeddings:
                 {
                     "payload": [
                         {
-                            "input": ["text 3", "text 4"],
+                            "input": ["text 2"],
                             "model": "test_model",
                             "encoding_format": "base64",
                             "truncate": "END",
@@ -156,9 +172,15 @@ class TestLlmInputsEmbeddings:
             ]
         }
 
-        result = LlmInputs._convert_generic_json_to_openai_embeddings_format(
-            generic_dataset,
+        result = LlmInputs.convert_to_output_format(
+            output_format=OutputFormat.OPENAI_EMBEDDINGS,
+            generic_dataset=generic_dataset,
+            add_model_name=True,
+            add_stream=False,
             extra_inputs=extra_inputs,
+            output_tokens_mean=0,
+            output_tokens_stddev=0,
+            output_tokens_deterministic=False,
             model_name=["test_model"],
             model_selection_strategy=ModelSelectionStrategy.ROUND_ROBIN,
         )

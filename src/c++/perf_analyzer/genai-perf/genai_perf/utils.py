@@ -66,6 +66,11 @@ def load_json_str(json_str: str) -> Dict[str, Any]:
         raise
 
 
+def write_to_json_file(json_data: Dict, output_file: Path) -> None:
+    with open(output_file, "w") as f:
+        f.write(json.dumps(json_data, indent=2))
+
+
 def remove_file(file: Path) -> None:
     if file.is_file():
         file.unlink()

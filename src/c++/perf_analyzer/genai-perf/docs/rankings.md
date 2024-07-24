@@ -44,19 +44,19 @@ mkdir rankings_jsonl
 Inside this directory, create a JSONL file named queries.jsonl with queries data:
 
 ```bash
-echo '{"text": "What was the first car ever driven?"}
-{"text": "Who served as the 5th President of the United States of America?"}
-{"text": "Is the Sydney Opera House located in Australia?"}
-{"text": "In what state did they film Shrek 2?"}' > rankings_jsonl/queries.jsonl
+echo '{"text_input": "What was the first car ever driven?"}
+{"text_input": "Who served as the 5th President of the United States of America?"}
+{"text_input": "Is the Sydney Opera House located in Australia?"}
+{"text_input": "In what state did they film Shrek 2?"}' > rankings_jsonl/queries.jsonl
 ```
 
 Create another JSONL file named passages.jsonl with passages data:
 
 ```bash
-echo '{"text": "Eric Anderson (born January 18, 1968) is an American sociologist and sexologist."}
-{"text": "Kevin Loader is a British film and television producer."}
-{"text": "Francisco Antonio Zea Juan Francisco Antonio Hilari was a Colombian journalist, botanist, diplomat, politician, and statesman who served as the 1st Vice President of Colombia."}
-{"text": "Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."}' > rankings_jsonl/passages.jsonl
+echo '{"text_input": "Eric Anderson (born January 18, 1968) is an American sociologist and sexologist."}
+{"text_input": "Kevin Loader is a British film and television producer."}
+{"text_input": "Francisco Antonio Zea Juan Francisco Antonio Hilari was a Colombian journalist, botanist, diplomat, politician, and statesman who served as the 1st Vice President of Colombia."}
+{"text_input": "Daddys Home 2 Principal photography on the film began in Massachusetts in March 2017 and it was released in the United States by Paramount Pictures on November 10, 2017. Although the film received unfavorable reviews, it has grossed over $180 million worldwide on a $69 million budget."}' > rankings_jsonl/passages.jsonl
 ```
 
 ## Start a Hugging Face Re-Ranker-Compatible Server
