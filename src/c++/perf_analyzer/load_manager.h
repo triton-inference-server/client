@@ -140,6 +140,7 @@ class LoadManager {
   size_t batch_size_;
   size_t max_threads_;
   bool on_sequence_model_;
+  SharedMemoryType shared_memory_type_;
 
   std::shared_ptr<ModelParser> parser_;
   std::shared_ptr<cb::ClientBackendFactory> factory_;

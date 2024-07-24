@@ -104,6 +104,16 @@ class InferContext {
   // Initialize the context. Must be done before any inferences are sent
   void Init();
 
+  // Signal to the context to stop working and exit
+  // If fast exit is true, everything should be immediately dropped
+  // If fast exit is false, the context should still handle outstanding requests
+  // before exiting
+  void Exit(bool fast_exit)
+  {
+    exiting_ = true;
+    fast_exit_ = fast_exit;
+  }
+
   // Send a single inference request to the server
   void SendInferRequest(bool delayed = false);
 
@@ -192,6 +202,8 @@ class InferContext {
 
   const uint32_t id_{0};
   const size_t thread_id_{0};
+  bool exiting_{false};
+  bool fast_exit_{false};
 
   size_t GetNumActiveThreads() { return num_active_threads_; }
 
