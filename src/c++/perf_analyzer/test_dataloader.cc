@@ -201,7 +201,6 @@ TEST_CASE("dataloader: ReadDataFromJSON")
 
   inputs->insert(std::make_pair(input1.name_, input1));
   outputs->insert(std::make_pair(output1.name_, output1));
-  
 
   SUBCASE("File does not exist")
   {
